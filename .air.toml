@@ -1,0 +1,14 @@
+[build]
+cmd = "go build -o ./tmp/server.exe ./cmd/server"
+entrypoint = ["./tmp/server.exe"]
+# args_bin = ["server", ":8080"]
+# bin = "./tmp/server.exe"
+
+# # Inline the default arguments directly after the binary.
+# entrypoint = ["./tmp/main", "server", ":8080"]
+
+# # Use PATH-resolved tools like dlv by omitting path separators.
+# entrypoint = [
+#   "dlv", "exec", "--accept-multiclient", "--log", "--headless", "--continue",
+#   "--listen=:8999", "--api-version", "2", "./tmp/main",
+# ]
