@@ -7,6 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	"github.com/JekYUlll/Dipole/internal/middleware"
+	"github.com/JekYUlll/Dipole/internal/repository"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type Server struct {
@@ -27,6 +31,31 @@ func New() *Server {
 			"env":    appCfg.Env,
 		})
 	})
+
+	userRepo := repository.NewUserRepository()
+	tokenService := service.NewTokenService()
+	authService := service.NewAuthService(userRepo, tokenService)
+	userService := service.NewUserService(userRepo)
+	authHandler := httpHandler.NewAuthHandler(authService)
+	userHandler := httpHandler.NewUserHandler(userService)
+	authRequired := middleware.Auth(tokenService, userRepo)
+
+	v1 := engine.Group("/api/v1")
+	{
+		authGroup := v1.Group("/auth")
+		{
+			authGroup.POST("/register", authHandler.Register)
+			authGroup.POST("/login", authHandler.Login)
+		}
+
+		protected := v1.Group("")
+		protected.Use(authRequired)
+		{
+			protected.POST("/auth/logout", authHandler.Logout)
+			protected.GET("/users/me", userHandler.GetCurrent)
+			protected.GET("/users/:uuid", userHandler.GetByUUID)
+		}
+	}
 
 	return &Server{engine: engine}
 }

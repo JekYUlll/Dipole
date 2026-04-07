@@ -21,6 +21,10 @@ func main() {
 		log.Fatalf("redis init failed: %v", err)
 	}
 
+	if err := store.AutoMigrate(); err != nil {
+		log.Fatalf("auto migrate failed: %v", err)
+	}
+
 	srv := server.New()
 
 	log.Printf("%s starting in %s on %s", appCfg.Name, appCfg.Env, config.Addr())

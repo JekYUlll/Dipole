@@ -33,6 +33,10 @@ type Redis struct {
 	DB       int    `mapstructure:"db"`
 }
 
+type Auth struct {
+	TokenTTLHours int `mapstructure:"token_ttl_hours"`
+}
+
 var (
 	cfg     *viper.Viper
 	loadErr error
@@ -55,6 +59,7 @@ func Load() error {
 		v.SetDefault("app.env", "local")
 		v.SetDefault("server.host", "0.0.0.0")
 		v.SetDefault("server.port", 8080)
+		v.SetDefault("auth.token_ttl_hours", 168)
 
 		if err := v.ReadInConfig(); err != nil {
 			loadErr = fmt.Errorf("read config: %w", err)
@@ -115,6 +120,17 @@ func RedisConfig() Redis {
 	}
 
 	return redis
+}
+
+func AuthConfig() Auth {
+	MustLoad()
+
+	var auth Auth
+	if err := cfg.UnmarshalKey("auth", &auth); err != nil {
+		panic(fmt.Errorf("unmarshal auth config: %w", err))
+	}
+
+	return auth
 }
 
 func Addr() string {
