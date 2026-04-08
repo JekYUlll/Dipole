@@ -13,6 +13,12 @@ type App struct {
 	Env  string `mapstructure:"env"`
 }
 
+type Log struct {
+	Level       string `mapstructure:"level"`
+	Format      string `mapstructure:"format"`
+	Development bool   `mapstructure:"development"`
+}
+
 type Server struct {
 	Host string `mapstructure:"host"`
 	Port int    `mapstructure:"port"`
@@ -57,6 +63,9 @@ func Load() error {
 
 		v.SetDefault("app.name", "dipole")
 		v.SetDefault("app.env", "local")
+		v.SetDefault("log.level", "info")
+		v.SetDefault("log.format", "console")
+		v.SetDefault("log.development", true)
 		v.SetDefault("server.host", "0.0.0.0")
 		v.SetDefault("server.port", 8080)
 		v.SetDefault("auth.token_ttl_hours", 168)
@@ -87,6 +96,17 @@ func AppConfig() App {
 	}
 
 	return app
+}
+
+func LogConfig() Log {
+	MustLoad()
+
+	var logConfig Log
+	if err := cfg.UnmarshalKey("log", &logConfig); err != nil {
+		panic(fmt.Errorf("unmarshal log config: %w", err))
+	}
+
+	return logConfig
 }
 
 func ServerConfig() Server {

@@ -206,7 +206,7 @@ docs/
 - `internal/repository` -> 未来进入各模块 `infrastructure`
 - `internal/service` -> 未来进入各模块 `application`
 
-所以我们**不是推翻重来**，而是沿着现有代码继续整理边界。
+所以我们会沿着现有代码继续整理边界，不做推翻式重写。
 
 ---
 
@@ -314,26 +314,52 @@ docs/
 3. 完成注册、登录、查询资料、修改资料
 4. 明确 DTO、entity、repository interface 的边界
 
-### Phase 2：把会话和消息模块拉起来
-
-1. `conversation` 模型
-2. `message` 模型
-3. 发送消息的 HTTP/应用层
-4. WebSocket 建连与在线会话管理
-5. 消息持久化和在线投递
-
-### Phase 3：再做联系人和群
+### Phase 2：先把联系人链路做完整
 
 1. 联系人关系
 2. 联系申请
-3. 群组与成员
+3. 联系人列表
+4. 黑名单能力
+
+### Phase 3：补齐会话层
+
+1. `conversation` 模型
+2. 最近会话列表
+3. 未读数与最后一条消息摘要
+4. 单聊和群聊会话抽象
+
+### Phase 4：拉起消息与 WebSocket
+
+1. `message` 模型
+2. 发送消息的 HTTP/应用层
+3. WebSocket 建连与在线会话管理
+4. 消息持久化和在线投递
+
+### Phase 5：做群与群消息
+
+1. 群组
+2. 群成员与角色
+3. 群会话
 4. 群消息
 
-### Phase 4：最后再做增强能力
+### Phase 6：接入 AI 能力
 
-1. CGo 高性能模块
-2. AI/Agent 能力
-3. 监控、限流、后台管理
+1. AI 助手账号体系
+2. AI 会话与消息编排
+3. 总结、辅助回复、内容治理等能力
+
+### Phase 7：接入 Cgo 高性能模块
+
+1. 为热点路径建立 benchmark
+2. 选择 1-2 个高收益点做 Cgo 加速
+3. 保留 pure Go 回退实现
+
+### Phase 8：补齐工程化能力
+
+1. 监控
+2. 限流
+3. 后台管理
+4. 部署与压测
 
 ---
 
@@ -347,6 +373,8 @@ docs/
 - 对外接口风格：**REST + JSON**
 - 长连接：**WebSocket**
 - 当前不引入：`etcd`、actor system、服务注册发现、Mongo 多引擎
+
+具体执行顺序、每阶段交付项与阶段完成后的重构任务，见 [development-roadmap.md](./development-roadmap.md)。
 
 ---
 

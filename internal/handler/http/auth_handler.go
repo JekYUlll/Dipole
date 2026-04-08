@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
@@ -21,7 +22,7 @@ func NewAuthHandler(service *service.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var input service.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		Error(c, http.StatusBadRequest, err.Error())
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
@@ -29,22 +30,22 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidTelephone):
-			Error(c, http.StatusBadRequest, "telephone format is invalid")
+			ErrorWithCode(c, http.StatusBadRequest, code.AuthInvalidTelephone, "telephone format is invalid")
 		case errors.Is(err, service.ErrUserAlreadyExists):
-			Error(c, http.StatusConflict, "telephone already registered")
+			ErrorWithCode(c, http.StatusConflict, code.AuthUserAlreadyExists, "telephone already registered")
 		default:
-			Error(c, http.StatusInternalServerError, err.Error())
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}
 		return
 	}
 
-	Success(c, result)
+	Success(c, newAuthResponse(result))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input service.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		Error(c, http.StatusBadRequest, err.Error())
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
@@ -52,27 +53,27 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCredentials):
-			Error(c, http.StatusUnauthorized, "telephone or password is invalid")
+			ErrorWithCode(c, http.StatusUnauthorized, code.AuthInvalidCredentials, "telephone or password is invalid")
 		case errors.Is(err, service.ErrUserDisabled):
-			Error(c, http.StatusForbidden, "user is disabled")
+			ErrorWithCode(c, http.StatusForbidden, code.AuthUserDisabled, "user is disabled")
 		default:
-			Error(c, http.StatusInternalServerError, err.Error())
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}
 		return
 	}
 
-	Success(c, result)
+	Success(c, newAuthResponse(result))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token, ok := middleware.CurrentToken(c)
 	if !ok {
-		Error(c, http.StatusUnauthorized, "authorization token is required")
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
 		return
 	}
 
 	if err := h.service.Logout(token); err != nil {
-		Error(c, http.StatusInternalServerError, err.Error())
+		ErrorWithCode(c, http.StatusInternalServerError, code.AuthLogoutFailed, err.Error())
 		return
 	}
 

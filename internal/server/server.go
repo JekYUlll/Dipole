@@ -8,6 +8,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -19,7 +20,7 @@ type Server struct {
 
 func New() *Server {
 	engine := gin.New()
-	engine.Use(gin.Logger(), gin.Recovery())
+	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
 
 	appCfg := config.AppConfig()
@@ -54,6 +55,7 @@ func New() *Server {
 			protected.POST("/auth/logout", authHandler.Logout)
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)
+			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
 		}
 	}
 

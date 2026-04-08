@@ -49,3 +49,11 @@ func (r *UserRepository) GetByTelephone(telephone string) (*model.User, error) {
 
 	return &user, nil
 }
+
+func (r *UserRepository) Update(user *model.User) error {
+	if err := store.DB.Save(user).Error; err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+
+	return nil
+}
