@@ -40,6 +40,22 @@ func presentUserForViewer(viewer *model.User, target *model.User) any {
 	return toPublicUserResponse(target)
 }
 
+func presentUsersForViewer(viewer *model.User, users []*model.User) any {
+	if viewer != nil && viewer.IsAdmin {
+		response := make([]*privateUserResponse, 0, len(users))
+		for _, user := range users {
+			response = append(response, toPrivateUserResponse(user))
+		}
+		return response
+	}
+
+	response := make([]*publicUserResponse, 0, len(users))
+	for _, user := range users {
+		response = append(response, toPublicUserResponse(user))
+	}
+	return response
+}
+
 func canViewPrivateUser(viewer *model.User, target *model.User) bool {
 	if viewer == nil || target == nil {
 		return false

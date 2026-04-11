@@ -19,6 +19,9 @@ import (
 type stubUserService struct {
 	updateProfileFn func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error)
 	getByUUIDFn     func(uuid string) (*model.User, error)
+	searchUsersFn   func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error)
+	listUsersFn     func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error)
+	updateStatusFn  func(currentUser *model.User, targetUUID string, status int8) (*model.User, error)
 }
 
 func (s *stubUserService) GetByUUID(uuid string) (*model.User, error) {
@@ -35,6 +38,30 @@ func (s *stubUserService) UpdateProfile(currentUser *model.User, targetUUID stri
 	}
 
 	return s.updateProfileFn(currentUser, targetUUID, input)
+}
+
+func (s *stubUserService) SearchUsers(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
+	if s.searchUsersFn == nil {
+		return nil, nil
+	}
+
+	return s.searchUsersFn(currentUser, input)
+}
+
+func (s *stubUserService) ListUsersForAdmin(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
+	if s.listUsersFn == nil {
+		return nil, nil
+	}
+
+	return s.listUsersFn(currentUser, input)
+}
+
+func (s *stubUserService) UpdateStatus(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {
+	if s.updateStatusFn == nil {
+		return nil, nil
+	}
+
+	return s.updateStatusFn(currentUser, targetUUID, status)
 }
 
 func TestUserHandlerUpdateProfileSuccess(t *testing.T) {
@@ -173,5 +200,89 @@ func TestUserHandlerUpdateProfileBadRequest(t *testing.T) {
 	}
 	if int(response["code"].(float64)) != code.BadRequest {
 		t.Fatalf("expected business code %d, got %v", code.BadRequest, response["code"])
+	}
+}
+
+func TestUserHandlerSearchSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		searchUsersFn: func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
+			if currentUser.UUID != "U100" {
+				t.Fatalf("unexpected current user: %s", currentUser.UUID)
+			}
+			if input.Keyword != "alice" {
+				t.Fatalf("unexpected keyword: %s", input.Keyword)
+			}
+			return []*model.User{
+				{UUID: "U200", Nickname: "Alice", Avatar: "avatar", Status: model.UserStatusNormal},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/users?keyword=alice", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Search(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestUserHandlerListForAdminForbidden(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		listUsersFn: func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
+			return nil, service.ErrAdminRequired
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListForAdmin(context)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestUserHandlerUpdateStatusRejectsSelfDisable(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		updateStatusFn: func(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {
+			return nil, service.ErrCannotDisableSelf
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/admin/users/U100/status", strings.NewReader(`{"status":1}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "uuid", Value: "U100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100", IsAdmin: true})
+
+	handler.UpdateStatus(context)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", recorder.Code)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if int(response["code"].(float64)) != code.UserSelfStatusChange {
+		t.Fatalf("expected business code %d, got %v", code.UserSelfStatusChange, response["code"])
 	}
 }

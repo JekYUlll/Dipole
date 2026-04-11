@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
+	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
 type Server struct {
@@ -37,12 +38,18 @@ func New() *Server {
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
+	wsHub := wsTransport.NewHub()
+	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, userRepo)
 	authHandler := httpHandler.NewAuthHandler(authService)
 	userHandler := httpHandler.NewUserHandler(userService)
+	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, userRepo)
 
 	v1 := engine.Group("/api/v1")
 	{
+		v1.GET("/ws", wsHandler.Handle)
+
 		authGroup := v1.Group("/auth")
 		{
 			authGroup.POST("/register", authHandler.Register)
@@ -53,9 +60,12 @@ func New() *Server {
 		protected.Use(authRequired)
 		{
 			protected.POST("/auth/logout", authHandler.Logout)
+			protected.GET("/users", userHandler.Search)
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)
 			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
+			protected.GET("/admin/users", userHandler.ListForAdmin)
+			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
 		}
 	}
 

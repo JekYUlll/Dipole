@@ -269,38 +269,87 @@ docs/
 
 ## 7. 对消息与连接层的直接参考结论
 
-### 7.1 WebSocket 不应和用户/消息业务强耦合
+### 7.1 三个参考项目里的 WebSocket 分别怎么做
 
-`KamaChat` 目前的 WebSocket 层承担了：
+`KamaChat` 的参考文件：
 
-- 在线连接管理
-- 消息解析
-- 消息落库
-- 单聊/群聊分发
-- Redis 缓存更新
+- `acc/KamaChat/api/v1/ws_controller.go`
+- `acc/KamaChat/internal/service/chat/server.go`
+- `acc/KamaChat/internal/service/chat/client.go`
 
-这对学习很友好，但对长期维护不友好。
+它的特点是：
 
-更合理的方式是借鉴 `im-server`：
+- HTTP 入口直接升级为 WebSocket 连接
+- `ChatServer` 自己维护在线客户端映射和广播 channel
+- 连接管理、消息解析、消息落库、在线转发集中在同一个聊天服务里
 
-- 连接层负责连接、会话、协议、心跳
-- 消息应用层负责校验和路由
-- 存储层负责持久化
-- 推送/分发层负责在线投递
+这套方案非常适合学习 IM 的最小闭环，因为链路短、阅读成本低、容易快速跑起来。
 
-也就是说，我们未来应该逐步形成：
+`im-server` 的参考文件：
 
-- `transport/ws`：连接和协议
-- `modules/message/application`：消息用例
-- `modules/message/infrastructure`：消息仓储
+- `acc/im-server/services/connectmanager/server/imwebsocketserver.go`
+- `acc/im-server/services/connectmanager/server/imlistener.go`
+- `acc/im-server/services/connectmanager/server/codec/*`
 
-### 7.2 当前阶段仍然不做微服务拆分
+它的特点是：
 
-虽然 `im-server` 把 `connectmanager` 和 `message` 拆成独立服务是合理的，但 `Dipole` 当前不应直接这么做。
+- `connectmanager` 负责连接生命周期、协议和消息入口
+- `listener` 负责把不同消息类型分派给后续业务处理
+- 连接层和用户、消息、会话等业务域分层更明确
+
+这套方案更像一个“连接管理中心”，很适合帮助我们建立边界意识。
+
+`open-im-server` 的参考文件：
+
+- `acc/open-im-server/internal/msggateway/ws_server.go`
+- `acc/open-im-server/internal/msggateway/client.go`
+- `acc/open-im-server/internal/msggateway/client_conn.go`
+- `acc/open-im-server/internal/msggateway/user_map.go`
+- `acc/open-im-server/internal/msggateway/message_handler.go`
+
+它的特点是：
+
+- 网关职责拆分更细
+- 用户连接映射、多端管理、消息处理、压缩等能力都有独立对象
+- 更适合多节点、多端、多协议演进
+
+这套设计更成熟，也更重，当前阶段更适合作为远期边界参考。
+
+### 7.2 我们采用的路线
+
+`Dipole` 当前采用：
+
+**`KamaChat` 的最小闭环 + `im-server` 的分层边界**
+
+具体含义是：
+
+- 学 `KamaChat`，先把单聊消息跑通
+- 学 `im-server`，从第一版开始就把连接层和消息业务层分开
+- 参考 `open-im-server`，提前知道后续多端、多节点、多协议会长成什么样
+
+### 7.3 WebSocket 组件的职责划分
+
+当前建议在单体内先形成下面这组职责：
+
+- `transport/ws`：连接建立、鉴权、读写循环、心跳、断线清理
+- `transport/ws/hub`：在线连接注册、注销、按用户路由连接
+- `modules/message/application`：消息校验、发送用例、在线投递调用
+- `modules/message/infrastructure`：消息持久化
+
+第一版避免把太多能力塞进 WebSocket 层，先保证边界清楚：
+
+- 连接层不直接操作复杂业务规则
+- 消息层不直接感知底层连接实现细节
+- 存储层不承担在线分发职责
+
+### 7.4 当前阶段仍然不做微服务拆分
+
+虽然 `im-server` 把 `connectmanager` 和 `message` 拆成独立服务是合理的，但 `Dipole` 当前不直接这么做。
 
 当前最佳做法是：
 
 - 先在单体内拆包
+- 先把单聊 MVP 跑通
 - 等接口和主链路稳定后，再考虑独立进程化
 
 ---
@@ -314,12 +363,12 @@ docs/
 3. 完成注册、登录、查询资料、修改资料
 4. 明确 DTO、entity、repository interface 的边界
 
-### Phase 2：先把联系人链路做完整
+### Phase 2：先拉起单聊消息与 WebSocket MVP
 
-1. 联系人关系
-2. 联系申请
-3. 联系人列表
-4. 黑名单能力
+1. `transport/ws` 建连与鉴权
+2. 在线连接管理与心跳
+3. 文本消息发送、持久化、在线投递
+4. 离线消息的最小回补能力
 
 ### Phase 3：补齐会话层
 
@@ -328,12 +377,12 @@ docs/
 3. 未读数与最后一条消息摘要
 4. 单聊和群聊会话抽象
 
-### Phase 4：拉起消息与 WebSocket
+### Phase 4：补联系人链路
 
-1. `message` 模型
-2. 发送消息的 HTTP/应用层
-3. WebSocket 建连与在线会话管理
-4. 消息持久化和在线投递
+1. 联系人关系
+2. 联系申请
+3. 联系人列表
+4. 黑名单能力
 
 ### Phase 5：做群与群消息
 

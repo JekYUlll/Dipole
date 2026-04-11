@@ -11,6 +11,8 @@ type stubUserRepository struct {
 	users       map[string]*model.User
 	updateCalls int
 	updateErr   error
+	searchUsers []*model.User
+	listUsers   []*model.User
 }
 
 func (r *stubUserRepository) GetByUUID(uuid string) (*model.User, error) {
@@ -30,6 +32,38 @@ func (r *stubUserRepository) Update(user *model.User) error {
 	r.users[user.UUID] = user
 	r.updateCalls++
 	return nil
+}
+
+func (r *stubUserRepository) SearchActive(keyword, excludeUUID string, limit int) ([]*model.User, error) {
+	if r.searchUsers != nil {
+		return r.searchUsers, nil
+	}
+
+	var users []*model.User
+	for _, user := range r.users {
+		if user.UUID == excludeUUID || user.Status != model.UserStatusNormal {
+			continue
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
+func (r *stubUserRepository) List(keyword string, status *int8, limit int) ([]*model.User, error) {
+	if r.listUsers != nil {
+		return r.listUsers, nil
+	}
+
+	var users []*model.User
+	for _, user := range r.users {
+		if status != nil && user.Status != *status {
+			continue
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 func TestUserServiceGetByUUIDNotFound(t *testing.T) {
@@ -144,5 +178,80 @@ func TestUserServiceUpdateProfileRejectsEmptyPayload(t *testing.T) {
 	_, err := service.UpdateProfile(repo.users["U100"], "U100", UpdateProfileInput{})
 	if !errors.Is(err, ErrEmptyProfileUpdate) {
 		t.Fatalf("expected ErrEmptyProfileUpdate, got %v", err)
+	}
+}
+
+func TestUserServiceSearchUsersExcludesCurrentUser(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		searchUsers: []*model.User{
+			{UUID: "U200", Nickname: "Alice", Status: model.UserStatusNormal},
+			{UUID: "U300", Nickname: "Bob", Status: model.UserStatusNormal},
+		},
+	}
+	service := NewUserService(repo)
+	currentUser := &model.User{UUID: "U100"}
+
+	users, err := service.SearchUsers(currentUser, SearchUsersInput{
+		Keyword: "A",
+		Limit:   10,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("expected 2 users, got %d", len(users))
+	}
+}
+
+func TestUserServiceListUsersForAdminRequiresAdmin(t *testing.T) {
+	t.Parallel()
+
+	service := NewUserService(&stubUserRepository{})
+	currentUser := &model.User{UUID: "U100", IsAdmin: false}
+
+	_, err := service.ListUsersForAdmin(currentUser, AdminListUsersInput{})
+	if !errors.Is(err, ErrAdminRequired) {
+		t.Fatalf("expected ErrAdminRequired, got %v", err)
+	}
+}
+
+func TestUserServiceUpdateStatusSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+	}
+	service := NewUserService(repo)
+	admin := &model.User{UUID: "U999", IsAdmin: true}
+
+	user, err := service.UpdateStatus(admin, "U200", model.UserStatusDisabled)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if user.Status != model.UserStatusDisabled {
+		t.Fatalf("expected status %d, got %d", model.UserStatusDisabled, user.Status)
+	}
+	if repo.updateCalls != 1 {
+		t.Fatalf("expected one update call, got %d", repo.updateCalls)
+	}
+}
+
+func TestUserServiceUpdateStatusRejectsSelfDisable(t *testing.T) {
+	t.Parallel()
+
+	service := NewUserService(&stubUserRepository{
+		users: map[string]*model.User{
+			"U999": {UUID: "U999", Status: model.UserStatusNormal},
+		},
+	})
+	admin := &model.User{UUID: "U999", IsAdmin: true}
+
+	_, err := service.UpdateStatus(admin, "U999", model.UserStatusDisabled)
+	if !errors.Is(err, ErrCannotDisableSelf) {
+		t.Fatalf("expected ErrCannotDisableSelf, got %v", err)
 	}
 }

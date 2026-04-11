@@ -27,4 +27,7 @@ const (
 	UserInvalidNickname  int = 100203
 	UserInvalidEmail     int = 100204
 	UserInvalidAvatar    int = 100205
+	UserAdminRequired    int = 100206
+	UserInvalidStatus    int = 100207
+	UserSelfStatusChange int = 100208
 )

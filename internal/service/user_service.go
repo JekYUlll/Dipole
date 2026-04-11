@@ -17,10 +17,15 @@ var (
 	ErrInvalidNickname      = errors.New("invalid nickname")
 	ErrInvalidEmail         = errors.New("invalid email")
 	ErrInvalidAvatar        = errors.New("invalid avatar")
+	ErrAdminRequired        = errors.New("admin required")
+	ErrInvalidUserStatus    = errors.New("invalid user status")
+	ErrCannotDisableSelf    = errors.New("cannot disable self")
 )
 
 type userRepository interface {
 	GetByUUID(uuid string) (*model.User, error)
+	SearchActive(keyword, excludeUUID string, limit int) ([]*model.User, error)
+	List(keyword string, status *int8, limit int) ([]*model.User, error)
 	Update(user *model.User) error
 }
 
@@ -28,6 +33,17 @@ type UpdateProfileInput struct {
 	Nickname *string `json:"nickname"`
 	Email    *string `json:"email"`
 	Avatar   *string `json:"avatar"`
+}
+
+type SearchUsersInput struct {
+	Keyword string
+	Limit   int
+}
+
+type AdminListUsersInput struct {
+	Keyword string
+	Status  *int8
+	Limit   int
 }
 
 type UserService struct {
@@ -48,6 +64,32 @@ func (s *UserService) GetByUUID(uuid string) (*model.User, error) {
 	}
 
 	return user, nil
+}
+
+func (s *UserService) SearchUsers(currentUser *model.User, input SearchUsersInput) ([]*model.User, error) {
+	users, err := s.repo.SearchActive(strings.TrimSpace(input.Keyword), currentUser.UUID, normalizeUserListLimit(input.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("search users: %w", err)
+	}
+
+	return users, nil
+}
+
+func (s *UserService) ListUsersForAdmin(currentUser *model.User, input AdminListUsersInput) ([]*model.User, error) {
+	if !currentUser.IsAdmin {
+		return nil, ErrAdminRequired
+	}
+
+	if input.Status != nil && !isValidUserStatus(*input.Status) {
+		return nil, ErrInvalidUserStatus
+	}
+
+	users, err := s.repo.List(strings.TrimSpace(input.Keyword), input.Status, normalizeUserListLimit(input.Limit))
+	if err != nil {
+		return nil, fmt.Errorf("list users for admin: %w", err)
+	}
+
+	return users, nil
 }
 
 func (s *UserService) UpdateProfile(currentUser *model.User, targetUUID string, input UpdateProfileInput) (*model.User, error) {
@@ -76,6 +118,33 @@ func (s *UserService) UpdateProfile(currentUser *model.User, targetUUID string, 
 	}
 
 	return targetUser, nil
+}
+
+func (s *UserService) UpdateStatus(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {
+	if !currentUser.IsAdmin {
+		return nil, ErrAdminRequired
+	}
+	if !isValidUserStatus(status) {
+		return nil, ErrInvalidUserStatus
+	}
+	if currentUser.UUID == targetUUID && status == model.UserStatusDisabled {
+		return nil, ErrCannotDisableSelf
+	}
+
+	user, err := s.repo.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get user in update status: %w", err)
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	user.Status = status
+	if err := s.repo.Update(user); err != nil {
+		return nil, fmt.Errorf("update user status: %w", err)
+	}
+
+	return user, nil
 }
 
 func applyProfileUpdate(user *model.User, input UpdateProfileInput) error {
@@ -122,4 +191,19 @@ func applyProfileUpdate(user *model.User, input UpdateProfileInput) error {
 	}
 
 	return nil
+}
+
+func normalizeUserListLimit(limit int) int {
+	switch {
+	case limit <= 0:
+		return 20
+	case limit > 50:
+		return 50
+	default:
+		return limit
+	}
+}
+
+func isValidUserStatus(status int8) bool {
+	return status == model.UserStatusNormal || status == model.UserStatusDisabled
 }
