@@ -23,15 +23,15 @@ var (
 )
 
 type RegisterInput struct {
-	Nickname  string `json:"nickname" binding:"required,min=2,max=20"`
-	Telephone string `json:"telephone" binding:"required,len=11"`
-	Password  string `json:"password" binding:"required,min=6,max=32"`
-	Email     string `json:"email" binding:"omitempty,email,max=64"`
+	Nickname  string
+	Telephone string
+	Password  string
+	Email     string
 }
 
 type LoginInput struct {
-	Telephone string `json:"telephone" binding:"required,len=11"`
-	Password  string `json:"password" binding:"required,min=6,max=32"`
+	Telephone string
+	Password  string
 }
 
 type AuthResult struct {

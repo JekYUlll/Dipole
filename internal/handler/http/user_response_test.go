@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
@@ -22,8 +23,8 @@ func TestPresentUserForViewerReturnsPublicProfileForOtherUser(t *testing.T) {
 		Status:    model.UserStatusNormal,
 	}
 
-	got := presentUserForViewer(viewer, target)
-	response, ok := got.(*publicUserResponse)
+	got := httpdto.PresentUserForViewer(viewer, target)
+	response, ok := got.(*httpdto.PublicUserResponse)
 	if !ok {
 		t.Fatalf("expected publicUserResponse, got %T", got)
 	}
@@ -49,8 +50,8 @@ func TestPresentUserForViewerReturnsPrivateProfileForSelf(t *testing.T) {
 		Status:    model.UserStatusNormal,
 	}
 
-	got := presentUserForViewer(user, user)
-	response, ok := got.(*privateUserResponse)
+	got := httpdto.PresentUserForViewer(user, user)
+	response, ok := got.(*httpdto.PrivateUserResponse)
 	if !ok {
 		t.Fatalf("expected privateUserResponse, got %T", got)
 	}
@@ -76,8 +77,8 @@ func TestPresentUserForViewerReturnsPrivateProfileForAdmin(t *testing.T) {
 		Email:     "target@example.com",
 	}
 
-	got := presentUserForViewer(viewer, target)
-	response, ok := got.(*privateUserResponse)
+	got := httpdto.PresentUserForViewer(viewer, target)
+	response, ok := got.(*httpdto.PrivateUserResponse)
 	if !ok {
 		t.Fatalf("expected privateUserResponse, got %T", got)
 	}
@@ -106,7 +107,7 @@ func TestNewAuthResponseUsesPrivateProfile(t *testing.T) {
 		},
 	}
 
-	response := newAuthResponse(result)
+	response := httpdto.NewAuthResponse(result)
 	if response.Token != result.Token {
 		t.Fatalf("expected token %s, got %s", result.Token, response.Token)
 	}

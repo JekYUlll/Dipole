@@ -76,6 +76,10 @@ func (s *Server) Run(addr string) error {
 	return s.engine.Run(addr)
 }
 
+func (s *Server) RunTLS(addr, certFile, keyFile string) error {
+	return s.engine.RunTLS(addr, certFile, keyFile)
+}
+
 func (s *Server) Engine() *gin.Engine {
 	return s.engine
 }

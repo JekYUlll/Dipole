@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
+	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -36,7 +37,7 @@ func (h *UserHandler) GetCurrent(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUserForViewer(user, user))
+	Success(c, httpdto.PresentUserForViewer(user, user))
 }
 
 func (h *UserHandler) Search(c *gin.Context) {
@@ -57,7 +58,7 @@ func (h *UserHandler) Search(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUsersForViewer(currentUser, users))
+	Success(c, httpdto.PresentUsersForViewer(currentUser, users))
 }
 
 func (h *UserHandler) GetByUUID(c *gin.Context) {
@@ -73,7 +74,7 @@ func (h *UserHandler) GetByUUID(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUserForViewer(currentUser, user))
+	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
 func (h *UserHandler) ListForAdmin(c *gin.Context) {
@@ -108,7 +109,7 @@ func (h *UserHandler) ListForAdmin(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUsersForViewer(currentUser, users))
+	Success(c, httpdto.PresentUsersForViewer(currentUser, users))
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -118,13 +119,13 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	var input service.UpdateProfileInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var request httpdto.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
-	user, err := h.service.UpdateProfile(currentUser, c.Param("uuid"), input)
+	user, err := h.service.UpdateProfile(currentUser, c.Param("uuid"), request.ToInput())
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUserPermissionDenied):
@@ -145,7 +146,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUserForViewer(currentUser, user))
+	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
 func (h *UserHandler) UpdateStatus(c *gin.Context) {
@@ -155,15 +156,13 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	var input struct {
-		Status int8 `json:"status"`
-	}
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var request httpdto.UpdateStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
-	user, err := h.service.UpdateStatus(currentUser, c.Param("uuid"), input.Status)
+	user, err := h.service.UpdateStatus(currentUser, c.Param("uuid"), request.Status)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrAdminRequired):
@@ -180,7 +179,7 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	Success(c, presentUserForViewer(currentUser, user))
+	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
 func queryInt(c *gin.Context, key string) int {

@@ -11,6 +11,11 @@ server:
   host: 0.0.0.0
   port: 8080
 
+tls:
+  enabled: true
+  cert_file: certs/local/dipole-local.pem
+  key_file: certs/local/dipole-local-key.pem
+
 auth:
   token_ttl_hours: 168
 
@@ -26,3 +31,12 @@ redis:
   port: 6379
   password: ""
   db: 0
+
+kafka:
+  enabled: false
+  brokers:
+    - 127.0.0.1:9092
+  client_id: dipole
+  topic_prefix: dipole
+  dial_timeout_seconds: 5
+  write_timeout_seconds: 5

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
+	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
@@ -20,13 +21,13 @@ func NewAuthHandler(service *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	var input service.RegisterInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var request httpdto.RegisterRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
-	result, err := h.service.Register(input)
+	result, err := h.service.Register(request.ToInput())
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidTelephone):
@@ -39,17 +40,17 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	Success(c, newAuthResponse(result))
+	Success(c, httpdto.NewAuthResponse(result))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var input service.LoginInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var request httpdto.LoginRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
 
-	result, err := h.service.Login(input)
+	result, err := h.service.Login(request.ToInput())
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCredentials):
@@ -62,7 +63,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	Success(c, newAuthResponse(result))
+	Success(c, httpdto.NewAuthResponse(result))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
