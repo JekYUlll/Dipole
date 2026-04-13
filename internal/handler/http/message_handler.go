@@ -16,6 +16,7 @@ import (
 
 type messageService interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
 }
 
 type MessageHandler struct {
@@ -53,6 +54,42 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "target user not found")
 		case errors.Is(err, service.ErrMessageFriendRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.MessageFriendRequired, "direct message requires friendship")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+func (h *MessageHandler) ListGroup(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	beforeID, err := queryOptionalUint(c, "before_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
+		return
+	}
+
+	messages, err := h.service.ListGroupMessages(
+		currentUser.UUID,
+		c.Param("group_uuid"),
+		beforeID,
+		queryInt(c, "limit"),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrMessageTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.MessageTargetRequired, "group_uuid is required")
+		case errors.Is(err, service.ErrMessageTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "group not found")
+		case errors.Is(err, service.ErrMessageGroupForbidden):
+			ErrorWithCode(c, http.StatusForbidden, code.MessageGroupForbidden, "group message requires membership")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}

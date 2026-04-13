@@ -41,6 +41,20 @@ func (r *stubConversationRepository) UpsertDirectMessage(userUUID, targetUUID st
 	return nil
 }
 
+func (r *stubConversationRepository) UpsertGroupMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error {
+	if r.upsertErr != nil {
+		return r.upsertErr
+	}
+
+	r.upsertCalls = append(r.upsertCalls, conversationUpsertCall{
+		userUUID:        userUUID,
+		targetUUID:      targetUUID,
+		message:         message,
+		unreadIncrement: unreadIncrement,
+	})
+	return nil
+}
+
 func (r *stubConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error) {
 	r.lastListUserUUID = userUUID
 	r.lastListLimit = limit
@@ -90,7 +104,7 @@ func TestConversationServiceUpdateDirectConversationsSuccess(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubConversationRepository{}
-	service := NewConversationService(repo, &stubConversationUserFinder{})
+	service := NewConversationService(repo, &stubConversationUserFinder{}, nil)
 	message := &model.Message{
 		UUID:            "M100",
 		ConversationKey: model.DirectConversationKey("U100", "U200"),
@@ -135,7 +149,7 @@ func TestConversationServiceListForUserSuccess(t *testing.T) {
 			"U200": {UUID: "U200", Nickname: "Alice", Avatar: "avatar"},
 		},
 	}
-	service := NewConversationService(repo, userFinder)
+	service := NewConversationService(repo, userFinder, nil)
 
 	conversations, err := service.ListForUser("U100", 10)
 	if err != nil {
@@ -157,7 +171,7 @@ func TestConversationServiceMarkDirectConversationReadRejectsMissingTarget(t *te
 
 	service := NewConversationService(&stubConversationRepository{}, &stubConversationUserFinder{
 		usersByUUID: map[string]*model.User{},
-	})
+	}, nil)
 
 	err := service.MarkDirectConversationRead("U100", "U404")
 	if !errors.Is(err, ErrConversationTargetNotFound) {

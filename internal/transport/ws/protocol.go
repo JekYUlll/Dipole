@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	TypeConnected   = "connected"
-	TypeError       = "error"
-	TypeChatSend    = "chat.send"
-	TypeChatSent    = "chat.sent"
-	TypeChatMessage = "chat.message"
+	TypeConnected      = "connected"
+	TypeError          = "error"
+	TypeChatSend       = "chat.send"
+	TypeChatSent       = "chat.sent"
+	TypeChatMessage    = "chat.message"
+	TypeGroupDismissed = "group.dismissed"
 )
 
 const (
@@ -53,6 +54,7 @@ type ChatMessageData struct {
 	MessageID  string    `json:"message_id"`
 	FromUUID   string    `json:"from_uuid"`
 	TargetUUID string    `json:"target_uuid"`
+	TargetType int8      `json:"target_type"`
 	Content    string    `json:"content"`
 	SentAt     time.Time `json:"sent_at"`
 }
@@ -60,6 +62,11 @@ type ChatMessageData struct {
 type ChatSentData struct {
 	ChatMessageData
 	Delivered bool `json:"delivered"`
+}
+
+type GroupDismissedEventData struct {
+	GroupUUID string `json:"group_uuid"`
+	GroupName string `json:"group_name"`
 }
 
 func EncodeCommand(eventType string, data any) ([]byte, error) {

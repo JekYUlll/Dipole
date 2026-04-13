@@ -43,6 +43,7 @@ func (s *stubUserFinder) GetByUUID(uuid string) (*model.User, error) {
 
 type stubDirectMessageService struct {
 	sendDirectMessageFn func(senderUUID, targetUUID, content string) (*model.Message, error)
+	sendGroupMessageFn  func(senderUUID, groupUUID, content string) (*model.Message, []string, error)
 }
 
 func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
@@ -53,8 +54,17 @@ func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, con
 	return s.sendDirectMessageFn(senderUUID, targetUUID, content)
 }
 
+func (s *stubDirectMessageService) SendGroupMessage(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+	if s.sendGroupMessageFn == nil {
+		return nil, nil, errors.New("unexpected send group message call")
+	}
+
+	return s.sendGroupMessageFn(senderUUID, groupUUID, content)
+}
+
 type stubConversationUpdater struct {
 	updateDirectConversationsFn func(message *model.Message) error
+	updateGroupConversationsFn  func(message *model.Message) error
 }
 
 func (s *stubConversationUpdater) UpdateDirectConversations(message *model.Message) error {
@@ -63,6 +73,14 @@ func (s *stubConversationUpdater) UpdateDirectConversations(message *model.Messa
 	}
 
 	return s.updateDirectConversationsFn(message)
+}
+
+func (s *stubConversationUpdater) UpdateGroupConversations(message *model.Message) error {
+	if s.updateGroupConversationsFn == nil {
+		return nil
+	}
+
+	return s.updateGroupConversationsFn(message)
 }
 
 type wsResponse struct {
@@ -95,6 +113,9 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 	handler := NewHandler(NewAuthenticator(&stubTokenResolver{}, userFinder), hub, NewDispatcher(hub, &stubDirectMessageService{
 		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
 			return nil, errors.New("unexpected send direct message call")
+		},
+		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+			return nil, nil, errors.New("unexpected send group message call")
 		},
 	}, &stubConversationUpdater{}))
 	router.GET("/api/v1/ws", handler.Handle)
@@ -153,6 +174,9 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	handler := NewHandler(authenticator, hub, NewDispatcher(hub, &stubDirectMessageService{
 		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
 			return nil, errors.New("unexpected send direct message call")
+		},
+		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+			return nil, nil, errors.New("unexpected send group message call")
 		},
 	}, &stubConversationUpdater{}))
 	router.GET("/api/v1/ws", handler.Handle)
@@ -255,6 +279,9 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 				SentAt:      time.Now().UTC(),
 			}, nil
 		},
+		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+			return nil, nil, errors.New("unexpected send group message call")
+		},
 	}, &stubConversationUpdater{
 		updateDirectConversationsFn: func(message *model.Message) error {
 			if message.UUID != "M100" {
@@ -314,6 +341,105 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	if incoming.Data.Content != "hello from U100" {
 		t.Fatalf("expected message content preserved, got %q", incoming.Data.Content)
+	}
+}
+
+func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	hub := NewHub()
+	users := map[string]*model.User{
+		"U100": {UUID: "U100", Status: model.UserStatusNormal},
+		"U200": {UUID: "U200", Status: model.UserStatusNormal},
+	}
+	authenticator := NewAuthenticator(
+		&stubTokenResolver{
+			resolveFn: func(token string) (string, error) {
+				switch token {
+				case "token-a":
+					return "U100", nil
+				case "token-b":
+					return "U200", nil
+				default:
+					return "", errors.New("unexpected token")
+				}
+			},
+		},
+		&stubUserFinder{
+			getByUUIDFn: func(uuid string) (*model.User, error) {
+				return users[uuid], nil
+			},
+		},
+	)
+	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			return nil, errors.New("unexpected send direct message call")
+		},
+		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+			return &model.Message{
+				UUID:        "M200",
+				SenderUUID:  senderUUID,
+				TargetUUID:  groupUUID,
+				TargetType:  model.MessageTargetGroup,
+				MessageType: model.MessageTypeText,
+				Content:     content,
+				SentAt:      time.Now().UTC(),
+			}, []string{"U100", "U200"}, nil
+		},
+	}, &stubConversationUpdater{
+		updateGroupConversationsFn: func(message *model.Message) error {
+			if message.TargetType != model.MessageTargetGroup {
+				t.Fatalf("expected group conversation update")
+			}
+			return nil
+		},
+	})
+
+	router := gin.New()
+	handler := NewHandler(authenticator, hub, dispatcher)
+	router.GET("/api/v1/ws", handler.Handle)
+
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	first := dialTestWebSocket(t, server.URL, "token-a")
+	second := dialTestWebSocket(t, server.URL, "token-b")
+	t.Cleanup(func() { _ = first.Close() })
+	t.Cleanup(func() { _ = second.Close() })
+
+	var connectedA wsEvent
+	readWebSocketJSON(t, first, &connectedA)
+	var connectedB wsEvent
+	readWebSocketJSON(t, second, &connectedB)
+
+	payload, err := EncodeCommand(TypeChatSend, SendTextMessageInput{
+		TargetUUID: "G100",
+		Content:    "hello group",
+	})
+	if err != nil {
+		t.Fatalf("encode command: %v", err)
+	}
+	if err := first.WriteMessage(websocket.TextMessage, payload); err != nil {
+		t.Fatalf("write websocket message: %v", err)
+	}
+
+	var ack chatSentEvent
+	readWebSocketJSON(t, first, &ack)
+	if ack.Type != TypeChatSent {
+		t.Fatalf("expected ack type %s, got %s", TypeChatSent, ack.Type)
+	}
+	if ack.Data.TargetUUID != "G100" {
+		t.Fatalf("expected ack target G100, got %s", ack.Data.TargetUUID)
+	}
+
+	var incoming chatMessageEvent
+	readWebSocketJSON(t, second, &incoming)
+	if incoming.Type != TypeChatMessage {
+		t.Fatalf("expected incoming type %s, got %s", TypeChatMessage, incoming.Type)
+	}
+	if incoming.Data.TargetType != model.MessageTargetGroup {
+		t.Fatalf("expected group target type, got %d", incoming.Data.TargetType)
 	}
 }
 

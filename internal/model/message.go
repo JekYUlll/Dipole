@@ -42,3 +42,7 @@ func DirectConversationKey(userOneUUID, userTwoUUID string) string {
 
 	return "direct:" + users[0] + ":" + users[1]
 }
+
+func GroupConversationKey(groupUUID string) string {
+	return "group:" + strings.TrimSpace(groupUUID)
+}

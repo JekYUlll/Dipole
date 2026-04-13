@@ -57,6 +57,47 @@ func (r *ConversationRepository) UpsertDirectMessage(userUUID, targetUUID string
 	return nil
 }
 
+func (r *ConversationRepository) UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error {
+	conversation := &model.Conversation{
+		UserUUID:           userUUID,
+		TargetType:         model.MessageTargetGroup,
+		TargetUUID:         groupUUID,
+		ConversationKey:    message.ConversationKey,
+		LastMessageUUID:    message.UUID,
+		LastMessageType:    message.MessageType,
+		LastMessagePreview: buildMessagePreview(message),
+		LastMessageAt:      message.SentAt,
+		UnreadCount:        unreadIncrement,
+	}
+
+	assignments := map[string]any{
+		"target_type":          conversation.TargetType,
+		"target_uuid":          conversation.TargetUUID,
+		"last_message_uuid":    conversation.LastMessageUUID,
+		"last_message_type":    conversation.LastMessageType,
+		"last_message_preview": conversation.LastMessagePreview,
+		"last_message_at":      conversation.LastMessageAt,
+		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
+	}
+	if unreadIncrement > 0 {
+		assignments["unread_count"] = gorm.Expr("unread_count + ?", unreadIncrement)
+	} else {
+		assignments["unread_count"] = 0
+	}
+
+	if err := store.DB.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "user_uuid"},
+			{Name: "conversation_key"},
+		},
+		DoUpdates: clause.Assignments(assignments),
+	}).Create(conversation).Error; err != nil {
+		return fmt.Errorf("upsert group conversation: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error) {
 	var conversations []*model.Conversation
 	if err := store.DB.Where("user_uuid = ?", userUUID).

@@ -17,6 +17,8 @@ func AutoMigrate() error {
 		&model.Conversation{},
 		&model.Contact{},
 		&model.ContactApplication{},
+		&model.Group{},
+		&model.GroupMember{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
 	}

@@ -39,6 +39,7 @@ const (
 	MessageTargetUnavailable int = 100303
 	MessageTargetNotFound    int = 100304
 	MessageFriendRequired    int = 100305
+	MessageGroupForbidden    int = 100306
 )
 
 const (
@@ -58,4 +59,19 @@ const (
 	ContactPermissionDenied    int = 100508
 	ContactActionInvalid       int = 100509
 	ContactRemarkTooLong       int = 100510
+)
+
+const (
+	GroupNameRequired         int = 100600
+	GroupNameTooLong          int = 100601
+	GroupNoticeTooLong        int = 100602
+	GroupAvatarTooLong        int = 100603
+	GroupNotFound             int = 100604
+	GroupPermissionDenied     int = 100605
+	GroupMemberRequired       int = 100606
+	GroupMemberUnavailable    int = 100607
+	GroupMemberAlreadyIn      int = 100608
+	GroupOwnerCannotLeave     int = 100609
+	GroupEmptyUpdate          int = 100610
+	GroupOwnerCannotBeRemoved int = 100611
 )

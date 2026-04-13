@@ -18,6 +18,7 @@ import (
 
 type stubMessageService struct {
 	listDirectFn func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupFn  func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -26,6 +27,14 @@ func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID stri
 	}
 
 	return s.listDirectFn(currentUserUUID, targetUUID, beforeID, limit)
+}
+
+func (s *stubMessageService) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+	if s.listGroupFn == nil {
+		return nil, nil
+	}
+
+	return s.listGroupFn(currentUserUUID, groupUUID, beforeID, limit)
 }
 
 func TestMessageHandlerListDirectSuccess(t *testing.T) {
@@ -154,6 +163,66 @@ func TestMessageHandlerListDirectRequiresFriendship(t *testing.T) {
 	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
 
 	handler.ListDirect(context)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestMessageHandlerListGroupSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewMessageHandler(&stubMessageService{
+		listGroupFn: func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+			if currentUserUUID != "U100" || groupUUID != "G100" {
+				t.Fatalf("unexpected group query: %s %s", currentUserUUID, groupUUID)
+			}
+			return []*model.Message{
+				{
+					ID:          30,
+					UUID:        "M30",
+					SenderUUID:  "U100",
+					TargetUUID:  "G100",
+					TargetType:  model.MessageTargetGroup,
+					MessageType: model.MessageTypeText,
+					Content:     "hello group",
+					SentAt:      time.Now().UTC(),
+				},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/group/G100", nil)
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListGroup(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestMessageHandlerListGroupForbidden(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewMessageHandler(&stubMessageService{
+		listGroupFn: func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+			return nil, service.ErrMessageGroupForbidden
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/group/G100", nil)
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListGroup(context)
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", recorder.Code)

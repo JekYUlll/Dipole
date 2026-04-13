@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -35,14 +36,25 @@ func main() {
 		if err := platformKafka.Close(); err != nil {
 			logger.Warn("kafka close failed", zap.Error(err))
 		}
+		if err := platformKafka.CloseConsumer(); err != nil {
+			logger.Warn("kafka consumer close failed", zap.Error(err))
+		}
 	}()
 
 	if err := platformKafka.Init(); err != nil {
 		logger.L().Fatal("kafka init failed", zap.Error(err))
 	}
+	if err := platformKafka.InitConsumer(); err != nil {
+		logger.L().Fatal("kafka consumer init failed", zap.Error(err))
+	}
 
 	if err := store.AutoMigrate(); err != nil {
 		logger.L().Fatal("auto migrate failed", zap.Error(err))
+	}
+
+	server.RegisterKafkaHandlers()
+	if err := platformKafka.Subscriber.Start(context.Background()); err != nil {
+		logger.L().Fatal("kafka consumer start failed", zap.Error(err))
 	}
 
 	srv := server.New()

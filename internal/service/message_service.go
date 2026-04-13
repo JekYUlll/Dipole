@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -18,6 +19,7 @@ var (
 	ErrMessageTargetUnavailable = errors.New("message target is unavailable")
 	ErrMessageTargetNotFound    = errors.New("message target not found")
 	ErrMessageFriendRequired    = errors.New("direct message requires friendship")
+	ErrMessageGroupForbidden    = errors.New("group message requires membership")
 )
 
 type messageRepository interface {
@@ -33,17 +35,27 @@ type friendshipChecker interface {
 	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 }
 
+type groupMessageChecker interface {
+	GetByUUID(groupUUID string) (*model.Group, error)
+	GetMember(groupUUID, userUUID string) (*model.GroupMember, error)
+	ListMembers(groupUUID string) ([]*model.GroupMember, error)
+}
+
 type MessageService struct {
 	repo          messageRepository
 	userFinder    messageUserFinder
 	friendChecker friendshipChecker
+	groupChecker  groupMessageChecker
+	events        eventPublisher
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker) *MessageService {
+func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, events eventPublisher) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
 		friendChecker: friendChecker,
+		groupChecker:  groupChecker,
+		events:        events,
 	}
 }
 
@@ -85,6 +97,7 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 	if err := s.repo.Create(message); err != nil {
 		return nil, fmt.Errorf("persist direct message: %w", err)
 	}
+	s.publishMessageCreated("message.direct.created", message)
 
 	return message, nil
 }
@@ -118,6 +131,86 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 	return messages, nil
 }
 
+func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	content = strings.TrimSpace(content)
+	if groupUUID == "" {
+		return nil, nil, ErrMessageTargetRequired
+	}
+	if content == "" {
+		return nil, nil, ErrMessageContentRequired
+	}
+	if len([]rune(content)) > 1000 {
+		return nil, nil, ErrMessageContentTooLong
+	}
+
+	if err := s.ensureGroupMessagePermission(senderUUID, groupUUID); err != nil {
+		return nil, nil, err
+	}
+
+	message := &model.Message{
+		UUID:            generateMessageUUID(),
+		ConversationKey: model.GroupConversationKey(groupUUID),
+		SenderUUID:      strings.TrimSpace(senderUUID),
+		TargetType:      model.MessageTargetGroup,
+		TargetUUID:      groupUUID,
+		MessageType:     model.MessageTypeText,
+		Content:         content,
+		SentAt:          time.Now().UTC(),
+	}
+
+	if err := s.repo.Create(message); err != nil {
+		return nil, nil, fmt.Errorf("persist group message: %w", err)
+	}
+	s.publishMessageCreated("message.group.created", message)
+
+	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return message, recipientUUIDs, nil
+}
+
+func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+		return nil, err
+	}
+
+	messages, err := s.repo.ListByConversationKey(
+		model.GroupConversationKey(groupUUID),
+		beforeID,
+		normalizeMessageListLimit(limit),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list group messages: %w", err)
+	}
+
+	return messages, nil
+}
+
+func (s *MessageService) publishMessageCreated(topic string, message *model.Message) {
+	if s.events == nil || message == nil {
+		return
+	}
+
+	payload := map[string]any{
+		"message_id":       message.UUID,
+		"conversation_key": message.ConversationKey,
+		"sender_uuid":      message.SenderUUID,
+		"target_uuid":      message.TargetUUID,
+		"target_type":      message.TargetType,
+		"message_type":     message.MessageType,
+		"content":          message.Content,
+		"sent_at":          message.SentAt,
+	}
+	_ = s.events.PublishJSON(context.Background(), topic, message.UUID, payload, nil)
+}
+
 func (s *MessageService) PersistedDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
 	return s.SendDirectMessage(senderUUID, targetUUID, content)
 }
@@ -136,6 +229,47 @@ func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) err
 	}
 
 	return nil
+}
+
+func (s *MessageService) ensureGroupMessagePermission(userUUID, groupUUID string) error {
+	if s.groupChecker == nil {
+		return ErrMessageTargetNotFound
+	}
+
+	group, err := s.groupChecker.GetByUUID(strings.TrimSpace(groupUUID))
+	if err != nil {
+		return fmt.Errorf("check group in message permission: %w", err)
+	}
+	if group == nil || group.Status != model.GroupStatusNormal {
+		return ErrMessageTargetNotFound
+	}
+
+	member, err := s.groupChecker.GetMember(group.UUID, strings.TrimSpace(userUUID))
+	if err != nil {
+		return fmt.Errorf("check group member in message permission: %w", err)
+	}
+	if member == nil {
+		return ErrMessageGroupForbidden
+	}
+
+	return nil
+}
+
+func (s *MessageService) listGroupMemberUUIDs(groupUUID string) ([]string, error) {
+	members, err := s.groupChecker.ListMembers(strings.TrimSpace(groupUUID))
+	if err != nil {
+		return nil, fmt.Errorf("list group members in message service: %w", err)
+	}
+
+	memberUUIDs := make([]string, 0, len(members))
+	for _, member := range members {
+		if member == nil {
+			continue
+		}
+		memberUUIDs = append(memberUUIDs, member.UserUUID)
+	}
+
+	return memberUUIDs, nil
 }
 
 func normalizeMessageListLimit(limit int) int {

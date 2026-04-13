@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"go.uber.org/zap"
 
@@ -17,10 +18,12 @@ type inboundHandler interface {
 
 type directMessageService interface {
 	SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
+	SendGroupMessage(senderUUID, groupUUID, content string) (*model.Message, []string, error)
 }
 
 type conversationUpdater interface {
 	UpdateDirectConversations(message *model.Message) error
+	UpdateGroupConversations(message *model.Message) error
 }
 
 type Dispatcher struct {
@@ -63,23 +66,15 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 		return
 	}
 
-	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, input.TargetUUID, input.Content)
+	targetUUID := strings.TrimSpace(input.TargetUUID)
+	if strings.HasPrefix(targetUUID, "G") {
+		d.handleGroupChatSend(client, targetUUID, input.Content)
+		return
+	}
+
+	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, targetUUID, input.Content)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrMessageTargetRequired):
-			_ = client.SendError(ErrorBadRequest, "target_uuid is required", TypeChatSend)
-		case errors.Is(err, service.ErrMessageContentRequired):
-			_ = client.SendError(ErrorBadRequest, "content is required", TypeChatSend)
-		case errors.Is(err, service.ErrMessageContentTooLong):
-			_ = client.SendError(ErrorBadRequest, "content is too long", TypeChatSend)
-		case errors.Is(err, service.ErrMessageFriendRequired):
-			_ = client.SendError(ErrorPermissionDenied, "direct message requires friendship", TypeChatSend)
-		case errors.Is(err, service.ErrMessageTargetUnavailable):
-			_ = client.SendError(ErrorTargetUnavailable, "target user is unavailable", TypeChatSend)
-		default:
-			client.log.Warn("persist websocket direct message failed", zap.Error(err))
-			_ = client.SendError(ErrorInternal, "message send failed", TypeChatSend)
-		}
+		d.handleChatSendError(client, err, "target user is unavailable")
 		return
 	}
 
@@ -94,7 +89,6 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 	if message.TargetUUID == client.sessionUser.UUID {
 		deliveredCount = max(deliveredCount-1, 0)
 	}
-
 	ack := ChatSentData{
 		ChatMessageData: eventData,
 		Delivered:       deliveredCount > 0,
@@ -104,11 +98,61 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 	}
 }
 
+func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string) {
+	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content)
+	if err != nil {
+		d.handleChatSendError(client, err, "target group is unavailable")
+		return
+	}
+
+	if d.conversationUpdater != nil {
+		if err := d.conversationUpdater.UpdateGroupConversations(message); err != nil {
+			client.log.Warn("update group conversations failed", zap.Error(err))
+		}
+	}
+
+	eventData := newChatMessageData(message)
+	deliveredCount := 0
+	for _, recipientUUID := range recipients {
+		if recipientUUID == client.sessionUser.UUID {
+			continue
+		}
+		deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
+	}
+
+	ack := ChatSentData{
+		ChatMessageData: eventData,
+		Delivered:       deliveredCount > 0,
+	}
+	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
+		client.log.Warn("send websocket group chat ack failed", zap.Error(err))
+	}
+}
+
+func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string) {
+	switch {
+	case errors.Is(err, service.ErrMessageTargetRequired):
+		_ = client.SendError(ErrorBadRequest, "target_uuid is required", TypeChatSend)
+	case errors.Is(err, service.ErrMessageContentRequired):
+		_ = client.SendError(ErrorBadRequest, "content is required", TypeChatSend)
+	case errors.Is(err, service.ErrMessageContentTooLong):
+		_ = client.SendError(ErrorBadRequest, "content is too long", TypeChatSend)
+	case errors.Is(err, service.ErrMessageFriendRequired), errors.Is(err, service.ErrMessageGroupForbidden):
+		_ = client.SendError(ErrorPermissionDenied, "message send permission denied", TypeChatSend)
+	case errors.Is(err, service.ErrMessageTargetUnavailable), errors.Is(err, service.ErrMessageTargetNotFound):
+		_ = client.SendError(ErrorTargetUnavailable, unavailableMessage, TypeChatSend)
+	default:
+		client.log.Warn("persist websocket message failed", zap.Error(err))
+		_ = client.SendError(ErrorInternal, "message send failed", TypeChatSend)
+	}
+}
+
 func newChatMessageData(message *model.Message) ChatMessageData {
 	return ChatMessageData{
 		MessageID:  message.UUID,
 		FromUUID:   message.SenderUUID,
 		TargetUUID: message.TargetUUID,
+		TargetType: message.TargetType,
 		Content:    message.Content,
 		SentAt:     message.SentAt,
 	}

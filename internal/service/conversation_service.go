@@ -15,6 +15,7 @@ var (
 
 type conversationRepository interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
+	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	ClearUnreadByConversationKey(userUUID, conversationKey string) error
 }
@@ -32,12 +33,19 @@ type ConversationView struct {
 type ConversationService struct {
 	repo       conversationRepository
 	userFinder conversationUserFinder
+	groupRepo   conversationGroupRepository
 }
 
-func NewConversationService(repo conversationRepository, userFinder conversationUserFinder) *ConversationService {
+type conversationGroupRepository interface {
+	GetByUUID(groupUUID string) (*model.Group, error)
+	ListMembers(groupUUID string) ([]*model.GroupMember, error)
+}
+
+func NewConversationService(repo conversationRepository, userFinder conversationUserFinder, groupRepo conversationGroupRepository) *ConversationService {
 	return &ConversationService{
 		repo:       repo,
 		userFinder: userFinder,
+		groupRepo:  groupRepo,
 	}
 }
 
@@ -51,6 +59,31 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 	}
 	if err := s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1); err != nil {
 		return fmt.Errorf("upsert target direct conversation: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ConversationService) UpdateGroupConversations(message *model.Message) error {
+	if message == nil || message.TargetType != model.MessageTargetGroup || s.groupRepo == nil {
+		return nil
+	}
+
+	members, err := s.groupRepo.ListMembers(message.TargetUUID)
+	if err != nil {
+		return fmt.Errorf("list group members for conversation update: %w", err)
+	}
+	for _, member := range members {
+		if member == nil {
+			continue
+		}
+		unreadIncrement := 1
+		if member.UserUUID == message.SenderUUID {
+			unreadIncrement = 0
+		}
+		if err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement); err != nil {
+			return fmt.Errorf("upsert group conversation for user %s: %w", member.UserUUID, err)
+		}
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -67,6 +68,50 @@ func (f *stubMessageUserFinder) GetByUUID(uuid string) (*model.User, error) {
 	return f.users[uuid], nil
 }
 
+type stubGroupMessageChecker struct {
+	groups  map[string]*model.Group
+	members map[string]map[string]*model.GroupMember
+	err     error
+}
+
+func (c *stubGroupMessageChecker) GetByUUID(groupUUID string) (*model.Group, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.groups[groupUUID], nil
+}
+
+func (c *stubGroupMessageChecker) GetMember(groupUUID, userUUID string) (*model.GroupMember, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.members[groupUUID][userUUID], nil
+}
+
+func (c *stubGroupMessageChecker) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	members := make([]*model.GroupMember, 0, len(c.members[groupUUID]))
+	for _, member := range c.members[groupUUID] {
+		members = append(members, member)
+	}
+	return members, nil
+}
+
+type stubEventPublisher struct {
+	topics []string
+	keys   []string
+}
+
+func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
+	p.topics = append(p.topics, topic)
+	p.keys = append(p.keys, key)
+	_ = payload
+	_ = headers
+	return nil
+}
+
 func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -80,7 +125,7 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	})
+	}, nil, nil)
 
 	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ")
 	if err != nil {
@@ -122,7 +167,7 @@ func TestMessageServiceSendDirectMessageRejectsUnavailableTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	})
+	}, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageTargetUnavailable) {
@@ -146,7 +191,7 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	})
+	}, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -175,7 +220,7 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	})
+	}, nil, nil)
 
 	messages, err := service.ListDirectMessages("U100", "U200", 99, 10)
 	if err != nil {
@@ -200,7 +245,7 @@ func TestMessageServiceListDirectMessagesRejectsMissingTarget(t *testing.T) {
 
 	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{
 		users: map[string]*model.User{},
-	}, &stubFriendshipChecker{})
+	}, &stubFriendshipChecker{}, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U404", 0, 20)
 	if !errors.Is(err, ErrMessageTargetNotFound) {
@@ -219,10 +264,113 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	})
+	}, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
 		t.Fatalf("expected ErrMessageFriendRequired, got %v", err)
+	}
+}
+
+func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+				"U200": {GroupUUID: "G100", UserUUID: "U200"},
+			},
+		},
+	}, nil)
+
+	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message.TargetType != model.MessageTargetGroup {
+		t.Fatalf("expected group target type, got %d", message.TargetType)
+	}
+	if message.ConversationKey != model.GroupConversationKey("G100") {
+		t.Fatalf("unexpected conversation key: %s", message.ConversationKey)
+	}
+	if len(recipients) != 2 {
+		t.Fatalf("expected 2 recipients, got %d", len(recipients))
+	}
+}
+
+func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
+	t.Parallel()
+
+	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {},
+		},
+	}, nil)
+
+	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
+	if !errors.Is(err, ErrMessageGroupForbidden) {
+		t.Fatalf("expected ErrMessageGroupForbidden, got %v", err)
+	}
+}
+
+func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{
+			{ID: 10, UUID: "M10", TargetType: model.MessageTargetGroup},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil)
+
+	messages, err := service.ListGroupMessages("U100", "G100", 15, 10)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(messages))
+	}
+	if repo.lastConversationKey != model.GroupConversationKey("G100") {
+		t.Fatalf("unexpected conversation key: %s", repo.lastConversationKey)
+	}
+}
+
+func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	publisher := &stubEventPublisher{}
+	service := NewMessageService(repo, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+	}, &stubFriendshipChecker{
+		friendships: map[string]map[string]bool{
+			"U100": {"U200": true},
+		},
+	}, nil, publisher)
+
+	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
+		t.Fatalf("expected direct message event, got %+v", publisher.topics)
 	}
 }
