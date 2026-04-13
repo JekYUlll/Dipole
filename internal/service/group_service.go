@@ -445,7 +445,7 @@ func (s *GroupService) publishGroupEvent(topic string, key string, payload any) 
 		return
 	}
 
-	_ = s.events.PublishJSON(context.Background(), topic, key, payload, nil)
+	_ = s.events.PublishEvent(context.Background(), topic, key, topic, payload, nil)
 }
 
 func (s *GroupService) loadAccessibleGroup(currentUserUUID, groupUUID string) (*model.Group, *model.GroupMember, error) {

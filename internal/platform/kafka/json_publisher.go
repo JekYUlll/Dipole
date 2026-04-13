@@ -38,3 +38,20 @@ func (p *JSONPublisher) PublishJSON(ctx context.Context, topic string, key strin
 
 	return nil
 }
+
+func (p *JSONPublisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+	envelope, err := NewEnvelope(eventType, payload)
+	if err != nil {
+		return fmt.Errorf("create kafka event envelope for %s: %w", topic, err)
+	}
+
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	headers["event_type"] = envelope.EventType
+	headers["version"] = envelope.Version
+	headers["source"] = envelope.Source
+	headers["event_id"] = envelope.EventID
+
+	return p.PublishJSON(ctx, topic, key, envelope, headers)
+}

@@ -14,6 +14,7 @@ type stubMessageRepository struct {
 	listErr             error
 	createdMessages     []*model.Message
 	listMessages        []*model.Message
+	messagesByUUID      map[string]*model.Message
 	lastConversationKey string
 	lastBeforeID        uint
 	lastLimit           int
@@ -25,7 +26,19 @@ func (r *stubMessageRepository) Create(message *model.Message) error {
 	}
 
 	r.createdMessages = append(r.createdMessages, message)
+	if r.messagesByUUID == nil {
+		r.messagesByUUID = make(map[string]*model.Message)
+	}
+	r.messagesByUUID[message.UUID] = message
 	return nil
+}
+
+func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
+	if r.messagesByUUID == nil {
+		return nil, nil
+	}
+
+	return r.messagesByUUID[uuid], nil
 }
 
 func (r *stubMessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -100,13 +113,23 @@ func (c *stubGroupMessageChecker) ListMembers(groupUUID string) ([]*model.GroupM
 }
 
 type stubEventPublisher struct {
-	topics []string
-	keys   []string
+	topics     []string
+	keys       []string
+	eventTypes []string
 }
 
 func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
+	_ = payload
+	_ = headers
+	return nil
+}
+
+func (p *stubEventPublisher) PublishEvent(_ context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+	p.topics = append(p.topics, topic)
+	p.keys = append(p.keys, key)
+	p.eventTypes = append(p.eventTypes, eventType)
 	_ = payload
 	_ = headers
 	return nil
@@ -370,7 +393,43 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
+	if len(repo.createdMessages) != 0 {
+		t.Fatalf("expected no synchronous persistence when kafka publisher is enabled, got %d", len(repo.createdMessages))
+	}
+	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.send_requested" {
 		t.Fatalf("expected direct message event, got %+v", publisher.topics)
+	}
+	if len(publisher.eventTypes) != 1 || publisher.eventTypes[0] != "message.direct.send_requested" {
+		t.Fatalf("expected direct message event type, got %+v", publisher.eventTypes)
+	}
+}
+
+func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	publisher := &stubEventPublisher{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, publisher)
+
+	message, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M100",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message == nil || message.UUID != "M100" {
+		t.Fatalf("expected persisted message M100, got %+v", message)
+	}
+	if len(repo.createdMessages) != 1 {
+		t.Fatalf("expected one persisted message, got %d", len(repo.createdMessages))
+	}
+	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
+		t.Fatalf("expected created event, got %+v", publisher.topics)
 	}
 }

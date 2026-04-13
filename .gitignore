@@ -4,6 +4,8 @@
 
 acc/
 agent/
+certs/
+logs/
 
 # Binaries for programs and plugins
 *.exe

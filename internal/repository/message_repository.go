@@ -5,6 +5,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"gorm.io/gorm"
 )
 
 type MessageRepository struct{}
@@ -19,6 +20,18 @@ func (r *MessageRepository) Create(message *model.Message) error {
 	}
 
 	return nil
+}
+
+func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
+	var message model.Message
+	if err := store.DB.Where("uuid = ?", uuid).First(&message).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get message by uuid: %w", err)
+	}
+
+	return &message, nil
 }
 
 func (r *MessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {

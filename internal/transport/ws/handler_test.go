@@ -117,7 +117,7 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
 			return nil, nil, errors.New("unexpected send group message call")
 		},
-	}, &stubConversationUpdater{}))
+	}, &stubConversationUpdater{}, true))
 	router.GET("/api/v1/ws", handler.Handle)
 
 	server := httptest.NewServer(router)
@@ -178,7 +178,7 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
 			return nil, nil, errors.New("unexpected send group message call")
 		},
-	}, &stubConversationUpdater{}))
+	}, &stubConversationUpdater{}, true))
 	router.GET("/api/v1/ws", handler.Handle)
 
 	server := httptest.NewServer(router)
@@ -289,7 +289,7 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, true)
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, dispatcher)
@@ -394,7 +394,7 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, true)
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, dispatcher)
@@ -470,7 +470,7 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
 			return nil, service.ErrMessageFriendRequired
 		},
-	}, &stubConversationUpdater{})
+	}, &stubConversationUpdater{}, true)
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, dispatcher)

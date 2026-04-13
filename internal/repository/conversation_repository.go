@@ -39,9 +39,16 @@ func (r *ConversationRepository) UpsertDirectMessage(userUUID, targetUUID string
 		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
-		assignments["unread_count"] = gorm.Expr("unread_count + ?", unreadIncrement)
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN unread_count + ? ELSE unread_count END",
+			conversation.LastMessageUUID,
+			unreadIncrement,
+		)
 	} else {
-		assignments["unread_count"] = 0
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN 0 ELSE unread_count END",
+			conversation.LastMessageUUID,
+		)
 	}
 
 	if err := store.DB.Clauses(clause.OnConflict{
@@ -80,9 +87,16 @@ func (r *ConversationRepository) UpsertGroupMessage(userUUID, groupUUID string, 
 		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
-		assignments["unread_count"] = gorm.Expr("unread_count + ?", unreadIncrement)
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN unread_count + ? ELSE unread_count END",
+			conversation.LastMessageUUID,
+			unreadIncrement,
+		)
 	} else {
-		assignments["unread_count"] = 0
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN 0 ELSE unread_count END",
+			conversation.LastMessageUUID,
+		)
 	}
 
 	if err := store.DB.Clauses(clause.OnConflict{

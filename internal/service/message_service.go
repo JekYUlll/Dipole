@@ -24,6 +24,7 @@ var (
 
 type messageRepository interface {
 	Create(message *model.Message) error
+	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 }
 
@@ -47,6 +48,18 @@ type MessageService struct {
 	friendChecker friendshipChecker
 	groupChecker  groupMessageChecker
 	events        eventPublisher
+}
+
+type MessageEventPayload struct {
+	MessageID       string    `json:"message_id"`
+	ConversationKey string    `json:"conversation_key"`
+	SenderUUID      string    `json:"sender_uuid"`
+	TargetUUID      string    `json:"target_uuid"`
+	TargetType      int8      `json:"target_type"`
+	MessageType     int8      `json:"message_type"`
+	Content         string    `json:"content"`
+	SentAt          time.Time `json:"sent_at"`
+	RecipientUUIDs  []string  `json:"recipient_uuids,omitempty"`
 }
 
 func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, events eventPublisher) *MessageService {
@@ -94,10 +107,16 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 		SentAt:          time.Now().UTC(),
 	}
 
-	if err := s.repo.Create(message); err != nil {
-		return nil, fmt.Errorf("persist direct message: %w", err)
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist direct message: %w", err)
+		}
+		return message, nil
 	}
-	s.publishMessageCreated("message.direct.created", message)
+
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
 
 	return message, nil
 }
@@ -148,6 +167,11 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		return nil, nil, err
 	}
 
+	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ConversationKey: model.GroupConversationKey(groupUUID),
@@ -159,13 +183,14 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		SentAt:          time.Now().UTC(),
 	}
 
-	if err := s.repo.Create(message); err != nil {
-		return nil, nil, fmt.Errorf("persist group message: %w", err)
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, nil, fmt.Errorf("persist group message: %w", err)
+		}
+		return message, recipientUUIDs, nil
 	}
-	s.publishMessageCreated("message.group.created", message)
 
-	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
-	if err != nil {
+	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
 
@@ -193,26 +218,94 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	return messages, nil
 }
 
-func (s *MessageService) publishMessageCreated(topic string, message *model.Message) {
-	if s.events == nil || message == nil {
-		return
+func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*model.Message, error) {
+	message := payloadToMessage(payload)
+	if message == nil {
+		return nil, fmt.Errorf("message payload is nil")
 	}
 
-	payload := map[string]any{
-		"message_id":       message.UUID,
-		"conversation_key": message.ConversationKey,
-		"sender_uuid":      message.SenderUUID,
-		"target_uuid":      message.TargetUUID,
-		"target_type":      message.TargetType,
-		"message_type":     message.MessageType,
-		"content":          message.Content,
-		"sent_at":          message.SentAt,
+	existing, err := s.repo.GetByUUID(message.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("find message by uuid before persist: %w", err)
 	}
-	_ = s.events.PublishJSON(context.Background(), topic, message.UUID, payload, nil)
+	if existing == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist requested message: %w", err)
+		}
+	} else {
+		message = existing
+	}
+
+	if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
+		return nil, err
+	}
+
+	return message, nil
 }
 
 func (s *MessageService) PersistedDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
 	return s.SendDirectMessage(senderUUID, targetUUID, content)
+}
+
+func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string) error {
+	if s.events == nil || message == nil {
+		return nil
+	}
+
+	payload := messageToEventPayload(message, recipientUUIDs)
+	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+		return fmt.Errorf("publish requested message event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *MessageService) publishMessageCreated(topic string, message *model.Message, recipientUUIDs []string) error {
+	if s.events == nil || message == nil {
+		return nil
+	}
+
+	payload := messageToEventPayload(message, recipientUUIDs)
+	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+		return fmt.Errorf("publish created message event: %w", err)
+	}
+
+	return nil
+}
+
+func messageToEventPayload(message *model.Message, recipientUUIDs []string) MessageEventPayload {
+	return MessageEventPayload{
+		MessageID:       message.UUID,
+		ConversationKey: message.ConversationKey,
+		SenderUUID:      message.SenderUUID,
+		TargetUUID:      message.TargetUUID,
+		TargetType:      message.TargetType,
+		MessageType:     message.MessageType,
+		Content:         message.Content,
+		SentAt:          message.SentAt,
+		RecipientUUIDs:  recipientUUIDs,
+	}
+}
+
+func payloadToMessage(payload MessageEventPayload) *model.Message {
+	return &model.Message{
+		UUID:            strings.TrimSpace(payload.MessageID),
+		ConversationKey: strings.TrimSpace(payload.ConversationKey),
+		SenderUUID:      strings.TrimSpace(payload.SenderUUID),
+		TargetUUID:      strings.TrimSpace(payload.TargetUUID),
+		TargetType:      payload.TargetType,
+		MessageType:     payload.MessageType,
+		Content:         payload.Content,
+		SentAt:          payload.SentAt,
+	}
+}
+
+func createdTopicForTargetType(targetType int8) string {
+	if targetType == model.MessageTargetGroup {
+		return "message.group.created"
+	}
+
+	return "message.direct.created"
 }
 
 func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) error {

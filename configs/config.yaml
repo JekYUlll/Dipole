@@ -6,6 +6,9 @@ log:
   level: info
   format: console
   development: true
+  file_enabled: true
+  file_path: logs/dipole.log
+  file_rotate_daily: true
 
 server:
   host: 0.0.0.0
@@ -18,6 +21,8 @@ tls:
 
 auth:
   token_ttl_hours: 168
+  jwt_secret: dipole-dev-jwt-secret-change-me
+  jwt_issuer: dipole
 
 mysql:
   host: 127.0.0.1
@@ -33,10 +38,12 @@ redis:
   db: 0
 
 kafka:
-  enabled: false
+  enabled: true
   brokers:
     - 127.0.0.1:9092
   client_id: dipole
   topic_prefix: dipole
   dial_timeout_seconds: 5
   write_timeout_seconds: 5
+  consume_retry_max_attempts: 3
+  consume_retry_backoff_ms: 500

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"encoding/json"
 	"testing"
 
 	kafkago "github.com/segmentio/kafka-go"
@@ -31,5 +32,31 @@ func TestDecodeHeaders(t *testing.T) {
 	}
 	if headers["version"] != "v1" {
 		t.Fatalf("unexpected version header: %s", headers["version"])
+	}
+}
+
+func TestNewEnvelopeAndDecode(t *testing.T) {
+	t.Parallel()
+
+	envelope, err := NewEnvelope("message.direct.created", map[string]any{
+		"message_id": "M100",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if envelope.EventType != "message.direct.created" {
+		t.Fatalf("unexpected event type: %s", envelope.EventType)
+	}
+
+	raw, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatalf("marshal envelope: %v", err)
+	}
+	decoded, err := decodeEnvelope(raw)
+	if err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if decoded.EventID != envelope.EventID {
+		t.Fatalf("expected event id %s, got %s", envelope.EventID, decoded.EventID)
 	}
 }

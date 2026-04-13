@@ -19,6 +19,7 @@ import (
 
 type Server struct {
 	engine *gin.Engine
+	wsHub  *wsTransport.Hub
 }
 
 func New() *Server {
@@ -55,7 +56,7 @@ func New() *Server {
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = conversationService
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled)
 	authHandler := httpHandler.NewAuthHandler(authService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
@@ -107,7 +108,7 @@ func New() *Server {
 		}
 	}
 
-	return &Server{engine: engine}
+	return &Server{engine: engine, wsHub: wsHub}
 }
 
 type wsTransportConversationUpdater interface {
@@ -125,4 +126,12 @@ func (s *Server) RunTLS(addr, certFile, keyFile string) error {
 
 func (s *Server) Engine() *gin.Engine {
 	return s.engine
+}
+
+func (s *Server) RegisterKafkaHandlers() {
+	if s == nil {
+		return
+	}
+
+	RegisterKafkaHandlers(s.wsHub)
 }

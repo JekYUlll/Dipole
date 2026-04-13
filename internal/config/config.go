@@ -14,9 +14,12 @@ type App struct {
 }
 
 type Log struct {
-	Level       string `mapstructure:"level"`
-	Format      string `mapstructure:"format"`
-	Development bool   `mapstructure:"development"`
+	Level           string `mapstructure:"level"`
+	Format          string `mapstructure:"format"`
+	Development     bool   `mapstructure:"development"`
+	FileEnabled     bool   `mapstructure:"file_enabled"`
+	FilePath        string `mapstructure:"file_path"`
+	FileRotateDaily bool   `mapstructure:"file_rotate_daily"`
 }
 
 type Server struct {
@@ -46,16 +49,20 @@ type Redis struct {
 }
 
 type Auth struct {
-	TokenTTLHours int `mapstructure:"token_ttl_hours"`
+	TokenTTLHours int    `mapstructure:"token_ttl_hours"`
+	JWTSecret     string `mapstructure:"jwt_secret"`
+	JWTIssuer     string `mapstructure:"jwt_issuer"`
 }
 
 type Kafka struct {
-	Enabled             bool     `mapstructure:"enabled"`
-	Brokers             []string `mapstructure:"brokers"`
-	ClientID            string   `mapstructure:"client_id"`
-	TopicPrefix         string   `mapstructure:"topic_prefix"`
-	DialTimeoutSeconds  int      `mapstructure:"dial_timeout_seconds"`
-	WriteTimeoutSeconds int      `mapstructure:"write_timeout_seconds"`
+	Enabled                 bool     `mapstructure:"enabled"`
+	Brokers                 []string `mapstructure:"brokers"`
+	ClientID                string   `mapstructure:"client_id"`
+	TopicPrefix             string   `mapstructure:"topic_prefix"`
+	DialTimeoutSeconds      int      `mapstructure:"dial_timeout_seconds"`
+	WriteTimeoutSeconds     int      `mapstructure:"write_timeout_seconds"`
+	ConsumeRetryMaxAttempts int      `mapstructure:"consume_retry_max_attempts"`
+	ConsumeRetryBackoffMS   int      `mapstructure:"consume_retry_backoff_ms"`
 }
 
 var (
@@ -81,18 +88,65 @@ func Load() error {
 		v.SetDefault("log.level", "info")
 		v.SetDefault("log.format", "console")
 		v.SetDefault("log.development", true)
+		v.SetDefault("log.file_enabled", false)
+		v.SetDefault("log.file_path", "logs/dipole.log")
+		v.SetDefault("log.file_rotate_daily", true)
 		v.SetDefault("server.host", "0.0.0.0")
 		v.SetDefault("server.port", 8080)
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
 		v.SetDefault("auth.token_ttl_hours", 168)
+		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
+		v.SetDefault("auth.jwt_issuer", "dipole")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
 		v.SetDefault("kafka.topic_prefix", "dipole")
 		v.SetDefault("kafka.dial_timeout_seconds", 5)
 		v.SetDefault("kafka.write_timeout_seconds", 5)
+		v.SetDefault("kafka.consume_retry_max_attempts", 3)
+		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
+		for _, key := range []string{
+			"app.name",
+			"app.env",
+			"log.level",
+			"log.format",
+			"log.development",
+			"log.file_enabled",
+			"log.file_path",
+			"log.file_rotate_daily",
+			"server.host",
+			"server.port",
+			"tls.enabled",
+			"tls.cert_file",
+			"tls.key_file",
+			"auth.token_ttl_hours",
+			"auth.jwt_secret",
+			"auth.jwt_issuer",
+			"mysql.host",
+			"mysql.port",
+			"mysql.user",
+			"mysql.password",
+			"mysql.dbname",
+			"redis.host",
+			"redis.port",
+			"redis.password",
+			"redis.db",
+			"kafka.enabled",
+			"kafka.brokers",
+			"kafka.client_id",
+			"kafka.topic_prefix",
+			"kafka.dial_timeout_seconds",
+			"kafka.write_timeout_seconds",
+			"kafka.consume_retry_max_attempts",
+			"kafka.consume_retry_backoff_ms",
+		} {
+			if err := v.BindEnv(key); err != nil {
+				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
+				return
+			}
+		}
 
 		if err := v.ReadInConfig(); err != nil {
 			loadErr = fmt.Errorf("read config: %w", err)
@@ -140,6 +194,8 @@ func ServerConfig() Server {
 	if err := cfg.UnmarshalKey("server", &server); err != nil {
 		panic(fmt.Errorf("unmarshal server config: %w", err))
 	}
+	server.Host = cfg.GetString("server.host")
+	server.Port = cfg.GetInt("server.port")
 
 	return server
 }
@@ -184,6 +240,9 @@ func AuthConfig() Auth {
 	if err := cfg.UnmarshalKey("auth", &auth); err != nil {
 		panic(fmt.Errorf("unmarshal auth config: %w", err))
 	}
+	auth.TokenTTLHours = cfg.GetInt("auth.token_ttl_hours")
+	auth.JWTSecret = cfg.GetString("auth.jwt_secret")
+	auth.JWTIssuer = cfg.GetString("auth.jwt_issuer")
 
 	return auth
 }
@@ -195,6 +254,14 @@ func KafkaConfig() Kafka {
 	if err := cfg.UnmarshalKey("kafka", &kafkaConfig); err != nil {
 		panic(fmt.Errorf("unmarshal kafka config: %w", err))
 	}
+	kafkaConfig.Enabled = cfg.GetBool("kafka.enabled")
+	kafkaConfig.Brokers = cfg.GetStringSlice("kafka.brokers")
+	kafkaConfig.ClientID = cfg.GetString("kafka.client_id")
+	kafkaConfig.TopicPrefix = cfg.GetString("kafka.topic_prefix")
+	kafkaConfig.DialTimeoutSeconds = cfg.GetInt("kafka.dial_timeout_seconds")
+	kafkaConfig.WriteTimeoutSeconds = cfg.GetInt("kafka.write_timeout_seconds")
+	kafkaConfig.ConsumeRetryMaxAttempts = cfg.GetInt("kafka.consume_retry_max_attempts")
+	kafkaConfig.ConsumeRetryBackoffMS = cfg.GetInt("kafka.consume_retry_backoff_ms")
 
 	return kafkaConfig
 }

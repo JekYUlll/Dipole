@@ -30,13 +30,15 @@ type Dispatcher struct {
 	hub                 *Hub
 	messageService      directMessageService
 	conversationUpdater conversationUpdater
+	syncDispatch        bool
 }
 
-func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater) *Dispatcher {
+func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
 	return &Dispatcher{
 		hub:                 hub,
 		messageService:      messageService,
 		conversationUpdater: conversationUpdater,
+		syncDispatch:        syncDispatch,
 	}
 }
 
@@ -85,9 +87,12 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 	}
 
 	eventData := newChatMessageData(message)
-	deliveredCount := d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
-	if message.TargetUUID == client.sessionUser.UUID {
-		deliveredCount = max(deliveredCount-1, 0)
+	deliveredCount := 0
+	if d.syncDispatch {
+		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+		if message.TargetUUID == client.sessionUser.UUID {
+			deliveredCount = max(deliveredCount-1, 0)
+		}
 	}
 	ack := ChatSentData{
 		ChatMessageData: eventData,
@@ -113,11 +118,13 @@ func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content stri
 
 	eventData := newChatMessageData(message)
 	deliveredCount := 0
-	for _, recipientUUID := range recipients {
-		if recipientUUID == client.sessionUser.UUID {
-			continue
+	if d.syncDispatch {
+		for _, recipientUUID := range recipients {
+			if recipientUUID == client.sessionUser.UUID {
+				continue
+			}
+			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
 		}
-		deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
 	}
 
 	ack := ChatSentData{

@@ -23,14 +23,29 @@ func main() {
 
 	appCfg := config.AppConfig()
 	tlsCfg := config.TLSConfig()
+	mysqlCfg := config.MySQLConfig()
+	redisCfg := config.RedisConfig()
+	kafkaCfg := config.KafkaConfig()
+	logCfg := config.LogConfig()
 
 	if err := store.InitMySQL(); err != nil {
 		logger.L().Fatal("mysql init failed", zap.Error(err))
 	}
+	logger.Info("mysql init succeeded",
+		zap.String("host", mysqlCfg.Host),
+		zap.Int("port", mysqlCfg.Port),
+		zap.String("dbname", mysqlCfg.DBName),
+		zap.String("user", mysqlCfg.User),
+	)
 
 	if err := store.InitRedis(); err != nil {
 		logger.L().Fatal("redis init failed", zap.Error(err))
 	}
+	logger.Info("redis init succeeded",
+		zap.String("host", redisCfg.Host),
+		zap.Int("port", redisCfg.Port),
+		zap.Int("db", redisCfg.DB),
+	)
 
 	defer func() {
 		if err := platformKafka.Close(); err != nil {
@@ -44,20 +59,46 @@ func main() {
 	if err := platformKafka.Init(); err != nil {
 		logger.L().Fatal("kafka init failed", zap.Error(err))
 	}
+	if kafkaCfg.Enabled {
+		logger.Info("kafka publisher init succeeded",
+			zap.Strings("brokers", kafkaCfg.Brokers),
+			zap.String("client_id", kafkaCfg.ClientID),
+			zap.String("topic_prefix", kafkaCfg.TopicPrefix),
+		)
+	} else {
+		logger.Info("kafka publisher is disabled")
+	}
+
 	if err := platformKafka.InitConsumer(); err != nil {
 		logger.L().Fatal("kafka consumer init failed", zap.Error(err))
+	}
+	if kafkaCfg.Enabled {
+		logger.Info("kafka consumer init succeeded",
+			zap.Int("retry_max_attempts", kafkaCfg.ConsumeRetryMaxAttempts),
+			zap.Int("retry_backoff_ms", kafkaCfg.ConsumeRetryBackoffMS),
+		)
+	} else {
+		logger.Info("kafka consumer is disabled")
 	}
 
 	if err := store.AutoMigrate(); err != nil {
 		logger.L().Fatal("auto migrate failed", zap.Error(err))
 	}
 
-	server.RegisterKafkaHandlers()
-	if err := platformKafka.Subscriber.Start(context.Background()); err != nil {
-		logger.L().Fatal("kafka consumer start failed", zap.Error(err))
+	srv := server.New()
+	srv.RegisterKafkaHandlers()
+	if platformKafka.Subscriber != nil {
+		if err := platformKafka.Subscriber.Start(context.Background()); err != nil {
+			logger.L().Fatal("kafka consumer start failed", zap.Error(err))
+		}
+		logger.Info("kafka consumer started")
 	}
 
-	srv := server.New()
+	logger.Info("logger destination",
+		zap.Bool("file_enabled", logCfg.FileEnabled),
+		zap.String("file_path", logCfg.FilePath),
+		zap.Bool("file_rotate_daily", logCfg.FileRotateDaily),
+	)
 
 	logger.L().Info("server starting",
 		zap.String("app", appCfg.Name),
