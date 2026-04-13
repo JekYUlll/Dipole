@@ -298,19 +298,21 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 }
 
 func newAIService(messageService *service.MessageService) (*aiModule.Service, error) {
-	if !config.AIConfig().Enabled {
+	aiConfig := config.AIConfig()
+	if !aiConfig.Enabled {
 		return nil, nil
 	}
 
 	userRepo := repository.NewUserRepository()
+	messageRepo := repository.NewMessageRepository()
 	contextBuilder := aiModule.NewContextBuilder(
-		repository.NewMessageRepository(),
+		messageRepo,
 		userRepo,
-		config.AIConfig().MaxContextMessages,
+		aiConfig.MaxContextMessages,
 	)
 	agent, err := aiModule.NewConfiguredAgent(
 		context.Background(),
-		aiModule.NewTools(contextBuilder, userRepo, config.AIConfig().AssistantUUID)...,
+		aiModule.NewTools(contextBuilder, userRepo, messageRepo, messageService, aiConfig.AssistantUUID)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("init ai agent: %w", err)

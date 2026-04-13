@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	einoTool "github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
@@ -27,12 +28,40 @@ type conversationContextTool struct {
 	assistantUUID string
 }
 
+type recentMessageSearchTool struct {
+	messages      messageReader
+	assistantUUID string
+}
+
+type systemMessageTool struct {
+	sender        systemMessageSender
+	assistantUUID string
+}
+
+type toolExecutionState struct {
+	mu           sync.Mutex
+	sentMessages []*model.Message
+}
+
+type toolExecutionStateKey struct{}
+
 type getUserProfileInput struct {
 	UserUUID string `json:"user_uuid"`
 }
 
 type getConversationContextInput struct {
 	UserUUID string `json:"user_uuid"`
+}
+
+type searchRecentMessagesInput struct {
+	UserUUID string `json:"user_uuid"`
+	Query    string `json:"query"`
+	Limit    int    `json:"limit"`
+}
+
+type sendSystemMessageInput struct {
+	UserUUID string `json:"user_uuid"`
+	Content  string `json:"content"`
 }
 
 type toolUserProfile struct {
@@ -58,13 +87,42 @@ type toolMessageEntry struct {
 	Content string          `json:"content"`
 }
 
-func NewTools(builder directContextBuilder, users userReader, assistantUUID string) []einoTool.BaseTool {
-	tools := make([]einoTool.BaseTool, 0, 2)
+type toolRecentMessageSearchResult struct {
+	Found   bool               `json:"found"`
+	Query   string             `json:"query"`
+	Matches []toolMessageMatch `json:"matches,omitempty"`
+}
+
+type toolMessageMatch struct {
+	MessageType int8            `json:"message_type"`
+	Role        schema.RoleType `json:"role"`
+	Content     string          `json:"content"`
+}
+
+type toolSendMessageResult struct {
+	Sent        bool   `json:"sent"`
+	MessageUUID string `json:"message_uuid,omitempty"`
+	TargetUUID  string `json:"target_uuid,omitempty"`
+	MessageType int8   `json:"message_type,omitempty"`
+}
+
+type systemMessageSender interface {
+	SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
+}
+
+func NewTools(builder directContextBuilder, users userReader, messages messageReader, sender systemMessageSender, assistantUUID string) []einoTool.BaseTool {
+	tools := make([]einoTool.BaseTool, 0, 4)
 	if users != nil {
 		tools = append(tools, NewUserProfileTool(users))
 	}
 	if builder != nil {
 		tools = append(tools, NewConversationContextTool(builder, assistantUUID))
+	}
+	if messages != nil {
+		tools = append(tools, NewRecentMessageSearchTool(messages, assistantUUID))
+	}
+	if sender != nil {
+		tools = append(tools, NewSystemMessageTool(sender, assistantUUID))
 	}
 	return tools
 }
@@ -76,6 +134,20 @@ func NewUserProfileTool(users userReader) einoTool.BaseTool {
 func NewConversationContextTool(builder directContextBuilder, assistantUUID string) einoTool.BaseTool {
 	return &conversationContextTool{
 		builder:       builder,
+		assistantUUID: strings.TrimSpace(assistantUUID),
+	}
+}
+
+func NewRecentMessageSearchTool(messages messageReader, assistantUUID string) einoTool.BaseTool {
+	return &recentMessageSearchTool{
+		messages:      messages,
+		assistantUUID: strings.TrimSpace(assistantUUID),
+	}
+}
+
+func NewSystemMessageTool(sender systemMessageSender, assistantUUID string) einoTool.BaseTool {
+	return &systemMessageTool{
+		sender:        sender,
 		assistantUUID: strings.TrimSpace(assistantUUID),
 	}
 }
@@ -133,6 +205,48 @@ func (t *conversationContextTool) Info(context.Context) (*schema.ToolInfo, error
 			"user_uuid": {
 				Type:     schema.String,
 				Desc:     "The UUID of the end user in the AI direct conversation.",
+				Required: true,
+			},
+		}),
+	}, nil
+}
+
+func (t *recentMessageSearchTool) Info(context.Context) (*schema.ToolInfo, error) {
+	return &schema.ToolInfo{
+		Name: "search_recent_messages",
+		Desc: "Search recent direct conversation messages between the end user and the Dipole AI assistant by keyword. Use it when the user asks you to recall something said earlier.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"user_uuid": {
+				Type:     schema.String,
+				Desc:     "The UUID of the end user in the AI direct conversation.",
+				Required: true,
+			},
+			"query": {
+				Type:     schema.String,
+				Desc:     "The keyword or short phrase to search in recent messages.",
+				Required: true,
+			},
+			"limit": {
+				Type: schema.Integer,
+				Desc: "Maximum number of matches to return. Default is 5 and maximum is 10.",
+			},
+		}),
+	}, nil
+}
+
+func (t *systemMessageTool) Info(context.Context) (*schema.ToolInfo, error) {
+	return &schema.ToolInfo{
+		Name: "send_system_message",
+		Desc: "Send a system message to the current user when you intentionally need to deliver an explicit system-style notification.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"user_uuid": {
+				Type:     schema.String,
+				Desc:     "The UUID of the target user.",
+				Required: true,
+			},
+			"content": {
+				Type:     schema.String,
+				Desc:     "The system message content to send.",
 				Required: true,
 			},
 		}),
@@ -201,6 +315,114 @@ func (t *conversationContextTool) InvokableRun(ctx context.Context, argumentsInJ
 	return marshalToolResult(result)
 }
 
+func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
+	_ = ctx
+	_ = opts
+
+	if t == nil || t.messages == nil {
+		return "", errors.New("recent message search tool is not initialized")
+	}
+	if strings.TrimSpace(t.assistantUUID) == "" {
+		return "", errors.New("recent message search tool assistant uuid is empty")
+	}
+
+	var input searchRecentMessagesInput
+	if err := json.Unmarshal([]byte(argumentsInJSON), &input); err != nil {
+		return "", fmt.Errorf("decode search_recent_messages input: %w", err)
+	}
+
+	userUUID := strings.TrimSpace(input.UserUUID)
+	query := strings.TrimSpace(input.Query)
+	if userUUID == "" {
+		return "", errors.New("user_uuid is required")
+	}
+	if query == "" {
+		return "", errors.New("query is required")
+	}
+
+	limit := input.Limit
+	if limit <= 0 {
+		limit = 5
+	}
+	if limit > 10 {
+		limit = 10
+	}
+
+	items, err := t.messages.ListByConversationKey(model.DirectConversationKey(userUUID, t.assistantUUID), 0, 50)
+	if err != nil {
+		return "", fmt.Errorf("list recent messages: %w", err)
+	}
+
+	lowerQuery := strings.ToLower(query)
+	result := toolRecentMessageSearchResult{
+		Found:   false,
+		Query:   query,
+		Matches: make([]toolMessageMatch, 0, limit),
+	}
+	for i := len(items) - 1; i >= 0 && len(result.Matches) < limit; i-- {
+		item := items[i]
+		content := strings.TrimSpace(renderMessageContent(item))
+		if content == "" {
+			continue
+		}
+		if !strings.Contains(strings.ToLower(content), lowerQuery) {
+			continue
+		}
+
+		role := schema.User
+		if strings.TrimSpace(item.SenderUUID) == strings.TrimSpace(t.assistantUUID) {
+			role = schema.Assistant
+		}
+		result.Matches = append(result.Matches, toolMessageMatch{
+			MessageType: item.MessageType,
+			Role:        role,
+			Content:     content,
+		})
+	}
+	result.Found = len(result.Matches) > 0
+
+	return marshalToolResult(result)
+}
+
+func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
+	_ = ctx
+	_ = opts
+
+	if t == nil || t.sender == nil {
+		return "", errors.New("system message tool is not initialized")
+	}
+	if strings.TrimSpace(t.assistantUUID) == "" {
+		return "", errors.New("system message tool assistant uuid is empty")
+	}
+
+	var input sendSystemMessageInput
+	if err := json.Unmarshal([]byte(argumentsInJSON), &input); err != nil {
+		return "", fmt.Errorf("decode send_system_message input: %w", err)
+	}
+
+	userUUID := strings.TrimSpace(input.UserUUID)
+	content := strings.TrimSpace(input.Content)
+	if userUUID == "" {
+		return "", errors.New("user_uuid is required")
+	}
+	if content == "" {
+		return "", errors.New("content is required")
+	}
+
+	message, err := t.sender.SendSystemDirectMessage(t.assistantUUID, userUUID, content)
+	if err != nil {
+		return "", fmt.Errorf("send system message: %w", err)
+	}
+	recordToolSentMessage(ctx, message)
+
+	return marshalToolResult(toolSendMessageResult{
+		Sent:        message != nil,
+		MessageUUID: message.UUID,
+		TargetUUID:  userUUID,
+		MessageType: model.MessageTypeSystem,
+	})
+}
+
 func toToolUserProfile(user *model.User) *toolUserProfile {
 	if user == nil {
 		return nil
@@ -222,4 +444,45 @@ func marshalToolResult(result any) (string, error) {
 		return "", fmt.Errorf("marshal tool result: %w", err)
 	}
 	return string(payload), nil
+}
+
+func withToolExecutionState(ctx context.Context, state *toolExecutionState) context.Context {
+	if state == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, toolExecutionStateKey{}, state)
+}
+
+func getToolExecutionState(ctx context.Context) *toolExecutionState {
+	if ctx == nil {
+		return nil
+	}
+	state, _ := ctx.Value(toolExecutionStateKey{}).(*toolExecutionState)
+	return state
+}
+
+func recordToolSentMessage(ctx context.Context, message *model.Message) {
+	if message == nil {
+		return
+	}
+	state := getToolExecutionState(ctx)
+	if state == nil {
+		return
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.sentMessages = append(state.sentMessages, message)
+}
+
+func latestToolSentMessage(ctx context.Context) *model.Message {
+	state := getToolExecutionState(ctx)
+	if state == nil {
+		return nil
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if len(state.sentMessages) == 0 {
+		return nil
+	}
+	return state.sentMessages[len(state.sentMessages)-1]
 }

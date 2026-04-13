@@ -189,6 +189,58 @@ func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, con
 	return message, nil
 }
 
+func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	senderUUID = strings.TrimSpace(senderUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	content = strings.TrimSpace(content)
+	if senderUUID == "" || targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if content == "" {
+		return nil, ErrMessageContentRequired
+	}
+
+	senderUser, err := s.userFinder.GetByUUID(senderUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find sender user in send system message: %w", err)
+	}
+	if senderUser == nil || senderUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send system message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	message := &model.Message{
+		UUID:            generateMessageUUID(),
+		ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
+		SenderUUID:      senderUUID,
+		TargetType:      model.MessageTargetDirect,
+		TargetUUID:      targetUUID,
+		MessageType:     model.MessageTypeSystem,
+		Content:         content,
+		SentAt:          time.Now().UTC(),
+	}
+
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist system message: %w", err)
+		}
+		return message, nil
+	}
+
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
 func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {

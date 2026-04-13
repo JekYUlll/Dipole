@@ -382,6 +382,33 @@ func TestMessageServiceListDirectMessagesAllowsAssistantTarget(t *testing.T) {
 	}
 }
 
+func TestMessageServiceSendSystemDirectMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	userFinder := &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+			"U100": {UUID: "U100", Status: model.UserStatusNormal},
+		},
+	}
+	service := NewMessageService(repo, userFinder, &stubFriendshipChecker{}, nil, nil, nil)
+
+	message, err := service.SendSystemDirectMessage("UAI", "U100", "system notice")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message == nil {
+		t.Fatal("expected message")
+	}
+	if message.MessageType != model.MessageTypeSystem {
+		t.Fatalf("expected system message type, got %d", message.MessageType)
+	}
+	if message.TargetUUID != "U100" || message.SenderUUID != "UAI" {
+		t.Fatalf("unexpected participants: %+v", message)
+	}
+}
+
 func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 	t.Parallel()
 

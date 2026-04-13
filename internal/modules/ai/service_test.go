@@ -68,9 +68,13 @@ func (s *stubMessageSender) SendAssistantTextMessage(assistantUUID, targetUUID, 
 type stubAgent struct {
 	reply *schema.Message
 	err   error
+	runFn func(ctx context.Context, messages []*schema.Message) (*schema.Message, error)
 }
 
 func (s *stubAgent) Reply(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
+	if s.runFn != nil {
+		return s.runFn(ctx, messages)
+	}
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -205,5 +209,62 @@ func TestServiceHandleDirectMessageMarksFailure(t *testing.T) {
 	}
 	if len(logs.failedArgs) == 0 {
 		t.Fatalf("expected ai call failure log to be recorded")
+	}
+}
+
+func TestServiceHandleDirectMessageUsesToolSentMessage(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	toolMessage := &model.Message{
+		UUID:        "MSYS100",
+		MessageType: model.MessageTypeSystem,
+	}
+	sender := &stubMessageSender{}
+	service := &Service{
+		config: config.AI{
+			Enabled:       true,
+			Provider:      "openai",
+			Model:         "gpt-test",
+			AssistantUUID: "UAI",
+		},
+		contextBuilder: &stubContextBuilder{
+			context: &ConversationContext{
+				Messages: []*schema.Message{schema.UserMessage("send a notice")},
+			},
+		},
+		logs:   logs,
+		sender: sender,
+		agent: &stubAgent{
+			runFn: func(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
+				recordToolSentMessage(ctx, toolMessage)
+				return &schema.Message{
+					Role:    schema.Assistant,
+					Content: "",
+				}, nil
+			},
+		},
+	}
+
+	err := service.HandleDirectMessage(context.Background(), &model.Message{
+		UUID:            "M100",
+		ConversationKey: model.DirectConversationKey("U100", "UAI"),
+		SenderUUID:      "U100",
+		TargetType:      model.MessageTargetDirect,
+		TargetUUID:      "UAI",
+		MessageType:     model.MessageTypeText,
+		Content:         "send a notice",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if sender.content != "" {
+		t.Fatalf("expected no fallback assistant text send, got %q", sender.content)
+	}
+	if len(logs.successArgs) == 0 {
+		t.Fatalf("expected ai call success log to be recorded")
+	}
+	if logs.successArgs[1] != "MSYS100" {
+		t.Fatalf("expected tool-sent message uuid to be recorded, got %+v", logs.successArgs)
 	}
 }

@@ -78,3 +78,80 @@ func TestConversationContextToolInvokableRun(t *testing.T) {
 		t.Fatalf("unexpected context messages: %+v", payload.Messages)
 	}
 }
+
+func TestRecentMessageSearchToolInvokableRun(t *testing.T) {
+	t.Parallel()
+
+	tool := NewRecentMessageSearchTool(&stubAIMessageReader{
+		messages: []*model.Message{
+			{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "hello there"},
+			{UUID: "M2", SenderUUID: "UAI", MessageType: model.MessageTypeAIText, Content: "I can help with redis cache"},
+			{UUID: "M3", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "tell me about cache strategy"},
+		},
+	}, "UAI")
+
+	result, err := tool.(*recentMessageSearchTool).InvokableRun(context.Background(), `{"user_uuid":"U100","query":"cache","limit":2}`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var payload toolRecentMessageSearchResult
+	if err := json.Unmarshal([]byte(result), &payload); err != nil {
+		t.Fatalf("expected valid json result, got %v", err)
+	}
+	if !payload.Found {
+		t.Fatalf("expected matches, got %+v", payload)
+	}
+	if len(payload.Matches) != 2 {
+		t.Fatalf("expected 2 matches, got %d", len(payload.Matches))
+	}
+	if payload.Matches[0].Role != schema.User {
+		t.Fatalf("expected newest match from user first, got %+v", payload.Matches[0])
+	}
+}
+
+type stubSystemMessageSender struct {
+	message    *model.Message
+	senderUUID string
+	targetUUID string
+	content    string
+	err        error
+}
+
+func (s *stubSystemMessageSender) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	s.senderUUID = senderUUID
+	s.targetUUID = targetUUID
+	s.content = content
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.message, nil
+}
+
+func TestSystemMessageToolInvokableRun(t *testing.T) {
+	t.Parallel()
+
+	sender := &stubSystemMessageSender{
+		message: &model.Message{
+			UUID:        "MSYS1",
+			MessageType: model.MessageTypeSystem,
+		},
+	}
+	tool := NewSystemMessageTool(sender, "UAI")
+
+	result, err := tool.(*systemMessageTool).InvokableRun(context.Background(), `{"user_uuid":"U100","content":"maintenance notice"}`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var payload toolSendMessageResult
+	if err := json.Unmarshal([]byte(result), &payload); err != nil {
+		t.Fatalf("expected valid json result, got %v", err)
+	}
+	if !payload.Sent || payload.MessageUUID != "MSYS1" {
+		t.Fatalf("unexpected tool payload: %+v", payload)
+	}
+	if sender.senderUUID != "UAI" || sender.targetUUID != "U100" || sender.content != "maintenance notice" {
+		t.Fatalf("unexpected sender args: %+v", sender)
+	}
+}

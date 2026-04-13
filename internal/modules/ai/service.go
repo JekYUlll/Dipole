@@ -109,19 +109,23 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return markFailed(err)
 	}
 
-	reply, err := s.agent.Reply(ctx, conversationContext.Messages)
+	runCtx := withToolExecutionState(ctx, &toolExecutionState{})
+	reply, err := s.agent.Reply(runCtx, conversationContext.Messages)
 	if err != nil {
 		return markFailed(err)
 	}
 
-	content := strings.TrimSpace(reply.Content)
-	if content == "" {
-		return markFailed(ErrAIEmptyResponse)
-	}
+	responseMessage := latestToolSentMessage(runCtx)
+	if responseMessage == nil {
+		content := strings.TrimSpace(reply.Content)
+		if content == "" {
+			return markFailed(ErrAIEmptyResponse)
+		}
 
-	responseMessage, err := s.sender.SendAssistantTextMessage(assistantUUID, message.SenderUUID, content)
-	if err != nil {
-		return markFailed(err)
+		responseMessage, err = s.sender.SendAssistantTextMessage(assistantUUID, message.SenderUUID, content)
+		if err != nil {
+			return markFailed(err)
+		}
 	}
 
 	usage := extractUsage(reply)
