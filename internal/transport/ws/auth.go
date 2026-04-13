@@ -35,7 +35,7 @@ func NewAuthenticator(tokenResolver tokenResolver, userFinder userFinder) *Authe
 	}
 }
 
-func (a *Authenticator) Authenticate(r *http.Request) (*model.User, string, error) {
+func (a *Authenticator) Authenticate(r *http.Request) (*SessionUser, string, error) {
 	token, ok := extractAccessToken(r)
 	if !ok {
 		return nil, "", ErrTokenRequired
@@ -54,7 +54,7 @@ func (a *Authenticator) Authenticate(r *http.Request) (*model.User, string, erro
 		return nil, "", ErrUserSessionInvalid
 	}
 
-	return user, token, nil
+	return newSessionUser(user), token, nil
 }
 
 func extractAccessToken(r *http.Request) (string, bool) {

@@ -31,3 +31,30 @@ const (
 	UserInvalidStatus    int = 100207
 	UserSelfStatusChange int = 100208
 )
+
+const (
+	MessageTargetRequired    int = 100300
+	MessageContentRequired   int = 100301
+	MessageContentTooLong    int = 100302
+	MessageTargetUnavailable int = 100303
+	MessageTargetNotFound    int = 100304
+	MessageFriendRequired    int = 100305
+)
+
+const (
+	ConversationTargetRequired int = 100400
+	ConversationTargetNotFound int = 100401
+)
+
+const (
+	ContactTargetRequired      int = 100500
+	ContactTargetNotFound      int = 100501
+	ContactTargetUnavailable   int = 100502
+	ContactCannotAddSelf       int = 100503
+	ContactAlreadyFriends      int = 100504
+	ContactApplicationExists   int = 100505
+	ContactApplicationNotFound int = 100506
+	ContactApplicationHandled  int = 100507
+	ContactPermissionDenied    int = 100508
+	ContactActionInvalid       int = 100509
+)

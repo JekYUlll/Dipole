@@ -14,6 +14,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type stubTokenResolver struct {
@@ -38,6 +39,30 @@ func (s *stubUserFinder) GetByUUID(uuid string) (*model.User, error) {
 	}
 
 	return s.getByUUIDFn(uuid)
+}
+
+type stubDirectMessageService struct {
+	sendDirectMessageFn func(senderUUID, targetUUID, content string) (*model.Message, error)
+}
+
+func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	if s.sendDirectMessageFn == nil {
+		return nil, errors.New("unexpected send direct message call")
+	}
+
+	return s.sendDirectMessageFn(senderUUID, targetUUID, content)
+}
+
+type stubConversationUpdater struct {
+	updateDirectConversationsFn func(message *model.Message) error
+}
+
+func (s *stubConversationUpdater) UpdateDirectConversations(message *model.Message) error {
+	if s.updateDirectConversationsFn == nil {
+		return nil
+	}
+
+	return s.updateDirectConversationsFn(message)
 }
 
 type wsResponse struct {
@@ -67,7 +92,11 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 	router := gin.New()
 	hub := NewHub()
 	userFinder := &stubUserFinder{}
-	handler := NewHandler(NewAuthenticator(&stubTokenResolver{}, userFinder), hub, NewDispatcher(hub, userFinder))
+	handler := NewHandler(NewAuthenticator(&stubTokenResolver{}, userFinder), hub, NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			return nil, errors.New("unexpected send direct message call")
+		},
+	}, &stubConversationUpdater{}))
 	router.GET("/api/v1/ws", handler.Handle)
 
 	server := httptest.NewServer(router)
@@ -121,18 +150,11 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	)
 
 	router := gin.New()
-	handler := NewHandler(authenticator, hub, NewDispatcher(hub, &stubUserFinder{
-		getByUUIDFn: func(uuid string) (*model.User, error) {
-			if uuid != "U100" {
-				t.Fatalf("unexpected user uuid: %s", uuid)
-			}
-
-			return &model.User{
-				UUID:   "U100",
-				Status: model.UserStatusNormal,
-			}, nil
+	handler := NewHandler(authenticator, hub, NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			return nil, errors.New("unexpected send direct message call")
 		},
-	}))
+	}, &stubConversationUpdater{}))
 	router.GET("/api/v1/ws", handler.Handle)
 
 	server := httptest.NewServer(router)
@@ -189,7 +211,7 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 
 	hub := NewHub()
 	users := map[string]*model.User{
-		"U100": {UUID: "U100", Status: model.UserStatusNormal},
+		"U100": {UUID: "U100", IsAdmin: true, Status: model.UserStatusNormal},
 		"U200": {UUID: "U200", Status: model.UserStatusNormal},
 	}
 	authenticator := NewAuthenticator(
@@ -211,9 +233,34 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			},
 		},
 	)
-	dispatcher := NewDispatcher(hub, &stubUserFinder{
-		getByUUIDFn: func(uuid string) (*model.User, error) {
-			return users[uuid], nil
+	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			if senderUUID != "U100" {
+				t.Fatalf("unexpected sender uuid: %s", senderUUID)
+			}
+			if targetUUID != "U200" {
+				t.Fatalf("unexpected target uuid: %s", targetUUID)
+			}
+			if content != "hello from U100" {
+				t.Fatalf("unexpected content: %s", content)
+			}
+
+			return &model.Message{
+				UUID:        "M100",
+				SenderUUID:  senderUUID,
+				TargetUUID:  targetUUID,
+				TargetType:  model.MessageTargetDirect,
+				MessageType: model.MessageTypeText,
+				Content:     content,
+				SentAt:      time.Now().UTC(),
+			}, nil
+		},
+	}, &stubConversationUpdater{
+		updateDirectConversationsFn: func(message *model.Message) error {
+			if message.UUID != "M100" {
+				t.Fatalf("unexpected message in conversation updater: %s", message.UUID)
+			}
+			return nil
 		},
 	})
 
@@ -267,6 +314,72 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	if incoming.Data.Content != "hello from U100" {
 		t.Fatalf("expected message content preserved, got %q", incoming.Data.Content)
+	}
+}
+
+func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	hub := NewHub()
+	users := map[string]*model.User{
+		"U100": {UUID: "U100", Status: model.UserStatusNormal},
+	}
+	authenticator := NewAuthenticator(
+		&stubTokenResolver{
+			resolveFn: func(token string) (string, error) {
+				if token != "token-a" {
+					return "", errors.New("unexpected token")
+				}
+				return "U100", nil
+			},
+		},
+		&stubUserFinder{
+			getByUUIDFn: func(uuid string) (*model.User, error) {
+				return users[uuid], nil
+			},
+		},
+	)
+	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			return nil, service.ErrMessageFriendRequired
+		},
+	}, &stubConversationUpdater{})
+
+	router := gin.New()
+	handler := NewHandler(authenticator, hub, dispatcher)
+	router.GET("/api/v1/ws", handler.Handle)
+
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	first := dialTestWebSocket(t, server.URL, "token-a")
+	t.Cleanup(func() { _ = first.Close() })
+
+	var connected wsEvent
+	readWebSocketJSON(t, first, &connected)
+
+	payload, err := EncodeCommand(TypeChatSend, SendTextMessageInput{
+		TargetUUID: "U200",
+		Content:    "hello from U100",
+	})
+	if err != nil {
+		t.Fatalf("encode command: %v", err)
+	}
+	if err := first.WriteMessage(websocket.TextMessage, payload); err != nil {
+		t.Fatalf("write websocket message: %v", err)
+	}
+
+	var errEvent struct {
+		Type string         `json:"type"`
+		Data ErrorEventData `json:"data"`
+	}
+	readWebSocketJSON(t, first, &errEvent)
+	if errEvent.Type != TypeError {
+		t.Fatalf("expected error event, got %s", errEvent.Type)
+	}
+	if errEvent.Data.Code != ErrorPermissionDenied {
+		t.Fatalf("expected error code %s, got %s", ErrorPermissionDenied, errEvent.Data.Code)
 	}
 }
 

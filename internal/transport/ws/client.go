@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 const (
@@ -29,7 +28,7 @@ var ErrClientClosed = errors.New("websocket client is closed")
 type Client struct {
 	hub            *Hub
 	conn           *websocket.Conn
-	user           *model.User
+	sessionUser    *SessionUser
 	token          string
 	send           chan []byte
 	messageHandler inboundHandler
@@ -38,16 +37,16 @@ type Client struct {
 	log            *zap.Logger
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, user *model.User, token string, messageHandler inboundHandler) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, sessionUser *SessionUser, token string, messageHandler inboundHandler) *Client {
 	clientLogger := logger.Named("ws").With(
-		zap.String("user_uuid", user.UUID),
+		zap.String("user_uuid", sessionUser.UUID),
 		zap.String("remote_addr", conn.RemoteAddr().String()),
 	)
 
 	return &Client{
 		hub:            hub,
 		conn:           conn,
-		user:           user,
+		sessionUser:    sessionUser,
 		token:          token,
 		send:           make(chan []byte, sendBufferSize),
 		messageHandler: messageHandler,

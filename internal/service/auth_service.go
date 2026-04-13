@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/repository"
 )
 
 var (
@@ -39,12 +38,22 @@ type AuthResult struct {
 	User  *model.User `json:"user"`
 }
 
-type AuthService struct {
-	repo         *repository.UserRepository
-	tokenService *TokenService
+type authRepository interface {
+	Create(user *model.User) error
+	GetByTelephone(telephone string) (*model.User, error)
 }
 
-func NewAuthService(repo *repository.UserRepository, tokenService *TokenService) *AuthService {
+type tokenIssuer interface {
+	Issue(user *model.User) (string, error)
+	Revoke(token string) error
+}
+
+type AuthService struct {
+	repo         authRepository
+	tokenService tokenIssuer
+}
+
+func NewAuthService(repo authRepository, tokenService tokenIssuer) *AuthService {
 	return &AuthService{
 		repo:         repo,
 		tokenService: tokenService,

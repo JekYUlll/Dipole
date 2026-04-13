@@ -35,7 +35,7 @@ func NewHandler(authenticator *Authenticator, hub *Hub, dispatcher inboundHandle
 }
 
 func (h *Handler) Handle(c *gin.Context) {
-	user, token, err := h.authenticator.Authenticate(c.Request)
+	sessionUser, token, err := h.authenticator.Authenticate(c.Request)
 	if err != nil {
 		h.writeAuthError(c, err)
 		return
@@ -47,16 +47,16 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	client := NewClient(h.hub, conn, user, token, h.dispatcher)
+	client := NewClient(h.hub, conn, sessionUser, token, h.dispatcher)
 	h.hub.Register(client)
 
 	if err := client.SendEvent(TypeConnected, ConnectedEventData{
-		UserUUID:        user.UUID,
-		ConnectionCount: h.hub.UserConnectionCount(user.UUID),
+		UserUUID:        sessionUser.UUID,
+		ConnectionCount: h.hub.UserConnectionCount(sessionUser.UUID),
 		OnlineUserCount: h.hub.OnlineUserCount(),
 	}); err != nil {
 		logger.Warn("enqueue websocket connected event failed",
-			zap.String("user_uuid", user.UUID),
+			zap.String("user_uuid", sessionUser.UUID),
 			zap.Error(err),
 		)
 		h.hub.Unregister(client)

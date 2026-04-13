@@ -4,27 +4,36 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type inboundHandler interface {
 	Handle(client *Client, payload []byte)
 }
 
-type Dispatcher struct {
-	hub        *Hub
-	userFinder userFinder
+type directMessageService interface {
+	SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
 }
 
-func NewDispatcher(hub *Hub, userFinder userFinder) *Dispatcher {
+type conversationUpdater interface {
+	UpdateDirectConversations(message *model.Message) error
+}
+
+type Dispatcher struct {
+	hub                 *Hub
+	messageService      directMessageService
+	conversationUpdater conversationUpdater
+}
+
+func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater) *Dispatcher {
 	return &Dispatcher{
-		hub:        hub,
-		userFinder: userFinder,
+		hub:                 hub,
+		messageService:      messageService,
+		conversationUpdater: conversationUpdater,
 	}
 }
 
@@ -54,53 +63,53 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 		return
 	}
 
-	targetUUID := strings.TrimSpace(input.TargetUUID)
-	content := strings.TrimSpace(input.Content)
-	if targetUUID == "" {
-		_ = client.SendError(ErrorBadRequest, "target_uuid is required", TypeChatSend)
-		return
-	}
-	if content == "" {
-		_ = client.SendError(ErrorBadRequest, "content is required", TypeChatSend)
-		return
-	}
-	if len([]rune(content)) > 1000 {
-		_ = client.SendError(ErrorBadRequest, "content is too long", TypeChatSend)
-		return
-	}
-
-	targetUser, err := d.userFinder.GetByUUID(targetUUID)
+	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, input.TargetUUID, input.Content)
 	if err != nil {
-		client.log.Warn("lookup websocket target user failed",
-			zap.String("target_uuid", targetUUID),
-			zap.Error(err),
-		)
-		_ = client.SendError(ErrorInternal, "target user lookup failed", TypeChatSend)
-		return
-	}
-	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
-		_ = client.SendError(ErrorTargetUnavailable, "target user is unavailable", TypeChatSend)
+		switch {
+		case errors.Is(err, service.ErrMessageTargetRequired):
+			_ = client.SendError(ErrorBadRequest, "target_uuid is required", TypeChatSend)
+		case errors.Is(err, service.ErrMessageContentRequired):
+			_ = client.SendError(ErrorBadRequest, "content is required", TypeChatSend)
+		case errors.Is(err, service.ErrMessageContentTooLong):
+			_ = client.SendError(ErrorBadRequest, "content is too long", TypeChatSend)
+		case errors.Is(err, service.ErrMessageFriendRequired):
+			_ = client.SendError(ErrorPermissionDenied, "direct message requires friendship", TypeChatSend)
+		case errors.Is(err, service.ErrMessageTargetUnavailable):
+			_ = client.SendError(ErrorTargetUnavailable, "target user is unavailable", TypeChatSend)
+		default:
+			client.log.Warn("persist websocket direct message failed", zap.Error(err))
+			_ = client.SendError(ErrorInternal, "message send failed", TypeChatSend)
+		}
 		return
 	}
 
-	message := ChatMessageData{
-		MessageID:  generateMessageID(),
-		FromUUID:   client.user.UUID,
-		TargetUUID: targetUUID,
-		Content:    content,
-		SentAt:     time.Now().UTC(),
+	if d.conversationUpdater != nil {
+		if err := d.conversationUpdater.UpdateDirectConversations(message); err != nil {
+			client.log.Warn("update direct conversations failed", zap.Error(err))
+		}
 	}
 
-	deliveredCount := d.hub.SendEventToUser(targetUUID, TypeChatMessage, message)
-	if targetUUID == client.user.UUID {
+	eventData := newChatMessageData(message)
+	deliveredCount := d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+	if message.TargetUUID == client.sessionUser.UUID {
 		deliveredCount = max(deliveredCount-1, 0)
 	}
 
 	ack := ChatSentData{
-		ChatMessageData: message,
+		ChatMessageData: eventData,
 		Delivered:       deliveredCount > 0,
 	}
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket chat ack failed", zap.Error(err))
+	}
+}
+
+func newChatMessageData(message *model.Message) ChatMessageData {
+	return ChatMessageData{
+		MessageID:  message.UUID,
+		FromUUID:   message.SenderUUID,
+		TargetUUID: message.TargetUUID,
+		Content:    message.Content,
+		SentAt:     message.SentAt,
 	}
 }

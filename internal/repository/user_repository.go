@@ -89,6 +89,19 @@ func (r *UserRepository) List(keyword string, status *int8, limit int) ([]*model
 	return users, nil
 }
 
+func (r *UserRepository) ListByUUIDs(uuids []string) ([]*model.User, error) {
+	if len(uuids) == 0 {
+		return []*model.User{}, nil
+	}
+
+	var users []*model.User
+	if err := store.DB.Where("uuid IN ?", uuids).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("list users by uuids: %w", err)
+	}
+
+	return users, nil
+}
+
 func applyUserKeywordFilter(query *gorm.DB, keyword string) *gorm.DB {
 	keyword = strings.TrimSpace(keyword)
 	if keyword == "" {

@@ -1,8 +1,6 @@
 package ws
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -20,6 +18,7 @@ const (
 	ErrorBadRequest        = "bad_request"
 	ErrorUnsupportedType   = "unsupported_type"
 	ErrorTargetUnavailable = "target_unavailable"
+	ErrorPermissionDenied  = "permission_denied"
 	ErrorInternal          = "internal"
 )
 
@@ -73,13 +72,4 @@ func EncodeCommand(eventType string, data any) ([]byte, error) {
 	}
 
 	return payload, nil
-}
-
-func generateMessageID() string {
-	buf := make([]byte, 10)
-	if _, err := rand.Read(buf); err != nil {
-		panic(fmt.Errorf("generate websocket message id: %w", err))
-	}
-
-	return "M" + hex.EncodeToString(buf)
 }

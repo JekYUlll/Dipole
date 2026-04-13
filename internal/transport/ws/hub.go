@@ -20,18 +20,18 @@ func (h *Hub) Register(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if _, ok := h.clients[client.user.UUID]; !ok {
-		h.clients[client.user.UUID] = make(map[*Client]struct{})
+	if _, ok := h.clients[client.sessionUser.UUID]; !ok {
+		h.clients[client.sessionUser.UUID] = make(map[*Client]struct{})
 	}
-	h.clients[client.user.UUID][client] = struct{}{}
+	h.clients[client.sessionUser.UUID][client] = struct{}{}
 }
 
 func (h *Hub) Unregister(client *Client) {
 	h.mu.Lock()
-	if userClients, ok := h.clients[client.user.UUID]; ok {
+	if userClients, ok := h.clients[client.sessionUser.UUID]; ok {
 		delete(userClients, client)
 		if len(userClients) == 0 {
-			delete(h.clients, client.user.UUID)
+			delete(h.clients, client.sessionUser.UUID)
 		}
 	}
 	h.mu.Unlock()
