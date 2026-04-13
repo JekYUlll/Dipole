@@ -42,10 +42,12 @@ func New() *Server {
 	conversationRepo := repository.NewConversationRepository()
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
+	adminRepo := repository.NewAdminRepository()
 	wsHub := wsTransport.NewHub()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
+	adminService := service.NewAdminService(adminRepo, wsHub)
 	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, nil, kafkaEvents)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo)
@@ -58,6 +60,7 @@ func New() *Server {
 	}
 	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled)
 	authHandler := httpHandler.NewAuthHandler(authService)
+	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService)
@@ -106,6 +109,7 @@ func New() *Server {
 				protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
 				protected.GET("/admin/users", userHandler.ListForAdmin)
 				protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
+				protected.GET("/admin/overview", adminHandler.Overview)
 			}
 		}
 

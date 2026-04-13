@@ -53,6 +53,18 @@ func (h *Hub) OnlineUserCount() int {
 	return len(h.clients)
 }
 
+func (h *Hub) TotalConnectionCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	total := 0
+	for _, userClients := range h.clients {
+		total += len(userClients)
+	}
+
+	return total
+}
+
 func (h *Hub) SendEventToUser(userUUID string, eventType string, data any) int {
 	payload, err := json.Marshal(OutboundEvent{
 		Type: eventType,
