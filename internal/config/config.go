@@ -93,6 +93,30 @@ type Presence struct {
 	TTLSeconds int    `mapstructure:"ttl_seconds"`
 }
 
+type AI struct {
+	Enabled            bool   `mapstructure:"enabled"`
+	Provider           string `mapstructure:"provider"`
+	Model              string `mapstructure:"model"`
+	APIKey             string `mapstructure:"api_key"`
+	BaseURL            string `mapstructure:"base_url"`
+	TimeoutSeconds     int    `mapstructure:"timeout_seconds"`
+	MaxContextMessages int    `mapstructure:"max_context_messages"`
+	AssistantUUID      string `mapstructure:"assistant_uuid"`
+	AssistantNickname  string `mapstructure:"assistant_nickname"`
+	AssistantTelephone string `mapstructure:"assistant_telephone"`
+	AssistantEmail     string `mapstructure:"assistant_email"`
+	AssistantAvatar    string `mapstructure:"assistant_avatar"`
+	SystemPrompt       string `mapstructure:"system_prompt"`
+}
+
+type AIProvider struct {
+	Name           string
+	Model          string
+	APIKey         string
+	BaseURL        string
+	TimeoutSeconds int
+}
+
 var (
 	cfg     *viper.Viper
 	loadErr error
@@ -154,6 +178,19 @@ func Load() error {
 		v.SetDefault("presence.enabled", true)
 		v.SetDefault("presence.node_id", "")
 		v.SetDefault("presence.ttl_seconds", 120)
+		v.SetDefault("ai.enabled", false)
+		v.SetDefault("ai.provider", "openai")
+		v.SetDefault("ai.model", "gpt-4o-mini")
+		v.SetDefault("ai.api_key", "")
+		v.SetDefault("ai.base_url", "")
+		v.SetDefault("ai.timeout_seconds", 30)
+		v.SetDefault("ai.max_context_messages", 12)
+		v.SetDefault("ai.assistant_uuid", "UAI000000000000000001")
+		v.SetDefault("ai.assistant_nickname", "Dipole AI")
+		v.SetDefault("ai.assistant_telephone", "19900000000")
+		v.SetDefault("ai.assistant_email", "ai@dipole.local")
+		v.SetDefault("ai.assistant_avatar", "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png")
+		v.SetDefault("ai.system_prompt", "You are Dipole AI, a concise and helpful instant messaging assistant. Use the conversation context to answer naturally. If the user sends a file, acknowledge the file metadata you can see. Keep answers short unless the user asks for depth.")
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -207,6 +244,19 @@ func Load() error {
 			"presence.enabled",
 			"presence.node_id",
 			"presence.ttl_seconds",
+			"ai.enabled",
+			"ai.provider",
+			"ai.model",
+			"ai.api_key",
+			"ai.base_url",
+			"ai.timeout_seconds",
+			"ai.max_context_messages",
+			"ai.assistant_uuid",
+			"ai.assistant_nickname",
+			"ai.assistant_telephone",
+			"ai.assistant_email",
+			"ai.assistant_avatar",
+			"ai.system_prompt",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -382,6 +432,40 @@ func PresenceConfig() Presence {
 	presenceConfig.TTLSeconds = cfg.GetInt("presence.ttl_seconds")
 
 	return presenceConfig
+}
+
+func AIConfig() AI {
+	MustLoad()
+
+	var aiConfig AI
+	if err := cfg.UnmarshalKey("ai", &aiConfig); err != nil {
+		panic(fmt.Errorf("unmarshal ai config: %w", err))
+	}
+	aiConfig.Enabled = cfg.GetBool("ai.enabled")
+	aiConfig.Provider = cfg.GetString("ai.provider")
+	aiConfig.Model = cfg.GetString("ai.model")
+	aiConfig.APIKey = cfg.GetString("ai.api_key")
+	aiConfig.BaseURL = cfg.GetString("ai.base_url")
+	aiConfig.TimeoutSeconds = cfg.GetInt("ai.timeout_seconds")
+	aiConfig.MaxContextMessages = cfg.GetInt("ai.max_context_messages")
+	aiConfig.AssistantUUID = cfg.GetString("ai.assistant_uuid")
+	aiConfig.AssistantNickname = cfg.GetString("ai.assistant_nickname")
+	aiConfig.AssistantTelephone = cfg.GetString("ai.assistant_telephone")
+	aiConfig.AssistantEmail = cfg.GetString("ai.assistant_email")
+	aiConfig.AssistantAvatar = cfg.GetString("ai.assistant_avatar")
+	aiConfig.SystemPrompt = cfg.GetString("ai.system_prompt")
+
+	return aiConfig
+}
+
+func (a AI) DefaultProvider() AIProvider {
+	return AIProvider{
+		Name:           strings.TrimSpace(a.Provider),
+		Model:          strings.TrimSpace(a.Model),
+		APIKey:         strings.TrimSpace(a.APIKey),
+		BaseURL:        strings.TrimSpace(a.BaseURL),
+		TimeoutSeconds: a.TimeoutSeconds,
+	}
 }
 
 func Addr() string {

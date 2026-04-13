@@ -106,8 +106,10 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
 		return nil, ErrMessageTargetUnavailable
 	}
-	if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
-		return nil, err
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
+			return nil, err
+		}
 	}
 
 	message := &model.Message{
@@ -135,6 +137,58 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 	return message, nil
 }
 
+func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
+	assistantUUID = strings.TrimSpace(assistantUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	content = strings.TrimSpace(content)
+	if assistantUUID == "" || targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if content == "" {
+		return nil, ErrMessageContentRequired
+	}
+
+	assistantUser, err := s.userFinder.GetByUUID(assistantUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find assistant user in send assistant message: %w", err)
+	}
+	if assistantUser == nil || !assistantUser.IsAssistant() || assistantUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send assistant message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	message := &model.Message{
+		UUID:            generateMessageUUID(),
+		ConversationKey: model.DirectConversationKey(assistantUUID, targetUUID),
+		SenderUUID:      assistantUUID,
+		TargetType:      model.MessageTargetDirect,
+		TargetUUID:      targetUUID,
+		MessageType:     model.MessageTypeAIText,
+		Content:         content,
+		SentAt:          time.Now().UTC(),
+	}
+
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist assistant message: %w", err)
+		}
+		return message, nil
+	}
+
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
 func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {
@@ -148,8 +202,10 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 	if targetUser == nil {
 		return nil, ErrMessageTargetNotFound
 	}
-	if err := s.ensureDirectFriendship(currentUserUUID, targetUUID); err != nil {
-		return nil, err
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(currentUserUUID, targetUUID); err != nil {
+			return nil, err
+		}
 	}
 
 	messages, err := s.repo.ListByConversationKey(
@@ -228,8 +284,10 @@ func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID 
 	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
 		return nil, ErrMessageTargetUnavailable
 	}
-	if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
-		return nil, err
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
+			return nil, err
+		}
 	}
 
 	message, err := s.newFileMessage(senderUUID, targetUUID, model.MessageTargetDirect, fileUUID)

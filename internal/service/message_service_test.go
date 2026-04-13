@@ -258,6 +258,33 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 	}
 }
 
+func TestMessageServiceSendDirectMessageAllowsAssistantTarget(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	userFinder := &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"UAI": {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+		},
+	}
+	service := NewMessageService(repo, userFinder, &stubFriendshipChecker{
+		friendships: map[string]map[string]bool{
+			"U100": {},
+		},
+	}, nil, nil, nil)
+
+	message, err := service.SendDirectMessage("U100", "UAI", "hello ai")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message.TargetUUID != "UAI" {
+		t.Fatalf("expected assistant target UAI, got %s", message.TargetUUID)
+	}
+	if len(repo.createdMessages) != 1 {
+		t.Fatalf("expected assistant direct message to persist, got %d", len(repo.createdMessages))
+	}
+}
+
 func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -325,6 +352,33 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
 		t.Fatalf("expected ErrMessageFriendRequired, got %v", err)
+	}
+}
+
+func TestMessageServiceListDirectMessagesAllowsAssistantTarget(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{
+			{ID: 1, UUID: "M1"},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"UAI": {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+		},
+	}, &stubFriendshipChecker{
+		friendships: map[string]map[string]bool{
+			"U100": {},
+		},
+	}, nil, nil, nil)
+
+	messages, err := service.ListDirectMessages("U100", "UAI", 0, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(messages))
 	}
 }
 
@@ -496,6 +550,29 @@ func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
 	_, err := service.SendDirectFileMessage("U100", "U200", "")
 	if !errors.Is(err, ErrMessageFileRequired) {
 		t.Fatalf("expected ErrMessageFileRequired, got %v", err)
+	}
+}
+
+func TestMessageServiceSendAssistantTextMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+			"U100": {UUID: "U100", Status: model.UserStatusNormal},
+		},
+	}, &stubFriendshipChecker{}, nil, nil, nil)
+
+	message, err := service.SendAssistantTextMessage("UAI", "U100", "hello from ai")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message.MessageType != model.MessageTypeAIText {
+		t.Fatalf("expected ai text message type, got %d", message.MessageType)
+	}
+	if len(repo.createdMessages) != 1 {
+		t.Fatalf("expected one persisted assistant message, got %d", len(repo.createdMessages))
 	}
 }
 

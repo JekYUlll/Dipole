@@ -14,6 +14,8 @@ const (
 const (
 	MessageTypeText int8 = iota
 	MessageTypeFile
+	MessageTypeAIText
+	MessageTypeSystem
 )
 
 type Message struct {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
@@ -30,6 +31,36 @@ func (r *UserRepository) Create(user *model.User) error {
 		defer cancel()
 		_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
 	}
+
+	return nil
+}
+
+func (r *UserRepository) UpsertAssistant(user *model.User) error {
+	if user == nil {
+		return nil
+	}
+
+	assignments := map[string]any{
+		"nickname":      user.Nickname,
+		"telephone":     user.Telephone,
+		"email":         user.Email,
+		"avatar":        user.Avatar,
+		"password_hash": user.PasswordHash,
+		"is_admin":      user.IsAdmin,
+		"user_type":     user.UserType,
+		"status":        user.Status,
+	}
+	if err := store.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "uuid"}},
+		DoUpdates: clause.Assignments(assignments),
+	}).Create(user).Error; err != nil {
+		return fmt.Errorf("upsert assistant user: %w", err)
+	}
+
+	platformBloom.AddUser(user.UUID)
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+	_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
 
 	return nil
 }

@@ -20,6 +20,7 @@ func AutoMigrate() error {
 		&model.ContactApplication{},
 		&model.Group{},
 		&model.GroupMember{},
+		&model.AICallLog{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
 	}

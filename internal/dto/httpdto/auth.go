@@ -55,6 +55,7 @@ type PublicUserResponse struct {
 	UUID     string `json:"uuid"`
 	Nickname string `json:"nickname"`
 	Avatar   string `json:"avatar"`
+	UserType int8   `json:"user_type"`
 	Status   int8   `json:"status"`
 }
 
@@ -66,6 +67,7 @@ type PrivateUserResponse struct {
 	Email     string    `json:"email"`
 	Avatar    string    `json:"avatar"`
 	IsAdmin   bool      `json:"is_admin"`
+	UserType  int8      `json:"user_type"`
 	Status    int8      `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -112,6 +114,7 @@ func ToPublicUserResponse(user *model.User) *PublicUserResponse {
 		UUID:     user.UUID,
 		Nickname: user.Nickname,
 		Avatar:   user.Avatar,
+		UserType: user.UserType,
 		Status:   user.Status,
 	}
 }
@@ -129,6 +132,7 @@ func ToPrivateUserResponse(user *model.User) *PrivateUserResponse {
 		Email:     user.Email,
 		Avatar:    user.Avatar,
 		IsAdmin:   user.IsAdmin,
+		UserType:  user.UserType,
 		Status:    user.Status,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,

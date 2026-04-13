@@ -7,12 +7,15 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
+	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Runtime struct {
@@ -86,6 +89,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err := store.AutoMigrate(); err != nil {
 		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
+	if err := ensureAIAssistantUser(); err != nil {
+		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
+	}
 	if err := platformBloom.Init(); err != nil {
 		return nil, fmt.Errorf("bloom filter init failed: %w", err)
 	}
@@ -96,7 +102,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	)
 
 	srv := server.New()
-	RegisterKafkaHandlers(srv.WSHub())
+	if err := RegisterKafkaHandlers(srv.WSHub()); err != nil {
+		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
+	}
 	if platformKafka.Subscriber != nil {
 		if err := platformKafka.Subscriber.Start(ctx); err != nil {
 			return nil, fmt.Errorf("kafka consumer start failed: %w", err)
@@ -149,5 +157,43 @@ func ensureTLSFiles(tlsCfg config.TLS) error {
 		return err
 	}
 
+	return nil
+}
+
+func ensureAIAssistantUser() error {
+	cfg := config.AIConfig()
+	if !cfg.Enabled {
+		return nil
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("dipole-ai-assistant"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("generate ai assistant password hash: %w", err)
+	}
+
+	assistant := &model.User{
+		UUID:         cfg.AssistantUUID,
+		Nickname:     cfg.AssistantNickname,
+		Telephone:    cfg.AssistantTelephone,
+		Email:        cfg.AssistantEmail,
+		Avatar:       cfg.AssistantAvatar,
+		PasswordHash: string(passwordHash),
+		IsAdmin:      false,
+		UserType:     model.UserTypeAssistant,
+		Status:       model.UserStatusNormal,
+	}
+	if assistant.Avatar == "" {
+		assistant.Avatar = model.DefaultAvatarURL
+	}
+
+	if err := repository.NewUserRepository().UpsertAssistant(assistant); err != nil {
+		return err
+	}
+
+	logger.Info("ai assistant user ensured",
+		zap.String("assistant_uuid", assistant.UUID),
+		zap.String("provider", cfg.Provider),
+		zap.String("model", cfg.Model),
+	)
 	return nil
 }

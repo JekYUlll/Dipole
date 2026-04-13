@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -23,6 +24,11 @@ import (
 type Server struct {
 	engine *gin.Engine
 	wsHub  *wsTransport.Hub
+}
+
+type serverEventPublisher interface {
+	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
+	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
 }
 
 func New() *Server {
@@ -55,7 +61,10 @@ func New() *Server {
 	userService := service.NewUserService(userRepo)
 	fileService := service.NewFileService(fileRepo, platformStorage.Client)
 	adminService := service.NewAdminService(adminRepo, wsHub)
-	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
+	var kafkaEvents serverEventPublisher
+	if config.KafkaConfig().Enabled {
+		kafkaEvents = platformKafka.NewJSONPublisher(platformKafka.Client)
+	}
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)

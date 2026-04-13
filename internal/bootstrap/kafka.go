@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
+	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -29,26 +31,40 @@ type kafkaWSEventSender interface {
 	DisconnectAllConnections(userUUID string, reason string) int
 }
 
-func RegisterKafkaHandlers(hub kafkaWSEventSender) {
+type kafkaEventPublisher interface {
+	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
+	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
+}
+
+func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	if platformKafka.Subscriber == nil {
-		return
+		return nil
 	}
 
+	var events kafkaEventPublisher
+	if platformKafka.Client != nil {
+		events = platformKafka.NewJSONPublisher(platformKafka.Client)
+	}
 	messageService := service.NewMessageService(
 		repository.NewMessageRepository(),
 		repository.NewUserRepository(),
 		repository.NewContactRepository(),
 		repository.NewGroupRepository(),
 		service.NewFileService(repository.NewFileRepository(), nil),
-		platformKafka.NewJSONPublisher(platformKafka.Client),
+		events,
 	)
 	conversationService := service.NewConversationService(
 		repository.NewConversationRepository(),
 		repository.NewUserRepository(),
 		repository.NewGroupRepository(),
 		nil,
-		platformKafka.NewJSONPublisher(platformKafka.Client),
+		events,
 	)
+	if aiService, err := newAIService(messageService); err != nil {
+		return err
+	} else if aiService != nil {
+		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
+	}
 
 	platformKafka.Subscriber.Register("message.direct.send_requested", persistDirectMessageHandler(messageService))
 	platformKafka.Subscriber.Register("message.group.send_requested", persistGroupMessageHandler(messageService))
@@ -67,6 +83,8 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) {
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
 	}
+
+	return nil
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {
@@ -274,6 +292,53 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			LastReadMessageUUID: payload.LastReadMessageUUID,
 			ReadAt:              payload.ReadAt,
 		})
+
+		return nil
+	}
+}
+
+func newAIService(messageService *service.MessageService) (*aiModule.Service, error) {
+	if !config.AIConfig().Enabled {
+		return nil, nil
+	}
+
+	userRepo := repository.NewUserRepository()
+	contextBuilder := aiModule.NewContextBuilder(
+		repository.NewMessageRepository(),
+		userRepo,
+		config.AIConfig().MaxContextMessages,
+	)
+	agent, err := aiModule.NewConfiguredAgent(
+		context.Background(),
+		aiModule.NewTools(contextBuilder, userRepo, config.AIConfig().AssistantUUID)...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("init ai agent: %w", err)
+	}
+
+	return aiModule.NewService(
+		contextBuilder,
+		repository.NewAICallLogRepository(),
+		messageService,
+		agent,
+	), nil
+}
+
+func handleAIDirectReply(aiService *aiModule.Service) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		payload, err := decodeMessageEventPayload(event)
+		if err != nil {
+			logger.Warn("decode ai trigger message payload failed", zap.Error(err))
+			return err
+		}
+
+		if err := aiService.HandleDirectMessage(ctx, servicePayloadToMessage(payload)); err != nil {
+			logger.Warn("handle ai direct reply failed",
+				zap.String("message_id", payload.MessageID),
+				zap.String("target_uuid", payload.TargetUUID),
+				zap.Error(err),
+			)
+		}
 
 		return nil
 	}

@@ -160,6 +160,18 @@ func buildMessagePreview(message *model.Message) string {
 			return "[file] " + message.FileName
 		}
 		return "[file]"
+	case model.MessageTypeAIText:
+		runes := []rune(message.Content)
+		if len(runes) <= 100 {
+			return message.Content
+		}
+		return string(runes[:100])
+	case model.MessageTypeSystem:
+		runes := []rune(message.Content)
+		if len(runes) <= 90 {
+			return "[system] " + message.Content
+		}
+		return "[system] " + string(runes[:90])
 	default:
 		return "[unsupported]"
 	}
