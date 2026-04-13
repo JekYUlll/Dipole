@@ -23,8 +23,18 @@ type HandleContactApplicationRequest struct {
 	Action string `json:"action" binding:"required,oneof=accept reject"`
 }
 
+type UpdateContactRemarkRequest struct {
+	Remark string `json:"remark" binding:"max=50"`
+}
+
+type UpdateContactBlockStatusRequest struct {
+	Blocked bool `json:"blocked"`
+}
+
 type ContactResponse struct {
 	User      *PublicUserResponse `json:"user"`
+	Remark    string              `json:"remark"`
+	Status    int8                `json:"status"`
 	CreatedAt time.Time           `json:"created_at"`
 }
 
@@ -36,6 +46,8 @@ func ToContactResponses(items []*service.ContactListItem) []*ContactResponse {
 		}
 		response = append(response, &ContactResponse{
 			User:      ToPublicUserResponse(item.User),
+			Remark:    item.Remark,
+			Status:    item.Status,
 			CreatedAt: item.CreatedAt,
 		})
 	}

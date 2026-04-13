@@ -57,4 +57,5 @@ const (
 	ContactApplicationHandled  int = 100507
 	ContactPermissionDenied    int = 100508
 	ContactActionInvalid       int = 100509
+	ContactRemarkTooLong       int = 100510
 )

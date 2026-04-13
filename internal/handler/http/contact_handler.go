@@ -21,6 +21,8 @@ type contactService interface {
 	ListOutgoingApplications(currentUserUUID string) ([]*service.ContactApplicationView, error)
 	HandleApplication(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error)
 	DeleteFriend(currentUserUUID, friendUUID string) error
+	UpdateRemark(currentUserUUID, friendUUID, remark string) (*model.Contact, error)
+	UpdateBlockStatus(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error)
 }
 
 type ContactHandler struct {
@@ -181,5 +183,73 @@ func (h *ContactHandler) DeleteFriend(c *gin.Context) {
 
 	Success(c, gin.H{
 		"message": "friend deleted",
+	})
+}
+
+func (h *ContactHandler) UpdateRemark(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	var request httpdto.UpdateContactRemarkRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
+		return
+	}
+
+	contact, err := h.service.UpdateRemark(currentUser.UUID, c.Param("friend_uuid"), request.Remark)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrContactTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "friend_uuid is required")
+		case errors.Is(err, service.ErrContactTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "friend relationship not found")
+		case errors.Is(err, service.ErrContactRemarkTooLong):
+			ErrorWithCode(c, http.StatusBadRequest, code.ContactRemarkTooLong, "remark is too long")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, gin.H{
+		"friend_uuid": contact.FriendUUID,
+		"remark":      contact.Remark,
+		"status":      contact.Status,
+	})
+}
+
+func (h *ContactHandler) UpdateBlockStatus(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	var request httpdto.UpdateContactBlockStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
+		return
+	}
+
+	contact, err := h.service.UpdateBlockStatus(currentUser.UUID, c.Param("friend_uuid"), request.Blocked)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrContactTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "friend_uuid is required")
+		case errors.Is(err, service.ErrContactTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "friend relationship not found")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, gin.H{
+		"friend_uuid": contact.FriendUUID,
+		"blocked":     contact.Status == model.ContactStatusBlocked,
+		"status":      contact.Status,
 	})
 }

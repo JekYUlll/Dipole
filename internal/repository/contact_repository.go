@@ -29,11 +29,30 @@ func (r *ContactRepository) AreFriends(userUUID, friendUUID string) (bool, error
 	return count > 0, nil
 }
 
+func (r *ContactRepository) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
+	var count int64
+	if err := store.DB.Model(&model.Contact{}).
+		Where(
+			"(user_uuid = ? AND friend_uuid = ? AND status = ?) OR (user_uuid = ? AND friend_uuid = ? AND status = ?)",
+			userUUID,
+			friendUUID,
+			model.ContactStatusNormal,
+			friendUUID,
+			userUUID,
+			model.ContactStatusNormal,
+		).
+		Count(&count).Error; err != nil {
+		return false, fmt.Errorf("check direct message contact permission: %w", err)
+	}
+
+	return count == 2, nil
+}
+
 func (r *ContactRepository) CreateFriendship(userOneUUID, userTwoUUID string) error {
 	now := time.Now().UTC()
 	contacts := []*model.Contact{
-		{UserUUID: userOneUUID, FriendUUID: userTwoUUID, CreatedAt: now, UpdatedAt: now},
-		{UserUUID: userTwoUUID, FriendUUID: userOneUUID, CreatedAt: now, UpdatedAt: now},
+		{UserUUID: userOneUUID, FriendUUID: userTwoUUID, Status: model.ContactStatusNormal, CreatedAt: now, UpdatedAt: now},
+		{UserUUID: userTwoUUID, FriendUUID: userOneUUID, Status: model.ContactStatusNormal, CreatedAt: now, UpdatedAt: now},
 	}
 
 	if err := store.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&contacts).Error; err != nil {
@@ -64,6 +83,27 @@ func (r *ContactRepository) ListFriends(userUUID string) ([]*model.Contact, erro
 	}
 
 	return contacts, nil
+}
+
+func (r *ContactRepository) GetContact(userUUID, friendUUID string) (*model.Contact, error) {
+	var contact model.Contact
+	if err := store.DB.Where("user_uuid = ? AND friend_uuid = ?", userUUID, friendUUID).First(&contact).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("get contact: %w", err)
+	}
+
+	return &contact, nil
+}
+
+func (r *ContactRepository) UpdateContact(contact *model.Contact) error {
+	if err := store.DB.Save(contact).Error; err != nil {
+		return fmt.Errorf("update contact: %w", err)
+	}
+
+	return nil
 }
 
 func (r *ContactRepository) CreateApplication(application *model.ContactApplication) error {

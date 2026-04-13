@@ -30,7 +30,7 @@ type messageUserFinder interface {
 }
 
 type friendshipChecker interface {
-	AreFriends(userUUID, friendUUID string) (bool, error)
+	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 }
 
 type MessageService struct {
@@ -127,7 +127,7 @@ func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) err
 		return nil
 	}
 
-	areFriends, err := s.friendChecker.AreFriends(strings.TrimSpace(userUUID), strings.TrimSpace(targetUUID))
+	areFriends, err := s.friendChecker.CanSendDirectMessage(strings.TrimSpace(userUUID), strings.TrimSpace(targetUUID))
 	if err != nil {
 		return fmt.Errorf("check friendship in direct message: %w", err)
 	}

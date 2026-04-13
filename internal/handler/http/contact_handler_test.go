@@ -23,6 +23,8 @@ type stubContactService struct {
 	listOutgoingFn      func(currentUserUUID string) ([]*service.ContactApplicationView, error)
 	handleApplicationFn func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error)
 	deleteFriendFn      func(currentUserUUID, friendUUID string) error
+	updateRemarkFn      func(currentUserUUID, friendUUID, remark string) (*model.Contact, error)
+	updateBlockStatusFn func(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error)
 }
 
 func (s *stubContactService) Apply(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
@@ -42,6 +44,12 @@ func (s *stubContactService) HandleApplication(currentUserUUID string, applicati
 }
 func (s *stubContactService) DeleteFriend(currentUserUUID, friendUUID string) error {
 	return s.deleteFriendFn(currentUserUUID, friendUUID)
+}
+func (s *stubContactService) UpdateRemark(currentUserUUID, friendUUID, remark string) (*model.Contact, error) {
+	return s.updateRemarkFn(currentUserUUID, friendUUID, remark)
+}
+func (s *stubContactService) UpdateBlockStatus(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error) {
+	return s.updateBlockStatusFn(currentUserUUID, friendUUID, blocked)
 }
 
 func TestContactHandlerApplySuccess(t *testing.T) {
@@ -170,5 +178,53 @@ func TestContactHandlerDeleteFriendNotFound(t *testing.T) {
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", recorder.Code)
+	}
+}
+
+func TestContactHandlerUpdateRemarkSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewContactHandler(&stubContactService{
+		updateRemarkFn: func(currentUserUUID, friendUUID, remark string) (*model.Contact, error) {
+			return &model.Contact{UserUUID: currentUserUUID, FriendUUID: friendUUID, Remark: remark, Status: model.ContactStatusNormal}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/contacts/U200/remark", strings.NewReader(`{"remark":"buddy"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "friend_uuid", Value: "U200"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.UpdateRemark(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestContactHandlerUpdateBlockStatusSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewContactHandler(&stubContactService{
+		updateBlockStatusFn: func(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error) {
+			return &model.Contact{UserUUID: currentUserUUID, FriendUUID: friendUUID, Status: model.ContactStatusBlocked}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/contacts/U200/block", strings.NewReader(`{"blocked":true}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "friend_uuid", Value: "U200"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.UpdateBlockStatus(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }

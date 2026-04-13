@@ -20,6 +20,7 @@ var (
 	ErrContactApplicationHandled  = errors.New("contact application has been handled")
 	ErrContactPermissionDenied    = errors.New("contact permission denied")
 	ErrContactActionInvalid       = errors.New("contact action is invalid")
+	ErrContactRemarkTooLong       = errors.New("contact remark is too long")
 )
 
 const (
@@ -29,9 +30,12 @@ const (
 
 type contactRepository interface {
 	AreFriends(userUUID, friendUUID string) (bool, error)
+	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 	CreateFriendship(userOneUUID, userTwoUUID string) error
 	DeleteFriendship(userOneUUID, userTwoUUID string) error
 	ListFriends(userUUID string) ([]*model.Contact, error)
+	GetContact(userUUID, friendUUID string) (*model.Contact, error)
+	UpdateContact(contact *model.Contact) error
 	CreateApplication(application *model.ContactApplication) error
 	GetApplicationByPair(applicantUUID, targetUUID string) (*model.ContactApplication, error)
 	GetApplicationByID(id uint) (*model.ContactApplication, error)
@@ -52,6 +56,8 @@ type ApplyContactInput struct {
 
 type ContactListItem struct {
 	User      *model.User
+	Remark    string
+	Status    int8
 	CreatedAt time.Time
 }
 
@@ -171,11 +177,67 @@ func (s *ContactService) ListFriends(currentUserUUID string) ([]*ContactListItem
 		}
 		items = append(items, &ContactListItem{
 			User:      user,
+			Remark:    contact.Remark,
+			Status:    contact.Status,
 			CreatedAt: contact.CreatedAt,
 		})
 	}
 
 	return items, nil
+}
+
+func (s *ContactService) UpdateRemark(currentUserUUID, friendUUID, remark string) (*model.Contact, error) {
+	friendUUID = strings.TrimSpace(friendUUID)
+	if friendUUID == "" {
+		return nil, ErrContactTargetRequired
+	}
+
+	contact, err := s.repo.GetContact(currentUserUUID, friendUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get contact in update remark: %w", err)
+	}
+	if contact == nil {
+		return nil, ErrContactTargetNotFound
+	}
+
+	remark = strings.TrimSpace(remark)
+	if len([]rune(remark)) > 50 {
+		return nil, ErrContactRemarkTooLong
+	}
+
+	contact.Remark = remark
+	if err := s.repo.UpdateContact(contact); err != nil {
+		return nil, fmt.Errorf("update contact remark: %w", err)
+	}
+
+	return contact, nil
+}
+
+func (s *ContactService) UpdateBlockStatus(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error) {
+	friendUUID = strings.TrimSpace(friendUUID)
+	if friendUUID == "" {
+		return nil, ErrContactTargetRequired
+	}
+
+	contact, err := s.repo.GetContact(currentUserUUID, friendUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get contact in update block status: %w", err)
+	}
+	if contact == nil {
+		return nil, ErrContactTargetNotFound
+	}
+
+	if blocked {
+		contact.Status = model.ContactStatusBlocked
+	} else {
+		contact.Status = model.ContactStatusNormal
+	}
+
+	if err := s.repo.UpdateContact(contact); err != nil {
+		return nil, fmt.Errorf("update contact block status: %w", err)
+	}
+
+	return contact, nil
 }
 
 func (s *ContactService) ListIncomingApplications(currentUserUUID string) ([]*ContactApplicationView, error) {

@@ -10,6 +10,8 @@ import (
 
 type stubContactRepository struct {
 	friendships          map[string]map[string]bool
+	canSend              map[string]map[string]bool
+	contacts             map[string]map[string]*model.Contact
 	applications         map[uint]*model.ContactApplication
 	nextApplicationID    uint
 	incomingApplications []*model.ContactApplication
@@ -19,6 +21,8 @@ type stubContactRepository struct {
 func newStubContactRepository() *stubContactRepository {
 	return &stubContactRepository{
 		friendships:       map[string]map[string]bool{},
+		canSend:           map[string]map[string]bool{},
+		contacts:          map[string]map[string]*model.Contact{},
 		applications:      map[uint]*model.ContactApplication{},
 		nextApplicationID: 1,
 	}
@@ -26,6 +30,10 @@ func newStubContactRepository() *stubContactRepository {
 
 func (r *stubContactRepository) AreFriends(userUUID, friendUUID string) (bool, error) {
 	return r.friendships[userUUID][friendUUID], nil
+}
+
+func (r *stubContactRepository) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
+	return r.canSend[userUUID][friendUUID], nil
 }
 
 func (r *stubContactRepository) CreateFriendship(userOneUUID, userTwoUUID string) error {
@@ -37,25 +45,61 @@ func (r *stubContactRepository) CreateFriendship(userOneUUID, userTwoUUID string
 	}
 	r.friendships[userOneUUID][userTwoUUID] = true
 	r.friendships[userTwoUUID][userOneUUID] = true
+	if r.canSend[userOneUUID] == nil {
+		r.canSend[userOneUUID] = map[string]bool{}
+	}
+	if r.canSend[userTwoUUID] == nil {
+		r.canSend[userTwoUUID] = map[string]bool{}
+	}
+	r.canSend[userOneUUID][userTwoUUID] = true
+	r.canSend[userTwoUUID][userOneUUID] = true
+	if r.contacts[userOneUUID] == nil {
+		r.contacts[userOneUUID] = map[string]*model.Contact{}
+	}
+	if r.contacts[userTwoUUID] == nil {
+		r.contacts[userTwoUUID] = map[string]*model.Contact{}
+	}
+	r.contacts[userOneUUID][userTwoUUID] = &model.Contact{UserUUID: userOneUUID, FriendUUID: userTwoUUID, Status: model.ContactStatusNormal, CreatedAt: time.Now().UTC()}
+	r.contacts[userTwoUUID][userOneUUID] = &model.Contact{UserUUID: userTwoUUID, FriendUUID: userOneUUID, Status: model.ContactStatusNormal, CreatedAt: time.Now().UTC()}
 	return nil
 }
 
 func (r *stubContactRepository) DeleteFriendship(userOneUUID, userTwoUUID string) error {
 	delete(r.friendships[userOneUUID], userTwoUUID)
 	delete(r.friendships[userTwoUUID], userOneUUID)
+	delete(r.canSend[userOneUUID], userTwoUUID)
+	delete(r.canSend[userTwoUUID], userOneUUID)
+	delete(r.contacts[userOneUUID], userTwoUUID)
+	delete(r.contacts[userTwoUUID], userOneUUID)
 	return nil
 }
 
 func (r *stubContactRepository) ListFriends(userUUID string) ([]*model.Contact, error) {
 	contacts := make([]*model.Contact, 0, len(r.friendships[userUUID]))
 	for friendUUID := range r.friendships[userUUID] {
-		contacts = append(contacts, &model.Contact{
-			UserUUID:   userUUID,
-			FriendUUID: friendUUID,
-			CreatedAt:  time.Now().UTC(),
-		})
+		contact := r.contacts[userUUID][friendUUID]
+		if contact == nil {
+			contact = &model.Contact{UserUUID: userUUID, FriendUUID: friendUUID, Status: model.ContactStatusNormal, CreatedAt: time.Now().UTC()}
+		}
+		contacts = append(contacts, contact)
 	}
 	return contacts, nil
+}
+
+func (r *stubContactRepository) GetContact(userUUID, friendUUID string) (*model.Contact, error) {
+	return r.contacts[userUUID][friendUUID], nil
+}
+
+func (r *stubContactRepository) UpdateContact(contact *model.Contact) error {
+	if r.contacts[contact.UserUUID] == nil {
+		r.contacts[contact.UserUUID] = map[string]*model.Contact{}
+	}
+	r.contacts[contact.UserUUID][contact.FriendUUID] = contact
+	if r.canSend[contact.UserUUID] == nil {
+		r.canSend[contact.UserUUID] = map[string]bool{}
+	}
+	r.canSend[contact.UserUUID][contact.FriendUUID] = contact.Status == model.ContactStatusNormal
+	return nil
 }
 
 func (r *stubContactRepository) CreateApplication(application *model.ContactApplication) error {
@@ -230,6 +274,41 @@ func TestContactServiceListFriendsSuccess(t *testing.T) {
 	}
 	if items[0].User.UUID != "U200" {
 		t.Fatalf("expected friend U200, got %s", items[0].User.UUID)
+	}
+}
+
+func TestContactServiceUpdateRemarkSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	_ = repo.CreateFriendship("U100", "U200")
+	service := NewContactService(repo, &stubContactUserFinder{})
+
+	contact, err := service.UpdateRemark("U100", "U200", "teammate")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if contact.Remark != "teammate" {
+		t.Fatalf("expected remark updated, got %s", contact.Remark)
+	}
+}
+
+func TestContactServiceUpdateBlockStatusSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	_ = repo.CreateFriendship("U100", "U200")
+	service := NewContactService(repo, &stubContactUserFinder{})
+
+	contact, err := service.UpdateBlockStatus("U100", "U200", true)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if contact.Status != model.ContactStatusBlocked {
+		t.Fatalf("expected blocked status, got %d", contact.Status)
+	}
+	if repo.canSend["U100"]["U200"] {
+		t.Fatalf("expected blocked contact to disable direct messaging")
 	}
 }
 

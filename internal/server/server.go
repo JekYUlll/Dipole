@@ -73,6 +73,8 @@ func New() *Server {
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
 			protected.GET("/contacts", contactHandler.ListFriends)
 			protected.DELETE("/contacts/:friend_uuid", contactHandler.DeleteFriend)
+			protected.PATCH("/contacts/:friend_uuid/remark", contactHandler.UpdateRemark)
+			protected.PATCH("/contacts/:friend_uuid/block", contactHandler.UpdateBlockStatus)
 			protected.POST("/contacts/applications", contactHandler.Apply)
 			protected.GET("/contacts/applications", contactHandler.ListApplications)
 			protected.PATCH("/contacts/applications/:id", contactHandler.HandleApplication)

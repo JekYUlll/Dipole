@@ -43,7 +43,7 @@ type stubFriendshipChecker struct {
 	err         error
 }
 
-func (c *stubFriendshipChecker) AreFriends(userUUID, friendUUID string) (bool, error) {
+func (c *stubFriendshipChecker) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
 	if c.err != nil {
 		return false, c.err
 	}
