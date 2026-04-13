@@ -77,6 +77,22 @@ type Storage struct {
 	FileMaxSizeMB int64  `mapstructure:"file_max_size_mb"`
 }
 
+type RateLimit struct {
+	Enabled                 bool `mapstructure:"enabled"`
+	LoginLimit              int  `mapstructure:"login_limit"`
+	LoginWindowSeconds      int  `mapstructure:"login_window_seconds"`
+	MessageLimit            int  `mapstructure:"message_limit"`
+	MessageWindowSeconds    int  `mapstructure:"message_window_seconds"`
+	FileUploadLimit         int  `mapstructure:"file_upload_limit"`
+	FileUploadWindowSeconds int  `mapstructure:"file_upload_window_seconds"`
+}
+
+type Presence struct {
+	Enabled    bool   `mapstructure:"enabled"`
+	NodeID     string `mapstructure:"node_id"`
+	TTLSeconds int    `mapstructure:"ttl_seconds"`
+}
+
 var (
 	cfg     *viper.Viper
 	loadErr error
@@ -128,6 +144,16 @@ func Load() error {
 		v.SetDefault("storage.bucket", "dipole-files")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
+		v.SetDefault("rate_limit.enabled", true)
+		v.SetDefault("rate_limit.login_limit", 10)
+		v.SetDefault("rate_limit.login_window_seconds", 300)
+		v.SetDefault("rate_limit.message_limit", 120)
+		v.SetDefault("rate_limit.message_window_seconds", 60)
+		v.SetDefault("rate_limit.file_upload_limit", 10)
+		v.SetDefault("rate_limit.file_upload_window_seconds", 300)
+		v.SetDefault("presence.enabled", true)
+		v.SetDefault("presence.node_id", "")
+		v.SetDefault("presence.ttl_seconds", 120)
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -171,6 +197,16 @@ func Load() error {
 			"storage.bucket",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
+			"rate_limit.enabled",
+			"rate_limit.login_limit",
+			"rate_limit.login_window_seconds",
+			"rate_limit.message_limit",
+			"rate_limit.message_window_seconds",
+			"rate_limit.file_upload_limit",
+			"rate_limit.file_upload_window_seconds",
+			"presence.enabled",
+			"presence.node_id",
+			"presence.ttl_seconds",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -314,6 +350,38 @@ func StorageConfig() Storage {
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 
 	return storageConfig
+}
+
+func RateLimitConfig() RateLimit {
+	MustLoad()
+
+	var rateLimitConfig RateLimit
+	if err := cfg.UnmarshalKey("rate_limit", &rateLimitConfig); err != nil {
+		panic(fmt.Errorf("unmarshal rate limit config: %w", err))
+	}
+	rateLimitConfig.Enabled = cfg.GetBool("rate_limit.enabled")
+	rateLimitConfig.LoginLimit = cfg.GetInt("rate_limit.login_limit")
+	rateLimitConfig.LoginWindowSeconds = cfg.GetInt("rate_limit.login_window_seconds")
+	rateLimitConfig.MessageLimit = cfg.GetInt("rate_limit.message_limit")
+	rateLimitConfig.MessageWindowSeconds = cfg.GetInt("rate_limit.message_window_seconds")
+	rateLimitConfig.FileUploadLimit = cfg.GetInt("rate_limit.file_upload_limit")
+	rateLimitConfig.FileUploadWindowSeconds = cfg.GetInt("rate_limit.file_upload_window_seconds")
+
+	return rateLimitConfig
+}
+
+func PresenceConfig() Presence {
+	MustLoad()
+
+	var presenceConfig Presence
+	if err := cfg.UnmarshalKey("presence", &presenceConfig); err != nil {
+		panic(fmt.Errorf("unmarshal presence config: %w", err))
+	}
+	presenceConfig.Enabled = cfg.GetBool("presence.enabled")
+	presenceConfig.NodeID = cfg.GetString("presence.node_id")
+	presenceConfig.TTLSeconds = cfg.GetInt("presence.ttl_seconds")
+
+	return presenceConfig
 }
 
 func Addr() string {

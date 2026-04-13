@@ -18,6 +18,13 @@ import (
 
 var ErrInvalidToken = errors.New("invalid token")
 
+type TokenSession struct {
+	UserUUID  string
+	TokenID   string
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+}
+
 type TokenService struct{}
 
 func NewTokenService() *TokenService {
@@ -57,14 +64,23 @@ func (s *TokenService) Issue(user *model.User) (string, error) {
 }
 
 func (s *TokenService) Resolve(token string) (string, error) {
+	session, err := s.ResolveSession(token)
+	if err != nil {
+		return "", err
+	}
+
+	return session.UserUUID, nil
+}
+
+func (s *TokenService) ResolveSession(token string) (*TokenSession, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return "", ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
 	claims, err := s.parseClaims(token)
 	if err != nil {
-		return "", ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -72,17 +88,29 @@ func (s *TokenService) Resolve(token string) (string, error) {
 
 	revoked, err := store.RDB.Exists(ctx, revokedTokenKey(claims.ID)).Result()
 	if err != nil {
-		return "", ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 	if revoked > 0 {
-		return "", ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
 	if strings.TrimSpace(claims.Subject) == "" {
-		return "", ErrInvalidToken
+		return nil, ErrInvalidToken
+	}
+	if strings.TrimSpace(claims.ID) == "" || claims.ExpiresAt == nil {
+		return nil, ErrInvalidToken
 	}
 
-	return claims.Subject, nil
+	session := &TokenSession{
+		UserUUID:  claims.Subject,
+		TokenID:   claims.ID,
+		ExpiresAt: claims.ExpiresAt.Time.UTC(),
+	}
+	if claims.IssuedAt != nil {
+		session.IssuedAt = claims.IssuedAt.Time.UTC()
+	}
+
+	return session, nil
 }
 
 func (s *TokenService) Revoke(token string) error {
@@ -102,7 +130,18 @@ func (s *TokenService) Revoke(token string) error {
 		return ErrInvalidToken
 	}
 
-	ttl := time.Until(claims.ExpiresAt.Time)
+	return s.RevokeTokenID(claims.ID, claims.ExpiresAt.Time)
+}
+
+func (s *TokenService) RevokeTokenID(tokenID string, expiresAt time.Time) error {
+	tokenID = strings.TrimSpace(tokenID)
+	if tokenID == "" {
+		return ErrInvalidToken
+	}
+	if expiresAt.IsZero() {
+		return ErrInvalidToken
+	}
+	ttl := time.Until(expiresAt)
 	if ttl <= 0 {
 		return nil
 	}
@@ -110,7 +149,7 @@ func (s *TokenService) Revoke(token string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := store.RDB.Set(ctx, revokedTokenKey(claims.ID), "1", ttl).Err(); err != nil {
+	if err := store.RDB.Set(ctx, revokedTokenKey(tokenID), "1", ttl).Err(); err != nil {
 		return fmt.Errorf("revoke token: %w", err)
 	}
 

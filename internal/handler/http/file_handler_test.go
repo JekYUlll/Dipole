@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -19,11 +20,23 @@ type stubFileService struct {
 	uploadFn func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 }
 
+type stubFileLimiter struct {
+	allowFileUploadFn func(userUUID string) (bool, time.Duration)
+}
+
 func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
 	if s.uploadFn == nil {
 		return nil, nil
 	}
 	return s.uploadFn(uploaderUUID, header)
+}
+
+func (s *stubFileLimiter) AllowFileUpload(userUUID string) (bool, time.Duration) {
+	if s.allowFileUploadFn == nil {
+		return true, 0
+	}
+
+	return s.allowFileUploadFn(userUUID)
 }
 
 func TestFileHandlerUploadSuccess(t *testing.T) {
@@ -64,6 +77,46 @@ func TestFileHandlerUploadSuccess(t *testing.T) {
 	}
 	if int(response["code"].(float64)) != code.Success {
 		t.Fatalf("expected business code %d, got %v", code.Success, response["code"])
+	}
+}
+
+func TestFileHandlerUploadRateLimited(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := newFileHandler(&stubFileService{
+		uploadFn: func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
+			t.Fatalf("upload service should not be called when rate limited")
+			return nil, nil
+		},
+	}, 50*1024*1024).WithLimiter(&stubFileLimiter{
+		allowFileUploadFn: func(userUUID string) (bool, time.Duration) {
+			if userUUID != "U100" {
+				t.Fatalf("unexpected uploader uuid: %s", userUUID)
+			}
+			return false, 20 * time.Second
+		},
+	})
+
+	body, contentType := buildMultipartFileBody(t, "hello.txt", []byte("hello"))
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files", body)
+	context.Request.Header.Set("Content-Type", contentType)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Upload(context)
+
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429, got %d", recorder.Code)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if int(response["code"].(float64)) != code.FileUploadRateLimited {
+		t.Fatalf("expected business code %d, got %v", code.FileUploadRateLimited, response["code"])
 	}
 }
 

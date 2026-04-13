@@ -158,6 +158,38 @@ func TestContactHandlerHandleApplicationForbidden(t *testing.T) {
 	}
 }
 
+func TestContactHandlerHandleApplicationExpired(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewContactHandler(&stubContactService{
+		handleApplicationFn: func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
+			return nil, service.ErrContactApplicationExpired
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/contacts/applications/1", strings.NewReader(`{"action":"accept"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "id", Value: "1"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.HandleApplication(context)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", recorder.Code)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if int(response["code"].(float64)) != code.ContactApplicationExpired {
+		t.Fatalf("expected business code %d, got %v", code.ContactApplicationExpired, response["code"])
+	}
+}
+
 func TestContactHandlerDeleteFriendNotFound(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)

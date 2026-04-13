@@ -30,6 +30,9 @@ type Client struct {
 	conn           *websocket.Conn
 	sessionUser    *SessionUser
 	token          string
+	connectionID   string
+	identity       ConnectionIdentity
+	connectedAt    time.Time
 	send           chan []byte
 	messageHandler inboundHandler
 	closeOnce      sync.Once
@@ -37,7 +40,8 @@ type Client struct {
 	log            *zap.Logger
 }
 
-func NewClient(hub *Hub, conn *websocket.Conn, sessionUser *SessionUser, token string, messageHandler inboundHandler) *Client {
+func NewClient(hub *Hub, conn *websocket.Conn, sessionUser *SessionUser, token string, identity ConnectionIdentity, messageHandler inboundHandler) *Client {
+	connectedAt := time.Now().UTC()
 	clientLogger := logger.Named("ws").With(
 		zap.String("user_uuid", sessionUser.UUID),
 		zap.String("remote_addr", conn.RemoteAddr().String()),
@@ -48,6 +52,9 @@ func NewClient(hub *Hub, conn *websocket.Conn, sessionUser *SessionUser, token s
 		conn:           conn,
 		sessionUser:    sessionUser,
 		token:          token,
+		connectionID:   newConnectionID(),
+		identity:       identity,
+		connectedAt:    connectedAt,
 		send:           make(chan []byte, sendBufferSize),
 		messageHandler: messageHandler,
 		log:            clientLogger,
@@ -123,6 +130,7 @@ func (c *Client) readPump() {
 			zap.Int("message_type", messageType),
 			zap.Int("bytes", len(payload)),
 		)
+		c.hub.Touch(c)
 
 		if c.messageHandler != nil {
 			c.messageHandler.Handle(c, payload)
@@ -151,6 +159,7 @@ func (c *Client) writePump() {
 				return
 			}
 		case <-ticker.C:
+			c.hub.Touch(c)
 			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				c.log.Warn("websocket ping failed", zap.Error(err))
@@ -165,4 +174,19 @@ func (c *Client) Close() {
 		c.closed.Store(true)
 		_ = c.conn.Close()
 	})
+}
+
+func (c *Client) ConnectionSnapshot() ConnectionSnapshot {
+	return ConnectionSnapshot{
+		ConnectionID:   c.connectionID,
+		UserUUID:       c.sessionUser.UUID,
+		TokenID:        c.sessionUser.TokenID,
+		TokenExpiresAt: c.sessionUser.TokenExpiresAt,
+		Device:         c.identity.Device,
+		DeviceID:       c.identity.DeviceID,
+		UserAgent:      c.identity.UserAgent,
+		RemoteAddr:     c.identity.RemoteAddr,
+		ConnectedAt:    c.connectedAt,
+		LastSeenAt:     time.Now().UTC(),
+	}
 }

@@ -2,7 +2,10 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,6 +17,11 @@ import (
 
 type AuthHandler struct {
 	service authService
+	limiter authRateLimiter
+}
+
+type authRateLimiter interface {
+	AllowLogin(identifier string) (bool, time.Duration)
 }
 
 type authService interface {
@@ -24,6 +32,11 @@ type authService interface {
 
 func NewAuthHandler(service authService) *AuthHandler {
 	return &AuthHandler{service: service}
+}
+
+func (h *AuthHandler) WithLimiter(limiter authRateLimiter) *AuthHandler {
+	h.limiter = limiter
+	return h
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -54,6 +67,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
+	}
+
+	if h.limiter != nil {
+		identifier := strings.TrimSpace(request.Telephone)
+		if identifier == "" {
+			identifier = c.ClientIP()
+		}
+		allowed, retryAfter := h.limiter.AllowLogin(identifier)
+		if !allowed {
+			ErrorWithCode(
+				c,
+				http.StatusTooManyRequests,
+				code.AuthLoginRateLimited,
+				formatRetryAfterMessage("too many login attempts", retryAfter),
+			)
+			return
+		}
 	}
 
 	result, err := h.service.Login(request.ToInput())
@@ -87,4 +117,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	Success(c, gin.H{
 		"message": "logout success",
 	})
+}
+
+func formatRetryAfterMessage(message string, retryAfter time.Duration) string {
+	seconds := int(retryAfter.Seconds())
+	if retryAfter > 0 && seconds == 0 {
+		seconds = 1
+	}
+	if seconds <= 0 {
+		return message
+	}
+
+	return fmt.Sprintf("%s, retry after %d seconds", message, seconds)
 }

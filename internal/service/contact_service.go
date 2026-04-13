@@ -18,14 +18,16 @@ var (
 	ErrContactApplicationExists   = errors.New("contact application already exists")
 	ErrContactApplicationNotFound = errors.New("contact application not found")
 	ErrContactApplicationHandled  = errors.New("contact application has been handled")
+	ErrContactApplicationExpired  = errors.New("contact application has expired")
 	ErrContactPermissionDenied    = errors.New("contact permission denied")
 	ErrContactActionInvalid       = errors.New("contact action is invalid")
 	ErrContactRemarkTooLong       = errors.New("contact remark is too long")
 )
 
 const (
-	ContactActionAccept = "accept"
-	ContactActionReject = "reject"
+	ContactActionAccept   = "accept"
+	ContactActionReject   = "reject"
+	contactApplicationTTL = 7 * 24 * time.Hour
 )
 
 type contactRepository interface {
@@ -112,6 +114,9 @@ func (s *ContactService) Apply(currentUserUUID string, input ApplyContactInput) 
 	if err != nil {
 		return nil, fmt.Errorf("get outgoing application in apply contact: %w", err)
 	}
+	if err := s.markExpiredIfNeeded(existingOutgoing); err != nil {
+		return nil, fmt.Errorf("refresh outgoing application expiration in apply contact: %w", err)
+	}
 	if existingOutgoing != nil && existingOutgoing.Status == model.ContactApplicationPending {
 		return nil, ErrContactApplicationExists
 	}
@@ -120,20 +125,27 @@ func (s *ContactService) Apply(currentUserUUID string, input ApplyContactInput) 
 	if err != nil {
 		return nil, fmt.Errorf("get incoming application in apply contact: %w", err)
 	}
+	if err := s.markExpiredIfNeeded(existingIncoming); err != nil {
+		return nil, fmt.Errorf("refresh incoming application expiration in apply contact: %w", err)
+	}
 	if existingIncoming != nil && existingIncoming.Status == model.ContactApplicationPending {
 		return nil, ErrContactApplicationExists
 	}
 
+	now := time.Now().UTC()
+	expiresAt := now.Add(contactApplicationTTL)
 	application := &model.ContactApplication{
 		ApplicantUUID: currentUserUUID,
 		TargetUUID:    targetUUID,
 		Message:       truncateContactMessage(message),
 		Status:        model.ContactApplicationPending,
+		ExpiresAt:     &expiresAt,
 	}
 
 	if existingOutgoing != nil {
 		existingOutgoing.Message = application.Message
 		existingOutgoing.Status = model.ContactApplicationPending
+		existingOutgoing.ExpiresAt = application.ExpiresAt
 		existingOutgoing.HandledAt = nil
 		if err := s.repo.UpdateApplication(existingOutgoing); err != nil {
 			return nil, fmt.Errorf("reset contact application in apply contact: %w", err)
@@ -245,6 +257,9 @@ func (s *ContactService) ListIncomingApplications(currentUserUUID string) ([]*Co
 	if err != nil {
 		return nil, fmt.Errorf("list incoming contact applications: %w", err)
 	}
+	if err := s.refreshApplicationsExpiration(applications); err != nil {
+		return nil, fmt.Errorf("refresh incoming contact applications expiration: %w", err)
+	}
 
 	return s.buildApplicationViews(applications)
 }
@@ -253,6 +268,9 @@ func (s *ContactService) ListOutgoingApplications(currentUserUUID string) ([]*Co
 	applications, err := s.repo.ListOutgoingApplications(currentUserUUID)
 	if err != nil {
 		return nil, fmt.Errorf("list outgoing contact applications: %w", err)
+	}
+	if err := s.refreshApplicationsExpiration(applications); err != nil {
+		return nil, fmt.Errorf("refresh outgoing contact applications expiration: %w", err)
 	}
 
 	return s.buildApplicationViews(applications)
@@ -266,8 +284,14 @@ func (s *ContactService) HandleApplication(currentUserUUID string, applicationID
 	if application == nil {
 		return nil, ErrContactApplicationNotFound
 	}
+	if err := s.markExpiredIfNeeded(application); err != nil {
+		return nil, fmt.Errorf("refresh contact application expiration in handle application: %w", err)
+	}
 	if application.TargetUUID != currentUserUUID {
 		return nil, ErrContactPermissionDenied
+	}
+	if application.Status == model.ContactApplicationExpired {
+		return nil, ErrContactApplicationExpired
 	}
 	if application.Status != model.ContactApplicationPending {
 		return nil, ErrContactApplicationHandled
@@ -349,6 +373,59 @@ func (s *ContactService) buildApplicationViews(applications []*model.ContactAppl
 	}
 
 	return views, nil
+}
+
+func (s *ContactService) refreshApplicationsExpiration(applications []*model.ContactApplication) error {
+	for _, application := range applications {
+		if err := s.markExpiredIfNeeded(application); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *ContactService) markExpiredIfNeeded(application *model.ContactApplication) error {
+	if application == nil || application.Status != model.ContactApplicationPending {
+		return nil
+	}
+
+	expiresAt := applicationExpiryTime(application)
+	if expiresAt == nil || expiresAt.After(time.Now().UTC()) {
+		if application.ExpiresAt == nil && expiresAt != nil {
+			application.ExpiresAt = expiresAt
+			if err := s.repo.UpdateApplication(application); err != nil {
+				return fmt.Errorf("backfill application expires_at: %w", err)
+			}
+		}
+		return nil
+	}
+
+	now := time.Now().UTC()
+	application.Status = model.ContactApplicationExpired
+	application.ExpiresAt = expiresAt
+	application.HandledAt = &now
+	if err := s.repo.UpdateApplication(application); err != nil {
+		return fmt.Errorf("update expired application: %w", err)
+	}
+
+	return nil
+}
+
+func applicationExpiryTime(application *model.ContactApplication) *time.Time {
+	if application == nil {
+		return nil
+	}
+	if application.ExpiresAt != nil {
+		exp := application.ExpiresAt.UTC()
+		return &exp
+	}
+	if application.CreatedAt.IsZero() {
+		return nil
+	}
+
+	exp := application.CreatedAt.UTC().Add(contactApplicationTTL)
+	return &exp
 }
 
 func truncateContactMessage(message string) string {

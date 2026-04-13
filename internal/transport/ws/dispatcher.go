@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -28,11 +29,16 @@ type conversationUpdater interface {
 	UpdateGroupConversations(message *model.Message) error
 }
 
+type messageRateLimiter interface {
+	AllowMessageSend(userUUID string) (bool, time.Duration)
+}
+
 type Dispatcher struct {
 	hub                 *Hub
 	messageService      directMessageService
 	conversationUpdater conversationUpdater
 	syncDispatch        bool
+	limiter             messageRateLimiter
 }
 
 func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
@@ -42,6 +48,11 @@ func NewDispatcher(hub *Hub, messageService directMessageService, conversationUp
 		conversationUpdater: conversationUpdater,
 		syncDispatch:        syncDispatch,
 	}
+}
+
+func (d *Dispatcher) WithLimiter(limiter messageRateLimiter) *Dispatcher {
+	d.limiter = limiter
+	return d
 }
 
 func (d *Dispatcher) Handle(client *Client, payload []byte) {
@@ -70,6 +81,18 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 	if err := json.Unmarshal(raw, &input); err != nil {
 		_ = client.SendError(ErrorBadRequest, "chat.send payload is invalid", TypeChatSend)
 		return
+	}
+
+	if d.limiter != nil {
+		allowed, retryAfter := d.limiter.AllowMessageSend(client.sessionUser.UUID)
+		if !allowed {
+			_ = client.SendError(
+				ErrorRateLimited,
+				formatRateLimitMessage("message send rate limit exceeded", retryAfter),
+				TypeChatSend,
+			)
+			return
+		}
 	}
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
@@ -112,6 +135,18 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 	if err := json.Unmarshal(raw, &input); err != nil {
 		_ = client.SendError(ErrorBadRequest, "chat.send_file payload is invalid", TypeChatSendFile)
 		return
+	}
+
+	if d.limiter != nil {
+		allowed, retryAfter := d.limiter.AllowMessageSend(client.sessionUser.UUID)
+		if !allowed {
+			_ = client.SendError(
+				ErrorRateLimited,
+				formatRateLimitMessage("message send rate limit exceeded", retryAfter),
+				TypeChatSendFile,
+			)
+			return
+		}
 	}
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
@@ -257,4 +292,16 @@ func newChatMessageData(message *model.Message) ChatMessageData {
 		}
 	}
 	return data
+}
+
+func formatRateLimitMessage(message string, retryAfter time.Duration) string {
+	seconds := int(retryAfter.Seconds())
+	if retryAfter > 0 && seconds == 0 {
+		seconds = 1
+	}
+	if seconds <= 0 {
+		return message
+	}
+
+	return fmt.Sprintf("%s, retry after %d seconds", message, seconds)
 }

@@ -9,43 +9,48 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 type ContactRepository struct{}
+
+type cachedContactRelation struct {
+	Exists  bool           `json:"exists"`
+	Contact *model.Contact `json:"contact,omitempty"`
+}
 
 func NewContactRepository() *ContactRepository {
 	return &ContactRepository{}
 }
 
 func (r *ContactRepository) AreFriends(userUUID, friendUUID string) (bool, error) {
-	var count int64
-	if err := store.DB.Model(&model.Contact{}).
-		Where("user_uuid = ? AND friend_uuid = ?", userUUID, friendUUID).
-		Count(&count).Error; err != nil {
+	contact, err := r.GetContact(userUUID, friendUUID)
+	if err != nil {
 		return false, fmt.Errorf("check contacts friendship: %w", err)
 	}
 
-	return count > 0, nil
+	return contact != nil, nil
 }
 
 func (r *ContactRepository) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
-	var count int64
-	if err := store.DB.Model(&model.Contact{}).
-		Where(
-			"(user_uuid = ? AND friend_uuid = ? AND status = ?) OR (user_uuid = ? AND friend_uuid = ? AND status = ?)",
-			userUUID,
-			friendUUID,
-			model.ContactStatusNormal,
-			friendUUID,
-			userUUID,
-			model.ContactStatusNormal,
-		).
-		Count(&count).Error; err != nil {
-		return false, fmt.Errorf("check direct message contact permission: %w", err)
+	contact, err := r.GetContact(userUUID, friendUUID)
+	if err != nil {
+		return false, fmt.Errorf("get direct message outbound relation: %w", err)
+	}
+	if contact == nil || contact.Status != model.ContactStatusNormal {
+		return false, nil
 	}
 
-	return count == 2, nil
+	reverseContact, err := r.GetContact(friendUUID, userUUID)
+	if err != nil {
+		return false, fmt.Errorf("get direct message inbound relation: %w", err)
+	}
+	if reverseContact == nil || reverseContact.Status != model.ContactStatusNormal {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (r *ContactRepository) CreateFriendship(userOneUUID, userTwoUUID string) error {
@@ -59,6 +64,7 @@ func (r *ContactRepository) CreateFriendship(userOneUUID, userTwoUUID string) er
 		return fmt.Errorf("create friendship: %w", err)
 	}
 
+	r.refreshContactRelationCache(contacts...)
 	return nil
 }
 
@@ -73,6 +79,8 @@ func (r *ContactRepository) DeleteFriendship(userOneUUID, userTwoUUID string) er
 		return fmt.Errorf("delete friendship: %w", err)
 	}
 
+	r.invalidateContactRelationCache(userOneUUID, userTwoUUID)
+	r.invalidateContactRelationCache(userTwoUUID, userOneUUID)
 	return nil
 }
 
@@ -82,19 +90,47 @@ func (r *ContactRepository) ListFriends(userUUID string) ([]*model.Contact, erro
 		return nil, fmt.Errorf("list contacts by user uuid: %w", err)
 	}
 
+	r.refreshContactRelationCache(contacts...)
 	return contacts, nil
 }
 
 func (r *ContactRepository) GetContact(userUUID, friendUUID string) (*model.Contact, error) {
+	if userUUID == "" || friendUUID == "" {
+		return nil, nil
+	}
+
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	var cached cachedContactRelation
+	if hit, err := platformCache.GetJSON(ctx, platformCache.ContactRelationKey(userUUID, friendUUID), &cached); err == nil && hit {
+		if !cached.Exists {
+			return nil, nil
+		}
+		return cached.Contact, nil
+	}
+
 	var contact model.Contact
 	if err := store.DB.Where("user_uuid = ? AND friend_uuid = ?", userUUID, friendUUID).First(&contact).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			_ = platformCache.SetJSON(
+				ctx,
+				platformCache.ContactRelationKey(userUUID, friendUUID),
+				cachedContactRelation{Exists: false},
+				platformCache.ContactRelationTTL,
+			)
 			return nil, nil
 		}
 
 		return nil, fmt.Errorf("get contact: %w", err)
 	}
 
+	_ = platformCache.SetJSON(
+		ctx,
+		platformCache.ContactRelationKey(userUUID, friendUUID),
+		cachedContactRelation{Exists: true, Contact: &contact},
+		platformCache.ContactRelationTTL,
+	)
 	return &contact, nil
 }
 
@@ -103,6 +139,7 @@ func (r *ContactRepository) UpdateContact(contact *model.Contact) error {
 		return fmt.Errorf("update contact: %w", err)
 	}
 
+	r.refreshContactRelationCache(contact)
 	return nil
 }
 
@@ -164,4 +201,28 @@ func (r *ContactRepository) ListOutgoingApplications(userUUID string) ([]*model.
 	}
 
 	return applications, nil
+}
+
+func (r *ContactRepository) refreshContactRelationCache(contacts ...*model.Contact) {
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	for _, contact := range contacts {
+		if contact == nil {
+			continue
+		}
+		_ = platformCache.SetJSON(
+			ctx,
+			platformCache.ContactRelationKey(contact.UserUUID, contact.FriendUUID),
+			cachedContactRelation{Exists: true, Contact: contact},
+			platformCache.ContactRelationTTL,
+		)
+	}
+}
+
+func (r *ContactRepository) invalidateContactRelationCache(userUUID, friendUUID string) {
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	_ = platformCache.Delete(ctx, platformCache.ContactRelationKey(userUUID, friendUUID))
 }

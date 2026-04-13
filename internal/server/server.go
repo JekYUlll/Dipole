@@ -12,6 +12,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
+	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -45,7 +47,9 @@ func New() *Server {
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
 	adminRepo := repository.NewAdminRepository()
-	wsHub := wsTransport.NewHub()
+	redisPresence := platformPresence.NewRedisPresence()
+	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
+	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
@@ -56,20 +60,22 @@ func New() *Server {
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
 	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
+	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = conversationService
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled)
-	authHandler := httpHandler.NewAuthHandler(authService)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService)
+	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService)
 	messageHandler := httpHandler.NewMessageHandler(messageService)
-	fileHandler := httpHandler.NewFileHandler(fileService)
+	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, userRepo)
 
@@ -109,6 +115,9 @@ func New() *Server {
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
 			protected.POST("/files", fileHandler.Upload)
+			protected.GET("/users/me/devices", sessionHandler.ListDevices)
+			protected.POST("/users/me/devices/:connection_id/logout", sessionHandler.ForceLogoutDevice)
+			protected.POST("/users/me/devices/logout-all", sessionHandler.ForceLogoutAll)
 			protected.GET("/users", userHandler.Search)
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)

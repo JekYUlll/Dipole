@@ -14,6 +14,7 @@ const (
 	TypeChatSent            = "chat.sent"
 	TypeChatMessage         = "chat.message"
 	TypeChatRead            = "chat.read"
+	TypeSessionKicked       = "session.kicked"
 	TypeGroupUpdated        = "group.updated"
 	TypeGroupMembersAdded   = "group.members_added"
 	TypeGroupMembersRemoved = "group.members_removed"
@@ -25,6 +26,7 @@ const (
 	ErrorUnsupportedType   = "unsupported_type"
 	ErrorTargetUnavailable = "target_unavailable"
 	ErrorPermissionDenied  = "permission_denied"
+	ErrorRateLimited       = "rate_limited"
 	ErrorInternal          = "internal"
 )
 
@@ -91,6 +93,12 @@ type ChatReadData struct {
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
 	ReadAt              time.Time `json:"read_at"`
+}
+
+type SessionKickedData struct {
+	ConnectionID string    `json:"connection_id"`
+	Reason       string    `json:"reason"`
+	OccurredAt   time.Time `json:"occurred_at"`
 }
 
 type GroupUpdatedEventData struct {

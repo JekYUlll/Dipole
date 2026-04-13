@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
@@ -22,10 +23,29 @@ func (r *UserRepository) Create(user *model.User) error {
 		return fmt.Errorf("create user: %w", err)
 	}
 
+	if user != nil {
+		ctx, cancel := platformCache.NewContext()
+		defer cancel()
+		_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
+	}
+
 	return nil
 }
 
 func (r *UserRepository) GetByUUID(uuid string) (*model.User, error) {
+	uuid = strings.TrimSpace(uuid)
+	if uuid == "" {
+		return nil, nil
+	}
+
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	var cached model.User
+	if hit, err := platformCache.GetJSON(ctx, platformCache.UserProfileKey(uuid), &cached); err == nil && hit {
+		return &cached, nil
+	}
+
 	var user model.User
 	if err := store.DB.Where("uuid = ?", uuid).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,6 +55,7 @@ func (r *UserRepository) GetByUUID(uuid string) (*model.User, error) {
 		return nil, fmt.Errorf("get user by uuid: %w", err)
 	}
 
+	_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(uuid), &user, platformCache.UserProfileTTL)
 	return &user, nil
 }
 
@@ -54,6 +75,12 @@ func (r *UserRepository) GetByTelephone(telephone string) (*model.User, error) {
 func (r *UserRepository) Update(user *model.User) error {
 	if err := store.DB.Save(user).Error; err != nil {
 		return fmt.Errorf("update user: %w", err)
+	}
+
+	if user != nil {
+		ctx, cancel := platformCache.NewContext()
+		defer cancel()
+		_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
 	}
 
 	return nil
@@ -90,16 +117,62 @@ func (r *UserRepository) List(keyword string, status *int8, limit int) ([]*model
 }
 
 func (r *UserRepository) ListByUUIDs(uuids []string) ([]*model.User, error) {
-	if len(uuids) == 0 {
+	normalized := normalizeUUIDs(uuids)
+	if len(normalized) == 0 {
 		return []*model.User{}, nil
 	}
 
-	var users []*model.User
-	if err := store.DB.Where("uuid IN ?", uuids).Find(&users).Error; err != nil {
-		return nil, fmt.Errorf("list users by uuids: %w", err)
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	usersByUUID := make(map[string]*model.User, len(normalized))
+	missing := make([]string, 0, len(normalized))
+	for _, uuid := range normalized {
+		var cached model.User
+		if hit, err := platformCache.GetJSON(ctx, platformCache.UserProfileKey(uuid), &cached); err == nil && hit {
+			usersByUUID[uuid] = &cached
+			continue
+		}
+		missing = append(missing, uuid)
 	}
 
-	return users, nil
+	if len(missing) > 0 {
+		var users []*model.User
+		if err := store.DB.Where("uuid IN ?", missing).Find(&users).Error; err != nil {
+			return nil, fmt.Errorf("list users by uuids: %w", err)
+		}
+		for _, user := range users {
+			usersByUUID[user.UUID] = user
+			_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
+		}
+	}
+
+	result := make([]*model.User, 0, len(usersByUUID))
+	for _, uuid := range normalized {
+		if user := usersByUUID[uuid]; user != nil {
+			result = append(result, user)
+		}
+	}
+
+	return result, nil
+}
+
+func normalizeUUIDs(uuids []string) []string {
+	seen := make(map[string]struct{}, len(uuids))
+	normalized := make([]string, 0, len(uuids))
+	for _, uuid := range uuids {
+		uuid = strings.TrimSpace(uuid)
+		if uuid == "" {
+			continue
+		}
+		if _, ok := seen[uuid]; ok {
+			continue
+		}
+		seen[uuid] = struct{}{}
+		normalized = append(normalized, uuid)
+	}
+
+	return normalized
 }
 
 func applyUserKeywordFilter(query *gorm.DB, keyword string) *gorm.DB {

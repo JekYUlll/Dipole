@@ -3,6 +3,7 @@ package ws
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -47,7 +48,7 @@ func (h *Handler) Handle(c *gin.Context) {
 		return
 	}
 
-	client := NewClient(h.hub, conn, sessionUser, token, h.dispatcher)
+	client := NewClient(h.hub, conn, sessionUser, token, extractConnectionIdentity(c.Request), h.dispatcher)
 	h.hub.Register(client)
 
 	if err := client.SendEvent(TypeConnected, ConnectedEventData{
@@ -64,6 +65,48 @@ func (h *Handler) Handle(c *gin.Context) {
 	}
 
 	client.Run()
+}
+
+func extractConnectionIdentity(r *http.Request) ConnectionIdentity {
+	if r == nil {
+		return ConnectionIdentity{}
+	}
+
+	device := strings.TrimSpace(r.URL.Query().Get("device"))
+	if device == "" {
+		device = strings.TrimSpace(r.Header.Get("X-Device"))
+	}
+	if device == "" {
+		device = detectDeviceFromUserAgent(r.UserAgent())
+	}
+
+	deviceID := strings.TrimSpace(r.URL.Query().Get("device_id"))
+	if deviceID == "" {
+		deviceID = strings.TrimSpace(r.Header.Get("X-Device-ID"))
+	}
+
+	return ConnectionIdentity{
+		Device:     device,
+		DeviceID:   deviceID,
+		UserAgent:  strings.TrimSpace(r.UserAgent()),
+		RemoteAddr: strings.TrimSpace(r.RemoteAddr),
+	}
+}
+
+func detectDeviceFromUserAgent(userAgent string) string {
+	normalized := strings.ToLower(strings.TrimSpace(userAgent))
+	switch {
+	case strings.Contains(normalized, "android"):
+		return "android"
+	case strings.Contains(normalized, "iphone"), strings.Contains(normalized, "ipad"), strings.Contains(normalized, "ios"):
+		return "ios"
+	case strings.Contains(normalized, "windows"), strings.Contains(normalized, "macintosh"), strings.Contains(normalized, "linux"):
+		return "desktop"
+	case strings.Contains(normalized, "mozilla"), strings.Contains(normalized, "chrome"), strings.Contains(normalized, "safari"):
+		return "web"
+	default:
+		return "unknown"
+	}
 }
 
 func (h *Handler) writeAuthError(c *gin.Context, err error) {

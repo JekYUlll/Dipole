@@ -25,6 +25,8 @@ type kafkaMessagePersister interface {
 
 type kafkaWSEventSender interface {
 	SendEventToUser(userUUID, eventType string, data any) int
+	DisconnectConnections(userUUID string, connectionIDs []string, reason string) int
+	DisconnectAllConnections(userUUID string, reason string) int
 }
 
 func RegisterKafkaHandlers(hub kafkaWSEventSender) {
@@ -60,8 +62,9 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) {
 		platformKafka.Subscriber.Register("group.members.added", deliverGroupMembersAddedHandler(hub))
 		platformKafka.Subscriber.Register("group.members.removed", deliverGroupMembersRemovedHandler(hub))
 		platformKafka.Subscriber.Register("group.dismissed", deliverGroupDismissedHandler(hub))
+		platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	}
-	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read"} {
+	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
 	}
 }
@@ -374,6 +377,25 @@ func deliverGroupDismissedHandler(hub kafkaWSEventSender) platformKafka.Handler 
 	}
 }
 
+func deliverSessionKickHandler(hub kafkaWSEventSender) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		_ = ctx
+
+		payload, err := decodeSessionKickPayload(event)
+		if err != nil {
+			logger.Warn("decode session kick payload failed", zap.Error(err))
+			return err
+		}
+		if payload.All {
+			hub.DisconnectAllConnections(payload.UserUUID, payload.Reason)
+			return nil
+		}
+
+		hub.DisconnectConnections(payload.UserUUID, payload.ConnectionIDs, payload.Reason)
+		return nil
+	}
+}
+
 func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventPayload, error) {
 	envelope, err := requireEnvelope(event)
 	if err != nil {
@@ -397,6 +419,20 @@ func decodeGroupEventPayload(event platformKafka.Event) (service.GroupEventPaylo
 	var payload service.GroupEventPayload
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return service.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
+	}
+
+	return payload, nil
+}
+
+func decodeSessionKickPayload(event platformKafka.Event) (service.SessionKickEventPayload, error) {
+	envelope, err := requireEnvelope(event)
+	if err != nil {
+		return service.SessionKickEventPayload{}, err
+	}
+
+	var payload service.SessionKickEventPayload
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		return service.SessionKickEventPayload{}, fmt.Errorf("unmarshal session kick payload: %w", err)
 	}
 
 	return payload, nil

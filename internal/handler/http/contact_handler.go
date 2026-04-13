@@ -145,6 +145,8 @@ func (h *ContactHandler) HandleApplication(c *gin.Context) {
 			ErrorWithCode(c, http.StatusNotFound, code.ContactApplicationNotFound, "contact application not found")
 		case errors.Is(err, service.ErrContactPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.ContactPermissionDenied, "contact application cannot be handled by current user")
+		case errors.Is(err, service.ErrContactApplicationExpired):
+			ErrorWithCode(c, http.StatusBadRequest, code.ContactApplicationExpired, "contact application has expired")
 		case errors.Is(err, service.ErrContactApplicationHandled):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactApplicationHandled, "contact application has been handled")
 		case errors.Is(err, service.ErrContactActionInvalid):

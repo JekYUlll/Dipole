@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,6 +24,11 @@ type fileService interface {
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
+	limiter        fileRateLimiter
+}
+
+type fileRateLimiter interface {
+	AllowFileUpload(userUUID string) (bool, time.Duration)
 }
 
 func NewFileHandler(service fileService) *FileHandler {
@@ -36,11 +42,29 @@ func newFileHandler(service fileService, maxUploadBytes int64) *FileHandler {
 	}
 }
 
+func (h *FileHandler) WithLimiter(limiter fileRateLimiter) *FileHandler {
+	h.limiter = limiter
+	return h
+}
+
 func (h *FileHandler) Upload(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
 		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
 		return
+	}
+
+	if h.limiter != nil {
+		allowed, retryAfter := h.limiter.AllowFileUpload(currentUser.UUID)
+		if !allowed {
+			ErrorWithCode(
+				c,
+				http.StatusTooManyRequests,
+				code.FileUploadRateLimited,
+				formatRetryAfterMessage("file upload rate limit exceeded", retryAfter),
+			)
+			return
+		}
 	}
 
 	if h.maxUploadBytes > 0 {

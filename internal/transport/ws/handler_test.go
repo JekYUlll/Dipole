@@ -18,15 +18,15 @@ import (
 )
 
 type stubTokenResolver struct {
-	resolveFn func(token string) (string, error)
+	resolveSessionFn func(token string) (*service.TokenSession, error)
 }
 
-func (s *stubTokenResolver) Resolve(token string) (string, error) {
-	if s.resolveFn == nil {
-		return "", errors.New("unexpected resolve call")
+func (s *stubTokenResolver) ResolveSession(token string) (*service.TokenSession, error) {
+	if s.resolveSessionFn == nil {
+		return nil, errors.New("unexpected resolve session call")
 	}
 
-	return s.resolveFn(token)
+	return s.resolveSessionFn(token)
 }
 
 type stubUserFinder struct {
@@ -85,6 +85,10 @@ type stubConversationUpdater struct {
 	updateGroupConversationsFn  func(message *model.Message) error
 }
 
+type stubMessageLimiter struct {
+	allowMessageSendFn func(userUUID string) (bool, time.Duration)
+}
+
 func (s *stubConversationUpdater) UpdateDirectConversations(message *model.Message) error {
 	if s.updateDirectConversationsFn == nil {
 		return nil
@@ -99,6 +103,14 @@ func (s *stubConversationUpdater) UpdateGroupConversations(message *model.Messag
 	}
 
 	return s.updateGroupConversationsFn(message)
+}
+
+func (s *stubMessageLimiter) AllowMessageSend(userUUID string) (bool, time.Duration) {
+	if s.allowMessageSendFn == nil {
+		return true, 0
+	}
+
+	return s.allowMessageSendFn(userUUID)
 }
 
 type wsResponse struct {
@@ -167,11 +179,11 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	hub := NewHub()
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveFn: func(token string) (string, error) {
+			resolveSessionFn: func(token string) (*service.TokenSession, error) {
 				if token != "valid-token" {
 					t.Fatalf("unexpected token: %s", token)
 				}
-				return "U100", nil
+				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 			},
 		},
 		&stubUserFinder{
@@ -258,14 +270,14 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveFn: func(token string) (string, error) {
+			resolveSessionFn: func(token string) (*service.TokenSession, error) {
 				switch token {
 				case "token-a":
-					return "U100", nil
+					return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				case "token-b":
-					return "U200", nil
+					return &service.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				default:
-					return "", errors.New("unexpected token")
+					return nil, errors.New("unexpected token")
 				}
 			},
 		},
@@ -373,14 +385,14 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveFn: func(token string) (string, error) {
+			resolveSessionFn: func(token string) (*service.TokenSession, error) {
 				switch token {
 				case "token-a":
-					return "U100", nil
+					return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				case "token-b":
-					return "U200", nil
+					return &service.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				default:
-					return "", errors.New("unexpected token")
+					return nil, errors.New("unexpected token")
 				}
 			},
 		},
@@ -471,11 +483,11 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveFn: func(token string) (string, error) {
+			resolveSessionFn: func(token string) (*service.TokenSession, error) {
 				if token != "token-a" {
-					return "", errors.New("unexpected token")
+					return nil, errors.New("unexpected token")
 				}
-				return "U100", nil
+				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 			},
 		},
 		&stubUserFinder{
@@ -524,6 +536,77 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	}
 	if errEvent.Data.Code != ErrorPermissionDenied {
 		t.Fatalf("expected error code %s, got %s", ErrorPermissionDenied, errEvent.Data.Code)
+	}
+}
+
+func TestHandlerRejectsMessageWhenRateLimited(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	hub := NewHub()
+	authenticator := NewAuthenticator(
+		&stubTokenResolver{
+			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+				if token != "token-a" {
+					return nil, errors.New("unexpected token")
+				}
+				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+			},
+		},
+		&stubUserFinder{
+			getByUUIDFn: func(uuid string) (*model.User, error) {
+				return &model.User{UUID: uuid, Status: model.UserStatusNormal}, nil
+			},
+		},
+	)
+	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+			t.Fatalf("message service should not be called when rate limited")
+			return nil, nil
+		},
+	}, &stubConversationUpdater{}, true).WithLimiter(&stubMessageLimiter{
+		allowMessageSendFn: func(userUUID string) (bool, time.Duration) {
+			if userUUID != "U100" {
+				t.Fatalf("unexpected limiter user uuid: %s", userUUID)
+			}
+			return false, 15 * time.Second
+		},
+	})
+
+	router := gin.New()
+	handler := NewHandler(authenticator, hub, dispatcher)
+	router.GET("/api/v1/ws", handler.Handle)
+
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+
+	first := dialTestWebSocket(t, server.URL, "token-a")
+	t.Cleanup(func() { _ = first.Close() })
+
+	var connected wsEvent
+	readWebSocketJSON(t, first, &connected)
+
+	payload, err := EncodeCommand(TypeChatSend, SendTextMessageInput{
+		TargetUUID: "U200",
+		Content:    "hello from U100",
+	})
+	if err != nil {
+		t.Fatalf("encode command: %v", err)
+	}
+	if err := first.WriteMessage(websocket.TextMessage, payload); err != nil {
+		t.Fatalf("write websocket message: %v", err)
+	}
+
+	var errEvent struct {
+		Type string         `json:"type"`
+		Data ErrorEventData `json:"data"`
+	}
+	readWebSocketJSON(t, first, &errEvent)
+	if errEvent.Type != TypeError {
+		t.Fatalf("expected error event, got %s", errEvent.Type)
+	}
+	if errEvent.Data.Code != ErrorRateLimited {
+		t.Fatalf("expected error code %s, got %s", ErrorRateLimited, errEvent.Data.Code)
 	}
 }
 

@@ -61,6 +61,7 @@ type ContactApplicationResponse struct {
 	Message   string              `json:"message"`
 	Applicant *PublicUserResponse `json:"applicant"`
 	Target    *PublicUserResponse `json:"target"`
+	ExpiresAt *time.Time          `json:"expires_at,omitempty"`
 	HandledAt *time.Time          `json:"handled_at,omitempty"`
 	CreatedAt time.Time           `json:"created_at"`
 }
@@ -77,6 +78,7 @@ func ToContactApplicationResponses(items []*service.ContactApplicationView) []*C
 			Message:   item.Application.Message,
 			Applicant: ToPublicUserResponse(item.Applicant),
 			Target:    ToPublicUserResponse(item.Target),
+			ExpiresAt: item.Application.ExpiresAt,
 			HandledAt: item.Application.HandledAt,
 			CreatedAt: item.Application.CreatedAt,
 		})
@@ -96,6 +98,7 @@ func ToContactApplicationResponse(item *model.ContactApplication, applicant, tar
 		Message:   item.Message,
 		Applicant: ToPublicUserResponse(applicant),
 		Target:    ToPublicUserResponse(target),
+		ExpiresAt: item.ExpiresAt,
 		HandledAt: item.HandledAt,
 		CreatedAt: item.CreatedAt,
 	}

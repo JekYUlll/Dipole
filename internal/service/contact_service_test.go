@@ -206,6 +206,9 @@ func TestContactServiceApplySuccess(t *testing.T) {
 	if application.Status != model.ContactApplicationPending {
 		t.Fatalf("expected pending status, got %d", application.Status)
 	}
+	if application.ExpiresAt == nil {
+		t.Fatalf("expected expires_at to be set")
+	}
 }
 
 func TestContactServiceApplyRejectsDuplicatePending(t *testing.T) {
@@ -237,6 +240,7 @@ func TestContactServiceHandleApplicationAcceptSuccess(t *testing.T) {
 		ApplicantUUID: "U100",
 		TargetUUID:    "U200",
 		Status:        model.ContactApplicationPending,
+		ExpiresAt:     ptrTime(time.Now().UTC().Add(24 * time.Hour)),
 	}
 	_ = repo.CreateApplication(application)
 	service := NewContactService(repo, &stubContactUserFinder{})
@@ -252,6 +256,64 @@ func TestContactServiceHandleApplicationAcceptSuccess(t *testing.T) {
 	if !isFriend {
 		t.Fatalf("expected friendship to be created")
 	}
+}
+
+func TestContactServiceHandleApplicationRejectsExpired(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	application := &model.ContactApplication{
+		ApplicantUUID: "U100",
+		TargetUUID:    "U200",
+		Status:        model.ContactApplicationPending,
+		CreatedAt:     time.Now().UTC().Add(-8 * 24 * time.Hour),
+	}
+	_ = repo.CreateApplication(application)
+	service := NewContactService(repo, &stubContactUserFinder{})
+
+	_, err := service.HandleApplication("U200", application.ID, ContactActionAccept)
+	if !errors.Is(err, ErrContactApplicationExpired) {
+		t.Fatalf("expected ErrContactApplicationExpired, got %v", err)
+	}
+	if repo.applications[application.ID].Status != model.ContactApplicationExpired {
+		t.Fatalf("expected expired status, got %d", repo.applications[application.ID].Status)
+	}
+}
+
+func TestContactServiceListIncomingApplicationsMarksExpired(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	application := &model.ContactApplication{
+		ID:            1,
+		ApplicantUUID: "U100",
+		TargetUUID:    "U200",
+		Status:        model.ContactApplicationPending,
+		CreatedAt:     time.Now().UTC().Add(-8 * 24 * time.Hour),
+	}
+	repo.applications[application.ID] = application
+	repo.incomingApplications = []*model.ContactApplication{application}
+	service := NewContactService(repo, &stubContactUserFinder{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100"},
+			"U200": {UUID: "U200"},
+		},
+	})
+
+	items, err := service.ListIncomingApplications("U200")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 application, got %d", len(items))
+	}
+	if items[0].Application.Status != model.ContactApplicationExpired {
+		t.Fatalf("expected expired application status, got %d", items[0].Application.Status)
+	}
+}
+
+func ptrTime(value time.Time) *time.Time {
+	return &value
 }
 
 func TestContactServiceListFriendsSuccess(t *testing.T) {
