@@ -7,6 +7,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
@@ -85,6 +86,14 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err := store.AutoMigrate(); err != nil {
 		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
+	if err := platformBloom.Init(); err != nil {
+		return nil, fmt.Errorf("bloom filter init failed: %w", err)
+	}
+	userCount, groupCount := platformBloom.Stats()
+	logger.Info("bloom filter init succeeded",
+		zap.Int("user_count", userCount),
+		zap.Int("group_count", groupCount),
+	)
 
 	srv := server.New()
 	RegisterKafkaHandlers(srv.WSHub())

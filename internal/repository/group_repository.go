@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
@@ -37,6 +38,9 @@ func (r *GroupRepository) Create(group *model.Group, members []*model.GroupMembe
 	}); err != nil {
 		return err
 	}
+	if group != nil {
+		platformBloom.AddGroup(group.UUID)
+	}
 
 	ctx, cancel := platformCache.NewContext()
 	defer cancel()
@@ -60,6 +64,9 @@ func (r *GroupRepository) Create(group *model.Group, members []*model.GroupMembe
 func (r *GroupRepository) GetByUUID(groupUUID string) (*model.Group, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	if groupUUID == "" {
+		return nil, nil
+	}
+	if !platformBloom.GroupMayExist(groupUUID) {
 		return nil, nil
 	}
 
@@ -90,6 +97,9 @@ func (r *GroupRepository) GetMember(groupUUID, userUUID string) (*model.GroupMem
 	if groupUUID == "" || userUUID == "" {
 		return nil, nil
 	}
+	if !platformBloom.GroupMayExist(groupUUID) {
+		return nil, nil
+	}
 
 	ctx, cancel := platformCache.NewContext()
 	defer cancel()
@@ -114,6 +124,9 @@ func (r *GroupRepository) GetMember(groupUUID, userUUID string) (*model.GroupMem
 func (r *GroupRepository) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	if groupUUID == "" {
+		return []*model.GroupMember{}, nil
+	}
+	if !platformBloom.GroupMayExist(groupUUID) {
 		return []*model.GroupMember{}, nil
 	}
 

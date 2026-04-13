@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
@@ -24,6 +25,7 @@ func (r *UserRepository) Create(user *model.User) error {
 	}
 
 	if user != nil {
+		platformBloom.AddUser(user.UUID)
 		ctx, cancel := platformCache.NewContext()
 		defer cancel()
 		_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
@@ -35,6 +37,9 @@ func (r *UserRepository) Create(user *model.User) error {
 func (r *UserRepository) GetByUUID(uuid string) (*model.User, error) {
 	uuid = strings.TrimSpace(uuid)
 	if uuid == "" {
+		return nil, nil
+	}
+	if !platformBloom.UserMayExist(uuid) {
 		return nil, nil
 	}
 
@@ -121,6 +126,10 @@ func (r *UserRepository) ListByUUIDs(uuids []string) ([]*model.User, error) {
 	if len(normalized) == 0 {
 		return []*model.User{}, nil
 	}
+	normalized = filterExistingUserUUIDs(normalized)
+	if len(normalized) == 0 {
+		return []*model.User{}, nil
+	}
 
 	ctx, cancel := platformCache.NewContext()
 	defer cancel()
@@ -173,6 +182,17 @@ func normalizeUUIDs(uuids []string) []string {
 	}
 
 	return normalized
+}
+
+func filterExistingUserUUIDs(uuids []string) []string {
+	filtered := make([]string, 0, len(uuids))
+	for _, uuid := range uuids {
+		if platformBloom.UserMayExist(uuid) {
+			filtered = append(filtered, uuid)
+		}
+	}
+
+	return filtered
 }
 
 func applyUserKeywordFilter(query *gorm.DB, keyword string) *gorm.DB {

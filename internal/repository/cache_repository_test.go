@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
@@ -302,6 +303,59 @@ func TestContactRepositoryCanSendDirectMessageUsesCacheAndDeleteInvalidates(t *t
 	}
 }
 
+func TestUserRepositoryGetByUUIDSkipsDBWhenBloomRejects(t *testing.T) {
+	cleanup := setupRepositoryCacheTest(t)
+	defer cleanup()
+
+	repo := NewUserRepository()
+	platformBloom.Load([]string{"U100"}, nil)
+
+	if err := store.DB.Create(&model.User{
+		UUID:         "U100",
+		Nickname:     "Alice",
+		Telephone:    "13800000000",
+		Avatar:       "avatar-a",
+		PasswordHash: "hash",
+		Status:       model.UserStatusNormal,
+	}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	got, err := repo.GetByUUID("U404")
+	if err != nil {
+		t.Fatalf("get missing user with bloom reject: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil user when bloom rejects, got %+v", got)
+	}
+}
+
+func TestGroupRepositoryGetByUUIDSkipsDBWhenBloomRejects(t *testing.T) {
+	cleanup := setupRepositoryCacheTest(t)
+	defer cleanup()
+
+	repo := NewGroupRepository()
+	platformBloom.Load(nil, []string{"G100"})
+
+	if err := store.DB.Create(&model.Group{
+		UUID:        "G100",
+		Name:        "Alpha",
+		OwnerUUID:   "U100",
+		MemberCount: 1,
+		Status:      model.GroupStatusNormal,
+	}).Error; err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+
+	got, err := repo.GetByUUID("G404")
+	if err != nil {
+		t.Fatalf("get missing group with bloom reject: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil group when bloom rejects, got %+v", got)
+	}
+}
+
 func setupRepositoryCacheTest(t *testing.T) func() {
 	t.Helper()
 
@@ -324,6 +378,7 @@ func setupRepositoryCacheTest(t *testing.T) func() {
 	oldRDB := store.RDB
 	store.DB = db
 	store.RDB = rdb
+	platformBloom.Reset()
 
 	return func() {
 		sqlDB, err := db.DB()
@@ -332,6 +387,7 @@ func setupRepositoryCacheTest(t *testing.T) func() {
 		}
 		store.DB = oldDB
 		store.RDB = oldRDB
+		platformBloom.Reset()
 		_ = rdb.Close()
 		mr.Close()
 	}
