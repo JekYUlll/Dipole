@@ -49,6 +49,37 @@ func (r *MessageRepository) ListByConversationKey(conversationKey string, before
 	return messages, nil
 }
 
+func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	query := store.DB.Model(&model.Message{}).Where("messages.id > ?", afterID).Where(`
+		(
+			(messages.target_type = ? AND messages.target_uuid = ?)
+			OR
+			(messages.target_type = ? AND messages.sender_uuid <> ? AND EXISTS (
+				SELECT 1
+				FROM group_members gm
+				JOIN groups g ON g.uuid = gm.group_uuid
+				WHERE gm.group_uuid = messages.target_uuid
+				  AND gm.user_uuid = ?
+				  AND g.status = ?
+			))
+		)
+	`,
+		model.MessageTargetDirect,
+		userUUID,
+		model.MessageTargetGroup,
+		userUUID,
+		userUUID,
+		model.GroupStatusNormal,
+	)
+
+	var messages []*model.Message
+	if err := query.Order("messages.id ASC").Limit(limit).Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("list offline messages by user uuid: %w", err)
+	}
+
+	return messages, nil
+}
+
 func reverseMessages(messages []*model.Message) {
 	for left, right := 0, len(messages)-1; left < right; left, right = left+1, right-1 {
 		messages[left], messages[right] = messages[right], messages[left]

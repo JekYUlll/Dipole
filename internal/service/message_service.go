@@ -26,6 +26,7 @@ type messageRepository interface {
 	Create(message *model.Message) error
 	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
+	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 type messageUserFinder interface {
@@ -213,6 +214,15 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list group messages: %w", err)
+	}
+
+	return messages, nil
+}
+
+func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	messages, err := s.repo.ListOfflineByUserUUID(strings.TrimSpace(currentUserUUID), afterID, normalizeMessageListLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list offline messages: %w", err)
 	}
 
 	return messages, nil

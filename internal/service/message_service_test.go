@@ -14,10 +14,13 @@ type stubMessageRepository struct {
 	listErr             error
 	createdMessages     []*model.Message
 	listMessages        []*model.Message
+	offlineMessages     []*model.Message
 	messagesByUUID      map[string]*model.Message
 	lastConversationKey string
 	lastBeforeID        uint
+	lastAfterID         uint
 	lastLimit           int
+	lastUserUUID        string
 }
 
 func (r *stubMessageRepository) Create(message *model.Message) error {
@@ -50,6 +53,17 @@ func (r *stubMessageRepository) ListByConversationKey(conversationKey string, be
 	}
 
 	return r.listMessages, nil
+}
+
+func (r *stubMessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	r.lastUserUUID = userUUID
+	r.lastAfterID = afterID
+	r.lastLimit = limit
+	if r.listErr != nil {
+		return nil, r.listErr
+	}
+
+	return r.offlineMessages, nil
 }
 
 type stubFriendshipChecker struct {
@@ -148,7 +162,7 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil)
+		}, nil, nil)
 
 	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ")
 	if err != nil {
@@ -190,7 +204,7 @@ func TestMessageServiceSendDirectMessageRejectsUnavailableTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil)
+		}, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageTargetUnavailable) {
@@ -214,7 +228,7 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil)
+		}, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -243,7 +257,7 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil)
+		}, nil, nil)
 
 	messages, err := service.ListDirectMessages("U100", "U200", 99, 10)
 	if err != nil {
@@ -268,7 +282,7 @@ func TestMessageServiceListDirectMessagesRejectsMissingTarget(t *testing.T) {
 
 	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{
 		users: map[string]*model.User{},
-	}, &stubFriendshipChecker{}, nil, nil)
+		}, &stubFriendshipChecker{}, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U404", 0, 20)
 	if !errors.Is(err, ErrMessageTargetNotFound) {
@@ -287,7 +301,7 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil)
+		}, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -309,7 +323,7 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 				"U200": {GroupUUID: "G100", UserUUID: "U200"},
 			},
 		},
-	}, nil)
+		}, nil)
 
 	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group")
 	if err != nil {
@@ -336,7 +350,7 @@ func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
 		members: map[string]map[string]*model.GroupMember{
 			"G100": {},
 		},
-	}, nil)
+		}, nil)
 
 	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
 	if !errors.Is(err, ErrMessageGroupForbidden) {
@@ -361,7 +375,7 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 				"U100": {GroupUUID: "G100", UserUUID: "U100"},
 			},
 		},
-	}, nil)
+		}, nil)
 
 	messages, err := service.ListGroupMessages("U100", "G100", 15, 10)
 	if err != nil {
@@ -372,6 +386,49 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 	}
 	if repo.lastConversationKey != model.GroupConversationKey("G100") {
 		t.Fatalf("unexpected conversation key: %s", repo.lastConversationKey)
+	}
+}
+
+func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		offlineMessages: []*model.Message{
+			{ID: 31, UUID: "M31"},
+			{ID: 32, UUID: "M32"},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil)
+
+	messages, err := service.ListOfflineMessages(" U100 ", 30, 10)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 2 {
+		t.Fatalf("expected 2 offline messages, got %d", len(messages))
+	}
+	if repo.lastUserUUID != "U100" {
+		t.Fatalf("expected user uuid U100, got %s", repo.lastUserUUID)
+	}
+	if repo.lastAfterID != 30 {
+		t.Fatalf("expected after id 30, got %d", repo.lastAfterID)
+	}
+	if repo.lastLimit != 10 {
+		t.Fatalf("expected limit 10, got %d", repo.lastLimit)
+	}
+}
+
+func TestMessageServiceListOfflineMessagesNormalizesLimit(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil)
+
+	if _, err := service.ListOfflineMessages("U100", 0, 200); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if repo.lastLimit != 50 {
+		t.Fatalf("expected normalized limit 50, got %d", repo.lastLimit)
 	}
 }
 
@@ -388,7 +445,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, publisher)
+		}, nil, publisher)
 
 	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
 		t.Fatalf("expected no error, got %v", err)

@@ -17,6 +17,7 @@ import (
 type messageService interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 type MessageHandler struct {
@@ -93,6 +94,28 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}
+		return
+	}
+
+	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+func (h *MessageHandler) ListOffline(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	afterID, err := queryOptionalUint(c, "after_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
+		return
+	}
+
+	messages, err := h.service.ListOfflineMessages(currentUser.UUID, afterID, queryInt(c, "limit"))
+	if err != nil {
+		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		return
 	}
 

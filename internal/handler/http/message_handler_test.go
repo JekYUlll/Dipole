@@ -17,8 +17,9 @@ import (
 )
 
 type stubMessageService struct {
-	listDirectFn func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupFn  func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listDirectFn  func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupFn   func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listOfflineFn func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -35,6 +36,14 @@ func (s *stubMessageService) ListGroupMessages(currentUserUUID, groupUUID string
 	}
 
 	return s.listGroupFn(currentUserUUID, groupUUID, beforeID, limit)
+}
+
+func (s *stubMessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	if s.listOfflineFn == nil {
+		return nil, nil
+	}
+
+	return s.listOfflineFn(currentUserUUID, afterID, limit)
 }
 
 func TestMessageHandlerListDirectSuccess(t *testing.T) {
@@ -226,5 +235,78 @@ func TestMessageHandlerListGroupForbidden(t *testing.T) {
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestMessageHandlerListOfflineSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewMessageHandler(&stubMessageService{
+		listOfflineFn: func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
+			if currentUserUUID != "U100" {
+				t.Fatalf("unexpected current user uuid: %s", currentUserUUID)
+			}
+			if afterID != 30 {
+				t.Fatalf("unexpected after_id: %d", afterID)
+			}
+			if limit != 15 {
+				t.Fatalf("unexpected limit: %d", limit)
+			}
+
+			return []*model.Message{
+				{
+					ID:          31,
+					UUID:        "M31",
+					SenderUUID:  "U200",
+					TargetUUID:  "U100",
+					TargetType:  model.MessageTargetDirect,
+					MessageType: model.MessageTypeText,
+					Content:     "offline hello",
+					SentAt:      time.Now().UTC(),
+				},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/offline?after_id=30&limit=15", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListOffline(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if int(response["code"].(float64)) != code.Success {
+		t.Fatalf("expected business code %d, got %v", code.Success, response["code"])
+	}
+}
+
+func TestMessageHandlerListOfflineRejectsInvalidAfterID(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewMessageHandler(&stubMessageService{
+		listOfflineFn: func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
+			return nil, errors.New("should not be called")
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/offline?after_id=bad", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListOffline(context)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", recorder.Code)
 	}
 }

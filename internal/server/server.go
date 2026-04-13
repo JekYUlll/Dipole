@@ -42,12 +42,12 @@ func New() *Server {
 	conversationRepo := repository.NewConversationRepository()
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
+	wsHub := wsTransport.NewHub()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
-	wsHub := wsTransport.NewHub()
 	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, kafkaEvents)
+	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, nil, kafkaEvents)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo)
 	contactService := service.NewContactService(contactRepo, userRepo)
 	groupService := service.NewGroupService(groupRepo, userRepo, newGroupNotifier(wsHub), kafkaEvents)
@@ -97,16 +97,17 @@ func New() *Server {
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
-			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
-			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
-			protected.GET("/users", userHandler.Search)
-			protected.GET("/users/me", userHandler.GetCurrent)
-			protected.GET("/users/:uuid", userHandler.GetByUUID)
-			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
-			protected.GET("/admin/users", userHandler.ListForAdmin)
-			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
+				protected.GET("/messages/offline", messageHandler.ListOffline)
+				protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+				protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+				protected.GET("/users", userHandler.Search)
+				protected.GET("/users/me", userHandler.GetCurrent)
+				protected.GET("/users/:uuid", userHandler.GetByUUID)
+				protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
+				protected.GET("/admin/users", userHandler.ListForAdmin)
+				protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
+			}
 		}
-	}
 
 	return &Server{engine: engine, wsHub: wsHub}
 }
