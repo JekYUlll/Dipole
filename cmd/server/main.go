@@ -7,6 +7,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"go.uber.org/zap"
@@ -27,6 +28,7 @@ func main() {
 	redisCfg := config.RedisConfig()
 	kafkaCfg := config.KafkaConfig()
 	logCfg := config.LogConfig()
+	storageCfg := config.StorageConfig()
 
 	if err := store.InitMySQL(); err != nil {
 		logger.L().Fatal("mysql init failed", zap.Error(err))
@@ -79,6 +81,20 @@ func main() {
 		)
 	} else {
 		logger.Info("kafka consumer is disabled")
+	}
+
+	if err := platformStorage.Init(); err != nil {
+		logger.L().Fatal("storage init failed", zap.Error(err))
+	}
+	if storageCfg.Enabled {
+		logger.Info("storage init succeeded",
+			zap.String("provider", storageCfg.Provider),
+			zap.String("endpoint", storageCfg.Endpoint),
+			zap.String("bucket", storageCfg.Bucket),
+			zap.Int64("file_max_size_mb", storageCfg.FileMaxSizeMB),
+		)
+	} else {
+		logger.Info("storage is disabled")
 	}
 
 	if err := store.AutoMigrate(); err != nil {

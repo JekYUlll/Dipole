@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
@@ -39,6 +40,7 @@ func New() *Server {
 
 	userRepo := repository.NewUserRepository()
 	messageRepo := repository.NewMessageRepository()
+	fileRepo := repository.NewFileRepository()
 	conversationRepo := repository.NewConversationRepository()
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
@@ -47,9 +49,10 @@ func New() *Server {
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
+	fileService := service.NewFileService(fileRepo, platformStorage.Client)
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, nil, kafkaEvents)
+	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo)
 	contactService := service.NewContactService(contactRepo, userRepo)
 	groupService := service.NewGroupService(groupRepo, userRepo, newGroupNotifier(wsHub), kafkaEvents)
@@ -66,6 +69,7 @@ func New() *Server {
 	groupHandler := httpHandler.NewGroupHandler(groupService)
 	userHandler := httpHandler.NewUserHandler(userService)
 	messageHandler := httpHandler.NewMessageHandler(messageService)
+	fileHandler := httpHandler.NewFileHandler(fileService)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, userRepo)
 
@@ -100,18 +104,19 @@ func New() *Server {
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
-				protected.GET("/messages/offline", messageHandler.ListOffline)
-				protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
-				protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
-				protected.GET("/users", userHandler.Search)
-				protected.GET("/users/me", userHandler.GetCurrent)
-				protected.GET("/users/:uuid", userHandler.GetByUUID)
-				protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
-				protected.GET("/admin/users", userHandler.ListForAdmin)
-				protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
-				protected.GET("/admin/overview", adminHandler.Overview)
-			}
+			protected.GET("/messages/offline", messageHandler.ListOffline)
+			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+			protected.POST("/files", fileHandler.Upload)
+			protected.GET("/users", userHandler.Search)
+			protected.GET("/users/me", userHandler.GetCurrent)
+			protected.GET("/users/:uuid", userHandler.GetByUUID)
+			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
+			protected.GET("/admin/users", userHandler.ListForAdmin)
+			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
+			protected.GET("/admin/overview", adminHandler.Overview)
 		}
+	}
 
 	return &Server{engine: engine, wsHub: wsHub}
 }

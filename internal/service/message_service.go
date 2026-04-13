@@ -20,6 +20,8 @@ var (
 	ErrMessageTargetNotFound    = errors.New("message target not found")
 	ErrMessageFriendRequired    = errors.New("direct message requires friendship")
 	ErrMessageGroupForbidden    = errors.New("group message requires membership")
+	ErrMessageFileRequired      = errors.New("message file is required")
+	ErrMessageFileUnavailable   = errors.New("message file is unavailable")
 )
 
 type messageRepository interface {
@@ -27,6 +29,10 @@ type messageRepository interface {
 	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
+}
+
+type messageFileFinder interface {
+	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
 }
 
 type messageUserFinder interface {
@@ -49,6 +55,7 @@ type MessageService struct {
 	friendChecker friendshipChecker
 	groupChecker  groupMessageChecker
 	events        eventPublisher
+	fileFinder    messageFileFinder
 }
 
 type MessageEventPayload struct {
@@ -59,17 +66,23 @@ type MessageEventPayload struct {
 	TargetType      int8      `json:"target_type"`
 	MessageType     int8      `json:"message_type"`
 	Content         string    `json:"content"`
+	FileID          string    `json:"file_id,omitempty"`
+	FileName        string    `json:"file_name,omitempty"`
+	FileSize        int64     `json:"file_size,omitempty"`
+	FileURL         string    `json:"file_url,omitempty"`
+	FileContentType string    `json:"file_content_type,omitempty"`
 	SentAt          time.Time `json:"sent_at"`
 	RecipientUUIDs  []string  `json:"recipient_uuids,omitempty"`
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, events eventPublisher) *MessageService {
+func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
 		friendChecker: friendChecker,
 		groupChecker:  groupChecker,
 		events:        events,
+		fileFinder:    fileFinder,
 	}
 }
 
@@ -198,6 +211,79 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 	return message, recipientUUIDs, nil
 }
 
+func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID string) (*model.Message, error) {
+	targetUUID = strings.TrimSpace(targetUUID)
+	fileUUID = strings.TrimSpace(fileUUID)
+	if targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if fileUUID == "" {
+		return nil, ErrMessageFileRequired
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send direct file message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+	if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
+		return nil, err
+	}
+
+	message, err := s.newFileMessage(senderUUID, targetUUID, model.MessageTargetDirect, fileUUID)
+	if err != nil {
+		return nil, err
+	}
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist direct file message: %w", err)
+		}
+		return message, nil
+	}
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
+func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	fileUUID = strings.TrimSpace(fileUUID)
+	if groupUUID == "" {
+		return nil, nil, ErrMessageTargetRequired
+	}
+	if fileUUID == "" {
+		return nil, nil, ErrMessageFileRequired
+	}
+	if err := s.ensureGroupMessagePermission(senderUUID, groupUUID); err != nil {
+		return nil, nil, err
+	}
+
+	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	message, err := s.newFileMessage(senderUUID, groupUUID, model.MessageTargetGroup, fileUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, nil, fmt.Errorf("persist group file message: %w", err)
+		}
+		return message, recipientUUIDs, nil
+	}
+	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
+		return nil, nil, err
+	}
+
+	return message, recipientUUIDs, nil
+}
+
 func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	if groupUUID == "" {
@@ -292,6 +378,11 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string) Mess
 		TargetType:      message.TargetType,
 		MessageType:     message.MessageType,
 		Content:         message.Content,
+		FileID:          message.FileID,
+		FileName:        message.FileName,
+		FileSize:        message.FileSize,
+		FileURL:         message.FileURL,
+		FileContentType: message.FileContentType,
 		SentAt:          message.SentAt,
 		RecipientUUIDs:  recipientUUIDs,
 	}
@@ -306,6 +397,11 @@ func payloadToMessage(payload MessageEventPayload) *model.Message {
 		TargetType:      payload.TargetType,
 		MessageType:     payload.MessageType,
 		Content:         payload.Content,
+		FileID:          strings.TrimSpace(payload.FileID),
+		FileName:        strings.TrimSpace(payload.FileName),
+		FileSize:        payload.FileSize,
+		FileURL:         strings.TrimSpace(payload.FileURL),
+		FileContentType: strings.TrimSpace(payload.FileContentType),
 		SentAt:          payload.SentAt,
 	}
 }
@@ -332,6 +428,43 @@ func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) err
 	}
 
 	return nil
+}
+
+func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetType int8, fileUUID string) (*model.Message, error) {
+	if s.fileFinder == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	uploadedFile, err := s.fileFinder.GetOwnedFile(strings.TrimSpace(senderUUID), fileUUID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrFileNotFound), errors.Is(err, ErrFilePermissionDenied):
+			return nil, ErrMessageFileUnavailable
+		default:
+			return nil, fmt.Errorf("get uploaded file in message service: %w", err)
+		}
+	}
+
+	conversationKey := model.DirectConversationKey(senderUUID, targetUUID)
+	if targetType == model.MessageTargetGroup {
+		conversationKey = model.GroupConversationKey(targetUUID)
+	}
+
+	return &model.Message{
+		UUID:            generateMessageUUID(),
+		ConversationKey: conversationKey,
+		SenderUUID:      strings.TrimSpace(senderUUID),
+		TargetType:      targetType,
+		TargetUUID:      strings.TrimSpace(targetUUID),
+		MessageType:     model.MessageTypeFile,
+		Content:         uploadedFile.FileName,
+		FileID:          uploadedFile.UUID,
+		FileName:        uploadedFile.FileName,
+		FileSize:        uploadedFile.FileSize,
+		FileURL:         uploadedFile.URL,
+		FileContentType: uploadedFile.ContentType,
+		SentAt:          time.Now().UTC(),
+	}, nil
 }
 
 func (s *MessageService) ensureGroupMessagePermission(userUUID, groupUUID string) error {

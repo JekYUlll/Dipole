@@ -142,6 +142,11 @@ func buildMessagePreview(message *model.Message) string {
 			return message.Content
 		}
 		return string(runes[:100])
+	case model.MessageTypeFile:
+		if message.FileName != "" {
+			return "[file] " + message.FileName
+		}
+		return "[file]"
 	default:
 		return "[unsupported]"
 	}

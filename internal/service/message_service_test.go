@@ -101,6 +101,25 @@ type stubGroupMessageChecker struct {
 	err     error
 }
 
+type stubMessageFileFinder struct {
+	files map[string]*model.UploadedFile
+	err   error
+}
+
+func (f *stubMessageFileFinder) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	file := f.files[fileUUID]
+	if file == nil {
+		return nil, ErrFileNotFound
+	}
+	if file.UploaderUUID != uploaderUUID {
+		return nil, ErrFilePermissionDenied
+	}
+	return file, nil
+}
+
 func (c *stubGroupMessageChecker) GetByUUID(groupUUID string) (*model.Group, error) {
 	if c.err != nil {
 		return nil, c.err
@@ -162,7 +181,7 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-		}, nil, nil)
+	}, nil, nil, nil)
 
 	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ")
 	if err != nil {
@@ -204,7 +223,7 @@ func TestMessageServiceSendDirectMessageRejectsUnavailableTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-		}, nil, nil)
+	}, nil, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageTargetUnavailable) {
@@ -228,7 +247,7 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-		}, nil, nil)
+	}, nil, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -257,7 +276,7 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-		}, nil, nil)
+	}, nil, nil, nil)
 
 	messages, err := service.ListDirectMessages("U100", "U200", 99, 10)
 	if err != nil {
@@ -282,7 +301,7 @@ func TestMessageServiceListDirectMessagesRejectsMissingTarget(t *testing.T) {
 
 	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{
 		users: map[string]*model.User{},
-		}, &stubFriendshipChecker{}, nil, nil)
+	}, &stubFriendshipChecker{}, nil, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U404", 0, 20)
 	if !errors.Is(err, ErrMessageTargetNotFound) {
@@ -301,7 +320,7 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-		}, nil, nil)
+	}, nil, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -323,7 +342,7 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 				"U200": {GroupUUID: "G100", UserUUID: "U200"},
 			},
 		},
-		}, nil)
+	}, nil, nil)
 
 	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group")
 	if err != nil {
@@ -350,7 +369,7 @@ func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
 		members: map[string]map[string]*model.GroupMember{
 			"G100": {},
 		},
-		}, nil)
+	}, nil, nil)
 
 	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
 	if !errors.Is(err, ErrMessageGroupForbidden) {
@@ -375,7 +394,7 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 				"U100": {GroupUUID: "G100", UserUUID: "U100"},
 			},
 		},
-		}, nil)
+	}, nil, nil)
 
 	messages, err := service.ListGroupMessages("U100", "G100", 15, 10)
 	if err != nil {
@@ -398,7 +417,7 @@ func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
 			{ID: 32, UUID: "M32"},
 		},
 	}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil)
 
 	messages, err := service.ListOfflineMessages(" U100 ", 30, 10)
 	if err != nil {
@@ -422,13 +441,61 @@ func TestMessageServiceListOfflineMessagesNormalizesLimit(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubMessageRepository{}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil)
 
 	if _, err := service.ListOfflineMessages("U100", 0, 200); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if repo.lastLimit != 50 {
 		t.Fatalf("expected normalized limit 50, got %d", repo.lastLimit)
+	}
+}
+
+func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+	}, &stubFriendshipChecker{
+		friendships: map[string]map[string]bool{
+			"U100": {"U200": true},
+		},
+	}, nil, &stubMessageFileFinder{
+		files: map[string]*model.UploadedFile{
+			"F100": {
+				UUID:         "F100",
+				UploaderUUID: "U100",
+				FileName:     "hello.txt",
+				FileSize:     128,
+				ContentType:  "text/plain",
+				URL:          "http://127.0.0.1:9000/dipole-files/message-files/hello.txt",
+			},
+		},
+	}, nil)
+
+	message, err := service.SendDirectFileMessage("U100", "U200", "F100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message.MessageType != model.MessageTypeFile {
+		t.Fatalf("expected file message type, got %d", message.MessageType)
+	}
+	if message.FileID != "F100" || message.FileName != "hello.txt" {
+		t.Fatalf("unexpected file message payload: %+v", message)
+	}
+}
+
+func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
+	t.Parallel()
+
+	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, &stubMessageFileFinder{}, nil)
+
+	_, err := service.SendDirectFileMessage("U100", "U200", "")
+	if !errors.Is(err, ErrMessageFileRequired) {
+		t.Fatalf("expected ErrMessageFileRequired, got %v", err)
 	}
 }
 
@@ -445,7 +512,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-		}, nil, publisher)
+	}, nil, nil, publisher)
 
 	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -466,7 +533,7 @@ func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T
 
 	repo := &stubMessageRepository{}
 	publisher := &stubEventPublisher{}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, publisher)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher)
 
 	message, err := service.PersistRequestedMessage(MessageEventPayload{
 		MessageID:       "M100",

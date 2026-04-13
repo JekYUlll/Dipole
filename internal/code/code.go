@@ -75,3 +75,9 @@ const (
 	GroupEmptyUpdate          int = 100610
 	GroupOwnerCannotBeRemoved int = 100611
 )
+
+const (
+	FileMissing            int = 100700
+	FileTooLarge           int = 100701
+	FileStorageUnavailable int = 100702
+)

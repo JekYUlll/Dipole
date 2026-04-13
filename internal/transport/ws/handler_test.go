@@ -42,8 +42,10 @@ func (s *stubUserFinder) GetByUUID(uuid string) (*model.User, error) {
 }
 
 type stubDirectMessageService struct {
-	sendDirectMessageFn func(senderUUID, targetUUID, content string) (*model.Message, error)
-	sendGroupMessageFn  func(senderUUID, groupUUID, content string) (*model.Message, []string, error)
+	sendDirectMessageFn     func(senderUUID, targetUUID, content string) (*model.Message, error)
+	sendGroupMessageFn      func(senderUUID, groupUUID, content string) (*model.Message, []string, error)
+	sendDirectFileMessageFn func(senderUUID, targetUUID, fileUUID string) (*model.Message, error)
+	sendGroupFileMessageFn  func(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error)
 }
 
 func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
@@ -60,6 +62,22 @@ func (s *stubDirectMessageService) SendGroupMessage(senderUUID, groupUUID, conte
 	}
 
 	return s.sendGroupMessageFn(senderUUID, groupUUID, content)
+}
+
+func (s *stubDirectMessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID string) (*model.Message, error) {
+	if s.sendDirectFileMessageFn == nil {
+		return nil, errors.New("unexpected send direct file message call")
+	}
+
+	return s.sendDirectFileMessageFn(senderUUID, targetUUID, fileUUID)
+}
+
+func (s *stubDirectMessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error) {
+	if s.sendGroupFileMessageFn == nil {
+		return nil, nil, errors.New("unexpected send group file message call")
+	}
+
+	return s.sendGroupFileMessageFn(senderUUID, groupUUID, fileUUID)
 }
 
 type stubConversationUpdater struct {

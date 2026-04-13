@@ -65,6 +65,18 @@ type Kafka struct {
 	ConsumeRetryBackoffMS   int      `mapstructure:"consume_retry_backoff_ms"`
 }
 
+type Storage struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	Provider      string `mapstructure:"provider"`
+	Endpoint      string `mapstructure:"endpoint"`
+	AccessKey     string `mapstructure:"access_key"`
+	SecretKey     string `mapstructure:"secret_key"`
+	UseSSL        bool   `mapstructure:"use_ssl"`
+	Bucket        string `mapstructure:"bucket"`
+	PublicBaseURL string `mapstructure:"public_base_url"`
+	FileMaxSizeMB int64  `mapstructure:"file_max_size_mb"`
+}
+
 var (
 	cfg     *viper.Viper
 	loadErr error
@@ -107,6 +119,15 @@ func Load() error {
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
+		v.SetDefault("storage.enabled", false)
+		v.SetDefault("storage.provider", "minio")
+		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
+		v.SetDefault("storage.access_key", "dipoleminio")
+		v.SetDefault("storage.secret_key", "dipoleminiopass")
+		v.SetDefault("storage.use_ssl", false)
+		v.SetDefault("storage.bucket", "dipole-files")
+		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
+		v.SetDefault("storage.file_max_size_mb", 50)
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -141,6 +162,15 @@ func Load() error {
 			"kafka.write_timeout_seconds",
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
+			"storage.enabled",
+			"storage.provider",
+			"storage.endpoint",
+			"storage.access_key",
+			"storage.secret_key",
+			"storage.use_ssl",
+			"storage.bucket",
+			"storage.public_base_url",
+			"storage.file_max_size_mb",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -264,6 +294,26 @@ func KafkaConfig() Kafka {
 	kafkaConfig.ConsumeRetryBackoffMS = cfg.GetInt("kafka.consume_retry_backoff_ms")
 
 	return kafkaConfig
+}
+
+func StorageConfig() Storage {
+	MustLoad()
+
+	var storageConfig Storage
+	if err := cfg.UnmarshalKey("storage", &storageConfig); err != nil {
+		panic(fmt.Errorf("unmarshal storage config: %w", err))
+	}
+	storageConfig.Enabled = cfg.GetBool("storage.enabled")
+	storageConfig.Provider = cfg.GetString("storage.provider")
+	storageConfig.Endpoint = cfg.GetString("storage.endpoint")
+	storageConfig.AccessKey = cfg.GetString("storage.access_key")
+	storageConfig.SecretKey = cfg.GetString("storage.secret_key")
+	storageConfig.UseSSL = cfg.GetBool("storage.use_ssl")
+	storageConfig.Bucket = cfg.GetString("storage.bucket")
+	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
+	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
+
+	return storageConfig
 }
 
 func Addr() string {

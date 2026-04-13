@@ -37,6 +37,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) {
 		repository.NewUserRepository(),
 		repository.NewContactRepository(),
 		repository.NewGroupRepository(),
+		service.NewFileService(repository.NewFileRepository(), nil),
 		platformKafka.NewJSONPublisher(platformKafka.Client),
 	)
 	conversationService := service.NewConversationService(
@@ -194,12 +195,14 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 		}
 
 		hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeChatMessage, wsTransport.ChatMessageData{
-			MessageID:  payload.MessageID,
-			FromUUID:   payload.SenderUUID,
-			TargetUUID: payload.TargetUUID,
-			TargetType: payload.TargetType,
-			Content:    payload.Content,
-			SentAt:     payload.SentAt,
+			MessageID:   payload.MessageID,
+			FromUUID:    payload.SenderUUID,
+			TargetUUID:  payload.TargetUUID,
+			TargetType:  payload.TargetType,
+			MessageType: payload.MessageType,
+			Content:     payload.Content,
+			File:        payloadToWSFile(payload),
+			SentAt:      payload.SentAt,
 		})
 
 		return nil
@@ -217,12 +220,14 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 		}
 
 		eventData := wsTransport.ChatMessageData{
-			MessageID:  payload.MessageID,
-			FromUUID:   payload.SenderUUID,
-			TargetUUID: payload.TargetUUID,
-			TargetType: payload.TargetType,
-			Content:    payload.Content,
-			SentAt:     payload.SentAt,
+			MessageID:   payload.MessageID,
+			FromUUID:    payload.SenderUUID,
+			TargetUUID:  payload.TargetUUID,
+			TargetType:  payload.TargetType,
+			MessageType: payload.MessageType,
+			Content:     payload.Content,
+			File:        payloadToWSFile(payload),
+			SentAt:      payload.SentAt,
 		}
 		for _, recipientUUID := range payload.RecipientUUIDs {
 			if recipientUUID == payload.SenderUUID {
@@ -266,6 +271,25 @@ func servicePayloadToMessage(payload service.MessageEventPayload) *model.Message
 		TargetType:      payload.TargetType,
 		MessageType:     payload.MessageType,
 		Content:         payload.Content,
+		FileID:          payload.FileID,
+		FileName:        payload.FileName,
+		FileSize:        payload.FileSize,
+		FileURL:         payload.FileURL,
+		FileContentType: payload.FileContentType,
 		SentAt:          payload.SentAt,
+	}
+}
+
+func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePayload {
+	if payload.MessageType != model.MessageTypeFile {
+		return nil
+	}
+
+	return &wsTransport.FilePayload{
+		FileID:      payload.FileID,
+		FileName:    payload.FileName,
+		FileSize:    payload.FileSize,
+		FileURL:     payload.FileURL,
+		ContentType: payload.FileContentType,
 	}
 }

@@ -47,3 +47,14 @@ kafka:
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3
   consume_retry_backoff_ms: 500
+
+storage:
+  enabled: true
+  provider: minio
+  endpoint: 127.0.0.1:9000
+  access_key: dipoleminio
+  secret_key: dipoleminiopass
+  use_ssl: false
+  bucket: dipole-files
+  public_base_url: http://127.0.0.1:9000/dipole-files
+  file_max_size_mb: 50

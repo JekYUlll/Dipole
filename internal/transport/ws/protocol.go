@@ -10,6 +10,7 @@ const (
 	TypeConnected      = "connected"
 	TypeError          = "error"
 	TypeChatSend       = "chat.send"
+	TypeChatSendFile   = "chat.send_file"
 	TypeChatSent       = "chat.sent"
 	TypeChatMessage    = "chat.message"
 	TypeGroupDismissed = "group.dismissed"
@@ -50,13 +51,28 @@ type SendTextMessageInput struct {
 	Content    string `json:"content"`
 }
 
+type SendFileMessageInput struct {
+	TargetUUID string `json:"target_uuid"`
+	FileID     string `json:"file_id"`
+}
+
+type FilePayload struct {
+	FileID      string `json:"file_id"`
+	FileName    string `json:"file_name"`
+	FileSize    int64  `json:"file_size"`
+	FileURL     string `json:"file_url"`
+	ContentType string `json:"content_type"`
+}
+
 type ChatMessageData struct {
-	MessageID  string    `json:"message_id"`
-	FromUUID   string    `json:"from_uuid"`
-	TargetUUID string    `json:"target_uuid"`
-	TargetType int8      `json:"target_type"`
-	Content    string    `json:"content"`
-	SentAt     time.Time `json:"sent_at"`
+	MessageID   string       `json:"message_id"`
+	FromUUID    string       `json:"from_uuid"`
+	TargetUUID  string       `json:"target_uuid"`
+	TargetType  int8         `json:"target_type"`
+	MessageType int8         `json:"message_type"`
+	Content     string       `json:"content"`
+	File        *FilePayload `json:"file,omitempty"`
+	SentAt      time.Time    `json:"sent_at"`
 }
 
 type ChatSentData struct {
