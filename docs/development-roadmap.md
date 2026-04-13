@@ -244,6 +244,8 @@
 
 这一阶段是必做项。目标是让 `Dipole` 具备区别于普通练手项目的 AI 能力，同时保证架构上可持续扩展。
 
+接入前置能力与准备项，见 [ai-readiness-checklist.md](./ai-readiness-checklist.md)。
+
 建议先做的 AI 功能：
 
 - AI 助手账号

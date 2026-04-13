@@ -53,9 +53,9 @@ func New() *Server {
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
-	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo)
+	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, newGroupNotifier(wsHub), kafkaEvents)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
@@ -89,6 +89,7 @@ func New() *Server {
 			protected.POST("/auth/logout", authHandler.Logout)
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
+			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
 			protected.GET("/contacts", contactHandler.ListFriends)
 			protected.DELETE("/contacts/:friend_uuid", contactHandler.DeleteFriend)
 			protected.PATCH("/contacts/:friend_uuid/remark", contactHandler.UpdateRemark)
@@ -138,10 +139,10 @@ func (s *Server) Engine() *gin.Engine {
 	return s.engine
 }
 
-func (s *Server) RegisterKafkaHandlers() {
+func (s *Server) WSHub() *wsTransport.Hub {
 	if s == nil {
-		return
+		return nil
 	}
 
-	RegisterKafkaHandlers(s.wsHub)
+	return s.wsHub
 }

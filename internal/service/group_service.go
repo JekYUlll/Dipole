@@ -71,19 +71,25 @@ type GroupMemberView struct {
 type GroupService struct {
 	repo       groupRepository
 	userFinder groupUserFinder
-	notifier   groupNotifier
 	events     eventPublisher
 }
 
-type groupNotifier interface {
-	NotifyGroupDismissed(groupUUID, groupName string, memberUUIDs []string)
+type GroupEventPayload struct {
+	GroupUUID      string    `json:"group_uuid"`
+	GroupName      string    `json:"group_name,omitempty"`
+	Name           string    `json:"name,omitempty"`
+	Notice         string    `json:"notice,omitempty"`
+	Avatar         string    `json:"avatar,omitempty"`
+	OperatorUUID   string    `json:"operator_uuid,omitempty"`
+	MemberUUIDs    []string  `json:"member_uuids,omitempty"`
+	RecipientUUIDs []string  `json:"recipient_uuids,omitempty"`
+	OccurredAt     time.Time `json:"occurred_at"`
 }
 
-func NewGroupService(repo groupRepository, userFinder groupUserFinder, notifier groupNotifier, events eventPublisher) *GroupService {
+func NewGroupService(repo groupRepository, userFinder groupUserFinder, events eventPublisher) *GroupService {
 	return &GroupService{
 		repo:       repo,
 		userFinder: userFinder,
-		notifier:   notifier,
 		events:     events,
 	}
 }
@@ -149,11 +155,11 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 	if err := s.repo.Create(group, members); err != nil {
 		return nil, fmt.Errorf("create group: %w", err)
 	}
-	s.publishGroupEvent("group.created", group.UUID, map[string]any{
-		"group_uuid":   group.UUID,
-		"name":         group.Name,
-		"owner_uuid":   group.OwnerUUID,
-		"member_count": group.MemberCount,
+	s.publishGroupEvent("group.created", group.UUID, GroupEventPayload{
+		GroupUUID:    group.UUID,
+		Name:         group.Name,
+		OperatorUUID: group.OwnerUUID,
+		OccurredAt:   now,
 	})
 
 	owner, err := s.userFinder.GetByUUID(currentUserUUID)
@@ -291,6 +297,18 @@ func (s *GroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs
 		})
 	}
 
+	recipients, err := s.listMemberUUIDs(group.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("list members after add group members: %w", err)
+	}
+	s.publishGroupEvent("group.members.added", group.UUID, GroupEventPayload{
+		GroupUUID:      group.UUID,
+		OperatorUUID:   currentUserUUID,
+		MemberUUIDs:    extractMemberUUIDs(addedMembers),
+		RecipientUUIDs: recipients,
+		OccurredAt:     now,
+	})
+
 	return views, nil
 }
 
@@ -346,11 +364,18 @@ func (s *GroupService) UpdateGroup(currentUserUUID, groupUUID string, input Upda
 	if err := s.repo.Update(group); err != nil {
 		return nil, fmt.Errorf("update group: %w", err)
 	}
-	s.publishGroupEvent("group.updated", group.UUID, map[string]any{
-		"group_uuid": group.UUID,
-		"name":       group.Name,
-		"notice":     group.Notice,
-		"avatar":     group.Avatar,
+	recipients, err := s.listMemberUUIDs(group.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("list members after update group: %w", err)
+	}
+	s.publishGroupEvent("group.updated", group.UUID, GroupEventPayload{
+		GroupUUID:      group.UUID,
+		Name:           group.Name,
+		Notice:         group.Notice,
+		Avatar:         group.Avatar,
+		OperatorUUID:   currentUserUUID,
+		RecipientUUIDs: recipients,
+		OccurredAt:     group.UpdatedAt,
 	})
 
 	owner, err := s.userFinder.GetByUUID(group.OwnerUUID)
@@ -391,12 +416,19 @@ func (s *GroupService) RemoveMembers(currentUserUUID, groupUUID string, memberUU
 		}
 	}
 
+	recipients, err := s.listMemberUUIDs(group.UUID)
+	if err != nil {
+		return fmt.Errorf("list members before remove group members: %w", err)
+	}
 	if err := s.repo.RemoveMembers(group.UUID, memberUUIDs); err != nil {
 		return fmt.Errorf("remove group members: %w", err)
 	}
-	s.publishGroupEvent("group.members.removed", group.UUID, map[string]any{
-		"group_uuid":   group.UUID,
-		"member_uuids": memberUUIDs,
+	s.publishGroupEvent("group.members.removed", group.UUID, GroupEventPayload{
+		GroupUUID:      group.UUID,
+		OperatorUUID:   currentUserUUID,
+		MemberUUIDs:    memberUUIDs,
+		RecipientUUIDs: recipients,
+		OccurredAt:     time.Now().UTC(),
 	})
 
 	return nil
@@ -421,21 +453,14 @@ func (s *GroupService) DismissGroup(currentUserUUID, groupUUID string) error {
 	if err := s.repo.Update(group); err != nil {
 		return fmt.Errorf("dismiss group: %w", err)
 	}
-	s.publishGroupEvent("group.dismissed", group.UUID, map[string]any{
-		"group_uuid": group.UUID,
-		"group_name": group.Name,
+	s.publishGroupEvent("group.dismissed", group.UUID, GroupEventPayload{
+		GroupUUID:      group.UUID,
+		GroupName:      group.Name,
+		OperatorUUID:   currentUserUUID,
+		MemberUUIDs:    extractMemberUUIDs(members),
+		RecipientUUIDs: extractMemberUUIDs(members),
+		OccurredAt:     group.UpdatedAt,
 	})
-
-	if s.notifier != nil {
-		memberUUIDs := make([]string, 0, len(members))
-		for _, member := range members {
-			if member == nil {
-				continue
-			}
-			memberUUIDs = append(memberUUIDs, member.UserUUID)
-		}
-		s.notifier.NotifyGroupDismissed(group.UUID, group.Name, memberUUIDs)
-	}
 
 	return nil
 }
@@ -446,6 +471,15 @@ func (s *GroupService) publishGroupEvent(topic string, key string, payload any) 
 	}
 
 	_ = s.events.PublishEvent(context.Background(), topic, key, topic, payload, nil)
+}
+
+func (s *GroupService) listMemberUUIDs(groupUUID string) ([]string, error) {
+	members, err := s.repo.ListMembers(groupUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return extractMemberUUIDs(members), nil
 }
 
 func (s *GroupService) loadAccessibleGroup(currentUserUUID, groupUUID string) (*model.Group, *model.GroupMember, error) {
@@ -510,6 +544,18 @@ func normalizeGroupMemberUUIDs(userUUIDs []string, skipUUID string) []string {
 	}
 
 	return normalized
+}
+
+func extractMemberUUIDs(members []*model.GroupMember) []string {
+	memberUUIDs := make([]string, 0, len(members))
+	for _, member := range members {
+		if member == nil {
+			continue
+		}
+		memberUUIDs = append(memberUUIDs, member.UserUUID)
+	}
+
+	return memberUUIDs
 }
 
 func generateGroupUUID() string {

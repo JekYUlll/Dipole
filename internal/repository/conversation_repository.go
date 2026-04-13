@@ -124,6 +124,19 @@ func (r *ConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*
 	return conversations, nil
 }
 
+func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
+	var conversation model.Conversation
+	if err := store.DB.Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).
+		First(&conversation).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get conversation by user and key: %w", err)
+	}
+
+	return &conversation, nil
+}
+
 func (r *ConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
 	if err := store.DB.Model(&model.Conversation{}).
 		Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).

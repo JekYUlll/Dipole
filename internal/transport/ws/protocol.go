@@ -7,13 +7,17 @@ import (
 )
 
 const (
-	TypeConnected      = "connected"
-	TypeError          = "error"
-	TypeChatSend       = "chat.send"
-	TypeChatSendFile   = "chat.send_file"
-	TypeChatSent       = "chat.sent"
-	TypeChatMessage    = "chat.message"
-	TypeGroupDismissed = "group.dismissed"
+	TypeConnected           = "connected"
+	TypeError               = "error"
+	TypeChatSend            = "chat.send"
+	TypeChatSendFile        = "chat.send_file"
+	TypeChatSent            = "chat.sent"
+	TypeChatMessage         = "chat.message"
+	TypeChatRead            = "chat.read"
+	TypeGroupUpdated        = "group.updated"
+	TypeGroupMembersAdded   = "group.members_added"
+	TypeGroupMembersRemoved = "group.members_removed"
+	TypeGroupDismissed      = "group.dismissed"
 )
 
 const (
@@ -80,9 +84,36 @@ type ChatSentData struct {
 	Delivered bool `json:"delivered"`
 }
 
+type ChatReadData struct {
+	ReaderUUID          string    `json:"reader_uuid"`
+	TargetUUID          string    `json:"target_uuid"`
+	TargetType          int8      `json:"target_type"`
+	ConversationKey     string    `json:"conversation_key"`
+	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	ReadAt              time.Time `json:"read_at"`
+}
+
+type GroupUpdatedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	Name         string    `json:"name"`
+	Notice       string    `json:"notice"`
+	Avatar       string    `json:"avatar"`
+	OperatorUUID string    `json:"operator_uuid"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type GroupMembersChangedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	MemberUUIDs  []string  `json:"member_uuids"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
+}
+
 type GroupDismissedEventData struct {
-	GroupUUID string `json:"group_uuid"`
-	GroupName string `json:"group_name"`
+	GroupUUID    string    `json:"group_uuid"`
+	GroupName    string    `json:"group_name"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
 }
 
 func EncodeCommand(eventType string, data any) ([]byte, error) {

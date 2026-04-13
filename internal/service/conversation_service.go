@@ -1,22 +1,26 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 var (
-	ErrConversationTargetRequired = errors.New("conversation target is required")
-	ErrConversationTargetNotFound = errors.New("conversation target not found")
+	ErrConversationTargetRequired   = errors.New("conversation target is required")
+	ErrConversationTargetNotFound   = errors.New("conversation target not found")
+	ErrConversationPermissionDenied = errors.New("conversation permission denied")
 )
 
 type conversationRepository interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
 	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
+	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	ClearUnreadByConversationKey(userUUID, conversationKey string) error
 }
 
@@ -33,19 +37,37 @@ type ConversationView struct {
 type ConversationService struct {
 	repo       conversationRepository
 	userFinder conversationUserFinder
-	groupRepo   conversationGroupRepository
+	groupRepo  conversationGroupRepository
+	notifier   conversationNotifier
+	events     eventPublisher
 }
 
 type conversationGroupRepository interface {
 	GetByUUID(groupUUID string) (*model.Group, error)
 	ListMembers(groupUUID string) ([]*model.GroupMember, error)
+	GetMember(groupUUID, userUUID string) (*model.GroupMember, error)
 }
 
-func NewConversationService(repo conversationRepository, userFinder conversationUserFinder, groupRepo conversationGroupRepository) *ConversationService {
+type conversationNotifier interface {
+	NotifyDirectRead(receipt ConversationReadReceipt)
+}
+
+type ConversationReadReceipt struct {
+	ReaderUUID          string    `json:"reader_uuid"`
+	TargetUUID          string    `json:"target_uuid"`
+	TargetType          int8      `json:"target_type"`
+	ConversationKey     string    `json:"conversation_key"`
+	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	ReadAt              time.Time `json:"read_at"`
+}
+
+func NewConversationService(repo conversationRepository, userFinder conversationUserFinder, groupRepo conversationGroupRepository, notifier conversationNotifier, events eventPublisher) *ConversationService {
 	return &ConversationService{
 		repo:       repo,
 		userFinder: userFinder,
 		groupRepo:  groupRepo,
+		notifier:   notifier,
+		events:     events,
 	}
 }
 
@@ -117,22 +139,101 @@ func (s *ConversationService) ListForUser(userUUID string, limit int) ([]*Conver
 	return result, nil
 }
 
-func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID string) error {
+func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*ConversationReadReceipt, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {
-		return ErrConversationTargetRequired
+		return nil, ErrConversationTargetRequired
 	}
 
 	targetUser, err := s.userFinder.GetByUUID(targetUUID)
 	if err != nil {
-		return fmt.Errorf("get target user in mark direct conversation read: %w", err)
+		return nil, fmt.Errorf("get target user in mark direct conversation read: %w", err)
 	}
 	if targetUser == nil {
-		return ErrConversationTargetNotFound
+		return nil, ErrConversationTargetNotFound
 	}
 
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, model.DirectConversationKey(userUUID, targetUUID)); err != nil {
-		return fmt.Errorf("mark direct conversation read: %w", err)
+	conversationKey := model.DirectConversationKey(userUUID, targetUUID)
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return nil, fmt.Errorf("get direct conversation before mark read: %w", err)
+	}
+	if err := s.repo.ClearUnreadByConversationKey(userUUID, conversationKey); err != nil {
+		return nil, fmt.Errorf("mark direct conversation read: %w", err)
+	}
+
+	receipt := buildConversationReadReceipt(userUUID, targetUUID, model.MessageTargetDirect, conversation)
+	if err := s.dispatchDirectReadReceipt(receipt); err != nil {
+		return nil, err
+	}
+
+	return receipt, nil
+}
+
+func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID string) error {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return ErrConversationTargetRequired
+	}
+
+	group, err := s.groupRepo.GetByUUID(groupUUID)
+	if err != nil {
+		return fmt.Errorf("get group in mark group conversation read: %w", err)
+	}
+	if group == nil || group.Status != model.GroupStatusNormal {
+		return ErrConversationTargetNotFound
+	}
+	member, err := s.groupRepo.GetMember(groupUUID, userUUID)
+	if err != nil {
+		return fmt.Errorf("get group member in mark group conversation read: %w", err)
+	}
+	if member == nil {
+		return ErrConversationPermissionDenied
+	}
+
+	if err := s.repo.ClearUnreadByConversationKey(userUUID, model.GroupConversationKey(groupUUID)); err != nil {
+		return fmt.Errorf("mark group conversation read: %w", err)
+	}
+
+	return nil
+}
+
+func buildConversationReadReceipt(readerUUID, targetUUID string, targetType int8, conversation *model.Conversation) *ConversationReadReceipt {
+	if conversation == nil || conversation.LastMessageUUID == "" {
+		return nil
+	}
+
+	return &ConversationReadReceipt{
+		ReaderUUID:          strings.TrimSpace(readerUUID),
+		TargetUUID:          strings.TrimSpace(targetUUID),
+		TargetType:          targetType,
+		ConversationKey:     conversation.ConversationKey,
+		LastReadMessageUUID: conversation.LastMessageUUID,
+		ReadAt:              time.Now().UTC(),
+	}
+}
+
+func (s *ConversationService) dispatchDirectReadReceipt(receipt *ConversationReadReceipt) error {
+	if receipt == nil {
+		return nil
+	}
+
+	if s.events != nil {
+		if err := s.events.PublishEvent(
+			context.Background(),
+			"conversation.direct.read",
+			receipt.TargetUUID,
+			"conversation.direct.read",
+			receipt,
+			nil,
+		); err != nil {
+			return fmt.Errorf("publish direct conversation read receipt: %w", err)
+		}
+		return nil
+	}
+
+	if s.notifier != nil {
+		s.notifier.NotifyDirectRead(*receipt)
 	}
 
 	return nil

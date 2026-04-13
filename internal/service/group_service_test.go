@@ -88,18 +88,6 @@ type stubGroupUserFinder struct {
 	err   error
 }
 
-type stubGroupNotifier struct {
-	groupUUIDs []string
-	groupNames []string
-	memberSets [][]string
-}
-
-func (n *stubGroupNotifier) NotifyGroupDismissed(groupUUID, groupName string, memberUUIDs []string) {
-	n.groupUUIDs = append(n.groupUUIDs, groupUUID)
-	n.groupNames = append(n.groupNames, groupName)
-	n.memberSets = append(n.memberSets, memberUUIDs)
-}
-
 func (f *stubGroupUserFinder) GetByUUID(uuid string) (*model.User, error) {
 	if f.err != nil {
 		return nil, f.err
@@ -129,7 +117,7 @@ func TestGroupServiceCreateGroupSuccess(t *testing.T) {
 			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
 			"U200": {UUID: "U200", Nickname: "member", Status: model.UserStatusNormal},
 		},
-	}, nil, nil)
+	}, nil)
 
 	group, err := svc.CreateGroup("U100", CreateGroupInput{
 		Name:        "Study Group",
@@ -157,7 +145,7 @@ func TestGroupServiceCreateGroupRejectsInvalidMember(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Status: model.UserStatusNormal},
 		},
-	}, nil, nil)
+	}, nil)
 
 	_, err := svc.CreateGroup("U100", CreateGroupInput{
 		Name:        "Study Group",
@@ -176,7 +164,7 @@ func TestGroupServiceGetGroupRequiresMembership(t *testing.T) {
 	repo.members["G100"] = map[string]*model.GroupMember{
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner, JoinedAt: time.Now().UTC()},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
 
 	_, err := svc.GetGroup("U200", "G100")
 	if !errors.Is(err, ErrGroupPermissionDenied) {
@@ -197,7 +185,7 @@ func TestGroupServiceAddMembersRequiresOwner(t *testing.T) {
 		users: map[string]*model.User{
 			"U300": {UUID: "U300", Status: model.UserStatusNormal},
 		},
-	}, nil, nil)
+	}, nil)
 
 	_, err := svc.AddMembers("U200", "G100", []string{"U300"})
 	if !errors.Is(err, ErrGroupPermissionDenied) {
@@ -213,7 +201,7 @@ func TestGroupServiceLeaveGroupRejectsOwner(t *testing.T) {
 	repo.members["G100"] = map[string]*model.GroupMember{
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
 
 	err := svc.LeaveGroup("U100", "G100")
 	if !errors.Is(err, ErrGroupOwnerCannotLeave) {
@@ -233,7 +221,7 @@ func TestGroupServiceUpdateGroupSuccess(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Nickname: "owner"},
 		},
-	}, nil, nil)
+	}, nil)
 
 	view, err := svc.UpdateGroup("U100", "G100", UpdateGroupInput{Name: "New Name", Notice: "hello"})
 	if err != nil {
@@ -253,7 +241,7 @@ func TestGroupServiceRemoveMembersRejectsOwner(t *testing.T) {
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
 		"U200": {GroupUUID: "G100", UserUUID: "U200", Role: model.GroupMemberRoleMember},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
 
 	err := svc.RemoveMembers("U100", "G100", []string{"U100"})
 	if !errors.Is(err, ErrGroupOwnerCannotBeRemoved) {
@@ -261,7 +249,7 @@ func TestGroupServiceRemoveMembersRejectsOwner(t *testing.T) {
 	}
 }
 
-func TestGroupServiceDismissGroupNotifiesMembers(t *testing.T) {
+func TestGroupServiceDismissGroupPublishesEvent(t *testing.T) {
 	t.Parallel()
 
 	repo := newStubGroupRepository()
@@ -270,8 +258,8 @@ func TestGroupServiceDismissGroupNotifiesMembers(t *testing.T) {
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
 		"U200": {GroupUUID: "G100", UserUUID: "U200", Role: model.GroupMemberRoleMember},
 	}
-	notifier := &stubGroupNotifier{}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, notifier, nil)
+	publisher := &stubEventPublisher{}
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, publisher)
 
 	err := svc.DismissGroup("U100", "G100")
 	if err != nil {
@@ -280,8 +268,8 @@ func TestGroupServiceDismissGroupNotifiesMembers(t *testing.T) {
 	if repo.groups["G100"].Status != model.GroupStatusDismissed {
 		t.Fatalf("expected dismissed group status, got %d", repo.groups["G100"].Status)
 	}
-	if len(notifier.groupUUIDs) != 1 || notifier.groupUUIDs[0] != "G100" {
-		t.Fatalf("expected dismiss notification for G100, got %+v", notifier.groupUUIDs)
+	if len(publisher.topics) != 1 || publisher.topics[0] != "group.dismissed" {
+		t.Fatalf("expected group.dismissed event, got %+v", publisher.topics)
 	}
 }
 
@@ -294,7 +282,7 @@ func TestGroupServicePublishesKafkaEventOnCreate(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
 		},
-	}, nil, publisher)
+	}, publisher)
 
 	if _, err := svc.CreateGroup("U100", CreateGroupInput{Name: "Kafka Group"}); err != nil {
 		t.Fatalf("expected no error, got %v", err)
