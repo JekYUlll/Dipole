@@ -1,6 +1,6 @@
 [build]
-cmd = "go build -o ./tmp/server.exe ./cmd/server"
-entrypoint = ["./tmp/server.exe"]
+cmd = "go build -o ./tmp/server ./cmd/server"
+entrypoint = ["./tmp/server"]
 # args_bin = ["server", ":8080"]
 # bin = "./tmp/server.exe"
 
