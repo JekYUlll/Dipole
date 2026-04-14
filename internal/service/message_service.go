@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	mysqlDriver "github.com/go-sql-driver/mysql"
+	sqlite3 "github.com/mattn/go-sqlite3"
+	"gorm.io/gorm"
 )
 
 var (
@@ -431,15 +434,18 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		return nil, fmt.Errorf("message payload is nil")
 	}
 
-	existing, err := s.repo.GetByUUID(message.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("find message by uuid before persist: %w", err)
-	}
-	if existing == nil {
-		if err := s.repo.Create(message); err != nil {
+	if err := s.repo.Create(message); err != nil {
+		if !isDuplicateMessageError(err) {
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
-	} else {
+
+		existing, findErr := s.repo.GetByUUID(message.UUID)
+		if findErr != nil {
+			return nil, fmt.Errorf("find duplicate message by uuid: %w", findErr)
+		}
+		if existing == nil {
+			return nil, fmt.Errorf("duplicate message %s not found after conflict", message.UUID)
+		}
 		message = existing
 	}
 
@@ -525,6 +531,27 @@ func createdTopicForTargetType(targetType int8) string {
 	}
 
 	return "message.direct.created"
+}
+
+func isDuplicateMessageError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+
+	var mysqlErr *mysqlDriver.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+		return true
+	}
+
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint {
+		return true
+	}
+
+	return false
 }
 
 func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) error {

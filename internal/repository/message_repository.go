@@ -53,20 +53,18 @@ func (r *MessageRepository) ListByConversationKey(conversationKey string, before
 }
 
 func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
-	query := store.DB.Model(&model.Message{}).Where("messages.id > ?", afterID).Where(`
-		(
-			(messages.target_type = ? AND messages.target_uuid = ?)
-			OR
-			(messages.target_type = ? AND messages.sender_uuid <> ? AND EXISTS (
-				SELECT 1
-				FROM group_members gm
-				JOIN groups g ON g.uuid = gm.group_uuid
-				WHERE gm.group_uuid = messages.target_uuid
-				  AND gm.user_uuid = ?
-				  AND g.status = ?
-			))
-		)
-	`,
+	query := store.DB.Model(&model.Message{}).Where("messages.id > ?", afterID).Where(
+		"("+
+			"(messages.target_type = ? AND messages.target_uuid = ?)"+
+			" OR "+
+			"(messages.target_type = ? AND messages.sender_uuid <> ? AND EXISTS ("+
+			"SELECT 1 FROM group_members gm "+
+			"JOIN `groups` g ON g.uuid = gm.group_uuid "+
+			"WHERE gm.group_uuid = messages.target_uuid "+
+			"AND gm.user_uuid = ? "+
+			"AND g.status = ?"+
+			"))"+
+			")",
 		model.MessageTargetDirect,
 		userUUID,
 		model.MessageTargetGroup,
@@ -87,20 +85,18 @@ func (r *MessageRepository) FindLatestAccessibleFileMessage(fileUUID, userUUID s
 	var message model.Message
 	if err := store.DB.Model(&model.Message{}).
 		Where("file_id = ? AND message_type = ?", fileUUID, model.MessageTypeFile).
-		Where(`
-			(
-				(target_type = ? AND (sender_uuid = ? OR target_uuid = ?))
-				OR
-				(target_type = ? AND EXISTS (
-					SELECT 1
-					FROM group_members gm
-					JOIN groups g ON g.uuid = gm.group_uuid
-					WHERE gm.group_uuid = messages.target_uuid
-					  AND gm.user_uuid = ?
-					  AND g.status = ?
-				))
-			)
-		`,
+		Where(
+			"("+
+				"(target_type = ? AND (sender_uuid = ? OR target_uuid = ?))"+
+				" OR "+
+				"(target_type = ? AND EXISTS ("+
+				"SELECT 1 FROM group_members gm "+
+				"JOIN `groups` g ON g.uuid = gm.group_uuid "+
+				"WHERE gm.group_uuid = messages.target_uuid "+
+				"AND gm.user_uuid = ? "+
+				"AND g.status = ?"+
+				"))"+
+				")",
 			model.MessageTargetDirect,
 			userUUID,
 			userUUID,

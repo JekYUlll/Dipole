@@ -35,6 +35,7 @@ func New() *Server {
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
+	mountWebApp(engine)
 
 	appCfg := config.AppConfig()
 

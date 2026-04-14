@@ -15,6 +15,12 @@ import (
 
 var Client *Publisher
 
+const (
+	// IM text/file messages favor tail latency over batching throughput.
+	kafkaWriterBatchSize    = 1
+	kafkaWriterBatchTimeout = 5 * time.Millisecond
+)
+
 type Publisher struct {
 	clientID    string
 	topicPrefix string
@@ -158,6 +164,8 @@ func (p *Publisher) writerForTopic(topic string) *kafkago.Writer {
 		Balancer:     &kafkago.LeastBytes{},
 		RequiredAcks: kafkago.RequireOne,
 		Async:        false,
+		BatchSize:    kafkaWriterBatchSize,
+		BatchTimeout: kafkaWriterBatchTimeout,
 		Transport: &kafkago.Transport{
 			ClientID: p.clientID,
 		},

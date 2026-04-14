@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"gorm.io/gorm"
 )
 
 type stubMessageRepository struct {
@@ -656,6 +657,50 @@ func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T
 	}
 	if len(repo.createdMessages) != 1 {
 		t.Fatalf("expected one persisted message, got %d", len(repo.createdMessages))
+	}
+	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
+		t.Fatalf("expected created event, got %+v", publisher.topics)
+	}
+}
+
+func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t *testing.T) {
+	t.Parallel()
+
+	existing := &model.Message{
+		UUID:            "M100",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	}
+	repo := &stubMessageRepository{
+		createErr: gorm.ErrDuplicatedKey,
+		messagesByUUID: map[string]*model.Message{
+			"M100": existing,
+		},
+	}
+	publisher := &stubEventPublisher{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher)
+
+	message, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M100",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message != existing {
+		t.Fatalf("expected existing message to be reused")
+	}
+	if len(repo.createdMessages) != 0 {
+		t.Fatalf("expected no new persisted messages, got %d", len(repo.createdMessages))
 	}
 	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
 		t.Fatalf("expected created event, got %+v", publisher.topics)

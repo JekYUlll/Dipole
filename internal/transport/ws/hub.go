@@ -165,6 +165,8 @@ func (h *Hub) SendEventToUser(userUUID string, eventType string, data any) int {
 }
 
 func (h *Hub) sendToUser(userUUID string, payload []byte) int {
+	// TODO: 当在线连接数和群广播规模继续上来后，可在这一层引入 ants 协程池，
+	// 统一收口 WS 批量投递任务，限制 goroutine 峰值并平滑广播压力。
 	clients := h.snapshotClients(userUUID)
 	delivered := 0
 	for _, client := range clients {

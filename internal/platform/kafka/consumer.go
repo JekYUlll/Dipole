@@ -17,6 +17,8 @@ import (
 
 var Subscriber *Consumer
 
+const kafkaReaderMaxWait = 10 * time.Millisecond
+
 type Event struct {
 	Topic     string
 	Key       []byte
@@ -120,9 +122,15 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
+	snapshots := make(map[string][]Handler, len(c.handlers))
 	for topic, handlers := range c.handlers {
+		copied := make([]Handler, len(handlers))
+		copy(copied, handlers)
+		snapshots[topic] = copied
+	}
+	c.mu.RUnlock()
+
+	for topic, handlers := range snapshots {
 		reader := c.readerForTopic(topic)
 		go c.consumeLoop(ctx, reader, topic, handlers)
 	}
@@ -232,7 +240,7 @@ func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {
 		GroupID:     c.groupID,
 		Topic:       topic,
 		StartOffset: kafkago.LastOffset,
-		MaxWait:     500 * time.Millisecond,
+		MaxWait:     kafkaReaderMaxWait,
 	})
 	c.readers[topic] = reader
 	return reader
@@ -308,8 +316,8 @@ func (c *Consumer) baseTopicName(topic string) string {
 	prefix := strings.TrimSpace(c.topicPrefix)
 	if prefix != "" {
 		prefix += "."
-		if strings.HasPrefix(topic, prefix) {
-			topic = strings.TrimPrefix(topic, prefix)
+		if after, ok := strings.CutPrefix(topic, prefix); ok {
+			topic = after
 		}
 	}
 	topic = strings.TrimSuffix(topic, ".retry")
