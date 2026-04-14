@@ -59,7 +59,7 @@ func New() *Server {
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
-	fileService := service.NewFileService(fileRepo, platformStorage.Client)
+	fileService := service.NewFileService(fileRepo, messageRepo, platformStorage.Client)
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	var kafkaEvents serverEventPublisher
 	if config.KafkaConfig().Enabled {
@@ -124,6 +124,7 @@ func New() *Server {
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
 			protected.POST("/files", fileHandler.Upload)
+			protected.GET("/files/:file_id/download", fileHandler.Download)
 			protected.GET("/users/me/devices", sessionHandler.ListDevices)
 			protected.POST("/users/me/devices/:connection_id/logout", sessionHandler.ForceLogoutDevice)
 			protected.POST("/users/me/devices/logout-all", sessionHandler.ForceLogoutAll)

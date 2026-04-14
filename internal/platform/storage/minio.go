@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"mime/multipart"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,13 +30,22 @@ type Uploader interface {
 	UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*UploadedObject, error)
 }
 
+type Downloader interface {
+	PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
+}
+
+type ObjectStorage interface {
+	Uploader
+	Downloader
+}
+
 type MinIOUploader struct {
 	client        *minio.Client
 	bucket        string
 	publicBaseURL string
 }
 
-var Client Uploader
+var Client ObjectStorage
 
 func Init() error {
 	cfg := config.StorageConfig()
@@ -115,6 +125,25 @@ func (u *MinIOUploader) objectURL(objectKey string) string {
 		scheme = "https"
 	}
 	return fmt.Sprintf("%s://%s/%s/%s", scheme, config.StorageConfig().Endpoint, u.bucket, objectKey)
+}
+
+func (u *MinIOUploader) PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error) {
+	if u == nil || u.client == nil {
+		return "", fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(bucket) == "" || strings.TrimSpace(objectKey) == "" {
+		return "", fmt.Errorf("bucket and object key are required")
+	}
+	if expiry <= 0 {
+		expiry = 10 * time.Minute
+	}
+
+	presignedURL, err := u.client.PresignedGetObject(ctx, bucket, objectKey, expiry, url.Values{})
+	if err != nil {
+		return "", fmt.Errorf("presign minio object url: %w", err)
+	}
+
+	return presignedURL.String(), nil
 }
 
 func buildObjectKey(fileName string) string {

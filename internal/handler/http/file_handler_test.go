@@ -14,10 +14,12 @@ import (
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type stubFileService struct {
-	uploadFn func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
+	uploadFn   func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
+	downloadFn func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
 }
 
 type stubFileLimiter struct {
@@ -29,6 +31,13 @@ func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipa
 		return nil, nil
 	}
 	return s.uploadFn(uploaderUUID, header)
+}
+
+func (s *stubFileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+	if s.downloadFn == nil {
+		return nil, nil
+	}
+	return s.downloadFn(currentUserUUID, fileUUID)
 }
 
 func (s *stubFileLimiter) AllowFileUpload(userUUID string) (bool, time.Duration) {
@@ -117,6 +126,38 @@ func TestFileHandlerUploadRateLimited(t *testing.T) {
 	}
 	if int(response["code"].(float64)) != code.FileUploadRateLimited {
 		t.Fatalf("expected business code %d, got %v", code.FileUploadRateLimited, response["code"])
+	}
+}
+
+func TestFileHandlerDownloadSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := newFileHandler(&stubFileService{
+		downloadFn: func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+			if currentUserUUID != "U100" || fileUUID != "F100" {
+				t.Fatalf("unexpected download args: %s %s", currentUserUUID, fileUUID)
+			}
+			return &service.FileDownloadResult{
+				FileID:      "F100",
+				FileName:    "hello.txt",
+				FileSize:    5,
+				ContentType: "text/plain",
+				DownloadURL: "https://signed.example/download",
+			}, nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files/F100/download", nil)
+	context.Params = gin.Params{{Key: "file_id", Value: "F100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Download(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }
 

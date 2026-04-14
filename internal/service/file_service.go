@@ -21,6 +21,7 @@ var (
 	ErrFileStorageUnavailable = errors.New("file storage is unavailable")
 	ErrFileNotFound           = errors.New("file not found")
 	ErrFilePermissionDenied   = errors.New("file permission denied")
+	ErrFileExpired            = errors.New("file is expired")
 )
 
 type fileRepository interface {
@@ -28,21 +29,50 @@ type fileRepository interface {
 	GetByUUID(uuid string) (*model.UploadedFile, error)
 }
 
+type fileMessageRepository interface {
+	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
+}
+
+type fileStorage interface {
+	platformStorage.Uploader
+	platformStorage.Downloader
+}
+
+type FileDownloadResult struct {
+	FileID      string     `json:"file_id"`
+	FileName    string     `json:"file_name"`
+	ContentType string     `json:"content_type"`
+	FileSize    int64      `json:"file_size"`
+	DownloadURL string     `json:"download_url"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+}
+
 type FileService struct {
 	repo             fileRepository
-	uploader         platformStorage.Uploader
+	messageRepo      fileMessageRepository
+	storage          fileStorage
 	maxFileSizeBytes int64
+	downloadURLTTL   time.Duration
 }
 
-func NewFileService(repo fileRepository, uploader platformStorage.Uploader) *FileService {
-	return newFileService(repo, uploader, config.StorageConfig().FileMaxSizeMB*1024*1024)
+func NewFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage) *FileService {
+	storageCfg := config.StorageConfig()
+	return newFileService(
+		repo,
+		messageRepo,
+		storage,
+		storageCfg.FileMaxSizeMB*1024*1024,
+		time.Duration(storageCfg.DownloadURLTTLMinutes)*time.Minute,
+	)
 }
 
-func newFileService(repo fileRepository, uploader platformStorage.Uploader, maxFileSizeBytes int64) *FileService {
+func newFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage, maxFileSizeBytes int64, downloadURLTTL time.Duration) *FileService {
 	return &FileService{
 		repo:             repo,
-		uploader:         uploader,
+		messageRepo:      messageRepo,
+		storage:          storage,
 		maxFileSizeBytes: maxFileSizeBytes,
+		downloadURLTTL:   downloadURLTTL,
 	}
 }
 
@@ -50,7 +80,7 @@ func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.F
 	if header == nil {
 		return nil, ErrFileMissing
 	}
-	if s.uploader == nil {
+	if s.storage == nil {
 		return nil, ErrFileStorageUnavailable
 	}
 
@@ -67,7 +97,7 @@ func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.F
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	uploaded, err := s.uploader.UploadMessageFile(ctx, file, header)
+	uploaded, err := s.storage.UploadMessageFile(ctx, file, header)
 	if err != nil {
 		return nil, fmt.Errorf("upload message file: %w", err)
 	}
@@ -102,6 +132,53 @@ func (s *FileService) GetOwnedFile(uploaderUUID, fileUUID string) (*model.Upload
 	}
 
 	return file, nil
+}
+
+func (s *FileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*FileDownloadResult, error) {
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	file, err := s.repo.GetByUUID(strings.TrimSpace(fileUUID))
+	if err != nil {
+		return nil, fmt.Errorf("get uploaded file: %w", err)
+	}
+	if file == nil {
+		return nil, ErrFileNotFound
+	}
+
+	now := time.Now().UTC()
+	if file.UploaderUUID != strings.TrimSpace(currentUserUUID) {
+		if s.messageRepo == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		message, err := s.messageRepo.FindLatestAccessibleFileMessage(file.UUID, strings.TrimSpace(currentUserUUID))
+		if err != nil {
+			return nil, fmt.Errorf("find accessible file message: %w", err)
+		}
+		if message == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		if message.FileExpiresAt != nil && !message.FileExpiresAt.After(now) {
+			return nil, ErrFileExpired
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	downloadURL, err := s.storage.PresignDownloadURL(ctx, file.Bucket, file.ObjectKey, s.downloadURLTTL)
+	if err != nil {
+		return nil, fmt.Errorf("presign download url: %w", err)
+	}
+
+	return &FileDownloadResult{
+		FileID:      file.UUID,
+		FileName:    file.FileName,
+		ContentType: file.ContentType,
+		FileSize:    file.FileSize,
+		DownloadURL: downloadURL,
+	}, nil
 }
 
 func generateFileUUID() string {

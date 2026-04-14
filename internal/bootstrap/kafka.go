@@ -50,7 +50,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		repository.NewUserRepository(),
 		repository.NewContactRepository(),
 		repository.NewGroupRepository(),
-		service.NewFileService(repository.NewFileRepository(), nil),
+		service.NewFileService(repository.NewFileRepository(), repository.NewMessageRepository(), nil),
 		events,
 	)
 	conversationService := service.NewConversationService(
@@ -537,10 +537,11 @@ func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePaylo
 	}
 
 	return &wsTransport.FilePayload{
-		FileID:      payload.FileID,
-		FileName:    payload.FileName,
-		FileSize:    payload.FileSize,
-		FileURL:     payload.FileURL,
-		ContentType: payload.FileContentType,
+		FileID:        payload.FileID,
+		FileName:      payload.FileName,
+		FileSize:      payload.FileSize,
+		DownloadPath:  "/api/v1/files/" + payload.FileID + "/download",
+		ContentType:   payload.FileContentType,
+		FileExpiresAt: payload.FileExpiresAt,
 	}
 }

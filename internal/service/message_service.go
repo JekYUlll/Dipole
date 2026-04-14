@@ -59,20 +59,21 @@ type MessageService struct {
 }
 
 type MessageEventPayload struct {
-	MessageID       string    `json:"message_id"`
-	ConversationKey string    `json:"conversation_key"`
-	SenderUUID      string    `json:"sender_uuid"`
-	TargetUUID      string    `json:"target_uuid"`
-	TargetType      int8      `json:"target_type"`
-	MessageType     int8      `json:"message_type"`
-	Content         string    `json:"content"`
-	FileID          string    `json:"file_id,omitempty"`
-	FileName        string    `json:"file_name,omitempty"`
-	FileSize        int64     `json:"file_size,omitempty"`
-	FileURL         string    `json:"file_url,omitempty"`
-	FileContentType string    `json:"file_content_type,omitempty"`
-	SentAt          time.Time `json:"sent_at"`
-	RecipientUUIDs  []string  `json:"recipient_uuids,omitempty"`
+	MessageID       string     `json:"message_id"`
+	ConversationKey string     `json:"conversation_key"`
+	SenderUUID      string     `json:"sender_uuid"`
+	TargetUUID      string     `json:"target_uuid"`
+	TargetType      int8       `json:"target_type"`
+	MessageType     int8       `json:"message_type"`
+	Content         string     `json:"content"`
+	FileID          string     `json:"file_id,omitempty"`
+	FileName        string     `json:"file_name,omitempty"`
+	FileSize        int64      `json:"file_size,omitempty"`
+	FileURL         string     `json:"file_url,omitempty"`
+	FileContentType string     `json:"file_content_type,omitempty"`
+	FileExpiresAt   *time.Time `json:"file_expires_at,omitempty"`
+	SentAt          time.Time  `json:"sent_at"`
+	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
 }
 
 func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher) *MessageService {
@@ -493,6 +494,7 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string) Mess
 		FileSize:        message.FileSize,
 		FileURL:         message.FileURL,
 		FileContentType: message.FileContentType,
+		FileExpiresAt:   message.FileExpiresAt,
 		SentAt:          message.SentAt,
 		RecipientUUIDs:  recipientUUIDs,
 	}
@@ -512,6 +514,7 @@ func payloadToMessage(payload MessageEventPayload) *model.Message {
 		FileSize:        payload.FileSize,
 		FileURL:         strings.TrimSpace(payload.FileURL),
 		FileContentType: strings.TrimSpace(payload.FileContentType),
+		FileExpiresAt:   payload.FileExpiresAt,
 		SentAt:          payload.SentAt,
 	}
 }
@@ -560,6 +563,7 @@ func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetTyp
 		conversationKey = model.GroupConversationKey(targetUUID)
 	}
 
+	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
 	return &model.Message{
 		UUID:            generateMessageUUID(),
 		ConversationKey: conversationKey,
@@ -573,6 +577,7 @@ func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetTyp
 		FileSize:        uploadedFile.FileSize,
 		FileURL:         uploadedFile.URL,
 		FileContentType: uploadedFile.ContentType,
+		FileExpiresAt:   &expiresAt,
 		SentAt:          time.Now().UTC(),
 	}, nil
 }

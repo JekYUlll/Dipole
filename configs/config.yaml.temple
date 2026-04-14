@@ -58,6 +58,7 @@ storage:
   bucket: dipole-files
   public_base_url: http://127.0.0.1:9000/dipole-files
   file_max_size_mb: 50
+  download_url_ttl_minutes: 10
 
 rate_limit:
   enabled: true

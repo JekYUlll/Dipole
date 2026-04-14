@@ -284,11 +284,12 @@ func newChatMessageData(message *model.Message) ChatMessageData {
 	}
 	if message.MessageType == model.MessageTypeFile {
 		data.File = &FilePayload{
-			FileID:      message.FileID,
-			FileName:    message.FileName,
-			FileSize:    message.FileSize,
-			FileURL:     message.FileURL,
-			ContentType: message.FileContentType,
+			FileID:        message.FileID,
+			FileName:      message.FileName,
+			FileSize:      message.FileSize,
+			DownloadPath:  "/api/v1/files/" + message.FileID + "/download",
+			ContentType:   message.FileContentType,
+			FileExpiresAt: message.FileExpiresAt,
 		}
 	}
 	return data

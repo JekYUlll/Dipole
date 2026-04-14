@@ -84,6 +84,9 @@ const (
 	FileTooLarge           int = 100701
 	FileStorageUnavailable int = 100702
 	FileUploadRateLimited  int = 100703
+	FileNotFound           int = 100704
+	FilePermissionDenied   int = 100705
+	FileExpired            int = 100706
 )
 
 const (

@@ -19,6 +19,7 @@ import (
 
 type fileService interface {
 	UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
+	CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
 }
 
 type FileHandler struct {
@@ -97,4 +98,31 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	}
 
 	Success(c, httpdto.ToUploadedFileResponse(file))
+}
+
+func (h *FileHandler) Download(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	result, err := h.service.CreateDownloadLink(currentUser.UUID, c.Param("file_id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrFileNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.FileNotFound, "file not found")
+		case errors.Is(err, service.ErrFilePermissionDenied):
+			ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
+		case errors.Is(err, service.ErrFileExpired):
+			ErrorWithCode(c, http.StatusForbidden, code.FileExpired, "file is expired")
+		case errors.Is(err, service.ErrFileStorageUnavailable):
+			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, httpdto.ToFileDownloadResponse(result))
 }

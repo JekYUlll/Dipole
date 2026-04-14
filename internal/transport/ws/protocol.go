@@ -63,11 +63,12 @@ type SendFileMessageInput struct {
 }
 
 type FilePayload struct {
-	FileID      string `json:"file_id"`
-	FileName    string `json:"file_name"`
-	FileSize    int64  `json:"file_size"`
-	FileURL     string `json:"file_url"`
-	ContentType string `json:"content_type"`
+	FileID        string     `json:"file_id"`
+	FileName      string     `json:"file_name"`
+	FileSize      int64      `json:"file_size"`
+	DownloadPath  string     `json:"download_path"`
+	ContentType   string     `json:"content_type"`
+	FileExpiresAt *time.Time `json:"file_expires_at,omitempty"`
 }
 
 type ChatMessageData struct {
