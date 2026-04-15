@@ -703,7 +703,9 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t
 	if len(repo.createdMessages) != 0 {
 		t.Fatalf("expected no new persisted messages, got %d", len(repo.createdMessages))
 	}
-	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
-		t.Fatalf("expected created event, got %+v", publisher.topics)
+	// Duplicate message: no message.created event should be published to avoid
+	// duplicate conversation updates and WS deliveries.
+	if len(publisher.topics) != 0 {
+		t.Fatalf("expected no events on duplicate, got %+v", publisher.topics)
 	}
 }

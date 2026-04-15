@@ -64,7 +64,7 @@ func New() *Server {
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	var kafkaEvents serverEventPublisher
 	if config.KafkaConfig().Enabled {
-		kafkaEvents = platformKafka.NewJSONPublisher(platformKafka.Client)
+		kafkaEvents = platformKafka.Client
 	}
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)

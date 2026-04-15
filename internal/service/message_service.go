@@ -115,29 +115,7 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 		}
 	}
 
-	message := &model.Message{
-		UUID:            generateMessageUUID(),
-		ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
-		SenderUUID:      strings.TrimSpace(senderUUID),
-		TargetType:      model.MessageTargetDirect,
-		TargetUUID:      targetUUID,
-		MessageType:     model.MessageTypeText,
-		Content:         content,
-		SentAt:          time.Now().UTC(),
-	}
-
-	if s.events == nil {
-		if err := s.repo.Create(message); err != nil {
-			return nil, fmt.Errorf("persist direct message: %w", err)
-		}
-		return message, nil
-	}
-
-	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
-		return nil, err
-	}
-
-	return message, nil
+	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, model.MessageTypeText)
 }
 
 func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
@@ -167,29 +145,7 @@ func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, con
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	message := &model.Message{
-		UUID:            generateMessageUUID(),
-		ConversationKey: model.DirectConversationKey(assistantUUID, targetUUID),
-		SenderUUID:      assistantUUID,
-		TargetType:      model.MessageTargetDirect,
-		TargetUUID:      targetUUID,
-		MessageType:     model.MessageTypeAIText,
-		Content:         content,
-		SentAt:          time.Now().UTC(),
-	}
-
-	if s.events == nil {
-		if err := s.repo.Create(message); err != nil {
-			return nil, fmt.Errorf("persist assistant message: %w", err)
-		}
-		return message, nil
-	}
-
-	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
-		return nil, err
-	}
-
-	return message, nil
+	return s.buildAndDispatchDirect(assistantUUID, targetUUID, content, model.MessageTypeAIText)
 }
 
 func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
@@ -219,20 +175,26 @@ func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content
 		return nil, ErrMessageTargetUnavailable
 	}
 
+	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, model.MessageTypeSystem)
+}
+
+// buildAndDispatchDirect constructs a direct message and either persists it
+// synchronously (no events publisher) or publishes a send_requested event.
+func (s *MessageService) buildAndDispatchDirect(senderUUID, targetUUID, content string, msgType int8) (*model.Message, error) {
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
 		SenderUUID:      senderUUID,
 		TargetType:      model.MessageTargetDirect,
 		TargetUUID:      targetUUID,
-		MessageType:     model.MessageTypeSystem,
+		MessageType:     msgType,
 		Content:         content,
 		SentAt:          time.Now().UTC(),
 	}
 
 	if s.events == nil {
 		if err := s.repo.Create(message); err != nil {
-			return nil, fmt.Errorf("persist system message: %w", err)
+			return nil, fmt.Errorf("persist direct message: %w", err)
 		}
 		return message, nil
 	}
@@ -461,9 +423,6 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 	return message, nil
 }
 
-func (s *MessageService) PersistedDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
-	return s.SendDirectMessage(senderUUID, targetUUID, content)
-}
 
 func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string) error {
 	if s.events == nil || message == nil {

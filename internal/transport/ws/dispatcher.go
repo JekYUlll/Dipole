@@ -107,29 +107,7 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 		return
 	}
 
-	// conversationUpdater is nil when Kafka is enabled; conversation updates are
-	// handled asynchronously by the Kafka consumer in that case.
-	if d.conversationUpdater != nil {
-		if err := d.conversationUpdater.UpdateDirectConversations(message); err != nil {
-			client.log.Warn("update direct conversations failed", zap.Error(err))
-		}
-	}
-
-	eventData := newChatMessageData(message)
-	deliveredCount := 0
-	if d.syncDispatch {
-		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
-		if message.TargetUUID == client.sessionUser.UUID {
-			deliveredCount = max(deliveredCount-1, 0)
-		}
-	}
-	ack := ChatSentData{
-		ChatMessageData: eventData,
-		Delivered:       deliveredCount > 0,
-	}
-	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
-		client.log.Warn("send websocket chat ack failed", zap.Error(err))
-	}
+	d.dispatchDirect(client, message)
 }
 
 func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
@@ -163,11 +141,37 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 		return
 	}
 
+	d.dispatchDirect(client, message)
+}
+
+func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string) {
+	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content)
+	if err != nil {
+		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSend)
+		return
+	}
+
+	d.dispatchGroup(client, message, recipients)
+}
+
+func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID string) {
+	message, recipients, err := d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID)
+	if err != nil {
+		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSendFile)
+		return
+	}
+
+	d.dispatchGroup(client, message, recipients)
+}
+
+// dispatchDirect handles post-send steps for direct messages: conversation
+// update, optional sync WS push, and ACK back to sender.
+func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
 	// conversationUpdater is nil when Kafka is enabled; conversation updates are
 	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
 		if err := d.conversationUpdater.UpdateDirectConversations(message); err != nil {
-			client.log.Warn("update direct conversations for file failed", zap.Error(err))
+			client.log.Warn("update direct conversations failed", zap.Error(err))
 		}
 	}
 
@@ -184,17 +188,13 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 		Delivered:       deliveredCount > 0,
 	}
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
-		client.log.Warn("send websocket file ack failed", zap.Error(err))
+		client.log.Warn("send websocket chat ack failed", zap.Error(err))
 	}
 }
 
-func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string) {
-	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content)
-	if err != nil {
-		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSend)
-		return
-	}
-
+// dispatchGroup handles post-send steps for group messages: conversation
+// update, optional sync WS push to each recipient, and ACK back to sender.
+func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recipients []string) {
 	// conversationUpdater is nil when Kafka is enabled; conversation updates are
 	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
@@ -213,48 +213,12 @@ func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content stri
 			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
 		}
 	}
-
 	ack := ChatSentData{
 		ChatMessageData: eventData,
 		Delivered:       deliveredCount > 0,
 	}
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket group chat ack failed", zap.Error(err))
-	}
-}
-
-func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID string) {
-	message, recipients, err := d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID)
-	if err != nil {
-		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSendFile)
-		return
-	}
-
-	// conversationUpdater is nil when Kafka is enabled; conversation updates are
-	// handled asynchronously by the Kafka consumer in that case.
-	if d.conversationUpdater != nil {
-		if err := d.conversationUpdater.UpdateGroupConversations(message); err != nil {
-			client.log.Warn("update group conversations for file failed", zap.Error(err))
-		}
-	}
-
-	eventData := newChatMessageData(message)
-	deliveredCount := 0
-	if d.syncDispatch {
-		for _, recipientUUID := range recipients {
-			if recipientUUID == client.sessionUser.UUID {
-				continue
-			}
-			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
-		}
-	}
-
-	ack := ChatSentData{
-		ChatMessageData: eventData,
-		Delivered:       deliveredCount > 0,
-	}
-	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
-		client.log.Warn("send websocket group file ack failed", zap.Error(err))
 	}
 }
 

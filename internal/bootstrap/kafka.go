@@ -43,7 +43,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 
 	var events kafkaEventPublisher
 	if platformKafka.Client != nil {
-		events = platformKafka.NewJSONPublisher(platformKafka.Client)
+		events = platformKafka.Client
 	}
 	messageService := service.NewMessageService(
 		repository.NewMessageRepository(),
@@ -66,19 +66,59 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
 	}
 
-	platformKafka.Subscriber.Register("message.direct.send_requested", persistDirectMessageHandler(messageService))
-	platformKafka.Subscriber.Register("message.group.send_requested", persistGroupMessageHandler(messageService))
-	platformKafka.Subscriber.Register("message.direct.created", updateDirectConversationHandler(conversationService))
-	platformKafka.Subscriber.Register("message.group.created", updateGroupConversationHandler(conversationService))
+	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(messageService, "direct"))
+	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(messageService, "group"))
+	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(conversationService, false))
+	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(conversationService, true))
 	if hub != nil {
-		platformKafka.Subscriber.Register("group.created", deliverGroupCreatedHandler(hub))
+		platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
+			return wsTransport.GroupCreatedEventData{
+				GroupUUID:    p.GroupUUID,
+				Name:         p.Name,
+				Notice:       p.Notice,
+				Avatar:       p.Avatar,
+				MemberUUIDs:  p.MemberUUIDs,
+				OperatorUUID: p.OperatorUUID,
+				OccurredAt:   p.OccurredAt,
+			}
+		}))
 		platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
 		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub))
 		platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
-		platformKafka.Subscriber.Register("group.updated", deliverGroupUpdatedHandler(hub))
-		platformKafka.Subscriber.Register("group.members.added", deliverGroupMembersAddedHandler(hub))
-		platformKafka.Subscriber.Register("group.members.removed", deliverGroupMembersRemovedHandler(hub))
-		platformKafka.Subscriber.Register("group.dismissed", deliverGroupDismissedHandler(hub))
+		platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
+			return wsTransport.GroupUpdatedEventData{
+				GroupUUID:    p.GroupUUID,
+				Name:         p.Name,
+				Notice:       p.Notice,
+				Avatar:       p.Avatar,
+				OperatorUUID: p.OperatorUUID,
+				UpdatedAt:    p.OccurredAt,
+			}
+		}))
+		platformKafka.Subscriber.Register("group.members.added", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+			return wsTransport.GroupMembersChangedEventData{
+				GroupUUID:    p.GroupUUID,
+				MemberUUIDs:  p.MemberUUIDs,
+				OperatorUUID: p.OperatorUUID,
+				OccurredAt:   p.OccurredAt,
+			}
+		}))
+		platformKafka.Subscriber.Register("group.members.removed", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+			return wsTransport.GroupMembersChangedEventData{
+				GroupUUID:    p.GroupUUID,
+				MemberUUIDs:  p.MemberUUIDs,
+				OperatorUUID: p.OperatorUUID,
+				OccurredAt:   p.OccurredAt,
+			}
+		}))
+		platformKafka.Subscriber.Register("group.dismissed", deliverGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
+			return wsTransport.GroupDismissedEventData{
+				GroupUUID:    p.GroupUUID,
+				GroupName:    p.GroupName,
+				OperatorUUID: p.OperatorUUID,
+				OccurredAt:   p.OccurredAt,
+			}
+		}))
 		platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	}
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
@@ -121,22 +161,22 @@ func logKafkaEventHandler(topic string) platformKafka.Handler {
 	}
 }
 
-func persistDirectMessageHandler(persister kafkaMessagePersister) platformKafka.Handler {
+func persistMessageHandler(persister kafkaMessagePersister, label string) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
 		payload, err := decodeMessageEventPayload(event)
 		if err != nil {
-			logger.Warn("decode direct message requested payload failed", zap.Error(err))
+			logger.Warn("decode "+label+" message requested payload failed", zap.Error(err))
 			return err
 		}
 
 		if _, err := persister.PersistRequestedMessage(payload); err != nil {
-			logger.Warn("persist direct message from kafka failed", zap.Error(err))
+			logger.Warn("persist "+label+" message from kafka failed", zap.Error(err))
 			return err
 		}
 
-		logger.Info("direct message persisted from kafka",
+		logger.Info(label+" message persisted from kafka",
 			zap.String("message_id", payload.MessageID),
 			zap.Int64("offset", event.Offset),
 		)
@@ -144,68 +184,29 @@ func persistDirectMessageHandler(persister kafkaMessagePersister) platformKafka.
 	}
 }
 
-func persistGroupMessageHandler(persister kafkaMessagePersister) platformKafka.Handler {
+func updateConversationHandler(updater kafkaConversationUpdater, isGroup bool) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
 		payload, err := decodeMessageEventPayload(event)
 		if err != nil {
-			logger.Warn("decode group message requested payload failed", zap.Error(err))
+			logger.Warn("decode message kafka event failed", zap.Error(err))
 			return err
 		}
 
-		if _, err := persister.PersistRequestedMessage(payload); err != nil {
-			logger.Warn("persist group message from kafka failed", zap.Error(err))
-			return err
+		msg := servicePayloadToMessage(payload)
+		var updateErr error
+		if isGroup {
+			updateErr = updater.UpdateGroupConversations(msg)
+		} else {
+			updateErr = updater.UpdateDirectConversations(msg)
+		}
+		if updateErr != nil {
+			logger.Warn("update conversation from kafka failed", zap.Error(updateErr))
+			return updateErr
 		}
 
-		logger.Info("group message persisted from kafka",
-			zap.String("message_id", payload.MessageID),
-			zap.Int64("offset", event.Offset),
-		)
-		return nil
-	}
-}
-
-func updateDirectConversationHandler(updater kafkaConversationUpdater) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeMessageEventPayload(event)
-		if err != nil {
-			logger.Warn("decode direct message kafka event failed", zap.Error(err))
-			return err
-		}
-
-		if err := updater.UpdateDirectConversations(servicePayloadToMessage(payload)); err != nil {
-			logger.Warn("update direct conversation from kafka failed", zap.Error(err))
-			return err
-		}
-
-		logger.Info("direct conversation updated from kafka",
-			zap.String("message_id", payload.MessageID),
-			zap.Int64("offset", event.Offset),
-		)
-		return nil
-	}
-}
-
-func updateGroupConversationHandler(updater kafkaConversationUpdater) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeMessageEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group message kafka event failed", zap.Error(err))
-			return err
-		}
-
-		if err := updater.UpdateGroupConversations(servicePayloadToMessage(payload)); err != nil {
-			logger.Warn("update group conversation from kafka failed", zap.Error(err))
-			return err
-		}
-
-		logger.Info("group conversation updated from kafka",
+		logger.Info("conversation updated from kafka",
 			zap.String("message_id", payload.MessageID),
 			zap.Int64("offset", event.Offset),
 		)
@@ -347,125 +348,26 @@ func handleAIDirectReply(aiService *aiModule.Service) platformKafka.Handler {
 	}
 }
 
-func deliverGroupCreatedHandler(hub kafkaWSEventSender) platformKafka.Handler {
+// deliverGroupEventHandler is a generic factory for group event delivery handlers.
+// It decodes the group event payload, builds the WS event data via buildData,
+// and fans out to all recipients.
+func deliverGroupEventHandler[T any](
+	hub kafkaWSEventSender,
+	eventType string,
+	buildData func(service.GroupEventPayload) T,
+) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
 		payload, err := decodeGroupEventPayload(event)
 		if err != nil {
-			logger.Warn("decode group created payload failed", zap.Error(err))
+			logger.Warn("decode "+eventType+" payload failed", zap.Error(err))
 			return err
 		}
 
-		eventData := wsTransport.GroupCreatedEventData{
-			GroupUUID:    payload.GroupUUID,
-			Name:         payload.Name,
-			Notice:       payload.Notice,
-			Avatar:       payload.Avatar,
-			MemberUUIDs:  payload.MemberUUIDs,
-			OperatorUUID: payload.OperatorUUID,
-			OccurredAt:   payload.OccurredAt,
-		}
+		data := buildData(payload)
 		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupCreated, eventData)
-		}
-
-		return nil
-	}
-}
-
-func deliverGroupUpdatedHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeGroupEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group updated payload failed", zap.Error(err))
-			return err
-		}
-
-		eventData := wsTransport.GroupUpdatedEventData{
-			GroupUUID:    payload.GroupUUID,
-			Name:         payload.Name,
-			Notice:       payload.Notice,
-			Avatar:       payload.Avatar,
-			OperatorUUID: payload.OperatorUUID,
-			UpdatedAt:    payload.OccurredAt,
-		}
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupUpdated, eventData)
-		}
-
-		return nil
-	}
-}
-
-func deliverGroupMembersAddedHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeGroupEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group members added payload failed", zap.Error(err))
-			return err
-		}
-
-		eventData := wsTransport.GroupMembersChangedEventData{
-			GroupUUID:    payload.GroupUUID,
-			MemberUUIDs:  payload.MemberUUIDs,
-			OperatorUUID: payload.OperatorUUID,
-			OccurredAt:   payload.OccurredAt,
-		}
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupMembersAdded, eventData)
-		}
-
-		return nil
-	}
-}
-
-func deliverGroupMembersRemovedHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeGroupEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group members removed payload failed", zap.Error(err))
-			return err
-		}
-
-		eventData := wsTransport.GroupMembersChangedEventData{
-			GroupUUID:    payload.GroupUUID,
-			MemberUUIDs:  payload.MemberUUIDs,
-			OperatorUUID: payload.OperatorUUID,
-			OccurredAt:   payload.OccurredAt,
-		}
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupMembersRemoved, eventData)
-		}
-
-		return nil
-	}
-}
-
-func deliverGroupDismissedHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeGroupEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group dismissed payload failed", zap.Error(err))
-			return err
-		}
-
-		eventData := wsTransport.GroupDismissedEventData{
-			GroupUUID:    payload.GroupUUID,
-			GroupName:    payload.GroupName,
-			OperatorUUID: payload.OperatorUUID,
-			OccurredAt:   payload.OccurredAt,
-		}
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupDismissed, eventData)
+			hub.SendEventToUser(recipientUUID, eventType, data)
 		}
 
 		return nil
