@@ -10,16 +10,19 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"github.com/JekYUlll/Dipole/internal/store"
+	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Runtime struct {
 	server *server.Server
+	router *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -102,7 +105,25 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	)
 
 	srv := server.New()
-	if err := RegisterKafkaHandlers(srv.WSHub()); err != nil {
+
+	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
+	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
+	rt := &Runtime{server: srv}
+	var wsEventSender kafkaWSEventSender = srv.WSHub()
+	if kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
+		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
+		redisPresence := platformPresence.NewRedisPresence()
+		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, store.RDB)
+		if router != nil {
+			router.Start()
+			rt.router = router
+			wsEventSender = router
+			logger.Info("ws pubsub router started",
+				zap.String("node_id", redisPresence.NodeID()),
+			)
+		}
+	}
+	if err := RegisterKafkaHandlers(wsEventSender); err != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
 	}
 	if platformKafka.Subscriber != nil {
@@ -112,7 +133,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 
-	return &Runtime{server: srv}, nil
+	return rt, nil
 }
 
 func (r *Runtime) Server() *server.Server {
@@ -148,6 +169,10 @@ func (r *Runtime) Close() {
 	}
 	if err := platformKafka.Close(); err != nil {
 		logger.Warn("kafka close failed", zap.Error(err))
+	}
+	// Stop the cross-node pubsub router after Kafka is shut down.
+	if r.router != nil {
+		r.router.Stop()
 	}
 }
 
