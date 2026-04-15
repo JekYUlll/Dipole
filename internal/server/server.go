@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -12,6 +13,9 @@ import (
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
+	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
@@ -19,12 +23,19 @@ import (
 
 type Server struct {
 	engine *gin.Engine
+	wsHub  *wsTransport.Hub
+}
+
+type serverEventPublisher interface {
+	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
+	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
 }
 
 func New() *Server {
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
+	mountWebApp(engine)
 
 	appCfg := config.AppConfig()
 
@@ -38,30 +49,46 @@ func New() *Server {
 
 	userRepo := repository.NewUserRepository()
 	messageRepo := repository.NewMessageRepository()
+	fileRepo := repository.NewFileRepository()
 	conversationRepo := repository.NewConversationRepository()
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
+	adminRepo := repository.NewAdminRepository()
+	redisPresence := platformPresence.NewRedisPresence()
+	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
+	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
 	userService := service.NewUserService(userRepo)
-	wsHub := wsTransport.NewHub()
-	kafkaEvents := platformKafka.NewJSONPublisher(platformKafka.Client)
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, kafkaEvents)
-	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo)
+	fileService := service.NewFileService(fileRepo, messageRepo, platformStorage.Client)
+	adminService := service.NewAdminService(adminRepo, wsHub)
+	var kafkaEvents serverEventPublisher
+	if config.KafkaConfig().Enabled {
+		kafkaEvents = platformKafka.Client
+	}
+	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
+	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, newGroupNotifier(wsHub), kafkaEvents)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
+	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
+	// When Kafka is enabled, conversation updates are handled asynchronously by
+	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.
+	// Passing nil here prevents the dispatcher from doing a redundant synchronous update.
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = conversationService
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater)
-	authHandler := httpHandler.NewAuthHandler(authService)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
+	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService)
+	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService)
 	messageHandler := httpHandler.NewMessageHandler(messageService)
+	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, userRepo)
 
@@ -81,6 +108,7 @@ func New() *Server {
 			protected.POST("/auth/logout", authHandler.Logout)
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
+			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
 			protected.GET("/contacts", contactHandler.ListFriends)
 			protected.DELETE("/contacts/:friend_uuid", contactHandler.DeleteFriend)
 			protected.PATCH("/contacts/:friend_uuid/remark", contactHandler.UpdateRemark)
@@ -96,18 +124,25 @@ func New() *Server {
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
+			protected.GET("/messages/offline", messageHandler.ListOffline)
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+			protected.POST("/files", fileHandler.Upload)
+			protected.GET("/files/:file_id/download", fileHandler.Download)
+			protected.GET("/users/me/devices", sessionHandler.ListDevices)
+			protected.POST("/users/me/devices/:connection_id/logout", sessionHandler.ForceLogoutDevice)
+			protected.POST("/users/me/devices/logout-all", sessionHandler.ForceLogoutAll)
 			protected.GET("/users", userHandler.Search)
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)
 			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
 			protected.GET("/admin/users", userHandler.ListForAdmin)
 			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
+			protected.GET("/admin/overview", adminHandler.Overview)
 		}
 	}
 
-	return &Server{engine: engine}
+	return &Server{engine: engine, wsHub: wsHub}
 }
 
 type wsTransportConversationUpdater interface {
@@ -125,4 +160,12 @@ func (s *Server) RunTLS(addr, certFile, keyFile string) error {
 
 func (s *Server) Engine() *gin.Engine {
 	return s.engine
+}
+
+func (s *Server) WSHub() *wsTransport.Hub {
+	if s == nil {
+		return nil
+	}
+
+	return s.wsHub
 }

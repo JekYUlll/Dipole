@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +15,12 @@ import (
 )
 
 var Client *Publisher
+
+const (
+	// IM text/file messages favor tail latency over batching throughput.
+	kafkaWriterBatchSize    = 1
+	kafkaWriterBatchTimeout = 5 * time.Millisecond
+)
 
 type Publisher struct {
 	clientID    string
@@ -117,6 +124,48 @@ func (p *Publisher) Publish(ctx context.Context, topic string, message Message) 
 	return nil
 }
 
+func (p *Publisher) PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error {
+	if p == nil {
+		return nil
+	}
+
+	value, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal kafka payload for %s: %w", topic, err)
+	}
+
+	message := Message{
+		Value:   value,
+		Headers: headers,
+	}
+	if key != "" {
+		message.Key = []byte(key)
+	}
+
+	if err := p.Publish(ctx, topic, message); err != nil {
+		return fmt.Errorf("publish kafka json message to %s: %w", topic, err)
+	}
+
+	return nil
+}
+
+func (p *Publisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+	envelope, err := NewEnvelope(eventType, payload)
+	if err != nil {
+		return fmt.Errorf("create kafka event envelope for %s: %w", topic, err)
+	}
+
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	headers["event_type"] = envelope.EventType
+	headers["version"] = envelope.Version
+	headers["source"] = envelope.Source
+	headers["event_id"] = envelope.EventID
+
+	return p.PublishJSON(ctx, topic, key, envelope, headers)
+}
+
 func (p *Publisher) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -158,6 +207,8 @@ func (p *Publisher) writerForTopic(topic string) *kafkago.Writer {
 		Balancer:     &kafkago.LeastBytes{},
 		RequiredAcks: kafkago.RequireOne,
 		Async:        false,
+		BatchSize:    kafkaWriterBatchSize,
+		BatchTimeout: kafkaWriterBatchTimeout,
 		Transport: &kafkago.Transport{
 			ClientID: p.clientID,
 		},

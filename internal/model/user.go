@@ -9,6 +9,11 @@ const (
 	UserStatusDisabled
 )
 
+const (
+	UserTypeNormal int8 = iota
+	UserTypeAssistant
+)
+
 type User struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	UUID         string    `gorm:"size:24;uniqueIndex;not null" json:"uuid"`
@@ -18,6 +23,7 @@ type User struct {
 	Avatar       string    `gorm:"size:255;not null;default:''" json:"avatar"`
 	PasswordHash string    `gorm:"column:password_hash;size:255;not null" json:"-"`
 	IsAdmin      bool      `gorm:"not null;default:false" json:"is_admin"`
+	UserType     int8      `gorm:"column:user_type;not null;default:0;index" json:"user_type"`
 	Status       int8      `gorm:"not null;default:0" json:"status"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -25,4 +31,8 @@ type User struct {
 
 func (User) TableName() string {
 	return "users"
+}
+
+func (u *User) IsAssistant() bool {
+	return u != nil && u.UserType == UserTypeAssistant
 }

@@ -15,7 +15,8 @@ import (
 
 type conversationService interface {
 	ListForUser(userUUID string, limit int) ([]*service.ConversationView, error)
-	MarkDirectConversationRead(userUUID, targetUUID string) error
+	MarkDirectConversationRead(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
+	MarkGroupConversationRead(userUUID, groupUUID string) error
 }
 
 type ConversationHandler struct {
@@ -49,12 +50,38 @@ func (h *ConversationHandler) MarkDirectRead(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.MarkDirectConversationRead(currentUser.UUID, c.Param("target_uuid")); err != nil {
+	if _, err := h.service.MarkDirectConversationRead(currentUser.UUID, c.Param("target_uuid")); err != nil {
 		switch {
 		case errors.Is(err, service.ErrConversationTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ConversationTargetRequired, "target_uuid is required")
 		case errors.Is(err, service.ErrConversationTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ConversationTargetNotFound, "target user not found")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, gin.H{
+		"message": "conversation marked as read",
+	})
+}
+
+func (h *ConversationHandler) MarkGroupRead(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	if err := h.service.MarkGroupConversationRead(currentUser.UUID, c.Param("group_uuid")); err != nil {
+		switch {
+		case errors.Is(err, service.ErrConversationTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.ConversationTargetRequired, "group_uuid is required")
+		case errors.Is(err, service.ErrConversationTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group not found")
+		case errors.Is(err, service.ErrConversationPermissionDenied):
+			ErrorWithCode(c, http.StatusForbidden, code.GroupPermissionDenied, "group permission denied")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}

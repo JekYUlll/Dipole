@@ -1,35 +1,37 @@
 package kafka
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
 )
 
-func TestConsumerTopicName(t *testing.T) {
+func TestConsumerStartDoesNotDeadlockWhenRegisteringReaders(t *testing.T) {
 	t.Parallel()
 
 	consumer := &Consumer{
-		topicPrefix: "dipole",
+		brokers:  []string{"127.0.0.1:9092"},
+		handlers: make(map[string][]Handler),
+		readers:  make(map[string]*kafkago.Reader),
 	}
 
-	if topic := consumer.topicName("group.created"); topic != "dipole.group.created" {
-		t.Fatalf("unexpected topic: %s", topic)
-	}
-}
+	consumer.Register("message.direct.created", func(context.Context, Event) error { return nil })
+	consumer.Register("message.group.created", func(context.Context, Event) error { return nil })
 
-func TestDecodeHeaders(t *testing.T) {
-	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
-	headers := decodeHeaders([]kafkago.Header{
-		{Key: "event_type", Value: []byte("message.direct.created")},
-		{Key: "version", Value: []byte("v1")},
-	})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = consumer.Start(ctx)
+	}()
 
-	if headers["event_type"] != "message.direct.created" {
-		t.Fatalf("unexpected event_type header: %s", headers["event_type"])
-	}
-	if headers["version"] != "v1" {
-		t.Fatalf("unexpected version header: %s", headers["version"])
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("consumer start timed out")
 	}
 }

@@ -7,12 +7,21 @@ import (
 )
 
 const (
-	TypeConnected      = "connected"
-	TypeError          = "error"
-	TypeChatSend       = "chat.send"
-	TypeChatSent       = "chat.sent"
-	TypeChatMessage    = "chat.message"
-	TypeGroupDismissed = "group.dismissed"
+	TypeConnected           = "connected"
+	TypeError               = "error"
+	TypePing                = "ping"
+	TypePong                = "pong"
+	TypeChatSend            = "chat.send"
+	TypeChatSendFile        = "chat.send_file"
+	TypeChatSent            = "chat.sent"
+	TypeChatMessage         = "chat.message"
+	TypeChatRead            = "chat.read"
+	TypeSessionKicked       = "session.kicked"
+	TypeGroupCreated        = "group.created"
+	TypeGroupUpdated        = "group.updated"
+	TypeGroupMembersAdded   = "group.members_added"
+	TypeGroupMembersRemoved = "group.members_removed"
+	TypeGroupDismissed      = "group.dismissed"
 )
 
 const (
@@ -20,6 +29,7 @@ const (
 	ErrorUnsupportedType   = "unsupported_type"
 	ErrorTargetUnavailable = "target_unavailable"
 	ErrorPermissionDenied  = "permission_denied"
+	ErrorRateLimited       = "rate_limited"
 	ErrorInternal          = "internal"
 )
 
@@ -39,6 +49,10 @@ type ConnectedEventData struct {
 	OnlineUserCount int    `json:"online_user_count"`
 }
 
+type PongData struct {
+	ServerTime time.Time `json:"server_time"`
+}
+
 type ErrorEventData struct {
 	Code        string `json:"code"`
 	Message     string `json:"message"`
@@ -50,13 +64,29 @@ type SendTextMessageInput struct {
 	Content    string `json:"content"`
 }
 
+type SendFileMessageInput struct {
+	TargetUUID string `json:"target_uuid"`
+	FileID     string `json:"file_id"`
+}
+
+type FilePayload struct {
+	FileID        string     `json:"file_id"`
+	FileName      string     `json:"file_name"`
+	FileSize      int64      `json:"file_size"`
+	DownloadPath  string     `json:"download_path"`
+	ContentType   string     `json:"content_type"`
+	FileExpiresAt *time.Time `json:"file_expires_at,omitempty"`
+}
+
 type ChatMessageData struct {
-	MessageID  string    `json:"message_id"`
-	FromUUID   string    `json:"from_uuid"`
-	TargetUUID string    `json:"target_uuid"`
-	TargetType int8      `json:"target_type"`
-	Content    string    `json:"content"`
-	SentAt     time.Time `json:"sent_at"`
+	MessageID   string       `json:"message_id"`
+	FromUUID    string       `json:"from_uuid"`
+	TargetUUID  string       `json:"target_uuid"`
+	TargetType  int8         `json:"target_type"`
+	MessageType int8         `json:"message_type"`
+	Content     string       `json:"content"`
+	File        *FilePayload `json:"file,omitempty"`
+	SentAt      time.Time    `json:"sent_at"`
 }
 
 type ChatSentData struct {
@@ -64,9 +94,52 @@ type ChatSentData struct {
 	Delivered bool `json:"delivered"`
 }
 
+type ChatReadData struct {
+	ReaderUUID          string    `json:"reader_uuid"`
+	TargetUUID          string    `json:"target_uuid"`
+	TargetType          int8      `json:"target_type"`
+	ConversationKey     string    `json:"conversation_key"`
+	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	ReadAt              time.Time `json:"read_at"`
+}
+
+type SessionKickedData struct {
+	ConnectionID string    `json:"connection_id"`
+	Reason       string    `json:"reason"`
+	OccurredAt   time.Time `json:"occurred_at"`
+}
+
+type GroupUpdatedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	Name         string    `json:"name"`
+	Notice       string    `json:"notice"`
+	Avatar       string    `json:"avatar"`
+	OperatorUUID string    `json:"operator_uuid"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type GroupCreatedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	Name         string    `json:"name"`
+	Notice       string    `json:"notice"`
+	Avatar       string    `json:"avatar"`
+	MemberUUIDs  []string  `json:"member_uuids"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
+}
+
+type GroupMembersChangedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	MemberUUIDs  []string  `json:"member_uuids"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
+}
+
 type GroupDismissedEventData struct {
-	GroupUUID string `json:"group_uuid"`
-	GroupName string `json:"group_name"`
+	GroupUUID    string    `json:"group_uuid"`
+	GroupName    string    `json:"group_name"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
 }
 
 func EncodeCommand(eventType string, data any) ([]byte, error) {

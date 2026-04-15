@@ -18,7 +18,8 @@ import (
 
 type stubConversationService struct {
 	listForUserFn    func(userUUID string, limit int) ([]*service.ConversationView, error)
-	markDirectReadFn func(userUUID, targetUUID string) error
+	markDirectReadFn func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
+	markGroupReadFn  func(userUUID, groupUUID string) error
 }
 
 func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*service.ConversationView, error) {
@@ -29,12 +30,20 @@ func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*se
 	return s.listForUserFn(userUUID, limit)
 }
 
-func (s *stubConversationService) MarkDirectConversationRead(userUUID, targetUUID string) error {
+func (s *stubConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
 	if s.markDirectReadFn == nil {
-		return nil
+		return nil, nil
 	}
 
 	return s.markDirectReadFn(userUUID, targetUUID)
+}
+
+func (s *stubConversationService) MarkGroupConversationRead(userUUID, groupUUID string) error {
+	if s.markGroupReadFn == nil {
+		return nil
+	}
+
+	return s.markGroupReadFn(userUUID, groupUUID)
 }
 
 func TestConversationHandlerListSuccess(t *testing.T) {
@@ -99,8 +108,8 @@ func TestConversationHandlerMarkDirectReadNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
-		markDirectReadFn: func(userUUID, targetUUID string) error {
-			return service.ErrConversationTargetNotFound
+		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
+			return nil, service.ErrConversationTargetNotFound
 		},
 	})
 
@@ -130,8 +139,8 @@ func TestConversationHandlerMarkDirectReadInternal(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
-		markDirectReadFn: func(userUUID, targetUUID string) error {
-			return errors.New("boom")
+		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
+			return nil, errors.New("boom")
 		},
 	})
 
@@ -145,5 +154,28 @@ func TestConversationHandlerMarkDirectReadInternal(t *testing.T) {
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status 500, got %d", recorder.Code)
+	}
+}
+
+func TestConversationHandlerMarkGroupReadForbidden(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewConversationHandler(&stubConversationService{
+		markGroupReadFn: func(userUUID, groupUUID string) error {
+			return service.ErrConversationPermissionDenied
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/conversations/group/G100/read", nil)
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.MarkGroupRead(context)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", recorder.Code)
 	}
 }

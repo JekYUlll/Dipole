@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 )
 
 type tokenResolver interface {
-	Resolve(token string) (string, error)
+	ResolveSession(token string) (*service.TokenSession, error)
 }
 
 type userFinder interface {
@@ -41,10 +42,11 @@ func (a *Authenticator) Authenticate(r *http.Request) (*SessionUser, string, err
 		return nil, "", ErrTokenRequired
 	}
 
-	userUUID, err := a.tokenResolver.Resolve(token)
+	session, err := a.tokenResolver.ResolveSession(token)
 	if err != nil {
 		return nil, "", ErrTokenInvalid
 	}
+	userUUID := session.UserUUID
 
 	user, err := a.userFinder.GetByUUID(userUUID)
 	if err != nil {
@@ -54,7 +56,7 @@ func (a *Authenticator) Authenticate(r *http.Request) (*SessionUser, string, err
 		return nil, "", ErrUserSessionInvalid
 	}
 
-	return newSessionUser(user), token, nil
+	return newSessionUser(user, session), token, nil
 }
 
 func extractAccessToken(r *http.Request) (string, bool) {

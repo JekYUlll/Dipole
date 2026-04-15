@@ -2,8 +2,10 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,11 +17,14 @@ import (
 
 var Subscriber *Consumer
 
+const kafkaReaderMaxWait = 10 * time.Millisecond
+
 type Event struct {
 	Topic     string
 	Key       []byte
 	Value     []byte
 	Headers   map[string]string
+	Envelope  *Envelope
 	Partition int
 	Offset    int64
 	Time      time.Time
@@ -32,9 +37,11 @@ type Consumer struct {
 	groupID     string
 	topicPrefix string
 	brokers     []string
+	maxAttempts int
+	backoff     time.Duration
 
 	mu       sync.RWMutex
-	handlers map[string]Handler
+	handlers map[string][]Handler
 	readers  map[string]*kafkago.Reader
 }
 
@@ -88,7 +95,9 @@ func newConsumer(cfg config.Kafka) (*Consumer, error) {
 		groupID:     clientID + "-consumer",
 		topicPrefix: strings.TrimSpace(cfg.TopicPrefix),
 		brokers:     brokers,
-		handlers:    make(map[string]Handler),
+		maxAttempts: normalizeRetryMaxAttempts(cfg.ConsumeRetryMaxAttempts),
+		backoff:     normalizeRetryBackoff(cfg.ConsumeRetryBackoffMS),
+		handlers:    make(map[string][]Handler),
 		readers:     make(map[string]*kafkago.Reader),
 	}, nil
 }
@@ -102,7 +111,9 @@ func (c *Consumer) Register(topic string, handler Handler) {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.handlers[topic] = handler
+	c.handlers[topic] = append(c.handlers[topic], handler)
+	retryTopic := retryTopicName(topic)
+	c.handlers[retryTopic] = append(c.handlers[retryTopic], handler)
 }
 
 func (c *Consumer) Start(ctx context.Context) error {
@@ -111,11 +122,17 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 
 	c.mu.RLock()
-	defer c.mu.RUnlock()
+	snapshots := make(map[string][]Handler, len(c.handlers))
+	for topic, handlers := range c.handlers {
+		copied := make([]Handler, len(handlers))
+		copy(copied, handlers)
+		snapshots[topic] = copied
+	}
+	c.mu.RUnlock()
 
-	for topic, handler := range c.handlers {
+	for topic, handlers := range snapshots {
 		reader := c.readerForTopic(topic)
-		go c.consumeLoop(ctx, reader, topic, handler)
+		go c.consumeLoop(ctx, reader, topic, handlers)
 	}
 
 	return nil
@@ -136,7 +153,7 @@ func (c *Consumer) Close() error {
 	return errors.Join(errs...)
 }
 
-func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topic string, handler Handler) {
+func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topic string, handlers []Handler) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -162,11 +179,52 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 			Offset:    message.Offset,
 			Time:      message.Time,
 		}
+		envelope, err := decodeEnvelope(message.Value)
+		if err == nil {
+			event.Envelope = envelope
+		}
 
-		if err := handler(ctx, event); err == nil {
+		if c.handleWithRetry(ctx, event, handlers) {
 			_ = reader.CommitMessages(ctx, message)
 		}
 	}
+}
+
+func (c *Consumer) handleWithRetry(ctx context.Context, event Event, handlers []Handler) bool {
+	attempts := c.maxAttempts
+	if attempts <= 0 {
+		attempts = 1
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		lastErr = c.handleAll(ctx, event, handlers)
+		if lastErr == nil {
+			return true
+		}
+		if attempt < attempts {
+			time.Sleep(c.backoff * time.Duration(attempt))
+		}
+	}
+
+	if c.publishRetryOrDeadLetter(ctx, event, lastErr) {
+		return true
+	}
+
+	return false
+}
+
+func (c *Consumer) handleAll(ctx context.Context, event Event, handlers []Handler) error {
+	for _, handler := range handlers {
+		if handler == nil {
+			continue
+		}
+		if err := handler(ctx, event); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {
@@ -182,7 +240,7 @@ func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {
 		GroupID:     c.groupID,
 		Topic:       topic,
 		StartOffset: kafkago.LastOffset,
-		MaxWait:     500 * time.Millisecond,
+		MaxWait:     kafkaReaderMaxWait,
 	})
 	c.readers[topic] = reader
 	return reader
@@ -211,4 +269,109 @@ func decodeHeaders(headers []kafkago.Header) map[string]string {
 	}
 
 	return decoded
+}
+
+func decodeEnvelope(value []byte) (*Envelope, error) {
+	var envelope Envelope
+	if err := json.Unmarshal(value, &envelope); err != nil {
+		return nil, err
+	}
+	if envelope.EventType == "" {
+		return nil, fmt.Errorf("kafka event envelope event_type is empty")
+	}
+
+	return &envelope, nil
+}
+
+func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, lastErr error) bool {
+	if Client == nil {
+		return false
+	}
+
+	attempt := headerRetryAttempt(event.Headers)
+	headers := cloneHeaders(event.Headers)
+	headers["last_error"] = lastErr.Error()
+
+	baseTopic := c.baseTopicName(event.Topic)
+	if attempt+1 < c.maxAttempts {
+		headers["retry_attempt"] = strconv.Itoa(attempt + 1)
+		retryTopic := retryTopicName(baseTopic)
+		return Client.Publish(ctx, retryTopic, Message{
+			Key:     event.Key,
+			Value:   event.Value,
+			Headers: headers,
+		}) == nil
+	}
+
+	headers["retry_attempt"] = strconv.Itoa(attempt)
+	deadTopic := deadTopicName(baseTopic)
+	return Client.Publish(ctx, deadTopic, Message{
+		Key:     event.Key,
+		Value:   event.Value,
+		Headers: headers,
+	}) == nil
+}
+
+func (c *Consumer) baseTopicName(topic string) string {
+	prefix := strings.TrimSpace(c.topicPrefix)
+	if prefix != "" {
+		prefix += "."
+		if after, ok := strings.CutPrefix(topic, prefix); ok {
+			topic = after
+		}
+	}
+	topic = strings.TrimSuffix(topic, ".retry")
+	return topic
+}
+
+func retryTopicName(topic string) string {
+	if strings.HasSuffix(topic, ".retry") {
+		return topic
+	}
+	return topic + ".retry"
+}
+
+func deadTopicName(topic string) string {
+	topic = strings.TrimSuffix(topic, ".retry")
+	return topic + ".dead"
+}
+
+func headerRetryAttempt(headers map[string]string) int {
+	if headers == nil {
+		return 0
+	}
+	raw := strings.TrimSpace(headers["retry_attempt"])
+	if raw == "" {
+		return 0
+	}
+	attempt, err := strconv.Atoi(raw)
+	if err != nil || attempt < 0 {
+		return 0
+	}
+	return attempt
+}
+
+func cloneHeaders(headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return map[string]string{}
+	}
+	cloned := make(map[string]string, len(headers))
+	for key, value := range headers {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func normalizeRetryMaxAttempts(attempts int) int {
+	if attempts <= 0 {
+		return 3
+	}
+	return attempts
+}
+
+func normalizeRetryBackoff(backoffMS int) time.Duration {
+	if backoffMS <= 0 {
+		backoffMS = 500
+	}
+	return time.Duration(backoffMS) * time.Millisecond
 }

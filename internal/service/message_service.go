@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	mysqlDriver "github.com/go-sql-driver/mysql"
+	"gorm.io/gorm"
 )
 
 var (
@@ -20,11 +22,19 @@ var (
 	ErrMessageTargetNotFound    = errors.New("message target not found")
 	ErrMessageFriendRequired    = errors.New("direct message requires friendship")
 	ErrMessageGroupForbidden    = errors.New("group message requires membership")
+	ErrMessageFileRequired      = errors.New("message file is required")
+	ErrMessageFileUnavailable   = errors.New("message file is unavailable")
 )
 
 type messageRepository interface {
 	Create(message *model.Message) error
+	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
+	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
+}
+
+type messageFileFinder interface {
+	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
 }
 
 type messageUserFinder interface {
@@ -47,15 +57,35 @@ type MessageService struct {
 	friendChecker friendshipChecker
 	groupChecker  groupMessageChecker
 	events        eventPublisher
+	fileFinder    messageFileFinder
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, events eventPublisher) *MessageService {
+type MessageEventPayload struct {
+	MessageID       string     `json:"message_id"`
+	ConversationKey string     `json:"conversation_key"`
+	SenderUUID      string     `json:"sender_uuid"`
+	TargetUUID      string     `json:"target_uuid"`
+	TargetType      int8       `json:"target_type"`
+	MessageType     int8       `json:"message_type"`
+	Content         string     `json:"content"`
+	FileID          string     `json:"file_id,omitempty"`
+	FileName        string     `json:"file_name,omitempty"`
+	FileSize        int64      `json:"file_size,omitempty"`
+	FileURL         string     `json:"file_url,omitempty"`
+	FileContentType string     `json:"file_content_type,omitempty"`
+	FileExpiresAt   *time.Time `json:"file_expires_at,omitempty"`
+	SentAt          time.Time  `json:"sent_at"`
+	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
+}
+
+func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
 		friendChecker: friendChecker,
 		groupChecker:  groupChecker,
 		events:        events,
+		fileFinder:    fileFinder,
 	}
 }
 
@@ -79,25 +109,99 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content strin
 	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
 		return nil, ErrMessageTargetUnavailable
 	}
-	if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
-		return nil, err
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
+			return nil, err
+		}
 	}
 
+	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, model.MessageTypeText)
+}
+
+func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
+	assistantUUID = strings.TrimSpace(assistantUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	content = strings.TrimSpace(content)
+	if assistantUUID == "" || targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if content == "" {
+		return nil, ErrMessageContentRequired
+	}
+
+	assistantUser, err := s.userFinder.GetByUUID(assistantUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find assistant user in send assistant message: %w", err)
+	}
+	if assistantUser == nil || !assistantUser.IsAssistant() || assistantUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send assistant message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	return s.buildAndDispatchDirect(assistantUUID, targetUUID, content, model.MessageTypeAIText)
+}
+
+func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	senderUUID = strings.TrimSpace(senderUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	content = strings.TrimSpace(content)
+	if senderUUID == "" || targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if content == "" {
+		return nil, ErrMessageContentRequired
+	}
+
+	senderUser, err := s.userFinder.GetByUUID(senderUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find sender user in send system message: %w", err)
+	}
+	if senderUser == nil || senderUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send system message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+
+	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, model.MessageTypeSystem)
+}
+
+// buildAndDispatchDirect constructs a direct message and either persists it
+// synchronously (no events publisher) or publishes a send_requested event.
+func (s *MessageService) buildAndDispatchDirect(senderUUID, targetUUID, content string, msgType int8) (*model.Message, error) {
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
-		SenderUUID:      strings.TrimSpace(senderUUID),
+		SenderUUID:      senderUUID,
 		TargetType:      model.MessageTargetDirect,
 		TargetUUID:      targetUUID,
-		MessageType:     model.MessageTypeText,
+		MessageType:     msgType,
 		Content:         content,
 		SentAt:          time.Now().UTC(),
 	}
 
-	if err := s.repo.Create(message); err != nil {
-		return nil, fmt.Errorf("persist direct message: %w", err)
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist direct message: %w", err)
+		}
+		return message, nil
 	}
-	s.publishMessageCreated("message.direct.created", message)
+
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
 
 	return message, nil
 }
@@ -115,8 +219,10 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 	if targetUser == nil {
 		return nil, ErrMessageTargetNotFound
 	}
-	if err := s.ensureDirectFriendship(currentUserUUID, targetUUID); err != nil {
-		return nil, err
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(currentUserUUID, targetUUID); err != nil {
+			return nil, err
+		}
 	}
 
 	messages, err := s.repo.ListByConversationKey(
@@ -148,6 +254,11 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		return nil, nil, err
 	}
 
+	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ConversationKey: model.GroupConversationKey(groupUUID),
@@ -159,13 +270,89 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		SentAt:          time.Now().UTC(),
 	}
 
-	if err := s.repo.Create(message); err != nil {
-		return nil, nil, fmt.Errorf("persist group message: %w", err)
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, nil, fmt.Errorf("persist group message: %w", err)
+		}
+		return message, recipientUUIDs, nil
 	}
-	s.publishMessageCreated("message.group.created", message)
+
+	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
+		return nil, nil, err
+	}
+
+	return message, recipientUUIDs, nil
+}
+
+func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID string) (*model.Message, error) {
+	targetUUID = strings.TrimSpace(targetUUID)
+	fileUUID = strings.TrimSpace(fileUUID)
+	if targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if fileUUID == "" {
+		return nil, ErrMessageFileRequired
+	}
+
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return nil, fmt.Errorf("find target user in send direct file message: %w", err)
+	}
+	if targetUser == nil || targetUser.Status == model.UserStatusDisabled {
+		return nil, ErrMessageTargetUnavailable
+	}
+	if !targetUser.IsAssistant() {
+		if err := s.ensureDirectFriendship(senderUUID, targetUUID); err != nil {
+			return nil, err
+		}
+	}
+
+	message, err := s.newFileMessage(senderUUID, targetUUID, model.MessageTargetDirect, fileUUID)
+	if err != nil {
+		return nil, err
+	}
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, fmt.Errorf("persist direct file message: %w", err)
+		}
+		return message, nil
+	}
+	if err := s.publishMessageRequested("message.direct.send_requested", message, nil); err != nil {
+		return nil, err
+	}
+
+	return message, nil
+}
+
+func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	fileUUID = strings.TrimSpace(fileUUID)
+	if groupUUID == "" {
+		return nil, nil, ErrMessageTargetRequired
+	}
+	if fileUUID == "" {
+		return nil, nil, ErrMessageFileRequired
+	}
+	if err := s.ensureGroupMessagePermission(senderUUID, groupUUID); err != nil {
+		return nil, nil, err
+	}
 
 	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	message, err := s.newFileMessage(senderUUID, groupUUID, model.MessageTargetGroup, fileUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if s.events == nil {
+		if err := s.repo.Create(message); err != nil {
+			return nil, nil, fmt.Errorf("persist group file message: %w", err)
+		}
+		return message, recipientUUIDs, nil
+	}
+	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
 
@@ -193,26 +380,141 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	return messages, nil
 }
 
-func (s *MessageService) publishMessageCreated(topic string, message *model.Message) {
-	if s.events == nil || message == nil {
-		return
+func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	messages, err := s.repo.ListOfflineByUserUUID(strings.TrimSpace(currentUserUUID), afterID, normalizeMessageListLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list offline messages: %w", err)
 	}
 
-	payload := map[string]any{
-		"message_id":       message.UUID,
-		"conversation_key": message.ConversationKey,
-		"sender_uuid":      message.SenderUUID,
-		"target_uuid":      message.TargetUUID,
-		"target_type":      message.TargetType,
-		"message_type":     message.MessageType,
-		"content":          message.Content,
-		"sent_at":          message.SentAt,
-	}
-	_ = s.events.PublishJSON(context.Background(), topic, message.UUID, payload, nil)
+	return messages, nil
 }
 
-func (s *MessageService) PersistedDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
-	return s.SendDirectMessage(senderUUID, targetUUID, content)
+func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*model.Message, error) {
+	message := payloadToMessage(payload)
+	if message == nil {
+		return nil, fmt.Errorf("message payload is nil")
+	}
+
+	created := true
+	if err := s.repo.Create(message); err != nil {
+		if !isDuplicateMessageError(err) {
+			return nil, fmt.Errorf("persist requested message: %w", err)
+		}
+
+		// Message already persisted (Kafka at-least-once redelivery). Skip publishing
+		// message.created to avoid duplicate conversation updates and WS deliveries.
+		existing, findErr := s.repo.GetByUUID(message.UUID)
+		if findErr != nil {
+			return nil, fmt.Errorf("find duplicate message by uuid: %w", findErr)
+		}
+		if existing == nil {
+			return nil, fmt.Errorf("duplicate message %s not found after conflict", message.UUID)
+		}
+		message = existing
+		created = false
+	}
+
+	if created {
+		if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
+			return nil, err
+		}
+	}
+
+	return message, nil
+}
+
+
+func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string) error {
+	if s.events == nil || message == nil {
+		return nil
+	}
+
+	payload := messageToEventPayload(message, recipientUUIDs)
+	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+		return fmt.Errorf("publish requested message event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *MessageService) publishMessageCreated(topic string, message *model.Message, recipientUUIDs []string) error {
+	if s.events == nil || message == nil {
+		return nil
+	}
+
+	payload := messageToEventPayload(message, recipientUUIDs)
+	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+		return fmt.Errorf("publish created message event: %w", err)
+	}
+
+	return nil
+}
+
+func messageToEventPayload(message *model.Message, recipientUUIDs []string) MessageEventPayload {
+	return MessageEventPayload{
+		MessageID:       message.UUID,
+		ConversationKey: message.ConversationKey,
+		SenderUUID:      message.SenderUUID,
+		TargetUUID:      message.TargetUUID,
+		TargetType:      message.TargetType,
+		MessageType:     message.MessageType,
+		Content:         message.Content,
+		FileID:          message.FileID,
+		FileName:        message.FileName,
+		FileSize:        message.FileSize,
+		FileURL:         message.FileURL,
+		FileContentType: message.FileContentType,
+		FileExpiresAt:   message.FileExpiresAt,
+		SentAt:          message.SentAt,
+		RecipientUUIDs:  recipientUUIDs,
+	}
+}
+
+func payloadToMessage(payload MessageEventPayload) *model.Message {
+	return &model.Message{
+		UUID:            strings.TrimSpace(payload.MessageID),
+		ConversationKey: strings.TrimSpace(payload.ConversationKey),
+		SenderUUID:      strings.TrimSpace(payload.SenderUUID),
+		TargetUUID:      strings.TrimSpace(payload.TargetUUID),
+		TargetType:      payload.TargetType,
+		MessageType:     payload.MessageType,
+		Content:         payload.Content,
+		FileID:          strings.TrimSpace(payload.FileID),
+		FileName:        strings.TrimSpace(payload.FileName),
+		FileSize:        payload.FileSize,
+		FileURL:         strings.TrimSpace(payload.FileURL),
+		FileContentType: strings.TrimSpace(payload.FileContentType),
+		FileExpiresAt:   payload.FileExpiresAt,
+		SentAt:          payload.SentAt,
+	}
+}
+
+func createdTopicForTargetType(targetType int8) string {
+	if targetType == model.MessageTargetGroup {
+		return "message.group.created"
+	}
+
+	return "message.direct.created"
+}
+
+func isDuplicateMessageError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+
+	var mysqlErr *mysqlDriver.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+		return true
+	}
+
+	if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
+		return true
+	}
+
+	return false
 }
 
 func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) error {
@@ -229,6 +531,45 @@ func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) err
 	}
 
 	return nil
+}
+
+func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetType int8, fileUUID string) (*model.Message, error) {
+	if s.fileFinder == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	uploadedFile, err := s.fileFinder.GetOwnedFile(strings.TrimSpace(senderUUID), fileUUID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrFileNotFound), errors.Is(err, ErrFilePermissionDenied):
+			return nil, ErrMessageFileUnavailable
+		default:
+			return nil, fmt.Errorf("get uploaded file in message service: %w", err)
+		}
+	}
+
+	conversationKey := model.DirectConversationKey(senderUUID, targetUUID)
+	if targetType == model.MessageTargetGroup {
+		conversationKey = model.GroupConversationKey(targetUUID)
+	}
+
+	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
+	return &model.Message{
+		UUID:            generateMessageUUID(),
+		ConversationKey: conversationKey,
+		SenderUUID:      strings.TrimSpace(senderUUID),
+		TargetType:      targetType,
+		TargetUUID:      strings.TrimSpace(targetUUID),
+		MessageType:     model.MessageTypeFile,
+		Content:         uploadedFile.FileName,
+		FileID:          uploadedFile.UUID,
+		FileName:        uploadedFile.FileName,
+		FileSize:        uploadedFile.FileSize,
+		FileURL:         uploadedFile.URL,
+		FileContentType: uploadedFile.ContentType,
+		FileExpiresAt:   &expiresAt,
+		SentAt:          time.Now().UTC(),
+	}, nil
 }
 
 func (s *MessageService) ensureGroupMessagePermission(userUUID, groupUUID string) error {

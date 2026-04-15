@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,6 +21,10 @@ type stubAuthService struct {
 	registerFn func(input service.RegisterInput) (*service.AuthResult, error)
 	loginFn    func(input service.LoginInput) (*service.AuthResult, error)
 	logoutFn   func(token string) error
+}
+
+type stubAuthLimiter struct {
+	allowLoginFn func(identifier string) (bool, time.Duration)
 }
 
 func (s *stubAuthService) Register(input service.RegisterInput) (*service.AuthResult, error) {
@@ -41,6 +46,14 @@ func (s *stubAuthService) Logout(token string) error {
 		return nil
 	}
 	return s.logoutFn(token)
+}
+
+func (s *stubAuthLimiter) AllowLogin(identifier string) (bool, time.Duration) {
+	if s.allowLoginFn == nil {
+		return true, 0
+	}
+
+	return s.allowLoginFn(identifier)
 }
 
 func TestAuthHandlerRegisterSuccess(t *testing.T) {
@@ -125,6 +138,44 @@ func TestAuthHandlerLoginUnauthorized(t *testing.T) {
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d", recorder.Code)
+	}
+}
+
+func TestAuthHandlerLoginRateLimited(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(&stubAuthService{
+		loginFn: func(input service.LoginInput) (*service.AuthResult, error) {
+			t.Fatalf("login service should not be called when rate limited")
+			return nil, nil
+		},
+	}).WithLimiter(&stubAuthLimiter{
+		allowLoginFn: func(identifier string) (bool, time.Duration) {
+			if identifier != "13800138000" {
+				t.Fatalf("unexpected rate limit identifier: %s", identifier)
+			}
+			return false, 30 * time.Second
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{"telephone":"13800138000","password":"badpass"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+
+	handler.Login(context)
+
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429, got %d", recorder.Code)
+	}
+
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if int(response["code"].(float64)) != code.AuthLoginRateLimited {
+		t.Fatalf("expected business code %d, got %v", code.AuthLoginRateLimited, response["code"])
 	}
 }
 

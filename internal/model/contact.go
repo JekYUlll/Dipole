@@ -6,6 +6,7 @@ const (
 	ContactApplicationPending int8 = iota
 	ContactApplicationAccepted
 	ContactApplicationRejected
+	ContactApplicationExpired
 )
 
 const (
@@ -33,6 +34,7 @@ type ContactApplication struct {
 	TargetUUID    string     `gorm:"column:target_uuid;size:24;not null;uniqueIndex:idx_applicant_target,priority:2;index" json:"target_uuid"`
 	Message       string     `gorm:"size:255;not null;default:''" json:"message"`
 	Status        int8       `gorm:"not null;default:0;index" json:"status"`
+	ExpiresAt     *time.Time `gorm:"column:expires_at;index" json:"expires_at,omitempty"`
 	HandledAt     *time.Time `gorm:"column:handled_at" json:"handled_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`

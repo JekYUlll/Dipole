@@ -1,0 +1,368 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1780" viewBox="0 0 2400 1780" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole Technical Architecture</title>
+  <desc id="desc">Detailed technical architecture diagram for Dipole IM system, including transport, services, repositories, middleware, MySQL, Redis, Kafka, MinIO, AI assistant, retry and delivery mechanisms.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f5f7fb; }
+      .panel { fill: #ffffff; stroke: #b8c4d6; stroke-width: 2; rx: 20; ry: 20; }
+      .panel-title { font: 700 28px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #17324d; }
+      .box { fill: #ffffff; stroke: #6f88a8; stroke-width: 1.6; rx: 14; ry: 14; }
+      .box-soft { fill: #f8fbff; stroke: #90a8c5; stroke-width: 1.4; rx: 14; ry: 14; }
+      .box-blue { fill: #edf5ff; stroke: #4f82c2; stroke-width: 1.8; rx: 14; ry: 14; }
+      .box-green { fill: #eefaf3; stroke: #3e9b68; stroke-width: 1.8; rx: 14; ry: 14; }
+      .box-orange { fill: #fff5e9; stroke: #d4872c; stroke-width: 1.8; rx: 14; ry: 14; }
+      .box-purple { fill: #f5efff; stroke: #7a5bc5; stroke-width: 1.8; rx: 14; ry: 14; }
+      .box-red { fill: #fff1f0; stroke: #c85550; stroke-width: 1.8; rx: 14; ry: 14; }
+      .box-gray { fill: #f7f8fa; stroke: #8c97a8; stroke-width: 1.6; rx: 14; ry: 14; }
+      .title { font: 700 18px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #17324d; }
+      .text { font: 14px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #27415f; }
+      .tiny { font: 12px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #516b88; }
+      .legend { font: 13px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #27415f; }
+      .arrow { stroke: #537aa3; stroke-width: 2.4; fill: none; marker-end: url(#arrowHead); }
+      .arrow-dashed { stroke: #537aa3; stroke-width: 2.2; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrowHead); }
+      .arrow-green { stroke: #3e9b68; stroke-width: 2.4; fill: none; marker-end: url(#arrowHeadGreen); }
+      .arrow-orange { stroke: #d4872c; stroke-width: 2.4; fill: none; marker-end: url(#arrowHeadOrange); }
+      .arrow-red { stroke: #c85550; stroke-width: 2.2; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrowHeadRed); }
+      .connector-label { font: 12px 'IBM Plex Sans', 'Noto Sans SC', sans-serif; fill: #365678; }
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#537aa3" />
+    </marker>
+    <marker id="arrowHeadGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#3e9b68" />
+    </marker>
+    <marker id="arrowHeadOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#d4872c" />
+    </marker>
+    <marker id="arrowHeadRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#c85550" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="2400" height="1780" />
+  <text x="58" y="58" class="panel-title">Dipole 当前技术架构总图</text>
+  <text x="58" y="86" class="legend">模块化单体 + WebSocket 长连接 + Kafka 事件驱动 + Redis 缓存 / Presence + MinIO 文件对象存储 + Eino AI 助手</text>
+
+  <g>
+    <rect class="panel" x="40" y="120" width="300" height="270" />
+    <text x="60" y="155" class="panel-title" font-size="22">客户端 / 调试入口</text>
+    <rect class="box-blue" x="60" y="180" width="120" height="66" />
+    <text x="78" y="208" class="title">Web Tester</text>
+    <text x="78" y="228" class="tiny">/app/</text>
+    <text x="78" y="244" class="tiny">HTTP + WebSocket</text>
+
+    <rect class="box-blue" x="200" y="180" width="120" height="66" />
+    <text x="225" y="208" class="title">wscli</text>
+    <text x="215" y="228" class="tiny">cmd/wscli</text>
+    <text x="214" y="244" class="tiny">登录 / 建连 / 发消息</text>
+
+    <rect class="box-blue" x="60" y="268" width="260" height="94" />
+    <text x="80" y="296" class="title">后续客户端形态</text>
+    <text x="80" y="318" class="text">• 浏览器 / 局域网访问</text>
+    <text x="80" y="338" class="text">• Wails / 桌面端</text>
+    <text x="80" y="358" class="text">• 多端通过 JWT + WS 接入同一后端</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="380" y="120" width="690" height="560" />
+    <text x="400" y="155" class="panel-title">接入层与进程内运行时</text>
+
+    <rect class="box-gray" x="405" y="178" width="630" height="70" />
+    <text x="425" y="205" class="title">cmd/server + bootstrap.Initialize + bootstrap.RunServer</text>
+    <text x="425" y="226" class="text">配置加载、日志初始化、MySQL/Redis/Kafka/MinIO 初始化、AutoMigrate、AI 助手用户确保、Bloom 过滤器预热</text>
+
+    <rect class="box-blue" x="405" y="275" width="300" height="170" />
+    <text x="425" y="302" class="title">Gin HTTP Server</text>
+    <text x="425" y="324" class="text">中间件：</text>
+    <text x="445" y="346" class="text">• GinLogger / GinRecovery</text>
+    <text x="445" y="366" class="text">• CORS</text>
+    <text x="445" y="386" class="text">• Auth middleware（JWT 解析 + 用户注入）</text>
+    <text x="445" y="406" class="text">• 统一 HTTP JSON 响应</text>
+    <text x="445" y="426" class="text">• /app/ 静态 SVG/JS/CSS 调试页</text>
+
+    <rect class="box-soft" x="730" y="275" width="285" height="170" />
+    <text x="750" y="302" class="title">HTTP Route Modules</text>
+    <text x="750" y="324" class="text">Auth / User / Contact / Group</text>
+    <text x="750" y="344" class="text">Conversation / Message / File</text>
+    <text x="750" y="364" class="text">Session / Admin</text>
+    <text x="750" y="384" class="tiny">所有受保护接口统一走 Authorization: Bearer JWT</text>
+    <text x="750" y="406" class="tiny">文件下载先鉴权，再返回 MinIO 预签名 URL</text>
+
+    <rect class="box-purple" x="405" y="474" width="610" height="176" />
+    <text x="425" y="501" class="title">WebSocket Transport</text>
+    <text x="425" y="523" class="text">Handler + Authenticator + Dispatcher + Hub + Client</text>
+    <text x="425" y="545" class="text">入站：</text>
+    <text x="475" y="545" class="tiny">chat.send / chat.send_file</text>
+    <text x="425" y="565" class="text">出站：</text>
+    <text x="475" y="565" class="tiny">connected / chat.sent / chat.message / chat.read / group.* / session.kicked / error</text>
+    <text x="425" y="587" class="text">机制：</text>
+    <text x="475" y="587" class="tiny">JWT 鉴权、服务端 ACK、在线 push、心跳、限流、设备标识、Presence 刷新</text>
+    <text x="425" y="609" class="text">Hub 内部：</text>
+    <text x="505" y="609" class="tiny">user_uuid -&gt; set(client)，单机在线投递；未来预留 ants 协程池</text>
+    <text x="425" y="631" class="text">Kafka 关闭时：</text>
+    <text x="535" y="631" class="tiny">Dispatcher 直接同步更新会话并本地推送</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="1110" y="120" width="650" height="820" />
+    <text x="1130" y="155" class="panel-title">业务服务层</text>
+
+    <rect class="box-blue" x="1135" y="178" width="285" height="118" />
+    <text x="1155" y="205" class="title">Auth / Token Service</text>
+    <text x="1155" y="227" class="text">• 注册、登录、登出</text>
+    <text x="1155" y="247" class="text">• JWT 签发 / 校验</text>
+    <text x="1155" y="267" class="text">• Redis 黑名单撤销 jti</text>
+    <text x="1155" y="287" class="tiny">JWT + Redis revoke，支持立即失效</text>
+
+    <rect class="box-blue" x="1450" y="178" width="285" height="118" />
+    <text x="1470" y="205" class="title">User / Contact Service</text>
+    <text x="1470" y="227" class="text">• 用户资料 / 搜索 / 状态</text>
+    <text x="1470" y="247" class="text">• 好友关系、备注、黑名单</text>
+    <text x="1470" y="267" class="text">• 好友申请 / 接受 / 拒绝 / 7 天过期</text>
+    <text x="1470" y="287" class="tiny">私聊权限依赖 contact relation</text>
+
+    <rect class="box-green" x="1135" y="324" width="600" height="166" />
+    <text x="1155" y="351" class="title">Message Service</text>
+    <text x="1155" y="373" class="text">• 单聊 / 群聊 / 文件消息发送</text>
+    <text x="1155" y="393" class="text">• 离线消息拉取、历史消息查询</text>
+    <text x="1155" y="413" class="text">• Kafka 开启时：publish message.direct/group.send_requested</text>
+    <text x="1155" y="433" class="text">• Kafka 关闭时：直接落库</text>
+    <text x="1155" y="453" class="text">• 幂等：</text>
+    <text x="1215" y="453" class="tiny">直接 INSERT，唯一键冲突时按 message UUID 回查并复用</text>
+    <text x="1155" y="473" class="tiny">文件消息默认 7 天接收有效期，下载需服务端鉴权</text>
+
+    <rect class="box-green" x="1135" y="518" width="285" height="132" />
+    <text x="1155" y="545" class="title">Conversation Service</text>
+    <text x="1155" y="567" class="text">• 会话列表</text>
+    <text x="1155" y="587" class="text">• 单聊 / 群聊未读数更新</text>
+    <text x="1155" y="607" class="text">• 单聊已读回执、群清未读</text>
+    <text x="1155" y="627" class="tiny">read 事件会发布到 Kafka 或本地 WS</text>
+
+    <rect class="box-green" x="1450" y="518" width="285" height="132" />
+    <text x="1470" y="545" class="title">Group Service</text>
+    <text x="1470" y="567" class="text">• 创建、查询、加人、移人</text>
+    <text x="1470" y="587" class="text">• 更新资料、退群、解散</text>
+    <text x="1470" y="607" class="text">• 发布 group.* 事件</text>
+    <text x="1470" y="627" class="tiny">成员权限：owner / member</text>
+
+    <rect class="box-orange" x="1135" y="678" width="285" height="132" />
+    <text x="1155" y="705" class="title">File Service</text>
+    <text x="1155" y="727" class="text">• multipart 上传到 MinIO</text>
+    <text x="1155" y="747" class="text">• uploaded_files 元数据落库</text>
+    <text x="1155" y="767" class="text">• 下载时鉴权 + 预签名 URL</text>
+    <text x="1155" y="787" class="tiny">接收端默认需在 7 天有效期内下载</text>
+
+    <rect class="box-orange" x="1450" y="678" width="285" height="132" />
+    <text x="1470" y="705" class="title">Session / Admin Service</text>
+    <text x="1470" y="727" class="text">• 在线设备列表</text>
+    <text x="1470" y="747" class="text">• 单设备 / 全部设备强制下线</text>
+    <text x="1470" y="767" class="text">• 后台概览统计</text>
+    <text x="1470" y="787" class="tiny">强制下线通过 Redis + Kafka + Hub 完成</text>
+
+    <rect class="box-purple" x="1135" y="838" width="600" height="78" />
+    <text x="1155" y="865" class="title">统一工程机制</text>
+    <text x="1155" y="887" class="text">Redis 限流（登录 / 发消息 / 文件上传） + Bloom 用户 / 群 UUID 过滤 + Zap 日志文件按日切割</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="1110" y="970" width="650" height="380" />
+    <text x="1130" y="1005" class="panel-title">AI Assistant（Eino）</text>
+
+    <rect class="box-purple" x="1135" y="1030" width="600" height="132" />
+    <text x="1155" y="1057" class="title">AI 触发方式</text>
+    <text x="1155" y="1079" class="text">Kafka 订阅 message.direct.created</text>
+    <text x="1155" y="1099" class="text">仅当目标用户是 AI Assistant（特殊 user_type）时处理</text>
+    <text x="1155" y="1119" class="text">读取最近上下文，调用 ChatModelAgent，结果回写为 ai_text / system message</text>
+    <text x="1155" y="1139" class="tiny">当前 provider factory：openai / ollama；支持默认 provider 配置</text>
+
+    <rect class="box-purple" x="1135" y="1184" width="288" height="140" />
+    <text x="1155" y="1211" class="title">Context Builder</text>
+    <text x="1155" y="1233" class="text">• 查询用户与 AI 直接会话</text>
+    <text x="1155" y="1253" class="text">• 截取最近 N 条消息</text>
+    <text x="1155" y="1273" class="text">• 文本 / 文件 / 系统消息渲染为 LLM 输入</text>
+    <text x="1155" y="1293" class="tiny">当前不会读取用户与他人的私聊内容</text>
+
+    <rect class="box-purple" x="1450" y="1184" width="285" height="140" />
+    <text x="1470" y="1211" class="title">Tool Set</text>
+    <text x="1470" y="1233" class="text">• get_user_profile</text>
+    <text x="1470" y="1253" class="text">• get_conversation_context</text>
+    <text x="1470" y="1273" class="text">• search_recent_messages</text>
+    <text x="1470" y="1293" class="text">• send_system_message</text>
+
+    <rect class="box-purple" x="1135" y="1338" width="600" height="72" />
+    <text x="1155" y="1365" class="title">可观测性</text>
+    <text x="1155" y="1387" class="text">ai_call_logs 持久化调用结果；tool 发消息有副作用跟踪，避免模型回复与工具发送重复落消息</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="1790" y="120" width="570" height="560" />
+    <text x="1810" y="155" class="panel-title">仓储 / 缓存 / 存储</text>
+
+    <rect class="box-gray" x="1815" y="182" width="525" height="138" />
+    <text x="1835" y="209" class="title">Repository Layer</text>
+    <text x="1835" y="231" class="text">UserRepository / ContactRepository / GroupRepository</text>
+    <text x="1835" y="251" class="text">ConversationRepository / MessageRepository / FileRepository</text>
+    <text x="1835" y="271" class="text">AdminRepository / AICallLogRepository</text>
+    <text x="1835" y="291" class="tiny">负责 MySQL 查询、Redis cache-aside、部分存在性过滤与持久化幂等支撑</text>
+
+    <rect class="box-green" x="1815" y="342" width="525" height="150" />
+    <text x="1835" y="369" class="title">Redis 共享缓存 / 状态</text>
+    <text x="1835" y="391" class="text">user:profile:&lt;uuid&gt; / group:meta:&lt;uuid&gt;</text>
+    <text x="1835" y="411" class="text">group:members:&lt;group_uuid&gt; / contact:relation:&lt;u&gt;:&lt;v&gt;</text>
+    <text x="1835" y="431" class="text">presence:online_users / presence:online_connections</text>
+    <text x="1835" y="451" class="text">presence:user:&lt;uuid&gt;:connections / auth:revoked:&lt;jti&gt;</text>
+    <text x="1835" y="471" class="text">rate:login / rate:msg / rate:file</text>
+
+    <rect class="box-orange" x="1815" y="516" width="525" height="138" />
+    <text x="1835" y="543" class="title">MinIO / Object Storage</text>
+    <text x="1835" y="565" class="text">• 文件上传同步写入对象存储</text>
+    <text x="1835" y="585" class="text">• bucket 私有</text>
+    <text x="1835" y="605" class="text">• 服务端校验后签发短时下载 URL</text>
+    <text x="1835" y="625" class="text">• uploaded_files 保存 object key / content type / size / uploader</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="1790" y="710" width="570" height="640" />
+    <text x="1810" y="745" class="panel-title">中间件与外部系统</text>
+
+    <rect class="box-red" x="1815" y="775" width="525" height="214" />
+    <text x="1835" y="802" class="title">Kafka Event Bus</text>
+    <text x="1835" y="824" class="text">Producer：</text>
+    <text x="1920" y="824" class="tiny">JSONPublisher + Envelope(event_id / type / version / source / occurred_at)</text>
+    <text x="1835" y="844" class="text">Topics：</text>
+    <text x="1920" y="844" class="tiny">message.direct.send_requested / message.group.send_requested</text>
+    <text x="1920" y="864" class="tiny">message.direct.created / message.group.created</text>
+    <text x="1920" y="884" class="tiny">conversation.direct.read / group.* / session.force_logout</text>
+    <text x="1835" y="908" class="text">Consumer：</text>
+    <text x="1920" y="908" class="tiny">按 topic 注册 handler，后台 goroutine 消费</text>
+    <text x="1835" y="930" class="text">重试：</text>
+    <text x="1920" y="930" class="tiny">maxAttempts + backoff；失败写入 .retry，再失败写入 .dead</text>
+    <text x="1835" y="952" class="text">用途：</text>
+    <text x="1920" y="952" class="tiny">消息落库、会话更新、在线投递、群广播、已读回执、设备踢下线、AI 触发</text>
+
+    <rect class="box-red" x="1815" y="1012" width="525" height="120" />
+    <text x="1835" y="1039" class="title">MySQL</text>
+    <text x="1835" y="1061" class="text">核心表：</text>
+    <text x="1920" y="1061" class="tiny">users / contacts / contact_applications / groups / group_members</text>
+    <text x="1920" y="1081" class="tiny">conversations / messages / uploaded_files / ai_call_logs</text>
+    <text x="1835" y="1103" class="text">当前策略：</text>
+    <text x="1920" y="1103" class="tiny">单库单体；未来已标注读写分离 / 消息分表 TODO</text>
+
+    <rect class="box-red" x="1815" y="1156" width="525" height="164" />
+    <text x="1835" y="1183" class="title">进程内机制</text>
+    <text x="1835" y="1205" class="text">• Bloom Filter：</text>
+    <text x="1945" y="1205" class="tiny">用户 UUID / 群 UUID 存在性过滤，减少无效 Redis / MySQL 查询</text>
+    <text x="1835" y="1225" class="text">• Logger：</text>
+    <text x="1945" y="1225" class="tiny">Zap 薄封装 + Gin access log + 文件按日期切割</text>
+    <text x="1835" y="1245" class="text">• Presence Tracker：</text>
+    <text x="1945" y="1245" class="tiny">WS 注册 / 心跳 / 断开时写 Redis</text>
+    <text x="1835" y="1265" class="text">• RateLimiter：</text>
+    <text x="1945" y="1265" class="tiny">Redis INCR + EXPIRE 固定窗口限流</text>
+    <text x="1835" y="1285" class="text">• TODO：</text>
+    <text x="1945" y="1285" class="tiny">ants 协程池、MySQL 读写分离、消息分表</text>
+  </g>
+
+  <g>
+    <rect class="panel" x="40" y="720" width="1030" height="630" />
+    <text x="60" y="755" class="panel-title">关键链路（总览）</text>
+
+    <rect class="box-soft" x="66" y="785" width="310" height="235" />
+    <text x="86" y="812" class="title">A. 单聊 / 群聊消息</text>
+    <text x="86" y="834" class="text">1. Client -&gt; WS chat.send / chat.send_file</text>
+    <text x="86" y="854" class="text">2. Dispatcher 校验限流、目标、好友 / 群成员权限</text>
+    <text x="86" y="874" class="text">3. MessageService 发布 send_requested</text>
+    <text x="86" y="894" class="text">4. Kafka consumer 落库 + publish created</text>
+    <text x="86" y="914" class="text">5. ConversationService 更新会话与未读数</text>
+    <text x="86" y="934" class="text">6. Hub 向在线用户 push chat.message</text>
+    <text x="86" y="954" class="text">7. 离线用户走 /messages/offline pull</text>
+    <text x="86" y="974" class="tiny">发送端立即收到 chat.sent ACK，包含 message_id 与 delivered 标志</text>
+
+    <rect class="box-soft" x="396" y="785" width="310" height="235" />
+    <text x="416" y="812" class="title">B. 文件消息</text>
+    <text x="416" y="834" class="text">1. HTTP /files 上传到 MinIO</text>
+    <text x="416" y="854" class="text">2. uploaded_files 落库，返回 file_id</text>
+    <text x="416" y="874" class="text">3. chat.send_file 携带 target_uuid + file_id</text>
+    <text x="416" y="894" class="text">4. MessageService 生成 file message</text>
+    <text x="416" y="914" class="text">5. 接收端点击下载 -&gt; /files/:id/download</text>
+    <text x="416" y="934" class="text">6. 服务端校验消息权限 + 文件 7 天有效期</text>
+    <text x="416" y="954" class="text">7. 返回 MinIO 预签名下载 URL</text>
+    <text x="416" y="974" class="tiny">bucket 私有，下载链路统一走服务端</text>
+
+    <rect class="box-soft" x="726" y="785" width="310" height="235" />
+    <text x="746" y="812" class="title">C. 已读回执 / 多端设备</text>
+    <text x="746" y="834" class="text">1. 用户打开会话 -&gt; PATCH /conversations/*/read</text>
+    <text x="746" y="854" class="text">2. ConversationService 清 unread_count</text>
+    <text x="746" y="874" class="text">3. 单聊发布 conversation.direct.read</text>
+    <text x="746" y="894" class="text">4. 对端在线收到 chat.read</text>
+    <text x="746" y="914" class="text">5. /users/me/devices 查看 Redis Presence</text>
+    <text x="746" y="934" class="text">6. 强制下线 -&gt; revoke token + session.force_logout</text>
+    <text x="746" y="954" class="text">7. Hub 断开连接并推送 session.kicked</text>
+    <text x="746" y="974" class="tiny">群聊当前仅做清未读，不做群消息已读人数统计</text>
+
+    <rect class="box-soft" x="66" y="1048" width="970" height="272" />
+    <text x="86" y="1075" class="title">D. AI 助手消息链路</text>
+    <text x="86" y="1097" class="text">1. 用户把单聊消息发给 AI Assistant UUID</text>
+    <text x="86" y="1117" class="text">2. Kafka 消费到 message.direct.created，触发 AI Service</text>
+    <text x="86" y="1137" class="text">3. ContextBuilder 读取“用户与 AI 之间”的最近对话，不会读取用户与他人的私聊</text>
+    <text x="86" y="1157" class="text">4. Eino ChatModelAgent 按 system prompt + tools 运行</text>
+    <text x="86" y="1177" class="text">5. tools 可以查询用户资料、会话上下文、最近消息，也可以发送 system message</text>
+    <text x="86" y="1197" class="text">6. 若 tool 已产生副作用消息，AI Service 会跳过二次补发，避免重复落消息</text>
+    <text x="86" y="1217" class="text">7. AI 最终回复仍然走 MessageService -&gt; Kafka -&gt; Conversation -&gt; WS 的标准链路</text>
+    <text x="86" y="1237" class="text">8. ai_call_logs 持久化记录调用结果、错误与调试信息</text>
+    <text x="86" y="1261" class="tiny">当前 AI tool 搜索范围只覆盖“用户与 AI 的直接会话”，这是设计上的权限边界，不会读用户与其他人的消息。</text>
+    <text x="86" y="1283" class="tiny">当前前端没有单独 AI 面板，但可以把 AI 当作特殊用户在聊天界面直接测试。</text>
+  </g>
+
+  <g>
+    <path class="arrow" d="M340 225 C390 225, 390 220, 405 220" />
+    <text x="355" y="212" class="connector-label">HTTP / WS</text>
+
+    <path class="arrow" d="M340 310 C385 310, 385 340, 405 340" />
+    <text x="355" y="296" class="connector-label">调试工具</text>
+
+    <path class="arrow" d="M705 360 C900 360, 900 230, 1135 230" />
+    <text x="882" y="346" class="connector-label">HTTP handlers -&gt; services</text>
+
+    <path class="arrow" d="M710 560 C930 560, 930 405, 1135 405" />
+    <text x="880" y="546" class="connector-label">WS Dispatcher -&gt; MessageService</text>
+
+    <path class="arrow-dashed" d="M710 620 C885 620, 885 595, 1135 595" />
+    <text x="852" y="610" class="connector-label">Kafka disabled 时本地同步会话更新</text>
+
+    <path class="arrow-green" d="M1735 405 C1770 405, 1770 415, 1815 415" />
+    <text x="1745" y="396" class="connector-label">cache-aside / state</text>
+
+    <path class="arrow-orange" d="M1420 742 C1730 742, 1730 585, 1815 585" />
+    <text x="1692" y="730" class="connector-label">upload / presign</text>
+
+    <path class="arrow-red" d="M1735 405 C1765 405, 1765 860, 1815 860" />
+    <text x="1745" y="842" class="connector-label">publish events</text>
+
+    <path class="arrow-red" d="M1815 928 C1765 928, 1765 410, 1735 410" />
+    <text x="1768" y="915" class="connector-label">consume / retry / dead-letter</text>
+
+    <path class="arrow" d="M2050 1132 C2050 1170, 1640 1170, 1640 1184" />
+    <text x="1868" y="1162" class="connector-label">AICallLog / User / Message repositories</text>
+
+    <path class="arrow" d="M2050 494 C2050 520, 1710 520, 1710 596" />
+    <text x="1852" y="512" class="connector-label">下载鉴权依赖缓存 / 文件元数据</text>
+  </g>
+
+  <g>
+    <rect class="box" x="40" y="1390" width="2320" height="320" />
+    <text x="60" y="1420" class="title">图例与落地说明</text>
+    <text x="60" y="1450" class="legend">• 蓝色：接入层与常规业务服务</text>
+    <text x="360" y="1450" class="legend">• 绿色：消息 / 会话 / 缓存等核心 IM 机制</text>
+    <text x="760" y="1450" class="legend">• 橙色：文件 / 会话控制链路</text>
+    <text x="1080" y="1450" class="legend">• 紫色：AI 与 WebSocket / Tool 相关模块</text>
+    <text x="1490" y="1450" class="legend">• 红色：中间件、外部系统、异步总线</text>
+
+    <text x="60" y="1490" class="text">1. 当前是模块化单体部署：所有 HTTP、WS、Kafka consumer、AI agent、缓存、仓储都在同一进程内装配，但边界已经按域拆开，后续可继续演进。</text>
+    <text x="60" y="1518" class="text">2. 在线消息主链路采用 push + pull 混合：在线通过 WebSocket push，离线通过 /messages/offline 增量补拉；目前没有独立 inbox/outbox 表。</text>
+    <text x="60" y="1546" class="text">3. Kafka 负责消息落库后的异步扩散、会话更新、群事件广播、已读回执、设备踢下线与 AI 触发；连接态与 ACK 这类强实时反馈仍保留本地同步处理。</text>
+    <text x="60" y="1574" class="text">4. Redis 当前承担缓存、限流、在线状态、多端会话、JWT 撤销黑名单；Bloom Filter 在进程内前置过滤无效用户 / 群 UUID，请求命中过滤器后仍会回到 Redis / MySQL 做最终确认。</text>
+    <text x="60" y="1602" class="text">5. MinIO 采用私有 bucket，文件上传同步完成；下载统一走服务端鉴权并返回短时签名 URL，文件消息当前具备 7 天接收有效期控制。</text>
+    <text x="60" y="1630" class="text">6. AI 当前以“特殊用户”形式接入 IM 主链路，使用 Eino ChatModelAgent 与 tools 处理与 AI 助手的单聊，不具备读取用户与其他人的私聊历史的权限。</text>
+    <text x="60" y="1658" class="text">7. 已标注的后续工程化方向：消息分表、MySQL 读写分离、WS 批量投递协程池（ants）。</text>
+  </g>
+</svg>

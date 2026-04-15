@@ -14,11 +14,13 @@ func AutoMigrate() error {
 	if err := DB.AutoMigrate(
 		&model.User{},
 		&model.Message{},
+		&model.UploadedFile{},
 		&model.Conversation{},
 		&model.Contact{},
 		&model.ContactApplication{},
 		&model.Group{},
 		&model.GroupMember{},
+		&model.AICallLog{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
 	}

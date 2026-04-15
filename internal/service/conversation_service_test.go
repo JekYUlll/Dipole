@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -15,6 +16,8 @@ type stubConversationRepository struct {
 	listErr               error
 	lastListUserUUID      string
 	lastListLimit         int
+	conversationByKey     *model.Conversation
+	getConversationErr    error
 	lastClearUserUUID     string
 	lastClearConversation string
 	clearErr              error
@@ -65,6 +68,15 @@ func (r *stubConversationRepository) ListByUserUUID(userUUID string, limit int) 
 	return r.listConversations, nil
 }
 
+func (r *stubConversationRepository) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
+	r.lastClearUserUUID = userUUID
+	r.lastClearConversation = conversationKey
+	if r.getConversationErr != nil {
+		return nil, r.getConversationErr
+	}
+	return r.conversationByKey, nil
+}
+
 func (r *stubConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
 	r.lastClearUserUUID = userUUID
 	r.lastClearConversation = conversationKey
@@ -100,11 +112,56 @@ func (f *stubConversationUserFinder) ListByUUIDs(uuids []string) ([]*model.User,
 	return users, nil
 }
 
+type stubConversationGroupRepository struct {
+	groupsByUUID  map[string]*model.Group
+	membersByPair map[string]*model.GroupMember
+}
+
+func (r *stubConversationGroupRepository) GetByUUID(groupUUID string) (*model.Group, error) {
+	return r.groupsByUUID[groupUUID], nil
+}
+
+func (r *stubConversationGroupRepository) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
+	return nil, nil
+}
+
+func (r *stubConversationGroupRepository) GetMember(groupUUID, userUUID string) (*model.GroupMember, error) {
+	return r.membersByPair[groupUUID+":"+userUUID], nil
+}
+
+type stubConversationNotifier struct {
+	receipts []ConversationReadReceipt
+}
+
+func (n *stubConversationNotifier) NotifyDirectRead(receipt ConversationReadReceipt) {
+	n.receipts = append(n.receipts, receipt)
+}
+
+type stubConversationEvents struct {
+	publishedTopic   string
+	publishedKey     string
+	publishedType    string
+	publishedPayload any
+	publishErr       error
+}
+
+func (e *stubConversationEvents) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
+	return nil
+}
+
+func (e *stubConversationEvents) PublishEvent(_ context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+	e.publishedTopic = topic
+	e.publishedKey = key
+	e.publishedType = eventType
+	e.publishedPayload = payload
+	return e.publishErr
+}
+
 func TestConversationServiceUpdateDirectConversationsSuccess(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubConversationRepository{}
-	service := NewConversationService(repo, &stubConversationUserFinder{}, nil)
+	service := NewConversationService(repo, &stubConversationUserFinder{}, nil, nil, nil)
 	message := &model.Message{
 		UUID:            "M100",
 		ConversationKey: model.DirectConversationKey("U100", "U200"),
@@ -149,7 +206,7 @@ func TestConversationServiceListForUserSuccess(t *testing.T) {
 			"U200": {UUID: "U200", Nickname: "Alice", Avatar: "avatar"},
 		},
 	}
-	service := NewConversationService(repo, userFinder, nil)
+	service := NewConversationService(repo, userFinder, nil, nil, nil)
 
 	conversations, err := service.ListForUser("U100", 10)
 	if err != nil {
@@ -171,10 +228,84 @@ func TestConversationServiceMarkDirectConversationReadRejectsMissingTarget(t *te
 
 	service := NewConversationService(&stubConversationRepository{}, &stubConversationUserFinder{
 		usersByUUID: map[string]*model.User{},
-	}, nil)
+	}, nil, nil, nil)
 
-	err := service.MarkDirectConversationRead("U100", "U404")
+	_, err := service.MarkDirectConversationRead("U100", "U404")
 	if !errors.Is(err, ErrConversationTargetNotFound) {
 		t.Fatalf("expected ErrConversationTargetNotFound, got %v", err)
+	}
+}
+
+func TestConversationServiceMarkDirectConversationReadPublishesReceipt(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{
+		conversationByKey: &model.Conversation{
+			ConversationKey: model.DirectConversationKey("U100", "U200"),
+			LastMessageUUID: "M100",
+		},
+	}
+	events := &stubConversationEvents{}
+	service := NewConversationService(repo, &stubConversationUserFinder{
+		usersByUUID: map[string]*model.User{
+			"U200": {UUID: "U200"},
+		},
+	}, nil, nil, events)
+
+	receipt, err := service.MarkDirectConversationRead("U100", "U200")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if receipt == nil || receipt.LastReadMessageUUID != "M100" {
+		t.Fatalf("unexpected receipt: %+v", receipt)
+	}
+	if events.publishedTopic != "conversation.direct.read" {
+		t.Fatalf("unexpected topic: %s", events.publishedTopic)
+	}
+}
+
+func TestConversationServiceMarkGroupConversationReadClearsUnread(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{}
+	groupRepo := &stubConversationGroupRepository{
+		groupsByUUID: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		membersByPair: map[string]*model.GroupMember{
+			"G100:U100": {GroupUUID: "G100", UserUUID: "U100"},
+		},
+	}
+	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+
+	if err := service.MarkGroupConversationRead("U100", "G100"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if repo.lastClearConversation != model.GroupConversationKey("G100") {
+		t.Fatalf("unexpected cleared conversation: %s", repo.lastClearConversation)
+	}
+}
+
+func TestConversationServiceMarkDirectConversationReadNotifiesWithoutEvents(t *testing.T) {
+	t.Parallel()
+
+	notifier := &stubConversationNotifier{}
+	repo := &stubConversationRepository{
+		conversationByKey: &model.Conversation{
+			ConversationKey: model.DirectConversationKey("U100", "U200"),
+			LastMessageUUID: "M100",
+		},
+	}
+	service := NewConversationService(repo, &stubConversationUserFinder{
+		usersByUUID: map[string]*model.User{
+			"U200": {UUID: "U200"},
+		},
+	}, nil, notifier, nil)
+
+	if _, err := service.MarkDirectConversationRead("U100", "U200"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(notifier.receipts) != 1 {
+		t.Fatalf("expected 1 receipt, got %d", len(notifier.receipts))
 	}
 }

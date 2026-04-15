@@ -39,9 +39,16 @@ func (r *ConversationRepository) UpsertDirectMessage(userUUID, targetUUID string
 		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
-		assignments["unread_count"] = gorm.Expr("unread_count + ?", unreadIncrement)
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN unread_count + ? ELSE unread_count END",
+			conversation.LastMessageUUID,
+			unreadIncrement,
+		)
 	} else {
-		assignments["unread_count"] = 0
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN 0 ELSE unread_count END",
+			conversation.LastMessageUUID,
+		)
 	}
 
 	if err := store.DB.Clauses(clause.OnConflict{
@@ -80,9 +87,16 @@ func (r *ConversationRepository) UpsertGroupMessage(userUUID, groupUUID string, 
 		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
-		assignments["unread_count"] = gorm.Expr("unread_count + ?", unreadIncrement)
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN unread_count + ? ELSE unread_count END",
+			conversation.LastMessageUUID,
+			unreadIncrement,
+		)
 	} else {
-		assignments["unread_count"] = 0
+		assignments["unread_count"] = gorm.Expr(
+			"CASE WHEN last_message_uuid <> ? THEN 0 ELSE unread_count END",
+			conversation.LastMessageUUID,
+		)
 	}
 
 	if err := store.DB.Clauses(clause.OnConflict{
@@ -110,6 +124,19 @@ func (r *ConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*
 	return conversations, nil
 }
 
+func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
+	var conversation model.Conversation
+	if err := store.DB.Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).
+		First(&conversation).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get conversation by user and key: %w", err)
+	}
+
+	return &conversation, nil
+}
+
 func (r *ConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
 	if err := store.DB.Model(&model.Conversation{}).
 		Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).
@@ -128,6 +155,23 @@ func buildMessagePreview(message *model.Message) string {
 			return message.Content
 		}
 		return string(runes[:100])
+	case model.MessageTypeFile:
+		if message.FileName != "" {
+			return "[file] " + message.FileName
+		}
+		return "[file]"
+	case model.MessageTypeAIText:
+		runes := []rune(message.Content)
+		if len(runes) <= 100 {
+			return message.Content
+		}
+		return string(runes[:100])
+	case model.MessageTypeSystem:
+		runes := []rune(message.Content)
+		if len(runes) <= 90 {
+			return "[system] " + message.Content
+		}
+		return "[system] " + string(runes[:90])
 	default:
 		return "[unsupported]"
 	}
