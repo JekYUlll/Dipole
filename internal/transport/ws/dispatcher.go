@@ -63,6 +63,8 @@ func (d *Dispatcher) Handle(client *Client, payload []byte) {
 	}
 
 	switch envelope.Type {
+	case TypePing:
+		_ = client.SendEvent(TypePong, PongData{ServerTime: time.Now().UTC()})
 	case TypeChatSend:
 		d.handleChatSend(client, envelope.Data)
 	case TypeChatSendFile:

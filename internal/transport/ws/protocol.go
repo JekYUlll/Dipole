@@ -9,6 +9,8 @@ import (
 const (
 	TypeConnected           = "connected"
 	TypeError               = "error"
+	TypePing                = "ping"
+	TypePong                = "pong"
 	TypeChatSend            = "chat.send"
 	TypeChatSendFile        = "chat.send_file"
 	TypeChatSent            = "chat.sent"
@@ -45,6 +47,10 @@ type ConnectedEventData struct {
 	UserUUID        string `json:"user_uuid"`
 	ConnectionCount int    `json:"connection_count"`
 	OnlineUserCount int    `json:"online_user_count"`
+}
+
+type PongData struct {
+	ServerTime time.Time `json:"server_time"`
 }
 
 type ErrorEventData struct {
