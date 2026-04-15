@@ -115,17 +115,10 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - ./configs:/app/configs:ro  # 挂载基础配置，环境变量覆盖节点特定值
+      # 挂载容器专用配置（所有服务地址已指向容器名），node_id 由环境变量覆盖
+      - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
     environment:
-      DIPOLE_MYSQL_HOST: mysql
-      DIPOLE_MYSQL_PORT: 3306
-      DIPOLE_REDIS_HOST: redis
-      DIPOLE_REDIS_PORT: 6379
-      DIPOLE_KAFKA_BROKERS: kafka:9092
-      DIPOLE_STORAGE_ENDPOINT: minio:9000
-      DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID 区分节点
-      DIPOLE_PRESENCE_ENABLED: "true"
-      DIPOLE_LOG_FILE_ENABLED: "false"
+      DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
     ports:
       - "8081:8080" # 暴露到宿主机，方便直连 node1 调试
 
@@ -141,17 +134,9 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - ./configs:/app/configs:ro
+      - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
     environment:
-      DIPOLE_MYSQL_HOST: mysql
-      DIPOLE_MYSQL_PORT: 3306
-      DIPOLE_REDIS_HOST: redis
-      DIPOLE_REDIS_PORT: 6379
-      DIPOLE_KAFKA_BROKERS: kafka:9092
-      DIPOLE_STORAGE_ENDPOINT: minio:9000
-      DIPOLE_PRESENCE_NODE_ID: node2   # 与 node1 不同，Redis Pub/Sub channel 为 ws:node:node2
-      DIPOLE_PRESENCE_ENABLED: "true"
-      DIPOLE_LOG_FILE_ENABLED: "false"
+      DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
     ports:
       - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
 
@@ -174,3 +159,11 @@ volumes:
   redis_data:
   kafka_data:
   minio_data:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        # 使用 10.x 网段，避免与 VPN 占用的 172.x 网段冲突
+        - subnet: 10.200.0.0/24

@@ -22,9 +22,19 @@ type Registry struct {
 }
 
 var (
-	globalMu sync.RWMutex
-	global   *Registry
+	globalMu     sync.RWMutex
+	global       *Registry
+	distributed  bool // 分布式模式下禁用本地 bloom filter 拦截，始终放行到 DB
 )
+
+// SetDistributed 在多节点部署时调用，禁用 bloom filter 的存在性拦截。
+// bloom filter 是进程内状态，多节点各自维护，新注册用户只更新本节点内存，
+// 其他节点查询时会误判为不存在。分布式模式下直接走 DB，牺牲少量性能换正确性。
+func SetDistributed(enabled bool) {
+	globalMu.Lock()
+	distributed = enabled
+	globalMu.Unlock()
+}
 
 func Init() error {
 	if store.DB == nil {
@@ -80,6 +90,13 @@ func Reset() {
 }
 
 func UserMayExist(uuid string) bool {
+	globalMu.RLock()
+	dist := distributed
+	globalMu.RUnlock()
+	if dist {
+		return true
+	}
+
 	registry := snapshot()
 	if registry == nil || registry.users == nil {
 		return true
@@ -89,6 +106,13 @@ func UserMayExist(uuid string) bool {
 }
 
 func GroupMayExist(uuid string) bool {
+	globalMu.RLock()
+	dist := distributed
+	globalMu.RUnlock()
+	if dist {
+		return true
+	}
+
 	registry := snapshot()
 	if registry == nil || registry.groups == nil {
 		return true

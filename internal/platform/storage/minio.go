@@ -72,21 +72,6 @@ func Init() error {
 		publicBaseURL: strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/"),
 	}
 
-	// If a separate presign endpoint is configured (e.g. a LAN/public address that
-	// differs from the internal upload endpoint), create a dedicated client for it.
-	// MinIO embeds the signing host in the HMAC signature, so the client used for
-	// presigning must use the same host that browsers will ultimately reach.
-	if presignEndpoint := strings.TrimSpace(cfg.PresignEndpoint); presignEndpoint != "" {
-		presignClient, err := minio.New(presignEndpoint, &minio.Options{
-			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-			Secure: cfg.UseSSL,
-		})
-		if err != nil {
-			return fmt.Errorf("create minio presign client: %w", err)
-		}
-		uploader.presignClient = presignClient
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -96,6 +81,25 @@ func Init() error {
 	}
 	if !exists {
 		return fmt.Errorf("minio bucket %s does not exist", uploader.bucket)
+	}
+
+	// If a separate presign endpoint is configured (e.g. a LAN/public address that
+	// differs from the internal upload endpoint), create a dedicated client for it.
+	// MinIO embeds the signing host in the HMAC signature, so the client used for
+	// presigning must use the same host that browsers will ultimately reach.
+	// We fetch the bucket region via the internal client first so the presign client
+	// never needs to make a network call (it can't reach the internal endpoint).
+	if presignEndpoint := strings.TrimSpace(cfg.PresignEndpoint); presignEndpoint != "" {
+		region, _ := client.GetBucketLocation(ctx, uploader.bucket)
+		presignClient, err := minio.New(presignEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+			Secure: cfg.UseSSL,
+			Region: region,
+		})
+		if err != nil {
+			return fmt.Errorf("create minio presign client: %w", err)
+		}
+		uploader.presignClient = presignClient
 	}
 
 	Client = uploader
@@ -155,7 +159,8 @@ func (u *MinIOUploader) PresignDownloadURL(ctx context.Context, bucket, objectKe
 	}
 
 	// Use the presign client when available — it was initialized with the public/LAN
-	// endpoint so the HMAC signature is computed against the host browsers will reach.
+	// endpoint and a pre-cached region, so it signs URLs with the host browsers reach
+	// without making any network calls.
 	c := u.client
 	if u.presignClient != nil {
 		c = u.presignClient

@@ -103,6 +103,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		zap.Int("user_count", userCount),
 		zap.Int("group_count", groupCount),
 	)
+	// 多节点部署时 bloom filter 是进程内状态，各节点独立维护，新注册用户只更新本节点内存。
+	// Kafka 启用即视为分布式模式，禁用 bloom filter 拦截，直接走 DB 保证正确性。
+	if kafkaCfg.Enabled {
+		platformBloom.SetDistributed(true)
+		logger.Info("bloom filter distributed mode enabled, local filter bypassed")
+	}
 
 	srv := server.New()
 

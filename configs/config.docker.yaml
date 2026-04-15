@@ -1,0 +1,74 @@
+app:
+  name: dipole
+  env: docker
+
+log:
+  level: info
+  format: console
+  development: false
+  file_enabled: false
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+tls:
+  enabled: false
+
+auth:
+  token_ttl_hours: 168
+  jwt_secret: dipole-dev-jwt-secret-change-me
+  jwt_issuer: dipole
+
+mysql:
+  host: mysql
+  port: 3306
+  user: dipole
+  password: dipole123
+  dbname: dipole
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+
+kafka:
+  enabled: true
+  brokers:
+    - kafka:9092
+  client_id: dipole
+  topic_prefix: dipole
+  dial_timeout_seconds: 5
+  write_timeout_seconds: 5
+  consume_retry_max_attempts: 3
+  consume_retry_backoff_ms: 500
+
+storage:
+  enabled: true
+  provider: minio
+  endpoint: minio:9000
+  presign_endpoint: 192.168.1.8:9000
+  access_key: dipoleminio
+  secret_key: dipoleminiopass
+  use_ssl: false
+  bucket: dipole-files
+  public_base_url: http://192.168.1.8:9000/dipole-files
+  file_max_size_mb: 50
+
+rate_limit:
+  enabled: true
+  login_limit: 10
+  login_window_seconds: 300
+  message_limit: 120
+  message_window_seconds: 60
+  file_upload_limit: 10
+  file_upload_window_seconds: 300
+
+presence:
+  enabled: true
+  node_id: ""      # 由各节点通过 DIPOLE_PRESENCE_NODE_ID 环境变量覆盖
+  ttl_seconds: 120
+
+ai:
+  enabled: false   # 容器环境默认关闭，按需通过环境变量开启
