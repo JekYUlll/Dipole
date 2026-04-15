@@ -1,0 +1,176 @@
+services:
+  # ── 基础设施 ────────────────────────────────────────────────────────────────
+
+  mysql:
+    image: mysql:8.4
+    container_name: dipole-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: dipole
+      MYSQL_USER: dipole
+      MYSQL_PASSWORD: dipole123
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4
+    container_name: dipole-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: dipole-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      # INTERNAL listener (kafka:9092) 供容器间通信；EXTERNAL listener (127.0.0.1:9094) 供宿主机直连调试
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9094:9094" # 宿主机调试用（原 9092 已被容器内部占用）
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: dipole-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: dipoleminio
+      MINIO_ROOT_PASSWORD: dipoleminiopass
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-03-12T17-29-24Z
+    container_name: dipole-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
+      mc mb --ignore-existing local/dipole-files
+      "
+
+  # ── 应用节点 ────────────────────────────────────────────────────────────────
+  # 两个节点共享同一镜像，通过环境变量区分 node_id。
+  # 环境变量使用 DIPOLE_ 前缀，viper 自动映射到对应配置键（. → _）。
+
+  dipole-node1:
+    image: dipole-server:latest
+    container_name: dipole-node1
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro  # 挂载基础配置，环境变量覆盖节点特定值
+    environment:
+      DIPOLE_MYSQL_HOST: mysql
+      DIPOLE_MYSQL_PORT: 3306
+      DIPOLE_REDIS_HOST: redis
+      DIPOLE_REDIS_PORT: 6379
+      DIPOLE_KAFKA_BROKERS: kafka:9092
+      DIPOLE_STORAGE_ENDPOINT: minio:9000
+      DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID 区分节点
+      DIPOLE_PRESENCE_ENABLED: "true"
+      DIPOLE_LOG_FILE_ENABLED: "false"
+    ports:
+      - "8081:8080" # 暴露到宿主机，方便直连 node1 调试
+
+  dipole-node2:
+    image: dipole-server:latest
+    container_name: dipole-node2
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./configs:/app/configs:ro
+    environment:
+      DIPOLE_MYSQL_HOST: mysql
+      DIPOLE_MYSQL_PORT: 3306
+      DIPOLE_REDIS_HOST: redis
+      DIPOLE_REDIS_PORT: 6379
+      DIPOLE_KAFKA_BROKERS: kafka:9092
+      DIPOLE_STORAGE_ENDPOINT: minio:9000
+      DIPOLE_PRESENCE_NODE_ID: node2   # 与 node1 不同，Redis Pub/Sub channel 为 ws:node:node2
+      DIPOLE_PRESENCE_ENABLED: "true"
+      DIPOLE_LOG_FILE_ENABLED: "false"
+    ports:
+      - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
+
+  # ── 反向代理 ────────────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: dipole-nginx
+    restart: unless-stopped
+    depends_on:
+      - dipole-node1
+      - dipole-node2
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  redis_data:
+  kafka_data:
+  minio_data:
