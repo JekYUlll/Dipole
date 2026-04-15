@@ -69,6 +69,7 @@ type Storage struct {
 	Enabled               bool   `mapstructure:"enabled"`
 	Provider              string `mapstructure:"provider"`
 	Endpoint              string `mapstructure:"endpoint"`
+	PresignEndpoint       string `mapstructure:"presign_endpoint"`
 	AccessKey             string `mapstructure:"access_key"`
 	SecretKey             string `mapstructure:"secret_key"`
 	UseSSL                bool   `mapstructure:"use_ssl"`
@@ -163,6 +164,7 @@ func Load() error {
 		v.SetDefault("storage.enabled", false)
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
+		v.SetDefault("storage.presign_endpoint", "")
 		v.SetDefault("storage.access_key", "dipoleminio")
 		v.SetDefault("storage.secret_key", "dipoleminiopass")
 		v.SetDefault("storage.use_ssl", false)
@@ -230,6 +232,7 @@ func Load() error {
 			"storage.enabled",
 			"storage.provider",
 			"storage.endpoint",
+			"storage.presign_endpoint",
 			"storage.access_key",
 			"storage.secret_key",
 			"storage.use_ssl",
@@ -395,6 +398,7 @@ func StorageConfig() Storage {
 	storageConfig.Enabled = cfg.GetBool("storage.enabled")
 	storageConfig.Provider = cfg.GetString("storage.provider")
 	storageConfig.Endpoint = cfg.GetString("storage.endpoint")
+	storageConfig.PresignEndpoint = cfg.GetString("storage.presign_endpoint")
 	storageConfig.AccessKey = cfg.GetString("storage.access_key")
 	storageConfig.SecretKey = cfg.GetString("storage.secret_key")
 	storageConfig.UseSSL = cfg.GetBool("storage.use_ssl")

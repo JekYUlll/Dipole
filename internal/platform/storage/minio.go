@@ -41,6 +41,7 @@ type ObjectStorage interface {
 
 type MinIOUploader struct {
 	client        *minio.Client
+	presignClient *minio.Client // separate client using presign_endpoint; may be nil (falls back to client)
 	bucket        string
 	publicBaseURL string
 }
@@ -69,6 +70,21 @@ func Init() error {
 		client:        client,
 		bucket:        strings.TrimSpace(cfg.Bucket),
 		publicBaseURL: strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/"),
+	}
+
+	// If a separate presign endpoint is configured (e.g. a LAN/public address that
+	// differs from the internal upload endpoint), create a dedicated client for it.
+	// MinIO embeds the signing host in the HMAC signature, so the client used for
+	// presigning must use the same host that browsers will ultimately reach.
+	if presignEndpoint := strings.TrimSpace(cfg.PresignEndpoint); presignEndpoint != "" {
+		presignClient, err := minio.New(presignEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+			Secure: cfg.UseSSL,
+		})
+		if err != nil {
+			return fmt.Errorf("create minio presign client: %w", err)
+		}
+		uploader.presignClient = presignClient
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -138,7 +154,14 @@ func (u *MinIOUploader) PresignDownloadURL(ctx context.Context, bucket, objectKe
 		expiry = 10 * time.Minute
 	}
 
-	presignedURL, err := u.client.PresignedGetObject(ctx, bucket, objectKey, expiry, url.Values{})
+	// Use the presign client when available — it was initialized with the public/LAN
+	// endpoint so the HMAC signature is computed against the host browsers will reach.
+	c := u.client
+	if u.presignClient != nil {
+		c = u.presignClient
+	}
+
+	presignedURL, err := c.PresignedGetObject(ctx, bucket, objectKey, expiry, url.Values{})
 	if err != nil {
 		return "", fmt.Errorf("presign minio object url: %w", err)
 	}
