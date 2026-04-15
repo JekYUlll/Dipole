@@ -11,7 +11,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	sqlite3 "github.com/mattn/go-sqlite3"
 	"gorm.io/gorm"
 )
 
@@ -434,11 +433,14 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		return nil, fmt.Errorf("message payload is nil")
 	}
 
+	created := true
 	if err := s.repo.Create(message); err != nil {
 		if !isDuplicateMessageError(err) {
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
 
+		// Message already persisted (Kafka at-least-once redelivery). Skip publishing
+		// message.created to avoid duplicate conversation updates and WS deliveries.
 		existing, findErr := s.repo.GetByUUID(message.UUID)
 		if findErr != nil {
 			return nil, fmt.Errorf("find duplicate message by uuid: %w", findErr)
@@ -447,10 +449,13 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 			return nil, fmt.Errorf("duplicate message %s not found after conflict", message.UUID)
 		}
 		message = existing
+		created = false
 	}
 
-	if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
-		return nil, err
+	if created {
+		if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
+			return nil, err
+		}
 	}
 
 	return message, nil
@@ -546,8 +551,7 @@ func isDuplicateMessageError(err error) bool {
 		return true
 	}
 
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrConstraint {
+	if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
 		return true
 	}
 

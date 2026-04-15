@@ -71,6 +71,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	platformKafka.Subscriber.Register("message.direct.created", updateDirectConversationHandler(conversationService))
 	platformKafka.Subscriber.Register("message.group.created", updateGroupConversationHandler(conversationService))
 	if hub != nil {
+		platformKafka.Subscriber.Register("group.created", deliverGroupCreatedHandler(hub))
 		platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
 		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub))
 		platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
@@ -340,6 +341,33 @@ func handleAIDirectReply(aiService *aiModule.Service) platformKafka.Handler {
 				zap.String("target_uuid", payload.TargetUUID),
 				zap.Error(err),
 			)
+		}
+
+		return nil
+	}
+}
+
+func deliverGroupCreatedHandler(hub kafkaWSEventSender) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		_ = ctx
+
+		payload, err := decodeGroupEventPayload(event)
+		if err != nil {
+			logger.Warn("decode group created payload failed", zap.Error(err))
+			return err
+		}
+
+		eventData := wsTransport.GroupCreatedEventData{
+			GroupUUID:    payload.GroupUUID,
+			Name:         payload.Name,
+			Notice:       payload.Notice,
+			Avatar:       payload.Avatar,
+			MemberUUIDs:  payload.MemberUUIDs,
+			OperatorUUID: payload.OperatorUUID,
+			OccurredAt:   payload.OccurredAt,
+		}
+		for _, recipientUUID := range payload.RecipientUUIDs {
+			hub.SendEventToUser(recipientUUID, wsTransport.TypeGroupCreated, eventData)
 		}
 
 		return nil

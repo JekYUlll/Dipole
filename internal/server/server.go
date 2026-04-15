@@ -72,6 +72,9 @@ func New() *Server {
 	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
+	// When Kafka is enabled, conversation updates are handled asynchronously by
+	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.
+	// Passing nil here prevents the dispatcher from doing a redundant synchronous update.
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = conversationService

@@ -107,6 +107,8 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 		return
 	}
 
+	// conversationUpdater is nil when Kafka is enabled; conversation updates are
+	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
 		if err := d.conversationUpdater.UpdateDirectConversations(message); err != nil {
 			client.log.Warn("update direct conversations failed", zap.Error(err))
@@ -161,6 +163,8 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 		return
 	}
 
+	// conversationUpdater is nil when Kafka is enabled; conversation updates are
+	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
 		if err := d.conversationUpdater.UpdateDirectConversations(message); err != nil {
 			client.log.Warn("update direct conversations for file failed", zap.Error(err))
@@ -191,6 +195,8 @@ func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content stri
 		return
 	}
 
+	// conversationUpdater is nil when Kafka is enabled; conversation updates are
+	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
 		if err := d.conversationUpdater.UpdateGroupConversations(message); err != nil {
 			client.log.Warn("update group conversations failed", zap.Error(err))
@@ -224,6 +230,8 @@ func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID str
 		return
 	}
 
+	// conversationUpdater is nil when Kafka is enabled; conversation updates are
+	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
 		if err := d.conversationUpdater.UpdateGroupConversations(message); err != nil {
 			client.log.Warn("update group conversations for file failed", zap.Error(err))

@@ -141,11 +141,13 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
-	if err := platformKafka.Close(); err != nil {
-		logger.Warn("kafka close failed", zap.Error(err))
-	}
+	// Stop consumer first so in-flight retry/dead-letter publishes complete
+	// before the publisher is torn down.
 	if err := platformKafka.CloseConsumer(); err != nil {
 		logger.Warn("kafka consumer close failed", zap.Error(err))
+	}
+	if err := platformKafka.Close(); err != nil {
+		logger.Warn("kafka close failed", zap.Error(err))
 	}
 }
 
