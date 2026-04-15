@@ -291,3 +291,31 @@ func TestGroupServicePublishesKafkaEventOnCreate(t *testing.T) {
 		t.Fatalf("expected group.created event, got %+v", publisher.topics)
 	}
 }
+
+func TestGroupServiceCreatePublishesRecipientsForInitialMembers(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubGroupRepository()
+	publisher := &stubEventPublisher{}
+	svc := NewGroupService(repo, &stubGroupUserFinder{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
+			"U200": {UUID: "U200", Nickname: "member", Status: model.UserStatusNormal},
+		},
+	}, publisher)
+
+	if _, err := svc.CreateGroup("U100", CreateGroupInput{Name: "Invite Group", MemberUUIDs: []string{"U200"}}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	payload, ok := publisher.payloads[0].(GroupEventPayload)
+	if !ok {
+		t.Fatalf("expected GroupEventPayload, got %T", publisher.payloads[0])
+	}
+	if len(payload.RecipientUUIDs) != 2 {
+		t.Fatalf("expected 2 recipients, got %+v", payload.RecipientUUIDs)
+	}
+	if len(payload.MemberUUIDs) != 2 {
+		t.Fatalf("expected 2 member uuids, got %+v", payload.MemberUUIDs)
+	}
+}

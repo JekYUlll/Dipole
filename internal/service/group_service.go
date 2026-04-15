@@ -158,7 +158,11 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 	s.publishGroupEvent("group.created", group.UUID, GroupEventPayload{
 		GroupUUID:    group.UUID,
 		Name:         group.Name,
+		Notice:       group.Notice,
+		Avatar:       group.Avatar,
 		OperatorUUID: group.OwnerUUID,
+		MemberUUIDs:  extractMemberUUIDs(members),
+		RecipientUUIDs: extractMemberUUIDs(members),
 		OccurredAt:   now,
 	})
 

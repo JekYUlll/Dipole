@@ -6,6 +6,7 @@ acc/
 agent/
 certs/
 logs/
+dist/
 configs/config.yaml
 
 # Binaries for programs and plugins

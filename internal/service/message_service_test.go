@@ -150,12 +150,13 @@ type stubEventPublisher struct {
 	topics     []string
 	keys       []string
 	eventTypes []string
+	payloads   []any
 }
 
 func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
-	_ = payload
+	p.payloads = append(p.payloads, payload)
 	_ = headers
 	return nil
 }
@@ -164,7 +165,7 @@ func (p *stubEventPublisher) PublishEvent(_ context.Context, topic string, key s
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
 	p.eventTypes = append(p.eventTypes, eventType)
-	_ = payload
+	p.payloads = append(p.payloads, payload)
 	_ = headers
 	return nil
 }

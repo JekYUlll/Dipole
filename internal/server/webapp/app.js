@@ -866,6 +866,23 @@
       case "chat.read":
         log("info", `收到已读回执：${data.reader_uuid} 已读到 ${data.last_read_message_uuid}`);
         break;
+      case "group.created":
+        cacheGroup({
+          uuid: data.group_uuid,
+          name: data.name,
+          notice: data.notice,
+          avatar: data.avatar,
+        });
+        renderGroups();
+        if (Array.isArray(data.member_uuids) && data.member_uuids.includes(state.currentUser?.uuid)) {
+          await Promise.allSettled([
+            fetchGroup(data.group_uuid, false),
+            listGroupMembers(data.group_uuid),
+            loadConversations(),
+          ]);
+          log("info", `已接收入群通知: ${data.group_uuid}`);
+        }
+        break;
       case "group.updated":
         cacheGroup({
           uuid: data.group_uuid,
@@ -877,8 +894,35 @@
         updateChatHeader();
         break;
       case "group.members_added":
+        if (Array.isArray(data.member_uuids) && data.member_uuids.includes(state.currentUser?.uuid)) {
+          await fetchGroup(data.group_uuid, false);
+          log("info", `你已被加入群聊: ${data.group_uuid}`);
+        }
+        await Promise.allSettled([listGroupMembers(data.group_uuid), loadConversations()]);
+        break;
       case "group.members_removed":
+        if (Array.isArray(data.member_uuids) && data.member_uuids.includes(state.currentUser?.uuid)) {
+          state.groups.delete(data.group_uuid);
+          if (state.currentChat && state.currentChat.type === "group" && state.currentChat.uuid === data.group_uuid) {
+            state.currentChat = null;
+            renderMessages([]);
+            updateChatHeader();
+          }
+          renderGroups();
+          await loadConversations();
+          log("warn", `你已被移出群聊: ${data.group_uuid}`);
+          break;
+        }
+        await Promise.allSettled([listGroupMembers(data.group_uuid), loadConversations()]);
+        break;
       case "group.dismissed":
+        state.groups.delete(data.group_uuid);
+        if (state.currentChat && state.currentChat.type === "group" && state.currentChat.uuid === data.group_uuid) {
+          state.currentChat = null;
+          renderMessages([]);
+          updateChatHeader();
+        }
+        renderGroups();
         await loadConversations();
         break;
       case "session.kicked":

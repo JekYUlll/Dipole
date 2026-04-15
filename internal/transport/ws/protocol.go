@@ -15,6 +15,7 @@ const (
 	TypeChatMessage         = "chat.message"
 	TypeChatRead            = "chat.read"
 	TypeSessionKicked       = "session.kicked"
+	TypeGroupCreated        = "group.created"
 	TypeGroupUpdated        = "group.updated"
 	TypeGroupMembersAdded   = "group.members_added"
 	TypeGroupMembersRemoved = "group.members_removed"
@@ -109,6 +110,16 @@ type GroupUpdatedEventData struct {
 	Avatar       string    `json:"avatar"`
 	OperatorUUID string    `json:"operator_uuid"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type GroupCreatedEventData struct {
+	GroupUUID    string    `json:"group_uuid"`
+	Name         string    `json:"name"`
+	Notice       string    `json:"notice"`
+	Avatar       string    `json:"avatar"`
+	MemberUUIDs  []string  `json:"member_uuids"`
+	OperatorUUID string    `json:"operator_uuid"`
+	OccurredAt   time.Time `json:"occurred_at"`
 }
 
 type GroupMembersChangedEventData struct {
