@@ -8,6 +8,7 @@ certs/
 logs/
 dist/
 configs/config.yaml
+docs/*.md
 
 # Binaries for programs and plugins
 *.exe

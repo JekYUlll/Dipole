@@ -314,7 +314,7 @@ func newAIService(messageService *service.MessageService) (*aiModule.Service, er
 	)
 	agent, err := aiModule.NewConfiguredAgent(
 		context.Background(),
-		aiModule.NewTools(contextBuilder, userRepo, messageRepo, messageService, aiConfig.AssistantUUID)...,
+		aiModule.NewTools(userRepo, messageRepo, repository.NewConversationRepository(), messageService, aiConfig.AssistantUUID)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("init ai agent: %w", err)
