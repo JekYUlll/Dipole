@@ -8,7 +8,10 @@
       </div>
       <div class="nav-icons">
         <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">💬</button>
-        <button class="icon-btn" :class="{ active: navTab === 'contacts' }" @click="navTab = 'contacts'" title="联系人">👥</button>
+        <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人">
+          👥
+          <span v-if="pendingApplications.length > 0" class="nav-badge">{{ pendingApplications.length }}</span>
+        </button>
         <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">🏠</button>
       </div>
       <button class="icon-btn logout-btn" @click="handleLogout" title="退出">🚪</button>
@@ -48,6 +51,9 @@
 
       <!-- 联系人列表 -->
       <div v-else-if="navTab === 'contacts'" class="panel-list">
+        <div class="panel-actions">
+          <button class="panel-action-btn" @click="showAddFriend = true">+ 添加好友</button>
+        </div>
         <div
           v-for="c in filteredContacts"
           :key="c.user.uuid"
@@ -73,11 +79,11 @@
           <div class="section-title">好友申请 ({{ pendingApplications.length }})</div>
           <div v-for="app in pendingApplications" :key="app.id" class="app-item">
             <div class="conv-avatar small">
-              <img v-if="app.from_user.avatar" :src="app.from_user.avatar" />
-              <span v-else>{{ getInitials(app.from_user.nickname) }}</span>
+              <img v-if="app.applicant.avatar" :src="app.applicant.avatar" />
+              <span v-else>{{ getInitials(app.applicant.nickname) }}</span>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:500;font-size:13px">{{ app.from_user.nickname }}</div>
+              <div style="font-weight:500;font-size:13px">{{ app.applicant.nickname }}</div>
               <div style="font-size:11px;color:#999">{{ app.message || '请求添加好友' }}</div>
             </div>
             <div class="app-actions">
@@ -90,6 +96,9 @@
 
       <!-- 群组列表 -->
       <div v-else-if="navTab === 'groups'" class="panel-list">
+        <div class="panel-actions">
+          <button class="panel-action-btn" @click="showCreateGroup = true">+ 创建群组</button>
+        </div>
         <div
           v-for="conv in groupConversations"
           :key="conv.conversation_key"
@@ -98,12 +107,12 @@
           @click="selectConversation(conv)"
         >
           <div class="conv-avatar">
-            <img v-if="conv.target_group?.avatar" :src="conv.target_group.avatar" :alt="conv.target_group?.name" />
-            <span v-else>{{ getInitials(conv.target_group?.name || '群') }}</span>
+            <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
+            <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
             <div class="conv-top">
-              <span class="conv-name">{{ conv.target_group?.name || '群组' }}</span>
+              <span class="conv-name">{{ convName(conv) }}</span>
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
@@ -191,14 +200,15 @@
 
     <!-- Detail Panel -->
     <div v-if="activeConv && showDetail" class="detail-panel">
-      <template v-if="activeConv.target_type === 1 && activeConv.target_group">
+      <template v-if="activeConv.target_type === 1">
         <div class="detail-avatar">
-          <img v-if="activeConv.target_group.avatar" :src="activeConv.target_group.avatar" alt="group" />
-          <div v-else class="detail-avatar-fallback">{{ getInitials(activeConv.target_group.name) }}</div>
+          <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
+          <div v-else class="detail-avatar-fallback">{{ getInitials(groupFromConv(activeConv)?.name ?? '群') }}</div>
         </div>
-        <div class="detail-name">{{ activeConv.target_group.name }}</div>
-        <div class="detail-uuid">{{ activeConv.target_group.uuid }}</div>
-        <div class="detail-meta">成员数: {{ activeConv.target_group.member_count ?? '—' }}</div>
+        <div class="detail-name">{{ groupFromConv(activeConv)?.name ?? '群组' }}</div>
+        <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
+        <div class="detail-meta">成员数: {{ groupFromConv(activeConv)?.member_count ?? '—' }}</div>
+        <button class="modal-btn" style="margin-top:8px;width:100%" @click="openInviteMembers">邀请成员</button>
       </template>
       <template v-else-if="activeConv.target_user">
         <div class="detail-avatar">
@@ -210,6 +220,77 @@
         <div class="detail-meta">状态: {{ activeConv.target_user.status ?? '未知' }}</div>
       </template>
     </div>
+    <!-- Add Friend Modal -->
+    <div v-if="showAddFriend" class="modal-overlay" @click.self="closeAddFriend">
+      <div class="modal">
+        <div class="modal-title">添加好友</div>
+        <input v-model="addFriendKeyword" placeholder="搜索用户名" @keydown.enter="searchUsers" />
+        <button class="modal-btn" @click="searchUsers">搜索</button>
+        <div v-if="searchResults.length" class="search-results">
+          <div v-for="u in searchResults" :key="u.uuid" class="search-result-item">
+            <div class="conv-avatar small">
+              <img v-if="u.avatar" :src="u.avatar" />
+              <span v-else>{{ getInitials(u.nickname) }}</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500">{{ u.nickname }}</div>
+              <div style="font-size:11px;color:#999">{{ u.uuid }}</div>
+            </div>
+            <button class="modal-btn small" @click="selectFriendTarget(u)">选择</button>
+          </div>
+        </div>
+        <div v-else-if="addFriendSearched" style="font-size:13px;color:#999;text-align:center;padding:12px">未找到用户</div>
+        <template v-if="friendTarget">
+          <div style="font-size:12px;color:#888;margin:4px 0 2px">向 <b>{{ friendTarget.nickname }}</b> 发送申请</div>
+          <input v-model="friendRequestMsg" placeholder="附言（可选）" maxlength="255" />
+          <button class="modal-btn" @click="sendFriendRequest">发送申请</button>
+        </template>
+        <button class="modal-close" @click="closeAddFriend">关闭</button>
+      </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div v-if="showCreateGroup" class="modal-overlay" @click.self="showCreateGroup = false">
+      <div class="modal">
+        <div class="modal-title">创建群组</div>
+        <input v-model="newGroupName" placeholder="群组名称（必填）" />
+        <div style="font-size:12px;color:#888;margin:6px 0 4px">选择成员（可选）</div>
+        <div class="member-select-list">
+          <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
+          <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
+            <input type="checkbox" :value="c.user.uuid" v-model="selectedMembers" />
+            <div class="conv-avatar small">
+              <img v-if="c.user.avatar" :src="c.user.avatar" />
+              <span v-else>{{ getInitials(c.user.nickname) }}</span>
+            </div>
+            <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+          </label>
+        </div>
+        <button class="modal-btn" :disabled="!newGroupName.trim()" @click="createGroup">创建</button>
+        <button class="modal-close" @click="showCreateGroup = false">关闭</button>
+      </div>
+    </div>
+
+    <!-- Invite Members Modal -->
+    <div v-if="showInviteMembers" class="modal-overlay" @click.self="showInviteMembers = false">
+      <div class="modal">
+        <div class="modal-title">邀请成员</div>
+        <div style="font-size:12px;color:#888;margin:0 0 4px">从联系人中选择</div>
+        <div class="member-select-list">
+          <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
+          <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
+            <input type="checkbox" :value="c.user.uuid" v-model="inviteSelected" />
+            <div class="conv-avatar small">
+              <img v-if="c.user.avatar" :src="c.user.avatar" />
+              <span v-else>{{ getInitials(c.user.nickname) }}</span>
+            </div>
+            <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+          </label>
+        </div>
+        <button class="modal-btn" :disabled="inviteSelected.length === 0" @click="inviteMembers">邀请</button>
+        <button class="modal-close" @click="showInviteMembers = false">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -219,7 +300,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Contact, Message, WsPacket } from '@/types'
+import type { Conversation, Contact, Message, WsPacket, PublicUser } from '@/types'
 import api from '@/api'
 
 const router = useRouter()
@@ -292,7 +373,7 @@ const activeConv = computed(() =>
 const activeConvName = computed(() => {
   const conv = activeConv.value
   if (!conv) return ''
-  if (conv.target_type === 1) return conv.target_group?.name ?? '群组'
+  if (conv.target_type === 1) return groupFromConv(conv)?.name ?? '群组'
   return conv.target_user?.nickname ?? '用户'
 })
 
@@ -303,10 +384,7 @@ const currentMessages = computed(() =>
 const filteredConversations = computed(() => {
   if (!searchText.value.trim()) return chat.conversations
   const q = searchText.value.toLowerCase()
-  return chat.conversations.filter(c => {
-    const name = c.target_type === 1 ? c.target_group?.name : c.target_user?.nickname
-    return name?.toLowerCase().includes(q)
-  })
+  return chat.conversations.filter(c => convName(c).toLowerCase().includes(q))
 })
 
 const groupConversations = computed(() =>
@@ -328,13 +406,19 @@ const pendingApplications = computed(() =>
 
 // ── Conv helpers ──────────────────────────────────────────────────────────────
 
+const groupFromConv = (conv: Conversation) => {
+  if (conv.target_type !== 1) return null
+  const uuid = conv.conversation_key.replace('group:', '')
+  return conv.target_group ?? chat.groups.get(uuid) ?? null
+}
+
 const convName = (conv: Conversation) => {
-  if (conv.target_type === 1) return conv.target_group?.name ?? '群组'
+  if (conv.target_type === 1) return groupFromConv(conv)?.name ?? '群组'
   return conv.target_user?.nickname ?? '用户'
 }
 
 const convAvatar = (conv: Conversation) => {
-  if (conv.target_type === 1) return conv.target_group?.avatar ?? ''
+  if (conv.target_type === 1) return groupFromConv(conv)?.avatar ?? ''
   return conv.target_user?.avatar ?? ''
 }
 
@@ -432,6 +516,11 @@ const handleLogout = async () => {
   router.push({ name: 'login' })
 }
 
+const switchToContacts = async () => {
+  navTab.value = 'contacts'
+  await chat.fetchApplications()
+}
+
 const openDirectChat = async (c: Contact) => {
   const myUUID = auth.currentUser!.uuid
   const peerUUID = c.user.uuid
@@ -447,13 +536,97 @@ const handleApplication = async (id: number, action: 'accept' | 'reject') => {
   await Promise.allSettled([chat.fetchApplications(), chat.fetchContacts(), chat.fetchConversations()])
 }
 
+// ── Add Friend ────────────────────────────────────────────────────────────────
+
+const showAddFriend = ref(false)
+const addFriendKeyword = ref('')
+const addFriendSearched = ref(false)
+const searchResults = ref<PublicUser[]>([])
+const friendTarget = ref<PublicUser | null>(null)
+const friendRequestMsg = ref('')
+
+const closeAddFriend = () => {
+  showAddFriend.value = false
+  addFriendKeyword.value = ''
+  addFriendSearched.value = false
+  searchResults.value = []
+  friendTarget.value = null
+  friendRequestMsg.value = ''
+}
+
+const searchUsers = async () => {
+  if (!addFriendKeyword.value.trim()) return
+  friendTarget.value = null
+  const data = await api.get(`/api/v1/users?keyword=${encodeURIComponent(addFriendKeyword.value.trim())}&limit=20`) as PublicUser[]
+  searchResults.value = Array.isArray(data) ? data.filter(u => u.uuid !== auth.currentUser?.uuid) : []
+  addFriendSearched.value = true
+}
+
+const selectFriendTarget = (u: PublicUser) => {
+  friendTarget.value = u
+}
+
+const sendFriendRequest = async () => {
+  if (!friendTarget.value) return
+  try {
+    await api.post('/api/v1/contacts/applications', { target_uuid: friendTarget.value.uuid, message: friendRequestMsg.value.trim() })
+    alert('好友申请已发送')
+    closeAddFriend()
+  } catch (e: any) {
+    alert(e?.message || '发送失败')
+  }
+}
+
+// ── Create Group ──────────────────────────────────────────────────────────────
+
+const showCreateGroup = ref(false)
+const newGroupName = ref('')
+const selectedMembers = ref<string[]>([])
+
+const createGroup = async () => {
+  if (!newGroupName.value.trim()) return
+  try {
+    await api.post('/api/v1/groups', { name: newGroupName.value.trim(), member_uuids: selectedMembers.value })
+    newGroupName.value = ''
+    selectedMembers.value = []
+    showCreateGroup.value = false
+    await chat.fetchConversations()
+    navTab.value = 'groups'
+  } catch (e: any) {
+    alert(e?.message || '创建失败')
+  }
+}
+
+// ── Invite Members ────────────────────────────────────────────────────────────
+
+const showInviteMembers = ref(false)
+const inviteSelected = ref<string[]>([])
+
+const openInviteMembers = () => {
+  inviteSelected.value = []
+  showInviteMembers.value = true
+}
+
+const inviteMembers = async () => {
+  if (!activeConv.value || inviteSelected.value.length === 0) return
+  const groupUUID = activeConv.value.conversation_key.replace('group:', '')
+  try {
+    await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/members`, { member_uuids: inviteSelected.value })
+    inviteSelected.value = []
+    showInviteMembers.value = false
+    await chat.fetchGroup(groupUUID)
+  } catch (e: any) {
+    alert(e?.message || '邀请失败')
+  }
+}
+
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 
 const handleWsPacket = async (packet: WsPacket) => {
   const { type, data } = packet
   switch (type) {
     case 'connected':
-      await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices()])
+      await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
       break
     case 'chat.message':
     case 'chat.sent': {
@@ -561,6 +734,23 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 
 .logout-btn {
   margin-top: auto;
+}
+
+.contacts-btn {
+  position: relative;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: #f00;
+  color: #fff;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  line-height: 1.4;
+  pointer-events: none;
 }
 
 /* Session Panel */
@@ -1009,5 +1199,138 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 
 .app-actions button:hover {
   background: #e0e0e0;
+}
+
+/* Panel action bar */
+.panel-actions {
+  padding: 8px 10px;
+  border-bottom: 1px solid #d8d8d8;
+}
+
+.panel-action-btn {
+  width: 100%;
+  padding: 6px 0;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.panel-action-btn:hover {
+  background: #06ad56;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.modal input[type="text"],
+.modal input:not([type="checkbox"]) {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.modal-btn {
+  padding: 7px 0;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modal-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.modal-btn.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.modal-close {
+  padding: 6px 0;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-close:hover {
+  background: #f5f5f5;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.member-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.member-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.member-select-item:hover {
+  background: #f5f5f5;
 }
 </style>

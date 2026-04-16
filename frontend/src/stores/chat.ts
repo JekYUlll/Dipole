@@ -13,17 +13,27 @@ export const useChatStore = defineStore('chat', () => {
   const messageMap = ref<Map<string, Message[]>>(new Map())
   const activeKey = ref('')
   const lastOfflineID = ref(Number(localStorage.getItem('dipole.web.lastOfflineID') || '0'))
+  // current user UUID — set by auth store after login, needed for key derivation
+  const myUUID = ref(localStorage.getItem('dipole.web.user')
+    ? (() => { try { return JSON.parse(localStorage.getItem('dipole.web.user')!).uuid } catch { return '' } })()
+    : '')
 
   // ── conversations ──────────────────────────────────────────────
   const fetchConversations = async () => {
     const data = await api.get('/api/v1/conversations?limit=50') as Conversation[]
     conversations.value = Array.isArray(data) ? data : []
     conversations.value.forEach(c => { if (c.target_user) users.value.set(c.target_user.uuid, c.target_user) })
+    // Backend ConversationResponse has no target_group — fetch group info separately
+    const groupUUIDs = conversations.value
+      .filter(c => c.target_type === 1)
+      .map(c => c.conversation_key.replace('group:', ''))
+      .filter(uuid => uuid && !groups.value.has(uuid))
+    await Promise.allSettled(groupUUIDs.map(uuid => fetchGroup(uuid)))
   }
 
   const markRead = async (conv: Conversation) => {
     const path = conv.target_type === 1
-      ? `/api/v1/conversations/group/${conv.target_group?.uuid}/read`
+      ? `/api/v1/conversations/group/${conv.conversation_key.replace('group:', '')}/read`
       : `/api/v1/conversations/direct/${conv.target_user?.uuid}/read`
     await api.patch(path)
     conv.unread_count = 0
@@ -33,7 +43,10 @@ export const useChatStore = defineStore('chat', () => {
   const fetchDirectMessages = async (targetUUID: string, beforeID?: number) => {
     const q = beforeID ? `?before_id=${beforeID}&limit=30` : '?limit=30'
     const data = await api.get(`/api/v1/messages/direct/${targetUUID}${q}`) as Message[]
-    _mergeMessages(directKey(targetUUID), Array.isArray(data) ? data : [], Boolean(beforeID))
+    const key = myUUID.value
+      ? `direct:${[myUUID.value, targetUUID].sort().join(':')}`
+      : `direct:${targetUUID}`
+    _mergeMessages(key, Array.isArray(data) ? data : [], Boolean(beforeID))
   }
 
   const fetchGroupMessages = async (groupUUID: string, beforeID?: number) => {
@@ -51,13 +64,12 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const pushMessage = (msg: Message) => {
-    const key = deriveKey(msg)
+    const key = _deriveKey(msg)
     const list = messageMap.value.get(key) || []
     if (!list.some(m => m.message_id === msg.message_id)) {
       list.push(msg)
       list.sort((a, b) => a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
       messageMap.value.set(key, list)
-      // update conversation preview
       const conv = conversations.value.find(c => c.conversation_key === key)
       if (conv) {
         conv.last_message = { message_id: msg.message_id, message_type: msg.message_type, preview: msg.content, sent_at: msg.sent_at }
@@ -106,6 +118,12 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   // ── helpers ────────────────────────────────────────────────────
+  const _deriveKey = (msg: Message): string => {
+    if (msg.target_type === 1) return `group:${msg.target_uuid}`
+    const peer = msg.from_uuid === myUUID.value ? msg.target_uuid : msg.from_uuid
+    return `direct:${[myUUID.value, peer].sort().join(':')}`
+  }
+
   const _mergeMessages = (key: string, items: Message[], prepend: boolean) => {
     const existing = messageMap.value.get(key) || []
     const merged = _dedupe(prepend ? [...items, ...existing] : [...existing, ...items])
@@ -124,7 +142,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
-    conversations, contacts, applications, groups, users, devices, messageMap, activeKey,
+    conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
     fetchConversations, markRead,
     fetchDirectMessages, fetchGroupMessages, syncOffline, pushMessage,
     fetchContacts, fetchApplications,
@@ -132,20 +150,4 @@ export const useChatStore = defineStore('chat', () => {
   }
 })
 
-// ── key helpers (exported for use in views) ──────────────────────
-export const directKey = (myUUID: string, peerUUID?: string) => {
-  // When called with one arg from pushMessage, we need both UUIDs
-  // When called from view with peer UUID, we need current user UUID too
-  // We'll handle this by always passing the conversation_key from API when possible
-  return peerUUID ? `direct:${[myUUID, peerUUID].sort().join(':')}` : myUUID
-}
-
 export const groupKey = (uuid: string) => `group:${uuid}`
-
-export const deriveKey = (msg: Message): string => {
-  if (msg.target_type === 1) return groupKey(msg.target_uuid)
-  // For direct: key is stored as conversation_key in conversations list
-  // We derive it the same way the backend does: sorted UUIDs
-  // But we don't have currentUser here — store will handle this via pushMessage caller
-  return `direct:${msg.from_uuid}:${msg.target_uuid}` // placeholder, fixed in ChatView
-}

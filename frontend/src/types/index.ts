@@ -22,8 +22,8 @@ export interface Contact {
 
 export interface FriendApplication {
   id: number
-  from_user: PublicUser
-  to_user: PublicUser
+  applicant: PublicUser
+  target: PublicUser
   message: string
   status: number // 0=待处理, 1=已接受, 2=已拒绝
   created_at: string

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PrivateUser } from '@/types'
 import api from '@/api'
+import { useChatStore } from '@/stores/chat'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('dipole.web.token') || '')
@@ -41,6 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser.value = user
     localStorage.setItem('dipole.web.token', t)
     localStorage.setItem('dipole.web.user', JSON.stringify(user))
+    useChatStore().myUUID = user.uuid
   }
 
   const _clearSession = () => {
@@ -49,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('dipole.web.token')
     localStorage.removeItem('dipole.web.user')
     localStorage.removeItem('dipole.web.lastOfflineID')
+    useChatStore().myUUID = ''
   }
 
   return { token, currentUser, login, register, fetchMe, logout }
