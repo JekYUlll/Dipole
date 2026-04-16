@@ -22,7 +22,7 @@ func TestWebAppIndexServed(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
-	if !strings.Contains(recorder.Body.String(), "<title>Dipole Web Tester</title>") {
+	if !strings.Contains(recorder.Body.String(), "<title>Dipole</title>") {
 		t.Fatalf("expected web app html to be served")
 	}
 }

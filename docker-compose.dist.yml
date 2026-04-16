@@ -121,6 +121,11 @@ services:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
     ports:
       - "8081:8080" # 暴露到宿主机，方便直连 node1 调试
+    deploy:
+      resources:
+        limits:
+          cpus: "8.0"
+          memory: 8192M
 
   dipole-node2:
     image: dipole-server:latest
@@ -139,6 +144,11 @@ services:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
     ports:
       - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
+    deploy:
+      resources:
+        limits:
+          cpus: "8.0"
+          memory: 8192M
 
   # ── 反向代理 ────────────────────────────────────────────────────────────────
 
@@ -146,6 +156,7 @@ services:
     image: nginx:1.27-alpine
     container_name: dipole-nginx
     restart: unless-stopped
+    user: root
     depends_on:
       - dipole-node1
       - dipole-node2

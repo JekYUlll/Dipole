@@ -1,3 +1,15 @@
+# ── Stage 1: build frontend ─────────────────────────────────────
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --prefer-offline
+
+COPY frontend/ ./
+RUN npm run build
+
+# ── Stage 2: build Go binary ─────────────────────────────────────
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /build
@@ -9,6 +21,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+# Overwrite webapp with the freshly built frontend assets
+COPY --from=frontend-builder /internal/server/webapp ./internal/server/webapp
 RUN CGO_ENABLED=0 go build -o dipole-server ./cmd/server
 
 FROM alpine:3.22

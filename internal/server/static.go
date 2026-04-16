@@ -6,11 +6,12 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed webapp/*
+//go:embed all:webapp
 var webAppFiles embed.FS
 
 func mountWebApp(engine *gin.Engine) {
@@ -23,18 +24,13 @@ func mountWebApp(engine *gin.Engine) {
 		panic(err)
 	}
 
-	serveFile := func(c *gin.Context, name string) {
-		content, readErr := fs.ReadFile(subtree, name)
+	serveIndex := func(c *gin.Context) {
+		content, readErr := fs.ReadFile(subtree, "index.html")
 		if readErr != nil {
 			c.Status(http.StatusNotFound)
 			return
 		}
-
-		contentType := mime.TypeByExtension(filepath.Ext(name))
-		if contentType == "" {
-			contentType = http.DetectContentType(content)
-		}
-		c.Data(http.StatusOK, contentType, content)
+		c.Data(http.StatusOK, "text/html; charset=utf-8", content)
 	}
 
 	engine.GET("/", func(c *gin.Context) {
@@ -43,13 +39,24 @@ func mountWebApp(engine *gin.Engine) {
 	engine.GET("/app", func(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/app/")
 	})
-	engine.GET("/app/", func(c *gin.Context) {
-		serveFile(c, "index.html")
-	})
-	engine.GET("/app/app.css", func(c *gin.Context) {
-		serveFile(c, "app.css")
-	})
-	engine.GET("/app/app.js", func(c *gin.Context) {
-		serveFile(c, "app.js")
+	engine.GET("/app/*filepath", func(c *gin.Context) {
+		filePath := strings.TrimPrefix(c.Param("filepath"), "/")
+		if filePath == "" {
+			serveIndex(c)
+			return
+		}
+
+		content, readErr := fs.ReadFile(subtree, filePath)
+		if readErr != nil {
+			// SPA fallback — let Vue Router handle the path
+			serveIndex(c)
+			return
+		}
+
+		contentType := mime.TypeByExtension(filepath.Ext(filePath))
+		if contentType == "" {
+			contentType = http.DetectContentType(content)
+		}
+		c.Data(http.StatusOK, contentType, content)
 	})
 }
