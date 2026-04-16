@@ -67,6 +67,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+      
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: dipole-kafdrop
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+      SERVER_SERVLET_CONTEXTPATH: /
+      JVM_OPTS: "-Xms64M -Xmx256M"
+    ports:
+      - "9099:9000"
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
