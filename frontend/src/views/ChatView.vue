@@ -19,7 +19,9 @@
       <div class="search-wrap">
         <input v-model="searchText" type="text" placeholder="搜索" />
       </div>
-      <div class="conv-list" ref="convListRef">
+
+      <!-- 消息列表 -->
+      <div v-if="navTab === 'chat'" class="panel-list">
         <div
           v-for="conv in filteredConversations"
           :key="conv.conversation_key"
@@ -28,16 +30,80 @@
           @click="selectConversation(conv)"
         >
           <div class="conv-avatar">
-            <img
-              v-if="convAvatar(conv)"
-              :src="convAvatar(conv)"
-              :alt="convName(conv)"
-            />
+            <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
             <div class="conv-top">
               <span class="conv-name">{{ convName(conv) }}</span>
+              <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
+            </div>
+            <div class="conv-bottom">
+              <span class="conv-preview">{{ conv.last_message?.preview || '' }}</span>
+              <span v-if="conv.unread_count > 0" class="conv-badge">{{ conv.unread_count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 联系人列表 -->
+      <div v-else-if="navTab === 'contacts'" class="panel-list">
+        <div
+          v-for="c in filteredContacts"
+          :key="c.user.uuid"
+          class="conv-item"
+          @click="openDirectChat(c)"
+        >
+          <div class="conv-avatar">
+            <img v-if="c.user.avatar" :src="c.user.avatar" :alt="c.user.nickname" />
+            <span v-else>{{ getInitials(c.user.nickname) }}</span>
+          </div>
+          <div class="conv-body">
+            <div class="conv-top">
+              <span class="conv-name">{{ c.remark || c.user.nickname }}</span>
+            </div>
+            <div class="conv-bottom">
+              <span class="conv-preview">{{ c.user.nickname }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 好友申请 -->
+        <template v-if="pendingApplications.length > 0">
+          <div class="section-title">好友申请 ({{ pendingApplications.length }})</div>
+          <div v-for="app in pendingApplications" :key="app.id" class="app-item">
+            <div class="conv-avatar small">
+              <img v-if="app.from_user.avatar" :src="app.from_user.avatar" />
+              <span v-else>{{ getInitials(app.from_user.nickname) }}</span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:500;font-size:13px">{{ app.from_user.nickname }}</div>
+              <div style="font-size:11px;color:#999">{{ app.message || '请求添加好友' }}</div>
+            </div>
+            <div class="app-actions">
+              <button @click.stop="handleApplication(app.id, 'accept')">接受</button>
+              <button @click.stop="handleApplication(app.id, 'reject')">拒绝</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- 群组列表 -->
+      <div v-else-if="navTab === 'groups'" class="panel-list">
+        <div
+          v-for="conv in groupConversations"
+          :key="conv.conversation_key"
+          class="conv-item"
+          :class="{ active: chat.activeKey === conv.conversation_key }"
+          @click="selectConversation(conv)"
+        >
+          <div class="conv-avatar">
+            <img v-if="conv.target_group?.avatar" :src="conv.target_group.avatar" :alt="conv.target_group?.name" />
+            <span v-else>{{ getInitials(conv.target_group?.name || '群') }}</span>
+          </div>
+          <div class="conv-body">
+            <div class="conv-top">
+              <span class="conv-name">{{ conv.target_group?.name || '群组' }}</span>
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
@@ -153,7 +219,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Message, WsPacket } from '@/types'
+import type { Conversation, Contact, Message, WsPacket } from '@/types'
 import api from '@/api'
 
 const router = useRouter()
@@ -165,7 +231,6 @@ const searchText = ref('')
 const inputText = ref('')
 const showDetail = ref(false)
 const msgListRef = ref<HTMLDivElement | null>(null)
-const convListRef = ref<HTMLDivElement | null>(null)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -244,6 +309,23 @@ const filteredConversations = computed(() => {
   })
 })
 
+const groupConversations = computed(() =>
+  chat.conversations.filter(c => c.target_type === 1)
+)
+
+const filteredContacts = computed(() => {
+  if (!searchText.value.trim()) return chat.contacts
+  const q = searchText.value.toLowerCase()
+  return chat.contacts.filter(c =>
+    c.user.nickname.toLowerCase().includes(q) ||
+    (c.remark && c.remark.toLowerCase().includes(q))
+  )
+})
+
+const pendingApplications = computed(() =>
+  chat.applications.incoming.filter(a => a.status === 0)
+)
+
 // ── Conv helpers ──────────────────────────────────────────────────────────────
 
 const convName = (conv: Conversation) => {
@@ -286,20 +368,25 @@ const msgSenderName = (msg: Message): string => {
 const selectConversation = async (conv: Conversation) => {
   chat.activeKey = conv.conversation_key
   showDetail.value = false
-  if (conv.target_type === 1 && conv.target_group) {
-    await chat.fetchGroupMessages(conv.target_group.uuid)
+  if (conv.target_type === 1) {
+    const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
+    await chat.fetchGroupMessages(groupUUID)
   } else if (conv.target_user) {
     await chat.fetchDirectMessages(conv.target_user.uuid)
     await chat.markRead(conv)
   }
-  scrollToBottom()
+  nextTick(scrollToBottom)
 }
 
 const sendMessage = () => {
   if (!inputText.value.trim() || !activeConv.value) return
   const conv = activeConv.value
-  const targetUUID = conv.target_type === 1 ? conv.target_group!.uuid : conv.target_user!.uuid
-  ws.send('chat.send', { target_uuid: targetUUID, content: inputText.value.trim() })
+  if (conv.target_type === 1) {
+    const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
+    ws.send('chat.send', { target_uuid: groupUUID, target_type: 1, content: inputText.value.trim() })
+  } else {
+    ws.send('chat.send', { target_uuid: conv.target_user!.uuid, target_type: 0, content: inputText.value.trim() })
+  }
   inputText.value = ''
 }
 
@@ -307,11 +394,13 @@ const uploadFile = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !activeConv.value) return
   const conv = activeConv.value
-  const targetUUID = conv.target_type === 1 ? conv.target_group!.uuid : conv.target_user!.uuid
+  const targetUUID = conv.target_type === 1
+    ? (conv.target_group?.uuid ?? conv.conversation_key.replace('group:', ''))
+    : conv.target_user!.uuid
   const formData = new FormData()
   formData.append('file', file)
   const res = await api.post('/api/v1/files', formData) as { file_id: string }
-  ws.send('chat.send_file', { target_uuid: targetUUID, file_id: res.file_id })
+  ws.send('chat.send_file', { target_uuid: targetUUID, target_type: conv.target_type, file_id: res.file_id })
   ;(e.target as HTMLInputElement).value = ''
 }
 
@@ -325,18 +414,37 @@ const downloadFile = async (msg: Message) => {
 const loadMore = async () => {
   if (!activeConv.value) return
   const msgs = currentMessages.value
-  const oldest = msgs[0]
-  const beforeID = oldest?.id || 0
+  // WS-pushed messages have id=0; only use messages with real DB ids
+  const oldest = msgs.find(m => m.id > 0)
+  if (!oldest) return
+  const beforeID = oldest.id
   if (activeConv.value.target_type === 1) {
-    await chat.fetchGroupMessages(activeConv.value.target_group!.uuid, beforeID)
+    const groupUUID = activeConv.value.target_group?.uuid ?? activeConv.value.conversation_key.replace('group:', '')
+    await chat.fetchGroupMessages(groupUUID, beforeID)
   } else {
     await chat.fetchDirectMessages(activeConv.value.target_user!.uuid, beforeID)
   }
 }
 
 const handleLogout = async () => {
+  ws.close()
   await auth.logout()
   router.push({ name: 'login' })
+}
+
+const openDirectChat = async (c: Contact) => {
+  const myUUID = auth.currentUser!.uuid
+  const peerUUID = c.user.uuid
+  const key = `direct:${[myUUID, peerUUID].sort().join(':')}`
+  chat.activeKey = key
+  navTab.value = 'chat'
+  await chat.fetchDirectMessages(peerUUID)
+  nextTick(scrollToBottom)
+}
+
+const handleApplication = async (id: number, action: 'accept' | 'reject') => {
+  await api.patch(`/api/v1/contacts/applications/${id}`, { action })
+  await Promise.allSettled([chat.fetchApplications(), chat.fetchContacts(), chat.fetchConversations()])
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
@@ -852,5 +960,54 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 .detail-meta {
   font-size: 13px;
   color: #666;
+}
+
+/* Panel list (shared by all tabs) */
+.panel-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Contact / app items */
+.conv-avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.section-title {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #888;
+  background: #e4e4e4;
+  border-bottom: 1px solid #d8d8d8;
+}
+
+.app-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  border-bottom: 1px solid #e8e8e8;
+  font-size: 13px;
+}
+
+.app-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.app-actions button {
+  padding: 3px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  background: #f5f5f5;
+}
+
+.app-actions button:hover {
+  background: #e0e0e0;
 }
 </style>

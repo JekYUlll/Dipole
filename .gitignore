@@ -9,6 +9,7 @@ logs/
 dist/
 configs/config.yaml
 docs/*.md
+scripts/bench/results
 
 # Binaries for programs and plugins
 *.exe
@@ -19,6 +20,7 @@ docs/*.md
 
 tmp/
 frontend/chat-server
+frontend/node_modules/
 
 # Test binary, built with `go test -c`
 *.test
