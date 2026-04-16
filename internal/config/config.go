@@ -80,13 +80,15 @@ type Storage struct {
 }
 
 type RateLimit struct {
-	Enabled                 bool `mapstructure:"enabled"`
-	LoginLimit              int  `mapstructure:"login_limit"`
-	LoginWindowSeconds      int  `mapstructure:"login_window_seconds"`
-	MessageLimit            int  `mapstructure:"message_limit"`
-	MessageWindowSeconds    int  `mapstructure:"message_window_seconds"`
-	FileUploadLimit         int  `mapstructure:"file_upload_limit"`
-	FileUploadWindowSeconds int  `mapstructure:"file_upload_window_seconds"`
+	Enabled                  bool `mapstructure:"enabled"`
+	RegisterLimit            int  `mapstructure:"register_limit"`
+	RegisterWindowSeconds    int  `mapstructure:"register_window_seconds"`
+	LoginLimit               int  `mapstructure:"login_limit"`
+	LoginWindowSeconds       int  `mapstructure:"login_window_seconds"`
+	MessageLimit             int  `mapstructure:"message_limit"`
+	MessageWindowSeconds     int  `mapstructure:"message_window_seconds"`
+	FileUploadLimit          int  `mapstructure:"file_upload_limit"`
+	FileUploadWindowSeconds  int  `mapstructure:"file_upload_window_seconds"`
 }
 
 type Presence struct {
@@ -173,6 +175,8 @@ func Load() error {
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.download_url_ttl_minutes", 10)
 		v.SetDefault("rate_limit.enabled", true)
+		v.SetDefault("rate_limit.register_limit", 5)
+		v.SetDefault("rate_limit.register_window_seconds", 3600)
 		v.SetDefault("rate_limit.login_limit", 10)
 		v.SetDefault("rate_limit.login_window_seconds", 300)
 		v.SetDefault("rate_limit.message_limit", 120)
@@ -241,6 +245,8 @@ func Load() error {
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
 			"rate_limit.enabled",
+			"rate_limit.register_limit",
+			"rate_limit.register_window_seconds",
 			"rate_limit.login_limit",
 			"rate_limit.login_window_seconds",
 			"rate_limit.message_limit",
@@ -418,6 +424,8 @@ func RateLimitConfig() RateLimit {
 		panic(fmt.Errorf("unmarshal rate limit config: %w", err))
 	}
 	rateLimitConfig.Enabled = cfg.GetBool("rate_limit.enabled")
+	rateLimitConfig.RegisterLimit = cfg.GetInt("rate_limit.register_limit")
+	rateLimitConfig.RegisterWindowSeconds = cfg.GetInt("rate_limit.register_window_seconds")
 	rateLimitConfig.LoginLimit = cfg.GetInt("rate_limit.login_limit")
 	rateLimitConfig.LoginWindowSeconds = cfg.GetInt("rate_limit.login_window_seconds")
 	rateLimitConfig.MessageLimit = cfg.GetInt("rate_limit.message_limit")

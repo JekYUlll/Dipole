@@ -21,6 +21,7 @@ type AuthHandler struct {
 }
 
 type authRateLimiter interface {
+	AllowRegister(identifier string) (bool, time.Duration)
 	AllowLogin(identifier string) (bool, time.Duration)
 }
 
@@ -44,6 +45,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
+	}
+
+	if h.limiter != nil {
+		identifier := strings.TrimSpace(request.Telephone)
+		if identifier == "" {
+			identifier = c.ClientIP()
+		}
+		allowed, retryAfter := h.limiter.AllowRegister(identifier)
+		if !allowed {
+			ErrorWithCode(
+				c,
+				http.StatusTooManyRequests,
+				code.AuthLoginRateLimited,
+				formatRetryAfterMessage("too many register attempts", retryAfter),
+			)
+			return
+		}
 	}
 
 	result, err := h.service.Register(request.ToInput())

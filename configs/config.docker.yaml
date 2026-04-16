@@ -58,6 +58,8 @@ storage:
 
 rate_limit:
   enabled: true
+  register_limit: 5
+  register_window_seconds: 3600
   login_limit: 10
   login_window_seconds: 300
   message_limit: 120
@@ -71,4 +73,18 @@ presence:
   ttl_seconds: 120
 
 ai:
-  enabled: false   # 容器环境默认关闭，按需通过环境变量开启
+  enabled: true
+  provider: openai
+  model: deepseek-chat
+  api_key: "REDACTED_API_KEY"
+  base_url: "https://api.deepseek.com"
+  timeout_seconds: 30
+  max_context_messages: 12
+  assistant_uuid: UAI000000000000000001
+  assistant_nickname: Dipole AI
+  assistant_telephone: "19900000000"
+  assistant_email: ai@dipole.local
+  assistant_avatar: https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png
+  system_prompt: >
+    You are Dipole AI, a concise and helpful instant messaging assistant.
+    Use the conversation context to answer naturally.

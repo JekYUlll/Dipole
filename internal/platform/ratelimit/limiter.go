@@ -26,6 +26,14 @@ func NewLimiter() *Limiter {
 	}
 }
 
+func (l *Limiter) AllowRegister(identifier string) (bool, time.Duration) {
+	return l.allow(
+		registerRateKey(identifier),
+		l.config.RegisterLimit,
+		secondsToDuration(l.config.RegisterWindowSeconds),
+	)
+}
+
 func (l *Limiter) AllowLogin(identifier string) (bool, time.Duration) {
 	return l.allow(
 		loginRateKey(identifier),
@@ -88,6 +96,15 @@ func (l *Limiter) allow(key string, limit int, window time.Duration) (bool, time
 	}
 
 	return false, retryAfter
+}
+
+func registerRateKey(identifier string) string {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return ""
+	}
+
+	return "rate:register:" + identifier
 }
 
 func loginRateKey(identifier string) string {

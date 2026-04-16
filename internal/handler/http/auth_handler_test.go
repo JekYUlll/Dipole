@@ -24,7 +24,8 @@ type stubAuthService struct {
 }
 
 type stubAuthLimiter struct {
-	allowLoginFn func(identifier string) (bool, time.Duration)
+	allowRegisterFn func(identifier string) (bool, time.Duration)
+	allowLoginFn    func(identifier string) (bool, time.Duration)
 }
 
 func (s *stubAuthService) Register(input service.RegisterInput) (*service.AuthResult, error) {
@@ -46,6 +47,13 @@ func (s *stubAuthService) Logout(token string) error {
 		return nil
 	}
 	return s.logoutFn(token)
+}
+
+func (s *stubAuthLimiter) AllowRegister(identifier string) (bool, time.Duration) {
+	if s.allowRegisterFn == nil {
+		return true, 0
+	}
+	return s.allowRegisterFn(identifier)
 }
 
 func (s *stubAuthLimiter) AllowLogin(identifier string) (bool, time.Duration) {
