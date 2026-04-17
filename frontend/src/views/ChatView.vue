@@ -2,10 +2,10 @@
   <div class="im-container">
     <!-- Nav Bar -->
     <div class="nav-bar">
-      <div class="nav-avatar">
+      <button class="nav-avatar profile-btn" @click="showProfileModal = true" title="个人头像">
         <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="me" />
         <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
-      </div>
+      </button>
       <div class="nav-icons">
         <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">💬</button>
         <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人">
@@ -244,6 +244,30 @@
         <div class="detail-meta">状态: {{ activeConv.target_user.status ?? '未知' }}</div>
       </template>
     </div>
+    <!-- Profile Modal -->
+    <div v-if="showProfileModal" class="modal-overlay">
+      <div class="modal-backdrop" @click="closeProfileModal"></div>
+      <div class="modal">
+        <div class="modal-title">个人头像</div>
+        <div class="profile-modal">
+          <div class="profile-avatar-preview">
+            <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
+            <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
+          </div>
+          <div class="profile-meta">{{ auth.currentUser?.nickname }}</div>
+          <div class="profile-meta secondary">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
+          <input ref="avatarInputRef" type="file" accept="image/*" @change="handleAvatarSelected" />
+          <div v-if="selectedAvatarName" class="profile-file-name">已选择：{{ selectedAvatarName }}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn" :disabled="!selectedAvatarFile || uploadingAvatar" @click="uploadAvatar">
+            {{ uploadingAvatar ? '上传中...' : '上传头像' }}
+          </button>
+          <button class="modal-close" @click="closeProfileModal">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Friend Modal -->
     <div v-if="showAddFriend" class="modal-overlay" @click.self="closeAddFriend">
       <div class="modal">
@@ -346,6 +370,11 @@ const searchText = ref('')
 const inputText = ref('')
 const showDetail = ref(false)
 const msgListRef = ref<HTMLDivElement | null>(null)
+const showProfileModal = ref(false)
+const avatarInputRef = ref<HTMLInputElement | null>(null)
+const selectedAvatarFile = ref<File | null>(null)
+const selectedAvatarName = ref('')
+const uploadingAvatar = ref(false)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -563,6 +592,36 @@ const handleLogout = async () => {
   router.push({ name: 'login' })
 }
 
+const closeProfileModal = () => {
+  showProfileModal.value = false
+  selectedAvatarFile.value = null
+  selectedAvatarName.value = ''
+  if (avatarInputRef.value) avatarInputRef.value.value = ''
+}
+
+const handleAvatarSelected = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0] ?? null
+  selectedAvatarFile.value = file
+  selectedAvatarName.value = file?.name ?? ''
+}
+
+const uploadAvatar = async () => {
+  if (!auth.currentUser || !selectedAvatarFile.value) return
+
+  const formData = new FormData()
+  formData.append('avatar', selectedAvatarFile.value)
+  uploadingAvatar.value = true
+  try {
+    await api.post(`/api/v1/users/${encodeURIComponent(auth.currentUser.uuid)}/avatar`, formData)
+    await auth.fetchMe()
+    closeProfileModal()
+  } catch (e: any) {
+    alert(e?.message || '头像上传失败')
+  } finally {
+    uploadingAvatar.value = false
+  }
+}
+
 const switchToContacts = async () => {
   navTab.value = 'contacts'
   await chat.fetchApplications()
@@ -758,6 +817,8 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   border-radius: 4px;
   overflow: hidden;
   background: #555;
+  border: none;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -767,10 +828,59 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   flex-shrink: 0;
 }
 
+.profile-btn {
+  cursor: pointer;
+}
+
 .nav-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.profile-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.profile-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #d8d8d8;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.profile-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-meta {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile-meta.secondary {
+  font-size: 12px;
+  color: #888;
+  font-weight: 400;
+}
+
+.profile-file-name {
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
 }
 
 .nav-icons {

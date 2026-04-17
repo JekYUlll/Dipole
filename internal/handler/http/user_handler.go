@@ -2,8 +2,11 @@ package http
 
 import (
 	"errors"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,18 +19,28 @@ import (
 
 type userService interface {
 	GetByUUID(uuid string) (*model.User, error)
+	GetAvatarResponse(targetUUID string) (*service.AvatarResponse, error)
 	ListUsersForAdmin(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error)
 	SearchUsers(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error)
 	UpdateProfile(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error)
+	UploadAvatar(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error)
 	UpdateStatus(currentUser *model.User, targetUUID string, status int8) (*model.User, error)
 }
 
 type UserHandler struct {
-	service userService
+	service        userService
+	maxUploadBytes int64
 }
 
 func NewUserHandler(service userService) *UserHandler {
-	return &UserHandler{service: service}
+	return &UserHandler{service: service, maxUploadBytes: 5 * 1024 * 1024}
+}
+
+func (h *UserHandler) WithAvatarMaxUploadBytes(maxUploadBytes int64) *UserHandler {
+	if maxUploadBytes > 0 {
+		h.maxUploadBytes = maxUploadBytes
+	}
+	return h
 }
 
 func (h *UserHandler) GetCurrent(c *gin.Context) {
@@ -75,6 +88,47 @@ func (h *UserHandler) GetByUUID(c *gin.Context) {
 	}
 
 	Success(c, httpdto.PresentUserForViewer(currentUser, user))
+}
+
+func (h *UserHandler) GetAvatar(c *gin.Context) {
+	avatar, err := h.service.GetAvatarResponse(c.Param("uuid"))
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
+		case errors.Is(err, service.ErrAvatarStorageUnavailable):
+			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "avatar storage is unavailable")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	if avatar == nil {
+		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, "avatar response is empty")
+		return
+	}
+	if avatar.Cleanup != nil {
+		defer avatar.Cleanup()
+	}
+
+	if avatar.Content != nil {
+		defer avatar.Content.Close()
+		if avatar.ContentType != "" {
+			c.Header("Content-Type", avatar.ContentType)
+		}
+		if avatar.ContentSize > 0 {
+			c.Header("Content-Length", strconv.FormatInt(avatar.ContentSize, 10))
+		}
+		c.Header("Cache-Control", "private, max-age=60")
+		c.Status(http.StatusOK)
+		if _, err := io.Copy(c.Writer, avatar.Content); err != nil {
+			_ = c.Error(err)
+		}
+		return
+	}
+
+	c.Redirect(http.StatusFound, avatar.RedirectURL)
 }
 
 func (h *UserHandler) ListForAdmin(c *gin.Context) {
@@ -140,6 +194,49 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidEmail, "email format is invalid")
 		case errors.Is(err, service.ErrInvalidAvatar):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar is invalid")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, httpdto.PresentUserForViewer(currentUser, user))
+}
+
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	if h.maxUploadBytes > 0 {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
+	}
+
+	fileHeader, err := c.FormFile("avatar")
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "request body too large") {
+			ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "avatar is too large")
+			return
+		}
+		ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar file is required")
+		return
+	}
+
+	user, err := h.service.UploadAvatar(currentUser, c.Param("uuid"), fileHeader)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUserPermissionDenied):
+			ErrorWithCode(c, http.StatusForbidden, code.UserPermissionDenied, "cannot update another user's avatar")
+		case errors.Is(err, service.ErrUserNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
+		case errors.Is(err, service.ErrAvatarMissing), errors.Is(err, service.ErrInvalidAvatar):
+			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar is invalid")
+		case errors.Is(err, service.ErrAvatarTooLarge):
+			ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "avatar is too large")
+		case errors.Is(err, service.ErrAvatarStorageUnavailable):
+			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "avatar storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}

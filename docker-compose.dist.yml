@@ -114,7 +114,7 @@ services:
       "
 
   # ── 应用节点 ────────────────────────────────────────────────────────────────
-  # 两个节点共享同一镜像，通过环境变量区分 node_id。
+  # 三个节点共享同一镜像，通过环境变量区分 node_id。
   # 环境变量使用 DIPOLE_ 前缀，viper 自动映射到对应配置键（. → _）。
 
   dipole-node1:
@@ -130,7 +130,7 @@ services:
         condition: service_healthy
     volumes:
       # 挂载容器专用配置（所有服务地址已指向容器名），node_id 由环境变量覆盖
-      - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     environment:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
@@ -157,12 +157,39 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     environment:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
     ports:
       - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
+    deploy:
+      resources:
+        reservations:
+          cpus: "1.0"
+          memory: 512M
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  dipole-node3:
+    image: dipole-server:latest
+    container_name: dipole-node3
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ./certs:/app/certs:ro
+    environment:
+      DIPOLE_PRESENCE_NODE_ID: node3
+    ports:
+      - "8083:8080"
     deploy:
       resources:
         reservations:
@@ -182,8 +209,9 @@ services:
     depends_on:
       - dipole-node1
       - dipole-node2
+      - dipole-node3
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx.dist.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
     ports:
       - "80:80"

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,13 @@ func New() *Server {
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
-	userService := service.NewUserService(userRepo)
+	storageCfg := config.StorageConfig()
+	userService := service.NewUserService(userRepo).WithAvatarStorage(
+		fileRepo,
+		platformStorage.Client,
+		5*1024*1024,
+		10*time.Minute,
+	)
 	fileService := service.NewFileService(fileRepo, messageRepo, platformStorage.Client)
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	var kafkaEvents serverEventPublisher
@@ -86,7 +93,7 @@ func New() *Server {
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService)
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
-	userHandler := httpHandler.NewUserHandler(userService)
+	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageService)
 	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
@@ -101,6 +108,8 @@ func New() *Server {
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 		}
+
+		v1.GET("/users/:uuid/avatar", userHandler.GetAvatar)
 
 		protected := v1.Group("")
 		protected.Use(authRequired)
@@ -136,6 +145,7 @@ func New() *Server {
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)
 			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
+			protected.POST("/users/:uuid/avatar", userHandler.UploadAvatar)
 			protected.GET("/admin/users", userHandler.ListForAdmin)
 			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
 			protected.GET("/admin/overview", adminHandler.Overview)
@@ -168,4 +178,17 @@ func (s *Server) WSHub() *wsTransport.Hub {
 	}
 
 	return s.wsHub
+}
+
+func minInt64(a, b int64) int64 {
+	switch {
+	case a <= 0:
+		return b
+	case b <= 0:
+		return a
+	case a < b:
+		return a
+	default:
+		return b
+	}
 }

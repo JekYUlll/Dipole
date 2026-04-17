@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"mime/multipart"
 	"net/textproto"
 	"testing"
@@ -43,11 +44,26 @@ func (u *stubUploader) UploadMessageFile(ctx context.Context, file multipart.Fil
 	return u.uploadFn(ctx, file, header)
 }
 
+func (u *stubUploader) UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*platformStorage.UploadedObject, error) {
+	_ = userUUID
+	if u.uploadFn == nil {
+		return nil, errors.New("unexpected upload call")
+	}
+	return u.uploadFn(ctx, file, header)
+}
+
 func (u *stubUploader) PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error) {
 	if u.presignFn == nil {
 		return "", errors.New("unexpected presign call")
 	}
 	return u.presignFn(ctx, bucket, objectKey, expiry)
+}
+
+func (u *stubUploader) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
+	_ = ctx
+	_ = bucket
+	_ = objectKey
+	return io.NopCloser(bytes.NewReader(nil)), nil
 }
 
 type stubFileMessageRepository struct {

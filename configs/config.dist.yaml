@@ -56,7 +56,6 @@ storage:
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
 
-
 rate_limit:
   enabled: false
   register_limit: 5
@@ -70,7 +69,7 @@ rate_limit:
 
 presence:
   enabled: true
-  node_id: ""      # 由各节点通过 DIPOLE_PRESENCE_NODE_ID 环境变量覆盖
+  node_id: ""
   ttl_seconds: 120
 
 ai:

@@ -23,6 +23,16 @@ usage() {
   echo "  IMAGE_NAME   Image name (default: dipole-server)"
   echo "  IMAGE_TAG    Image tag  (default: latest)"
   echo "  COMPOSE_FILE Compose file (default: docker-compose.dist.yml)"
+  echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
+}
+
+node_services() {
+  if [[ -n "${NODE_SERVICES:-}" ]]; then
+    echo "${NODE_SERVICES}"
+    return
+  fi
+
+  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" config --services | grep '^dipole-node' | tr '\n' ' ' | sed 's/[[:space:]]*$//'
 }
 
 cmd_frontend() {
@@ -48,8 +58,10 @@ cmd_up() {
 
 cmd_deploy() {
   cmd_build
-  echo "==> Force-recreating dipole nodes..."
-  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" up -d --force-recreate dipole-node1 dipole-node2
+  local nodes
+  nodes="$(node_services)"
+  echo "==> Force-recreating dipole nodes: ${nodes}"
+  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" up -d --force-recreate ${nodes}
   echo "==> Nodes redeployed. Reloading nginx..."
   docker exec dipole-nginx nginx -s reload 2>/dev/null || true
   echo "==> Deploy complete."
@@ -61,13 +73,17 @@ cmd_down() {
 }
 
 cmd_restart() {
-  echo "==> Restarting dipole nodes..."
-  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" restart dipole-node1 dipole-node2
-  echo "==> Nodes restarted."
+  local nodes
+  nodes="$(node_services)"
+  echo "==> Recreating dipole nodes with latest compose mounts: ${nodes}"
+  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" up -d --force-recreate ${nodes}
+  echo "==> Nodes recreated."
 }
 
 cmd_logs() {
-  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" logs -f dipole-node1 dipole-node2
+  local nodes
+  nodes="$(node_services)"
+  docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" logs -f ${nodes}
 }
 
 case "${1:-}" in

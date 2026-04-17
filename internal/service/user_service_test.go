@@ -1,10 +1,16 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"io"
+	"mime/multipart"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 
 type stubUserRepository struct {
@@ -13,6 +19,87 @@ type stubUserRepository struct {
 	updateErr   error
 	searchUsers []*model.User
 	listUsers   []*model.User
+}
+
+type stubUserAvatarFileRepository struct {
+	files     map[string]*model.UploadedFile
+	createErr error
+}
+
+func (r *stubUserAvatarFileRepository) Create(file *model.UploadedFile) error {
+	if r.createErr != nil {
+		return r.createErr
+	}
+	if r.files == nil {
+		r.files = map[string]*model.UploadedFile{}
+	}
+	r.files[file.UUID] = file
+	return nil
+}
+
+func (r *stubUserAvatarFileRepository) GetByUUID(uuid string) (*model.UploadedFile, error) {
+	if r.files == nil {
+		return nil, nil
+	}
+	return r.files[uuid], nil
+}
+
+type stubUserAvatarStorage struct {
+	uploadObject *platformStorage.UploadedObject
+	uploadErr    error
+	presignedURL string
+	presignErr   error
+	objectBody   string
+	openErr      error
+}
+
+func (s *stubUserAvatarStorage) UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*platformStorage.UploadedObject, error) {
+	_ = ctx
+	_ = file
+	_ = header
+	_ = userUUID
+	if s.uploadErr != nil {
+		return nil, s.uploadErr
+	}
+	if s.uploadObject != nil {
+		return s.uploadObject, nil
+	}
+	return &platformStorage.UploadedObject{
+		Bucket:      "dipole-files",
+		ObjectKey:   "avatars/U100.png",
+		FileName:    "avatar.png",
+		FileSize:    12,
+		ContentType: "image/png",
+		URL:         "http://example.com/avatar.png",
+	}, nil
+}
+
+func (s *stubUserAvatarStorage) PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error) {
+	_ = ctx
+	_ = bucket
+	_ = objectKey
+	_ = expiry
+	if s.presignErr != nil {
+		return "", s.presignErr
+	}
+	if s.presignedURL != "" {
+		return s.presignedURL, nil
+	}
+	return "https://example.com/avatar.png", nil
+}
+
+func (s *stubUserAvatarStorage) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
+	_ = ctx
+	_ = bucket
+	_ = objectKey
+	if s.openErr != nil {
+		return nil, s.openErr
+	}
+	body := s.objectBody
+	if body == "" {
+		body = "avatar-bytes"
+	}
+	return io.NopCloser(strings.NewReader(body)), nil
 }
 
 func (r *stubUserRepository) GetByUUID(uuid string) (*model.User, error) {
@@ -120,6 +207,90 @@ func TestUserServiceUpdateProfileSelfSuccess(t *testing.T) {
 	}
 }
 
+func TestUserServiceUploadAvatarSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Alice", Avatar: model.DefaultAvatarURL},
+		},
+	}
+	fileRepo := &stubUserAvatarFileRepository{}
+	storage := &stubUserAvatarStorage{}
+	service := NewUserService(repo).WithAvatarStorage(fileRepo, storage, 1024, time.Minute)
+
+	header := newTestFileHeader(t, "avatar.png", "image/png", []byte("avatar-bytes"))
+
+	updatedUser, err := service.UploadAvatar(repo.users["U100"], "U100", header)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if updatedUser.Avatar != "/api/v1/users/U100/avatar" {
+		t.Fatalf("unexpected avatar path: %s", updatedUser.Avatar)
+	}
+	if updatedUser.AvatarFileUUID == "" {
+		t.Fatalf("expected avatar file uuid to be set")
+	}
+	if repo.updateCalls != 1 {
+		t.Fatalf("expected one update call, got %d", repo.updateCalls)
+	}
+}
+
+func TestUserServiceGetAvatarResponseFallsBackToDefault(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Alice", Avatar: "/api/v1/users/U100/avatar"},
+		},
+	}
+	service := NewUserService(repo)
+
+	avatar, err := service.GetAvatarResponse("U100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if avatar == nil || avatar.RedirectURL != model.DefaultAvatarURL {
+		t.Fatalf("expected default avatar url, got %+v", avatar)
+	}
+}
+
+func TestUserServiceGetAvatarResponseWithStoredFile(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Alice", Avatar: "/api/v1/users/U100/avatar", AvatarFileUUID: "F100"},
+		},
+	}
+	fileRepo := &stubUserAvatarFileRepository{
+		files: map[string]*model.UploadedFile{
+			"F100": {UUID: "F100", Bucket: "dipole-files", ObjectKey: "avatars/U100.png", FileSize: 12, ContentType: "image/png"},
+		},
+	}
+	storage := &stubUserAvatarStorage{objectBody: "avatar-payload"}
+	service := NewUserService(repo).WithAvatarStorage(fileRepo, storage, 1024, time.Minute)
+
+	avatar, err := service.GetAvatarResponse("U100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if avatar == nil || avatar.Content == nil {
+		t.Fatalf("expected avatar content stream, got %+v", avatar)
+	}
+	defer avatar.Content.Close()
+	data, err := io.ReadAll(avatar.Content)
+	if err != nil {
+		t.Fatalf("read avatar content: %v", err)
+	}
+	if string(data) != "avatar-payload" {
+		t.Fatalf("unexpected avatar content: %s", string(data))
+	}
+	if avatar.ContentType != "image/png" {
+		t.Fatalf("unexpected avatar content type: %s", avatar.ContentType)
+	}
+}
+
 func TestUserServiceUpdateProfileRejectsOtherUser(t *testing.T) {
 	t.Parallel()
 
@@ -140,6 +311,42 @@ func TestUserServiceUpdateProfileRejectsOtherUser(t *testing.T) {
 	}
 	if repo.updateCalls != 0 {
 		t.Fatalf("expected no update calls, got %d", repo.updateCalls)
+	}
+}
+
+func TestUserServiceUploadAvatarRejectsInvalidType(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Alice"},
+		},
+	}
+	service := NewUserService(repo).WithAvatarStorage(&stubUserAvatarFileRepository{}, &stubUserAvatarStorage{}, 1024, time.Minute)
+
+	header := newTestFileHeader(t, "avatar.txt", "text/plain", []byte("avatar-bytes"))
+
+	_, err := service.UploadAvatar(repo.users["U100"], "U100", header)
+	if !errors.Is(err, ErrInvalidAvatar) {
+		t.Fatalf("expected ErrInvalidAvatar, got %v", err)
+	}
+}
+
+func TestUserServiceUploadAvatarRejectsTooLarge(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Alice"},
+		},
+	}
+	service := NewUserService(repo).WithAvatarStorage(&stubUserAvatarFileRepository{}, &stubUserAvatarStorage{}, 8, time.Minute)
+
+	header := newTestFileHeader(t, "avatar.png", "image/png", []byte("avatar-bytes"))
+
+	_, err := service.UploadAvatar(repo.users["U100"], "U100", header)
+	if !errors.Is(err, ErrAvatarTooLarge) {
+		t.Fatalf("expected ErrAvatarTooLarge, got %v", err)
 	}
 }
 
