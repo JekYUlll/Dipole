@@ -193,6 +193,30 @@ func TestGroupServiceAddMembersRequiresOwner(t *testing.T) {
 	}
 }
 
+func TestGroupServiceAddMembersAllowsOwnerWhenStoredRoleIsWrong(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubGroupRepository()
+	repo.groups["G100"] = &model.Group{UUID: "G100", OwnerUUID: "U100", Status: model.GroupStatusNormal, MemberCount: 2}
+	repo.members["G100"] = map[string]*model.GroupMember{
+		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleMember},
+		"U200": {GroupUUID: "G100", UserUUID: "U200", Role: model.GroupMemberRoleMember},
+	}
+	svc := NewGroupService(repo, &stubGroupUserFinder{
+		users: map[string]*model.User{
+			"U300": {UUID: "U300", Status: model.UserStatusNormal},
+		},
+	}, nil)
+
+	added, err := svc.AddMembers("U100", "G100", []string{"U300"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(added) != 1 || added[0].Member.UserUUID != "U300" {
+		t.Fatalf("expected U300 to be added, got %+v", added)
+	}
+}
+
 func TestGroupServiceLeaveGroupRejectsOwner(t *testing.T) {
 	t.Parallel()
 

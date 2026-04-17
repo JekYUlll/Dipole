@@ -127,9 +127,6 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if group.Avatar == "" {
-		group.Avatar = model.DefaultAvatarURL
-	}
 
 	members := make([]*model.GroupMember, 0, len(memberUUIDs)+1)
 	ownerMember := &model.GroupMember{
@@ -202,10 +199,32 @@ func (s *GroupService) GetGroup(currentUserUUID, groupUUID string) (*GroupView, 
 		return nil, fmt.Errorf("get group owner: %w", err)
 	}
 
+	members, err := s.repo.ListMembers(strings.TrimSpace(groupUUID))
+	if err != nil {
+		return nil, fmt.Errorf("list members for get group: %w", err)
+	}
+	userUUIDs := make([]string, 0, len(members))
+	for _, m := range members {
+		userUUIDs = append(userUUIDs, m.UserUUID)
+	}
+	users, err := s.userFinder.ListByUUIDs(userUUIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list users for get group: %w", err)
+	}
+	userByUUID := make(map[string]*model.User, len(users))
+	for _, u := range users {
+		userByUUID[u.UUID] = u
+	}
+	memberViews := make([]*GroupMemberView, 0, len(members))
+	for _, m := range members {
+		memberViews = append(memberViews, &GroupMemberView{Member: m, User: userByUUID[m.UserUUID]})
+	}
+
 	return &GroupView{
-		Group:  group,
-		Owner:  owner,
-		MeRole: currentMember.Role,
+		Group:   group,
+		Owner:   owner,
+		MeRole:  currentMember.Role,
+		Members: memberViews,
 	}, nil
 }
 
@@ -501,6 +520,9 @@ func (s *GroupService) loadAccessibleGroup(currentUserUUID, groupUUID string) (*
 	}
 	if currentMember == nil {
 		return nil, nil, ErrGroupPermissionDenied
+	}
+	if strings.TrimSpace(group.OwnerUUID) == strings.TrimSpace(currentUserUUID) {
+		currentMember.Role = model.GroupMemberRoleOwner
 	}
 
 	return group, currentMember, nil
