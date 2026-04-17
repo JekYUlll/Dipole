@@ -34,14 +34,15 @@ export interface Group {
   name: string
   notice: string
   avatar: string
-  owner_uuid: string
+  owner?: PublicUser
+  me_role: number  // 0=群主, 1=普通成员（与后端 GroupMemberRoleOwner=0 对齐）
   member_count: number
   members?: GroupMember[]
 }
 
 export interface GroupMember {
   user: PublicUser
-  role: number // 0=成员, 1=管理员, 2=群主
+  role: number // 0=群主, 1=普通成员
   joined_at: string
 }
 

@@ -32,8 +32,9 @@
           :class="{ active: chat.activeKey === conv.conversation_key }"
           @click="selectConversation(conv)"
         >
-          <div class="conv-avatar">
+          <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
+            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -106,8 +107,9 @@
           :class="{ active: chat.activeKey === conv.conversation_key }"
           @click="selectConversation(conv)"
         >
-          <div class="conv-avatar">
+          <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
+            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -155,6 +157,7 @@
                 <div v-else class="msg-avatar-fallback">{{ getInitials(msgSenderName(msg)) }}</div>
               </div>
               <div class="msg-bubble">
+                <div v-if="activeConv?.target_type === 1 && msg.from_uuid !== auth.currentUser?.uuid" class="msg-sender-name">{{ msgSenderName(msg) }}</div>
                 <!-- File card -->
                 <template v-if="msg.message_type === 1">
                   <div class="file-card" @click="downloadFile(msg)">
@@ -203,12 +206,33 @@
       <template v-if="activeConv.target_type === 1">
         <div class="detail-avatar">
           <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
-          <div v-else class="detail-avatar-fallback">{{ getInitials(groupFromConv(activeConv)?.name ?? '群') }}</div>
+          <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
         </div>
         <div class="detail-name">{{ groupFromConv(activeConv)?.name ?? '群组' }}</div>
         <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
         <div class="detail-meta">成员数: {{ groupFromConv(activeConv)?.member_count ?? '—' }}</div>
-        <button class="modal-btn" style="margin-top:8px;width:100%" @click="openInviteMembers">邀请成员</button>
+
+        <!-- 成员格子 -->
+        <div class="member-grid">
+          <div
+            v-for="m in [...(groupFromConv(activeConv)?.members ?? [])].sort((a, b) => a.role - b.role)"
+            :key="m.user.uuid"
+            class="member-grid-item"
+            :title="m.user.nickname + (m.role === 0 ? '（群主）' : '')"
+          >
+            <div class="member-grid-avatar">
+              <img v-if="m.user.avatar" :src="m.user.avatar" />
+              <span v-else>{{ getInitials(m.user.nickname) }}</span>
+            </div>
+            <div class="member-grid-name">{{ m.user.nickname }}</div>
+            <div v-if="m.role === 0" class="member-role-badge">主</div>
+          </div>
+          <!-- 邀请按钮格子（群主可见） -->
+          <div v-if="isGroupOwner" class="member-grid-item" @click="openInviteMembers">
+            <div class="member-grid-avatar member-grid-add">+</div>
+            <div class="member-grid-name">邀请</div>
+          </div>
+        </div>
       </template>
       <template v-else-if="activeConv.target_user">
         <div class="detail-avatar">
@@ -250,45 +274,55 @@
     </div>
 
     <!-- Create Group Modal -->
-    <div v-if="showCreateGroup" class="modal-overlay" @click.self="showCreateGroup = false">
+    <div v-if="showCreateGroup" class="modal-overlay">
+      <div class="modal-backdrop" @click="showCreateGroup = false"></div>
       <div class="modal">
         <div class="modal-title">创建群组</div>
         <input v-model="newGroupName" placeholder="群组名称（必填）" />
-        <div style="font-size:12px;color:#888;margin:6px 0 4px">选择成员（可选）</div>
-        <div class="member-select-list">
-          <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
-          <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
-            <input type="checkbox" :value="c.user.uuid" v-model="selectedMembers" />
-            <div class="conv-avatar small">
-              <img v-if="c.user.avatar" :src="c.user.avatar" />
-              <span v-else>{{ getInitials(c.user.nickname) }}</span>
-            </div>
-            <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
-          </label>
+        <div style="font-size:12px;color:#888;margin:2px 0">选择成员（可选）</div>
+        <div class="modal-body">
+          <div class="member-select-list">
+            <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
+            <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
+              <input type="checkbox" :value="c.user.uuid" v-model="selectedMembers" />
+              <div class="conv-avatar small">
+                <img v-if="c.user.avatar" :src="c.user.avatar" />
+                <span v-else>{{ getInitials(c.user.nickname) }}</span>
+              </div>
+              <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+            </label>
+          </div>
         </div>
-        <button class="modal-btn" :disabled="!newGroupName.trim()" @click="createGroup">创建</button>
-        <button class="modal-close" @click="showCreateGroup = false">关闭</button>
+        <div class="modal-footer">
+          <button class="modal-btn" :disabled="!newGroupName.trim()" @click="createGroup">创建</button>
+          <button class="modal-close" @click="showCreateGroup = false">关闭</button>
+        </div>
       </div>
     </div>
 
     <!-- Invite Members Modal -->
-    <div v-if="showInviteMembers" class="modal-overlay" @click.self="showInviteMembers = false">
+    <div v-if="showInviteMembers" class="modal-overlay">
+      <div class="modal-backdrop" @click="showInviteMembers = false"></div>
       <div class="modal">
         <div class="modal-title">邀请成员</div>
         <div style="font-size:12px;color:#888;margin:0 0 4px">从联系人中选择</div>
-        <div class="member-select-list">
-          <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
-          <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
-            <input type="checkbox" :value="c.user.uuid" v-model="inviteSelected" />
-            <div class="conv-avatar small">
-              <img v-if="c.user.avatar" :src="c.user.avatar" />
-              <span v-else>{{ getInitials(c.user.nickname) }}</span>
-            </div>
-            <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
-          </label>
+        <div class="modal-body">
+          <div class="member-select-list">
+            <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
+            <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
+              <input type="checkbox" :value="c.user.uuid" v-model="inviteSelected" />
+              <div class="conv-avatar small">
+                <img v-if="c.user.avatar" :src="c.user.avatar" />
+                <span v-else>{{ getInitials(c.user.nickname) }}</span>
+              </div>
+              <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+            </label>
+          </div>
         </div>
-        <button class="modal-btn" :disabled="inviteSelected.length === 0" @click="inviteMembers">邀请</button>
-        <button class="modal-close" @click="showInviteMembers = false">关闭</button>
+        <div class="modal-footer">
+          <button class="modal-btn" :disabled="inviteSelected.length === 0" @click="inviteMembers">邀请</button>
+          <button class="modal-close" @click="showInviteMembers = false">关闭</button>
+        </div>
       </div>
     </div>
   </div>
@@ -377,6 +411,16 @@ const activeConvName = computed(() => {
   return conv.target_user?.nickname ?? '用户'
 })
 
+const isGroupOwner = computed(() => {
+  const conv = activeConv.value
+  if (!conv || conv.target_type !== 1) return false
+  const group = groupFromConv(conv)
+  if (!group) return false
+  // me_role 0 = owner（与后端 GroupMemberRoleOwner=0 对齐）
+  if (group.me_role === 0) return true
+  return group.owner?.uuid === auth.currentUser?.uuid
+})
+
 const currentMessages = computed(() =>
   chat.messageMap.get(chat.activeKey) ?? []
 )
@@ -436,15 +480,18 @@ const msgAvatar = (msg: Message): string => {
   const conv = activeConv.value
   if (!conv) return ''
   if (conv.target_type === 0) return conv.target_user?.avatar ?? ''
-  // group: look up member avatar from contacts or fallback
-  return ''
+  // 群聊：从成员列表查找
+  const group = groupFromConv(conv)
+  return group?.members?.find(m => m.user.uuid === msg.from_uuid)?.user.avatar ?? ''
 }
 
 const msgSenderName = (msg: Message): string => {
   if (msg.from_uuid === auth.currentUser?.uuid) return auth.currentUser?.nickname ?? ''
   const conv = activeConv.value
   if (conv?.target_type === 0) return conv.target_user?.nickname ?? msg.from_uuid
-  return msg.from_uuid
+  // 群聊：从成员列表查找
+  const group = groupFromConv(conv!)
+  return group?.members?.find(m => m.user.uuid === msg.from_uuid)?.user.nickname ?? msg.from_uuid
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -525,6 +572,16 @@ const openDirectChat = async (c: Contact) => {
   const myUUID = auth.currentUser!.uuid
   const peerUUID = c.user.uuid
   const key = `direct:${[myUUID, peerUUID].sort().join(':')}`
+  // Ensure a conversation entry exists so activeConv resolves
+  if (!chat.conversations.find(conv => conv.conversation_key === key)) {
+    chat.conversations.unshift({
+      conversation_key: key,
+      target_type: 0,
+      target_user: c.user,
+      last_message: { message_id: '', message_type: 0, preview: '', sent_at: '' },
+      unread_count: 0,
+    })
+  }
   chat.activeKey = key
   navTab.value = 'chat'
   await chat.fetchDirectMessages(peerUUID)
@@ -584,16 +641,23 @@ const newGroupName = ref('')
 const selectedMembers = ref<string[]>([])
 
 const createGroup = async () => {
-  if (!newGroupName.value.trim()) return
+  console.log('[createGroup] called, name=', newGroupName.value, 'members=', selectedMembers.value)
+  if (!newGroupName.value.trim()) { console.log('[createGroup] empty name, abort'); return }
   try {
-    await api.post('/api/v1/groups', { name: newGroupName.value.trim(), member_uuids: selectedMembers.value })
+    console.log('[createGroup] posting...')
+    const res = await api.post('/api/v1/groups', { name: newGroupName.value.trim(), member_uuids: selectedMembers.value })
+    console.log('[createGroup] success, res=', res)
     newGroupName.value = ''
     selectedMembers.value = []
     showCreateGroup.value = false
-    await chat.fetchConversations()
     navTab.value = 'groups'
+    // Kafka processes group.created asynchronously — poll a few times as fallback
+    setTimeout(() => chat.fetchConversations(), 800)
+    setTimeout(() => chat.fetchConversations(), 2500)
+    setTimeout(() => chat.fetchConversations(), 5000)
   } catch (e: any) {
-    alert(e?.message || '创建失败')
+    console.error('[createGroup] error:', e)
+    alert(e?.message || String(e) || '创建失败')
   }
 }
 
@@ -646,9 +710,12 @@ const handleWsPacket = async (packet: WsPacket) => {
     case 'group.updated':
     case 'group.members_added':
     case 'group.members_removed':
-    case 'group.dismissed':
+    case 'group.dismissed': {
+      const groupUUID = (data as any)?.group_uuid
       await chat.fetchConversations()
+      if (groupUUID) await chat.fetchGroup(groupUUID).catch(() => {})
       break
+    }
   }
 }
 
@@ -1226,23 +1293,44 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+}
+
 .modal {
+  position: relative;
+  z-index: 1;
   background: #fff;
   border-radius: 8px;
   padding: 20px;
   width: 320px;
   max-height: 80vh;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-top: 8px;
 }
 
 .modal-title {
@@ -1296,6 +1384,104 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   background: #f5f5f5;
 }
 
+/* 群聊头像（对话列表） */
+.conv-avatar-group {
+  background: #5b8dd9;
+  font-size: 20px;
+}
+
+.group-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* 群成员格子 */
+.member-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.member-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 52px;
+  position: relative;
+  cursor: default;
+}
+
+.member-grid-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: #bbb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.member-grid-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-grid-add {
+  background: #e0e0e0;
+  color: #888;
+  font-size: 22px;
+  cursor: pointer;
+  border: 1px dashed #bbb;
+}
+
+.member-grid-add:hover {
+  background: #d0d0d0;
+}
+
+.member-grid-name {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-role-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #f5a623;
+  color: white;
+  font-size: 9px;
+  padding: 0 3px;
+  border-radius: 2px;
+  line-height: 1.4;
+}
+
+/* 群聊消息发送者名字 */
+.msg-sender-name {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 3px;
+}
+
+/* detail panel 群头像 fallback */
+.group-avatar-fallback {
+  font-size: 28px;
+  background: #5b8dd9;
+}
+
 .search-results {
   display: flex;
   flex-direction: column;
@@ -1314,8 +1500,6 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 200px;
-  overflow-y: auto;
   border: 1px solid #eee;
   border-radius: 4px;
   padding: 4px;
