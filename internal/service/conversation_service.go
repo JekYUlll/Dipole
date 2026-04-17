@@ -19,6 +19,7 @@ var (
 type conversationRepository interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
 	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
+	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	ClearUnreadByConversationKey(userUUID, conversationKey string) error
@@ -83,6 +84,16 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 		return fmt.Errorf("upsert target direct conversation: %w", err)
 	}
 
+	return nil
+}
+
+func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error {
+	conversationKey := "group:" + groupUUID
+	for _, userUUID := range memberUUIDs {
+		if err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt); err != nil {
+			return fmt.Errorf("init group conversation for user %s: %w", userUUID, err)
+		}
+	}
 	return nil
 }
 

@@ -83,6 +83,10 @@ func (r *stubConversationRepository) ClearUnreadByConversationKey(userUUID, conv
 	return r.clearErr
 }
 
+func (r *stubConversationRepository) InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error {
+	return nil
+}
+
 type stubConversationUserFinder struct {
 	usersByUUID map[string]*model.User
 	listErr     error

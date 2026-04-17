@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -36,6 +38,10 @@ type kafkaEventPublisher interface {
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
 }
 
+type kafkaGroupConversationIniter interface {
+	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
+}
+
 func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	if platformKafka.Subscriber == nil {
 		return nil
@@ -60,6 +66,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		nil,
 		events,
 	)
+	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(conversationService))
 	if aiService, err := newAIService(messageService); err != nil {
 		return err
 	} else if aiService != nil {
@@ -259,12 +266,18 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			File:        payloadToWSFile(payload),
 			SentAt:      payload.SentAt,
 		}
+		var wg sync.WaitGroup
 		for _, recipientUUID := range payload.RecipientUUIDs {
 			if recipientUUID == payload.SenderUUID {
 				continue
 			}
-			hub.SendEventToUser(recipientUUID, wsTransport.TypeChatMessage, eventData)
+			wg.Add(1)
+			go func(uuid string) {
+				defer wg.Done()
+				hub.SendEventToUser(uuid, wsTransport.TypeChatMessage, eventData)
+			}(recipientUUID)
 		}
+		wg.Wait()
 
 		return nil
 	}
@@ -473,5 +486,28 @@ func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePaylo
 		DownloadPath:  "/api/v1/files/" + payload.FileID + "/download",
 		ContentType:   payload.FileContentType,
 		FileExpiresAt: payload.FileExpiresAt,
+	}
+}
+
+func initGroupConversationHandler(initer kafkaGroupConversationIniter) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		_ = ctx
+		payload, err := decodeGroupEventPayload(event)
+		if err != nil {
+			logger.Warn("decode group.created payload for conversation init failed", zap.Error(err))
+			return err
+		}
+		if err := initer.InitGroupConversations(payload.GroupUUID, payload.MemberUUIDs, payload.OccurredAt); err != nil {
+			logger.Warn("init group conversations failed",
+				zap.String("group_uuid", payload.GroupUUID),
+				zap.Error(err),
+			)
+			return err
+		}
+		logger.Info("group conversations initialized",
+			zap.String("group_uuid", payload.GroupUUID),
+			zap.Int("member_count", len(payload.MemberUUIDs)),
+		)
+		return nil
 	}
 }
