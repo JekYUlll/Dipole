@@ -131,15 +131,19 @@ services:
     volumes:
       # 挂载容器专用配置（所有服务地址已指向容器名），node_id 由环境变量覆盖
       - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
+      - ./certs:/app/certs:ro
     environment:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
     ports:
       - "8081:8080" # 暴露到宿主机，方便直连 node1 调试
     deploy:
       resources:
+        reservations:
+          cpus: "1.0"
+          memory: 512M
         limits:
-          cpus: "8.0"
-          memory: 8192M
+          cpus: "2.0"
+          memory: 1G
 
   dipole-node2:
     image: dipole-server:latest
@@ -154,15 +158,19 @@ services:
         condition: service_healthy
     volumes:
       - ./configs/config.docker.yaml:/app/configs/config.yaml:ro
+      - ./certs:/app/certs:ro
     environment:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
     ports:
       - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
     deploy:
       resources:
+        reservations:
+          cpus: "1.0"
+          memory: 512M
         limits:
-          cpus: "8.0"
-          memory: 8192M
+          cpus: "2.0"
+          memory: 1G
 
   # ── 反向代理 ────────────────────────────────────────────────────────────────
 
@@ -176,8 +184,10 @@ services:
       - dipole-node2
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
     ports:
       - "80:80"
+      - "443:443"
 
 volumes:
   mysql_data:

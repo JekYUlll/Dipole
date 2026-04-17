@@ -56,8 +56,9 @@ storage:
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
 
+
 rate_limit:
-  enabled: true
+  enabled: false
   register_limit: 5
   register_window_seconds: 3600
   login_limit: 10
@@ -84,7 +85,10 @@ ai:
   assistant_nickname: Dipole AI
   assistant_telephone: "19900000000"
   assistant_email: ai@dipole.local
-  assistant_avatar: https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png
+  assistant_avatar: https://api.dicebear.com/9.x/bottts/svg?seed=dipole-ai&backgroundColor=1a1a2e
   system_prompt: >
     You are Dipole AI, a concise and helpful instant messaging assistant.
     Use the conversation context to answer naturally.
+    Output in plain text only. Do not use Markdown or HTML formatting.
+    If the user sends a file, acknowledge the file metadata you can see.
+    Keep answers short unless the user asks for depth.
