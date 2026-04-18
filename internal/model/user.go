@@ -22,6 +22,7 @@ type User struct {
 	Email          string    `gorm:"size:64" json:"email"`
 	Avatar         string    `gorm:"size:255;not null;default:''" json:"avatar"`
 	AvatarFileUUID string    `gorm:"column:avatar_file_uuid;size:24;index" json:"avatar_file_uuid,omitempty"`
+	Signature      string    `gorm:"size:255;not null;default:''" json:"signature"`
 	PasswordHash   string    `gorm:"column:password_hash;size:255;not null" json:"-"`
 	IsAdmin        bool      `gorm:"not null;default:false" json:"is_admin"`
 	UserType       int8      `gorm:"column:user_type;not null;default:0;index" json:"user_type"`

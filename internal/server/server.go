@@ -118,6 +118,7 @@ func New() *Server {
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
 			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
+			protected.PATCH("/conversations/group/:group_uuid/remark", conversationHandler.UpdateGroupRemark)
 			protected.GET("/contacts", contactHandler.ListFriends)
 			protected.DELETE("/contacts/:friend_uuid", contactHandler.DeleteFriend)
 			protected.PATCH("/contacts/:friend_uuid/remark", contactHandler.UpdateRemark)

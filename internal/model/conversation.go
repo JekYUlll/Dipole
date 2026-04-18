@@ -13,6 +13,7 @@ type Conversation struct {
 	LastMessagePreview string    `gorm:"column:last_message_preview;size:255;not null;default:''" json:"last_message_preview"`
 	LastMessageAt      time.Time `gorm:"column:last_message_at;not null;index" json:"last_message_at"`
 	UnreadCount        int       `gorm:"column:unread_count;not null;default:0" json:"unread_count"`
+	Remark             string    `gorm:"size:50;not null;default:''" json:"remark"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }

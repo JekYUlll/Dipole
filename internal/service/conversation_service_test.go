@@ -21,6 +21,10 @@ type stubConversationRepository struct {
 	lastClearUserUUID     string
 	lastClearConversation string
 	clearErr              error
+	lastRemarkUserUUID    string
+	lastRemarkKey         string
+	lastRemark            string
+	updateRemarkErr       error
 }
 
 type conversationUpsertCall struct {
@@ -81,6 +85,13 @@ func (r *stubConversationRepository) ClearUnreadByConversationKey(userUUID, conv
 	r.lastClearUserUUID = userUUID
 	r.lastClearConversation = conversationKey
 	return r.clearErr
+}
+
+func (r *stubConversationRepository) UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error {
+	r.lastRemarkUserUUID = userUUID
+	r.lastRemarkKey = conversationKey
+	r.lastRemark = remark
+	return r.updateRemarkErr
 }
 
 func (r *stubConversationRepository) InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error {
@@ -224,6 +235,40 @@ func TestConversationServiceListForUserSuccess(t *testing.T) {
 	}
 	if conversations[0].TargetUser == nil || conversations[0].TargetUser.UUID != "U200" {
 		t.Fatalf("expected target user U200, got %+v", conversations[0].TargetUser)
+	}
+}
+
+func TestConversationServiceUpdateGroupRemarkSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{
+		conversationByKey: &model.Conversation{
+			UserUUID:        "U100",
+			TargetType:      model.MessageTargetGroup,
+			TargetUUID:      "G100",
+			ConversationKey: model.GroupConversationKey("G100"),
+			Remark:          "新备注",
+		},
+	}
+	groupRepo := &stubConversationGroupRepository{
+		groupsByUUID: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		membersByPair: map[string]*model.GroupMember{
+			"G100:U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleMember},
+		},
+	}
+	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+
+	conversation, err := service.UpdateGroupRemark("U100", "G100", "新备注")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if conversation == nil || conversation.Remark != "新备注" {
+		t.Fatalf("unexpected conversation: %+v", conversation)
+	}
+	if repo.lastRemarkUserUUID != "U100" || repo.lastRemarkKey != model.GroupConversationKey("G100") || repo.lastRemark != "新备注" {
+		t.Fatalf("unexpected update remark call: user=%s key=%s remark=%s", repo.lastRemarkUserUUID, repo.lastRemarkKey, repo.lastRemark)
 	}
 }
 

@@ -2,7 +2,7 @@
   <div class="im-container">
     <!-- Nav Bar -->
     <div class="nav-bar">
-      <button class="nav-avatar profile-btn" @click="showProfileModal = true" title="个人头像">
+      <button class="nav-avatar profile-btn" @click="openSelfProfile" title="个人资料">
         <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="me" />
         <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
       </button>
@@ -67,7 +67,7 @@
           </div>
           <div class="conv-body">
             <div class="conv-top">
-              <span class="conv-name">{{ c.remark || c.user.nickname }}</span>
+              <span class="conv-name">{{ c.remark ? `${c.remark}（${c.user.nickname}）` : c.user.nickname }}</span>
             </div>
             <div class="conv-bottom">
               <span class="conv-preview">{{ c.user.nickname }}</span>
@@ -148,30 +148,35 @@
 
             <!-- Regular / AI message -->
             <template v-else>
-              <div class="msg-avatar">
-                <img
-                  v-if="msgAvatar(msg)"
-                  :src="msgAvatar(msg)"
-                  :alt="msg.from_uuid"
-                />
-                <div v-else class="msg-avatar-fallback">{{ getInitials(msgSenderName(msg)) }}</div>
-              </div>
-              <div class="msg-bubble">
-                <div v-if="activeConv?.target_type === 1 && msg.from_uuid !== auth.currentUser?.uuid" class="msg-sender-name">{{ msgSenderName(msg) }}</div>
-                <!-- File card -->
-                <template v-if="msg.message_type === 1">
-                  <div class="file-card" @click="downloadFile(msg)">
-                    <span class="file-icon">📄</span>
-                    <div class="file-meta">
-                      <div class="name">{{ msg.file?.file_name || '文件' }}</div>
-                      <div class="size">{{ msg.file?.file_size ? formatSize(msg.file.file_size) : '' }}</div>
+              <div class="msg-sender-name clickable-name"
+                v-if="activeConv?.target_type === 1 && msg.from_uuid !== auth.currentUser?.uuid"
+                @click.stop="openMessageUserProfile(msg)"
+              >{{ msgSenderName(msg) }}</div>
+              <div class="msg-row">
+                <div class="msg-avatar clickable" @click.stop="openMessageUserProfile(msg)">
+                  <img
+                    v-if="msgAvatar(msg)"
+                    :src="msgAvatar(msg)"
+                    :alt="msg.from_uuid"
+                  />
+                  <div v-else class="msg-avatar-fallback">{{ getInitials(msgSenderName(msg)) }}</div>
+                </div>
+                <div class="msg-bubble">
+                  <!-- File card -->
+                  <template v-if="msg.message_type === 1">
+                    <div class="file-card" @click="downloadFile(msg)">
+                      <span class="file-icon">📄</span>
+                      <div class="file-meta">
+                        <div class="name">{{ msg.file?.file_name || msg.file_name || '文件' }}</div>
+                        <div class="size">{{ formatSize(msg.file?.file_size || msg.file_size || 0) }}</div>
+                      </div>
                     </div>
-                  </div>
-                </template>
-                <!-- Text / AI -->
-                <template v-else>
-                  {{ msg.content }}
-                </template>
+                  </template>
+                  <!-- Text / AI -->
+                  <template v-else>
+                    {{ msg.content }}
+                  </template>
+                </div>
               </div>
             </template>
           </div>
@@ -208,9 +213,14 @@
           <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
           <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
         </div>
-        <div class="detail-name">{{ groupFromConv(activeConv)?.name ?? '群组' }}</div>
+        <div class="detail-name">{{ convName(activeConv) }}</div>
         <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
         <div class="detail-meta">成员数: {{ groupFromConv(activeConv)?.member_count ?? '—' }}</div>
+        <div class="detail-edit">
+          <label class="detail-edit-label">群备注</label>
+          <input v-model="groupRemarkDraft" class="detail-edit-input" placeholder="设置当前群显示名称" maxlength="50" />
+          <button class="detail-edit-btn" @click="saveGroupRemark">保存</button>
+        </div>
 
         <!-- 成员格子 -->
         <div class="member-grid">
@@ -219,6 +229,7 @@
             :key="m.user.uuid"
             class="member-grid-item"
             :title="m.user.nickname + (m.role === 0 ? '（群主）' : '')"
+            @click="openUserProfile(m.user)"
           >
             <div class="member-grid-avatar">
               <img v-if="m.user.avatar" :src="m.user.avatar" />
@@ -236,19 +247,20 @@
       </template>
       <template v-else-if="activeConv.target_user">
         <div class="detail-avatar">
-          <img v-if="activeConv.target_user.avatar" :src="activeConv.target_user.avatar" alt="user" />
-          <div v-else class="detail-avatar-fallback">{{ getInitials(activeConv.target_user.nickname) }}</div>
+          <img v-if="activeConv.target_user.avatar" :src="activeConv.target_user.avatar" alt="user" @click="openUserProfile(activeConv.target_user)" />
+          <div v-else class="detail-avatar-fallback" @click="openUserProfile(activeConv.target_user)">{{ getInitials(activeConv.target_user.nickname) }}</div>
         </div>
-        <div class="detail-name">{{ activeConv.target_user.nickname }}</div>
+        <div class="detail-name">{{ convName(activeConv) }}</div>
         <div class="detail-uuid">{{ activeConv.target_user.uuid }}</div>
         <div class="detail-meta">状态: {{ activeConv.target_user.status ?? '未知' }}</div>
+        <div v-if="activeConv.target_user.signature" class="detail-meta">签名: {{ activeConv.target_user.signature }}</div>
       </template>
     </div>
     <!-- Profile Modal -->
     <div v-if="showProfileModal" class="modal-overlay">
       <div class="modal-backdrop" @click="closeProfileModal"></div>
       <div class="modal">
-        <div class="modal-title">个人头像</div>
+        <div class="modal-title">个人资料</div>
         <div class="profile-modal">
           <div class="profile-avatar-preview">
             <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
@@ -256,14 +268,46 @@
           </div>
           <div class="profile-meta">{{ auth.currentUser?.nickname }}</div>
           <div class="profile-meta secondary">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
+          <textarea v-model="profileSignature" class="profile-signature-input" placeholder="写点个性签名" maxlength="255"></textarea>
           <input ref="avatarInputRef" type="file" accept="image/*" @change="handleAvatarSelected" />
           <div v-if="selectedAvatarName" class="profile-file-name">已选择：{{ selectedAvatarName }}</div>
         </div>
         <div class="modal-footer">
+          <button class="modal-btn" :disabled="savingProfile" @click="saveProfile">
+            {{ savingProfile ? '保存中...' : '保存资料' }}
+          </button>
           <button class="modal-btn" :disabled="!selectedAvatarFile || uploadingAvatar" @click="uploadAvatar">
             {{ uploadingAvatar ? '上传中...' : '上传头像' }}
           </button>
           <button class="modal-close" @click="closeProfileModal">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showUserProfileModal && viewedUser" class="modal-overlay">
+      <div class="modal-backdrop" @click="closeUserProfileModal"></div>
+      <div class="modal">
+        <div class="modal-title">用户资料</div>
+        <div class="profile-modal">
+          <div class="profile-avatar-preview">
+            <img v-if="viewedUser.avatar" :src="viewedUser.avatar" alt="user-profile-avatar" />
+            <span v-else>{{ getInitials(viewedUser.nickname) }}</span>
+          </div>
+          <div class="profile-meta">{{ displayUserName(viewedUser) }}</div>
+          <div class="profile-meta secondary">{{ viewedUser.uuid }}</div>
+          <div v-if="viewedUser.signature" class="profile-signature">{{ viewedUser.signature }}</div>
+          <div v-if="isFriend(viewedUser.uuid)" class="detail-edit">
+            <label class="detail-edit-label">用户备注</label>
+            <input v-model="viewedUserRemark" class="detail-edit-input" placeholder="设置备注" maxlength="50" />
+            <button class="detail-edit-btn" :disabled="savingUserRemark" @click="saveUserRemark">
+              {{ savingUserRemark ? '保存中...' : '保存' }}
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn" @click="startDirectChatFromViewedUser">发起单聊</button>
+          <button v-if="!isFriend(viewedUser.uuid) && viewedUser.uuid !== auth.currentUser?.uuid" class="modal-btn" @click="quickApplyFriend(viewedUser)">加好友</button>
+          <button class="modal-close" @click="closeUserProfileModal">关闭</button>
         </div>
       </div>
     </div>
@@ -375,10 +419,26 @@ const avatarInputRef = ref<HTMLInputElement | null>(null)
 const selectedAvatarFile = ref<File | null>(null)
 const selectedAvatarName = ref('')
 const uploadingAvatar = ref(false)
+const profileSignature = ref('')
+const savingProfile = ref(false)
+const showUserProfileModal = ref(false)
+const viewedUser = ref<PublicUser | null>(null)
+const viewedUserRemark = ref('')
+const savingUserRemark = ref(false)
+const groupRemarkDraft = ref('')
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const getInitials = (name: string) => name ? name[0].toUpperCase() : '?'
+const contactOf = (uuid?: string | null) => chat.contacts.find(c => c.user.uuid === uuid)
+const isFriend = (uuid?: string | null) => Boolean(contactOf(uuid))
+
+const displayUserName = (user?: PublicUser | null) => {
+  if (!user) return ''
+  const remark = contactOf(user.uuid)?.remark
+  if (remark) return `${remark}（${user.nickname}）`
+  return user.nickname
+}
 
 const formatTime = (t: string) => {
   const d = new Date(t)
@@ -436,8 +496,7 @@ const activeConv = computed(() =>
 const activeConvName = computed(() => {
   const conv = activeConv.value
   if (!conv) return ''
-  if (conv.target_type === 1) return groupFromConv(conv)?.name ?? '群组'
-  return conv.target_user?.nickname ?? '用户'
+  return convName(conv)
 })
 
 const isGroupOwner = computed(() => {
@@ -486,8 +545,13 @@ const groupFromConv = (conv: Conversation) => {
 }
 
 const convName = (conv: Conversation) => {
-  if (conv.target_type === 1) return groupFromConv(conv)?.name ?? '群组'
-  return conv.target_user?.nickname ?? '用户'
+  if (conv.target_type === 1) {
+    const name = groupFromConv(conv)?.name || '群组'
+    return conv.remark ? `${conv.remark}（${name}）` : name
+  }
+  const nickname = conv.target_user?.nickname || '用户'
+  const remark = contactOf(conv.target_user?.uuid)?.remark
+  return remark ? `${remark}（${nickname}）` : nickname
 }
 
 const convAvatar = (conv: Conversation) => {
@@ -520,7 +584,9 @@ const msgSenderName = (msg: Message): string => {
   if (conv?.target_type === 0) return conv.target_user?.nickname ?? msg.from_uuid
   // 群聊：从成员列表查找
   const group = groupFromConv(conv!)
-  return group?.members?.find(m => m.user.uuid === msg.from_uuid)?.user.nickname ?? msg.from_uuid
+  const user = group?.members?.find(m => m.user.uuid === msg.from_uuid)?.user
+  if (!user) return msg.from_uuid
+  return displayUserName(user)
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -599,6 +665,11 @@ const closeProfileModal = () => {
   if (avatarInputRef.value) avatarInputRef.value.value = ''
 }
 
+const openSelfProfile = () => {
+  profileSignature.value = auth.currentUser?.signature || ''
+  showProfileModal.value = true
+}
+
 const handleAvatarSelected = (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0] ?? null
   selectedAvatarFile.value = file
@@ -622,29 +693,124 @@ const uploadAvatar = async () => {
   }
 }
 
+const saveProfile = async () => {
+  if (!auth.currentUser) return
+  savingProfile.value = true
+  try {
+    await api.patch(`/api/v1/users/${encodeURIComponent(auth.currentUser.uuid)}/profile`, {
+      signature: profileSignature.value.trim(),
+    })
+    await auth.fetchMe()
+    profileSignature.value = auth.currentUser?.signature || ''
+  } catch (e: any) {
+    alert(e?.message || '资料保存失败')
+  } finally {
+    savingProfile.value = false
+  }
+}
+
 const switchToContacts = async () => {
   navTab.value = 'contacts'
   await chat.fetchApplications()
 }
 
 const openDirectChat = async (c: Contact) => {
+  await openDirectChatByUser(c.user)
+}
+
+const openDirectChatByUser = async (user: PublicUser) => {
   const myUUID = auth.currentUser!.uuid
-  const peerUUID = c.user.uuid
+  const peerUUID = user.uuid
   const key = `direct:${[myUUID, peerUUID].sort().join(':')}`
   // Ensure a conversation entry exists so activeConv resolves
   if (!chat.conversations.find(conv => conv.conversation_key === key)) {
     chat.conversations.unshift({
       conversation_key: key,
       target_type: 0,
-      target_user: c.user,
+      target_user: user,
+      remark: contactOf(user.uuid)?.remark || '',
       last_message: { message_id: '', message_type: 0, preview: '', sent_at: '' },
       unread_count: 0,
     })
   }
   chat.activeKey = key
   navTab.value = 'chat'
-  await chat.fetchDirectMessages(peerUUID)
+  try {
+    await chat.fetchDirectMessages(peerUUID)
+  } catch {
+    // keep the chat shell open; message permission is validated on send
+  }
   nextTick(scrollToBottom)
+}
+
+const openUserProfile = async (user: PublicUser) => {
+  if (user.uuid === auth.currentUser?.uuid) {
+    openSelfProfile()
+    return
+  }
+  try {
+    const detail = await api.get(`/api/v1/users/${encodeURIComponent(user.uuid)}`) as PublicUser
+    viewedUser.value = detail
+    viewedUserRemark.value = contactOf(detail.uuid)?.remark || ''
+    showUserProfileModal.value = true
+  } catch (e: any) {
+    alert(e?.message || '获取用户资料失败')
+  }
+}
+
+const openMessageUserProfile = async (msg: Message) => {
+  if (!activeConv.value) return
+  if (msg.from_uuid === auth.currentUser?.uuid) {
+    openSelfProfile()
+    return
+  }
+  if (activeConv.value.target_type === 0 && activeConv.value.target_user) {
+    await openUserProfile(activeConv.value.target_user)
+    return
+  }
+  const group = groupFromConv(activeConv.value)
+  const user = group?.members?.find(m => m.user.uuid === msg.from_uuid)?.user
+  if (user) await openUserProfile(user)
+}
+
+const closeUserProfileModal = () => {
+  showUserProfileModal.value = false
+  viewedUser.value = null
+  viewedUserRemark.value = ''
+}
+
+const startDirectChatFromViewedUser = async () => {
+  if (!viewedUser.value) return
+  const user = viewedUser.value
+  closeUserProfileModal()
+  await openDirectChatByUser(user)
+}
+
+const saveUserRemark = async () => {
+  if (!viewedUser.value) return
+  savingUserRemark.value = true
+  try {
+    await api.patch(`/api/v1/contacts/${encodeURIComponent(viewedUser.value.uuid)}/remark`, {
+      remark: viewedUserRemark.value.trim(),
+    })
+    await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
+    if (viewedUser.value) {
+      viewedUser.value = { ...viewedUser.value }
+    }
+  } catch (e: any) {
+    alert(e?.message || '备注保存失败')
+  } finally {
+    savingUserRemark.value = false
+  }
+}
+
+const quickApplyFriend = async (user: PublicUser) => {
+  try {
+    await api.post('/api/v1/contacts/applications', { target_uuid: user.uuid, message: '' })
+    alert('好友申请已发送')
+  } catch (e: any) {
+    alert(e?.message || '发送好友申请失败')
+  }
 }
 
 const handleApplication = async (id: number, action: 'accept' | 'reject') => {
@@ -743,6 +909,20 @@ const inviteMembers = async () => {
   }
 }
 
+const saveGroupRemark = async () => {
+  if (!activeConv.value || activeConv.value.target_type !== 1) return
+  const groupUUID = activeConv.value.conversation_key.replace('group:', '')
+  try {
+    const data = await api.patch(`/api/v1/conversations/group/${encodeURIComponent(groupUUID)}/remark`, {
+      remark: groupRemarkDraft.value.trim(),
+    }) as { remark: string }
+    activeConv.value.remark = data.remark || ''
+    await chat.fetchConversations()
+  } catch (e: any) {
+    alert(e?.message || '群备注保存失败')
+  }
+}
+
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 
 const handleWsPacket = async (packet: WsPacket) => {
@@ -790,6 +970,13 @@ onMounted(async () => {
 })
 
 watch(currentMessages, () => nextTick(scrollToBottom))
+watch(() => activeConv.value?.conversation_key, () => {
+  if (activeConv.value?.target_type === 1) {
+    groupRemarkDraft.value = activeConv.value.remark || ''
+  } else {
+    groupRemarkDraft.value = ''
+  }
+})
 </script>
 
 <style scoped>
@@ -881,6 +1068,29 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   font-size: 12px;
   color: #666;
   word-break: break-all;
+}
+
+.profile-signature-input {
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.profile-signature {
+  width: 100%;
+  background: #f4f5f6;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .nav-icons {
@@ -997,6 +1207,18 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   object-fit: cover;
 }
 
+.clickable {
+  cursor: pointer;
+}
+
+.clickable-name {
+  cursor: pointer;
+}
+
+.clickable-name:hover {
+  text-decoration: underline;
+}
+
 .conv-body {
   flex: 1;
   min-width: 0;
@@ -1110,11 +1332,22 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 
 .msg-item {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.msg-item.self {
+  align-items: flex-end;
+}
+
+.msg-row {
+  display: flex;
   align-items: flex-start;
   gap: 10px;
 }
 
-.msg-item.self {
+.msg-item.self .msg-row {
   flex-direction: row-reverse;
 }
 
@@ -1329,6 +1562,38 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   color: #666;
 }
 
+.detail-edit {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.detail-edit-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.detail-edit-input {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+}
+
+.detail-edit-btn {
+  align-self: flex-end;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #3d7eff;
+  color: #fff;
+  cursor: pointer;
+}
+
 /* Panel list (shared by all tabs) */
 .panel-list {
   flex: 1;
@@ -1425,6 +1690,7 @@ watch(currentMessages, () => nextTick(scrollToBottom))
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  gap: 8px;
   box-sizing: border-box;
   overflow: hidden;
 }

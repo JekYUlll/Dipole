@@ -184,11 +184,13 @@ func TestUserServiceUpdateProfileSelfSuccess(t *testing.T) {
 	nickname := "NewName"
 	email := "New@Example.com"
 	avatar := ""
+	signature := "hello dipole"
 
 	updatedUser, err := service.UpdateProfile(currentUser, "U100", UpdateProfileInput{
-		Nickname: &nickname,
-		Email:    &email,
-		Avatar:   &avatar,
+		Nickname:  &nickname,
+		Email:     &email,
+		Avatar:    &avatar,
+		Signature: &signature,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -202,8 +204,30 @@ func TestUserServiceUpdateProfileSelfSuccess(t *testing.T) {
 	if updatedUser.Avatar != model.DefaultAvatarURL {
 		t.Fatalf("expected avatar reset to default, got %s", updatedUser.Avatar)
 	}
+	if updatedUser.Signature != signature {
+		t.Fatalf("expected signature updated, got %s", updatedUser.Signature)
+	}
 	if repo.updateCalls != 1 {
 		t.Fatalf("expected one update call, got %d", repo.updateCalls)
+	}
+}
+
+func TestUserServiceUpdateProfileRejectsTooLongSignature(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubUserRepository{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "Owner"},
+		},
+	}
+	service := NewUserService(repo)
+	signature := strings.Repeat("a", 256)
+
+	_, err := service.UpdateProfile(repo.users["U100"], "U100", UpdateProfileInput{
+		Signature: &signature,
+	})
+	if !errors.Is(err, ErrInvalidSignature) {
+		t.Fatalf("expected ErrInvalidSignature, got %v", err)
 	}
 }
 

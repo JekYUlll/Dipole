@@ -159,6 +159,16 @@ func (r *ConversationRepository) InitGroupConversation(userUUID, groupUUID, conv
 	return nil
 }
 
+func (r *ConversationRepository) UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error {
+	if err := store.DB.Model(&model.Conversation{}).
+		Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).
+		Update("remark", remark).Error; err != nil {
+		return fmt.Errorf("update conversation remark: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
 	if err := store.DB.Model(&model.Conversation{}).
 		Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).

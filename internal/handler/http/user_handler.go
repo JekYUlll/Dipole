@@ -194,6 +194,8 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidEmail, "email format is invalid")
 		case errors.Is(err, service.ErrInvalidAvatar):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar is invalid")
+		case errors.Is(err, service.ErrInvalidSignature):
+			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidSignature, "signature is invalid")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 		}

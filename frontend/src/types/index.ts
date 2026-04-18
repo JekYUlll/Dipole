@@ -3,6 +3,7 @@ export interface PublicUser {
   uuid: string
   nickname: string
   avatar: string
+  signature: string
   user_type: number // 0=普通用户, 1=AI助手
   status: number
 }
@@ -32,6 +33,7 @@ export interface FriendApplication {
 export interface Group {
   uuid: string
   name: string
+  remark?: string
   notice: string
   avatar: string
   owner?: PublicUser
@@ -87,6 +89,7 @@ export interface Conversation {
   target_type: number   // 0=单聊, 1=群聊
   target_user?: PublicUser
   target_group?: Group
+  remark: string
   last_message: LastMessage
   unread_count: number
 }

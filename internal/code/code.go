@@ -31,6 +31,7 @@ const (
 	UserAdminRequired    int = 100206
 	UserInvalidStatus    int = 100207
 	UserSelfStatusChange int = 100208
+	UserInvalidSignature int = 100209
 )
 
 const (
@@ -47,6 +48,7 @@ const (
 const (
 	ConversationTargetRequired int = 100400
 	ConversationTargetNotFound int = 100401
+	ConversationRemarkTooLong  int = 100402
 )
 
 const (

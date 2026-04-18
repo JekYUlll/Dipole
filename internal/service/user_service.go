@@ -23,6 +23,7 @@ var (
 	ErrInvalidNickname          = errors.New("invalid nickname")
 	ErrInvalidEmail             = errors.New("invalid email")
 	ErrInvalidAvatar            = errors.New("invalid avatar")
+	ErrInvalidSignature         = errors.New("invalid signature")
 	ErrAvatarMissing            = errors.New("avatar is missing")
 	ErrAvatarTooLarge           = errors.New("avatar is too large")
 	ErrAvatarStorageUnavailable = errors.New("avatar storage is unavailable")
@@ -58,9 +59,10 @@ type AvatarResponse struct {
 }
 
 type UpdateProfileInput struct {
-	Nickname *string `json:"nickname"`
-	Email    *string `json:"email"`
-	Avatar   *string `json:"avatar"`
+	Nickname  *string `json:"nickname"`
+	Email     *string `json:"email"`
+	Avatar    *string `json:"avatar"`
+	Signature *string `json:"signature"`
 }
 
 type SearchUsersInput struct {
@@ -325,6 +327,15 @@ func applyProfileUpdate(user *model.User, input UpdateProfileInput) error {
 		}
 		user.Avatar = avatar
 		user.AvatarFileUUID = ""
+		updated = true
+	}
+
+	if input.Signature != nil {
+		signature := strings.TrimSpace(*input.Signature)
+		if len([]rune(signature)) > 255 {
+			return ErrInvalidSignature
+		}
+		user.Signature = signature
 		updated = true
 	}
 
