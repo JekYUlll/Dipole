@@ -11,15 +11,22 @@ import ws   from "k6/ws";
 import { sleep } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 
-const BASE_URL   = __ENV.BASE_URL   || "http://localhost:80";
+const BASE_URL   = __ENV.BASE_URL   || "http://localhost:8081";
 const NODE1_WS   = __ENV.NODE1_WS   || "ws://localhost:8081";
 const NODE2_WS   = __ENV.NODE2_WS   || "ws://localhost:8082";
 const GROUP_SIZE = parseInt(__ENV.GROUP_SIZE || "500");
+const IDLE_SECONDS = parseInt(__ENV.IDLE_SECONDS || "150");
+const SEND_COUNT = parseInt(__ENV.SEND_COUNT || "20");
+const SEND_INTERVAL_MS = parseInt(__ENV.SEND_INTERVAL_MS || "1000");
+const SENDER_WARMUP_MS = parseInt(__ENV.SENDER_WARMUP_MS || "25000");
+const RECEIVER_CONN_MS = parseInt(__ENV.RECEIVER_CONN_MS || "145000");
+const SENDER_CONN_MS = parseInt(__ENV.SENDER_CONN_MS || "145000");
 
 const msgLatency      = new Trend("msg_e2e_latency_ms", true);
 const msgSent         = new Counter("msg_sent_total");
 const msgReceived     = new Counter("msg_received_total");
 const msgDeliveryRate = new Rate("msg_delivery_rate");
+const msgExpected     = new Counter("msg_expected_receipts_total");
 
 export const options = {
   setupTimeout: "300s",
@@ -56,6 +63,50 @@ function get(path, token, params) {
 
 function phone(i) { return `139${String(i).padStart(8, "0")}`; }
 
+function parseEnvelope(body) {
+  try {
+    const parsed = JSON.parse(body);
+    return parsed && Array.isArray(parsed.data) ? parsed.data : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function fetchGroupMessages(token, groupUUID, afterID) {
+  const headers = { Authorization: `Bearer ${token}` };
+  const query = afterID > 0 ? `?after_id=${afterID}&limit=100` : `?limit=100`;
+  const res = http.get(`${BASE_URL}/api/v1/messages/group/${groupUUID}${query}`, {
+    headers,
+    tags: { name: "group_pull" },
+  });
+  if (res.status !== 200) return [];
+  return parseEnvelope(res.body);
+}
+
+function collectBenchMessages(messages, seenMessageIDs) {
+  let maxID = 0;
+  let received = 0;
+
+  for (const msg of messages) {
+    if (typeof msg.id === "number" && msg.id > maxID) {
+      maxID = msg.id;
+    }
+    const messageID = msg.message_id || "";
+    if (messageID && seenMessageIDs.has(messageID)) continue;
+    if (messageID) seenMessageIDs.add(messageID);
+
+    const match = ((msg.content || "") + "").match(/^bench:(\d+)$/);
+    if (!match) continue;
+
+    msgLatency.add(Date.now() - parseInt(match[1]), { scenario: "group_blast_hot" });
+    msgReceived.add(1);
+    msgDeliveryRate.add(1);
+    received++;
+  }
+
+  return { maxID, received };
+}
+
 function loginUser(i) {
   const res = post("/api/v1/auth/login", { telephone: phone(i), password: "group123456" });
   if (res.status !== 200) return null;
@@ -63,7 +114,15 @@ function loginUser(i) {
 }
 
 function registerUser(i) {
-  post("/api/v1/auth/register", { nickname: `grp_${i}`, telephone: phone(i), password: "group123456" });
+  http.post(
+    `${BASE_URL}/api/v1/auth/register`,
+    JSON.stringify({ nickname: `grp_${i}`, telephone: phone(i), password: "group123456" }),
+    {
+      headers: { "Content-Type": "application/json" },
+      tags: { name: "register" },
+      responseCallback: http.expectedStatuses(200, 409),
+    },
+  );
 }
 
 function getUserUUID(token, tel) {
@@ -105,48 +164,79 @@ export function setup() {
   const groupUUID = sessions[0] ? createGroup(sessions[0].token, memberUUIDs) : null;
   console.log(`[setup] group: ${groupUUID}`);
 
-  return { sessions, groupUUID };
+  return { sessions, groupUUID, recipientCount: memberUUIDs.length };
 }
 
 export default function(data) {
-  const { sessions, groupUUID } = data;
-  if (!groupUUID) return;
+  if (__ITER > 0) {
+    // 这个场景依赖“一人一条长连接”来稳定观察端到端延迟。
+    // 迭代结束后让 VU 挂起，避免 ramping-vus 在同一阶段里反复重连并重复发消息。
+    sleep(IDLE_SECONDS);
+    return;
+  }
+
+  const { sessions, groupUUID, recipientCount } = data;
+  if (!groupUUID) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
 
   const vuIndex = __VU - 1;
   const idx = vuIndex % GROUP_SIZE;
   const myS = sessions[idx];
-  if (!myS) return;
+  if (!myS) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
 
   const nodeWS = vuIndex % 2 === 0 ? NODE1_WS : NODE2_WS;
   const isSender = vuIndex === 0;
-  // 接收者保持长连接覆盖整个测试周期；发送者等 25s 让所有成员上线后再发
-  const connDuration = isSender ? 75000 : 95000;
+  const connDuration = isSender ? SENDER_CONN_MS : RECEIVER_CONN_MS;
 
   ws.connect(`${nodeWS}/api/v1/ws?token=${myS.token}`, {}, function(socket) {
     let i = 0;
+    let lastMessageID = 0;
+    const seenMessageIDs = new Set();
+
     socket.on("open", () => {
       if (isSender) {
-        // 等 25s 让接收者全部上线，再开始发消息
+        // 等接收者全部上线，再开始发消息。
         socket.setTimeout(() => {
           socket.setInterval(() => {
-            if (i >= 20) return;
+            if (i >= SEND_COUNT) return;
             const sentAt = Date.now();
             socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: groupUUID, content: `bench:${sentAt}` } }));
             msgSent.add(1);
+            msgExpected.add(recipientCount);
             i++;
-          }, 1000);
-        }, 25000);
+          }, SEND_INTERVAL_MS);
+        }, SENDER_WARMUP_MS);
       }
     });
     socket.on("message", (raw) => {
       try {
         const evt = JSON.parse(raw);
         if (evt.type === "chat.message") {
+          const messageID = evt.data && evt.data.message_id;
+          if (messageID && seenMessageIDs.has(messageID)) {
+            return;
+          }
+          if (messageID) {
+            seenMessageIDs.add(messageID);
+          }
           const m = (evt.data && evt.data.content || "").match(/^bench:(\d+)$/);
-          if (m) {
-            msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "group_blast" });
+          if (m && !isSender) {
+            msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "group_blast_push" });
             msgReceived.add(1);
             msgDeliveryRate.add(1);
+          }
+        } else if (evt.type === "group.message.notify" && !isSender) {
+          // 热群模式只推 notify，正文通过 after_id 增量补拉拿回。
+          // 这样压测结果能分别看到 push 广播和 notify + pull 两条链路的差异。
+          const pulled = fetchGroupMessages(myS.token, groupUUID, lastMessageID);
+          const { maxID } = collectBenchMessages(pulled, seenMessageIDs);
+          if (maxID > lastMessageID) {
+            lastMessageID = maxID;
           }
         }
       } catch (_) {}

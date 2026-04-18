@@ -1,3 +1,7 @@
+// Package ratelimit implements a Redis-backed sliding-window counter rate limiter.
+// Each operation type (login, register, message send, file upload) has its own
+// key namespace and independently configured limit/window from config.yaml.
+// When Redis is unavailable all requests are allowed through (fail-open).
 package ratelimit
 
 import (
@@ -58,6 +62,10 @@ func (l *Limiter) AllowFileUpload(userUUID string) (bool, time.Duration) {
 	)
 }
 
+// allow is the shared implementation for all rate-limit checks.
+// It uses INCR + EXPIRE to implement a fixed-window counter in Redis.
+// On the first increment the TTL is set, establishing the window boundary.
+// Returns (true, 0) when allowed, or (false, retryAfter) when the limit is exceeded.
 func (l *Limiter) allow(key string, limit int, window time.Duration) (bool, time.Duration) {
 	if l == nil || !l.config.Enabled || store.RDB == nil || limit <= 0 || window <= 0 {
 		return true, 0

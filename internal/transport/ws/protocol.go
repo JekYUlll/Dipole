@@ -16,6 +16,7 @@ const (
 	TypeChatSent            = "chat.sent"
 	TypeChatMessage         = "chat.message"
 	TypeChatRead            = "chat.read"
+	TypeGroupMessageNotify  = "group.message.notify"
 	TypeSessionKicked       = "session.kicked"
 	TypeGroupCreated        = "group.created"
 	TypeGroupUpdated        = "group.updated"
@@ -101,6 +102,15 @@ type ChatReadData struct {
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
 	ReadAt              time.Time `json:"read_at"`
+}
+
+type GroupMessageNotifyData struct {
+	GroupUUID          string    `json:"group_uuid"`
+	LatestMessageID    string    `json:"latest_message_id"`
+	MessageType        int8      `json:"message_type"`
+	Preview            string    `json:"preview"`
+	RecentMessageCount int       `json:"recent_message_count"`
+	SentAt             time.Time `json:"sent_at"`
 }
 
 type SessionKickedData struct {

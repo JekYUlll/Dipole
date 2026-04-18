@@ -4,17 +4,22 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"gorm.io/gorm"
 )
 
 type stubMessageRepository struct {
+	mu                  sync.Mutex
 	createErr           error
 	listErr             error
 	createdMessages     []*model.Message
 	listMessages        []*model.Message
+	listAfterMessages   []*model.Message
 	offlineMessages     []*model.Message
 	messagesByUUID      map[string]*model.Message
 	lastConversationKey string
@@ -22,9 +27,14 @@ type stubMessageRepository struct {
 	lastAfterID         uint
 	lastLimit           int
 	lastUserUUID        string
+	listAfterCallCount  int
+	listAfterDelay      time.Duration
 }
 
 func (r *stubMessageRepository) Create(message *model.Message) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.createErr != nil {
 		return r.createErr
 	}
@@ -38,6 +48,9 @@ func (r *stubMessageRepository) Create(message *model.Message) error {
 }
 
 func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.messagesByUUID == nil {
 		return nil, nil
 	}
@@ -46,25 +59,53 @@ func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 }
 
 func (r *stubMessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
 	r.lastConversationKey = conversationKey
 	r.lastBeforeID = beforeID
 	r.lastLimit = limit
-	if r.listErr != nil {
-		return nil, r.listErr
+	err := r.listErr
+	messages := r.listMessages
+	r.mu.Unlock()
+	if err != nil {
+		return nil, err
 	}
 
-	return r.listMessages, nil
+	return messages, nil
+}
+
+func (r *stubMessageRepository) ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
+	r.lastConversationKey = conversationKey
+	r.lastAfterID = afterID
+	r.lastLimit = limit
+	r.listAfterCallCount++
+	err := r.listErr
+	messages := r.listAfterMessages
+	delay := r.listAfterDelay
+	r.mu.Unlock()
+	if delay > 0 {
+		time.Sleep(delay)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func (r *stubMessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
 	r.lastUserUUID = userUUID
 	r.lastAfterID = afterID
 	r.lastLimit = limit
-	if r.listErr != nil {
-		return nil, r.listErr
+	err := r.listErr
+	messages := r.offlineMessages
+	r.mu.Unlock()
+	if err != nil {
+		return nil, err
 	}
 
-	return r.offlineMessages, nil
+	return messages, nil
 }
 
 type stubFriendshipChecker struct {
@@ -153,6 +194,19 @@ type stubEventPublisher struct {
 	payloads   []any
 }
 
+type stubHotGroupObserver struct {
+	groupUUIDs   []string
+	memberCounts []int
+	status       platformHotGroup.Status
+	err          error
+}
+
+func (o *stubHotGroupObserver) ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error) {
+	o.groupUUIDs = append(o.groupUUIDs, groupUUID)
+	o.memberCounts = append(o.memberCounts, memberCount)
+	return o.status, o.err
+}
+
 func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
@@ -183,7 +237,7 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ")
 	if err != nil {
@@ -225,7 +279,7 @@ func TestMessageServiceSendDirectMessageRejectsUnavailableTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageTargetUnavailable) {
@@ -249,7 +303,7 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	_, err := service.SendDirectMessage("U100", "U200", "hello")
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -273,7 +327,7 @@ func TestMessageServiceSendDirectMessageAllowsAssistantTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	message, err := service.SendDirectMessage("U100", "UAI", "hello ai")
 	if err != nil {
@@ -305,7 +359,7 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	messages, err := service.ListDirectMessages("U100", "U200", 99, 10)
 	if err != nil {
@@ -330,7 +384,7 @@ func TestMessageServiceListDirectMessagesRejectsMissingTarget(t *testing.T) {
 
 	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{
 		users: map[string]*model.User{},
-	}, &stubFriendshipChecker{}, nil, nil, nil)
+	}, &stubFriendshipChecker{}, nil, nil, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U404", 0, 20)
 	if !errors.Is(err, ErrMessageTargetNotFound) {
@@ -349,7 +403,7 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
@@ -373,7 +427,7 @@ func TestMessageServiceListDirectMessagesAllowsAssistantTarget(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {},
 		},
-	}, nil, nil, nil)
+	}, nil, nil, nil, nil)
 
 	messages, err := service.ListDirectMessages("U100", "UAI", 0, 20)
 	if err != nil {
@@ -394,7 +448,7 @@ func TestMessageServiceSendSystemDirectMessageSuccess(t *testing.T) {
 			"U100": {UUID: "U100", Status: model.UserStatusNormal},
 		},
 	}
-	service := NewMessageService(repo, userFinder, &stubFriendshipChecker{}, nil, nil, nil)
+	service := NewMessageService(repo, userFinder, &stubFriendshipChecker{}, nil, nil, nil, nil)
 
 	message, err := service.SendSystemDirectMessage("UAI", "U100", "system notice")
 	if err != nil {
@@ -415,6 +469,7 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubMessageRepository{}
+	observer := &stubHotGroupObserver{}
 	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
 		groups: map[string]*model.Group{
 			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
@@ -425,7 +480,7 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 				"U200": {GroupUUID: "G100", UserUUID: "U200"},
 			},
 		},
-	}, nil, nil)
+	}, nil, nil, observer)
 
 	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group")
 	if err != nil {
@@ -440,6 +495,12 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 	if len(recipients) != 2 {
 		t.Fatalf("expected 2 recipients, got %d", len(recipients))
 	}
+	if len(observer.groupUUIDs) != 1 || observer.groupUUIDs[0] != "G100" {
+		t.Fatalf("expected group heat observer for G100, got %+v", observer.groupUUIDs)
+	}
+	if len(observer.memberCounts) != 1 || observer.memberCounts[0] != 2 {
+		t.Fatalf("expected group heat member count 2, got %+v", observer.memberCounts)
+	}
 }
 
 func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
@@ -452,7 +513,7 @@ func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
 		members: map[string]map[string]*model.GroupMember{
 			"G100": {},
 		},
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
 	if !errors.Is(err, ErrMessageGroupForbidden) {
@@ -477,7 +538,7 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 				"U100": {GroupUUID: "G100", UserUUID: "U100"},
 			},
 		},
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	messages, err := service.ListGroupMessages("U100", "G100", 15, 10)
 	if err != nil {
@@ -491,6 +552,109 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceListGroupMessagesAfterSuccess(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listAfterMessages: []*model.Message{
+			{ID: 11, UUID: "M11", TargetType: model.MessageTargetGroup},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, nil)
+
+	messages, err := service.ListGroupMessagesAfter("U100", "G100", 10, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(messages))
+	}
+	if repo.lastConversationKey != model.GroupConversationKey("G100") {
+		t.Fatalf("unexpected conversation key: %s", repo.lastConversationKey)
+	}
+	if repo.lastAfterID != 10 {
+		t.Fatalf("expected after id 10, got %d", repo.lastAfterID)
+	}
+}
+
+func TestMessageServiceListGroupMessagesAfterUsesSingleflight(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listAfterMessages: []*model.Message{
+			{ID: 11, UUID: "M11", TargetType: model.MessageTargetGroup},
+		},
+		listAfterDelay: 50 * time.Millisecond,
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, nil)
+
+	const workers = 8
+	results := make(chan []*model.Message, workers)
+	errs := make(chan error, workers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			messages, err := service.ListGroupMessagesAfter("U100", "G100", 10, 20)
+			if err != nil {
+				errs <- err
+				return
+			}
+			results <- messages
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	}
+
+	count := 0
+	for messages := range results {
+		count++
+		if len(messages) != 1 {
+			t.Fatalf("expected 1 message, got %d", len(messages))
+		}
+	}
+	if count != workers {
+		t.Fatalf("expected %d successful results, got %d", workers, count)
+	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if repo.listAfterCallCount != 1 {
+		t.Fatalf("expected singleflight to collapse calls to 1, got %d", repo.listAfterCallCount)
+	}
+}
+
 func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -500,7 +664,7 @@ func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
 			{ID: 32, UUID: "M32"},
 		},
 	}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)
 
 	messages, err := service.ListOfflineMessages(" U100 ", 30, 10)
 	if err != nil {
@@ -524,7 +688,7 @@ func TestMessageServiceListOfflineMessagesNormalizesLimit(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubMessageRepository{}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)
 
 	if _, err := service.ListOfflineMessages("U100", 0, 200); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -557,7 +721,7 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 				URL:          "http://127.0.0.1:9000/dipole-files/message-files/hello.txt",
 			},
 		},
-	}, nil)
+	}, nil, nil)
 
 	message, err := service.SendDirectFileMessage("U100", "U200", "F100")
 	if err != nil {
@@ -574,7 +738,7 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
 	t.Parallel()
 
-	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, &stubMessageFileFinder{}, nil)
+	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, &stubMessageFileFinder{}, nil, nil)
 
 	_, err := service.SendDirectFileMessage("U100", "U200", "")
 	if !errors.Is(err, ErrMessageFileRequired) {
@@ -591,7 +755,7 @@ func TestMessageServiceSendAssistantTextMessageSuccess(t *testing.T) {
 			"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
 			"U100": {UUID: "U100", Status: model.UserStatusNormal},
 		},
-	}, &stubFriendshipChecker{}, nil, nil, nil)
+	}, &stubFriendshipChecker{}, nil, nil, nil, nil)
 
 	message, err := service.SendAssistantTextMessage("UAI", "U100", "hello from ai")
 	if err != nil {
@@ -618,7 +782,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		friendships: map[string]map[string]bool{
 			"U100": {"U200": true},
 		},
-	}, nil, nil, publisher)
+	}, nil, nil, publisher, nil)
 
 	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -639,7 +803,7 @@ func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T
 
 	repo := &stubMessageRepository{}
 	publisher := &stubEventPublisher{}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher, nil)
 
 	message, err := service.PersistRequestedMessage(MessageEventPayload{
 		MessageID:       "M100",
@@ -683,7 +847,7 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t
 		},
 	}
 	publisher := &stubEventPublisher{}
-	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher)
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, publisher, nil)
 
 	message, err := service.PersistRequestedMessage(MessageEventPayload{
 		MessageID:       "M100",

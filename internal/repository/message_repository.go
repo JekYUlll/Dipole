@@ -52,6 +52,20 @@ func (r *MessageRepository) ListByConversationKey(conversationKey string, before
 	return messages, nil
 }
 
+func (r *MessageRepository) ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error) {
+	query := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
+	if afterID > 0 {
+		query = query.Where("id > ?", afterID)
+	}
+
+	var messages []*model.Message
+	if err := query.Order("id ASC").Limit(limit).Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("list messages by conversation key after id: %w", err)
+	}
+
+	return messages, nil
+}
+
 func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	query := store.DB.Model(&model.Message{}).Where("messages.id > ?", afterID).Where(
 		"("+

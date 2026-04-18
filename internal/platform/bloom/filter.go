@@ -1,3 +1,7 @@
+// Package bloom provides an in-process bloom filter used to short-circuit
+// existence checks for user and group UUIDs before hitting MySQL.
+// False positives are possible (a non-existent UUID passes the filter) but
+// false negatives are not — a UUID that was Add-ed will always Test as true.
 package bloom
 
 import (
@@ -76,6 +80,9 @@ func (f *Filter) Test(value string) bool {
 	return true
 }
 
+// locations derives k bit positions for value using double-hashing over SHA-256.
+// h1 and h2 are taken from the first 16 bytes of the digest; the i-th position
+// is (h1 + i*h2) % m, which gives k independent-looking positions with a single hash.
 func (f *Filter) locations(value string) []uint64 {
 	sum := sha256.Sum256([]byte(value))
 	h1 := binary.LittleEndian.Uint64(sum[0:8])

@@ -55,6 +55,13 @@ export const useChatStore = defineStore('chat', () => {
     _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], Boolean(beforeID))
   }
 
+  const fetchGroupMessagesAfter = async (groupUUID: string, afterID: number) => {
+    const q = `?after_id=${afterID}&limit=100`
+    const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
+    _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], false)
+    return Array.isArray(data) ? data : []
+  }
+
   const syncOffline = async () => {
     const data = await api.get(`/api/v1/messages/offline?after_id=${lastOfflineID.value}&limit=100`) as Message[]
     const items = Array.isArray(data) ? data : []
@@ -145,6 +152,7 @@ export const useChatStore = defineStore('chat', () => {
     conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
     fetchConversations, markRead,
     fetchDirectMessages, fetchGroupMessages, syncOffline, pushMessage,
+    fetchGroupMessagesAfter,
     fetchContacts, fetchApplications,
     fetchGroup, fetchDevices, ensureUser,
   }

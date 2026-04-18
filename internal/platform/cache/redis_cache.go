@@ -1,3 +1,6 @@
+// Package cache provides thin Redis helpers for JSON serialisation/deserialisation
+// and hash-field operations. All functions are no-ops when store.RDB is nil,
+// so the application degrades gracefully when Redis is unavailable.
 package cache
 
 import (
@@ -11,6 +14,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
+// TTLs for cached objects. Short enough to keep data fresh, long enough to
+// absorb read bursts without hammering MySQL on every request.
 const (
 	UserProfileTTL     = 10 * time.Minute
 	GroupMetaTTL       = 10 * time.Minute

@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	mysqlDriver "github.com/go-sql-driver/mysql"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +32,7 @@ type messageRepository interface {
 	Create(message *model.Message) error
 	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
+	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -51,6 +54,10 @@ type groupMessageChecker interface {
 	ListMembers(groupUUID string) ([]*model.GroupMember, error)
 }
 
+type hotGroupObserver interface {
+	ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error)
+}
+
 type MessageService struct {
 	repo          messageRepository
 	userFinder    messageUserFinder
@@ -58,6 +65,11 @@ type MessageService struct {
 	groupChecker  groupMessageChecker
 	events        eventPublisher
 	fileFinder    messageFileFinder
+	hotGroups     hotGroupObserver
+	// 热群改成 notify + pull 后，同一台节点上会出现很多相同的
+	// group_uuid/after_id/limit 增量拉取请求。singleflight 在 service 层
+	// 合并这些回源，避免瞬时把同一页消息重复打到 MySQL。
+	groupPulls singleflight.Group
 }
 
 type MessageEventPayload struct {
@@ -78,7 +90,7 @@ type MessageEventPayload struct {
 	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher) *MessageService {
+func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
@@ -86,6 +98,7 @@ func NewMessageService(repo messageRepository, userFinder messageUserFinder, fri
 		groupChecker:  groupChecker,
 		events:        events,
 		fileFinder:    fileFinder,
+		hotGroups:     hotGroups,
 	}
 }
 
@@ -274,12 +287,14 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		if err := s.repo.Create(message); err != nil {
 			return nil, nil, fmt.Errorf("persist group message: %w", err)
 		}
+		s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 		return message, recipientUUIDs, nil
 	}
 
 	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
+	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 
 	return message, recipientUUIDs, nil
 }
@@ -350,11 +365,13 @@ func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID st
 		if err := s.repo.Create(message); err != nil {
 			return nil, nil, fmt.Errorf("persist group file message: %w", err)
 		}
+		s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 		return message, recipientUUIDs, nil
 	}
 	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
+	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 
 	return message, recipientUUIDs, nil
 }
@@ -378,6 +395,43 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	}
 
 	return messages, nil
+}
+
+func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+		return nil, err
+	}
+
+	normalizedLimit := normalizeMessageListLimit(limit)
+	sfKey := fmt.Sprintf("group_pull:%s:%d:%d", groupUUID, afterID, normalizedLimit)
+	// 这里返回切片副本，避免多个并发请求共享同一个底层切片后，
+	// 调用方再做 append / 截断时互相污染结果。
+	value, err, _ := s.groupPulls.Do(sfKey, func() (any, error) {
+		messages, listErr := s.repo.ListByConversationKeyAfter(
+			model.GroupConversationKey(groupUUID),
+			afterID,
+			normalizedLimit,
+		)
+		if listErr != nil {
+			return nil, fmt.Errorf("list group messages after: %w", listErr)
+		}
+
+		return cloneMessageSlice(messages), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	messages, ok := value.([]*model.Message)
+	if !ok {
+		return nil, fmt.Errorf("list group messages after: unexpected singleflight result %T", value)
+	}
+
+	return cloneMessageSlice(messages), nil
 }
 
 func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -422,7 +476,6 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 
 	return message, nil
 }
-
 
 func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string) error {
 	if s.events == nil || message == nil {
@@ -515,6 +568,16 @@ func isDuplicateMessageError(err error) bool {
 	}
 
 	return false
+}
+
+func (s *MessageService) observeGroupHeat(groupUUID string, memberCount int) {
+	if s == nil || s.hotGroups == nil {
+		return
+	}
+
+	// 热度统计只作为投递策略信号，不阻塞主消息链路。
+	// Redis 短暂异常时，消息仍然按普通群路径继续走。
+	_, _ = s.hotGroups.ObserveMessage(groupUUID, memberCount)
 }
 
 func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) error {
@@ -622,6 +685,16 @@ func normalizeMessageListLimit(limit int) int {
 	default:
 		return limit
 	}
+}
+
+func cloneMessageSlice(messages []*model.Message) []*model.Message {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	cloned := make([]*model.Message, len(messages))
+	copy(cloned, messages)
+	return cloned
 }
 
 func generateMessageUUID() string {

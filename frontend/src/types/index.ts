@@ -36,6 +36,8 @@ export interface Group {
   remark?: string
   notice: string
   avatar: string
+  is_hot?: boolean
+  recent_message_count?: number
   owner?: PublicUser
   me_role: number  // 0=群主, 1=普通成员（与后端 GroupMemberRoleOwner=0 对齐）
   member_count: number
@@ -106,4 +108,13 @@ export interface Device {
 export interface WsPacket {
   type: string
   data: Record<string, unknown>
+}
+
+export interface GroupMessageNotify {
+  group_uuid: string
+  latest_message_id: string
+  message_type: number
+  preview: string
+  recent_message_count: number
+  sent_at: string
 }

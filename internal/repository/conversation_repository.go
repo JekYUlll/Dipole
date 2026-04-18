@@ -138,6 +138,8 @@ func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversat
 	return &conversation, nil
 }
 
+// InitGroupConversation creates an empty conversation entry for a group member when a group is first created.
+// Uses ON CONFLICT DO NOTHING so re-delivery of the same Kafka event is idempotent.
 func (r *ConversationRepository) InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error {
 	conversation := &model.Conversation{
 		UserUUID:           userUUID,

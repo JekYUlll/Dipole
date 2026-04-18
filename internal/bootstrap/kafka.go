@@ -11,6 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -42,6 +43,10 @@ type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
 }
 
+type groupHeatReader interface {
+	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
+}
+
 func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	if platformKafka.Subscriber == nil {
 		return nil
@@ -51,6 +56,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
+	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	messageService := service.NewMessageService(
 		repository.NewMessageRepository(),
 		repository.NewUserRepository(),
@@ -58,6 +64,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		repository.NewGroupRepository(),
 		service.NewFileService(repository.NewFileRepository(), repository.NewMessageRepository(), nil),
 		events,
+		hotGroupDetector,
 	)
 	conversationService := service.NewConversationService(
 		repository.NewConversationRepository(),
@@ -90,7 +97,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 			}
 		}))
 		platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
-		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub))
+		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroupDetector))
 		platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
 		platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 			return wsTransport.GroupUpdatedEventData{
@@ -246,7 +253,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
+func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
@@ -254,6 +261,24 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 		if err != nil {
 			logger.Warn("decode group message for delivery failed", zap.Error(err))
 			return err
+		}
+
+		// For hot groups (high message frequency), send a lightweight notify event instead of
+		// the full message payload. The client then batch-fetches missed messages via REST,
+		// avoiding WS fan-out storms when many members are online simultaneously.
+		hot := false
+		recentMessageCount := 0
+		if hotGroups != nil {
+			status, statusErr := hotGroups.Status(payload.TargetUUID, len(payload.RecipientUUIDs))
+			if statusErr != nil {
+				logger.Warn("query hot group status failed",
+					zap.String("group_uuid", payload.TargetUUID),
+					zap.Error(statusErr),
+				)
+			} else {
+				hot = status.IsHot
+				recentMessageCount = status.RecentMessageCount
+			}
 		}
 
 		eventData := wsTransport.ChatMessageData{
@@ -267,6 +292,9 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			SentAt:      payload.SentAt,
 		}
 		var wg sync.WaitGroup
+		// 这里仍然保留 per-recipient fan-out，是为了复用现有的用户级连接路由能力。
+		// 热群模式下只把正文换成 notify，先把 WS 写放大降下来；后续如果继续压测，
+		// 这一层还可以演进成按 node_id 聚合后再批量转发。
 		for _, recipientUUID := range payload.RecipientUUIDs {
 			if recipientUUID == payload.SenderUUID {
 				continue
@@ -274,6 +302,18 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			wg.Add(1)
 			go func(uuid string) {
 				defer wg.Done()
+				if hot {
+					// Hot group: push a notify-only event so the client pulls the batch.
+					hub.SendEventToUser(uuid, wsTransport.TypeGroupMessageNotify, wsTransport.GroupMessageNotifyData{
+						GroupUUID:          payload.TargetUUID,
+						LatestMessageID:    payload.MessageID,
+						MessageType:        payload.MessageType,
+						Preview:            messagePreview(payload),
+						RecentMessageCount: recentMessageCount,
+						SentAt:             payload.SentAt,
+					})
+					return
+				}
 				hub.SendEventToUser(uuid, wsTransport.TypeChatMessage, eventData)
 			}(recipientUUID)
 		}
@@ -281,6 +321,16 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 
 		return nil
 	}
+}
+
+func messagePreview(payload service.MessageEventPayload) string {
+	if payload.MessageType == model.MessageTypeFile {
+		if payload.FileName != "" {
+			return "[文件] " + payload.FileName
+		}
+		return "[文件]"
+	}
+	return payload.Content
 }
 
 func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
@@ -489,6 +539,9 @@ func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePaylo
 	}
 }
 
+// initGroupConversationHandler handles the group.created Kafka event.
+// It seeds an empty conversation row for every group member so the group
+// appears in their conversation list immediately, before any message is sent.
 func initGroupConversationHandler(initer kafkaGroupConversationIniter) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx

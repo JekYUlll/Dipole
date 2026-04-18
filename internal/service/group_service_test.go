@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 )
 
 type stubGroupRepository struct {
@@ -88,6 +89,17 @@ type stubGroupUserFinder struct {
 	err   error
 }
 
+type stubGroupHeatReader struct {
+	status platformHotGroup.Status
+	err    error
+}
+
+func (r *stubGroupHeatReader) Status(groupUUID string, memberCount int) (platformHotGroup.Status, error) {
+	_ = groupUUID
+	r.status.MemberCount = memberCount
+	return r.status, r.err
+}
+
 func (f *stubGroupUserFinder) GetByUUID(uuid string) (*model.User, error) {
 	if f.err != nil {
 		return nil, f.err
@@ -117,7 +129,7 @@ func TestGroupServiceCreateGroupSuccess(t *testing.T) {
 			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
 			"U200": {UUID: "U200", Nickname: "member", Status: model.UserStatusNormal},
 		},
-	}, nil)
+	}, nil, nil)
 
 	group, err := svc.CreateGroup("U100", CreateGroupInput{
 		Name:        "Study Group",
@@ -145,7 +157,7 @@ func TestGroupServiceCreateGroupRejectsInvalidMember(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Status: model.UserStatusNormal},
 		},
-	}, nil)
+	}, nil, nil)
 
 	_, err := svc.CreateGroup("U100", CreateGroupInput{
 		Name:        "Study Group",
@@ -164,11 +176,42 @@ func TestGroupServiceGetGroupRequiresMembership(t *testing.T) {
 	repo.members["G100"] = map[string]*model.GroupMember{
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner, JoinedAt: time.Now().UTC()},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
 
 	_, err := svc.GetGroup("U200", "G100")
 	if !errors.Is(err, ErrGroupPermissionDenied) {
 		t.Fatalf("expected ErrGroupPermissionDenied, got %v", err)
+	}
+}
+
+func TestGroupServiceGetGroupIncludesHeatStatus(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubGroupRepository()
+	repo.groups["G100"] = &model.Group{UUID: "G100", OwnerUUID: "U100", Status: model.GroupStatusNormal, MemberCount: 240}
+	repo.members["G100"] = map[string]*model.GroupMember{
+		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner, JoinedAt: time.Now().UTC()},
+	}
+	svc := NewGroupService(repo, &stubGroupUserFinder{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
+		},
+	}, nil, &stubGroupHeatReader{
+		status: platformHotGroup.Status{
+			IsHot:              true,
+			RecentMessageCount: 88,
+		},
+	})
+
+	view, err := svc.GetGroup("U100", "G100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !view.IsHot {
+		t.Fatalf("expected hot group flag to be true")
+	}
+	if view.RecentMessageCount != 88 {
+		t.Fatalf("expected recent message count 88, got %d", view.RecentMessageCount)
 	}
 }
 
@@ -185,7 +228,7 @@ func TestGroupServiceAddMembersRequiresOwner(t *testing.T) {
 		users: map[string]*model.User{
 			"U300": {UUID: "U300", Status: model.UserStatusNormal},
 		},
-	}, nil)
+	}, nil, nil)
 
 	_, err := svc.AddMembers("U200", "G100", []string{"U300"})
 	if !errors.Is(err, ErrGroupPermissionDenied) {
@@ -206,7 +249,7 @@ func TestGroupServiceAddMembersAllowsOwnerWhenStoredRoleIsWrong(t *testing.T) {
 		users: map[string]*model.User{
 			"U300": {UUID: "U300", Status: model.UserStatusNormal},
 		},
-	}, nil)
+	}, nil, nil)
 
 	added, err := svc.AddMembers("U100", "G100", []string{"U300"})
 	if err != nil {
@@ -225,7 +268,7 @@ func TestGroupServiceLeaveGroupRejectsOwner(t *testing.T) {
 	repo.members["G100"] = map[string]*model.GroupMember{
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
 
 	err := svc.LeaveGroup("U100", "G100")
 	if !errors.Is(err, ErrGroupOwnerCannotLeave) {
@@ -245,7 +288,7 @@ func TestGroupServiceUpdateGroupSuccess(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Nickname: "owner"},
 		},
-	}, nil)
+	}, nil, nil)
 
 	view, err := svc.UpdateGroup("U100", "G100", UpdateGroupInput{Name: "New Name", Notice: "hello"})
 	if err != nil {
@@ -265,7 +308,7 @@ func TestGroupServiceRemoveMembersRejectsOwner(t *testing.T) {
 		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
 		"U200": {GroupUUID: "G100", UserUUID: "U200", Role: model.GroupMemberRoleMember},
 	}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
 
 	err := svc.RemoveMembers("U100", "G100", []string{"U100"})
 	if !errors.Is(err, ErrGroupOwnerCannotBeRemoved) {
@@ -283,7 +326,7 @@ func TestGroupServiceDismissGroupPublishesEvent(t *testing.T) {
 		"U200": {GroupUUID: "G100", UserUUID: "U200", Role: model.GroupMemberRoleMember},
 	}
 	publisher := &stubEventPublisher{}
-	svc := NewGroupService(repo, &stubGroupUserFinder{}, publisher)
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, publisher, nil)
 
 	err := svc.DismissGroup("U100", "G100")
 	if err != nil {
@@ -306,7 +349,7 @@ func TestGroupServicePublishesKafkaEventOnCreate(t *testing.T) {
 		users: map[string]*model.User{
 			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
 		},
-	}, publisher)
+	}, publisher, nil)
 
 	if _, err := svc.CreateGroup("U100", CreateGroupInput{Name: "Kafka Group"}); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -326,7 +369,7 @@ func TestGroupServiceCreatePublishesRecipientsForInitialMembers(t *testing.T) {
 			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
 			"U200": {UUID: "U200", Nickname: "member", Status: model.UserStatusNormal},
 		},
-	}, publisher)
+	}, publisher, nil)
 
 	if _, err := svc.CreateGroup("U100", CreateGroupInput{Name: "Invite Group", MemberUUIDs: []string{"U200"}}); err != nil {
 		t.Fatalf("expected no error, got %v", err)

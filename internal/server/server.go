@@ -13,6 +13,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
@@ -55,6 +56,7 @@ func New() *Server {
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
 	adminRepo := repository.NewAdminRepository()
+	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	redisPresence := platformPresence.NewRedisPresence()
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
@@ -73,10 +75,10 @@ func New() *Server {
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
+	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by

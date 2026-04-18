@@ -402,7 +402,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Contact, Message, WsPacket, PublicUser } from '@/types'
+import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser } from '@/types'
 import api from '@/api'
 
 const router = useRouter()
@@ -481,6 +481,27 @@ const pushIncomingMessage = (msg: Message) => {
     list.sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
     chat.messageMap.set(key, list)
   }
+}
+
+const latestLoadedMessageID = (key: string) => {
+  const list = chat.messageMap.get(key) || []
+  return list.reduce((max, item) => Math.max(max, item.id || 0), 0)
+}
+
+const pullHotGroupMessages = async (groupUUID: string) => {
+  const key = `group:${groupUUID}`
+  const existing = chat.messageMap.get(key) || []
+  if (existing.length === 0) {
+    await chat.fetchGroupMessages(groupUUID)
+    return
+  }
+
+  const afterID = latestLoadedMessageID(key)
+  if (afterID <= 0) {
+    await chat.fetchGroupMessages(groupUUID)
+    return
+  }
+  await chat.fetchGroupMessagesAfter(groupUUID, afterID)
 }
 
 const scrollToBottom = () => {
@@ -953,6 +974,39 @@ const handleWsPacket = async (packet: WsPacket) => {
       const groupUUID = (data as any)?.group_uuid
       await chat.fetchConversations()
       if (groupUUID) await chat.fetchGroup(groupUUID).catch(() => {})
+      break
+    }
+    case 'group.message.notify': {
+      const notify = data as unknown as GroupMessageNotify
+      const groupUUID = notify.group_uuid
+      const key = `group:${groupUUID}`
+      const conv = chat.conversations.find(item => item.conversation_key === key)
+      if (conv) {
+        conv.last_message = {
+          message_id: notify.latest_message_id,
+          message_type: notify.message_type,
+          preview: notify.preview || '',
+          sent_at: notify.sent_at,
+        }
+        if (chat.activeKey !== key) {
+          conv.unread_count += 1
+        }
+      } else {
+        await chat.fetchConversations()
+      }
+      const group = chat.groups.get(groupUUID)
+      if (group) {
+        group.is_hot = true
+        group.recent_message_count = notify.recent_message_count
+      }
+      if (chat.activeKey === key && groupUUID) {
+        await pullHotGroupMessages(groupUUID)
+        const activeConv = chat.conversations.find(item => item.conversation_key === key)
+        if (activeConv) {
+          await chat.markRead(activeConv).catch(() => {})
+        }
+        scrollToBottom()
+      }
       break
     }
   }

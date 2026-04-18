@@ -89,6 +89,9 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 	return nil
 }
 
+// InitGroupConversations seeds an empty conversation row for every member of a newly created group.
+// Called from the Kafka group.created consumer so each member sees the group in their conversation list
+// even before the first message is sent.
 func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error {
 	conversationKey := "group:" + groupUUID
 	for _, userUUID := range memberUUIDs {

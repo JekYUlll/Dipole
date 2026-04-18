@@ -80,21 +80,29 @@ type Storage struct {
 }
 
 type RateLimit struct {
-	Enabled                  bool `mapstructure:"enabled"`
-	RegisterLimit            int  `mapstructure:"register_limit"`
-	RegisterWindowSeconds    int  `mapstructure:"register_window_seconds"`
-	LoginLimit               int  `mapstructure:"login_limit"`
-	LoginWindowSeconds       int  `mapstructure:"login_window_seconds"`
-	MessageLimit             int  `mapstructure:"message_limit"`
-	MessageWindowSeconds     int  `mapstructure:"message_window_seconds"`
-	FileUploadLimit          int  `mapstructure:"file_upload_limit"`
-	FileUploadWindowSeconds  int  `mapstructure:"file_upload_window_seconds"`
+	Enabled                 bool `mapstructure:"enabled"`
+	RegisterLimit           int  `mapstructure:"register_limit"`
+	RegisterWindowSeconds   int  `mapstructure:"register_window_seconds"`
+	LoginLimit              int  `mapstructure:"login_limit"`
+	LoginWindowSeconds      int  `mapstructure:"login_window_seconds"`
+	MessageLimit            int  `mapstructure:"message_limit"`
+	MessageWindowSeconds    int  `mapstructure:"message_window_seconds"`
+	FileUploadLimit         int  `mapstructure:"file_upload_limit"`
+	FileUploadWindowSeconds int  `mapstructure:"file_upload_window_seconds"`
 }
 
 type Presence struct {
 	Enabled    bool   `mapstructure:"enabled"`
 	NodeID     string `mapstructure:"node_id"`
 	TTLSeconds int    `mapstructure:"ttl_seconds"`
+}
+
+type HotGroup struct {
+	Enabled              bool `mapstructure:"enabled"`
+	MemberCountThreshold int  `mapstructure:"member_count_threshold"`
+	MessageThreshold     int  `mapstructure:"message_threshold"`
+	WindowSeconds        int  `mapstructure:"window_seconds"`
+	CoolingSeconds       int  `mapstructure:"cooling_seconds"`
 }
 
 type AI struct {
@@ -186,6 +194,11 @@ func Load() error {
 		v.SetDefault("presence.enabled", true)
 		v.SetDefault("presence.node_id", "")
 		v.SetDefault("presence.ttl_seconds", 120)
+		v.SetDefault("hot_group.enabled", true)
+		v.SetDefault("hot_group.member_count_threshold", 200)
+		v.SetDefault("hot_group.message_threshold", 50)
+		v.SetDefault("hot_group.window_seconds", 60)
+		v.SetDefault("hot_group.cooling_seconds", 180)
 		v.SetDefault("ai.enabled", false)
 		v.SetDefault("ai.provider", "openai")
 		v.SetDefault("ai.model", "gpt-4o-mini")
@@ -256,6 +269,11 @@ func Load() error {
 			"presence.enabled",
 			"presence.node_id",
 			"presence.ttl_seconds",
+			"hot_group.enabled",
+			"hot_group.member_count_threshold",
+			"hot_group.message_threshold",
+			"hot_group.window_seconds",
+			"hot_group.cooling_seconds",
 			"ai.enabled",
 			"ai.provider",
 			"ai.model",
@@ -448,6 +466,22 @@ func PresenceConfig() Presence {
 	presenceConfig.TTLSeconds = cfg.GetInt("presence.ttl_seconds")
 
 	return presenceConfig
+}
+
+func HotGroupConfig() HotGroup {
+	MustLoad()
+
+	var hotGroupConfig HotGroup
+	if err := cfg.UnmarshalKey("hot_group", &hotGroupConfig); err != nil {
+		panic(fmt.Errorf("unmarshal hot group config: %w", err))
+	}
+	hotGroupConfig.Enabled = cfg.GetBool("hot_group.enabled")
+	hotGroupConfig.MemberCountThreshold = cfg.GetInt("hot_group.member_count_threshold")
+	hotGroupConfig.MessageThreshold = cfg.GetInt("hot_group.message_threshold")
+	hotGroupConfig.WindowSeconds = cfg.GetInt("hot_group.window_seconds")
+	hotGroupConfig.CoolingSeconds = cfg.GetInt("hot_group.cooling_seconds")
+
+	return hotGroupConfig
 }
 
 func AIConfig() AI {

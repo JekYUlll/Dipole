@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 )
 
 var (
@@ -57,10 +58,12 @@ type UpdateGroupInput struct {
 }
 
 type GroupView struct {
-	Group   *model.Group
-	Owner   *model.User
-	MeRole  int8
-	Members []*GroupMemberView
+	Group              *model.Group
+	Owner              *model.User
+	MeRole             int8
+	Members            []*GroupMemberView
+	IsHot              bool
+	RecentMessageCount int
 }
 
 type GroupMemberView struct {
@@ -72,6 +75,11 @@ type GroupService struct {
 	repo       groupRepository
 	userFinder groupUserFinder
 	events     eventPublisher
+	hotGroups  groupHeatReader
+}
+
+type groupHeatReader interface {
+	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 }
 
 type GroupEventPayload struct {
@@ -86,11 +94,12 @@ type GroupEventPayload struct {
 	OccurredAt     time.Time `json:"occurred_at"`
 }
 
-func NewGroupService(repo groupRepository, userFinder groupUserFinder, events eventPublisher) *GroupService {
+func NewGroupService(repo groupRepository, userFinder groupUserFinder, events eventPublisher, hotGroups groupHeatReader) *GroupService {
 	return &GroupService{
 		repo:       repo,
 		userFinder: userFinder,
 		events:     events,
+		hotGroups:  hotGroups,
 	}
 }
 
@@ -153,14 +162,14 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 	s.publishGroupEvent("group.created", group.UUID, GroupEventPayload{
-		GroupUUID:    group.UUID,
-		Name:         group.Name,
-		Notice:       group.Notice,
-		Avatar:       group.Avatar,
-		OperatorUUID: group.OwnerUUID,
-		MemberUUIDs:  extractMemberUUIDs(members),
+		GroupUUID:      group.UUID,
+		Name:           group.Name,
+		Notice:         group.Notice,
+		Avatar:         group.Avatar,
+		OperatorUUID:   group.OwnerUUID,
+		MemberUUIDs:    extractMemberUUIDs(members),
 		RecipientUUIDs: extractMemberUUIDs(members),
-		OccurredAt:   now,
+		OccurredAt:     now,
 	})
 
 	owner, err := s.userFinder.GetByUUID(currentUserUUID)
@@ -181,10 +190,12 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 	}
 
 	return &GroupView{
-		Group:   group,
-		Owner:   owner,
-		MeRole:  model.GroupMemberRoleOwner,
-		Members: memberViews,
+		Group:              group,
+		Owner:              owner,
+		MeRole:             model.GroupMemberRoleOwner,
+		Members:            memberViews,
+		IsHot:              false,
+		RecentMessageCount: 0,
 	}, nil
 }
 
@@ -220,11 +231,18 @@ func (s *GroupService) GetGroup(currentUserUUID, groupUUID string) (*GroupView, 
 		memberViews = append(memberViews, &GroupMemberView{Member: m, User: userByUUID[m.UserUUID]})
 	}
 
+	heatStatus, err := s.groupHeatStatus(group)
+	if err != nil {
+		return nil, err
+	}
+
 	return &GroupView{
-		Group:   group,
-		Owner:   owner,
-		MeRole:  currentMember.Role,
-		Members: memberViews,
+		Group:              group,
+		Owner:              owner,
+		MeRole:             currentMember.Role,
+		Members:            memberViews,
+		IsHot:              heatStatus.IsHot,
+		RecentMessageCount: heatStatus.RecentMessageCount,
 	}, nil
 }
 
@@ -261,6 +279,19 @@ func (s *GroupService) ListMembers(currentUserUUID, groupUUID string) ([]*GroupM
 	}
 
 	return views, nil
+}
+
+func (s *GroupService) groupHeatStatus(group *model.Group) (platformHotGroup.Status, error) {
+	if group == nil || s.hotGroups == nil {
+		return platformHotGroup.Status{}, nil
+	}
+
+	status, err := s.hotGroups.Status(group.UUID, group.MemberCount)
+	if err != nil {
+		return platformHotGroup.Status{}, fmt.Errorf("get group heat status: %w", err)
+	}
+
+	return status, nil
 }
 
 func (s *GroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*GroupMemberView, error) {

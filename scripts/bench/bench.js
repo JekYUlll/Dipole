@@ -15,11 +15,12 @@ import ws   from "k6/ws";
 import { sleep } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 
-const BASE_URL   = __ENV.BASE_URL   || "http://localhost:80";
+const BASE_URL   = __ENV.BASE_URL   || "http://localhost:8081";
 const NODE1_WS   = __ENV.NODE1_WS   || "ws://localhost:8081";
 const NODE2_WS   = __ENV.NODE2_WS   || "ws://localhost:8082";
 const USER_COUNT = parseInt(__ENV.USER_COUNT || "50");
 const GROUP_SIZE = parseInt(__ENV.GROUP_SIZE || "20");
+const IDLE_SECONDS = parseInt(__ENV.IDLE_SECONDS || "120");
 
 // ── 自定义指标 ───────────────────────────────────────────────────────────────
 
@@ -98,7 +99,15 @@ function phone(i) { return `138${String(i).padStart(8, "0")}`; }
 
 function registerUser(i) {
   const tel = phone(i);
-  const res = post("/api/v1/auth/register", { nickname: `bench_${i}`, telephone: tel, password: "bench123456" });
+  const res = http.post(
+    `${BASE_URL}/api/v1/auth/register`,
+    JSON.stringify({ nickname: `bench_${i}`, telephone: tel, password: "bench123456" }),
+    {
+      headers: { "Content-Type": "application/json" },
+      tags: { name: "register" },
+      responseCallback: http.expectedStatuses(200, 409),
+    },
+  );
   return res.status === 200 || res.status === 409;
 }
 
@@ -205,6 +214,11 @@ export function setup() {
 // ── 场景入口 ─────────────────────────────────────────────────────────────────
 
 export default function (data) {
+  if (__ITER > 0) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
+
   const scenario = __ENV.SCENARIO;
   const vuIndex  = __VU - 1;
   if (!data || !data.sessions) return;
@@ -236,7 +250,10 @@ function runDirectMsg(vuIndex, sessions) {
 
   const mySession   = isSender ? sessions[senderIdx]   : sessions[receiverIdx];
   const peerSession = isSender ? sessions[receiverIdx]  : sessions[senderIdx];
-  if (!mySession || !peerSession) return;
+  if (!mySession || !peerSession) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
 
   const nodeWS = isSender ? NODE1_WS : NODE2_WS;
 
@@ -255,7 +272,7 @@ function runDirectMsg(vuIndex, sessions) {
         }, 500);
       });
       socket.on("error", () => {});
-      socket.setTimeout(() => { socket.close(); }, 7000);
+      socket.setTimeout(() => { socket.close(); }, 55000);
     });
   } else {
     ws.connect(wsURL(mySession.token, nodeWS), {}, function (socket) {
@@ -273,7 +290,7 @@ function runDirectMsg(vuIndex, sessions) {
         } catch (_) {}
       });
       socket.on("error", () => {});
-      socket.setTimeout(() => { socket.close(); }, 9000);
+      socket.setTimeout(() => { socket.close(); }, 55000);
     });
   }
 }
@@ -285,7 +302,10 @@ function runConcurrent(vuIndex, sessions) {
   const peerIdx  = (idx + 1) % sessions.length;
   const myS      = sessions[idx];
   const peerS    = sessions[peerIdx];
-  if (!myS || !peerS) return;
+  if (!myS || !peerS) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
 
   const nodeWS = vuIndex % 2 === 0 ? NODE1_WS : NODE2_WS;
 
@@ -314,7 +334,7 @@ function runConcurrent(vuIndex, sessions) {
       } catch (_) {}
     });
     socket.on("error", () => {});
-    socket.setTimeout(() => { socket.close(); }, 7000);
+    socket.setTimeout(() => { socket.close(); }, 75000);
   });
 }
 
@@ -326,7 +346,10 @@ function runGroupBlast(vuIndex, data) {
 
   const idx = groupOffset + (vuIndex % GROUP_SIZE);
   const myS = sessions[idx];
-  if (!myS) return;
+  if (!myS) {
+    sleep(IDLE_SECONDS);
+    return;
+  }
 
   const nodeWS = vuIndex % 2 === 0 ? NODE1_WS : NODE2_WS;
 
@@ -358,6 +381,6 @@ function runGroupBlast(vuIndex, data) {
       } catch (_) {}
     });
     socket.on("error", () => {});
-    socket.setTimeout(() => { socket.close(); }, 9000);
+    socket.setTimeout(() => { socket.close(); }, 75000);
   });
 }

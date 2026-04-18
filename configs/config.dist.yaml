@@ -72,6 +72,13 @@ presence:
   node_id: ""
   ttl_seconds: 120
 
+hot_group:
+  enabled: true
+  member_count_threshold: 200
+  message_threshold: 50
+  window_seconds: 60
+  cooling_seconds: 180
+
 ai:
   enabled: true
   provider: openai
