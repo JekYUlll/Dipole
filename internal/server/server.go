@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
@@ -54,22 +56,29 @@ func New() *Server {
 	contactRepo := repository.NewContactRepository()
 	groupRepo := repository.NewGroupRepository()
 	adminRepo := repository.NewAdminRepository()
+	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	redisPresence := platformPresence.NewRedisPresence()
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(userRepo, tokenService)
-	userService := service.NewUserService(userRepo)
+	storageCfg := config.StorageConfig()
+	userService := service.NewUserService(userRepo).WithAvatarStorage(
+		fileRepo,
+		platformStorage.Client,
+		5*1024*1024,
+		10*time.Minute,
+	)
 	fileService := service.NewFileService(fileRepo, messageRepo, platformStorage.Client)
 	adminService := service.NewAdminService(adminRepo, wsHub)
 	var kafkaEvents serverEventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents)
+	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
@@ -86,7 +95,7 @@ func New() *Server {
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService)
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
-	userHandler := httpHandler.NewUserHandler(userService)
+	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageService)
 	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
@@ -102,6 +111,8 @@ func New() *Server {
 			authGroup.POST("/login", authHandler.Login)
 		}
 
+		v1.GET("/users/:uuid/avatar", userHandler.GetAvatar)
+
 		protected := v1.Group("")
 		protected.Use(authRequired)
 		{
@@ -109,6 +120,7 @@ func New() *Server {
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
 			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
+			protected.PATCH("/conversations/group/:group_uuid/remark", conversationHandler.UpdateGroupRemark)
 			protected.GET("/contacts", contactHandler.ListFriends)
 			protected.DELETE("/contacts/:friend_uuid", contactHandler.DeleteFriend)
 			protected.PATCH("/contacts/:friend_uuid/remark", contactHandler.UpdateRemark)
@@ -136,6 +148,7 @@ func New() *Server {
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)
 			protected.PATCH("/users/:uuid/profile", userHandler.UpdateProfile)
+			protected.POST("/users/:uuid/avatar", userHandler.UploadAvatar)
 			protected.GET("/admin/users", userHandler.ListForAdmin)
 			protected.PATCH("/admin/users/:uuid/status", userHandler.UpdateStatus)
 			protected.GET("/admin/overview", adminHandler.Overview)
@@ -168,4 +181,17 @@ func (s *Server) WSHub() *wsTransport.Hub {
 	}
 
 	return s.wsHub
+}
+
+func minInt64(a, b int64) int64 {
+	switch {
+	case a <= 0:
+		return b
+	case b <= 0:
+		return a
+	case a < b:
+		return a
+	default:
+		return b
+	}
 }

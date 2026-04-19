@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -135,6 +136,39 @@ func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversat
 	}
 
 	return &conversation, nil
+}
+
+// InitGroupConversation creates an empty conversation entry for a group member when a group is first created.
+// Uses ON CONFLICT DO NOTHING so re-delivery of the same Kafka event is idempotent.
+func (r *ConversationRepository) InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error {
+	conversation := &model.Conversation{
+		UserUUID:           userUUID,
+		TargetType:         model.MessageTargetGroup,
+		TargetUUID:         groupUUID,
+		ConversationKey:    conversationKey,
+		LastMessageUUID:    "",
+		LastMessageType:    0,
+		LastMessagePreview: "",
+		LastMessageAt:      createdAt,
+		UnreadCount:        0,
+	}
+	if err := store.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_uuid"}, {Name: "conversation_key"}},
+		DoNothing: true,
+	}).Create(conversation).Error; err != nil {
+		return fmt.Errorf("init group conversation: %w", err)
+	}
+	return nil
+}
+
+func (r *ConversationRepository) UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error {
+	if err := store.DB.Model(&model.Conversation{}).
+		Where("user_uuid = ? AND conversation_key = ?", userUUID, conversationKey).
+		Update("remark", remark).Error; err != nil {
+		return fmt.Errorf("update conversation remark: %w", err)
+	}
+
+	return nil
 }
 
 func (r *ConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {

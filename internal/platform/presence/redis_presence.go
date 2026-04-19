@@ -1,3 +1,12 @@
+// Package presence tracks which WebSocket connections are live and on which node.
+// Each connection is stored as a JSON-serialised ConnectionState in a Redis hash
+// keyed by user UUID. Two sorted sets (scored by expiry Unix timestamp) allow
+// fast online-user and online-connection counts without a full scan.
+//
+// Data layout:
+//   presence:user:<uuid>:connections  — HASH  field=connectionID  value=ConnectionState JSON
+//   presence:online_users             — ZSET  member=userUUID     score=expiry unix
+//   presence:online_connections       — ZSET  member=connectionID score=expiry unix
 package presence
 
 import (
@@ -51,6 +60,7 @@ func NewRedisPresence() *RedisPresence {
 	}
 }
 
+// Register writes a new connection into Redis. Called when a WS client connects.
 func (p *RedisPresence) Register(state ConnectionState) {
 	if !p.shouldRun(state.UserUUID, state.ConnectionID) {
 		return
@@ -72,6 +82,7 @@ func (p *RedisPresence) Register(state ConnectionState) {
 	}
 }
 
+// Touch refreshes the TTL of an existing connection. Called on WS heartbeat/ping.
 func (p *RedisPresence) Touch(state ConnectionState) {
 	if !p.shouldRun(state.UserUUID, state.ConnectionID) {
 		return
@@ -93,6 +104,8 @@ func (p *RedisPresence) Touch(state ConnectionState) {
 	}
 }
 
+// Unregister removes a connection from Redis. If it was the user's last connection,
+// the user entry is also removed from the online-users sorted set.
 func (p *RedisPresence) Unregister(userUUID, connectionID string) {
 	userUUID = strings.TrimSpace(userUUID)
 	connectionID = strings.TrimSpace(connectionID)

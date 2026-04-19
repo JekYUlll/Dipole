@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/url"
 	"path/filepath"
@@ -28,10 +29,12 @@ type UploadedObject struct {
 
 type Uploader interface {
 	UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*UploadedObject, error)
+	UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*UploadedObject, error)
 }
 
 type Downloader interface {
 	PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
+	OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error)
 }
 
 type ObjectStorage interface {
@@ -72,21 +75,6 @@ func Init() error {
 		publicBaseURL: strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/"),
 	}
 
-	// If a separate presign endpoint is configured (e.g. a LAN/public address that
-	// differs from the internal upload endpoint), create a dedicated client for it.
-	// MinIO embeds the signing host in the HMAC signature, so the client used for
-	// presigning must use the same host that browsers will ultimately reach.
-	if presignEndpoint := strings.TrimSpace(cfg.PresignEndpoint); presignEndpoint != "" {
-		presignClient, err := minio.New(presignEndpoint, &minio.Options{
-			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-			Secure: cfg.UseSSL,
-		})
-		if err != nil {
-			return fmt.Errorf("create minio presign client: %w", err)
-		}
-		uploader.presignClient = presignClient
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -98,17 +86,46 @@ func Init() error {
 		return fmt.Errorf("minio bucket %s does not exist", uploader.bucket)
 	}
 
+	// If a separate presign endpoint is configured (e.g. a LAN/public address that
+	// differs from the internal upload endpoint), create a dedicated client for it.
+	// MinIO embeds the signing host in the HMAC signature, so the client used for
+	// presigning must use the same host that browsers will ultimately reach.
+	// We fetch the bucket region via the internal client first so the presign client
+	// never needs to make a network call (it can't reach the internal endpoint).
+	if presignEndpoint := strings.TrimSpace(cfg.PresignEndpoint); presignEndpoint != "" {
+		region, _ := client.GetBucketLocation(ctx, uploader.bucket)
+		presignClient, err := minio.New(presignEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+			Secure: cfg.UseSSL,
+			Region: region,
+		})
+		if err != nil {
+			return fmt.Errorf("create minio presign client: %w", err)
+		}
+		uploader.presignClient = presignClient
+	}
+
 	Client = uploader
 	return nil
 }
 
 func (u *MinIOUploader) UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*UploadedObject, error) {
+	return u.uploadObject(ctx, file, header, buildMessageFileObjectKey)
+}
+
+func (u *MinIOUploader) UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*UploadedObject, error) {
+	return u.uploadObject(ctx, file, header, func(fileName string) string {
+		return buildAvatarObjectKey(strings.TrimSpace(userUUID), fileName)
+	})
+}
+
+func (u *MinIOUploader) uploadObject(ctx context.Context, file multipart.File, header *multipart.FileHeader, keyBuilder func(fileName string) string) (*UploadedObject, error) {
 	if u == nil || u.client == nil {
 		return nil, fmt.Errorf("storage uploader is not initialized")
 	}
 
 	fileName := strings.TrimSpace(header.Filename)
-	objectKey := buildObjectKey(fileName)
+	objectKey := keyBuilder(fileName)
 	contentType := detectContentType(header)
 	if contentType == "" {
 		contentType = "application/octet-stream"
@@ -155,7 +172,8 @@ func (u *MinIOUploader) PresignDownloadURL(ctx context.Context, bucket, objectKe
 	}
 
 	// Use the presign client when available — it was initialized with the public/LAN
-	// endpoint so the HMAC signature is computed against the host browsers will reach.
+	// endpoint and a pre-cached region, so it signs URLs with the host browsers reach
+	// without making any network calls.
 	c := u.client
 	if u.presignClient != nil {
 		c = u.presignClient
@@ -169,10 +187,39 @@ func (u *MinIOUploader) PresignDownloadURL(ctx context.Context, bucket, objectKe
 	return presignedURL.String(), nil
 }
 
-func buildObjectKey(fileName string) string {
+func (u *MinIOUploader) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
+	if u == nil || u.client == nil {
+		return nil, fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(bucket) == "" || strings.TrimSpace(objectKey) == "" {
+		return nil, fmt.Errorf("bucket and object key are required")
+	}
+
+	object, err := u.client.GetObject(ctx, bucket, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("open minio object: %w", err)
+	}
+	if _, err := object.Stat(); err != nil {
+		_ = object.Close()
+		return nil, fmt.Errorf("stat minio object: %w", err)
+	}
+
+	return object, nil
+}
+
+func buildMessageFileObjectKey(fileName string) string {
 	ext := strings.ToLower(filepath.Ext(fileName))
 	datePath := time.Now().UTC().Format("2006/01/02")
 	return "message-files/" + datePath + "/" + generateObjectID() + ext
+}
+
+func buildAvatarObjectKey(userUUID, fileName string) string {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	if userUUID == "" {
+		userUUID = "unknown"
+	}
+	datePath := time.Now().UTC().Format("2006/01/02")
+	return "avatars/" + datePath + "/" + userUUID + "-" + generateObjectID() + ext
 }
 
 func generateObjectID() string {

@@ -52,16 +52,18 @@ type GroupMemberResponse struct {
 }
 
 type GroupResponse struct {
-	UUID        string                 `json:"uuid"`
-	Name        string                 `json:"name"`
-	Notice      string                 `json:"notice"`
-	Avatar      string                 `json:"avatar"`
-	Status      int8                   `json:"status"`
-	MemberCount int                    `json:"member_count"`
-	Owner       *PublicUserResponse    `json:"owner,omitempty"`
-	MeRole      int8                   `json:"me_role"`
-	Members     []*GroupMemberResponse `json:"members,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
+	UUID               string                 `json:"uuid"`
+	Name               string                 `json:"name"`
+	Notice             string                 `json:"notice"`
+	Avatar             string                 `json:"avatar"`
+	Status             int8                   `json:"status"`
+	MemberCount        int                    `json:"member_count"`
+	IsHot              bool                   `json:"is_hot"`
+	RecentMessageCount int                    `json:"recent_message_count"`
+	Owner              *PublicUserResponse    `json:"owner,omitempty"`
+	MeRole             int8                   `json:"me_role"`
+	Members            []*GroupMemberResponse `json:"members,omitempty"`
+	CreatedAt          time.Time              `json:"created_at"`
 }
 
 func ToGroupResponse(view *service.GroupView) *GroupResponse {
@@ -70,15 +72,17 @@ func ToGroupResponse(view *service.GroupView) *GroupResponse {
 	}
 
 	response := &GroupResponse{
-		UUID:        view.Group.UUID,
-		Name:        view.Group.Name,
-		Notice:      view.Group.Notice,
-		Avatar:      view.Group.Avatar,
-		Status:      view.Group.Status,
-		MemberCount: view.Group.MemberCount,
-		Owner:       ToPublicUserResponse(view.Owner),
-		MeRole:      view.MeRole,
-		CreatedAt:   view.Group.CreatedAt,
+		UUID:               view.Group.UUID,
+		Name:               view.Group.Name,
+		Notice:             view.Group.Notice,
+		Avatar:             view.Group.Avatar,
+		Status:             view.Group.Status,
+		MemberCount:        view.Group.MemberCount,
+		IsHot:              view.IsHot,
+		RecentMessageCount: view.RecentMessageCount,
+		Owner:              ToPublicUserResponse(view.Owner),
+		MeRole:             view.MeRole,
+		CreatedAt:          view.Group.CreatedAt,
 	}
 	if len(view.Members) > 0 {
 		response.Members = ToGroupMemberResponses(view.Members)

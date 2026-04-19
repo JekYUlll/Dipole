@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"mime/multipart"
@@ -103,7 +101,7 @@ func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.F
 	}
 
 	record := &model.UploadedFile{
-		UUID:         generateFileUUID(),
+		UUID:         generateUploadedFileUUID(),
 		UploaderUUID: strings.TrimSpace(uploaderUUID),
 		Bucket:       uploaded.Bucket,
 		ObjectKey:    uploaded.ObjectKey,
@@ -179,13 +177,4 @@ func (s *FileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*Fil
 		FileSize:    file.FileSize,
 		DownloadURL: downloadURL,
 	}, nil
-}
-
-func generateFileUUID() string {
-	buf := make([]byte, 10)
-	if _, err := rand.Read(buf); err != nil {
-		panic(fmt.Errorf("generate file uuid: %w", err))
-	}
-
-	return "F" + strings.ToUpper(hex.EncodeToString(buf))
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,9 +18,10 @@ import (
 )
 
 type stubConversationService struct {
-	listForUserFn    func(userUUID string, limit int) ([]*service.ConversationView, error)
-	markDirectReadFn func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
-	markGroupReadFn  func(userUUID, groupUUID string) error
+	listForUserFn       func(userUUID string, limit int) ([]*service.ConversationView, error)
+	markDirectReadFn    func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
+	markGroupReadFn     func(userUUID, groupUUID string) error
+	updateGroupRemarkFn func(userUUID, groupUUID, remark string) (*model.Conversation, error)
 }
 
 func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*service.ConversationView, error) {
@@ -44,6 +46,14 @@ func (s *stubConversationService) MarkGroupConversationRead(userUUID, groupUUID 
 	}
 
 	return s.markGroupReadFn(userUUID, groupUUID)
+}
+
+func (s *stubConversationService) UpdateGroupRemark(userUUID, groupUUID, remark string) (*model.Conversation, error) {
+	if s.updateGroupRemarkFn == nil {
+		return nil, nil
+	}
+
+	return s.updateGroupRemarkFn(userUUID, groupUUID, remark)
 }
 
 func TestConversationHandlerListSuccess(t *testing.T) {
@@ -177,5 +187,32 @@ func TestConversationHandlerMarkGroupReadForbidden(t *testing.T) {
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestConversationHandlerUpdateGroupRemarkSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewConversationHandler(&stubConversationService{
+		updateGroupRemarkFn: func(userUUID, groupUUID, remark string) (*model.Conversation, error) {
+			if userUUID != "U100" || groupUUID != "G100" || remark != "我的群备注" {
+				t.Fatalf("unexpected update args: %s %s %s", userUUID, groupUUID, remark)
+			}
+			return &model.Conversation{ConversationKey: model.GroupConversationKey("G100"), Remark: "我的群备注"}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/conversations/group/G100/remark", strings.NewReader(`{"remark":"我的群备注"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.UpdateGroupRemark(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }

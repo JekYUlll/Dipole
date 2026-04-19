@@ -81,6 +81,8 @@ type Storage struct {
 
 type RateLimit struct {
 	Enabled                 bool `mapstructure:"enabled"`
+	RegisterLimit           int  `mapstructure:"register_limit"`
+	RegisterWindowSeconds   int  `mapstructure:"register_window_seconds"`
 	LoginLimit              int  `mapstructure:"login_limit"`
 	LoginWindowSeconds      int  `mapstructure:"login_window_seconds"`
 	MessageLimit            int  `mapstructure:"message_limit"`
@@ -93,6 +95,14 @@ type Presence struct {
 	Enabled    bool   `mapstructure:"enabled"`
 	NodeID     string `mapstructure:"node_id"`
 	TTLSeconds int    `mapstructure:"ttl_seconds"`
+}
+
+type HotGroup struct {
+	Enabled              bool `mapstructure:"enabled"`
+	MemberCountThreshold int  `mapstructure:"member_count_threshold"`
+	MessageThreshold     int  `mapstructure:"message_threshold"`
+	WindowSeconds        int  `mapstructure:"window_seconds"`
+	CoolingSeconds       int  `mapstructure:"cooling_seconds"`
 }
 
 type AI struct {
@@ -173,6 +183,8 @@ func Load() error {
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.download_url_ttl_minutes", 10)
 		v.SetDefault("rate_limit.enabled", true)
+		v.SetDefault("rate_limit.register_limit", 5)
+		v.SetDefault("rate_limit.register_window_seconds", 3600)
 		v.SetDefault("rate_limit.login_limit", 10)
 		v.SetDefault("rate_limit.login_window_seconds", 300)
 		v.SetDefault("rate_limit.message_limit", 120)
@@ -182,6 +194,11 @@ func Load() error {
 		v.SetDefault("presence.enabled", true)
 		v.SetDefault("presence.node_id", "")
 		v.SetDefault("presence.ttl_seconds", 120)
+		v.SetDefault("hot_group.enabled", true)
+		v.SetDefault("hot_group.member_count_threshold", 200)
+		v.SetDefault("hot_group.message_threshold", 50)
+		v.SetDefault("hot_group.window_seconds", 60)
+		v.SetDefault("hot_group.cooling_seconds", 180)
 		v.SetDefault("ai.enabled", false)
 		v.SetDefault("ai.provider", "openai")
 		v.SetDefault("ai.model", "gpt-4o-mini")
@@ -241,6 +258,8 @@ func Load() error {
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
 			"rate_limit.enabled",
+			"rate_limit.register_limit",
+			"rate_limit.register_window_seconds",
 			"rate_limit.login_limit",
 			"rate_limit.login_window_seconds",
 			"rate_limit.message_limit",
@@ -250,6 +269,11 @@ func Load() error {
 			"presence.enabled",
 			"presence.node_id",
 			"presence.ttl_seconds",
+			"hot_group.enabled",
+			"hot_group.member_count_threshold",
+			"hot_group.message_threshold",
+			"hot_group.window_seconds",
+			"hot_group.cooling_seconds",
 			"ai.enabled",
 			"ai.provider",
 			"ai.model",
@@ -418,6 +442,8 @@ func RateLimitConfig() RateLimit {
 		panic(fmt.Errorf("unmarshal rate limit config: %w", err))
 	}
 	rateLimitConfig.Enabled = cfg.GetBool("rate_limit.enabled")
+	rateLimitConfig.RegisterLimit = cfg.GetInt("rate_limit.register_limit")
+	rateLimitConfig.RegisterWindowSeconds = cfg.GetInt("rate_limit.register_window_seconds")
 	rateLimitConfig.LoginLimit = cfg.GetInt("rate_limit.login_limit")
 	rateLimitConfig.LoginWindowSeconds = cfg.GetInt("rate_limit.login_window_seconds")
 	rateLimitConfig.MessageLimit = cfg.GetInt("rate_limit.message_limit")
@@ -440,6 +466,22 @@ func PresenceConfig() Presence {
 	presenceConfig.TTLSeconds = cfg.GetInt("presence.ttl_seconds")
 
 	return presenceConfig
+}
+
+func HotGroupConfig() HotGroup {
+	MustLoad()
+
+	var hotGroupConfig HotGroup
+	if err := cfg.UnmarshalKey("hot_group", &hotGroupConfig); err != nil {
+		panic(fmt.Errorf("unmarshal hot group config: %w", err))
+	}
+	hotGroupConfig.Enabled = cfg.GetBool("hot_group.enabled")
+	hotGroupConfig.MemberCountThreshold = cfg.GetInt("hot_group.member_count_threshold")
+	hotGroupConfig.MessageThreshold = cfg.GetInt("hot_group.message_threshold")
+	hotGroupConfig.WindowSeconds = cfg.GetInt("hot_group.window_seconds")
+	hotGroupConfig.CoolingSeconds = cfg.GetInt("hot_group.cooling_seconds")
+
+	return hotGroupConfig
 }
 
 func AIConfig() AI {

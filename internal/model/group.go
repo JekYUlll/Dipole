@@ -33,7 +33,7 @@ type GroupMember struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	GroupUUID  string    `gorm:"column:group_uuid;size:24;not null;uniqueIndex:idx_group_user,priority:1;index" json:"group_uuid"`
 	UserUUID   string    `gorm:"column:user_uuid;size:24;not null;uniqueIndex:idx_group_user,priority:2;index" json:"user_uuid"`
-	Role       int8      `gorm:"not null;default:1" json:"role"`
+	Role       int8      `gorm:"not null" json:"role"`
 	JoinedAt   time.Time `gorm:"column:joined_at;not null" json:"joined_at"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`

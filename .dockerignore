@@ -8,3 +8,5 @@ certs/local
 configs/config.yaml
 node_modules
 *.log
+scripts/bench/results
+dist

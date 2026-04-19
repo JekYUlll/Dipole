@@ -1,23 +1,19 @@
 app:
   name: dipole
-  env: local
+  env: docker
 
 log:
   level: info
   format: console
-  development: true
-  file_enabled: true
-  file_path: logs/dipole.log
-  file_rotate_daily: true
+  development: false
+  file_enabled: false
 
 server:
   host: 0.0.0.0
   port: 8080
 
 tls:
-  enabled: true
-  cert_file: certs/local/dipole-local.pem
-  key_file: certs/local/dipole-local-key.pem
+  enabled: false
 
 auth:
   token_ttl_hours: 168
@@ -25,14 +21,14 @@ auth:
   jwt_issuer: dipole
 
 mysql:
-  host: 127.0.0.1
+  host: mysql
   port: 3306
   user: dipole
   password: dipole123
   dbname: dipole
 
 redis:
-  host: 127.0.0.1
+  host: redis
   port: 6379
   password: ""
   db: 0
@@ -40,7 +36,7 @@ redis:
 kafka:
   enabled: true
   brokers:
-    - 127.0.0.1:9092
+    - kafka:9092
   client_id: dipole
   topic_prefix: dipole
   dial_timeout_seconds: 5
@@ -51,17 +47,19 @@ kafka:
 storage:
   enabled: true
   provider: minio
-  endpoint: 127.0.0.1:9000
+  endpoint: minio:9000
+  presign_endpoint: 192.168.1.8:9000
   access_key: dipoleminio
   secret_key: dipoleminiopass
   use_ssl: false
   bucket: dipole-files
-  public_base_url: http://127.0.0.1:9000/dipole-files
+  public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
-  download_url_ttl_minutes: 10
 
 rate_limit:
-  enabled: true
+  enabled: false
+  register_limit: 5
+  register_window_seconds: 3600
   login_limit: 10
   login_window_seconds: 300
   message_limit: 120
@@ -74,21 +72,29 @@ presence:
   node_id: ""
   ttl_seconds: 120
 
+hot_group:
+  enabled: true
+  member_count_threshold: 200
+  message_threshold: 50
+  window_seconds: 60
+  cooling_seconds: 180
+
 ai:
-  enabled: false
+  enabled: true
   provider: openai
-  model: gpt-4o-mini
-  api_key: ""
-  base_url: ""
+  model: deepseek-chat
+  api_key: "REDACTED_API_KEY"
+  base_url: "https://api.deepseek.com"
   timeout_seconds: 30
   max_context_messages: 12
   assistant_uuid: UAI000000000000000001
   assistant_nickname: Dipole AI
   assistant_telephone: "19900000000"
   assistant_email: ai@dipole.local
-  assistant_avatar: https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png
+  assistant_avatar: https://api.dicebear.com/9.x/bottts/svg?seed=dipole-ai&backgroundColor=1a1a2e
   system_prompt: >
     You are Dipole AI, a concise and helpful instant messaging assistant.
     Use the conversation context to answer naturally.
+    Output in plain text only. Do not use Markdown or HTML formatting.
     If the user sends a file, acknowledge the file metadata you can see.
     Keep answers short unless the user asks for depth.

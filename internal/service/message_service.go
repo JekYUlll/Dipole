@@ -4,13 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	mysqlDriver "github.com/go-sql-driver/mysql"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -28,8 +32,11 @@ var (
 
 type messageRepository interface {
 	Create(message *model.Message) error
+	StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error
+	EnsureOutbox(event *model.OutboxEvent) error
 	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
+	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -51,6 +58,10 @@ type groupMessageChecker interface {
 	ListMembers(groupUUID string) ([]*model.GroupMember, error)
 }
 
+type hotGroupObserver interface {
+	ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error)
+}
+
 type MessageService struct {
 	repo          messageRepository
 	userFinder    messageUserFinder
@@ -58,6 +69,11 @@ type MessageService struct {
 	groupChecker  groupMessageChecker
 	events        eventPublisher
 	fileFinder    messageFileFinder
+	hotGroups     hotGroupObserver
+	// 热群改成 notify + pull 后，同一台节点上会出现很多相同的
+	// group_uuid/after_id/limit 增量拉取请求。singleflight 在 service 层
+	// 合并这些回源，避免瞬时把同一页消息重复打到 MySQL。
+	groupPulls singleflight.Group
 }
 
 type MessageEventPayload struct {
@@ -78,7 +94,7 @@ type MessageEventPayload struct {
 	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher) *MessageService {
+func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
@@ -86,6 +102,7 @@ func NewMessageService(repo messageRepository, userFinder messageUserFinder, fri
 		groupChecker:  groupChecker,
 		events:        events,
 		fileFinder:    fileFinder,
+		hotGroups:     hotGroups,
 	}
 }
 
@@ -274,12 +291,14 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		if err := s.repo.Create(message); err != nil {
 			return nil, nil, fmt.Errorf("persist group message: %w", err)
 		}
+		s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 		return message, recipientUUIDs, nil
 	}
 
 	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
+	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 
 	return message, recipientUUIDs, nil
 }
@@ -350,11 +369,13 @@ func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID st
 		if err := s.repo.Create(message); err != nil {
 			return nil, nil, fmt.Errorf("persist group file message: %w", err)
 		}
+		s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 		return message, recipientUUIDs, nil
 	}
 	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs); err != nil {
 		return nil, nil, err
 	}
+	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 
 	return message, recipientUUIDs, nil
 }
@@ -380,6 +401,43 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	return messages, nil
 }
 
+func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+		return nil, err
+	}
+
+	normalizedLimit := normalizeMessageListLimit(limit)
+	sfKey := fmt.Sprintf("group_pull:%s:%d:%d", groupUUID, afterID, normalizedLimit)
+	// 这里返回切片副本，避免多个并发请求共享同一个底层切片后，
+	// 调用方再做 append / 截断时互相污染结果。
+	value, err, _ := s.groupPulls.Do(sfKey, func() (any, error) {
+		messages, listErr := s.repo.ListByConversationKeyAfter(
+			model.GroupConversationKey(groupUUID),
+			afterID,
+			normalizedLimit,
+		)
+		if listErr != nil {
+			return nil, fmt.Errorf("list group messages after: %w", listErr)
+		}
+
+		return cloneMessageSlice(messages), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	messages, ok := value.([]*model.Message)
+	if !ok {
+		return nil, fmt.Errorf("list group messages after: unexpected singleflight result %T", value)
+	}
+
+	return cloneMessageSlice(messages), nil
+}
+
 func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	messages, err := s.repo.ListOfflineByUserUUID(strings.TrimSpace(currentUserUUID), afterID, normalizeMessageListLimit(limit))
 	if err != nil {
@@ -395,14 +453,16 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		return nil, fmt.Errorf("message payload is nil")
 	}
 
-	created := true
-	if err := s.repo.Create(message); err != nil {
+	outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs)
+	if err != nil {
+		return nil, fmt.Errorf("build message created outbox event: %w", err)
+	}
+
+	if err := s.repo.StoreWithOutbox(message, outboxEvent); err != nil {
 		if !isDuplicateMessageError(err) {
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
 
-		// Message already persisted (Kafka at-least-once redelivery). Skip publishing
-		// message.created to avoid duplicate conversation updates and WS deliveries.
 		existing, findErr := s.repo.GetByUUID(message.UUID)
 		if findErr != nil {
 			return nil, fmt.Errorf("find duplicate message by uuid: %w", findErr)
@@ -411,18 +471,19 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 			return nil, fmt.Errorf("duplicate message %s not found after conflict", message.UUID)
 		}
 		message = existing
-		created = false
-	}
-
-	if created {
-		if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
-			return nil, err
+		outboxEvent, err = buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs)
+		if err != nil {
+			return nil, fmt.Errorf("rebuild message created outbox event: %w", err)
+		}
+		// Redelivery after a partial failure should still recreate the outbox row when it is missing.
+		// The unique key on (aggregate_type, aggregate_id, event_type) keeps this idempotent.
+		if err := s.repo.EnsureOutbox(outboxEvent); err != nil {
+			return nil, fmt.Errorf("ensure outbox for duplicate message: %w", err)
 		}
 	}
 
 	return message, nil
 }
-
 
 func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string) error {
 	if s.events == nil || message == nil {
@@ -470,6 +531,48 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string) Mess
 	}
 }
 
+func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []string) (*model.OutboxEvent, error) {
+	if message == nil {
+		return nil, nil
+	}
+
+	topic := createdTopicForTargetType(message.TargetType)
+	eventType := topic
+	payload := messageToEventPayload(message, recipientUUIDs)
+	envelope, err := platformKafka.NewEnvelope(eventType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("create message created envelope: %w", err)
+	}
+
+	value, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshal message created envelope: %w", err)
+	}
+
+	headers, err := json.Marshal(map[string]string{
+		"event_type": envelope.EventType,
+		"version":    envelope.Version,
+		"source":     envelope.Source,
+		"event_id":   envelope.EventID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal outbox headers: %w", err)
+	}
+
+	now := time.Now().UTC()
+	return &model.OutboxEvent{
+		AggregateType: "message",
+		AggregateID:   message.UUID,
+		EventType:     eventType,
+		Topic:         topic,
+		MessageKey:    message.UUID,
+		Value:         value,
+		HeadersJSON:   headers,
+		Status:        model.OutboxStatusPending,
+		NextRetryAt:   &now,
+	}, nil
+}
+
 func payloadToMessage(payload MessageEventPayload) *model.Message {
 	return &model.Message{
 		UUID:            strings.TrimSpace(payload.MessageID),
@@ -515,6 +618,16 @@ func isDuplicateMessageError(err error) bool {
 	}
 
 	return false
+}
+
+func (s *MessageService) observeGroupHeat(groupUUID string, memberCount int) {
+	if s == nil || s.hotGroups == nil {
+		return
+	}
+
+	// 热度统计只作为投递策略信号，不阻塞主消息链路。
+	// Redis 短暂异常时，消息仍然按普通群路径继续走。
+	_, _ = s.hotGroups.ObserveMessage(groupUUID, memberCount)
 }
 
 func (s *MessageService) ensureDirectFriendship(userUUID, targetUUID string) error {
@@ -622,6 +735,16 @@ func normalizeMessageListLimit(limit int) int {
 	default:
 		return limit
 	}
+}
+
+func cloneMessageSlice(messages []*model.Message) []*model.Message {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	cloned := make([]*model.Message, len(messages))
+	copy(cloned, messages)
+	return cloned
 }
 
 func generateMessageUUID() string {

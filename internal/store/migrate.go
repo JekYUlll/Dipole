@@ -21,6 +21,7 @@ func AutoMigrate() error {
 		&model.Group{},
 		&model.GroupMember{},
 		&model.AICallLog{},
+		&model.OutboxEvent{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
 	}

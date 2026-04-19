@@ -1,8 +1,11 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +21,8 @@ import (
 
 type stubUserService struct {
 	updateProfileFn func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error)
+	getAvatarFn     func(targetUUID string) (*service.AvatarResponse, error)
+	uploadAvatarFn  func(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error)
 	getByUUIDFn     func(uuid string) (*model.User, error)
 	searchUsersFn   func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error)
 	listUsersFn     func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error)
@@ -38,6 +43,22 @@ func (s *stubUserService) UpdateProfile(currentUser *model.User, targetUUID stri
 	}
 
 	return s.updateProfileFn(currentUser, targetUUID, input)
+}
+
+func (s *stubUserService) GetAvatarResponse(targetUUID string) (*service.AvatarResponse, error) {
+	if s.getAvatarFn == nil {
+		return nil, nil
+	}
+
+	return s.getAvatarFn(targetUUID)
+}
+
+func (s *stubUserService) UploadAvatar(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error) {
+	if s.uploadAvatarFn == nil {
+		return nil, nil
+	}
+
+	return s.uploadAvatarFn(currentUser, targetUUID, header)
 }
 
 func (s *stubUserService) SearchUsers(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
@@ -200,6 +221,112 @@ func TestUserHandlerUpdateProfileBadRequest(t *testing.T) {
 	}
 	if int(response["code"].(float64)) != code.BadRequest {
 		t.Fatalf("expected business code %d, got %v", code.BadRequest, response["code"])
+	}
+}
+
+func TestUserHandlerUploadAvatarSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		uploadAvatarFn: func(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error) {
+			if currentUser.UUID != "U100" || targetUUID != "U100" {
+				t.Fatalf("unexpected upload target: current=%s target=%s", currentUser.UUID, targetUUID)
+			}
+			if header == nil || header.Filename != "avatar.png" {
+				t.Fatalf("unexpected file header: %+v", header)
+			}
+			return &model.User{UUID: "U100", Nickname: "Alice", Avatar: "/api/v1/users/U100/avatar"}, nil
+		},
+	})
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("avatar", "avatar.png")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := part.Write([]byte("avatar-bytes")); err != nil {
+		t.Fatalf("write form file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/users/U100/avatar", &body)
+	context.Request.Header.Set("Content-Type", writer.FormDataContentType())
+	context.Params = gin.Params{{Key: "uuid", Value: "U100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.UploadAvatar(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestUserHandlerGetAvatarRedirects(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
+			if targetUUID != "U100" {
+				t.Fatalf("unexpected target uuid: %s", targetUUID)
+			}
+			return &service.AvatarResponse{RedirectURL: "https://example.com/avatar.png"}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/users/U100/avatar", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "U100"}}
+
+	handler.GetAvatar(context)
+
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("expected status 302, got %d", recorder.Code)
+	}
+	if location := recorder.Header().Get("Location"); location != "https://example.com/avatar.png" {
+		t.Fatalf("unexpected redirect location: %s", location)
+	}
+}
+
+func TestUserHandlerGetAvatarStreamsContent(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewUserHandler(&stubUserService{
+		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
+			if targetUUID != "U100" {
+				t.Fatalf("unexpected target uuid: %s", targetUUID)
+			}
+			return &service.AvatarResponse{
+				ContentType: "image/png",
+				ContentSize: 6,
+				Content:     io.NopCloser(strings.NewReader("avatar")),
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/users/U100/avatar", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "U100"}}
+
+	handler.GetAvatar(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if body := recorder.Body.String(); body != "avatar" {
+		t.Fatalf("unexpected body: %s", body)
+	}
+	if contentType := recorder.Header().Get("Content-Type"); contentType != "image/png" {
+		t.Fatalf("unexpected content type: %s", contentType)
 	}
 }
 

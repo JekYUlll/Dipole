@@ -1,3 +1,7 @@
+// Package ratelimit implements a Redis-backed sliding-window counter rate limiter.
+// Each operation type (login, register, message send, file upload) has its own
+// key namespace and independently configured limit/window from config.yaml.
+// When Redis is unavailable all requests are allowed through (fail-open).
 package ratelimit
 
 import (
@@ -26,6 +30,14 @@ func NewLimiter() *Limiter {
 	}
 }
 
+func (l *Limiter) AllowRegister(identifier string) (bool, time.Duration) {
+	return l.allow(
+		registerRateKey(identifier),
+		l.config.RegisterLimit,
+		secondsToDuration(l.config.RegisterWindowSeconds),
+	)
+}
+
 func (l *Limiter) AllowLogin(identifier string) (bool, time.Duration) {
 	return l.allow(
 		loginRateKey(identifier),
@@ -50,6 +62,10 @@ func (l *Limiter) AllowFileUpload(userUUID string) (bool, time.Duration) {
 	)
 }
 
+// allow is the shared implementation for all rate-limit checks.
+// It uses INCR + EXPIRE to implement a fixed-window counter in Redis.
+// On the first increment the TTL is set, establishing the window boundary.
+// Returns (true, 0) when allowed, or (false, retryAfter) when the limit is exceeded.
 func (l *Limiter) allow(key string, limit int, window time.Duration) (bool, time.Duration) {
 	if l == nil || !l.config.Enabled || store.RDB == nil || limit <= 0 || window <= 0 {
 		return true, 0
@@ -88,6 +104,15 @@ func (l *Limiter) allow(key string, limit int, window time.Duration) (bool, time
 	}
 
 	return false, retryAfter
+}
+
+func registerRateKey(identifier string) string {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return ""
+	}
+
+	return "rate:register:" + identifier
 }
 
 func loginRateKey(identifier string) string {

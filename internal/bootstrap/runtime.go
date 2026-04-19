@@ -21,8 +21,9 @@ import (
 )
 
 type Runtime struct {
-	server *server.Server
-	router *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	server     *server.Server
+	router     *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	outboxFlow *outboxRelay
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -103,6 +104,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		zap.Int("user_count", userCount),
 		zap.Int("group_count", groupCount),
 	)
+	// 多节点部署时 bloom filter 是进程内状态，各节点独立维护，新注册用户只更新本节点内存。
+	// Kafka 启用即视为分布式模式，禁用 bloom filter 拦截，直接走 DB 保证正确性。
+	if kafkaCfg.Enabled {
+		platformBloom.SetDistributed(true)
+		logger.Info("bloom filter distributed mode enabled, local filter bypassed")
+	}
 
 	srv := server.New()
 
@@ -131,6 +138,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("kafka consumer start failed: %w", err)
 		}
 		logger.Info("kafka consumer started")
+	}
+	if kafkaCfg.Enabled && platformKafka.Client != nil {
+		rt.outboxFlow = newOutboxRelay(repository.NewOutboxRepository())
+		if rt.outboxFlow != nil {
+			rt.outboxFlow.Start()
+			logger.Info("outbox relay started")
+		}
 	}
 
 	return rt, nil
@@ -162,6 +176,9 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if r.outboxFlow != nil {
+		r.outboxFlow.Stop()
+	}
 	// Stop consumer first so in-flight retry/dead-letter publishes complete
 	// before the publisher is torn down.
 	if err := platformKafka.CloseConsumer(); err != nil {

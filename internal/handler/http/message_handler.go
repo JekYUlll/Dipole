@@ -17,6 +17,7 @@ import (
 type messageService interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
 	ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -76,13 +77,35 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
 		return
 	}
+	afterID, err := queryOptionalUint(c, "after_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
+		return
+	}
+	if beforeID > 0 && afterID > 0 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id and after_id cannot be used together")
+		return
+	}
 
-	messages, err := h.service.ListGroupMessages(
-		currentUser.UUID,
-		c.Param("group_uuid"),
-		beforeID,
-		queryInt(c, "limit"),
-	)
+	limit := queryInt(c, "limit")
+	var messages []*model.Message
+	if afterID > 0 {
+		// 热群 notify + pull 会走这一支：客户端记住最近一条已同步消息的自增 ID，
+		// 服务端按 after_id 做增量补拉，避免每次都回放整段历史。
+		messages, err = h.service.ListGroupMessagesAfter(
+			currentUser.UUID,
+			c.Param("group_uuid"),
+			afterID,
+			limit,
+		)
+	} else {
+		messages, err = h.service.ListGroupMessages(
+			currentUser.UUID,
+			c.Param("group_uuid"),
+			beforeID,
+			limit,
+		)
+	}
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrMessageTargetRequired):

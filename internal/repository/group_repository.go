@@ -30,7 +30,26 @@ func (r *GroupRepository) Create(group *model.Group, members []*model.GroupMembe
 		if len(members) == 0 {
 			return nil
 		}
-		if err := tx.Create(&members).Error; err != nil {
+
+		rows := make([]map[string]any, 0, len(members))
+		for _, member := range members {
+			if member == nil {
+				continue
+			}
+			rows = append(rows, map[string]any{
+				"group_uuid": member.GroupUUID,
+				"user_uuid":  member.UserUUID,
+				"role":       member.Role,
+				"joined_at":  member.JoinedAt,
+				"created_at": member.CreatedAt,
+				"updated_at": member.UpdatedAt,
+			})
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+
+		if err := tx.Table(model.GroupMember{}.TableName()).Create(rows).Error; err != nil {
 			return fmt.Errorf("create group members: %w", err)
 		}
 

@@ -14,14 +14,17 @@ var (
 	ErrConversationTargetRequired   = errors.New("conversation target is required")
 	ErrConversationTargetNotFound   = errors.New("conversation target not found")
 	ErrConversationPermissionDenied = errors.New("conversation permission denied")
+	ErrConversationRemarkTooLong    = errors.New("conversation remark is too long")
 )
 
 type conversationRepository interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
 	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
+	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
 }
 
 type conversationUserFinder interface {
@@ -83,6 +86,19 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 		return fmt.Errorf("upsert target direct conversation: %w", err)
 	}
 
+	return nil
+}
+
+// InitGroupConversations seeds an empty conversation row for every member of a newly created group.
+// Called from the Kafka group.created consumer so each member sees the group in their conversation list
+// even before the first message is sent.
+func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error {
+	conversationKey := "group:" + groupUUID
+	for _, userUUID := range memberUUIDs {
+		if err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt); err != nil {
+			return fmt.Errorf("init group conversation for user %s: %w", userUUID, err)
+		}
+	}
 	return nil
 }
 
@@ -196,6 +212,43 @@ func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID stri
 	}
 
 	return nil
+}
+
+func (s *ConversationService) UpdateGroupRemark(userUUID, groupUUID, remark string) (*model.Conversation, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrConversationTargetRequired
+	}
+	remark = strings.TrimSpace(remark)
+	if len([]rune(remark)) > 50 {
+		return nil, ErrConversationRemarkTooLong
+	}
+
+	group, err := s.groupRepo.GetByUUID(groupUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get group in update group remark: %w", err)
+	}
+	if group == nil || group.Status != model.GroupStatusNormal {
+		return nil, ErrConversationTargetNotFound
+	}
+	member, err := s.groupRepo.GetMember(groupUUID, userUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get group member in update group remark: %w", err)
+	}
+	if member == nil {
+		return nil, ErrConversationPermissionDenied
+	}
+
+	conversationKey := model.GroupConversationKey(groupUUID)
+	if err := s.repo.UpdateRemarkByConversationKey(userUUID, conversationKey, remark); err != nil {
+		return nil, fmt.Errorf("update group conversation remark: %w", err)
+	}
+
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return nil, fmt.Errorf("get group conversation after update remark: %w", err)
+	}
+	return conversation, nil
 }
 
 func buildConversationReadReceipt(readerUUID, targetUUID string, targetType int8, conversation *model.Conversation) *ConversationReadReceipt {

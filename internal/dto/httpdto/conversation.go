@@ -17,8 +17,13 @@ type ConversationResponse struct {
 	ConversationKey string                             `json:"conversation_key"`
 	TargetType      int8                               `json:"target_type"`
 	TargetUser      *PublicUserResponse                `json:"target_user,omitempty"`
+	Remark          string                             `json:"remark"`
 	LastMessage     ConversationMessageSummaryResponse `json:"last_message"`
 	UnreadCount     int                                `json:"unread_count"`
+}
+
+type UpdateConversationRemarkRequest struct {
+	Remark string `json:"remark" binding:"max=50"`
 }
 
 func ToConversationResponse(item *service.ConversationView) *ConversationResponse {
@@ -30,6 +35,7 @@ func ToConversationResponse(item *service.ConversationView) *ConversationRespons
 		ConversationKey: item.Conversation.ConversationKey,
 		TargetType:      item.Conversation.TargetType,
 		TargetUser:      ToPublicUserResponse(item.TargetUser),
+		Remark:          item.Conversation.Remark,
 		LastMessage: ConversationMessageSummaryResponse{
 			MessageID:   item.Conversation.LastMessageUUID,
 			MessageType: item.Conversation.LastMessageType,

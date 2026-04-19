@@ -17,9 +17,10 @@ import (
 )
 
 type stubMessageService struct {
-	listDirectFn  func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupFn   func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listOfflineFn func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listDirectFn     func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupFn      func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupAfterFn func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listOfflineFn    func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -36,6 +37,14 @@ func (s *stubMessageService) ListGroupMessages(currentUserUUID, groupUUID string
 	}
 
 	return s.listGroupFn(currentUserUUID, groupUUID, beforeID, limit)
+}
+
+func (s *stubMessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
+	if s.listGroupAfterFn == nil {
+		return nil, nil
+	}
+
+	return s.listGroupAfterFn(currentUserUUID, groupUUID, afterID, limit)
 }
 
 func (s *stubMessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -235,6 +244,49 @@ func TestMessageHandlerListGroupForbidden(t *testing.T) {
 
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestMessageHandlerListGroupAfterSuccess(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewMessageHandler(&stubMessageService{
+		listGroupAfterFn: func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
+			if currentUserUUID != "U100" || groupUUID != "G100" {
+				t.Fatalf("unexpected group query: %s %s", currentUserUUID, groupUUID)
+			}
+			if afterID != 30 {
+				t.Fatalf("unexpected after id: %d", afterID)
+			}
+			if limit != 15 {
+				t.Fatalf("unexpected limit: %d", limit)
+			}
+			return []*model.Message{
+				{
+					ID:          31,
+					UUID:        "M31",
+					SenderUUID:  "U200",
+					TargetUUID:  "G100",
+					TargetType:  model.MessageTargetGroup,
+					MessageType: model.MessageTypeText,
+					Content:     "new group message",
+					SentAt:      time.Now().UTC(),
+				},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/group/G100?after_id=30&limit=15", nil)
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListGroup(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 }
 
