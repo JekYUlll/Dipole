@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
@@ -30,6 +32,8 @@ var (
 
 type messageRepository interface {
 	Create(message *model.Message) error
+	StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error
+	EnsureOutbox(event *model.OutboxEvent) error
 	GetByUUID(uuid string) (*model.Message, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
@@ -449,14 +453,16 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		return nil, fmt.Errorf("message payload is nil")
 	}
 
-	created := true
-	if err := s.repo.Create(message); err != nil {
+	outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs)
+	if err != nil {
+		return nil, fmt.Errorf("build message created outbox event: %w", err)
+	}
+
+	if err := s.repo.StoreWithOutbox(message, outboxEvent); err != nil {
 		if !isDuplicateMessageError(err) {
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
 
-		// Message already persisted (Kafka at-least-once redelivery). Skip publishing
-		// message.created to avoid duplicate conversation updates and WS deliveries.
 		existing, findErr := s.repo.GetByUUID(message.UUID)
 		if findErr != nil {
 			return nil, fmt.Errorf("find duplicate message by uuid: %w", findErr)
@@ -465,12 +471,14 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 			return nil, fmt.Errorf("duplicate message %s not found after conflict", message.UUID)
 		}
 		message = existing
-		created = false
-	}
-
-	if created {
-		if err := s.publishMessageCreated(createdTopicForTargetType(message.TargetType), message, payload.RecipientUUIDs); err != nil {
-			return nil, err
+		outboxEvent, err = buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs)
+		if err != nil {
+			return nil, fmt.Errorf("rebuild message created outbox event: %w", err)
+		}
+		// Redelivery after a partial failure should still recreate the outbox row when it is missing.
+		// The unique key on (aggregate_type, aggregate_id, event_type) keeps this idempotent.
+		if err := s.repo.EnsureOutbox(outboxEvent); err != nil {
+			return nil, fmt.Errorf("ensure outbox for duplicate message: %w", err)
 		}
 	}
 
@@ -521,6 +529,48 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string) Mess
 		SentAt:          message.SentAt,
 		RecipientUUIDs:  recipientUUIDs,
 	}
+}
+
+func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []string) (*model.OutboxEvent, error) {
+	if message == nil {
+		return nil, nil
+	}
+
+	topic := createdTopicForTargetType(message.TargetType)
+	eventType := topic
+	payload := messageToEventPayload(message, recipientUUIDs)
+	envelope, err := platformKafka.NewEnvelope(eventType, payload)
+	if err != nil {
+		return nil, fmt.Errorf("create message created envelope: %w", err)
+	}
+
+	value, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshal message created envelope: %w", err)
+	}
+
+	headers, err := json.Marshal(map[string]string{
+		"event_type": envelope.EventType,
+		"version":    envelope.Version,
+		"source":     envelope.Source,
+		"event_id":   envelope.EventID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal outbox headers: %w", err)
+	}
+
+	now := time.Now().UTC()
+	return &model.OutboxEvent{
+		AggregateType: "message",
+		AggregateID:   message.UUID,
+		EventType:     eventType,
+		Topic:         topic,
+		MessageKey:    message.UUID,
+		Value:         value,
+		HeadersJSON:   headers,
+		Status:        model.OutboxStatusPending,
+		NextRetryAt:   &now,
+	}, nil
 }
 
 func payloadToMessage(payload MessageEventPayload) *model.Message {

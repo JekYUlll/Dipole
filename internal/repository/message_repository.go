@@ -25,6 +25,39 @@ func (r *MessageRepository) Create(message *model.Message) error {
 	return nil
 }
 
+func (r *MessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
+	if store.DB == nil {
+		return fmt.Errorf("store message with outbox: mysql not initialized")
+	}
+
+	outboxRepo := NewOutboxRepository()
+	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(message).Error; err != nil {
+			return fmt.Errorf("create message: %w", err)
+		}
+		if err := outboxRepo.Enqueue(tx, event); err != nil {
+			return fmt.Errorf("enqueue outbox event: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("store message with outbox: %w", err)
+	}
+
+	return nil
+}
+
+func (r *MessageRepository) EnsureOutbox(event *model.OutboxEvent) error {
+	if event == nil {
+		return nil
+	}
+
+	if err := NewOutboxRepository().Enqueue(nil, event); err != nil {
+		return fmt.Errorf("ensure outbox event: %w", err)
+	}
+
+	return nil
+}
+
 func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	var message model.Message
 	if err := store.DB.Where("uuid = ?", uuid).First(&message).Error; err != nil {

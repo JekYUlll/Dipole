@@ -21,8 +21,9 @@ import (
 )
 
 type Runtime struct {
-	server *server.Server
-	router *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	server     *server.Server
+	router     *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	outboxFlow *outboxRelay
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -138,6 +139,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		logger.Info("kafka consumer started")
 	}
+	if kafkaCfg.Enabled && platformKafka.Client != nil {
+		rt.outboxFlow = newOutboxRelay(repository.NewOutboxRepository())
+		if rt.outboxFlow != nil {
+			rt.outboxFlow.Start()
+			logger.Info("outbox relay started")
+		}
+	}
 
 	return rt, nil
 }
@@ -168,6 +176,9 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if r.outboxFlow != nil {
+		r.outboxFlow.Stop()
+	}
 	// Stop consumer first so in-flight retry/dead-letter publishes complete
 	// before the publisher is torn down.
 	if err := platformKafka.CloseConsumer(); err != nil {

@@ -16,8 +16,12 @@ import (
 type stubMessageRepository struct {
 	mu                  sync.Mutex
 	createErr           error
+	storeWithOutboxErr  error
+	ensureOutboxErr     error
 	listErr             error
 	createdMessages     []*model.Message
+	outboxEvents        []*model.OutboxEvent
+	ensuredOutboxEvents []*model.OutboxEvent
 	listMessages        []*model.Message
 	listAfterMessages   []*model.Message
 	offlineMessages     []*model.Message
@@ -56,6 +60,35 @@ func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	}
 
 	return r.messagesByUUID[uuid], nil
+}
+
+func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.storeWithOutboxErr != nil {
+		return r.storeWithOutboxErr
+	}
+
+	r.createdMessages = append(r.createdMessages, message)
+	if r.messagesByUUID == nil {
+		r.messagesByUUID = make(map[string]*model.Message)
+	}
+	r.messagesByUUID[message.UUID] = message
+	r.outboxEvents = append(r.outboxEvents, event)
+	return nil
+}
+
+func (r *stubMessageRepository) EnsureOutbox(event *model.OutboxEvent) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.ensureOutboxErr != nil {
+		return r.ensureOutboxErr
+	}
+
+	r.ensuredOutboxEvents = append(r.ensuredOutboxEvents, event)
+	return nil
 }
 
 func (r *stubMessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -798,7 +831,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	}
 }
 
-func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T) {
+func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubMessageRepository{}
@@ -823,12 +856,15 @@ func TestMessageServicePersistRequestedMessagePublishesCreatedEvent(t *testing.T
 	if len(repo.createdMessages) != 1 {
 		t.Fatalf("expected one persisted message, got %d", len(repo.createdMessages))
 	}
-	if len(publisher.topics) != 1 || publisher.topics[0] != "message.direct.created" {
-		t.Fatalf("expected created event, got %+v", publisher.topics)
+	if len(repo.outboxEvents) != 1 {
+		t.Fatalf("expected one outbox event, got %d", len(repo.outboxEvents))
+	}
+	if repo.outboxEvents[0].Topic != "message.direct.created" {
+		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
 	}
 }
 
-func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t *testing.T) {
+func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testing.T) {
 	t.Parallel()
 
 	existing := &model.Message{
@@ -841,7 +877,7 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		createErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: gorm.ErrDuplicatedKey,
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -867,9 +903,10 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageOnDuplicate(t
 	if len(repo.createdMessages) != 0 {
 		t.Fatalf("expected no new persisted messages, got %d", len(repo.createdMessages))
 	}
-	// Duplicate message: no message.created event should be published to avoid
-	// duplicate conversation updates and WS deliveries.
-	if len(publisher.topics) != 0 {
-		t.Fatalf("expected no events on duplicate, got %+v", publisher.topics)
+	if len(repo.ensuredOutboxEvents) != 1 {
+		t.Fatalf("expected one ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
+	}
+	if repo.ensuredOutboxEvents[0].Topic != "message.direct.created" {
+		t.Fatalf("expected ensured outbox topic message.direct.created, got %s", repo.ensuredOutboxEvents[0].Topic)
 	}
 }
