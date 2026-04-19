@@ -30,6 +30,7 @@ type UploadedObject struct {
 type Uploader interface {
 	UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*UploadedObject, error)
 	UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*UploadedObject, error)
+	UploadGroupAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, groupUUID string) (*UploadedObject, error)
 }
 
 type Downloader interface {
@@ -116,6 +117,12 @@ func (u *MinIOUploader) UploadMessageFile(ctx context.Context, file multipart.Fi
 func (u *MinIOUploader) UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*UploadedObject, error) {
 	return u.uploadObject(ctx, file, header, func(fileName string) string {
 		return buildAvatarObjectKey(strings.TrimSpace(userUUID), fileName)
+	})
+}
+
+func (u *MinIOUploader) UploadGroupAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, groupUUID string) (*UploadedObject, error) {
+	return u.uploadObject(ctx, file, header, func(fileName string) string {
+		return buildGroupAvatarObjectKey(strings.TrimSpace(groupUUID), fileName)
 	})
 }
 
@@ -220,6 +227,15 @@ func buildAvatarObjectKey(userUUID, fileName string) string {
 	}
 	datePath := time.Now().UTC().Format("2006/01/02")
 	return "avatars/" + datePath + "/" + userUUID + "-" + generateObjectID() + ext
+}
+
+func buildGroupAvatarObjectKey(groupUUID, fileName string) string {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	if groupUUID == "" {
+		groupUUID = "unknown-group"
+	}
+	datePath := time.Now().UTC().Format("2006/01/02")
+	return "group-avatars/" + datePath + "/" + groupUUID + "-" + generateObjectID() + ext
 }
 
 func generateObjectID() string {

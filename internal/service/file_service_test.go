@@ -52,6 +52,14 @@ func (u *stubUploader) UploadAvatar(ctx context.Context, file multipart.File, he
 	return u.uploadFn(ctx, file, header)
 }
 
+func (u *stubUploader) UploadGroupAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, groupUUID string) (*platformStorage.UploadedObject, error) {
+	_ = groupUUID
+	if u.uploadFn == nil {
+		return nil, errors.New("unexpected upload call")
+	}
+	return u.uploadFn(ctx, file, header)
+}
+
 func (u *stubUploader) PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error) {
 	if u.presignFn == nil {
 		return "", errors.New("unexpected presign call")

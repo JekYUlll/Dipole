@@ -131,6 +131,7 @@
       <template v-if="activeConv">
         <div class="chat-header">
           <span>{{ activeConvName }}</span>
+          <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情">ℹ️</button>
         </div>
 
@@ -184,19 +185,20 @@
 
         <div class="input-area">
           <div class="input-toolbar">
-            <label class="tool-btn" title="发送文件">
+            <label class="tool-btn" :class="{ disabled: isGroupDismissed }" :title="isGroupDismissed ? '群已解散，无法发送文件' : '发送文件'">
               📎
-              <input type="file" style="display:none" @change="uploadFile" />
+              <input type="file" style="display:none" :disabled="isGroupDismissed" @change="uploadFile" />
             </label>
           </div>
           <textarea
             v-model="inputText"
-            placeholder="输入消息..."
+            :disabled="isGroupDismissed"
+            :placeholder="isGroupDismissed ? '群已解散，仅可查看历史消息' : '输入消息...'"
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.enter.shift.exact="inputText += '\n'"
           />
           <div class="send-row">
-            <button class="send-btn" @click="sendMessage">发送</button>
+            <button class="send-btn" :disabled="isGroupDismissed" @click="sendMessage">发送</button>
           </div>
         </div>
       </template>
@@ -216,6 +218,24 @@
         <div class="detail-name">{{ convName(activeConv) }}</div>
         <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
         <div class="detail-meta">成员数: {{ groupFromConv(activeConv)?.member_count ?? '—' }}</div>
+        <div class="detail-meta">状态: {{ isGroupDismissed ? '已解散' : '正常' }}</div>
+        <div v-if="isGroupOwner" class="detail-edit">
+          <label class="detail-edit-label">群名称</label>
+          <input
+            v-model="groupNameDraft"
+            class="detail-edit-input"
+            :disabled="isGroupDismissed"
+            placeholder="设置群名称"
+            maxlength="50"
+          />
+          <button class="detail-edit-btn" :disabled="isGroupDismissed" @click="saveGroupProfile">保存群资料</button>
+          <input ref="groupAvatarInputRef" type="file" accept="image/*" style="display:none" @change="handleGroupAvatarSelected" />
+          <button class="detail-edit-btn secondary" :disabled="isGroupDismissed" @click="chooseGroupAvatar">选择群头像</button>
+          <div v-if="selectedGroupAvatarName" class="profile-file-name">已选择：{{ selectedGroupAvatarName }}</div>
+          <button class="detail-edit-btn" :disabled="isGroupDismissed || !selectedGroupAvatarFile || uploadingGroupAvatar" @click="uploadGroupAvatar">
+            {{ uploadingGroupAvatar ? '上传中...' : '上传群头像' }}
+          </button>
+        </div>
         <div class="detail-edit">
           <label class="detail-edit-label">群备注</label>
           <input v-model="groupRemarkDraft" class="detail-edit-input" placeholder="设置当前群显示名称" maxlength="50" />
@@ -239,11 +259,12 @@
             <div v-if="m.role === 0" class="member-role-badge">主</div>
           </div>
           <!-- 邀请按钮格子（群主可见） -->
-          <div v-if="isGroupOwner" class="member-grid-item" @click="openInviteMembers">
+          <div v-if="isGroupOwner && !isGroupDismissed" class="member-grid-item" @click="openInviteMembers">
             <div class="member-grid-avatar member-grid-add">+</div>
             <div class="member-grid-name">邀请</div>
           </div>
         </div>
+        <button v-if="isGroupOwner && !isGroupDismissed" class="danger-btn" @click="dismissGroup">解散群</button>
       </template>
       <template v-else-if="activeConv.target_user">
         <div class="detail-avatar">
@@ -426,6 +447,11 @@ const viewedUser = ref<PublicUser | null>(null)
 const viewedUserRemark = ref('')
 const savingUserRemark = ref(false)
 const groupRemarkDraft = ref('')
+const groupNameDraft = ref('')
+const groupAvatarInputRef = ref<HTMLInputElement | null>(null)
+const selectedGroupAvatarFile = ref<File | null>(null)
+const selectedGroupAvatarName = ref('')
+const uploadingGroupAvatar = ref(false)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -530,6 +556,12 @@ const isGroupOwner = computed(() => {
   return group.owner?.uuid === auth.currentUser?.uuid
 })
 
+const isGroupDismissed = computed(() => {
+  const conv = activeConv.value
+  if (!conv || conv.target_type !== 1) return false
+  return groupFromConv(conv)?.status === 1
+})
+
 const currentMessages = computed(() =>
   chat.messageMap.get(chat.activeKey) ?? []
 )
@@ -617,6 +649,7 @@ const selectConversation = async (conv: Conversation) => {
   showDetail.value = false
   if (conv.target_type === 1) {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
+    await chat.fetchGroup(groupUUID).catch(() => {})
     await chat.fetchGroupMessages(groupUUID)
   } else if (conv.target_user) {
     await chat.fetchDirectMessages(conv.target_user.uuid)
@@ -627,6 +660,7 @@ const selectConversation = async (conv: Conversation) => {
 
 const sendMessage = () => {
   if (!inputText.value.trim() || !activeConv.value) return
+  if (isGroupDismissed.value) return
   const conv = activeConv.value
   if (conv.target_type === 1) {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
@@ -640,6 +674,7 @@ const sendMessage = () => {
 const uploadFile = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !activeConv.value) return
+  if (isGroupDismissed.value) return
   const conv = activeConv.value
   const targetUUID = conv.target_type === 1
     ? (conv.target_group?.uuid ?? conv.conversation_key.replace('group:', ''))
@@ -919,6 +954,7 @@ const openInviteMembers = () => {
 
 const inviteMembers = async () => {
   if (!activeConv.value || inviteSelected.value.length === 0) return
+  if (isGroupDismissed.value) return
   const groupUUID = activeConv.value.conversation_key.replace('group:', '')
   try {
     await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/members`, { member_uuids: inviteSelected.value })
@@ -927,6 +963,61 @@ const inviteMembers = async () => {
     await chat.fetchGroup(groupUUID)
   } catch (e: any) {
     alert(e?.message || '邀请失败')
+  }
+}
+
+const saveGroupProfile = async () => {
+  if (!activeConv.value || activeConv.value.target_type !== 1 || !isGroupOwner.value || isGroupDismissed.value) return
+  const groupUUID = activeConv.value.conversation_key.replace('group:', '')
+  try {
+    await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/update`, {
+      name: groupNameDraft.value.trim(),
+    })
+    await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
+  } catch (e: any) {
+    alert(e?.message || '群资料保存失败')
+  }
+}
+
+const chooseGroupAvatar = () => {
+  groupAvatarInputRef.value?.click()
+}
+
+const handleGroupAvatarSelected = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0] ?? null
+  selectedGroupAvatarFile.value = file
+  selectedGroupAvatarName.value = file?.name ?? ''
+}
+
+const uploadGroupAvatar = async () => {
+  if (!activeConv.value || activeConv.value.target_type !== 1 || !selectedGroupAvatarFile.value || isGroupDismissed.value) return
+  const groupUUID = activeConv.value.conversation_key.replace('group:', '')
+  const formData = new FormData()
+  formData.append('avatar', selectedGroupAvatarFile.value)
+  uploadingGroupAvatar.value = true
+  try {
+    await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/avatar`, formData)
+    await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
+    selectedGroupAvatarFile.value = null
+    selectedGroupAvatarName.value = ''
+    if (groupAvatarInputRef.value) groupAvatarInputRef.value.value = ''
+  } catch (e: any) {
+    alert(e?.message || '群头像上传失败')
+  } finally {
+    uploadingGroupAvatar.value = false
+  }
+}
+
+const dismissGroup = async () => {
+  if (!activeConv.value || activeConv.value.target_type !== 1 || !isGroupOwner.value || isGroupDismissed.value) return
+  const groupUUID = activeConv.value.conversation_key.replace('group:', '')
+  const confirmed = window.confirm('解散后群聊将进入只读状态，成员只能查看历史消息。确认解散吗？')
+  if (!confirmed) return
+  try {
+    await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/dismiss`)
+    await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
+  } catch (e: any) {
+    alert(e?.message || '解散群失败')
   }
 }
 
@@ -1027,8 +1118,11 @@ watch(currentMessages, () => nextTick(scrollToBottom))
 watch(() => activeConv.value?.conversation_key, () => {
   if (activeConv.value?.target_type === 1) {
     groupRemarkDraft.value = activeConv.value.remark || ''
+    const group = groupFromConv(activeConv.value)
+    groupNameDraft.value = group?.name || ''
   } else {
     groupRemarkDraft.value = ''
+    groupNameDraft.value = ''
   }
 })
 </script>
@@ -1346,6 +1440,20 @@ watch(() => activeConv.value?.conversation_key, () => {
   flex-shrink: 0;
 }
 
+.status-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e8eefc;
+  color: #3d7eff;
+}
+
+.status-chip.danger {
+  background: #fdeaea;
+  color: #c53b3b;
+}
+
 .detail-toggle {
   background: none;
   border: none;
@@ -1511,6 +1619,11 @@ watch(() => activeConv.value?.conversation_key, () => {
   opacity: 1;
 }
 
+.tool-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .input-area textarea {
   flex: 1;
   border: none;
@@ -1521,6 +1634,11 @@ watch(() => activeConv.value?.conversation_key, () => {
   font-family: inherit;
   background: #fff;
   min-height: 60px;
+}
+
+.input-area textarea:disabled {
+  background: #f5f5f5;
+  color: #888;
 }
 
 .send-row {
@@ -1543,6 +1661,11 @@ watch(() => activeConv.value?.conversation_key, () => {
 
 .send-btn:hover {
   background: #06ad56;
+}
+
+.send-btn:disabled {
+  background: #b8c1cc;
+  cursor: not-allowed;
 }
 
 /* Empty state */
@@ -1646,6 +1769,30 @@ watch(() => activeConv.value?.conversation_key, () => {
   background: #3d7eff;
   color: #fff;
   cursor: pointer;
+}
+
+.detail-edit-btn.secondary {
+  background: #7b8794;
+}
+
+.detail-edit-btn:disabled {
+  background: #c8ced6;
+  cursor: not-allowed;
+}
+
+.danger-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: #df4c4c;
+  color: #fff;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: #c63f3f;
 }
 
 /* Panel list (shared by all tabs) */

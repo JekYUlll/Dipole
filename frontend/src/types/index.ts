@@ -36,6 +36,7 @@ export interface Group {
   remark?: string
   notice: string
   avatar: string
+  status: number
   is_hot?: boolean
   recent_message_count?: number
   owner?: PublicUser

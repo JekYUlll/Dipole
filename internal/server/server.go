@@ -78,7 +78,12 @@ func New() *Server {
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
+		fileRepo,
+		platformStorage.Client,
+		5*1024*1024,
+		10*time.Minute,
+	)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
@@ -93,7 +98,7 @@ func New() *Server {
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
-	groupHandler := httpHandler.NewGroupHandler(groupService)
+	groupHandler := httpHandler.NewGroupHandler(groupService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageService)
@@ -112,6 +117,7 @@ func New() *Server {
 		}
 
 		v1.GET("/users/:uuid/avatar", userHandler.GetAvatar)
+		v1.GET("/groups/:uuid/avatar", groupHandler.GetAvatar)
 
 		protected := v1.Group("")
 		protected.Use(authRequired)
@@ -133,6 +139,7 @@ func New() *Server {
 			protected.GET("/groups/:uuid/members", groupHandler.ListMembers)
 			protected.POST("/groups/:uuid/members", groupHandler.AddMembers)
 			protected.POST("/groups/:uuid/update", groupHandler.Update)
+			protected.POST("/groups/:uuid/avatar", groupHandler.UploadAvatar)
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)

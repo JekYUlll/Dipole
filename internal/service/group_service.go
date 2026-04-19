@@ -6,26 +6,35 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 
 var (
-	ErrGroupNameRequired         = errors.New("group name is required")
-	ErrGroupNameTooLong          = errors.New("group name is too long")
-	ErrGroupNoticeTooLong        = errors.New("group notice is too long")
-	ErrGroupAvatarTooLong        = errors.New("group avatar is too long")
-	ErrGroupEmptyUpdate          = errors.New("group update is empty")
-	ErrGroupNotFound             = errors.New("group not found")
-	ErrGroupPermissionDenied     = errors.New("group permission denied")
-	ErrGroupMemberRequired       = errors.New("group member is required")
-	ErrGroupMemberUnavailable    = errors.New("group member is unavailable")
-	ErrGroupMemberAlreadyIn      = errors.New("group member already exists")
-	ErrGroupOwnerCannotLeave     = errors.New("group owner cannot leave")
-	ErrGroupOwnerCannotBeRemoved = errors.New("group owner cannot be removed")
+	ErrGroupNameRequired             = errors.New("group name is required")
+	ErrGroupNameTooLong              = errors.New("group name is too long")
+	ErrGroupNoticeTooLong            = errors.New("group notice is too long")
+	ErrGroupAvatarTooLong            = errors.New("group avatar is too long")
+	ErrGroupEmptyUpdate              = errors.New("group update is empty")
+	ErrGroupNotFound                 = errors.New("group not found")
+	ErrGroupDismissed                = errors.New("group dismissed")
+	ErrGroupPermissionDenied         = errors.New("group permission denied")
+	ErrGroupMemberRequired           = errors.New("group member is required")
+	ErrGroupMemberUnavailable        = errors.New("group member is unavailable")
+	ErrGroupMemberAlreadyIn          = errors.New("group member already exists")
+	ErrGroupOwnerCannotLeave         = errors.New("group owner cannot leave")
+	ErrGroupOwnerCannotBeRemoved     = errors.New("group owner cannot be removed")
+	ErrGroupAvatarMissing            = errors.New("group avatar is missing")
+	ErrGroupAvatarInvalid            = errors.New("group avatar is invalid")
+	ErrGroupAvatarTooLarge           = errors.New("group avatar is too large")
+	ErrGroupAvatarStorageUnavailable = errors.New("group avatar storage is unavailable")
 )
 
 type groupRepository interface {
@@ -42,6 +51,25 @@ type groupRepository interface {
 type groupUserFinder interface {
 	GetByUUID(uuid string) (*model.User, error)
 	ListByUUIDs(uuids []string) ([]*model.User, error)
+}
+
+type groupAvatarFileRepository interface {
+	Create(file *model.UploadedFile) error
+	GetByUUID(uuid string) (*model.UploadedFile, error)
+}
+
+type groupAvatarStorage interface {
+	UploadGroupAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, groupUUID string) (*platformStorage.UploadedObject, error)
+	PresignDownloadURL(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
+	OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error)
+}
+
+type GroupAvatarResponse struct {
+	RedirectURL string
+	ContentType string
+	ContentSize int64
+	Content     io.ReadCloser
+	Cleanup     func()
 }
 
 type CreateGroupInput struct {
@@ -72,10 +100,14 @@ type GroupMemberView struct {
 }
 
 type GroupService struct {
-	repo       groupRepository
-	userFinder groupUserFinder
-	events     eventPublisher
-	hotGroups  groupHeatReader
+	repo           groupRepository
+	userFinder     groupUserFinder
+	events         eventPublisher
+	hotGroups      groupHeatReader
+	fileRepo       groupAvatarFileRepository
+	storage        groupAvatarStorage
+	avatarMaxBytes int64
+	avatarURLTTL   time.Duration
 }
 
 type groupHeatReader interface {
@@ -96,11 +128,25 @@ type GroupEventPayload struct {
 
 func NewGroupService(repo groupRepository, userFinder groupUserFinder, events eventPublisher, hotGroups groupHeatReader) *GroupService {
 	return &GroupService{
-		repo:       repo,
-		userFinder: userFinder,
-		events:     events,
-		hotGroups:  hotGroups,
+		repo:           repo,
+		userFinder:     userFinder,
+		events:         events,
+		hotGroups:      hotGroups,
+		avatarMaxBytes: 5 * 1024 * 1024,
+		avatarURLTTL:   10 * time.Minute,
 	}
+}
+
+func (s *GroupService) WithAvatarStorage(fileRepo groupAvatarFileRepository, storage groupAvatarStorage, maxBytes int64, urlTTL time.Duration) *GroupService {
+	s.fileRepo = fileRepo
+	s.storage = storage
+	if maxBytes > 0 {
+		s.avatarMaxBytes = maxBytes
+	}
+	if urlTTL > 0 {
+		s.avatarURLTTL = urlTTL
+	}
+	return s
 }
 
 func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInput) (*GroupView, error) {
@@ -200,7 +246,7 @@ func (s *GroupService) CreateGroup(currentUserUUID string, input CreateGroupInpu
 }
 
 func (s *GroupService) GetGroup(currentUserUUID, groupUUID string) (*GroupView, error) {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadReadableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +293,7 @@ func (s *GroupService) GetGroup(currentUserUUID, groupUUID string) (*GroupView, 
 }
 
 func (s *GroupService) ListMembers(currentUserUUID, groupUUID string) ([]*GroupMemberView, error) {
-	_, _, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	_, _, err := s.loadReadableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +341,7 @@ func (s *GroupService) groupHeatStatus(group *model.Group) (platformHotGroup.Sta
 }
 
 func (s *GroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*GroupMemberView, error) {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +413,7 @@ func (s *GroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs
 }
 
 func (s *GroupService) LeaveGroup(currentUserUUID, groupUUID string) error {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return err
 	}
@@ -382,7 +428,7 @@ func (s *GroupService) LeaveGroup(currentUserUUID, groupUUID string) error {
 }
 
 func (s *GroupService) UpdateGroup(currentUserUUID, groupUUID string, input UpdateGroupInput) (*GroupView, error) {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -444,8 +490,134 @@ func (s *GroupService) UpdateGroup(currentUserUUID, groupUUID string, input Upda
 	}, nil
 }
 
+func (s *GroupService) UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*GroupView, error) {
+	if header == nil {
+		return nil, ErrGroupAvatarMissing
+	}
+	if s.storage == nil || s.fileRepo == nil {
+		return nil, ErrGroupAvatarStorageUnavailable
+	}
+	if s.avatarMaxBytes > 0 && header.Size > s.avatarMaxBytes {
+		return nil, ErrGroupAvatarTooLarge
+	}
+	if !isSupportedGroupAvatarHeader(header) {
+		return nil, ErrGroupAvatarInvalid
+	}
+
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
+	if err != nil {
+		return nil, err
+	}
+	if currentMember.Role != model.GroupMemberRoleOwner {
+		return nil, ErrGroupPermissionDenied
+	}
+
+	file, err := header.Open()
+	if err != nil {
+		return nil, fmt.Errorf("open group avatar file: %w", err)
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	uploaded, err := s.storage.UploadGroupAvatar(ctx, file, header, group.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("upload group avatar: %w", err)
+	}
+
+	record := &model.UploadedFile{
+		UUID:         generateGroupAvatarFileUUID(),
+		UploaderUUID: currentUserUUID,
+		Bucket:       uploaded.Bucket,
+		ObjectKey:    uploaded.ObjectKey,
+		FileName:     uploaded.FileName,
+		FileSize:     uploaded.FileSize,
+		ContentType:  uploaded.ContentType,
+		URL:          uploaded.URL,
+	}
+	if err := s.fileRepo.Create(record); err != nil {
+		return nil, fmt.Errorf("persist group avatar file: %w", err)
+	}
+
+	group.Avatar = buildGroupAvatarPath(group.UUID)
+	group.AvatarFileUUID = record.UUID
+	group.UpdatedAt = time.Now().UTC()
+	if err := s.repo.Update(group); err != nil {
+		return nil, fmt.Errorf("update group avatar: %w", err)
+	}
+
+	recipients, err := s.listMemberUUIDs(group.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("list members after update group avatar: %w", err)
+	}
+	s.publishGroupEvent("group.updated", group.UUID, GroupEventPayload{
+		GroupUUID:      group.UUID,
+		Name:           group.Name,
+		Notice:         group.Notice,
+		Avatar:         group.Avatar,
+		OperatorUUID:   currentUserUUID,
+		RecipientUUIDs: recipients,
+		OccurredAt:     group.UpdatedAt,
+	})
+
+	owner, err := s.userFinder.GetByUUID(group.OwnerUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get group owner after avatar update: %w", err)
+	}
+
+	return &GroupView{
+		Group:  group,
+		Owner:  owner,
+		MeRole: currentMember.Role,
+	}, nil
+}
+
+func (s *GroupService) GetAvatarResponse(groupUUID string) (*GroupAvatarResponse, error) {
+	group, err := s.repo.GetByUUID(strings.TrimSpace(groupUUID))
+	if err != nil {
+		return nil, fmt.Errorf("get group for avatar: %w", err)
+	}
+	if group == nil {
+		return nil, ErrGroupNotFound
+	}
+	if strings.TrimSpace(group.AvatarFileUUID) == "" {
+		if strings.TrimSpace(group.Avatar) == "" {
+			return nil, ErrGroupAvatarMissing
+		}
+		return &GroupAvatarResponse{RedirectURL: group.Avatar}, nil
+	}
+	if s.storage == nil || s.fileRepo == nil {
+		return nil, ErrGroupAvatarStorageUnavailable
+	}
+
+	record, err := s.fileRepo.GetByUUID(group.AvatarFileUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get group avatar file: %w", err)
+	}
+	if record == nil {
+		return nil, ErrGroupAvatarMissing
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	content, err := s.storage.OpenObject(ctx, record.Bucket, record.ObjectKey)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("open group avatar object: %w", err)
+	}
+
+	return &GroupAvatarResponse{
+		ContentType: record.ContentType,
+		ContentSize: record.FileSize,
+		Content:     content,
+		Cleanup: func() {
+			cancel()
+		},
+	}, nil
+}
+
 func (s *GroupService) RemoveMembers(currentUserUUID, groupUUID string, memberUUIDs []string) error {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return err
 	}
@@ -489,7 +661,7 @@ func (s *GroupService) RemoveMembers(currentUserUUID, groupUUID string, memberUU
 }
 
 func (s *GroupService) DismissGroup(currentUserUUID, groupUUID string) error {
-	group, currentMember, err := s.loadAccessibleGroup(currentUserUUID, groupUUID)
+	group, currentMember, err := s.loadWritableGroup(currentUserUUID, groupUUID)
 	if err != nil {
 		return err
 	}
@@ -536,13 +708,17 @@ func (s *GroupService) listMemberUUIDs(groupUUID string) ([]string, error) {
 	return extractMemberUUIDs(members), nil
 }
 
-func (s *GroupService) loadAccessibleGroup(currentUserUUID, groupUUID string) (*model.Group, *model.GroupMember, error) {
+// 软解散后的群仍然允许成员读取资料和历史，因此读路径允许 normal/dismissed 两种状态。
+func (s *GroupService) loadReadableGroup(currentUserUUID, groupUUID string) (*model.Group, *model.GroupMember, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	group, err := s.repo.GetByUUID(groupUUID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get group: %w", err)
 	}
-	if group == nil || group.Status != model.GroupStatusNormal {
+	if group == nil {
+		return nil, nil, ErrGroupNotFound
+	}
+	if group.Status != model.GroupStatusNormal && group.Status != model.GroupStatusDismissed {
 		return nil, nil, ErrGroupNotFound
 	}
 	currentMember, err := s.repo.GetMember(groupUUID, strings.TrimSpace(currentUserUUID))
@@ -554,6 +730,18 @@ func (s *GroupService) loadAccessibleGroup(currentUserUUID, groupUUID string) (*
 	}
 	if strings.TrimSpace(group.OwnerUUID) == strings.TrimSpace(currentUserUUID) {
 		currentMember.Role = model.GroupMemberRoleOwner
+	}
+
+	return group, currentMember, nil
+}
+
+func (s *GroupService) loadWritableGroup(currentUserUUID, groupUUID string) (*model.Group, *model.GroupMember, error) {
+	group, currentMember, err := s.loadReadableGroup(currentUserUUID, groupUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if group.Status == model.GroupStatusDismissed {
+		return nil, nil, ErrGroupDismissed
 	}
 
 	return group, currentMember, nil
@@ -622,4 +810,39 @@ func generateGroupUUID() string {
 	}
 
 	return "G" + strings.ToUpper(hex.EncodeToString(buf))
+}
+
+func generateGroupAvatarFileUUID() string {
+	buf := make([]byte, 10)
+	if _, err := rand.Read(buf); err != nil {
+		panic(fmt.Errorf("generate group avatar file uuid: %w", err))
+	}
+
+	return "F" + strings.ToUpper(hex.EncodeToString(buf))
+}
+
+func buildGroupAvatarPath(groupUUID string) string {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return ""
+	}
+	return "/api/v1/groups/" + groupUUID + "/avatar"
+}
+
+func isSupportedGroupAvatarHeader(header *multipart.FileHeader) bool {
+	if header == nil {
+		return false
+	}
+	contentType := strings.ToLower(strings.TrimSpace(header.Header.Get("Content-Type")))
+	if strings.HasPrefix(contentType, "image/") {
+		return true
+	}
+
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(header.Filename)))
+	switch ext {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
+		return true
+	default:
+		return false
+	}
 }
