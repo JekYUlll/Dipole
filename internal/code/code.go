@@ -67,28 +67,35 @@ const (
 )
 
 const (
-	GroupNameRequired         int = 100600
-	GroupNameTooLong          int = 100601
-	GroupNoticeTooLong        int = 100602
-	GroupAvatarTooLong        int = 100603
-	GroupNotFound             int = 100604
-	GroupPermissionDenied     int = 100605
-	GroupMemberRequired       int = 100606
-	GroupMemberUnavailable    int = 100607
-	GroupMemberAlreadyIn      int = 100608
-	GroupOwnerCannotLeave     int = 100609
-	GroupEmptyUpdate          int = 100610
-	GroupOwnerCannotBeRemoved int = 100611
+	GroupNameRequired             int = 100600
+	GroupNameTooLong              int = 100601
+	GroupNoticeTooLong            int = 100602
+	GroupAvatarTooLong            int = 100603
+	GroupNotFound                 int = 100604
+	GroupPermissionDenied         int = 100605
+	GroupMemberRequired           int = 100606
+	GroupMemberUnavailable        int = 100607
+	GroupMemberAlreadyIn          int = 100608
+	GroupOwnerCannotLeave         int = 100609
+	GroupEmptyUpdate              int = 100610
+	GroupOwnerCannotBeRemoved     int = 100611
+	GroupDismissed                int = 100612
+	GroupAvatarInvalid            int = 100613
+	GroupAvatarTooLarge           int = 100614
+	GroupAvatarStorageUnavailable int = 100615
 )
 
 const (
-	FileMissing            int = 100700
-	FileTooLarge           int = 100701
-	FileStorageUnavailable int = 100702
-	FileUploadRateLimited  int = 100703
-	FileNotFound           int = 100704
-	FilePermissionDenied   int = 100705
-	FileExpired            int = 100706
+	FileMissing                  int = 100700
+	FileTooLarge                 int = 100701
+	FileStorageUnavailable       int = 100702
+	FileUploadRateLimited        int = 100703
+	FileNotFound                 int = 100704
+	FilePermissionDenied         int = 100705
+	FileExpired                  int = 100706
+	FileMultipartSessionNotFound int = 100707
+	FileMultipartSessionInvalid  int = 100708
+	FileMultipartPartInvalid     int = 100709
 )
 
 const (

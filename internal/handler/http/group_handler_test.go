@@ -1,6 +1,8 @@
 package http
 
 import (
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,10 +18,12 @@ import (
 type stubGroupService struct {
 	createGroupFn   func(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error)
 	getGroupFn      func(currentUserUUID, groupUUID string) (*service.GroupView, error)
+	getAvatarFn     func(groupUUID string) (*service.GroupAvatarResponse, error)
 	listMembersFn   func(currentUserUUID, groupUUID string) ([]*service.GroupMemberView, error)
 	addMembersFn    func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error)
 	leaveGroupFn    func(currentUserUUID, groupUUID string) error
 	updateGroupFn   func(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error)
+	uploadAvatarFn  func(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*service.GroupView, error)
 	removeMembersFn func(currentUserUUID, groupUUID string, memberUUIDs []string) error
 	dismissGroupFn  func(currentUserUUID, groupUUID string) error
 }
@@ -30,6 +34,10 @@ func (s *stubGroupService) CreateGroup(currentUserUUID string, input service.Cre
 
 func (s *stubGroupService) GetGroup(currentUserUUID, groupUUID string) (*service.GroupView, error) {
 	return s.getGroupFn(currentUserUUID, groupUUID)
+}
+
+func (s *stubGroupService) GetAvatarResponse(groupUUID string) (*service.GroupAvatarResponse, error) {
+	return s.getAvatarFn(groupUUID)
 }
 
 func (s *stubGroupService) ListMembers(currentUserUUID, groupUUID string) ([]*service.GroupMemberView, error) {
@@ -46,6 +54,10 @@ func (s *stubGroupService) LeaveGroup(currentUserUUID, groupUUID string) error {
 
 func (s *stubGroupService) UpdateGroup(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error) {
 	return s.updateGroupFn(currentUserUUID, groupUUID, input)
+}
+
+func (s *stubGroupService) UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*service.GroupView, error) {
+	return s.uploadAvatarFn(currentUserUUID, groupUUID, header)
 }
 
 func (s *stubGroupService) RemoveMembers(currentUserUUID, groupUUID string, memberUUIDs []string) error {
@@ -223,5 +235,54 @@ func TestGroupHandlerDismissSuccess(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerGetAvatarStreamsContent(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewGroupHandler(&stubGroupService{
+		getAvatarFn: func(groupUUID string) (*service.GroupAvatarResponse, error) {
+			return &service.GroupAvatarResponse{
+				ContentType: "image/png",
+				ContentSize: 4,
+				Content:     io.NopCloser(strings.NewReader("data")),
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/groups/G100/avatar", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+
+	handler.GetAvatar(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerDismissConflictWhenAlreadyDismissed(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	handler := NewGroupHandler(&stubGroupService{
+		dismissGroupFn: func(currentUserUUID, groupUUID string) error {
+			return service.ErrGroupDismissed
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/dismiss", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Dismiss(context)
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d", recorder.Code)
 	}
 }

@@ -66,17 +66,19 @@ type Kafka struct {
 }
 
 type Storage struct {
-	Enabled               bool   `mapstructure:"enabled"`
-	Provider              string `mapstructure:"provider"`
-	Endpoint              string `mapstructure:"endpoint"`
-	PresignEndpoint       string `mapstructure:"presign_endpoint"`
-	AccessKey             string `mapstructure:"access_key"`
-	SecretKey             string `mapstructure:"secret_key"`
-	UseSSL                bool   `mapstructure:"use_ssl"`
-	Bucket                string `mapstructure:"bucket"`
-	PublicBaseURL         string `mapstructure:"public_base_url"`
-	FileMaxSizeMB         int64  `mapstructure:"file_max_size_mb"`
-	DownloadURLTTLMinutes int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                bool   `mapstructure:"enabled"`
+	Provider               string `mapstructure:"provider"`
+	Endpoint               string `mapstructure:"endpoint"`
+	PresignEndpoint        string `mapstructure:"presign_endpoint"`
+	AccessKey              string `mapstructure:"access_key"`
+	SecretKey              string `mapstructure:"secret_key"`
+	UseSSL                 bool   `mapstructure:"use_ssl"`
+	Bucket                 string `mapstructure:"bucket"`
+	PublicBaseURL          string `mapstructure:"public_base_url"`
+	FileMaxSizeMB          int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB   int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin int    `mapstructure:"multipart_session_ttl_minutes"`
+	DownloadURLTTLMinutes  int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -181,6 +183,8 @@ func Load() error {
 		v.SetDefault("storage.bucket", "dipole-files")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
+		v.SetDefault("storage.multipart_chunk_size_mb", 5)
+		v.SetDefault("storage.multipart_session_ttl_minutes", 60)
 		v.SetDefault("storage.download_url_ttl_minutes", 10)
 		v.SetDefault("rate_limit.enabled", true)
 		v.SetDefault("rate_limit.register_limit", 5)

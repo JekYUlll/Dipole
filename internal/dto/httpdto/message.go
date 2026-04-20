@@ -18,6 +18,7 @@ type MessageResponse struct {
 	FileName      string     `json:"file_name,omitempty"`
 	FileSize      int64      `json:"file_size,omitempty"`
 	DownloadPath  string     `json:"download_path,omitempty"`
+	ContentPath   string     `json:"content_path,omitempty"`
 	ContentType   string     `json:"content_type,omitempty"`
 	FileExpiresAt *time.Time `json:"file_expires_at,omitempty"`
 	SentAt        time.Time  `json:"sent_at"`
@@ -40,6 +41,7 @@ func ToMessageResponse(message *model.Message) *MessageResponse {
 		FileName:      message.FileName,
 		FileSize:      message.FileSize,
 		DownloadPath:  fileDownloadPathForMessage(message),
+		ContentPath:   fileContentPathForMessage(message),
 		ContentType:   message.FileContentType,
 		FileExpiresAt: message.FileExpiresAt,
 		SentAt:        message.SentAt,
@@ -61,4 +63,12 @@ func fileDownloadPathForMessage(message *model.Message) string {
 	}
 
 	return FileDownloadPath(message.FileID)
+}
+
+func fileContentPathForMessage(message *model.Message) string {
+	if message == nil || message.MessageType != model.MessageTypeFile || message.FileID == "" {
+		return ""
+	}
+
+	return FileContentPath(message.FileID)
 }

@@ -585,6 +585,34 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceListGroupMessagesAllowsDismissedGroup(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{
+			{ID: 10, UUID: "M10", TargetType: model.MessageTargetGroup},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusDismissed},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, nil)
+
+	messages, err := service.ListGroupMessages("U100", "G100", 15, 10)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(messages))
+	}
+}
+
 func TestMessageServiceListGroupMessagesAfterSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -616,6 +644,26 @@ func TestMessageServiceListGroupMessagesAfterSuccess(t *testing.T) {
 	}
 	if repo.lastAfterID != 10 {
 		t.Fatalf("expected after id 10, got %d", repo.lastAfterID)
+	}
+}
+
+func TestMessageServiceSendGroupMessageRejectsDismissedGroup(t *testing.T) {
+	t.Parallel()
+
+	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusDismissed},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, nil)
+
+	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
+	if !errors.Is(err, ErrMessageTargetNotFound) {
+		t.Fatalf("expected ErrMessageTargetNotFound, got %v", err)
 	}
 }
 

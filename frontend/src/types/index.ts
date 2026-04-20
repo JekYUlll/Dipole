@@ -36,6 +36,7 @@ export interface Group {
   remark?: string
   notice: string
   avatar: string
+  status: number
   is_hot?: boolean
   recent_message_count?: number
   owner?: PublicUser
@@ -55,6 +56,7 @@ export interface FileInfo {
   file_name: string
   file_size: number
   download_path: string
+  content_path: string
   content_type: string
   file_expires_at?: string
 }
@@ -74,6 +76,7 @@ export interface Message {
   file_name?: string
   file_size?: number
   download_path?: string
+  content_path?: string
   content_type?: string
   file_expires_at?: string
   sent_at: string

@@ -109,7 +109,7 @@ func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint,
 			"JOIN `groups` g ON g.uuid = gm.group_uuid "+
 			"WHERE gm.group_uuid = messages.target_uuid "+
 			"AND gm.user_uuid = ? "+
-			"AND g.status = ?"+
+			"AND g.status IN (?, ?)"+
 			"))"+
 			")",
 		model.MessageTargetDirect,
@@ -118,6 +118,7 @@ func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint,
 		userUUID,
 		userUUID,
 		model.GroupStatusNormal,
+		model.GroupStatusDismissed,
 	)
 
 	var messages []*model.Message
@@ -141,7 +142,7 @@ func (r *MessageRepository) FindLatestAccessibleFileMessage(fileUUID, userUUID s
 				"JOIN `groups` g ON g.uuid = gm.group_uuid "+
 				"WHERE gm.group_uuid = messages.target_uuid "+
 				"AND gm.user_uuid = ? "+
-				"AND g.status = ?"+
+				"AND g.status IN (?, ?)"+
 				"))"+
 				")",
 			model.MessageTargetDirect,
@@ -150,6 +151,7 @@ func (r *MessageRepository) FindLatestAccessibleFileMessage(fileUUID, userUUID s
 			model.MessageTargetGroup,
 			userUUID,
 			model.GroupStatusNormal,
+			model.GroupStatusDismissed,
 		).
 		Order("sent_at DESC").
 		Order("id DESC").

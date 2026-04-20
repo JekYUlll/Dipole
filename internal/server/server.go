@@ -78,7 +78,12 @@ func New() *Server {
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
 	contactService := service.NewContactService(contactRepo, userRepo)
-	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector)
+	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
+		fileRepo,
+		platformStorage.Client,
+		5*1024*1024,
+		10*time.Minute,
+	)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
@@ -93,7 +98,7 @@ func New() *Server {
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(conversationService)
 	contactHandler := httpHandler.NewContactHandler(contactService)
-	groupHandler := httpHandler.NewGroupHandler(groupService)
+	groupHandler := httpHandler.NewGroupHandler(groupService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageService)
@@ -112,6 +117,7 @@ func New() *Server {
 		}
 
 		v1.GET("/users/:uuid/avatar", userHandler.GetAvatar)
+		v1.GET("/groups/:uuid/avatar", groupHandler.GetAvatar)
 
 		protected := v1.Group("")
 		protected.Use(authRequired)
@@ -133,6 +139,7 @@ func New() *Server {
 			protected.GET("/groups/:uuid/members", groupHandler.ListMembers)
 			protected.POST("/groups/:uuid/members", groupHandler.AddMembers)
 			protected.POST("/groups/:uuid/update", groupHandler.Update)
+			protected.POST("/groups/:uuid/avatar", groupHandler.UploadAvatar)
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
@@ -140,7 +147,12 @@ func New() *Server {
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
 			protected.POST("/files", fileHandler.Upload)
+			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
+			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)
+			protected.POST("/files/uploads/:session_id/complete", fileHandler.CompleteMultipart)
+			protected.DELETE("/files/uploads/:session_id", fileHandler.AbortMultipart)
 			protected.GET("/files/:file_id/download", fileHandler.Download)
+			protected.GET("/files/:file_id/content", fileHandler.Content)
 			protected.GET("/users/me/devices", sessionHandler.ListDevices)
 			protected.POST("/users/me/devices/:connection_id/logout", sessionHandler.ForceLogoutDevice)
 			protected.POST("/users/me/devices/logout-all", sessionHandler.ForceLogoutAll)

@@ -267,7 +267,7 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content string)
 		return nil, nil, ErrMessageContentTooLong
 	}
 
-	if err := s.ensureGroupMessagePermission(senderUUID, groupUUID); err != nil {
+	if err := s.ensureWritableGroupMessagePermission(senderUUID, groupUUID); err != nil {
 		return nil, nil, err
 	}
 
@@ -352,7 +352,7 @@ func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID st
 	if fileUUID == "" {
 		return nil, nil, ErrMessageFileRequired
 	}
-	if err := s.ensureGroupMessagePermission(senderUUID, groupUUID); err != nil {
+	if err := s.ensureWritableGroupMessagePermission(senderUUID, groupUUID); err != nil {
 		return nil, nil, err
 	}
 
@@ -385,7 +385,7 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 	if groupUUID == "" {
 		return nil, ErrMessageTargetRequired
 	}
-	if err := s.ensureGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+	if err := s.ensureReadableGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
 		return nil, err
 	}
 
@@ -406,7 +406,7 @@ func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID strin
 	if groupUUID == "" {
 		return nil, ErrMessageTargetRequired
 	}
-	if err := s.ensureGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+	if err := s.ensureReadableGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
 		return nil, err
 	}
 
@@ -685,12 +685,40 @@ func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetTyp
 	}, nil
 }
 
-func (s *MessageService) ensureGroupMessagePermission(userUUID, groupUUID string) error {
+func (s *MessageService) ensureReadableGroupMessagePermission(userUUID, groupUUID string) error {
 	if s.groupChecker == nil {
 		return ErrMessageTargetNotFound
 	}
 
 	group, err := s.groupChecker.GetByUUID(strings.TrimSpace(groupUUID))
+	if err != nil {
+		return fmt.Errorf("check group in message permission: %w", err)
+	}
+	if group == nil {
+		return ErrMessageTargetNotFound
+	}
+	if group.Status != model.GroupStatusNormal && group.Status != model.GroupStatusDismissed {
+		return ErrMessageTargetNotFound
+	}
+
+	member, err := s.groupChecker.GetMember(group.UUID, strings.TrimSpace(userUUID))
+	if err != nil {
+		return fmt.Errorf("check group member in message permission: %w", err)
+	}
+	if member == nil {
+		return ErrMessageGroupForbidden
+	}
+
+	return nil
+}
+
+func (s *MessageService) ensureWritableGroupMessagePermission(userUUID, groupUUID string) error {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if s.groupChecker == nil {
+		return ErrMessageTargetNotFound
+	}
+
+	group, err := s.groupChecker.GetByUUID(groupUUID)
 	if err != nil {
 		return fmt.Errorf("check group in message permission: %w", err)
 	}

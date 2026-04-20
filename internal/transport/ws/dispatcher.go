@@ -262,6 +262,7 @@ func newChatMessageData(message *model.Message) ChatMessageData {
 			FileName:      message.FileName,
 			FileSize:      message.FileSize,
 			DownloadPath:  "/api/v1/files/" + message.FileID + "/download",
+			ContentPath:   "/api/v1/files/" + message.FileID + "/content",
 			ContentType:   message.FileContentType,
 			FileExpiresAt: message.FileExpiresAt,
 		}

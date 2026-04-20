@@ -75,6 +75,7 @@ type FilePayload struct {
 	FileName      string     `json:"file_name"`
 	FileSize      int64      `json:"file_size"`
 	DownloadPath  string     `json:"download_path"`
+	ContentPath   string     `json:"content_path"`
 	ContentType   string     `json:"content_type"`
 	FileExpiresAt *time.Time `json:"file_expires_at,omitempty"`
 }
