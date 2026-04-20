@@ -1,6 +1,8 @@
 <template>
   <div class="im-container">
-    <!-- Nav Bar -->
+    <!-- Left Panel (nav + session) -->
+    <div class="left-panel" :class="{ hidden: !!chat.activeKey }">
+      <!-- Nav Bar -->
     <div class="nav-bar">
       <button class="nav-avatar profile-btn" @click="openSelfProfile" title="个人资料">
         <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="me" />
@@ -124,13 +126,15 @@
           </div>
         </div>
       </div>
-    </div>
+    </div><!-- /session-panel -->
+    </div><!-- /left-panel -->
 
     <!-- Chat Area -->
     <div class="chat-area">
       <template v-if="activeConv">
         <div class="chat-header">
-          <span>{{ activeConvName }}</span>
+          <button class="back-btn" @click="chat.activeKey = ''">‹</button>
+          <span class="chat-header-title">{{ activeConvName }}</span>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情">ℹ️</button>
         </div>
@@ -162,14 +166,42 @@
                   />
                   <div v-else class="msg-avatar-fallback">{{ getInitials(msgSenderName(msg)) }}</div>
                 </div>
-                <div class="msg-bubble">
+                <div :class="['msg-bubble', isInlineMediaMessage(msg) ? 'media' : '']">
                   <!-- File card -->
                   <template v-if="msg.message_type === 1">
-                    <div class="file-card" @click="downloadFile(msg)">
-                      <span class="file-icon">📄</span>
+                    <div v-if="isImageMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
+                      <img
+                        v-if="mediaPreviewSrc(msg)"
+                        class="media-image"
+                        :src="mediaPreviewSrc(msg)"
+                        :alt="fileName(msg)"
+                        @click="downloadFile(msg)"
+                      />
+                      <div v-else class="media-placeholder">图片</div>
+                      <div class="media-caption">
+                        <span class="media-name">{{ fileName(msg) }}</span>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                      </div>
+                    </div>
+                    <div v-else-if="isVideoMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
+                      <video
+                        v-if="mediaPreviewSrc(msg)"
+                        class="media-video"
+                        :src="mediaPreviewSrc(msg)"
+                        controls
+                        preload="metadata"
+                      ></video>
+                      <div v-else class="media-placeholder">视频</div>
+                      <div class="media-caption">
+                        <span class="media-name">{{ fileName(msg) }}</span>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                      </div>
+                    </div>
+                    <div v-else class="file-card" @click="downloadFile(msg)">
+                      <span class="file-icon">{{ fileIcon(msg) }}</span>
                       <div class="file-meta">
-                        <div class="name">{{ msg.file?.file_name || msg.file_name || '文件' }}</div>
-                        <div class="size">{{ formatSize(msg.file?.file_size || msg.file_size || 0) }}</div>
+                        <div class="name">{{ fileName(msg) }}</div>
+                        <div class="size">{{ formatSize(fileSize(msg)) }}</div>
                       </div>
                     </div>
                   </template>
@@ -189,6 +221,7 @@
               📎
               <input type="file" style="display:none" :disabled="isGroupDismissed" @change="uploadFile" />
             </label>
+            <span v-if="uploadingFileLabel" class="upload-status">{{ uploadingFileLabel }}</span>
           </div>
           <textarea
             v-model="inputText"
@@ -211,38 +244,54 @@
     <!-- Detail Panel -->
     <div v-if="activeConv && showDetail" class="detail-panel">
       <template v-if="activeConv.target_type === 1">
-        <div class="detail-avatar">
-          <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
-          <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
-        </div>
-        <div class="detail-name">{{ convName(activeConv) }}</div>
-        <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
-        <div class="detail-meta">成员数: {{ groupFromConv(activeConv)?.member_count ?? '—' }}</div>
-        <div class="detail-meta">状态: {{ isGroupDismissed ? '已解散' : '正常' }}</div>
-        <div v-if="isGroupOwner" class="detail-edit">
-          <label class="detail-edit-label">群名称</label>
-          <input
-            v-model="groupNameDraft"
-            class="detail-edit-input"
-            :disabled="isGroupDismissed"
-            placeholder="设置群名称"
-            maxlength="50"
-          />
-          <button class="detail-edit-btn" :disabled="isGroupDismissed" @click="saveGroupProfile">保存群资料</button>
-          <input ref="groupAvatarInputRef" type="file" accept="image/*" style="display:none" @change="handleGroupAvatarSelected" />
-          <button class="detail-edit-btn secondary" :disabled="isGroupDismissed" @click="chooseGroupAvatar">选择群头像</button>
-          <div v-if="selectedGroupAvatarName" class="profile-file-name">已选择：{{ selectedGroupAvatarName }}</div>
-          <button class="detail-edit-btn" :disabled="isGroupDismissed || !selectedGroupAvatarFile || uploadingGroupAvatar" @click="uploadGroupAvatar">
-            {{ uploadingGroupAvatar ? '上传中...' : '上传群头像' }}
-          </button>
-        </div>
-        <div class="detail-edit">
-          <label class="detail-edit-label">群备注</label>
-          <input v-model="groupRemarkDraft" class="detail-edit-input" placeholder="设置当前群显示名称" maxlength="50" />
-          <button class="detail-edit-btn" @click="saveGroupRemark">保存</button>
+        <!-- 群头像 + 基本信息 -->
+        <div class="detail-header">
+          <div class="detail-avatar">
+            <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
+            <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
+          </div>
+          <div class="detail-name">{{ convName(activeConv) }}</div>
+          <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
+          <div class="detail-chips">
+            <span class="detail-chip">{{ groupFromConv(activeConv)?.member_count ?? '—' }} 人</span>
+            <span class="detail-chip" :class="{ danger: isGroupDismissed }">{{ isGroupDismissed ? '已解散' : '正常' }}</span>
+          </div>
         </div>
 
-        <!-- 成员格子 -->
+        <!-- 群主编辑区 -->
+        <template v-if="isGroupOwner">
+          <div class="detail-section-title">群资料</div>
+          <div class="detail-field">
+            <label>群名称</label>
+            <div class="detail-field-row">
+              <input v-model="groupNameDraft" class="detail-edit-input" :disabled="isGroupDismissed" placeholder="群名称" maxlength="50" />
+              <button class="detail-inline-btn" :disabled="isGroupDismissed" @click="saveGroupProfile">保存</button>
+            </div>
+          </div>
+          <div class="detail-field">
+            <label>群头像</label>
+            <input ref="groupAvatarInputRef" type="file" accept="image/*" style="display:none" @change="handleGroupAvatarSelected" />
+            <div class="detail-field-row">
+              <span class="detail-file-hint">{{ selectedGroupAvatarName || '未选择文件' }}</span>
+              <button class="detail-inline-btn secondary" :disabled="isGroupDismissed" @click="chooseGroupAvatar">选择</button>
+              <button class="detail-inline-btn" :disabled="isGroupDismissed || !selectedGroupAvatarFile || uploadingGroupAvatar" @click="uploadGroupAvatar">
+                {{ uploadingGroupAvatar ? '…' : '上传' }}
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- 备注（所有人可设置） -->
+        <div class="detail-section-title">我的备注</div>
+        <div class="detail-field">
+          <div class="detail-field-row">
+            <input v-model="groupRemarkDraft" class="detail-edit-input" placeholder="设置当前群显示名称" maxlength="50" />
+            <button class="detail-inline-btn" @click="saveGroupRemark">保存</button>
+          </div>
+        </div>
+
+        <!-- 成员 -->
+        <div class="detail-section-title">群成员</div>
         <div class="member-grid">
           <div
             v-for="m in [...(groupFromConv(activeConv)?.members ?? [])].sort((a, b) => a.role - b.role)"
@@ -258,77 +307,78 @@
             <div class="member-grid-name">{{ m.user.nickname }}</div>
             <div v-if="m.role === 0" class="member-role-badge">主</div>
           </div>
-          <!-- 邀请按钮格子（群主可见） -->
           <div v-if="isGroupOwner && !isGroupDismissed" class="member-grid-item" @click="openInviteMembers">
             <div class="member-grid-avatar member-grid-add">+</div>
             <div class="member-grid-name">邀请</div>
           </div>
         </div>
-        <button v-if="isGroupOwner && !isGroupDismissed" class="danger-btn" @click="dismissGroup">解散群</button>
-      </template>
-      <template v-else-if="activeConv.target_user">
-        <div class="detail-avatar">
-          <img v-if="activeConv.target_user.avatar" :src="activeConv.target_user.avatar" alt="user" @click="openUserProfile(activeConv.target_user)" />
-          <div v-else class="detail-avatar-fallback" @click="openUserProfile(activeConv.target_user)">{{ getInitials(activeConv.target_user.nickname) }}</div>
+
+        <!-- 危险操作 -->
+        <div v-if="isGroupOwner && !isGroupDismissed" class="detail-danger-zone">
+          <button class="danger-btn" @click="dismissGroup">解散群</button>
         </div>
-        <div class="detail-name">{{ convName(activeConv) }}</div>
-        <div class="detail-uuid">{{ activeConv.target_user.uuid }}</div>
-        <div class="detail-meta">状态: {{ activeConv.target_user.status ?? '未知' }}</div>
-        <div v-if="activeConv.target_user.signature" class="detail-meta">签名: {{ activeConv.target_user.signature }}</div>
+      </template>
+
+      <template v-else-if="activeConv.target_user">
+        <div class="detail-header">
+          <div class="detail-avatar">
+            <img v-if="activeConv.target_user.avatar" :src="activeConv.target_user.avatar" alt="user" @click="openUserProfile(activeConv.target_user)" />
+            <div v-else class="detail-avatar-fallback" @click="openUserProfile(activeConv.target_user)">{{ getInitials(activeConv.target_user.nickname) }}</div>
+          </div>
+          <div class="detail-name">{{ convName(activeConv) }}</div>
+          <div class="detail-uuid">{{ activeConv.target_user.uuid }}</div>
+          <div v-if="activeConv.target_user.signature" class="detail-meta">{{ activeConv.target_user.signature }}</div>
+        </div>
       </template>
     </div>
     <!-- Profile Modal -->
     <div v-if="showProfileModal" class="modal-overlay">
       <div class="modal-backdrop" @click="closeProfileModal"></div>
-      <div class="modal">
-        <div class="modal-title">个人资料</div>
-        <div class="profile-modal">
-          <div class="profile-avatar-preview">
-            <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
-            <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
-          </div>
-          <div class="profile-meta">{{ auth.currentUser?.nickname }}</div>
-          <div class="profile-meta secondary">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
-          <textarea v-model="profileSignature" class="profile-signature-input" placeholder="写点个性签名" maxlength="255"></textarea>
-          <input ref="avatarInputRef" type="file" accept="image/*" @change="handleAvatarSelected" />
-          <div v-if="selectedAvatarName" class="profile-file-name">已选择：{{ selectedAvatarName }}</div>
+      <div class="modal user-profile-card">
+        <button class="upc-close" @click="closeProfileModal">✕</button>
+        <div class="upc-avatar" style="cursor:pointer" @click="avatarInputRef?.click()">
+          <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
+          <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
+          <div class="upc-avatar-hint">换头像</div>
         </div>
-        <div class="modal-footer">
-          <button class="modal-btn" :disabled="savingProfile" @click="saveProfile">
-            {{ savingProfile ? '保存中...' : '保存资料' }}
+        <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="handleAvatarSelected" />
+        <div class="upc-name">{{ auth.currentUser?.nickname }}</div>
+        <div class="upc-uuid">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
+        <textarea v-model="profileSignature" class="upc-signature-input" placeholder="写点个性签名" maxlength="255"></textarea>
+        <div v-if="selectedAvatarName" class="upc-file-hint">已选择：{{ selectedAvatarName }}</div>
+        <div class="upc-actions">
+          <button class="upc-btn" :disabled="!selectedAvatarFile || uploadingAvatar" @click="uploadAvatar">
+            {{ uploadingAvatar ? '上传中…' : '上传头像' }}
           </button>
-          <button class="modal-btn" :disabled="!selectedAvatarFile || uploadingAvatar" @click="uploadAvatar">
-            {{ uploadingAvatar ? '上传中...' : '上传头像' }}
+          <button class="upc-btn primary" :disabled="savingProfile" @click="saveProfile">
+            {{ savingProfile ? '保存中…' : '保存资料' }}
           </button>
-          <button class="modal-close" @click="closeProfileModal">关闭</button>
         </div>
       </div>
     </div>
 
     <div v-if="showUserProfileModal && viewedUser" class="modal-overlay">
       <div class="modal-backdrop" @click="closeUserProfileModal"></div>
-      <div class="modal">
-        <div class="modal-title">用户资料</div>
-        <div class="profile-modal">
-          <div class="profile-avatar-preview">
-            <img v-if="viewedUser.avatar" :src="viewedUser.avatar" alt="user-profile-avatar" />
-            <span v-else>{{ getInitials(viewedUser.nickname) }}</span>
-          </div>
-          <div class="profile-meta">{{ displayUserName(viewedUser) }}</div>
-          <div class="profile-meta secondary">{{ viewedUser.uuid }}</div>
-          <div v-if="viewedUser.signature" class="profile-signature">{{ viewedUser.signature }}</div>
-          <div v-if="isFriend(viewedUser.uuid)" class="detail-edit">
-            <label class="detail-edit-label">用户备注</label>
-            <input v-model="viewedUserRemark" class="detail-edit-input" placeholder="设置备注" maxlength="50" />
-            <button class="detail-edit-btn" :disabled="savingUserRemark" @click="saveUserRemark">
-              {{ savingUserRemark ? '保存中...' : '保存' }}
-            </button>
-          </div>
+      <div class="modal user-profile-card">
+        <button class="upc-close" @click="closeUserProfileModal">✕</button>
+        <div class="upc-avatar">
+          <img v-if="viewedUser.avatar" :src="viewedUser.avatar" alt="user-profile-avatar" />
+          <span v-else>{{ getInitials(viewedUser.nickname) }}</span>
         </div>
-        <div class="modal-footer">
-          <button class="modal-btn" @click="startDirectChatFromViewedUser">发起单聊</button>
-          <button v-if="!isFriend(viewedUser.uuid) && viewedUser.uuid !== auth.currentUser?.uuid" class="modal-btn" @click="quickApplyFriend(viewedUser)">加好友</button>
-          <button class="modal-close" @click="closeUserProfileModal">关闭</button>
+        <div class="upc-name">{{ displayUserName(viewedUser) }}</div>
+        <div class="upc-uuid">{{ viewedUser.uuid }}</div>
+        <div v-if="viewedUser.signature" class="upc-signature">{{ viewedUser.signature }}</div>
+
+        <div v-if="isFriend(viewedUser.uuid)" class="upc-remark">
+          <input v-model="viewedUserRemark" class="upc-remark-input" placeholder="设置备注" maxlength="50" />
+          <button class="upc-remark-btn" :disabled="savingUserRemark" @click="saveUserRemark">
+            {{ savingUserRemark ? '…' : '保存备注' }}
+          </button>
+        </div>
+
+        <div class="upc-actions">
+          <button class="upc-btn primary" @click="startDirectChatFromViewedUser">发起单聊</button>
+          <button v-if="!isFriend(viewedUser.uuid) && viewedUser.uuid !== auth.currentUser?.uuid" class="upc-btn" @click="quickApplyFriend(viewedUser)">加好友</button>
         </div>
       </div>
     </div>
@@ -418,7 +468,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -452,6 +502,11 @@ const groupAvatarInputRef = ref<HTMLInputElement | null>(null)
 const selectedGroupAvatarFile = ref<File | null>(null)
 const selectedGroupAvatarName = ref('')
 const uploadingGroupAvatar = ref(false)
+const uploadingFileLabel = ref('')
+const mediaPreviewMap = ref<Record<string, string>>({})
+const mediaPreviewInflight = new Map<string, Promise<void>>()
+
+const directUploadThresholdBytes = 4 * 1024 * 1024
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -479,6 +534,30 @@ const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+const fileName = (msg: Message) => msg.file?.file_name || msg.file_name || '文件'
+const fileSize = (msg: Message) => msg.file?.file_size || msg.file_size || 0
+const fileContentType = (msg: Message) => (msg.file?.content_type || msg.content_type || '').toLowerCase()
+const fileContentPath = (msg: Message) => msg.file?.content_path || msg.content_path || ''
+
+const isImageMessage = (msg: Message) => fileContentType(msg).startsWith('image/')
+const isVideoMessage = (msg: Message) => fileContentType(msg).startsWith('video/')
+const isInlineMediaMessage = (msg: Message) => isImageMessage(msg) || isVideoMessage(msg)
+const mediaPreviewSrc = (msg: Message) => mediaPreviewMap.value[msg.message_id] || ''
+
+const fileIcon = (msg: Message) => {
+  const contentType = fileContentType(msg)
+  if (contentType.startsWith('image/')) return '🖼️'
+  if (contentType.startsWith('video/')) return '🎬'
+  if (contentType.startsWith('audio/')) return '🎵'
+  if (contentType.includes('pdf')) return '📕'
+  if (contentType.includes('zip') || contentType.includes('compressed') || contentType.includes('rar')) return '🗜️'
+  if (contentType.includes('word') || contentType.includes('document')) return '📘'
+  if (contentType.includes('excel') || contentType.includes('spreadsheet') || contentType.includes('sheet')) return '📗'
+  if (contentType.includes('powerpoint') || contentType.includes('presentation')) return '📙'
+  if (contentType.startsWith('text/')) return '📄'
+  return '📦'
 }
 
 const deriveMessageKey = (msg: Message, myUUID: string): string => {
@@ -528,6 +607,84 @@ const pullHotGroupMessages = async (groupUUID: string) => {
     return
   }
   await chat.fetchGroupMessagesAfter(groupUUID, afterID)
+}
+
+const revokeMediaPreviewURLs = () => {
+  Object.values(mediaPreviewMap.value).forEach((url) => URL.revokeObjectURL(url))
+  mediaPreviewMap.value = {}
+  mediaPreviewInflight.clear()
+}
+
+const loadMediaPreview = async (msg: Message) => {
+  if (!isInlineMediaMessage(msg)) return
+  if (mediaPreviewMap.value[msg.message_id]) return
+  if (mediaPreviewInflight.has(msg.message_id)) {
+    await mediaPreviewInflight.get(msg.message_id)
+    return
+  }
+
+  const contentPath = fileContentPath(msg)
+  const token = auth.token
+  if (!contentPath || !token) return
+
+  const request = (async () => {
+    const response = await fetch(contentPath, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    if (!response.ok) {
+      throw new Error(`media preview request failed: ${response.status}`)
+    }
+    const blob = await response.blob()
+    const objectURL = URL.createObjectURL(blob)
+    mediaPreviewMap.value = {
+      ...mediaPreviewMap.value,
+      [msg.message_id]: objectURL,
+    }
+  })()
+
+  mediaPreviewInflight.set(msg.message_id, request)
+  try {
+    await request
+  } catch (error) {
+    console.warn('load media preview failed', error)
+  } finally {
+    mediaPreviewInflight.delete(msg.message_id)
+  }
+}
+
+// ── Lazy media loading via IntersectionObserver ───────────────────────────────
+
+let mediaObserver: IntersectionObserver | null = null
+
+const setupMediaObserver = () => {
+  if (mediaObserver) mediaObserver.disconnect()
+  mediaObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const el = entry.target as HTMLElement
+        const msgId = el.dataset.msgId
+        if (!msgId) continue
+        const msg = currentMessages.value.find(m => m.message_id === msgId)
+        if (msg) void loadMediaPreview(msg)
+        mediaObserver?.unobserve(el)
+      }
+    },
+    { root: msgListRef.value, rootMargin: '120px' }
+  )
+}
+
+const observeMediaCards = () => {
+  if (!msgListRef.value || !mediaObserver) return
+  const cards = msgListRef.value.querySelectorAll<HTMLElement>('.media-card[data-msg-id]')
+  cards.forEach(el => {
+    const msgId = el.dataset.msgId
+    if (msgId && !mediaPreviewMap.value[msgId]) {
+      mediaObserver!.observe(el)
+    }
+  })
 }
 
 const scrollToBottom = () => {
@@ -679,11 +836,15 @@ const uploadFile = async (e: Event) => {
   const targetUUID = conv.target_type === 1
     ? (conv.target_group?.uuid ?? conv.conversation_key.replace('group:', ''))
     : conv.target_user!.uuid
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await api.post('/api/v1/files', formData) as { file_id: string }
-  ws.send('chat.send_file', { target_uuid: targetUUID, target_type: conv.target_type, file_id: res.file_id })
-  ;(e.target as HTMLInputElement).value = ''
+  try {
+    const res = await uploadChatFile(file)
+    ws.send('chat.send_file', { target_uuid: targetUUID, target_type: conv.target_type, file_id: res.file_id })
+  } catch (err: any) {
+    alert(err?.message || '文件上传失败')
+  } finally {
+    uploadingFileLabel.value = ''
+    ;(e.target as HTMLInputElement).value = ''
+  }
 }
 
 const downloadFile = async (msg: Message) => {
@@ -762,6 +923,44 @@ const saveProfile = async () => {
     alert(e?.message || '资料保存失败')
   } finally {
     savingProfile.value = false
+  }
+}
+
+const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
+  if (file.size <= directUploadThresholdBytes) {
+    uploadingFileLabel.value = '上传中...'
+    const formData = new FormData()
+    formData.append('file', file)
+    return await api.post('/api/v1/files', formData) as { file_id: string }
+  }
+
+  const init = await api.post('/api/v1/files/uploads/initiate', {
+    file_name: file.name,
+    file_size: file.size,
+    content_type: file.type || 'application/octet-stream',
+  }) as { session_id: string; chunk_size: number; total_parts: number }
+
+  try {
+    for (let partNumber = 1; partNumber <= init.total_parts; partNumber += 1) {
+      const start = (partNumber - 1) * init.chunk_size
+      const end = Math.min(start + init.chunk_size, file.size)
+      const chunk = file.slice(start, end)
+      uploadingFileLabel.value = `上传中 ${partNumber}/${init.total_parts}...`
+      await api.put(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}`, chunk, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      })
+    }
+    uploadingFileLabel.value = '合并文件中...'
+    return await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
+  } catch (err) {
+    try {
+      await api.delete(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}`)
+    } catch {
+      // 上传失败时尽力清理服务端会话，避免 Redis 和 MinIO 留下无主分片。
+    }
+    throw err
   }
 }
 
@@ -1112,10 +1311,17 @@ onMounted(async () => {
   await auth.fetchMe()
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
   ws.connect(auth.token)
+  setupMediaObserver()
 })
 
 watch(currentMessages, () => nextTick(scrollToBottom))
+watch(currentMessages, () => {
+  nextTick(observeMediaCards)
+})
 watch(() => activeConv.value?.conversation_key, () => {
+  revokeMediaPreviewURLs()
+  setupMediaObserver()
+  nextTick(observeMediaCards)
   if (activeConv.value?.target_type === 1) {
     groupRemarkDraft.value = activeConv.value.remark || ''
     const group = groupFromConv(activeConv.value)
@@ -1125,6 +1331,11 @@ watch(() => activeConv.value?.conversation_key, () => {
     groupNameDraft.value = ''
   }
 })
+
+onBeforeUnmount(() => {
+  revokeMediaPreviewURLs()
+  mediaObserver?.disconnect()
+})
 </script>
 
 <style scoped>
@@ -1133,6 +1344,12 @@ watch(() => activeConv.value?.conversation_key, () => {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+}
+
+.left-panel {
+  display: flex;
+  flex-shrink: 0;
 }
 
 /* Nav Bar */
@@ -1239,6 +1456,182 @@ watch(() => activeConv.value?.conversation_key, () => {
   color: #555;
   line-height: 1.5;
   word-break: break-word;
+}
+
+/* User Profile Card */
+.user-profile-card {
+  width: 280px;
+  padding: 28px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+.upc-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+
+.upc-close:hover { color: #555; }
+
+.upc-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #d8d8d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.upc-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upc-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.upc-uuid {
+  font-size: 11px;
+  color: #bbb;
+  text-align: center;
+  word-break: break-all;
+  margin-bottom: 8px;
+}
+
+.upc-signature {
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.upc-remark {
+  width: 100%;
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.upc-remark-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+  background: #fafafa;
+}
+
+.upc-remark-input:focus { border-color: #07c160; }
+
+.upc-remark-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #e8e8e8;
+  color: #444;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.upc-remark-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.upc-actions {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.upc-btn {
+  flex: 1;
+  padding: 9px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.upc-btn.primary {
+  background: #07c160;
+  border-color: #07c160;
+  color: #fff;
+  font-weight: 500;
+}
+
+.upc-btn:hover { opacity: 0.88; }
+
+.upc-avatar {
+  position: relative;
+}
+
+.upc-avatar-hint {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.38);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.upc-avatar:hover .upc-avatar-hint { opacity: 1; }
+
+.upc-signature-input {
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  margin-top: 4px;
+}
+
+.upc-signature-input:focus { border-color: #07c160; }
+
+.upc-file-hint {
+  font-size: 11px;
+  color: #aaa;
+  align-self: flex-start;
+  margin-top: -4px;
 }
 
 .nav-icons {
@@ -1445,8 +1838,8 @@ watch(() => activeConv.value?.conversation_key, () => {
   line-height: 1;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #e8eefc;
-  color: #3d7eff;
+  background: #e8f7ee;
+  color: #07c160;
 }
 
 .status-chip.danger {
@@ -1624,6 +2017,97 @@ watch(() => activeConv.value?.conversation_key, () => {
   opacity: 0.35;
 }
 
+.upload-status {
+  font-size: 12px;
+  color: #666;
+}
+
+.msg-bubble.media {
+  padding: 0;
+  overflow: hidden;
+  max-width: 240px;
+  background: transparent;
+  border: none;
+}
+
+.msg-item.self .msg-bubble.media {
+  background: transparent;
+}
+
+.media-card {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
+  box-sizing: border-box;
+}
+
+.media-image,
+.media-video {
+  width: 100%;
+  max-height: 220px;
+  border-radius: 0;
+  background: #111;
+  object-fit: contain;
+  display: block;
+}
+
+.media-image {
+  cursor: pointer;
+}
+
+.media-placeholder {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.media-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  color: #e0e0e0;
+}
+
+.media-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-action-btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e0e0e0;
+  padding: 4px 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.file-action-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .input-area textarea {
   flex: 1;
   border: none;
@@ -1683,25 +2167,32 @@ watch(() => activeConv.value?.conversation_key, () => {
   width: 240px;
   background: #f7f7f7;
   border-left: 1px solid #e0e0e0;
-  padding: 20px 16px;
+  padding: 0;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+}
+
+.detail-header {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 20px 16px 14px;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .detail-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 6px;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
   overflow: hidden;
   background: #bbb;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .detail-avatar img {
@@ -1722,77 +2213,198 @@ watch(() => activeConv.value?.conversation_key, () => {
 }
 
 .detail-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   text-align: center;
 }
 
 .detail-uuid {
-  font-size: 11px;
-  color: #aaa;
+  font-size: 10px;
+  color: #bbb;
   word-break: break-all;
   text-align: center;
 }
 
 .detail-meta {
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: #888;
+  text-align: center;
 }
 
-.detail-edit {
-  width: 100%;
+.detail-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.detail-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e8e8e8;
+  color: #555;
+}
+
+.detail-chip.danger {
+  background: #fdeaea;
+  color: #c53b3b;
+}
+
+.detail-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px 4px;
+}
+
+.detail-field {
+  padding: 0 16px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
 }
 
-.detail-edit-label {
+.detail-field label {
   font-size: 12px;
   color: #666;
 }
 
-.detail-edit-input {
-  width: 100%;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 8px 10px;
-  box-sizing: border-box;
-  font-size: 13px;
+.detail-field-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
 }
 
-.detail-edit-btn {
-  align-self: flex-end;
-  padding: 6px 12px;
+.detail-edit-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  font-size: 12px;
+  background: #fff;
+}
+
+.detail-inline-btn {
+  flex-shrink: 0;
+  padding: 5px 10px;
   border: none;
-  border-radius: 8px;
-  background: #3d7eff;
+  border-radius: 6px;
+  background: #07c160;
   color: #fff;
   cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.detail-edit-btn.secondary {
-  background: #7b8794;
+.detail-inline-btn.secondary {
+  background: #5a6672;
 }
 
-.detail-edit-btn:disabled {
+.detail-inline-btn:disabled {
   background: #c8ced6;
   cursor: not-allowed;
 }
 
+.detail-file-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: #aaa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-danger-zone {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid #e8e8e8;
+}
+
 .danger-btn {
   width: 100%;
-  margin-top: 12px;
   padding: 8px 0;
   border: none;
   border-radius: 8px;
   background: #df4c4c;
   color: #fff;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .danger-btn:hover {
   background: #c63f3f;
+}
+
+/* Back button (mobile) */
+.back-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #555;
+  padding: 0 4px;
+  margin-right: 4px;
+}
+
+.chat-header-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .left-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    width: 100%;
+    transition: transform 0.22s ease;
+    background: #ededed;
+  }
+
+  .left-panel.hidden {
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .session-panel {
+    flex: 1;
+    width: auto;
+  }
+
+  .chat-area {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+  }
+
+  .detail-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    width: 82% !important;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  }
+
+  .back-btn {
+    display: block;
+  }
 }
 
 /* Panel list (shared by all tabs) */

@@ -56,6 +56,7 @@ export interface FileInfo {
   file_name: string
   file_size: number
   download_path: string
+  content_path: string
   content_type: string
   file_expires_at?: string
 }
@@ -75,6 +76,7 @@ export interface Message {
   file_name?: string
   file_size?: number
   download_path?: string
+  content_path?: string
   content_type?: string
   file_expires_at?: string
   sent_at: string

@@ -184,6 +184,29 @@ func TestGroupServiceGetGroupRequiresMembership(t *testing.T) {
 	}
 }
 
+func TestGroupServiceGetGroupAllowsDismissedGroupForMember(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubGroupRepository()
+	repo.groups["G100"] = &model.Group{UUID: "G100", OwnerUUID: "U100", Name: "Team", Status: model.GroupStatusDismissed}
+	repo.members["G100"] = map[string]*model.GroupMember{
+		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner, JoinedAt: time.Now().UTC()},
+	}
+	svc := NewGroupService(repo, &stubGroupUserFinder{
+		users: map[string]*model.User{
+			"U100": {UUID: "U100", Nickname: "owner", Status: model.UserStatusNormal},
+		},
+	}, nil, nil)
+
+	view, err := svc.GetGroup("U100", "G100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if view.Group == nil || view.Group.Status != model.GroupStatusDismissed {
+		t.Fatalf("expected dismissed group view, got %+v", view.Group)
+	}
+}
+
 func TestGroupServiceGetGroupIncludesHeatStatus(t *testing.T) {
 	t.Parallel()
 
@@ -337,6 +360,22 @@ func TestGroupServiceDismissGroupPublishesEvent(t *testing.T) {
 	}
 	if len(publisher.topics) != 1 || publisher.topics[0] != "group.dismissed" {
 		t.Fatalf("expected group.dismissed event, got %+v", publisher.topics)
+	}
+}
+
+func TestGroupServiceUpdateGroupRejectsDismissedGroup(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubGroupRepository()
+	repo.groups["G100"] = &model.Group{UUID: "G100", OwnerUUID: "U100", Status: model.GroupStatusDismissed}
+	repo.members["G100"] = map[string]*model.GroupMember{
+		"U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleOwner},
+	}
+	svc := NewGroupService(repo, &stubGroupUserFinder{}, nil, nil)
+
+	_, err := svc.UpdateGroup("U100", "G100", UpdateGroupInput{Name: "New Name"})
+	if !errors.Is(err, ErrGroupDismissed) {
+		t.Fatalf("expected ErrGroupDismissed, got %v", err)
 	}
 }
 

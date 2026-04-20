@@ -31,6 +31,10 @@ type Uploader interface {
 	UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*UploadedObject, error)
 	UploadAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, userUUID string) (*UploadedObject, error)
 	UploadGroupAvatar(ctx context.Context, file multipart.File, header *multipart.FileHeader, groupUUID string) (*UploadedObject, error)
+	InitiateMessageMultipartUpload(ctx context.Context, fileName, contentType string) (*MultipartUpload, error)
+	UploadMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*UploadedPart, error)
+	CompleteMessageMultipartUpload(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []MultipartCompletePart) (*UploadedObject, error)
+	AbortMultipartUpload(ctx context.Context, objectKey, uploadID string) error
 }
 
 type Downloader interface {
@@ -43,9 +47,29 @@ type ObjectStorage interface {
 	Downloader
 }
 
+type MultipartUpload struct {
+	Bucket      string
+	ObjectKey   string
+	UploadID    string
+	FileName    string
+	ContentType string
+}
+
+type UploadedPart struct {
+	PartNumber int
+	ETag       string
+	Size       int64
+}
+
+type MultipartCompletePart struct {
+	PartNumber int
+	ETag       string
+}
+
 type MinIOUploader struct {
 	client        *minio.Client
 	presignClient *minio.Client // separate client using presign_endpoint; may be nil (falls back to client)
+	core          minio.Core
 	bucket        string
 	publicBaseURL string
 }
@@ -72,6 +96,7 @@ func Init() error {
 
 	uploader := &MinIOUploader{
 		client:        client,
+		core:          minio.Core{Client: client},
 		bucket:        strings.TrimSpace(cfg.Bucket),
 		publicBaseURL: strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/"),
 	}
@@ -124,6 +149,110 @@ func (u *MinIOUploader) UploadGroupAvatar(ctx context.Context, file multipart.Fi
 	return u.uploadObject(ctx, file, header, func(fileName string) string {
 		return buildGroupAvatarObjectKey(strings.TrimSpace(groupUUID), fileName)
 	})
+}
+
+func (u *MinIOUploader) InitiateMessageMultipartUpload(ctx context.Context, fileName, contentType string) (*MultipartUpload, error) {
+	if u == nil || u.client == nil {
+		return nil, fmt.Errorf("storage uploader is not initialized")
+	}
+
+	objectKey := buildMessageFileObjectKey(strings.TrimSpace(fileName))
+	if strings.TrimSpace(contentType) == "" {
+		contentType = "application/octet-stream"
+	}
+
+	uploadID, err := u.core.NewMultipartUpload(ctx, u.bucket, objectKey, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("initiate multipart upload: %w", err)
+	}
+
+	return &MultipartUpload{
+		Bucket:      u.bucket,
+		ObjectKey:   objectKey,
+		UploadID:    uploadID,
+		FileName:    strings.TrimSpace(fileName),
+		ContentType: strings.TrimSpace(contentType),
+	}, nil
+}
+
+func (u *MinIOUploader) UploadMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*UploadedPart, error) {
+	if u == nil || u.client == nil {
+		return nil, fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(objectKey) == "" || strings.TrimSpace(uploadID) == "" {
+		return nil, fmt.Errorf("object key and upload id are required")
+	}
+	if partNumber <= 0 {
+		return nil, fmt.Errorf("part number must be greater than 0")
+	}
+	if size <= 0 {
+		return nil, fmt.Errorf("part size must be greater than 0")
+	}
+
+	part, err := u.core.PutObjectPart(ctx, u.bucket, objectKey, uploadID, partNumber, reader, size, minio.PutObjectPartOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("upload multipart part: %w", err)
+	}
+
+	return &UploadedPart{
+		PartNumber: part.PartNumber,
+		ETag:       strings.Trim(part.ETag, "\""),
+		Size:       part.Size,
+	}, nil
+}
+
+func (u *MinIOUploader) CompleteMessageMultipartUpload(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []MultipartCompletePart) (*UploadedObject, error) {
+	if u == nil || u.client == nil {
+		return nil, fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(objectKey) == "" || strings.TrimSpace(uploadID) == "" {
+		return nil, fmt.Errorf("object key and upload id are required")
+	}
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("multipart parts are required")
+	}
+	if strings.TrimSpace(contentType) == "" {
+		contentType = "application/octet-stream"
+	}
+
+	minioParts := make([]minio.CompletePart, len(parts))
+	for i, part := range parts {
+		minioParts[i] = minio.CompletePart{
+			PartNumber: part.PartNumber,
+			ETag:       strings.TrimSpace(strings.Trim(part.ETag, "\"")),
+		}
+	}
+
+	if _, err := u.core.CompleteMultipartUpload(ctx, u.bucket, objectKey, uploadID, minioParts, minio.PutObjectOptions{
+		ContentType: contentType,
+	}); err != nil {
+		return nil, fmt.Errorf("complete multipart upload: %w", err)
+	}
+
+	return &UploadedObject{
+		Bucket:      u.bucket,
+		ObjectKey:   objectKey,
+		FileName:    strings.TrimSpace(fileName),
+		FileSize:    fileSize,
+		ContentType: contentType,
+		URL:         u.objectURL(objectKey),
+	}, nil
+}
+
+func (u *MinIOUploader) AbortMultipartUpload(ctx context.Context, objectKey, uploadID string) error {
+	if u == nil || u.client == nil {
+		return fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(objectKey) == "" || strings.TrimSpace(uploadID) == "" {
+		return fmt.Errorf("object key and upload id are required")
+	}
+
+	if err := u.core.AbortMultipartUpload(ctx, u.bucket, objectKey, uploadID); err != nil {
+		return fmt.Errorf("abort multipart upload: %w", err)
+	}
+	return nil
 }
 
 func (u *MinIOUploader) uploadObject(ctx context.Context, file multipart.File, header *multipart.FileHeader, keyBuilder func(fileName string) string) (*UploadedObject, error) {

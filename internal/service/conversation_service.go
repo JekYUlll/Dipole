@@ -196,7 +196,10 @@ func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID stri
 	if err != nil {
 		return fmt.Errorf("get group in mark group conversation read: %w", err)
 	}
-	if group == nil || group.Status != model.GroupStatusNormal {
+	if group == nil {
+		return ErrConversationTargetNotFound
+	}
+	if group.Status != model.GroupStatusNormal && group.Status != model.GroupStatusDismissed {
 		return ErrConversationTargetNotFound
 	}
 	member, err := s.groupRepo.GetMember(groupUUID, userUUID)
@@ -228,7 +231,10 @@ func (s *ConversationService) UpdateGroupRemark(userUUID, groupUUID, remark stri
 	if err != nil {
 		return nil, fmt.Errorf("get group in update group remark: %w", err)
 	}
-	if group == nil || group.Status != model.GroupStatusNormal {
+	if group == nil {
+		return nil, ErrConversationTargetNotFound
+	}
+	if group.Status != model.GroupStatusNormal && group.Status != model.GroupStatusDismissed {
 		return nil, ErrConversationTargetNotFound
 	}
 	member, err := s.groupRepo.GetMember(groupUUID, userUUID)

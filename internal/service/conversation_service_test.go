@@ -272,6 +272,40 @@ func TestConversationServiceUpdateGroupRemarkSuccess(t *testing.T) {
 	}
 }
 
+func TestConversationServiceUpdateGroupRemarkAllowsDismissedGroup(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{
+		conversationByKey: &model.Conversation{
+			UserUUID:        "U100",
+			TargetType:      model.MessageTargetGroup,
+			TargetUUID:      "G100",
+			ConversationKey: model.GroupConversationKey("G100"),
+			Remark:          "老群备注",
+		},
+	}
+	groupRepo := &stubConversationGroupRepository{
+		groupsByUUID: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusDismissed},
+		},
+		membersByPair: map[string]*model.GroupMember{
+			"G100:U100": {GroupUUID: "G100", UserUUID: "U100", Role: model.GroupMemberRoleMember},
+		},
+	}
+	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+
+	conversation, err := service.UpdateGroupRemark("U100", "G100", "已解散群")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if conversation == nil {
+		t.Fatalf("unexpected conversation: %+v", conversation)
+	}
+	if repo.lastRemark != "已解散群" {
+		t.Fatalf("expected dismissed group remark update, got %s", repo.lastRemark)
+	}
+}
+
 func TestConversationServiceMarkDirectConversationReadRejectsMissingTarget(t *testing.T) {
 	t.Parallel()
 
@@ -320,6 +354,28 @@ func TestConversationServiceMarkGroupConversationReadClearsUnread(t *testing.T) 
 	groupRepo := &stubConversationGroupRepository{
 		groupsByUUID: map[string]*model.Group{
 			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		membersByPair: map[string]*model.GroupMember{
+			"G100:U100": {GroupUUID: "G100", UserUUID: "U100"},
+		},
+	}
+	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+
+	if err := service.MarkGroupConversationRead("U100", "G100"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if repo.lastClearConversation != model.GroupConversationKey("G100") {
+		t.Fatalf("unexpected cleared conversation: %s", repo.lastClearConversation)
+	}
+}
+
+func TestConversationServiceMarkGroupConversationReadAllowsDismissedGroup(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{}
+	groupRepo := &stubConversationGroupRepository{
+		groupsByUUID: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusDismissed},
 		},
 		membersByPair: map[string]*model.GroupMember{
 			"G100:U100": {GroupUUID: "G100", UserUUID: "U100"},

@@ -55,6 +55,8 @@ storage:
   bucket: dipole-files
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
+  multipart_chunk_size_mb: 5
+  multipart_session_ttl_minutes: 60
 
 rate_limit:
   enabled: false

@@ -86,13 +86,16 @@ const (
 )
 
 const (
-	FileMissing            int = 100700
-	FileTooLarge           int = 100701
-	FileStorageUnavailable int = 100702
-	FileUploadRateLimited  int = 100703
-	FileNotFound           int = 100704
-	FilePermissionDenied   int = 100705
-	FileExpired            int = 100706
+	FileMissing                  int = 100700
+	FileTooLarge                 int = 100701
+	FileStorageUnavailable       int = 100702
+	FileUploadRateLimited        int = 100703
+	FileNotFound                 int = 100704
+	FilePermissionDenied         int = 100705
+	FileExpired                  int = 100706
+	FileMultipartSessionNotFound int = 100707
+	FileMultipartSessionInvalid  int = 100708
+	FileMultipartPartInvalid     int = 100709
 )
 
 const (
