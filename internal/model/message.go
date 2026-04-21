@@ -19,21 +19,21 @@ const (
 )
 
 type Message struct {
-	ID              uint       `gorm:"primaryKey" json:"id"`
+	ID              uint       `gorm:"primaryKey;index:idx_message_conversation_id,priority:2;index:idx_message_target_uuid_id,priority:3;index:idx_message_sender_id,priority:3" json:"id"`
 	UUID            string     `gorm:"size:24;uniqueIndex;not null" json:"uuid"`
-	ConversationKey string     `gorm:"size:64;index;not null" json:"-"`
-	SenderUUID      string     `gorm:"column:sender_uuid;size:24;index;not null" json:"sender_uuid"`
-	TargetType      int8       `gorm:"column:target_type;not null;default:0" json:"target_type"`
-	TargetUUID      string     `gorm:"column:target_uuid;size:24;index;not null" json:"target_uuid"`
-	MessageType     int8       `gorm:"column:message_type;not null;default:0" json:"message_type"`
+	ConversationKey string     `gorm:"size:64;index;index:idx_message_conversation_id,priority:1;not null" json:"-"`
+	SenderUUID      string     `gorm:"column:sender_uuid;size:24;index;index:idx_message_sender_id,priority:2;not null" json:"sender_uuid"`
+	TargetType      int8       `gorm:"column:target_type;not null;default:0;index:idx_message_target_uuid_id,priority:1;index:idx_message_sender_id,priority:1" json:"target_type"`
+	TargetUUID      string     `gorm:"column:target_uuid;size:24;index;index:idx_message_target_uuid_id,priority:2;not null" json:"target_uuid"`
+	MessageType     int8       `gorm:"column:message_type;not null;default:0;index:idx_message_file_type_sent,priority:2" json:"message_type"`
 	Content         string     `gorm:"type:text;not null" json:"content"`
-	FileID          string     `gorm:"column:file_id;size:24;index;not null;default:''" json:"file_id"`
+	FileID          string     `gorm:"column:file_id;size:24;index;index:idx_message_file_type_sent,priority:1;not null;default:''" json:"file_id"`
 	FileName        string     `gorm:"column:file_name;size:255;not null;default:''" json:"file_name"`
 	FileSize        int64      `gorm:"column:file_size;not null;default:0" json:"file_size"`
 	FileURL         string     `gorm:"column:file_url;size:512;not null;default:''" json:"file_url"`
 	FileContentType string     `gorm:"column:file_content_type;size:255;not null;default:''" json:"file_content_type"`
 	FileExpiresAt   *time.Time `gorm:"column:file_expires_at;index" json:"file_expires_at,omitempty"`
-	SentAt          time.Time  `gorm:"not null;index" json:"sent_at"`
+	SentAt          time.Time  `gorm:"not null;index;index:idx_message_file_type_sent,priority:3" json:"sent_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 }

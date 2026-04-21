@@ -30,13 +30,13 @@ func (Contact) TableName() string {
 
 type ContactApplication struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
-	ApplicantUUID string     `gorm:"column:applicant_uuid;size:24;not null;uniqueIndex:idx_applicant_target,priority:1" json:"applicant_uuid"`
-	TargetUUID    string     `gorm:"column:target_uuid;size:24;not null;uniqueIndex:idx_applicant_target,priority:2;index" json:"target_uuid"`
+	ApplicantUUID string     `gorm:"column:applicant_uuid;size:24;not null;index:idx_contact_applicant_created,priority:1;uniqueIndex:idx_applicant_target,priority:1" json:"applicant_uuid"`
+	TargetUUID    string     `gorm:"column:target_uuid;size:24;not null;index;index:idx_contact_target_created,priority:1;uniqueIndex:idx_applicant_target,priority:2" json:"target_uuid"`
 	Message       string     `gorm:"size:255;not null;default:''" json:"message"`
 	Status        int8       `gorm:"not null;default:0;index" json:"status"`
 	ExpiresAt     *time.Time `gorm:"column:expires_at;index" json:"expires_at,omitempty"`
 	HandledAt     *time.Time `gorm:"column:handled_at" json:"handled_at"`
-	CreatedAt     time.Time  `json:"created_at"`
+	CreatedAt     time.Time  `gorm:"index:idx_contact_applicant_created,priority:2;index:idx_contact_target_created,priority:2" json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
