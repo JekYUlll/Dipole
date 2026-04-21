@@ -7,12 +7,24 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dist.yml}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BREW_BIN="/home/linuxbrew/.linuxbrew/bin"
+export PATH="${BREW_BIN}:${PATH}"
+NPM_BIN="${NPM_BIN:-$(command -v npm || true)}"
+GO_BIN="${GO_BIN:-$(command -v go || true)}"
+
+if [[ -z "${NPM_BIN}" && -x "${BREW_BIN}/npm" ]]; then
+  NPM_BIN="${BREW_BIN}/npm"
+fi
+
+if [[ -z "${GO_BIN}" && -x "${BREW_BIN}/go" ]]; then
+  GO_BIN="${BREW_BIN}/go"
+fi
 
 usage() {
   echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend]"
   echo ""
   echo "  frontend  Build frontend only (outputs to internal/server/webapp/)"
-  echo "  build     Build Docker image (multi-stage, includes frontend)"
+  echo "  build     Build frontend and Go binary locally, then package Docker image"
   echo "  up        Build image and start all services"
   echo "  deploy    Rebuild image and force-recreate dipole nodes (zero-downtime redeploy)"
   echo "  down      Stop and remove all containers"
@@ -24,6 +36,7 @@ usage() {
   echo "  IMAGE_TAG    Image tag  (default: latest)"
   echo "  COMPOSE_FILE Compose file (default: docker-compose.dist.yml)"
   echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
+  echo "  GO_BUILD_FLAGS Additional flags passed to go build"
 }
 
 node_services() {
@@ -36,16 +49,38 @@ node_services() {
 }
 
 cmd_frontend() {
+  if [[ -z "${NPM_BIN}" ]]; then
+    echo "npm not found; set NPM_BIN or install npm" >&2
+    exit 1
+  fi
   echo "==> Building frontend..."
   cd "${ROOT_DIR}/frontend"
-  npm ci --prefer-offline
-  npm run build
+  "${NPM_BIN}" ci --prefer-offline
+  "${NPM_BIN}" run build
   echo "==> Frontend built → internal/server/webapp/"
 }
 
+cmd_backend() {
+  if [[ -z "${GO_BIN}" ]]; then
+    echo "go not found; set GO_BIN or install go" >&2
+    exit 1
+  fi
+  echo "==> Building backend binary..."
+  mkdir -p "${ROOT_DIR}/dist"
+  (
+    cd "${ROOT_DIR}"
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-server" ./cmd/server
+  )
+  echo "==> Backend built → dist/dipole-server"
+}
+
 cmd_build() {
+  cmd_frontend
+  cmd_backend
   echo "==> Building Docker image ${IMAGE_NAME}:${IMAGE_TAG}..."
-  docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" "${ROOT_DIR}"
+  docker build \
+    -t "${IMAGE_NAME}:${IMAGE_TAG}" \
+    "${ROOT_DIR}"
   echo "==> Done: ${IMAGE_NAME}:${IMAGE_TAG}"
 }
 

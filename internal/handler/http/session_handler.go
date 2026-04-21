@@ -26,6 +26,15 @@ func NewSessionHandler(service sessionService) *SessionHandler {
 	return &SessionHandler{service: service}
 }
 
+// ListDevices godoc
+// @Summary 获取当前用户在线设备列表
+// @Tags Session
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} DeviceSessionListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/me/devices [get]
 func (h *SessionHandler) ListDevices(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -42,6 +51,18 @@ func (h *SessionHandler) ListDevices(c *gin.Context) {
 	Success(c, httpdto.ToDeviceSessionResponses(devices))
 }
 
+// ForceLogoutDevice godoc
+// @Summary 下线指定设备
+// @Tags Session
+// @Security BearerAuth
+// @Produce json
+// @Param connection_id path string true "连接 ID"
+// @Success 200 {object} DeviceLogoutResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/me/devices/{connection_id}/logout [post]
 func (h *SessionHandler) ForceLogoutDevice(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -67,6 +88,15 @@ func (h *SessionHandler) ForceLogoutDevice(c *gin.Context) {
 	})
 }
 
+// ForceLogoutAll godoc
+// @Summary 下线当前用户所有设备
+// @Tags Session
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} DeviceLogoutResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/me/devices/logout-all [post]
 func (h *SessionHandler) ForceLogoutAll(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

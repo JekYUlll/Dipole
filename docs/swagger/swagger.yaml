@@ -1,0 +1,2458 @@
+basePath: /api/v1
+definitions:
+  http.AdminOverviewResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.AdminOverviewResponse'
+    type: object
+  http.AuthResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.AuthResponse'
+    type: object
+  http.ContactApplicationListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.ContactApplicationResponse'
+        type: array
+    type: object
+  http.ContactBlockResponse:
+    properties:
+      blocked:
+        type: boolean
+      friend_uuid:
+        type: string
+      status:
+        type: integer
+    type: object
+  http.ContactBlockResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.ContactBlockResponse'
+    type: object
+  http.ContactListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.ContactResponse'
+        type: array
+    type: object
+  http.ContactRemarkResponse:
+    properties:
+      friend_uuid:
+        type: string
+      remark:
+        type: string
+      status:
+        type: integer
+    type: object
+  http.ContactRemarkResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.ContactRemarkResponse'
+    type: object
+  http.ConversationListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.ConversationResponse'
+        type: array
+    type: object
+  http.ConversationRemarkResponse:
+    properties:
+      conversation_key:
+        type: string
+      remark:
+        type: string
+    type: object
+  http.ConversationRemarkResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.ConversationRemarkResponse'
+    type: object
+  http.DeviceLogoutResponse:
+    properties:
+      connection_id:
+        type: string
+      message:
+        type: string
+    type: object
+  http.DeviceLogoutResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.DeviceLogoutResponse'
+    type: object
+  http.DeviceSessionListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.DeviceSessionResponse'
+        type: array
+    type: object
+  http.ErrorEnvelope:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  http.FileDownloadResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.FileDownloadResponse'
+    type: object
+  http.FileMultipartInitiateResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.FileMultipartInitiateResponse'
+    type: object
+  http.GroupMemberListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.GroupMemberResponse'
+        type: array
+    type: object
+  http.GroupResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.GroupResponse'
+    type: object
+  http.IDStatusResponse:
+    properties:
+      handled_at: {}
+      id:
+        type: integer
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+  http.IDStatusResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.IDStatusResponse'
+    type: object
+  http.MessageListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.MessageResponse'
+        type: array
+    type: object
+  http.MessageOnlyResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  http.MessageOnlyResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.MessageOnlyResponse'
+    type: object
+  http.MultipartAbortResponse:
+    properties:
+      aborted:
+        type: boolean
+    type: object
+  http.MultipartAbortResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.MultipartAbortResponse'
+    type: object
+  http.MultipartPartResponse:
+    properties:
+      part_number:
+        type: integer
+    type: object
+  http.MultipartPartResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/http.MultipartPartResponse'
+    type: object
+  http.PrivateUserListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.PrivateUserResponse'
+        type: array
+    type: object
+  http.PrivateUserResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.PrivateUserResponse'
+    type: object
+  http.PublicUserListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.PublicUserResponse'
+        type: array
+    type: object
+  http.PublicUserResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+    type: object
+  http.UploadedFileResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.UploadedFileResponse'
+    type: object
+  httpdto.AddGroupMembersRequest:
+    properties:
+      member_uuids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - member_uuids
+    type: object
+  httpdto.AdminOverviewResponse:
+    properties:
+      admin_user_total:
+        type: integer
+      app_name:
+        type: string
+      contact_total:
+        type: integer
+      conversation_total:
+        type: integer
+      disabled_user_total:
+        type: integer
+      dismissed_group_total:
+        type: integer
+      env:
+        type: string
+      group_total:
+        type: integer
+      kafka_enabled:
+        type: boolean
+      message_total:
+        type: integer
+      online_connection_total:
+        type: integer
+      online_user_total:
+        type: integer
+      pending_contact_application_total:
+        type: integer
+      tls_enabled:
+        type: boolean
+      user_total:
+        type: integer
+    type: object
+  httpdto.ApplyContactRequest:
+    properties:
+      message:
+        maxLength: 255
+        type: string
+      target_uuid:
+        type: string
+    required:
+    - target_uuid
+    type: object
+  httpdto.AuthResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/httpdto.PrivateUserResponse'
+    type: object
+  httpdto.ContactApplicationResponse:
+    properties:
+      applicant:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      handled_at:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      status:
+        type: integer
+      target:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+    type: object
+  httpdto.ContactResponse:
+    properties:
+      created_at:
+        type: string
+      remark:
+        type: string
+      status:
+        type: integer
+      user:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+    type: object
+  httpdto.ConversationMessageSummaryResponse:
+    properties:
+      message_id:
+        type: string
+      message_type:
+        type: integer
+      preview:
+        type: string
+      sent_at:
+        type: string
+    type: object
+  httpdto.ConversationResponse:
+    properties:
+      conversation_key:
+        type: string
+      last_message:
+        $ref: '#/definitions/httpdto.ConversationMessageSummaryResponse'
+      remark:
+        type: string
+      target_type:
+        type: integer
+      target_user:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+      unread_count:
+        type: integer
+    type: object
+  httpdto.CreateGroupRequest:
+    properties:
+      avatar:
+        maxLength: 255
+        type: string
+      member_uuids:
+        items:
+          type: string
+        type: array
+      name:
+        maxLength: 50
+        type: string
+      notice:
+        maxLength: 500
+        type: string
+    required:
+    - name
+    type: object
+  httpdto.DeviceSessionResponse:
+    properties:
+      connected_at:
+        type: string
+      connection_id:
+        type: string
+      device:
+        type: string
+      device_id:
+        type: string
+      last_seen_at:
+        type: string
+      node_id:
+        type: string
+      remote_addr:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  httpdto.FileDownloadResponse:
+    properties:
+      content_type:
+        type: string
+      download_url:
+        type: string
+      expires_at:
+        type: string
+      file_id:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+    type: object
+  httpdto.FileMultipartInitiateRequest:
+    properties:
+      content_type:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+    type: object
+  httpdto.FileMultipartInitiateResponse:
+    properties:
+      chunk_size:
+        type: integer
+      session_id:
+        type: string
+      total_parts:
+        type: integer
+    type: object
+  httpdto.GroupMemberResponse:
+    properties:
+      joined_at:
+        type: string
+      role:
+        type: integer
+      user:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+    type: object
+  httpdto.GroupResponse:
+    properties:
+      avatar:
+        type: string
+      created_at:
+        type: string
+      is_hot:
+        type: boolean
+      me_role:
+        type: integer
+      member_count:
+        type: integer
+      members:
+        items:
+          $ref: '#/definitions/httpdto.GroupMemberResponse'
+        type: array
+      name:
+        type: string
+      notice:
+        type: string
+      owner:
+        $ref: '#/definitions/httpdto.PublicUserResponse'
+      recent_message_count:
+        type: integer
+      status:
+        type: integer
+      uuid:
+        type: string
+    type: object
+  httpdto.HandleContactApplicationRequest:
+    properties:
+      action:
+        enum:
+        - accept
+        - reject
+        type: string
+    required:
+    - action
+    type: object
+  httpdto.LoginRequest:
+    properties:
+      password:
+        maxLength: 32
+        minLength: 6
+        type: string
+      telephone:
+        type: string
+    required:
+    - password
+    - telephone
+    type: object
+  httpdto.MessageResponse:
+    properties:
+      content:
+        type: string
+      content_path:
+        type: string
+      content_type:
+        type: string
+      download_path:
+        type: string
+      file_expires_at:
+        type: string
+      file_id:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      from_uuid:
+        type: string
+      id:
+        type: integer
+      message_id:
+        type: string
+      message_type:
+        type: integer
+      sent_at:
+        type: string
+      target_type:
+        type: integer
+      target_uuid:
+        type: string
+    type: object
+  httpdto.PrivateUserResponse:
+    properties:
+      avatar:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      is_admin:
+        type: boolean
+      nickname:
+        type: string
+      signature:
+        type: string
+      status:
+        type: integer
+      telephone:
+        type: string
+      updated_at:
+        type: string
+      user_type:
+        type: integer
+      uuid:
+        type: string
+    type: object
+  httpdto.PublicUserResponse:
+    properties:
+      avatar:
+        type: string
+      nickname:
+        type: string
+      signature:
+        type: string
+      status:
+        type: integer
+      user_type:
+        type: integer
+      uuid:
+        type: string
+    type: object
+  httpdto.RegisterRequest:
+    properties:
+      email:
+        maxLength: 64
+        type: string
+      nickname:
+        maxLength: 20
+        minLength: 2
+        type: string
+      password:
+        maxLength: 32
+        minLength: 6
+        type: string
+      telephone:
+        type: string
+    required:
+    - nickname
+    - password
+    - telephone
+    type: object
+  httpdto.RemoveGroupMembersRequest:
+    properties:
+      member_uuids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - member_uuids
+    type: object
+  httpdto.UpdateContactBlockStatusRequest:
+    properties:
+      blocked:
+        type: boolean
+    type: object
+  httpdto.UpdateContactRemarkRequest:
+    properties:
+      remark:
+        maxLength: 50
+        type: string
+    type: object
+  httpdto.UpdateConversationRemarkRequest:
+    properties:
+      remark:
+        maxLength: 50
+        type: string
+    type: object
+  httpdto.UpdateGroupRequest:
+    properties:
+      avatar:
+        maxLength: 255
+        type: string
+      name:
+        maxLength: 50
+        type: string
+      notice:
+        maxLength: 500
+        type: string
+    type: object
+  httpdto.UpdateProfileRequest:
+    properties:
+      avatar:
+        type: string
+      email:
+        type: string
+      nickname:
+        type: string
+      signature:
+        type: string
+    type: object
+  httpdto.UpdateStatusRequest:
+    properties:
+      status:
+        type: integer
+    type: object
+  httpdto.UploadedFileResponse:
+    properties:
+      content_path:
+        type: string
+      content_type:
+        type: string
+      download_path:
+        type: string
+      file_id:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Dipole 的 HTTP API 文档，覆盖认证、用户、联系人、会话、消息、群组、文件、设备会话和后台总览等核心接口。
+  title: Dipole API
+  version: "1.0"
+paths:
+  /admin/overview:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AdminOverviewResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取后台总览
+      tags:
+      - Admin
+  /admin/users:
+    get:
+      parameters:
+      - description: 搜索关键词
+        in: query
+        name: keyword
+        type: string
+      - description: 用户状态
+        in: query
+        name: status
+        type: integer
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PrivateUserListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 管理员查询用户列表
+      tags:
+      - Admin
+  /admin/users/{uuid}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 状态更新内容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PrivateUserResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 管理员修改用户状态
+      tags:
+      - Admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登录信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AuthResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      summary: 用户登录
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 用户登出
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 注册信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.AuthResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      summary: 用户注册
+      tags:
+      - Auth
+  /contacts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ContactListResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取好友列表
+      tags:
+      - Contact
+  /contacts/{friend_uuid}:
+    delete:
+      parameters:
+      - description: 好友 UUID
+        in: path
+        name: friend_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 删除好友
+      tags:
+      - Contact
+  /contacts/{friend_uuid}/block:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 好友 UUID
+        in: path
+        name: friend_uuid
+        required: true
+        type: string
+      - description: 拉黑状态
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateContactBlockStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ContactBlockResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新好友拉黑状态
+      tags:
+      - Contact
+  /contacts/{friend_uuid}/remark:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 好友 UUID
+        in: path
+        name: friend_uuid
+        required: true
+        type: string
+      - description: 备注内容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateContactRemarkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ContactRemarkResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新好友备注
+      tags:
+      - Contact
+  /contacts/applications:
+    get:
+      parameters:
+      - description: incoming 或 outgoing
+        in: query
+        name: box
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ContactApplicationListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取好友申请列表
+      tags:
+      - Contact
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 好友申请
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.ApplyContactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.IDStatusResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 发起好友申请
+      tags:
+      - Contact
+  /contacts/applications/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 申请 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 处理动作
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.HandleContactApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.IDStatusResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 处理好友申请
+      tags:
+      - Contact
+  /conversations:
+    get:
+      parameters:
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ConversationListResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取会话列表
+      tags:
+      - Conversation
+  /conversations/direct/{target_uuid}/read:
+    patch:
+      parameters:
+      - description: 目标用户 UUID
+        in: path
+        name: target_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 标记单聊已读
+      tags:
+      - Conversation
+  /conversations/group/{group_uuid}/read:
+    patch:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: group_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 标记群会话已读
+      tags:
+      - Conversation
+  /conversations/group/{group_uuid}/remark:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: group_uuid
+        required: true
+        type: string
+      - description: 备注内容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateConversationRemarkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.ConversationRemarkResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新群会话备注
+      tags:
+      - Conversation
+  /files:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UploadedFileResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上传聊天文件
+      tags:
+      - File
+  /files/{file_id}/content:
+    get:
+      parameters:
+      - description: 文件 UUID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取文件内容流
+      tags:
+      - File
+  /files/{file_id}/download:
+    get:
+      parameters:
+      - description: 文件 UUID
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.FileDownloadResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取文件下载链接
+      tags:
+      - File
+  /files/uploads/{session_id}:
+    delete:
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MultipartAbortResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 取消分片上传
+      tags:
+      - File
+  /files/uploads/{session_id}/complete:
+    post:
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UploadedFileResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 完成分片上传
+      tags:
+      - File
+  /files/uploads/{session_id}/parts/{part_number}:
+    put:
+      consumes:
+      - application/octet-stream
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      - description: 分片编号
+        in: path
+        name: part_number
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MultipartPartResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上传分片
+      tags:
+      - File
+  /files/uploads/initiate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 文件信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.FileMultipartInitiateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.FileMultipartInitiateResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 初始化分片上传
+      tags:
+      - File
+  /groups:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 群资料
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.CreateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 创建群组
+      tags:
+      - Group
+  /groups/{uuid}:
+    get:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取群详情
+      tags:
+      - Group
+  /groups/{uuid}/avatar:
+    get:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      summary: 获取群头像
+      tags:
+      - Group
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 头像文件
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上传群头像
+      tags:
+      - Group
+  /groups/{uuid}/dismiss:
+    post:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 软解散群组
+      tags:
+      - Group
+  /groups/{uuid}/members:
+    get:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupMemberListResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取群成员列表
+      tags:
+      - Group
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 成员列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AddGroupMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupMemberListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 邀请群成员
+      tags:
+      - Group
+  /groups/{uuid}/members/me:
+    delete:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 退出群组
+      tags:
+      - Group
+  /groups/{uuid}/remove-members:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 成员列表
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.RemoveGroupMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageOnlyResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 移除群成员
+      tags:
+      - Group
+  /groups/{uuid}/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 群资料更新
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新群资料
+      tags:
+      - Group
+  /messages/direct/{target_uuid}:
+    get:
+      parameters:
+      - description: 目标用户 UUID
+        in: path
+        name: target_uuid
+        required: true
+        type: string
+      - description: 向前翻页游标
+        in: query
+        name: before_id
+        type: integer
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取单聊历史消息
+      tags:
+      - Message
+  /messages/group/{group_uuid}:
+    get:
+      parameters:
+      - description: 群 UUID
+        in: path
+        name: group_uuid
+        required: true
+        type: string
+      - description: 向前翻页游标
+        in: query
+        name: before_id
+        type: integer
+      - description: 增量补拉游标
+        in: query
+        name: after_id
+        type: integer
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取群聊历史或增量消息
+      tags:
+      - Message
+  /messages/offline:
+    get:
+      parameters:
+      - description: 增量游标
+        in: query
+        name: after_id
+        type: integer
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MessageListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取离线消息
+      tags:
+      - Message
+  /users:
+    get:
+      parameters:
+      - description: 搜索关键词
+        in: query
+        name: keyword
+        type: string
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PublicUserListResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 搜索用户
+      tags:
+      - User
+  /users/{uuid}:
+    get:
+      parameters:
+      - description: 用户 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PublicUserResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取用户资料
+      tags:
+      - User
+  /users/{uuid}/avatar:
+    get:
+      parameters:
+      - description: 用户 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      summary: 获取用户头像
+      tags:
+      - User
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: 用户 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 头像文件
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PrivateUserResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上传用户头像
+      tags:
+      - User
+  /users/{uuid}/profile:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户 UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: 资料更新内容
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PrivateUserResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 更新用户资料
+      tags:
+      - User
+  /users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PrivateUserResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户资料
+      tags:
+      - User
+  /users/me/devices:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceSessionListResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取当前用户在线设备列表
+      tags:
+      - Session
+  /users/me/devices/{connection_id}/logout:
+    post:
+      parameters:
+      - description: 连接 ID
+        in: path
+        name: connection_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceLogoutResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 下线指定设备
+      tags:
+      - Session
+  /users/me/devices/logout-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceLogoutResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 下线当前用户所有设备
+      tags:
+      - Session
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 输入格式为 `Bearer <token>`。
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

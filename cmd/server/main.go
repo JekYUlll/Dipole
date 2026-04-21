@@ -9,6 +9,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title Dipole API
+// @version 1.0
+// @description Dipole 的 HTTP API 文档，覆盖认证、用户、联系人、会话、消息、群组、文件、设备会话和后台总览等核心接口。
+// @BasePath /api/v1
+// @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description 输入格式为 `Bearer <token>`。
 func main() {
 	config.MustLoad()
 	if err := logger.Init(); err != nil {

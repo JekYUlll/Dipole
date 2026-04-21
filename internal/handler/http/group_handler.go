@@ -45,6 +45,19 @@ func (h *GroupHandler) WithAvatarMaxUploadBytes(maxUploadBytes int64) *GroupHand
 	return h
 }
 
+// Create godoc
+// @Summary 创建群组
+// @Tags Group
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.CreateGroupRequest true "群资料"
+// @Success 200 {object} GroupResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups [post]
 func (h *GroupHandler) Create(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -67,6 +80,18 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	Success(c, httpdto.ToGroupResponse(group))
 }
 
+// Get godoc
+// @Summary 获取群详情
+// @Tags Group
+// @Security BearerAuth
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Success 200 {object} GroupResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid} [get]
 func (h *GroupHandler) Get(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -83,6 +108,16 @@ func (h *GroupHandler) Get(c *gin.Context) {
 	Success(c, httpdto.ToGroupResponse(group))
 }
 
+// GetAvatar godoc
+// @Summary 获取群头像
+// @Tags Group
+// @Produce image/png
+// @Param uuid path string true "群 UUID"
+// @Success 200 {file} binary
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/avatar [get]
 func (h *GroupHandler) GetAvatar(c *gin.Context) {
 	avatar, err := h.service.GetAvatarResponse(c.Param("uuid"))
 	if err != nil {
@@ -124,6 +159,18 @@ func (h *GroupHandler) GetAvatar(c *gin.Context) {
 	c.Redirect(http.StatusFound, avatar.RedirectURL)
 }
 
+// ListMembers godoc
+// @Summary 获取群成员列表
+// @Tags Group
+// @Security BearerAuth
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Success 200 {object} GroupMemberListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/members [get]
 func (h *GroupHandler) ListMembers(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -140,6 +187,22 @@ func (h *GroupHandler) ListMembers(c *gin.Context) {
 	Success(c, httpdto.ToGroupMemberResponses(members))
 }
 
+// AddMembers godoc
+// @Summary 邀请群成员
+// @Tags Group
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Param request body httpdto.AddGroupMembersRequest true "成员列表"
+// @Success 200 {object} GroupMemberListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/members [post]
 func (h *GroupHandler) AddMembers(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -162,6 +225,19 @@ func (h *GroupHandler) AddMembers(c *gin.Context) {
 	Success(c, httpdto.ToGroupMemberResponses(members))
 }
 
+// Leave godoc
+// @Summary 退出群组
+// @Tags Group
+// @Security BearerAuth
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/members/me [delete]
 func (h *GroupHandler) Leave(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -179,6 +255,22 @@ func (h *GroupHandler) Leave(c *gin.Context) {
 	})
 }
 
+// Update godoc
+// @Summary 更新群资料
+// @Tags Group
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Param request body httpdto.UpdateGroupRequest true "群资料更新"
+// @Success 200 {object} GroupResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/update [post]
 func (h *GroupHandler) Update(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -201,6 +293,22 @@ func (h *GroupHandler) Update(c *gin.Context) {
 	Success(c, httpdto.ToGroupResponse(group))
 }
 
+// UploadAvatar godoc
+// @Summary 上传群头像
+// @Tags Group
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Param avatar formData file true "头像文件"
+// @Success 200 {object} GroupResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/avatar [post]
 func (h *GroupHandler) UploadAvatar(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -230,6 +338,22 @@ func (h *GroupHandler) UploadAvatar(c *gin.Context) {
 	Success(c, httpdto.ToGroupResponse(group))
 }
 
+// RemoveMembers godoc
+// @Summary 移除群成员
+// @Tags Group
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Param request body httpdto.RemoveGroupMembersRequest true "成员列表"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/remove-members [post]
 func (h *GroupHandler) RemoveMembers(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -253,6 +377,19 @@ func (h *GroupHandler) RemoveMembers(c *gin.Context) {
 	})
 }
 
+// Dismiss godoc
+// @Summary 软解散群组
+// @Tags Group
+// @Security BearerAuth
+// @Produce json
+// @Param uuid path string true "群 UUID"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /groups/{uuid}/dismiss [post]
 func (h *GroupHandler) Dismiss(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

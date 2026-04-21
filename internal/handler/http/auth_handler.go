@@ -40,6 +40,18 @@ func (h *AuthHandler) WithLimiter(limiter authRateLimiter) *AuthHandler {
 	return h
 }
 
+// Register godoc
+// @Summary 用户注册
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.RegisterRequest true "注册信息"
+// @Success 200 {object} AuthResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 429 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var request httpdto.RegisterRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -80,6 +92,19 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	Success(c, httpdto.NewAuthResponse(result))
 }
 
+// Login godoc
+// @Summary 用户登录
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.LoginRequest true "登录信息"
+// @Success 200 {object} AuthResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 429 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var request httpdto.LoginRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -120,6 +145,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	Success(c, httpdto.NewAuthResponse(result))
 }
 
+// Logout godoc
+// @Summary 用户登出
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	token, ok := middleware.CurrentToken(c)
 	if !ok {

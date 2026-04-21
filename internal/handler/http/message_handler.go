@@ -29,6 +29,21 @@ func NewMessageHandler(service messageService) *MessageHandler {
 	return &MessageHandler{service: service}
 }
 
+// ListDirect godoc
+// @Summary 获取单聊历史消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param target_uuid path string true "目标用户 UUID"
+// @Param before_id query int false "向前翻页游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/direct/{target_uuid} [get]
 func (h *MessageHandler) ListDirect(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -65,6 +80,22 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 	Success(c, httpdto.ToMessageResponses(messages))
 }
 
+// ListGroup godoc
+// @Summary 获取群聊历史或增量消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param group_uuid path string true "群 UUID"
+// @Param before_id query int false "向前翻页游标"
+// @Param after_id query int false "增量补拉游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/group/{group_uuid} [get]
 func (h *MessageHandler) ListGroup(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -123,6 +154,18 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 	Success(c, httpdto.ToMessageResponses(messages))
 }
 
+// ListOffline godoc
+// @Summary 获取离线消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param after_id query int false "增量游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/offline [get]
 func (h *MessageHandler) ListOffline(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
