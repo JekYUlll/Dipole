@@ -56,19 +56,22 @@ type PongData struct {
 }
 
 type ErrorEventData struct {
-	Code        string `json:"code"`
-	Message     string `json:"message"`
-	RequestType string `json:"request_type,omitempty"`
+	Code            string `json:"code"`
+	Message         string `json:"message"`
+	RequestType     string `json:"request_type,omitempty"`
+	ClientMessageID string `json:"client_message_id,omitempty"`
 }
 
 type SendTextMessageInput struct {
-	TargetUUID string `json:"target_uuid"`
-	Content    string `json:"content"`
+	TargetUUID      string `json:"target_uuid"`
+	Content         string `json:"content"`
+	ClientMessageID string `json:"client_message_id,omitempty"`
 }
 
 type SendFileMessageInput struct {
-	TargetUUID string `json:"target_uuid"`
-	FileID     string `json:"file_id"`
+	TargetUUID      string `json:"target_uuid"`
+	FileID          string `json:"file_id"`
+	ClientMessageID string `json:"client_message_id,omitempty"`
 }
 
 type FilePayload struct {
@@ -94,7 +97,8 @@ type ChatMessageData struct {
 
 type ChatSentData struct {
 	ChatMessageData
-	Delivered bool `json:"delivered"`
+	Delivered       bool   `json:"delivered"`
+	ClientMessageID string `json:"client_message_id,omitempty"`
 }
 
 type ChatReadData struct {

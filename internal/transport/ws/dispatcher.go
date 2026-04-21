@@ -18,10 +18,10 @@ type inboundHandler interface {
 }
 
 type directMessageService interface {
-	SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
-	SendGroupMessage(senderUUID, groupUUID, content string) (*model.Message, []string, error)
-	SendDirectFileMessage(senderUUID, targetUUID, fileUUID string) (*model.Message, error)
-	SendGroupFileMessage(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error)
+	SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
+	SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
+	SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
 type conversationUpdater interface {
@@ -58,7 +58,7 @@ func (d *Dispatcher) WithLimiter(limiter messageRateLimiter) *Dispatcher {
 func (d *Dispatcher) Handle(client *Client, payload []byte) {
 	var envelope InboundEnvelope
 	if err := json.Unmarshal(payload, &envelope); err != nil {
-		_ = client.SendError(ErrorBadRequest, "message payload is invalid", "")
+		_ = client.SendError(ErrorBadRequest, "message payload is invalid", "", "")
 		return
 	}
 
@@ -74,6 +74,7 @@ func (d *Dispatcher) Handle(client *Client, payload []byte) {
 			ErrorUnsupportedType,
 			fmt.Sprintf("unsupported message type: %s", envelope.Type),
 			envelope.Type,
+			"",
 		)
 	}
 }
@@ -81,7 +82,7 @@ func (d *Dispatcher) Handle(client *Client, payload []byte) {
 func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 	var input SendTextMessageInput
 	if err := json.Unmarshal(raw, &input); err != nil {
-		_ = client.SendError(ErrorBadRequest, "chat.send payload is invalid", TypeChatSend)
+		_ = client.SendError(ErrorBadRequest, "chat.send payload is invalid", TypeChatSend, "")
 		return
 	}
 
@@ -92,6 +93,7 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 				ErrorRateLimited,
 				formatRateLimitMessage("message send rate limit exceeded", retryAfter),
 				TypeChatSend,
+				input.ClientMessageID,
 			)
 			return
 		}
@@ -99,13 +101,13 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if strings.HasPrefix(targetUUID, "G") {
-		d.handleGroupChatSend(client, targetUUID, input.Content)
+		d.handleGroupChatSend(client, targetUUID, input.Content, input.ClientMessageID)
 		return
 	}
 
-	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, targetUUID, input.Content)
+	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, targetUUID, input.Content, input.ClientMessageID)
 	if err != nil {
-		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSend)
+		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSend, input.ClientMessageID)
 		return
 	}
 
@@ -115,7 +117,7 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 	var input SendFileMessageInput
 	if err := json.Unmarshal(raw, &input); err != nil {
-		_ = client.SendError(ErrorBadRequest, "chat.send_file payload is invalid", TypeChatSendFile)
+		_ = client.SendError(ErrorBadRequest, "chat.send_file payload is invalid", TypeChatSendFile, "")
 		return
 	}
 
@@ -126,6 +128,7 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 				ErrorRateLimited,
 				formatRateLimitMessage("message send rate limit exceeded", retryAfter),
 				TypeChatSendFile,
+				input.ClientMessageID,
 			)
 			return
 		}
@@ -133,33 +136,33 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if strings.HasPrefix(targetUUID, "G") {
-		d.handleGroupFileSend(client, targetUUID, input.FileID)
+		d.handleGroupFileSend(client, targetUUID, input.FileID, input.ClientMessageID)
 		return
 	}
 
-	message, err := d.messageService.SendDirectFileMessage(client.sessionUser.UUID, targetUUID, input.FileID)
+	message, err := d.messageService.SendDirectFileMessage(client.sessionUser.UUID, targetUUID, input.FileID, input.ClientMessageID)
 	if err != nil {
-		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSendFile)
+		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSendFile, input.ClientMessageID)
 		return
 	}
 
 	d.dispatchDirect(client, message)
 }
 
-func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string) {
-	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content)
+func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string, clientMessageID string) {
+	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content, clientMessageID)
 	if err != nil {
-		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSend)
+		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSend, clientMessageID)
 		return
 	}
 
 	d.dispatchGroup(client, message, recipients)
 }
 
-func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID string) {
-	message, recipients, err := d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID)
+func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID string, clientMessageID string) {
+	message, recipients, err := d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID, clientMessageID)
 	if err != nil {
-		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSendFile)
+		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSendFile, clientMessageID)
 		return
 	}
 
@@ -188,6 +191,7 @@ func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
 	ack := ChatSentData{
 		ChatMessageData: eventData,
 		Delivered:       deliveredCount > 0,
+		ClientMessageID: message.ClientMessageID,
 	}
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket chat ack failed", zap.Error(err))
@@ -218,31 +222,32 @@ func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recip
 	ack := ChatSentData{
 		ChatMessageData: eventData,
 		Delivered:       deliveredCount > 0,
+		ClientMessageID: message.ClientMessageID,
 	}
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket group chat ack failed", zap.Error(err))
 	}
 }
 
-func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string) {
+func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string, clientMessageID string) {
 	switch {
 	case errors.Is(err, service.ErrMessageTargetRequired):
-		_ = client.SendError(ErrorBadRequest, "target_uuid is required", requestType)
+		_ = client.SendError(ErrorBadRequest, "target_uuid is required", requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageContentRequired):
-		_ = client.SendError(ErrorBadRequest, "content is required", requestType)
+		_ = client.SendError(ErrorBadRequest, "content is required", requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageContentTooLong):
-		_ = client.SendError(ErrorBadRequest, "content is too long", requestType)
+		_ = client.SendError(ErrorBadRequest, "content is too long", requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageFileRequired):
-		_ = client.SendError(ErrorBadRequest, "file_id is required", requestType)
+		_ = client.SendError(ErrorBadRequest, "file_id is required", requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageFriendRequired), errors.Is(err, service.ErrMessageGroupForbidden):
-		_ = client.SendError(ErrorPermissionDenied, "message send permission denied", requestType)
+		_ = client.SendError(ErrorPermissionDenied, "message send permission denied", requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageTargetUnavailable), errors.Is(err, service.ErrMessageTargetNotFound):
-		_ = client.SendError(ErrorTargetUnavailable, unavailableMessage, requestType)
+		_ = client.SendError(ErrorTargetUnavailable, unavailableMessage, requestType, clientMessageID)
 	case errors.Is(err, service.ErrMessageFileUnavailable):
-		_ = client.SendError(ErrorBadRequest, "file is unavailable", requestType)
+		_ = client.SendError(ErrorBadRequest, "file is unavailable", requestType, clientMessageID)
 	default:
 		client.log.Warn("persist websocket message failed", zap.Error(err))
-		_ = client.SendError(ErrorInternal, "message send failed", requestType)
+		_ = client.SendError(ErrorInternal, "message send failed", requestType, clientMessageID)
 	}
 }
 

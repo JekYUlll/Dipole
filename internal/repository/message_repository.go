@@ -70,6 +70,18 @@ func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	return &message, nil
 }
 
+func (r *MessageRepository) GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error) {
+	var message model.Message
+	if err := store.DB.Where("sender_uuid = ? AND client_message_id = ?", senderUUID, clientMessageID).First(&message).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get message by sender and client message id: %w", err)
+	}
+
+	return &message, nil
+}
+
 func (r *MessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
 	var count int64
 	if err := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey).Count(&count).Error; err != nil {

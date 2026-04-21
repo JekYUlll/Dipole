@@ -526,6 +526,11 @@ const mediaPreviewMap = ref<Record<string, string>>({})
 const mediaPreviewInflight = new Map<string, Promise<void>>()
 
 const directUploadThresholdBytes = 4 * 1024 * 1024
+type PendingWsMessage = {
+  type: 'chat.send' | 'chat.send_file'
+  data: Record<string, unknown> & { client_message_id: string }
+}
+const pendingOutboundMessages = new Map<string, PendingWsMessage>()
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -553,6 +558,19 @@ const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+const newClientMessageID = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 const fileName = (msg: Message) => msg.file?.file_name || msg.file_name || '文件'
@@ -677,6 +695,17 @@ const clearHotGroupPullSchedulers = () => {
   hotGroupPullTimers.clear()
   hotGroupPullPending.clear()
   hotGroupPullInFlight.clear()
+}
+
+const enqueuePendingOutboundMessage = (message: PendingWsMessage) => {
+  pendingOutboundMessages.set(message.data.client_message_id, message)
+  ws.send(message.type, message.data)
+}
+
+const resendPendingOutboundMessages = () => {
+  for (const message of pendingOutboundMessages.values()) {
+    ws.send(message.type, message.data)
+  }
 }
 
 const revokeMediaPreviewURLs = () => {
@@ -912,11 +941,18 @@ const sendMessage = () => {
   if (!inputText.value.trim() || !activeConv.value) return
   if (isGroupDismissed.value) return
   const conv = activeConv.value
+  const clientMessageID = newClientMessageID()
   if (conv.target_type === 1) {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
-    ws.send('chat.send', { target_uuid: groupUUID, target_type: 1, content: inputText.value.trim() })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send',
+      data: { target_uuid: groupUUID, target_type: 1, content: inputText.value.trim(), client_message_id: clientMessageID },
+    })
   } else {
-    ws.send('chat.send', { target_uuid: conv.target_user!.uuid, target_type: 0, content: inputText.value.trim() })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send',
+      data: { target_uuid: conv.target_user!.uuid, target_type: 0, content: inputText.value.trim(), client_message_id: clientMessageID },
+    })
   }
   inputText.value = ''
 }
@@ -931,7 +967,15 @@ const uploadFile = async (e: Event) => {
     : conv.target_user!.uuid
   try {
     const res = await uploadChatFile(file)
-    ws.send('chat.send_file', { target_uuid: targetUUID, target_type: conv.target_type, file_id: res.file_id })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send_file',
+      data: {
+        target_uuid: targetUUID,
+        target_type: conv.target_type,
+        file_id: res.file_id,
+        client_message_id: newClientMessageID(),
+      },
+    })
   } catch (err: any) {
     alert(err?.message || '文件上传失败')
   } finally {
@@ -963,6 +1007,7 @@ const loadMore = async () => {
 }
 
 const handleLogout = async () => {
+  pendingOutboundMessages.clear()
   ws.close()
   await auth.logout()
   router.push({ name: 'login' })
@@ -1353,11 +1398,25 @@ const handleWsPacket = async (packet: WsPacket) => {
       break
     case 'chat.message':
     case 'chat.sent': {
+      const clientMessageID = typeof (data as any)?.client_message_id === 'string'
+        ? String((data as any).client_message_id)
+        : ''
+      if (clientMessageID) {
+        pendingOutboundMessages.delete(clientMessageID)
+      }
       const msg = wsDataToMessage(data as Record<string, unknown>)
       pushIncomingMessage(msg)
       await chat.fetchConversations()
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
       if (key === chat.activeKey) scrollToBottom()
+      break
+    }
+    case 'error': {
+      const requestType = String((data as any)?.request_type || '')
+      const clientMessageID = String((data as any)?.client_message_id || '')
+      if (clientMessageID && (requestType === 'chat.send' || requestType === 'chat.send_file')) {
+        pendingOutboundMessages.delete(clientMessageID)
+      }
       break
     }
     case 'session.kicked':
@@ -1413,7 +1472,10 @@ const handleWsPacket = async (packet: WsPacket) => {
   }
 }
 
-const ws = useWebSocket({ onMessage: handleWsPacket })
+const ws = useWebSocket({
+  onMessage: handleWsPacket,
+  onConnected: resendPendingOutboundMessages,
+})
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -1445,6 +1507,7 @@ watch(() => activeConv.value?.conversation_key, () => {
 
 onBeforeUnmount(() => {
   clearHotGroupPullSchedulers()
+  pendingOutboundMessages.clear()
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()
 })

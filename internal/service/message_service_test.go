@@ -66,6 +66,23 @@ func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	return r.messagesByUUID[uuid], nil
 }
 
+func (r *stubMessageRepository) GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.messagesByUUID == nil {
+		return nil, nil
+	}
+
+	for _, message := range r.messagesByUUID {
+		if message != nil && message.SenderUUID == senderUUID && message.ClientMessageID == clientMessageID {
+			return message, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func (r *stubMessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -287,7 +304,7 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 		},
 	}, nil, nil, nil, nil)
 
-	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ")
+	message, err := service.SendDirectMessage("U100", " U200 ", " hello world ", "cmid-1")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -296,6 +313,9 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 	}
 	if message.UUID == "" || !strings.HasPrefix(message.UUID, "M") {
 		t.Fatalf("expected generated message uuid, got %s", message.UUID)
+	}
+	if message.ClientMessageID != "cmid-1" {
+		t.Fatalf("expected client message id cmid-1, got %s", message.ClientMessageID)
 	}
 	if message.ConversationKey != model.DirectConversationKey("U100", "U200") {
 		t.Fatalf("unexpected conversation key: %s", message.ConversationKey)
@@ -329,7 +349,7 @@ func TestMessageServiceSendDirectMessageRejectsUnavailableTarget(t *testing.T) {
 		},
 	}, nil, nil, nil, nil)
 
-	_, err := service.SendDirectMessage("U100", "U200", "hello")
+	_, err := service.SendDirectMessage("U100", "U200", "hello", "cmid-2")
 	if !errors.Is(err, ErrMessageTargetUnavailable) {
 		t.Fatalf("expected ErrMessageTargetUnavailable, got %v", err)
 	}
@@ -353,7 +373,7 @@ func TestMessageServiceSendDirectMessageRejectsNonFriend(t *testing.T) {
 		},
 	}, nil, nil, nil, nil)
 
-	_, err := service.SendDirectMessage("U100", "U200", "hello")
+	_, err := service.SendDirectMessage("U100", "U200", "hello", "cmid-3")
 	if !errors.Is(err, ErrMessageFriendRequired) {
 		t.Fatalf("expected ErrMessageFriendRequired, got %v", err)
 	}
@@ -377,7 +397,7 @@ func TestMessageServiceSendDirectMessageAllowsAssistantTarget(t *testing.T) {
 		},
 	}, nil, nil, nil, nil)
 
-	message, err := service.SendDirectMessage("U100", "UAI", "hello ai")
+	message, err := service.SendDirectMessage("U100", "UAI", "hello ai", "cmid-4")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -558,7 +578,7 @@ func TestMessageServiceSendGroupMessageSuccess(t *testing.T) {
 		},
 	}, nil, nil, observer)
 
-	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group")
+	message, recipients, err := service.SendGroupMessage("U100", "G100", "hello group", "cmid-group-1")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -591,7 +611,7 @@ func TestMessageServiceSendGroupMessageRejectsNonMember(t *testing.T) {
 		},
 	}, nil, nil, nil)
 
-	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
+	_, _, err := service.SendGroupMessage("U100", "G100", "hello", "cmid-group-2")
 	if !errors.Is(err, ErrMessageGroupForbidden) {
 		t.Fatalf("expected ErrMessageGroupForbidden, got %v", err)
 	}
@@ -704,7 +724,7 @@ func TestMessageServiceSendGroupMessageRejectsDismissedGroup(t *testing.T) {
 		},
 	}, nil, nil, nil)
 
-	_, _, err := service.SendGroupMessage("U100", "G100", "hello")
+	_, _, err := service.SendGroupMessage("U100", "G100", "hello", "cmid-group-3")
 	if !errors.Is(err, ErrMessageTargetNotFound) {
 		t.Fatalf("expected ErrMessageTargetNotFound, got %v", err)
 	}
@@ -915,7 +935,7 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 		},
 	}, nil, nil)
 
-	message, err := service.SendDirectFileMessage("U100", "U200", "F100")
+	message, err := service.SendDirectFileMessage("U100", "U200", "F100", "cmid-file-1")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -932,7 +952,7 @@ func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
 
 	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, &stubMessageFileFinder{}, nil, nil)
 
-	_, err := service.SendDirectFileMessage("U100", "U200", "")
+	_, err := service.SendDirectFileMessage("U100", "U200", "", "cmid-file-2")
 	if !errors.Is(err, ErrMessageFileRequired) {
 		t.Fatalf("expected ErrMessageFileRequired, got %v", err)
 	}
@@ -976,7 +996,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		},
 	}, nil, nil, publisher, nil)
 
-	if _, err := service.SendDirectMessage("U100", "U200", "hello"); err != nil {
+	if _, err := service.SendDirectMessage("U100", "U200", "hello", "cmid-5"); err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if len(repo.createdMessages) != 0 {
@@ -1067,5 +1087,47 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 	}
 	if repo.ensuredOutboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected ensured outbox topic message.direct.created, got %s", repo.ensuredOutboxEvents[0].Topic)
+	}
+}
+
+func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessageID(t *testing.T) {
+	t.Parallel()
+
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		messagesByUUID: map[string]*model.Message{
+			"M100": existing,
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, &stubEventPublisher{}, nil)
+
+	message, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if message != existing {
+		t.Fatalf("expected existing message to be reused by client_message_id")
+	}
+	if len(repo.ensuredOutboxEvents) != 1 {
+		t.Fatalf("expected ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
 	}
 }

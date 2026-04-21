@@ -9,7 +9,7 @@ import (
 )
 
 func TestAutoMigrateCreatesCompositeIndexes(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file:test_auto_migrate_indexes?mode=memory&cache=private"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
@@ -31,6 +31,7 @@ func TestAutoMigrateCreatesCompositeIndexes(t *testing.T) {
 		{&model.Message{}, "idx_message_conversation_id"},
 		{&model.Message{}, "idx_message_target_uuid_id"},
 		{&model.Message{}, "idx_message_sender_id"},
+		{&model.Message{}, "idx_message_sender_client"},
 		{&model.Message{}, "idx_message_file_type_sent"},
 		{&model.Conversation{}, "idx_conversation_user_last_message_at"},
 		{&model.ContactApplication{}, "idx_contact_applicant_created"},

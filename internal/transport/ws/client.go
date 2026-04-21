@@ -95,11 +95,12 @@ func (c *Client) SendEvent(eventType string, data any) error {
 	})
 }
 
-func (c *Client) SendError(code, message, requestType string) error {
+func (c *Client) SendError(code, message, requestType, clientMessageID string) error {
 	return c.SendEvent(TypeError, ErrorEventData{
-		Code:        code,
-		Message:     message,
-		RequestType: requestType,
+		Code:            code,
+		Message:         message,
+		RequestType:     requestType,
+		ClientMessageID: clientMessageID,
 	})
 }
 
@@ -122,7 +123,7 @@ func (c *Client) readPump() {
 		}
 
 		if messageType != websocket.TextMessage {
-			_ = c.SendError(ErrorBadRequest, "only text frames are supported", "")
+			_ = c.SendError(ErrorBadRequest, "only text frames are supported", "", "")
 			continue
 		}
 
