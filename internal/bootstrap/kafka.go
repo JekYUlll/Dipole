@@ -79,6 +79,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	} else if aiService != nil {
 		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
 	}
+	hotGroupNotifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 
 	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(messageService, "direct"))
 	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(messageService, "group"))
@@ -97,7 +98,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 			}
 		}))
 		platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
-		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroupDetector))
+		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroupDetector, hotGroupNotifier))
 		platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
 		platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 			return wsTransport.GroupUpdatedEventData{
@@ -257,7 +258,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader) platformKafka.Handler {
+func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *hotGroupNotifyAggregator) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
@@ -300,28 +301,31 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 		// 热群模式下只把正文换成 notify，先把 WS 写放大降下来；后续如果继续压测，
 		// 这一层还可以演进成按 node_id 聚合后再批量转发。
 		for _, recipientUUID := range payload.RecipientUUIDs {
+			if hot {
+				continue
+			}
 			if recipientUUID == payload.SenderUUID {
 				continue
 			}
 			wg.Add(1)
 			go func(uuid string) {
 				defer wg.Done()
-				if hot {
-					// Hot group: push a notify-only event so the client pulls the batch.
-					hub.SendEventToUser(uuid, wsTransport.TypeGroupMessageNotify, wsTransport.GroupMessageNotifyData{
-						GroupUUID:          payload.TargetUUID,
-						LatestMessageID:    payload.MessageID,
-						MessageType:        payload.MessageType,
-						Preview:            messagePreview(payload),
-						RecentMessageCount: recentMessageCount,
-						SentAt:             payload.SentAt,
-					})
-					return
-				}
 				hub.SendEventToUser(uuid, wsTransport.TypeChatMessage, eventData)
 			}(recipientUUID)
 		}
 		wg.Wait()
+		if hot {
+			// 热群下不再逐条立即 fan-out notify，而是把短时间窗口内的多条消息
+			// 合并成一次“最新游标通知”，让客户端做一次批量补拉即可。
+			notifier.Enqueue(payload.TargetUUID, wsTransport.GroupMessageNotifyData{
+				GroupUUID:          payload.TargetUUID,
+				LatestMessageID:    payload.MessageID,
+				MessageType:        payload.MessageType,
+				Preview:            messagePreview(payload),
+				RecentMessageCount: recentMessageCount,
+				SentAt:             payload.SentAt,
+			}, payload.RecipientUUIDs)
+		}
 
 		return nil
 	}

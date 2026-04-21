@@ -612,7 +612,11 @@ const latestLoadedMessageID = (key: string) => {
   return list.reduce((max, item) => Math.max(max, item.id || 0), 0)
 }
 
-const pullHotGroupMessages = async (groupUUID: string) => {
+const hotGroupPullTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const hotGroupPullInFlight = new Map<string, Promise<void>>()
+const hotGroupPullPending = new Set<string>()
+
+const performHotGroupPull = async (groupUUID: string) => {
   const key = `group:${groupUUID}`
   const existing = chat.messageMap.get(key) || []
   if (existing.length === 0) {
@@ -626,6 +630,53 @@ const pullHotGroupMessages = async (groupUUID: string) => {
     return
   }
   await chat.fetchGroupMessagesAfter(groupUUID, afterID)
+}
+
+const flushHotGroupPull = async (groupUUID: string) => {
+  hotGroupPullTimers.delete(groupUUID)
+
+  if (hotGroupPullInFlight.has(groupUUID)) {
+    hotGroupPullPending.add(groupUUID)
+    return
+  }
+
+  const request = (async () => {
+    try {
+      await performHotGroupPull(groupUUID)
+      const activeKey = `group:${groupUUID}`
+      if (chat.activeKey === activeKey) {
+        const conv = chat.conversations.find(item => item.conversation_key === activeKey)
+        if (conv) {
+          await chat.markRead(conv).catch(() => {})
+        }
+        scrollToBottom()
+      }
+    } finally {
+      hotGroupPullInFlight.delete(groupUUID)
+      if (hotGroupPullPending.delete(groupUUID)) {
+        scheduleHotGroupPull(groupUUID)
+      }
+    }
+  })()
+
+  hotGroupPullInFlight.set(groupUUID, request)
+  await request
+}
+
+const scheduleHotGroupPull = (groupUUID: string) => {
+  if (!groupUUID || hotGroupPullTimers.has(groupUUID)) return
+
+  const timer = setTimeout(() => {
+    void flushHotGroupPull(groupUUID)
+  }, 150)
+  hotGroupPullTimers.set(groupUUID, timer)
+}
+
+const clearHotGroupPullSchedulers = () => {
+  hotGroupPullTimers.forEach(timer => clearTimeout(timer))
+  hotGroupPullTimers.clear()
+  hotGroupPullPending.clear()
+  hotGroupPullInFlight.clear()
 }
 
 const revokeMediaPreviewURLs = () => {
@@ -1348,12 +1399,7 @@ const handleWsPacket = async (packet: WsPacket) => {
         group.recent_message_count = notify.recent_message_count
       }
       if (chat.activeKey === key && groupUUID) {
-        await pullHotGroupMessages(groupUUID)
-        const activeConv = chat.conversations.find(item => item.conversation_key === key)
-        if (activeConv) {
-          await chat.markRead(activeConv).catch(() => {})
-        }
-        scrollToBottom()
+        scheduleHotGroupPull(groupUUID)
       }
       break
     }
@@ -1398,6 +1444,7 @@ watch(() => activeConv.value?.conversation_key, () => {
 })
 
 onBeforeUnmount(() => {
+  clearHotGroupPullSchedulers()
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()
 })

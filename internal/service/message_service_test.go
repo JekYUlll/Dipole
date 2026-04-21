@@ -10,6 +10,9 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -776,6 +779,55 @@ func TestMessageServiceListGroupMessagesAfterUsesSingleflight(t *testing.T) {
 	}
 }
 
+func TestMessageServiceListGroupMessagesAfterUsesRedisCache(t *testing.T) {
+	cleanup := setupMessageServiceRedisTest(t)
+	defer cleanup()
+
+	repo := &stubMessageRepository{
+		listAfterMessages: []*model.Message{
+			{ID: 11, UUID: "M11", TargetType: model.MessageTargetGroup},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, nil)
+
+	first, err := service.ListGroupMessagesAfter("U100", "G100", 10, 20)
+	if err != nil {
+		t.Fatalf("expected no error on first read, got %v", err)
+	}
+	if len(first) != 1 {
+		t.Fatalf("expected 1 message on first read, got %d", len(first))
+	}
+
+	repo.mu.Lock()
+	repo.listAfterMessages = []*model.Message{
+		{ID: 12, UUID: "M12", TargetType: model.MessageTargetGroup},
+	}
+	repo.mu.Unlock()
+
+	second, err := service.ListGroupMessagesAfter("U100", "G100", 10, 20)
+	if err != nil {
+		t.Fatalf("expected no error on cached read, got %v", err)
+	}
+	if len(second) != 1 || second[0].UUID != "M11" {
+		t.Fatalf("expected cached message M11, got %+v", second)
+	}
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if repo.listAfterCallCount != 1 {
+		t.Fatalf("expected redis cache to avoid second repository call, got %d", repo.listAfterCallCount)
+	}
+}
+
 func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -802,6 +854,25 @@ func TestMessageServiceListOfflineMessagesSuccess(t *testing.T) {
 	}
 	if repo.lastLimit != 10 {
 		t.Fatalf("expected limit 10, got %d", repo.lastLimit)
+	}
+}
+
+func setupMessageServiceRedisTest(t *testing.T) func() {
+	t.Helper()
+
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	oldRDB := store.RDB
+	store.RDB = rdb
+
+	return func() {
+		_ = rdb.Close()
+		mr.Close()
+		store.RDB = oldRDB
 	}
 }
 

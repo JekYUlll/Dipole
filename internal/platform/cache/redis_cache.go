@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,10 +18,12 @@ import (
 // TTLs for cached objects. Short enough to keep data fresh, long enough to
 // absorb read bursts without hammering MySQL on every request.
 const (
-	UserProfileTTL     = 10 * time.Minute
-	GroupMetaTTL       = 10 * time.Minute
-	GroupMembersTTL    = 10 * time.Minute
-	ContactRelationTTL = 10 * time.Minute
+	UserProfileTTL      = 10 * time.Minute
+	GroupMetaTTL        = 10 * time.Minute
+	GroupMembersTTL     = 10 * time.Minute
+	ContactRelationTTL  = 10 * time.Minute
+	HotGroupMessagesTTL = time.Second
+	HotGroupEmptyTTL    = 500 * time.Millisecond
 
 	requestTimeout = time.Second
 )
@@ -43,6 +46,10 @@ func GroupMembersKey(groupUUID string) string {
 
 func ContactRelationKey(userUUID, targetUUID string) string {
 	return "contact:relation:" + strings.TrimSpace(userUUID) + ":" + strings.TrimSpace(targetUUID)
+}
+
+func HotGroupMessagesKey(groupUUID string, afterID uint, limit int) string {
+	return "group:messages:" + strings.TrimSpace(groupUUID) + ":after:" + fmtUint(afterID) + ":limit:" + fmtInt(limit)
 }
 
 func GetJSON(ctx context.Context, key string, target any) (bool, error) {
@@ -139,4 +146,12 @@ func Expire(ctx context.Context, key string, ttl time.Duration) error {
 	}
 
 	return store.RDB.Expire(ctx, key, ttl).Err()
+}
+
+func fmtUint(value uint) string {
+	return strconv.FormatUint(uint64(value), 10)
+}
+
+func fmtInt(value int) string {
+	return strconv.Itoa(value)
 }

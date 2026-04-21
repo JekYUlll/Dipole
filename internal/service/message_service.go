@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -423,10 +424,19 @@ func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID strin
 	}
 
 	normalizedLimit := normalizeMessageListLimit(limit)
+	cacheKey := platformCache.HotGroupMessagesKey(groupUUID, afterID, normalizedLimit)
+	if cached := s.loadCachedGroupMessagesPage(cacheKey); len(cached) > 0 {
+		return cached, nil
+	}
 	sfKey := fmt.Sprintf("group_pull:%s:%d:%d", groupUUID, afterID, normalizedLimit)
-	// 这里返回切片副本，避免多个并发请求共享同一个底层切片后，
-	// 调用方再做 append / 截断时互相污染结果。
+	// 热群 notify 会让同一批成员在极短时间内拉取同一个 after_id 页面。
+	// 这里先查短 TTL Redis 缓存，再用 singleflight 合并本机内 miss，
+	// 可以把“同页重复补拉”的压力同时挡在 Redis 和单机内存层。
 	value, err, _ := s.groupPulls.Do(sfKey, func() (any, error) {
+		if cached := s.loadCachedGroupMessagesPage(cacheKey); len(cached) > 0 {
+			return cached, nil
+		}
+
 		messages, listErr := s.repo.ListByConversationKeyAfter(
 			model.GroupConversationKey(groupUUID),
 			afterID,
@@ -436,7 +446,9 @@ func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID strin
 			return nil, fmt.Errorf("list group messages after: %w", listErr)
 		}
 
-		return cloneMessageSlice(messages), nil
+		cloned := cloneMessageSlice(messages)
+		s.storeCachedGroupMessagesPage(cacheKey, cloned)
+		return cloned, nil
 	})
 	if err != nil {
 		return nil, err
@@ -448,6 +460,31 @@ func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID strin
 	}
 
 	return cloneMessageSlice(messages), nil
+}
+
+func (s *MessageService) loadCachedGroupMessagesPage(cacheKey string) []*model.Message {
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	var messages []*model.Message
+	hit, err := platformCache.GetJSON(ctx, cacheKey, &messages)
+	if err != nil || !hit {
+		return nil
+	}
+
+	return cloneMessageSlice(messages)
+}
+
+func (s *MessageService) storeCachedGroupMessagesPage(cacheKey string, messages []*model.Message) {
+	ctx, cancel := platformCache.NewContext()
+	defer cancel()
+
+	ttl := platformCache.HotGroupMessagesTTL
+	if len(messages) == 0 {
+		ttl = platformCache.HotGroupEmptyTTL
+	}
+
+	_ = platformCache.SetJSON(ctx, cacheKey, cloneMessageSlice(messages), ttl)
 }
 
 func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
