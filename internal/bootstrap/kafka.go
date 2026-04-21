@@ -138,6 +138,10 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
 	}
+	if hub != nil {
+		platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
+	}
+	platformKafka.Subscriber.Register("contact.friend.deleted", logKafkaEventHandler("contact.friend.deleted"))
 
 	return nil
 }
@@ -452,6 +456,31 @@ func deliverSessionKickHandler(hub kafkaWSEventSender) platformKafka.Handler {
 		}
 
 		hub.DisconnectConnections(payload.UserUUID, payload.ConnectionIDs, payload.Reason)
+		return nil
+	}
+}
+
+func deliverContactFriendDeletedHandler(hub kafkaWSEventSender) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		_ = ctx
+
+		envelope, err := requireEnvelope(event)
+		if err != nil {
+			logger.Warn("decode contact friend deleted envelope failed", zap.Error(err))
+			return err
+		}
+
+		var payload service.ContactFriendDeletedPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			logger.Warn("decode contact friend deleted payload failed", zap.Error(err))
+			return err
+		}
+
+		hub.SendEventToUser(payload.UserUUID, wsTransport.TypeContactFriendDeleted, wsTransport.ContactFriendDeletedEventData{
+			UserUUID:   payload.UserUUID,
+			FriendUUID: payload.FriendUUID,
+			OccurredAt: payload.OccurredAt,
+		})
 		return nil
 	}
 }

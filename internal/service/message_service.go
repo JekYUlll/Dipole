@@ -35,6 +35,7 @@ type messageRepository interface {
 	StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error
 	EnsureOutbox(event *model.OutboxEvent) error
 	GetByUUID(uuid string) (*model.Message, error)
+	HasConversationMessages(conversationKey string) (bool, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
@@ -228,6 +229,7 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 	if targetUUID == "" {
 		return nil, ErrMessageTargetRequired
 	}
+	conversationKey := model.DirectConversationKey(currentUserUUID, targetUUID)
 
 	targetUser, err := s.userFinder.GetByUUID(targetUUID)
 	if err != nil {
@@ -237,13 +239,23 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 		return nil, ErrMessageTargetNotFound
 	}
 	if !targetUser.IsAssistant() {
-		if err := s.ensureDirectFriendship(currentUserUUID, targetUUID); err != nil {
-			return nil, err
+		areFriends, err := s.friendChecker.CanSendDirectMessage(strings.TrimSpace(currentUserUUID), targetUUID)
+		if err != nil {
+			return nil, fmt.Errorf("check friendship in list direct messages: %w", err)
+		}
+		if !areFriends {
+			hasHistory, err := s.repo.HasConversationMessages(conversationKey)
+			if err != nil {
+				return nil, fmt.Errorf("check direct conversation history: %w", err)
+			}
+			if !hasHistory {
+				return nil, ErrMessageFriendRequired
+			}
 		}
 	}
 
 	messages, err := s.repo.ListByConversationKey(
-		model.DirectConversationKey(currentUserUUID, targetUUID),
+		conversationKey,
 		beforeID,
 		normalizeMessageListLimit(limit),
 	)

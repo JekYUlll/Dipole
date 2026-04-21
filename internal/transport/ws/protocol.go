@@ -7,22 +7,23 @@ import (
 )
 
 const (
-	TypeConnected           = "connected"
-	TypeError               = "error"
-	TypePing                = "ping"
-	TypePong                = "pong"
-	TypeChatSend            = "chat.send"
-	TypeChatSendFile        = "chat.send_file"
-	TypeChatSent            = "chat.sent"
-	TypeChatMessage         = "chat.message"
-	TypeChatRead            = "chat.read"
-	TypeGroupMessageNotify  = "group.message.notify"
-	TypeSessionKicked       = "session.kicked"
-	TypeGroupCreated        = "group.created"
-	TypeGroupUpdated        = "group.updated"
-	TypeGroupMembersAdded   = "group.members_added"
-	TypeGroupMembersRemoved = "group.members_removed"
-	TypeGroupDismissed      = "group.dismissed"
+	TypeConnected            = "connected"
+	TypeError                = "error"
+	TypePing                 = "ping"
+	TypePong                 = "pong"
+	TypeChatSend             = "chat.send"
+	TypeChatSendFile         = "chat.send_file"
+	TypeChatSent             = "chat.sent"
+	TypeChatMessage          = "chat.message"
+	TypeChatRead             = "chat.read"
+	TypeSessionKicked        = "session.kicked"
+	TypeGroupMessageNotify   = "group.message.notify"
+	TypeGroupCreated         = "group.created"
+	TypeGroupUpdated         = "group.updated"
+	TypeGroupMembersAdded    = "group.members_added"
+	TypeGroupMembersRemoved  = "group.members_removed"
+	TypeGroupDismissed       = "group.dismissed"
+	TypeContactFriendDeleted = "contact.friend_deleted"
 )
 
 const (
@@ -151,6 +152,12 @@ type GroupDismissedEventData struct {
 	GroupName    string    `json:"group_name"`
 	OperatorUUID string    `json:"operator_uuid"`
 	OccurredAt   time.Time `json:"occurred_at"`
+}
+
+type ContactFriendDeletedEventData struct {
+	UserUUID   string    `json:"user_uuid"`
+	FriendUUID string    `json:"friend_uuid"`
+	OccurredAt time.Time `json:"occurred_at"`
 }
 
 func EncodeCommand(eventType string, data any) ([]byte, error) {

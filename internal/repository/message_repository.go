@@ -70,6 +70,15 @@ func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	return &message, nil
 }
 
+func (r *MessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
+	var count int64
+	if err := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("check messages by conversation key: %w", err)
+	}
+
+	return count > 0, nil
+}
+
 func (r *MessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
 	query := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
 	if beforeID > 0 {

@@ -77,7 +77,7 @@ func New() *Server {
 	}
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
-	contactService := service.NewContactService(contactRepo, userRepo)
+	contactService := service.NewContactService(contactRepo, userRepo).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents)
 	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		fileRepo,
 		platformStorage.Client,

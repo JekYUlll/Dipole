@@ -26,6 +26,7 @@ type stubMessageRepository struct {
 	listAfterMessages   []*model.Message
 	offlineMessages     []*model.Message
 	messagesByUUID      map[string]*model.Message
+	hasConversation     bool
 	lastConversationKey string
 	lastBeforeID        uint
 	lastAfterID         uint
@@ -60,6 +61,17 @@ func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	}
 
 	return r.messagesByUUID[uuid], nil
+}
+
+func (r *stubMessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.lastConversationKey = conversationKey
+	if r.listErr != nil {
+		return false, r.listErr
+	}
+	return r.hasConversation, nil
 }
 
 func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
@@ -441,6 +453,34 @@ func TestMessageServiceListDirectMessagesRejectsNonFriend(t *testing.T) {
 	_, err := service.ListDirectMessages("U100", "U200", 0, 20)
 	if !errors.Is(err, ErrMessageFriendRequired) {
 		t.Fatalf("expected ErrMessageFriendRequired, got %v", err)
+	}
+}
+
+func TestMessageServiceListDirectMessagesAllowsHistoryAfterFriendDeleted(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		hasConversation: true,
+		listMessages: []*model.Message{
+			{ID: 1, UUID: "M1"},
+		},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+	}, &stubFriendshipChecker{
+		friendships: map[string]map[string]bool{
+			"U100": {},
+		},
+	}, nil, nil, nil, nil)
+
+	messages, err := service.ListDirectMessages("U100", "U200", 0, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(messages))
 	}
 }
 

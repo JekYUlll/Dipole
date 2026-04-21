@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -158,6 +159,51 @@ func (r *stubContactRepository) ListOutgoingApplications(userUUID string) ([]*mo
 type stubContactUserFinder struct {
 	users map[string]*model.User
 	err   error
+}
+
+type stubContactNotifier struct {
+	notifications []struct {
+		userUUID   string
+		friendUUID string
+	}
+}
+
+func (n *stubContactNotifier) NotifyFriendDeleted(userUUID, friendUUID string, occurredAt time.Time) {
+	n.notifications = append(n.notifications, struct {
+		userUUID   string
+		friendUUID string
+	}{
+		userUUID:   userUUID,
+		friendUUID: friendUUID,
+	})
+}
+
+type stubContactEventPublisher struct {
+	published []struct {
+		topic     string
+		eventType string
+		key       string
+		payload   any
+	}
+}
+
+func (p *stubContactEventPublisher) PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error {
+	return nil
+}
+
+func (p *stubContactEventPublisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+	p.published = append(p.published, struct {
+		topic     string
+		eventType string
+		key       string
+		payload   any
+	}{
+		topic:     topic,
+		eventType: eventType,
+		key:       key,
+		payload:   payload,
+	})
+	return nil
 }
 
 func (f *stubContactUserFinder) GetByUUID(uuid string) (*model.User, error) {
@@ -382,5 +428,42 @@ func TestContactServiceDeleteFriendRejectsMissingFriendship(t *testing.T) {
 	err := service.DeleteFriend("U100", "U200")
 	if !errors.Is(err, ErrContactTargetNotFound) {
 		t.Fatalf("expected ErrContactTargetNotFound, got %v", err)
+	}
+}
+
+func TestContactServiceDeleteFriendNotifiesBothSidesWithoutEvents(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	_ = repo.CreateFriendship("U100", "U200")
+	notifier := &stubContactNotifier{}
+	service := NewContactService(repo, &stubContactUserFinder{}).WithNotifier(notifier)
+
+	if err := service.DeleteFriend("U100", "U200"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(notifier.notifications) != 2 {
+		t.Fatalf("expected 2 notifications, got %d", len(notifier.notifications))
+	}
+}
+
+func TestContactServiceDeleteFriendPublishesBothSideEvents(t *testing.T) {
+	t.Parallel()
+
+	repo := newStubContactRepository()
+	_ = repo.CreateFriendship("U100", "U200")
+	publisher := &stubContactEventPublisher{}
+	service := NewContactService(repo, &stubContactUserFinder{}).WithEvents(publisher)
+
+	if err := service.DeleteFriend("U100", "U200"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(publisher.published) != 2 {
+		t.Fatalf("expected 2 published events, got %d", len(publisher.published))
+	}
+	for _, item := range publisher.published {
+		if item.eventType != "contact.friend.deleted" {
+			t.Fatalf("unexpected event type: %s", item.eventType)
+		}
 	}
 }

@@ -136,6 +136,10 @@
           <button class="back-btn" @click="chat.activeKey = ''">‹</button>
           <span class="chat-header-title">{{ activeConvName }}</span>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
+          <span v-else-if="isDirectConversationReadonly" class="status-chip warning">
+            <span class="status-chip-icon">!</span>
+            已删好友
+          </span>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情">ℹ️</button>
         </div>
 
@@ -216,22 +220,30 @@
         </div>
 
         <div class="input-area">
+          <div v-if="isDirectConversationReadonly" class="chat-notice-banner">
+            <span class="chat-notice-icon">!</span>
+            <span>你们已不是好友，当前仅可查看历史消息。</span>
+          </div>
           <div class="input-toolbar">
-            <label class="tool-btn" :class="{ disabled: isGroupDismissed }" :title="isGroupDismissed ? '群已解散，无法发送文件' : '发送文件'">
+            <label
+              class="tool-btn"
+              :class="{ disabled: isInputDisabled }"
+              :title="inputDisabledReason"
+            >
               📎
-              <input type="file" style="display:none" :disabled="isGroupDismissed" @change="uploadFile" />
+              <input type="file" style="display:none" :disabled="isInputDisabled" @change="uploadFile" />
             </label>
             <span v-if="uploadingFileLabel" class="upload-status">{{ uploadingFileLabel }}</span>
           </div>
           <textarea
             v-model="inputText"
-            :disabled="isGroupDismissed"
-            :placeholder="isGroupDismissed ? '群已解散，仅可查看历史消息' : '输入消息...'"
+            :disabled="isInputDisabled"
+            :placeholder="inputPlaceholder"
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.enter.shift.exact="inputText += '\n'"
           />
           <div class="send-row">
-            <button class="send-btn" :disabled="isGroupDismissed" @click="sendMessage">发送</button>
+            <button class="send-btn" :disabled="isInputDisabled" @click="sendMessage">发送</button>
           </div>
         </div>
       </template>
@@ -379,6 +391,13 @@
         <div class="upc-actions">
           <button class="upc-btn primary" @click="startDirectChatFromViewedUser">发起单聊</button>
           <button v-if="!isFriend(viewedUser.uuid) && viewedUser.uuid !== auth.currentUser?.uuid" class="upc-btn" @click="quickApplyFriend(viewedUser)">加好友</button>
+          <button
+            v-if="isFriend(viewedUser.uuid)"
+            class="upc-btn danger"
+            @click="removeFriendFromViewedUser"
+          >
+            删除好友
+          </button>
         </div>
       </div>
     </div>
@@ -703,6 +722,8 @@ const activeConvName = computed(() => {
   return convName(conv)
 })
 
+const isAIConversation = computed(() => activeConv.value?.target_type === 0 && activeConv.value?.target_user?.user_type === 1)
+
 const isGroupOwner = computed(() => {
   const conv = activeConv.value
   if (!conv || conv.target_type !== 1) return false
@@ -717,6 +738,27 @@ const isGroupDismissed = computed(() => {
   const conv = activeConv.value
   if (!conv || conv.target_type !== 1) return false
   return groupFromConv(conv)?.status === 1
+})
+
+const isDirectConversationReadonly = computed(() => {
+  const conv = activeConv.value
+  if (!conv || conv.target_type !== 0 || !conv.target_user) return false
+  if (isAIConversation.value) return false
+  return !isFriend(conv.target_user.uuid)
+})
+
+const isInputDisabled = computed(() => isGroupDismissed.value || isDirectConversationReadonly.value)
+
+const inputPlaceholder = computed(() => {
+  if (isGroupDismissed.value) return '群已解散，仅可查看历史消息'
+  if (isDirectConversationReadonly.value) return '已删除好友，仅可查看历史消息'
+  return '输入消息...'
+})
+
+const inputDisabledReason = computed(() => {
+  if (isGroupDismissed.value) return '群已解散，无法发送文件'
+  if (isDirectConversationReadonly.value) return '已删除好友，无法继续发送消息'
+  return '发送文件'
 })
 
 const currentMessages = computed(() =>
@@ -1059,6 +1101,22 @@ const saveUserRemark = async () => {
   }
 }
 
+const removeFriendFromViewedUser = async () => {
+  if (!viewedUser.value) return
+  const target = viewedUser.value
+  const confirmed = window.confirm(`确认删除好友“${displayUserName(target)}”吗？历史消息会保留。`)
+  if (!confirmed) return
+
+  try {
+    await api.delete(`/api/v1/contacts/${encodeURIComponent(target.uuid)}`)
+    await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
+    viewedUserRemark.value = ''
+    closeUserProfileModal()
+  } catch (e: any) {
+    alert(e?.message || '删除好友失败')
+  }
+}
+
 const quickApplyFriend = async (user: PublicUser) => {
   try {
     await api.post('/api/v1/contacts/applications', { target_uuid: user.uuid, message: '' })
@@ -1296,6 +1354,13 @@ const handleWsPacket = async (packet: WsPacket) => {
           await chat.markRead(activeConv).catch(() => {})
         }
         scrollToBottom()
+      }
+      break
+    }
+    case 'contact.friend_deleted': {
+      await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
+      if (viewedUser.value?.uuid === (data as any)?.friend_uuid) {
+        viewedUserRemark.value = ''
       }
       break
     }
@@ -1589,6 +1654,13 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
+.upc-btn.danger {
+  background: #fff3f3;
+  border-color: #f3c5c5;
+  color: #bb4a4a;
+  font-weight: 500;
+}
+
 .upc-btn:hover { opacity: 0.88; }
 
 .upc-avatar {
@@ -1847,6 +1919,27 @@ onBeforeUnmount(() => {
   color: #c53b3b;
 }
 
+.status-chip.warning {
+  background: #fff1f1;
+  color: #c53b3b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-chip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c53b3b;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .detail-toggle {
   background: none;
   border: none;
@@ -2020,6 +2113,30 @@ onBeforeUnmount(() => {
 .upload-status {
   font-size: 12px;
   color: #666;
+}
+
+.chat-notice-banner {
+  padding: 8px 14px 0;
+  font-size: 12px;
+  color: #b13d3d;
+  background: linear-gradient(180deg, rgba(255, 239, 239, 0.96), rgba(255, 239, 239, 0));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-notice-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c53b3b;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .msg-bubble.media {
