@@ -27,6 +27,8 @@ type Publisher struct {
 	topicPrefix string
 	brokers     []string
 	timeout     time.Duration
+	partitions  int
+	replicas    int
 
 	mu      sync.Mutex
 	writers map[string]*kafkago.Writer
@@ -89,6 +91,8 @@ func newPublisher(cfg config.Kafka) (*Publisher, error) {
 		topicPrefix: strings.TrimSpace(cfg.TopicPrefix),
 		brokers:     brokers,
 		timeout:     writeTimeout,
+		partitions:  normalizeTopicPartitions(cfg.TopicPartitions),
+		replicas:    normalizeTopicReplicationFactor(cfg.TopicReplicationFactor),
 		writers:     make(map[string]*kafkago.Writer),
 	}, nil
 }
@@ -181,6 +185,105 @@ func (p *Publisher) Close() error {
 	return errors.Join(errs...)
 }
 
+func (p *Publisher) EnsureTopics(topics []string) error {
+	if p == nil {
+		return errors.New("kafka publisher is not initialized")
+	}
+
+	configs := make([]kafkago.TopicConfig, 0, len(topics)*2)
+	seen := make(map[string]struct{}, len(topics)*2)
+	for _, topic := range topics {
+		fullTopic := p.topicName(topic)
+		for _, candidate := range []string{fullTopic, retryTopicName(fullTopic)} {
+			if strings.TrimSpace(candidate) == "" {
+				continue
+			}
+			if _, ok := seen[candidate]; ok {
+				continue
+			}
+			seen[candidate] = struct{}{}
+			configs = append(configs, kafkago.TopicConfig{
+				Topic:             candidate,
+				NumPartitions:     p.partitions,
+				ReplicationFactor: p.replicas,
+			})
+		}
+	}
+
+	if len(configs) == 0 {
+		return nil
+	}
+
+	conn, err := kafkago.DialContext(context.Background(), "tcp", p.brokers[0])
+	if err != nil {
+		return fmt.Errorf("dial kafka broker for ensure topics: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	controller, err := conn.Controller()
+	if err != nil {
+		return fmt.Errorf("get kafka controller: %w", err)
+	}
+
+	controllerConn, err := kafkago.DialContext(
+		context.Background(),
+		"tcp",
+		fmt.Sprintf("%s:%d", controller.Host, controller.Port),
+	)
+	if err != nil {
+		return fmt.Errorf("dial kafka controller: %w", err)
+	}
+	defer func() { _ = controllerConn.Close() }()
+
+	if err := controllerConn.CreateTopics(configs...); err != nil && !isTopicAlreadyExistsError(err) {
+		return fmt.Errorf("create kafka topics: %w", err)
+	}
+
+	partitionMetadata, err := controllerConn.ReadPartitions(topicNames(configs)...)
+	if err != nil {
+		return fmt.Errorf("read kafka partitions after create: %w", err)
+	}
+
+	existing := make(map[string]int, len(configs))
+	for _, partition := range partitionMetadata {
+		existing[partition.Topic]++
+	}
+
+	expand := make([]kafkago.TopicPartitionsConfig, 0)
+	for _, cfg := range configs {
+		if existing[cfg.Topic] >= cfg.NumPartitions {
+			continue
+		}
+		expand = append(expand, kafkago.TopicPartitionsConfig{
+			Name:  cfg.Topic,
+			Count: int32(cfg.NumPartitions),
+		})
+	}
+	if len(expand) == 0 {
+		return nil
+	}
+
+	client := &kafkago.Client{
+		Addr:      controllerConn.RemoteAddr(),
+		Transport: &kafkago.Transport{ClientID: p.clientID},
+	}
+	response, err := client.CreatePartitions(context.Background(), &kafkago.CreatePartitionsRequest{
+		Addr:   controllerConn.RemoteAddr(),
+		Topics: expand,
+	})
+	if err != nil {
+		return fmt.Errorf("expand kafka topic partitions: %w", err)
+	}
+	for topic, topicErr := range response.Errors {
+		if topicErr == nil {
+			continue
+		}
+		return fmt.Errorf("expand kafka topic %s partitions: %w", topic, topicErr)
+	}
+
+	return nil
+}
+
 func (p *Publisher) topicName(topic string) string {
 	topic = strings.TrimSpace(topic)
 	if p.topicPrefix == "" {
@@ -204,7 +307,7 @@ func (p *Publisher) writerForTopic(topic string) *kafkago.Writer {
 	writer := &kafkago.Writer{
 		Addr:         kafkago.TCP(p.brokers...),
 		Topic:        topic,
-		Balancer:     &kafkago.LeastBytes{},
+		Balancer:     &kafkago.Hash{},
 		RequiredAcks: kafkago.RequireOne,
 		Async:        false,
 		BatchSize:    kafkaWriterBatchSize,
@@ -248,4 +351,36 @@ func normalizeBrokers(brokers []string) []string {
 	}
 
 	return normalized
+}
+
+func normalizeTopicPartitions(partitions int) int {
+	if partitions <= 0 {
+		return 1
+	}
+	return partitions
+}
+
+func normalizeTopicReplicationFactor(replicas int) int {
+	if replicas <= 0 {
+		return 1
+	}
+	return replicas
+}
+
+func isTopicAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "topic with this name already exists")
+}
+
+func topicNames(configs []kafkago.TopicConfig) []string {
+	names := make([]string, 0, len(configs))
+	for _, cfg := range configs {
+		if strings.TrimSpace(cfg.Topic) == "" {
+			continue
+		}
+		names = append(names, cfg.Topic)
+	}
+	return names
 }

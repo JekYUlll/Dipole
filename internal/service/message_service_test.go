@@ -1008,6 +1008,42 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	if len(publisher.eventTypes) != 1 || publisher.eventTypes[0] != "message.direct.send_requested" {
 		t.Fatalf("expected direct message event type, got %+v", publisher.eventTypes)
 	}
+	if len(publisher.keys) != 1 || publisher.keys[0] != model.DirectConversationKey("U100", "U200") {
+		t.Fatalf("expected direct routing key %s, got %+v", model.DirectConversationKey("U100", "U200"), publisher.keys)
+	}
+}
+
+func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	publisher := &stubEventPublisher{}
+	service := NewMessageService(
+		repo,
+		&stubMessageUserFinder{},
+		&stubFriendshipChecker{},
+		&stubGroupMessageChecker{
+			groups: map[string]*model.Group{
+				"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+			},
+			members: map[string]map[string]*model.GroupMember{
+				"G100": {
+					"U100": {GroupUUID: "G100", UserUUID: "U100"},
+					"U200": {GroupUUID: "G100", UserUUID: "U200"},
+				},
+			},
+		},
+		nil,
+		publisher,
+		nil,
+	)
+
+	if _, _, err := service.SendGroupMessage("U100", "G100", "hello", "cmid-group-key"); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(publisher.keys) != 1 || publisher.keys[0] != "G100" {
+		t.Fatalf("expected group routing key G100, got %+v", publisher.keys)
+	}
 }
 
 func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) {

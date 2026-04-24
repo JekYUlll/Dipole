@@ -345,6 +345,9 @@ func TestConversationServiceMarkDirectConversationReadPublishesReceipt(t *testin
 	if events.publishedTopic != "conversation.direct.read" {
 		t.Fatalf("unexpected topic: %s", events.publishedTopic)
 	}
+	if events.publishedKey != model.DirectConversationKey("U100", "U200") {
+		t.Fatalf("unexpected published key: %s", events.publishedKey)
+	}
 }
 
 func TestConversationServiceMarkGroupConversationReadClearsUnread(t *testing.T) {

@@ -462,6 +462,9 @@ func TestContactServiceDeleteFriendPublishesBothSideEvents(t *testing.T) {
 		t.Fatalf("expected 2 published events, got %d", len(publisher.published))
 	}
 	for _, item := range publisher.published {
+		if item.topic != "contact.friend.deleted" {
+			t.Fatalf("unexpected topic: %s", item.topic)
+		}
 		if item.eventType != "contact.friend.deleted" {
 			t.Fatalf("unexpected event type: %s", item.eventType)
 		}

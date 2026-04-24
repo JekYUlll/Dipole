@@ -577,7 +577,7 @@ func (s *MessageService) publishMessageRequested(topic string, message *model.Me
 	}
 
 	payload := messageToEventPayload(message, recipientUUIDs)
-	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+	if err := s.events.PublishEvent(context.Background(), topic, kafkaMessageRoutingKey(message), topic, payload, nil); err != nil {
 		return fmt.Errorf("publish requested message event: %w", err)
 	}
 
@@ -590,11 +590,21 @@ func (s *MessageService) publishMessageCreated(topic string, message *model.Mess
 	}
 
 	payload := messageToEventPayload(message, recipientUUIDs)
-	if err := s.events.PublishEvent(context.Background(), topic, message.UUID, topic, payload, nil); err != nil {
+	if err := s.events.PublishEvent(context.Background(), topic, kafkaMessageRoutingKey(message), topic, payload, nil); err != nil {
 		return fmt.Errorf("publish created message event: %w", err)
 	}
 
 	return nil
+}
+
+func kafkaMessageRoutingKey(message *model.Message) string {
+	if message == nil {
+		return ""
+	}
+	if message.TargetType == model.MessageTargetGroup {
+		return strings.TrimSpace(message.TargetUUID)
+	}
+	return strings.TrimSpace(message.ConversationKey)
 }
 
 func messageToEventPayload(message *model.Message, recipientUUIDs []string) MessageEventPayload {

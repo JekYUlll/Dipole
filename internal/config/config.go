@@ -59,6 +59,8 @@ type Kafka struct {
 	Brokers                 []string `mapstructure:"brokers"`
 	ClientID                string   `mapstructure:"client_id"`
 	TopicPrefix             string   `mapstructure:"topic_prefix"`
+	TopicPartitions         int      `mapstructure:"topic_partitions"`
+	TopicReplicationFactor  int      `mapstructure:"topic_replication_factor"`
 	DialTimeoutSeconds      int      `mapstructure:"dial_timeout_seconds"`
 	WriteTimeoutSeconds     int      `mapstructure:"write_timeout_seconds"`
 	ConsumeRetryMaxAttempts int      `mapstructure:"consume_retry_max_attempts"`
@@ -169,6 +171,8 @@ func Load() error {
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
 		v.SetDefault("kafka.topic_prefix", "dipole")
+		v.SetDefault("kafka.topic_partitions", 6)
+		v.SetDefault("kafka.topic_replication_factor", 1)
 		v.SetDefault("kafka.dial_timeout_seconds", 5)
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
@@ -246,6 +250,8 @@ func Load() error {
 			"kafka.brokers",
 			"kafka.client_id",
 			"kafka.topic_prefix",
+			"kafka.topic_partitions",
+			"kafka.topic_replication_factor",
 			"kafka.dial_timeout_seconds",
 			"kafka.write_timeout_seconds",
 			"kafka.consume_retry_max_attempts",
@@ -408,6 +414,8 @@ func KafkaConfig() Kafka {
 	kafkaConfig.Brokers = cfg.GetStringSlice("kafka.brokers")
 	kafkaConfig.ClientID = cfg.GetString("kafka.client_id")
 	kafkaConfig.TopicPrefix = cfg.GetString("kafka.topic_prefix")
+	kafkaConfig.TopicPartitions = cfg.GetInt("kafka.topic_partitions")
+	kafkaConfig.TopicReplicationFactor = cfg.GetInt("kafka.topic_replication_factor")
 	kafkaConfig.DialTimeoutSeconds = cfg.GetInt("kafka.dial_timeout_seconds")
 	kafkaConfig.WriteTimeoutSeconds = cfg.GetInt("kafka.write_timeout_seconds")
 	kafkaConfig.ConsumeRetryMaxAttempts = cfg.GetInt("kafka.consume_retry_max_attempts")

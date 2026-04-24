@@ -3,6 +3,8 @@ package kafka
 import (
 	"testing"
 	"time"
+
+	kafkago "github.com/segmentio/kafka-go"
 )
 
 func TestNormalizeBrokers(t *testing.T) {
@@ -36,5 +38,31 @@ func TestPublisherTopicName(t *testing.T) {
 
 	if topic := publisher.topicName("message.created"); topic != "dipole.message.created" {
 		t.Fatalf("unexpected topic: %s", topic)
+	}
+}
+
+func TestNormalizeTopicPartitions(t *testing.T) {
+	t.Parallel()
+
+	if got := normalizeTopicPartitions(0); got != 1 {
+		t.Fatalf("expected 1 partition fallback, got %d", got)
+	}
+	if got := normalizeTopicPartitions(6); got != 6 {
+		t.Fatalf("expected 6 partitions, got %d", got)
+	}
+}
+
+func TestWriterUsesHashBalancer(t *testing.T) {
+	t.Parallel()
+
+	publisher := &Publisher{
+		topicPrefix: "dipole",
+		timeout:     5 * time.Second,
+		writers:     make(map[string]*kafkago.Writer),
+	}
+
+	writer := publisher.writerForTopic("dipole.message.direct.created")
+	if _, ok := writer.Balancer.(*kafkago.Hash); !ok {
+		t.Fatalf("expected kafka hash balancer, got %T", writer.Balancer)
 	}
 }

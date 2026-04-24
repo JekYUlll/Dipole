@@ -39,6 +39,8 @@ kafka:
     - kafka:9092
   client_id: dipole
   topic_prefix: dipole
+  topic_partitions: 6
+  topic_replication_factor: 1
   dial_timeout_seconds: 5
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3

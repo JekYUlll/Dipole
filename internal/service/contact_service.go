@@ -366,7 +366,7 @@ func (s *ContactService) DeleteFriend(currentUserUUID, friendUUID string) error 
 			FriendUUID: friendUUID,
 			OccurredAt: occurredAt,
 		}
-		if err := s.events.PublishEvent(context.Background(), "dipole.contact.friend.deleted", currentUserUUID, "contact.friend.deleted", payload, nil); err != nil {
+		if err := s.events.PublishEvent(context.Background(), "contact.friend.deleted", currentUserUUID, "contact.friend.deleted", payload, nil); err != nil {
 			return fmt.Errorf("publish contact friend deleted event for user: %w", err)
 		}
 		reversePayload := ContactFriendDeletedPayload{
@@ -374,7 +374,7 @@ func (s *ContactService) DeleteFriend(currentUserUUID, friendUUID string) error 
 			FriendUUID: currentUserUUID,
 			OccurredAt: occurredAt,
 		}
-		if err := s.events.PublishEvent(context.Background(), "dipole.contact.friend.deleted", friendUUID, "contact.friend.deleted", reversePayload, nil); err != nil {
+		if err := s.events.PublishEvent(context.Background(), "contact.friend.deleted", friendUUID, "contact.friend.deleted", reversePayload, nil); err != nil {
 			return fmt.Errorf("publish contact friend deleted event for friend: %w", err)
 		}
 	} else if s.notifier != nil {
