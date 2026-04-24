@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -30,11 +35,13 @@ func main() {
 	appCfg := config.AppConfig()
 	tlsCfg := config.TLSConfig()
 	logCfg := config.LogConfig()
-	runtime, err := bootstrap.Initialize(context.Background())
+	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	runtime, err := bootstrap.Initialize(rootCtx)
 	if err != nil {
 		logger.L().Fatal("bootstrap initialize failed", zap.Error(err))
 	}
-	defer runtime.Close()
 
 	srv := runtime.Server()
 
@@ -51,8 +58,40 @@ func main() {
 		zap.Bool("tls_enabled", tlsCfg.Enabled),
 	)
 
-	runErr := bootstrap.RunServer(srv, tlsCfg)
-	if runErr != nil {
+	serverErrCh := make(chan error, 1)
+	go func() {
+		serverErrCh <- bootstrap.RunServer(srv, tlsCfg)
+	}()
+
+	select {
+	case runErr := <-serverErrCh:
+		if errors.Is(runErr, http.ErrServerClosed) {
+			logger.L().Info("server stopped")
+			runtime.Close()
+			return
+		}
+		runtime.Close()
 		logger.L().Fatal("server run failed", zap.Error(runErr))
+	case <-rootCtx.Done():
+		logger.L().Info("shutdown signal received",
+			zap.String("signal", rootCtx.Err().Error()),
+		)
 	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		runtime.Close()
+		logger.L().Fatal("server graceful shutdown failed", zap.Error(err))
+	}
+
+	runtime.Close()
+
+	runErr := <-serverErrCh
+	if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
+		logger.L().Fatal("server stopped with unexpected error", zap.Error(runErr))
+	}
+
+	logger.L().Info("server exited gracefully")
 }

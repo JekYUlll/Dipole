@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	_ "github.com/JekYUlll/Dipole/docs/swagger"
@@ -27,8 +28,10 @@ import (
 )
 
 type Server struct {
-	engine *gin.Engine
-	wsHub  *wsTransport.Hub
+	engine     *gin.Engine
+	wsHub      *wsTransport.Hub
+	mu         sync.Mutex
+	httpServer *http.Server
 }
 
 type serverEventPublisher interface {
@@ -180,11 +183,44 @@ type wsTransportConversationUpdater interface {
 }
 
 func (s *Server) Run(addr string) error {
-	return s.engine.Run(addr)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: s.engine,
+	}
+	s.setHTTPServer(server)
+	defer s.clearHTTPServer(server)
+
+	return server.ListenAndServe()
 }
 
 func (s *Server) RunTLS(addr, certFile, keyFile string) error {
-	return s.engine.RunTLS(addr, certFile, keyFile)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: s.engine,
+	}
+	s.setHTTPServer(server)
+	defer s.clearHTTPServer(server)
+
+	return server.ListenAndServeTLS(certFile, keyFile)
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+
+	server := s.currentHTTPServer()
+	if server != nil {
+		if err := server.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
+
+	if s.wsHub != nil {
+		s.wsHub.CloseAll("server_shutdown")
+	}
+
+	return nil
 }
 
 func (s *Server) Engine() *gin.Engine {
@@ -210,4 +246,24 @@ func minInt64(a, b int64) int64 {
 	default:
 		return b
 	}
+}
+
+func (s *Server) setHTTPServer(server *http.Server) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.httpServer = server
+}
+
+func (s *Server) clearHTTPServer(server *http.Server) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.httpServer == server {
+		s.httpServer = nil
+	}
+}
+
+func (s *Server) currentHTTPServer() *http.Server {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.httpServer
 }
