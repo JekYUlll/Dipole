@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -149,6 +150,8 @@ func Load() error {
 
 		v.SetEnvPrefix("DIPOLE")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		// Load .env file if present; ignore error when file doesn't exist.
+		_ = godotenv.Load()
 		v.AutomaticEnv()
 
 		v.SetDefault("app.name", "dipole")

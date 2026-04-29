@@ -87,7 +87,7 @@ ai:
   enabled: true
   provider: openai
   model: deepseek-chat
-  api_key: "REDACTED_API_KEY"
+  api_key: ""  # set via DIPOLE_AI_API_KEY in .env or environment
   base_url: "https://api.deepseek.com"
   timeout_seconds: 30
   max_context_messages: 12
