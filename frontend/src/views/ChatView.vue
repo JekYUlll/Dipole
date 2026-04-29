@@ -152,10 +152,14 @@
         <div class="msg-list" ref="msgListRef">
           <button class="load-more-btn" @click="loadMore"><IconLoadMore :size="13" /> 加载更多</button>
           <div
-            v-for="msg in currentMessages"
+            v-for="(msg, index) in currentMessages"
             :key="msg.message_id"
             :class="msgItemClass(msg)"
           >
+            <!-- Time divider -->
+            <div v-if="shouldShowTimestamp(index)" class="msg-time-divider">
+              {{ formatMsgTimestamp(msg.sent_at) }}
+            </div>
             <!-- System message -->
             <template v-if="msg.message_type === 3">
               <div class="msg-system">{{ msg.content }}</div>
@@ -613,6 +617,36 @@ const formatTime = (t: string) => {
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+// 微信风格时间戳：相邻消息超过 5 分钟才显示
+const MSG_TIME_GAP_MS = 5 * 60 * 1000
+
+const formatMsgTimestamp = (t: string): string => {
+  const d = new Date(t)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+  const hhmm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (d.toDateString() === now.toDateString()) return hhmm
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return `昨天 ${hhmm}`
+  if (diffDays < 7) {
+    const weekdays = ['周日','周一','周二','周三','周四','周五','周六']
+    return `${weekdays[d.getDay()]} ${hhmm}`
+  }
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${hhmm}`
+  }
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hhmm}`
+}
+
+// 返回每条消息是否需要在其上方显示时间戳
+const shouldShowTimestamp = (index: number): boolean => {
+  const msgs = currentMessages.value
+  if (index === 0) return true
+  const cur = new Date(msgs[index].sent_at).getTime()
+  const prev = new Date(msgs[index - 1].sent_at).getTime()
+  return cur - prev > MSG_TIME_GAP_MS
 }
 
 const formatSize = (bytes: number) => {
@@ -2261,6 +2295,19 @@ onBeforeUnmount(() => {
 .msg-item.ai .msg-bubble {
   background: #e8d5ff;
   border: 1px solid #d0b0ff;
+}
+
+/* 微信风格消息时间戳 */
+.msg-time-divider {
+  align-self: center;
+  font-size: 11px;
+  color: #b2b2b2;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  padding: 2px 8px;
+  margin: 4px 0 2px;
+  pointer-events: none;
+  user-select: none;
 }
 
 .msg-system {
