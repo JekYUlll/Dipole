@@ -9,14 +9,20 @@
         <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
       </button>
       <div class="nav-icons">
-        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">💬</button>
+        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">
+          <IconChat :size="22" />
+        </button>
         <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人">
-          👥
+          <IconContacts :size="22" />
           <span v-if="pendingApplications.length > 0" class="nav-badge">{{ pendingApplications.length }}</span>
         </button>
-        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">🏠</button>
+        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
+          <IconGroups :size="22" />
+        </button>
       </div>
-      <button class="icon-btn logout-btn" @click="handleLogout" title="退出">🚪</button>
+      <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
+        <IconLogout :size="22" />
+      </button>
     </div>
 
     <!-- Session Panel -->
@@ -36,7 +42,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -111,7 +117,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -133,18 +139,18 @@
     <div class="chat-area">
       <template v-if="activeConv">
         <div class="chat-header">
-          <button class="back-btn" @click="chat.activeKey = ''">‹</button>
+          <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
           <span class="chat-header-title">{{ activeConvName }}</span>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
           <span v-else-if="isDirectConversationReadonly" class="status-chip warning">
             <span class="status-chip-icon">!</span>
             已删好友
           </span>
-          <button class="detail-toggle" @click="showDetail = !showDetail" title="详情">ℹ️</button>
+          <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
         </div>
 
         <div class="msg-list" ref="msgListRef">
-          <button class="load-more-btn" @click="loadMore">加载更多</button>
+          <button class="load-more-btn" @click="loadMore"><IconLoadMore :size="13" /> 加载更多</button>
           <div
             v-for="msg in currentMessages"
             :key="msg.message_id"
@@ -184,7 +190,7 @@
                       <div v-else class="media-placeholder">图片</div>
                       <div class="media-caption">
                         <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
                       </div>
                     </div>
                     <div v-else-if="isVideoMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
@@ -198,7 +204,7 @@
                       <div v-else class="media-placeholder">视频</div>
                       <div class="media-caption">
                         <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
                       </div>
                     </div>
                     <div v-else class="file-card" @click="downloadFile(msg)">
@@ -224,13 +230,17 @@
             <span class="chat-notice-icon">!</span>
             <span>你们已不是好友，当前仅可查看历史消息。</span>
           </div>
+          <div v-if="sendErrorMessage" class="chat-notice-banner danger">
+            <span class="chat-notice-icon">!</span>
+            <span>{{ sendErrorMessage }}</span>
+          </div>
           <div class="input-toolbar">
             <label
               class="tool-btn"
               :class="{ disabled: isInputDisabled }"
               :title="inputDisabledReason"
             >
-              📎
+              <IconPaperclip :size="18" />
               <input type="file" style="display:none" :disabled="isInputDisabled" @change="uploadFile" />
             </label>
             <span v-if="uploadingFileLabel" class="upload-status">{{ uploadingFileLabel }}</span>
@@ -243,7 +253,9 @@
             @keydown.enter.shift.exact="inputText += '\n'"
           />
           <div class="send-row">
-            <button class="send-btn" :disabled="isInputDisabled" @click="sendMessage">发送</button>
+          <button class="send-btn" :disabled="isInputDisabled" @click="sendMessage">
+            <IconSend :size="14" /> 发送
+          </button>
           </div>
         </div>
       </template>
@@ -260,7 +272,7 @@
         <div class="detail-header">
           <div class="detail-avatar">
             <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
-            <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
+            <div v-else class="detail-avatar-fallback group-avatar-fallback"><IconUsers :size="28" /></div>
           </div>
           <div class="detail-name">{{ convName(activeConv) }}</div>
           <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
@@ -320,7 +332,7 @@
             <div v-if="m.role === 0" class="member-role-badge">主</div>
           </div>
           <div v-if="isGroupOwner && !isGroupDismissed" class="member-grid-item" @click="openInviteMembers">
-            <div class="member-grid-avatar member-grid-add">+</div>
+            <div class="member-grid-avatar member-grid-add"><IconUserPlus :size="18" /></div>
             <div class="member-grid-name">邀请</div>
           </div>
         </div>
@@ -347,7 +359,7 @@
     <div v-if="showProfileModal" class="modal-overlay">
       <div class="modal-backdrop" @click="closeProfileModal"></div>
       <div class="modal user-profile-card">
-        <button class="upc-close" @click="closeProfileModal">✕</button>
+        <button class="upc-close" @click="closeProfileModal"><IconClose :size="14" /></button>
         <div class="upc-avatar" style="cursor:pointer" @click="avatarInputRef?.click()">
           <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
           <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
@@ -372,7 +384,7 @@
     <div v-if="showUserProfileModal && viewedUser" class="modal-overlay">
       <div class="modal-backdrop" @click="closeUserProfileModal"></div>
       <div class="modal user-profile-card">
-        <button class="upc-close" @click="closeUserProfileModal">✕</button>
+        <button class="upc-close" @click="closeUserProfileModal"><IconClose :size="14" /></button>
         <div class="upc-avatar">
           <img v-if="viewedUser.avatar" :src="viewedUser.avatar" alt="user-profile-avatar" />
           <span v-else>{{ getInitials(viewedUser.nickname) }}</span>
@@ -484,10 +496,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container">
+    <transition-group name="toast">
+      <div
+        v-for="t in toasts"
+        :key="t.id"
+        class="toast"
+        :class="`toast-${t.type}`"
+        @click="removeToast(t.id)"
+      >
+        <span class="toast-icon">
+          <IconXCircle v-if="t.type === 'error'" :size="16" />
+          <IconCheckCircle v-else-if="t.type === 'success'" :size="16" />
+          <IconAlertCircle v-else :size="16" />
+        </span>
+        <span class="toast-msg">{{ t.message }}</span>
+      </div>
+    </transition-group>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import {
+  IconChat, IconContacts, IconGroups, IconLogout,
+  IconInfo, IconBack, IconPaperclip, IconSend,
+  IconDownload, IconClose, IconAlertCircle,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore,
+} from '@/components/icons'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -498,6 +536,27 @@ import api from '@/api'
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+interface Toast { id: number; message: string; type: 'error' | 'success' | 'info' }
+const toasts = ref<Toast[]>([])
+let toastSeq = 0
+
+const showToast = (message: string, type: Toast['type'] = 'info', duration = 3000) => {
+  const id = ++toastSeq
+  toasts.value.push({ id, message, type })
+  setTimeout(() => removeToast(id), duration)
+}
+const removeToast = (id: number) => {
+  const i = toasts.value.findIndex(t => t.id === id)
+  if (i !== -1) toasts.value.splice(i, 1)
+}
+const toast = {
+  error: (msg: string) => showToast(msg, 'error', 4000),
+  success: (msg: string) => showToast(msg, 'success', 2500),
+  info: (msg: string) => showToast(msg, 'info', 2500),
+}
 
 const navTab = ref<'chat' | 'contacts' | 'groups'>('chat')
 const searchText = ref('')
@@ -522,10 +581,12 @@ const selectedGroupAvatarFile = ref<File | null>(null)
 const selectedGroupAvatarName = ref('')
 const uploadingGroupAvatar = ref(false)
 const uploadingFileLabel = ref('')
+const sendErrorMessage = ref('')
 const mediaPreviewMap = ref<Record<string, string>>({})
 const mediaPreviewInflight = new Map<string, Promise<void>>()
 
 const directUploadThresholdBytes = 4 * 1024 * 1024
+const maxTextMessageRunes = 1000
 type PendingWsMessage = {
   type: 'chat.send' | 'chat.send_file'
   data: Record<string, unknown> & { client_message_id: string }
@@ -702,6 +763,11 @@ const enqueuePendingOutboundMessage = (message: PendingWsMessage) => {
   ws.send(message.type, message.data)
 }
 
+const authHeaders = (): Record<string, string> => {
+  const token = auth.token || localStorage.getItem('dipole.web.token') || ''
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 const resendPendingOutboundMessages = () => {
   for (const message of pendingOutboundMessages.values()) {
     ws.send(message.type, message.data)
@@ -728,9 +794,7 @@ const loadMediaPreview = async (msg: Message) => {
 
   const request = (async () => {
     const response = await fetch(contentPath, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(),
     })
     if (!response.ok) {
       throw new Error(`media preview request failed: ${response.status}`)
@@ -938,20 +1002,26 @@ const selectConversation = async (conv: Conversation) => {
 }
 
 const sendMessage = () => {
-  if (!inputText.value.trim() || !activeConv.value) return
+  sendErrorMessage.value = ''
+  const content = inputText.value.trim()
+  if (!content || !activeConv.value) return
   if (isGroupDismissed.value) return
+  if ([...content].length > maxTextMessageRunes) {
+    sendErrorMessage.value = `消息过长，最多 ${maxTextMessageRunes} 个字符。`
+    return
+  }
   const conv = activeConv.value
   const clientMessageID = newClientMessageID()
   if (conv.target_type === 1) {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
     enqueuePendingOutboundMessage({
       type: 'chat.send',
-      data: { target_uuid: groupUUID, target_type: 1, content: inputText.value.trim(), client_message_id: clientMessageID },
+      data: { target_uuid: groupUUID, target_type: 1, content, client_message_id: clientMessageID },
     })
   } else {
     enqueuePendingOutboundMessage({
       type: 'chat.send',
-      data: { target_uuid: conv.target_user!.uuid, target_type: 0, content: inputText.value.trim(), client_message_id: clientMessageID },
+      data: { target_uuid: conv.target_user!.uuid, target_type: 0, content, client_message_id: clientMessageID },
     })
   }
   inputText.value = ''
@@ -977,7 +1047,7 @@ const uploadFile = async (e: Event) => {
       },
     })
   } catch (err: any) {
-    alert(err?.message || '文件上传失败')
+    toast.error(err?.message || '文件上传失败')
   } finally {
     uploadingFileLabel.value = ''
     ;(e.target as HTMLInputElement).value = ''
@@ -987,8 +1057,27 @@ const uploadFile = async (e: Event) => {
 const downloadFile = async (msg: Message) => {
   const fileId = msg.file?.file_id || (msg as any).file_id
   if (!fileId) return
-  const res = await api.get(`/api/v1/files/${fileId}/download`) as { download_url: string }
-  window.open(res.download_url, '_blank', 'noopener,noreferrer')
+  try {
+    const contentPath = fileContentPath(msg) || `/api/v1/files/${encodeURIComponent(fileId)}/content`
+    const response = await fetch(contentPath, {
+      headers: authHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error(`文件下载失败: ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    const objectURL = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectURL
+    link.download = fileName(msg)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectURL)
+  } catch (err: any) {
+    toast.error(err?.message || '文件下载失败')
+  }
 }
 
 const loadMore = async () => {
@@ -1042,7 +1131,7 @@ const uploadAvatar = async () => {
     await auth.fetchMe()
     closeProfileModal()
   } catch (e: any) {
-    alert(e?.message || '头像上传失败')
+    toast.error(e?.message || '头像上传失败')
   } finally {
     uploadingAvatar.value = false
   }
@@ -1058,7 +1147,7 @@ const saveProfile = async () => {
     await auth.fetchMe()
     profileSignature.value = auth.currentUser?.signature || ''
   } catch (e: any) {
-    alert(e?.message || '资料保存失败')
+    toast.error(e?.message || '资料保存失败')
   } finally {
     savingProfile.value = false
   }
@@ -1147,7 +1236,7 @@ const openUserProfile = async (user: PublicUser) => {
     viewedUserRemark.value = contactOf(detail.uuid)?.remark || ''
     showUserProfileModal.value = true
   } catch (e: any) {
-    alert(e?.message || '获取用户资料失败')
+    toast.error(e?.message || '获取用户资料失败')
   }
 }
 
@@ -1191,7 +1280,7 @@ const saveUserRemark = async () => {
       viewedUser.value = { ...viewedUser.value }
     }
   } catch (e: any) {
-    alert(e?.message || '备注保存失败')
+    toast.error(e?.message || '备注保存失败')
   } finally {
     savingUserRemark.value = false
   }
@@ -1209,16 +1298,16 @@ const removeFriendFromViewedUser = async () => {
     viewedUserRemark.value = ''
     closeUserProfileModal()
   } catch (e: any) {
-    alert(e?.message || '删除好友失败')
+    toast.error(e?.message || '删除好友失败')
   }
 }
 
 const quickApplyFriend = async (user: PublicUser) => {
   try {
     await api.post('/api/v1/contacts/applications', { target_uuid: user.uuid, message: '' })
-    alert('好友申请已发送')
+    toast.success('好友申请已发送')
   } catch (e: any) {
-    alert(e?.message || '发送好友申请失败')
+    toast.error(e?.message || '发送好友申请失败')
   }
 }
 
@@ -1261,10 +1350,10 @@ const sendFriendRequest = async () => {
   if (!friendTarget.value) return
   try {
     await api.post('/api/v1/contacts/applications', { target_uuid: friendTarget.value.uuid, message: friendRequestMsg.value.trim() })
-    alert('好友申请已发送')
+    toast.success('好友申请已发送')
     closeAddFriend()
   } catch (e: any) {
-    alert(e?.message || '发送失败')
+    toast.error(e?.message || '发送失败')
   }
 }
 
@@ -1291,7 +1380,7 @@ const createGroup = async () => {
     setTimeout(() => chat.fetchConversations(), 5000)
   } catch (e: any) {
     console.error('[createGroup] error:', e)
-    alert(e?.message || String(e) || '创建失败')
+    toast.error(e?.message || String(e) || '创建失败')
   }
 }
 
@@ -1315,7 +1404,7 @@ const inviteMembers = async () => {
     showInviteMembers.value = false
     await chat.fetchGroup(groupUUID)
   } catch (e: any) {
-    alert(e?.message || '邀请失败')
+    toast.error(e?.message || '邀请失败')
   }
 }
 
@@ -1328,7 +1417,7 @@ const saveGroupProfile = async () => {
     })
     await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
   } catch (e: any) {
-    alert(e?.message || '群资料保存失败')
+    toast.error(e?.message || '群资料保存失败')
   }
 }
 
@@ -1355,7 +1444,7 @@ const uploadGroupAvatar = async () => {
     selectedGroupAvatarName.value = ''
     if (groupAvatarInputRef.value) groupAvatarInputRef.value.value = ''
   } catch (e: any) {
-    alert(e?.message || '群头像上传失败')
+    toast.error(e?.message || '群头像上传失败')
   } finally {
     uploadingGroupAvatar.value = false
   }
@@ -1370,7 +1459,7 @@ const dismissGroup = async () => {
     await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/dismiss`)
     await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
   } catch (e: any) {
-    alert(e?.message || '解散群失败')
+    toast.error(e?.message || '解散群失败')
   }
 }
 
@@ -1384,7 +1473,7 @@ const saveGroupRemark = async () => {
     activeConv.value.remark = data.remark || ''
     await chat.fetchConversations()
   } catch (e: any) {
-    alert(e?.message || '群备注保存失败')
+    toast.error(e?.message || '群备注保存失败')
   }
 }
 
@@ -1415,12 +1504,18 @@ const handleWsPacket = async (packet: WsPacket) => {
       const requestType = String((data as any)?.request_type || '')
       const clientMessageID = String((data as any)?.client_message_id || '')
       if (clientMessageID && (requestType === 'chat.send' || requestType === 'chat.send_file')) {
+        const pending = pendingOutboundMessages.get(clientMessageID)
         pendingOutboundMessages.delete(clientMessageID)
+        const message = String((data as any)?.message || '消息发送失败')
+        sendErrorMessage.value = message
+        if (requestType === 'chat.send' && pending && typeof pending.data.content === 'string') {
+          inputText.value = pending.data.content
+        }
       }
       break
     }
     case 'session.kicked':
-      alert(`被踢下线: ${(data as any)?.reason || ''}`)
+      toast.error(`被踢下线: ${(data as any)?.reason || ''}`)
       await auth.logout()
       router.push({ name: 'login' })
       break
@@ -1828,18 +1923,22 @@ onBeforeUnmount(() => {
 .icon-btn {
   background: none;
   border: none;
-  font-size: 22px;
   cursor: pointer;
   opacity: 0.5;
   color: white;
-  padding: 0;
+  padding: 6px;
   line-height: 1;
-  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .icon-btn:hover,
 .icon-btn.active {
   opacity: 1;
+  background: rgba(255,255,255,0.1);
 }
 
 .logout-btn {
@@ -2054,13 +2153,19 @@ onBeforeUnmount(() => {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
-  opacity: 0.5;
-  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .detail-toggle:hover {
   opacity: 1;
+  background: #ebebeb;
 }
 
 .msg-list {
@@ -2074,6 +2179,9 @@ onBeforeUnmount(() => {
 
 .load-more-btn {
   align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   background: none;
   border: 1px solid #ddd;
   border-radius: 12px;
@@ -2206,13 +2314,19 @@ onBeforeUnmount(() => {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
   opacity: 0.6;
-  transition: opacity 0.15s;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .tool-btn:hover {
   opacity: 1;
+  background: #f0f0f0;
 }
 
 .tool-btn.disabled {
@@ -2318,6 +2432,9 @@ onBeforeUnmount(() => {
 }
 
 .file-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
@@ -2361,6 +2478,9 @@ onBeforeUnmount(() => {
 }
 
 .send-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 16px;
   background: #07c160;
   color: #fff;
@@ -2933,4 +3053,44 @@ onBeforeUnmount(() => {
 .member-select-item:hover {
   background: #f5f5f5;
 }
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  pointer-events: all;
+  cursor: pointer;
+  max-width: 360px;
+  word-break: break-all;
+  backdrop-filter: blur(4px);
+}
+
+.toast-error   { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+.toast-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+.toast-info    { background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; }
+
+.toast-icon { display: flex; align-items: center; flex-shrink: 0; }
+
+.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+.toast-enter-from { opacity: 0; transform: translateY(-12px); }
+.toast-leave-to   { opacity: 0; transform: translateY(-8px); }
 </style>
