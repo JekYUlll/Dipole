@@ -1531,7 +1531,13 @@ const handleWsPacket = async (packet: WsPacket) => {
       pushIncomingMessage(msg)
       await chat.fetchConversations()
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
-      if (key === chat.activeKey) scrollToBottom()
+      if (key === chat.activeKey) {
+        scrollToBottom()
+        // 立即加载新消息的媒体预览（图片/视频）
+        if (isInlineMediaMessage(msg)) {
+          nextTick(() => loadMediaPreview(msg))
+        }
+      }
       break
     }
     case 'error': {
