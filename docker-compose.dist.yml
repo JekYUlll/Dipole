@@ -132,6 +132,8 @@ services:
       # 挂载容器专用配置（所有服务地址已指向容器名），node_id 由环境变量覆盖
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
+    env_file:
+      - .env
     environment:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
     ports:
@@ -159,6 +161,8 @@ services:
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
+    env_file:
+      - .env
     environment:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
     ports:
@@ -186,6 +190,8 @@ services:
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
+    env_file:
+      - .env
     environment:
       DIPOLE_PRESENCE_NODE_ID: node3
     ports:
