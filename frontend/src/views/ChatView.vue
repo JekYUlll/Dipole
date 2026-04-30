@@ -372,6 +372,10 @@
         <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="handleAvatarSelected" />
         <div class="upc-name">{{ auth.currentUser?.nickname }}</div>
         <div class="upc-uuid">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
+        <div class="upc-uuid upc-uuid-copyable" @click="copyUUID" :title="uuidCopied ? '已复制' : '点击复制 UUID'">
+          ID: {{ auth.currentUser?.uuid }}
+          <span class="upc-copy-hint">{{ uuidCopied ? '已复制' : '复制' }}</span>
+        </div>
         <textarea v-model="profileSignature" class="upc-signature-input" placeholder="写点个性签名" maxlength="255"></textarea>
         <div v-if="selectedAvatarName" class="upc-file-hint">已选择：{{ selectedAvatarName }}</div>
         <div class="upc-actions">
@@ -574,6 +578,7 @@ const selectedAvatarName = ref('')
 const uploadingAvatar = ref(false)
 const profileSignature = ref('')
 const savingProfile = ref(false)
+const uuidCopied = ref(false)
 const showUserProfileModal = ref(false)
 const viewedUser = ref<PublicUser | null>(null)
 const viewedUserRemark = ref('')
@@ -1146,6 +1151,18 @@ const closeProfileModal = () => {
 const openSelfProfile = () => {
   profileSignature.value = auth.currentUser?.signature || ''
   showProfileModal.value = true
+}
+
+const copyUUID = async () => {
+  const uuid = auth.currentUser?.uuid
+  if (!uuid) return
+  try {
+    await navigator.clipboard.writeText(uuid)
+    uuidCopied.value = true
+    setTimeout(() => { uuidCopied.value = false }, 2000)
+  } catch {
+    toast.info(uuid)
+  }
 }
 
 const handleAvatarSelected = (e: Event) => {
@@ -1943,6 +1960,32 @@ onBeforeUnmount(() => {
 }
 
 .upc-signature-input:focus { border-color: #07c160; }
+
+.upc-uuid-copyable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  transition: background 0.15s;
+}
+
+.upc-uuid-copyable:hover {
+  background: #f0f0f0;
+}
+
+.upc-copy-hint {
+  font-size: 10px;
+  color: #07c160;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.upc-uuid-copyable:hover .upc-copy-hint {
+  opacity: 1;
+}
 
 .upc-file-hint {
   font-size: 11px;
