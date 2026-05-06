@@ -117,6 +117,7 @@ type GroupMessageNotifyData struct {
 	Preview            string    `json:"preview"`
 	RecentMessageCount int       `json:"recent_message_count"`
 	SentAt             time.Time `json:"sent_at"`
+	SenderUUID         string    `json:"sender_uuid"`
 }
 
 type SessionKickedData struct {

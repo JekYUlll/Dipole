@@ -84,13 +84,13 @@ func New() *Server {
 	}
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
-	contactService := service.NewContactService(contactRepo, userRepo).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents)
+	contactService := service.NewContactService(contactRepo, userRepo).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messageService)
 	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		fileRepo,
 		platformStorage.Client,
 		5*1024*1024,
 		10*time.Minute,
-	)
+	).WithSystemMessenger(messageService)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by

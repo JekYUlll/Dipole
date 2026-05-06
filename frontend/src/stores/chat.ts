@@ -75,11 +75,15 @@ export const useChatStore = defineStore('chat', () => {
     const list = messageMap.value.get(key) || []
     if (!list.some(m => m.message_id === msg.message_id)) {
       list.push(msg)
-      list.sort((a, b) => a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
+      list.sort((a, b) => {
+        // id:0 means not yet persisted (WS echo before Kafka commit) — sort by sent_at only
+        if (a.id === 0 || b.id === 0) return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
+        return a.id - b.id
+      })
       messageMap.value.set(key, list)
       const conv = conversations.value.find(c => c.conversation_key === key)
       if (conv) {
-        conv.last_message = { message_id: msg.message_id, message_type: msg.message_type, preview: msg.content, sent_at: msg.sent_at }
+        conv.last_message = { message_id: msg.message_id, message_type: msg.message_type, preview: msg.content, sent_at: msg.sent_at, sender_uuid: msg.from_uuid }
         conv.unread_count = key === activeKey.value ? 0 : conv.unread_count + 1
       }
     }

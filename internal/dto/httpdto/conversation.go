@@ -11,6 +11,7 @@ type ConversationMessageSummaryResponse struct {
 	MessageType int8      `json:"message_type"`
 	Preview     string    `json:"preview"`
 	SentAt      time.Time `json:"sent_at"`
+	SenderUUID  string    `json:"sender_uuid"`
 }
 
 type ConversationResponse struct {
@@ -41,6 +42,7 @@ func ToConversationResponse(item *service.ConversationView) *ConversationRespons
 			MessageType: item.Conversation.LastMessageType,
 			Preview:     item.Conversation.LastMessagePreview,
 			SentAt:      item.Conversation.LastMessageAt,
+			SenderUUID:  item.Conversation.LastMessageSenderUUID,
 		},
 		UnreadCount: item.Conversation.UnreadCount,
 	}

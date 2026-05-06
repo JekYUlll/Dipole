@@ -324,6 +324,7 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 				Preview:            messagePreview(payload),
 				RecentMessageCount: recentMessageCount,
 				SentAt:             payload.SentAt,
+				SenderUUID:         payload.SenderUUID,
 			}, payload.RecipientUUIDs)
 		}
 

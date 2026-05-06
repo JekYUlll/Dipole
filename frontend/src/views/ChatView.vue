@@ -51,7 +51,10 @@
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
-              <span class="conv-preview">{{ conv.last_message?.preview || '' }}</span>
+              <span class="conv-preview">
+                <template v-if="conv.target_type === 1 && conv.last_message?.sender_uuid">
+                  <span class="conv-preview-sender">{{ convLastSenderName(conv) }}：</span>
+                </template>{{ conv.last_message?.preview || '' }}</span>
               <span v-if="conv.unread_count > 0" class="conv-badge">{{ conv.unread_count }}</span>
             </div>
           </div>
@@ -126,7 +129,10 @@
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
-              <span class="conv-preview">{{ conv.last_message?.preview || '' }}</span>
+              <span class="conv-preview">
+                <template v-if="conv.target_type === 1 && conv.last_message?.sender_uuid">
+                  <span class="conv-preview-sender">{{ convLastSenderName(conv) }}：</span>
+                </template>{{ conv.last_message?.preview || '' }}</span>
               <span v-if="conv.unread_count > 0" class="conv-badge">{{ conv.unread_count }}</span>
             </div>
           </div>
@@ -487,13 +493,25 @@
         <div class="modal-body">
           <div class="member-select-list">
             <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
-            <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
-              <input type="checkbox" :value="c.user.uuid" v-model="inviteSelected" />
+            <label
+              v-for="c in chat.contacts"
+              :key="c.user.uuid"
+              class="member-select-item"
+              :class="{ 'member-select-item--disabled': currentGroupMemberUUIDs.has(c.user.uuid) }"
+            >
+              <input
+                type="checkbox"
+                :value="c.user.uuid"
+                v-model="inviteSelected"
+                :disabled="currentGroupMemberUUIDs.has(c.user.uuid)"
+                :checked="currentGroupMemberUUIDs.has(c.user.uuid) || inviteSelected.includes(c.user.uuid)"
+              />
               <div class="conv-avatar small">
                 <img v-if="c.user.avatar" :src="c.user.avatar" />
                 <span v-else>{{ getInitials(c.user.nickname) }}</span>
               </div>
               <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+              <span v-if="currentGroupMemberUUIDs.has(c.user.uuid)" style="font-size:11px;color:#aaa;margin-left:4px">已在群中</span>
             </label>
           </div>
         </div>
@@ -715,15 +733,6 @@ const wsDataToMessage = (data: Record<string, unknown>): Message => ({
   sent_at: data.sent_at as string,
 })
 
-const pushIncomingMessage = (msg: Message) => {
-  const key = deriveMessageKey(msg, auth.currentUser!.uuid)
-  const list = chat.messageMap.get(key) || []
-  if (!list.some(m => m.message_id === msg.message_id)) {
-    list.push(msg)
-    list.sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
-    chat.messageMap.set(key, list)
-  }
-}
 
 const latestLoadedMessageID = (key: string) => {
   const list = chat.messageMap.get(key) || []
@@ -819,7 +828,7 @@ const revokeMediaPreviewURLs = () => {
   mediaPreviewInflight.clear()
 }
 
-const loadMediaPreview = async (msg: Message) => {
+const loadMediaPreview = async (msg: Message, retries = 4, delayMs = 600) => {
   if (!isInlineMediaMessage(msg)) return
   if (mediaPreviewMap.value[msg.message_id]) return
   if (mediaPreviewInflight.has(msg.message_id)) {
@@ -832,17 +841,19 @@ const loadMediaPreview = async (msg: Message) => {
   if (!contentPath || !token) return
 
   const request = (async () => {
-    const response = await fetch(contentPath, {
-      headers: authHeaders(),
-    })
-    if (!response.ok) {
-      throw new Error(`media preview request failed: ${response.status}`)
-    }
-    const blob = await response.blob()
-    const objectURL = URL.createObjectURL(blob)
-    mediaPreviewMap.value = {
-      ...mediaPreviewMap.value,
-      [msg.message_id]: objectURL,
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, delayMs * attempt))
+      const response = await fetch(contentPath, { headers: authHeaders() })
+      if (response.ok) {
+        const blob = await response.blob()
+        const objectURL = URL.createObjectURL(blob)
+        mediaPreviewMap.value = { ...mediaPreviewMap.value, [msg.message_id]: objectURL }
+        return
+      }
+      // 403 on own sent files = Kafka hasn't persisted yet; retry
+      if (response.status !== 403 || attempt === retries) {
+        throw new Error(`media preview request failed: ${response.status}`)
+      }
     }
   })()
 
@@ -994,6 +1005,16 @@ const convAvatar = (conv: Conversation) => {
   return conv.target_user?.avatar ?? ''
 }
 
+const convLastSenderName = (conv: Conversation): string => {
+  const senderUUID = conv.last_message?.sender_uuid
+  if (!senderUUID) return ''
+  if (senderUUID === auth.currentUser?.uuid) return '我'
+  const group = groupFromConv(conv)
+  const member = group?.members?.find(m => m.user.uuid === senderUUID)
+  if (member) return member.user.nickname
+  return chat.users.get(senderUUID)?.nickname ?? senderUUID
+}
+
 // ── Message helpers ───────────────────────────────────────────────────────────
 
 const msgItemClass = (msg: Message) => {
@@ -1033,6 +1054,7 @@ const selectConversation = async (conv: Conversation) => {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
     await chat.fetchGroup(groupUUID).catch(() => {})
     await chat.fetchGroupMessages(groupUUID)
+    await chat.markRead(conv).catch(() => {})
   } else if (conv.target_user) {
     await chat.fetchDirectMessages(conv.target_user.uuid)
     await chat.markRead(conv)
@@ -1262,7 +1284,7 @@ const openDirectChatByUser = async (user: PublicUser) => {
       target_type: 0,
       target_user: user,
       remark: contactOf(user.uuid)?.remark || '',
-      last_message: { message_id: '', message_type: 0, preview: '', sent_at: '' },
+      last_message: { message_id: '', message_type: 0, preview: '', sent_at: '', sender_uuid: '' },
       unread_count: 0,
     })
   }
@@ -1440,6 +1462,11 @@ const createGroup = async () => {
 const showInviteMembers = ref(false)
 const inviteSelected = ref<string[]>([])
 
+const currentGroupMemberUUIDs = computed<Set<string>>(() => {
+  const group = activeConv.value ? groupFromConv(activeConv.value) : null
+  return new Set((group?.members ?? []).map(m => m.user.uuid))
+})
+
 const openInviteMembers = () => {
   inviteSelected.value = []
   showInviteMembers.value = true
@@ -1545,8 +1572,7 @@ const handleWsPacket = async (packet: WsPacket) => {
         pendingOutboundMessages.delete(clientMessageID)
       }
       const msg = wsDataToMessage(data as Record<string, unknown>)
-      pushIncomingMessage(msg)
-      await chat.fetchConversations()
+      chat.pushMessage(msg)
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
       if (key === chat.activeKey) {
         scrollToBottom()
@@ -1597,6 +1623,7 @@ const handleWsPacket = async (packet: WsPacket) => {
           message_type: notify.message_type,
           preview: notify.preview || '',
           sent_at: notify.sent_at,
+          sender_uuid: notify.sender_uuid || '',
         }
         if (chat.activeKey !== key) {
           conv.unread_count += 1
@@ -2163,6 +2190,10 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   flex: 1;
   min-width: 0;
+}
+
+.conv-preview-sender {
+  color: #888;
 }
 
 .conv-badge {
@@ -3148,6 +3179,15 @@ onBeforeUnmount(() => {
 
 .member-select-item:hover {
   background: #f5f5f5;
+}
+
+.member-select-item--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.member-select-item--disabled:hover {
+  background: transparent;
 }
 
 /* Toast */

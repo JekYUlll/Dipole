@@ -71,14 +71,19 @@ type ContactApplicationView struct {
 }
 
 type ContactService struct {
-	repo       contactRepository
-	userFinder contactUserFinder
-	notifier   contactNotifier
-	events     eventPublisher
+	repo            contactRepository
+	userFinder      contactUserFinder
+	notifier        contactNotifier
+	events          eventPublisher
+	systemMessenger contactSystemMessenger
 }
 
 type contactNotifier interface {
 	NotifyFriendDeleted(userUUID, friendUUID string, occurredAt time.Time)
+}
+
+type contactSystemMessenger interface {
+	SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
 }
 
 type ContactFriendDeletedPayload struct {
@@ -101,6 +106,11 @@ func (s *ContactService) WithNotifier(notifier contactNotifier) *ContactService 
 
 func (s *ContactService) WithEvents(events eventPublisher) *ContactService {
 	s.events = events
+	return s
+}
+
+func (s *ContactService) WithSystemMessenger(m contactSystemMessenger) *ContactService {
+	s.systemMessenger = m
 	return s
 }
 
@@ -327,6 +337,11 @@ func (s *ContactService) HandleApplication(currentUserUUID string, applicationID
 			return nil, fmt.Errorf("create friendship in handle application: %w", err)
 		}
 		application.Status = model.ContactApplicationAccepted
+		if s.systemMessenger != nil {
+			const friendMsg = "你们已经添加为好友，现在可以开始聊天了"
+			_, _ = s.systemMessenger.SendSystemDirectMessage(application.ApplicantUUID, application.TargetUUID, friendMsg)
+			_, _ = s.systemMessenger.SendSystemDirectMessage(application.TargetUUID, application.ApplicantUUID, friendMsg)
+		}
 	case ContactActionReject:
 		application.Status = model.ContactApplicationRejected
 	default:

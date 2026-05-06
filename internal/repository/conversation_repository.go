@@ -19,25 +19,27 @@ func NewConversationRepository() *ConversationRepository {
 
 func (r *ConversationRepository) UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error {
 	conversation := &model.Conversation{
-		UserUUID:           userUUID,
-		TargetType:         model.MessageTargetDirect,
-		TargetUUID:         targetUUID,
-		ConversationKey:    message.ConversationKey,
-		LastMessageUUID:    message.UUID,
-		LastMessageType:    message.MessageType,
-		LastMessagePreview: buildMessagePreview(message),
-		LastMessageAt:      message.SentAt,
-		UnreadCount:        unreadIncrement,
+		UserUUID:              userUUID,
+		TargetType:            model.MessageTargetDirect,
+		TargetUUID:            targetUUID,
+		ConversationKey:       message.ConversationKey,
+		LastMessageUUID:       message.UUID,
+		LastMessageType:       message.MessageType,
+		LastMessagePreview:    buildMessagePreview(message),
+		LastMessageAt:         message.SentAt,
+		LastMessageSenderUUID: message.SenderUUID,
+		UnreadCount:           unreadIncrement,
 	}
 
 	assignments := map[string]any{
-		"target_type":          conversation.TargetType,
-		"target_uuid":          conversation.TargetUUID,
-		"last_message_uuid":    conversation.LastMessageUUID,
-		"last_message_type":    conversation.LastMessageType,
-		"last_message_preview": conversation.LastMessagePreview,
-		"last_message_at":      conversation.LastMessageAt,
-		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
+		"target_type":                conversation.TargetType,
+		"target_uuid":                conversation.TargetUUID,
+		"last_message_uuid":          conversation.LastMessageUUID,
+		"last_message_type":          conversation.LastMessageType,
+		"last_message_preview":       conversation.LastMessagePreview,
+		"last_message_at":            conversation.LastMessageAt,
+		"last_message_sender_uuid":   conversation.LastMessageSenderUUID,
+		"updated_at":                 gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
 		assignments["unread_count"] = gorm.Expr(
@@ -67,25 +69,27 @@ func (r *ConversationRepository) UpsertDirectMessage(userUUID, targetUUID string
 
 func (r *ConversationRepository) UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error {
 	conversation := &model.Conversation{
-		UserUUID:           userUUID,
-		TargetType:         model.MessageTargetGroup,
-		TargetUUID:         groupUUID,
-		ConversationKey:    message.ConversationKey,
-		LastMessageUUID:    message.UUID,
-		LastMessageType:    message.MessageType,
-		LastMessagePreview: buildMessagePreview(message),
-		LastMessageAt:      message.SentAt,
-		UnreadCount:        unreadIncrement,
+		UserUUID:              userUUID,
+		TargetType:            model.MessageTargetGroup,
+		TargetUUID:            groupUUID,
+		ConversationKey:       message.ConversationKey,
+		LastMessageUUID:       message.UUID,
+		LastMessageType:       message.MessageType,
+		LastMessagePreview:    buildMessagePreview(message),
+		LastMessageAt:         message.SentAt,
+		LastMessageSenderUUID: message.SenderUUID,
+		UnreadCount:           unreadIncrement,
 	}
 
 	assignments := map[string]any{
-		"target_type":          conversation.TargetType,
-		"target_uuid":          conversation.TargetUUID,
-		"last_message_uuid":    conversation.LastMessageUUID,
-		"last_message_type":    conversation.LastMessageType,
-		"last_message_preview": conversation.LastMessagePreview,
-		"last_message_at":      conversation.LastMessageAt,
-		"updated_at":           gorm.Expr("CURRENT_TIMESTAMP"),
+		"target_type":                conversation.TargetType,
+		"target_uuid":                conversation.TargetUUID,
+		"last_message_uuid":          conversation.LastMessageUUID,
+		"last_message_type":          conversation.LastMessageType,
+		"last_message_preview":       conversation.LastMessagePreview,
+		"last_message_at":            conversation.LastMessageAt,
+		"last_message_sender_uuid":   conversation.LastMessageSenderUUID,
+		"updated_at":                 gorm.Expr("CURRENT_TIMESTAMP"),
 	}
 	if unreadIncrement > 0 {
 		assignments["unread_count"] = gorm.Expr(

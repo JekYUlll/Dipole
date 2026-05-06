@@ -200,7 +200,40 @@ func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content
 	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
 }
 
-// buildAndDispatchDirect constructs a direct message and either persists it
+// SendSystemGroupMessage sends a system message to a group without any permission checks.
+// Intended for internal use (member join, group update, etc.).
+func (s *MessageService) SendSystemGroupMessage(groupUUID, content string) error {
+	groupUUID = strings.TrimSpace(groupUUID)
+	content = strings.TrimSpace(content)
+	if groupUUID == "" || content == "" {
+		return nil
+	}
+
+	recipientUUIDs, err := s.listGroupMemberUUIDs(groupUUID)
+	if err != nil {
+		return fmt.Errorf("list group members for system message: %w", err)
+	}
+
+	message := &model.Message{
+		UUID:            generateMessageUUID(),
+		ClientMessageID: generateClientMessageID(),
+		ConversationKey: model.GroupConversationKey(groupUUID),
+		SenderUUID:      "",
+		TargetType:      model.MessageTargetGroup,
+		TargetUUID:      groupUUID,
+		MessageType:     model.MessageTypeSystem,
+		Content:         content,
+		SentAt:          time.Now().UTC(),
+	}
+
+	if s.events == nil {
+		_, err := s.persistLocalMessage(message, "persist group system message")
+		return err
+	}
+	return s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs)
+}
+
+
 // synchronously (no events publisher) or publishes a send_requested event.
 func (s *MessageService) buildAndDispatchDirect(senderUUID, targetUUID, content, clientMessageID string, msgType int8) (*model.Message, error) {
 	message := &model.Message{
