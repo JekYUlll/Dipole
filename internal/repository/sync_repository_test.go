@@ -3,11 +3,13 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -31,6 +33,13 @@ func TestMessageRepositoryCreateWithSyncStoresReplaySafeInboxRows(t *testing.T) 
 	}
 	if rows[0].UserUUID != "U100" || rows[1].UserUUID != "U200" {
 		t.Fatalf("unexpected inbox users: %+v", rows)
+	}
+	var lockedUsers []string
+	if err := db.Table("user_sync_states").Order("user_uuid ASC").Pluck("user_uuid", &lockedUsers).Error; err != nil {
+		t.Fatalf("list sync state users: %v", err)
+	}
+	if len(lockedUsers) != 2 || lockedUsers[0] != "U100" || lockedUsers[1] != "U200" {
+		t.Fatalf("expected one sync state per recipient, got %+v", lockedUsers)
 	}
 
 	if err := repo.EnsureSyncInbox(message, []string{"U100", "U200"}); err != nil {
@@ -120,6 +129,44 @@ func TestMessageRepositoryStoreWithOutboxAndSyncRollsBackTogether(t *testing.T) 
 			t.Fatalf("expected %s rollback, got %d rows", table, count)
 		}
 	}
+	var syncStateCount int64
+	if err := db.Table("user_sync_states").Count(&syncStateCount).Error; err != nil {
+		t.Fatalf("count user_sync_states: %v", err)
+	}
+	if syncStateCount != 0 {
+		t.Fatalf("expected user_sync_states rollback, got %d rows", syncStateCount)
+	}
+}
+
+func TestSyncStateLockQueryUsesForUpdateOnMySQL(t *testing.T) {
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		DSN:                       "gorm:gorm@tcp(127.0.0.1:9910)/gorm?charset=utf8mb4&parseTime=True&loc=Local",
+		SkipInitializeWithVersion: true,
+	}), &gorm.Config{
+		DryRun:               true,
+		DisableAutomaticPing: true,
+	})
+	if err != nil {
+		t.Fatalf("open mysql dry-run database: %v", err)
+	}
+
+	statement := syncStateLockQuery(db, "U100").First(&model.UserSyncState{}).Statement
+	if !strings.Contains(statement.SQL.String(), "FOR UPDATE") {
+		t.Fatalf("expected MySQL sync state query to use FOR UPDATE, got %s", statement.SQL.String())
+	}
+}
+
+func TestUniqueSortedUUIDsUsesStableLockOrder(t *testing.T) {
+	got := uniqueSortedUUIDs([]string{" U300 ", "U100", "U200", "U100", ""})
+	want := []string{"U100", "U200", "U300"}
+	if len(got) != len(want) {
+		t.Fatalf("expected lock order %+v, got %+v", want, got)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("expected lock order %+v, got %+v", want, got)
+		}
+	}
 }
 
 func setupSyncRepositoryTest(t *testing.T) (*gorm.DB, func()) {
@@ -130,7 +177,7 @@ func setupSyncRepositoryTest(t *testing.T) (*gorm.DB, func()) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.Message{}, &model.UserSyncInbox{}, &model.OutboxEvent{}); err != nil {
+	if err := db.AutoMigrate(&model.Message{}, &model.UserSyncState{}, &model.UserSyncInbox{}, &model.OutboxEvent{}); err != nil {
 		t.Fatalf("auto migrate sqlite: %v", err)
 	}
 

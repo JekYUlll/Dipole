@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -75,7 +76,9 @@ func (r *MessageRepository) EnsureSyncInbox(message *model.Message, recipientUUI
 	if store.DB == nil {
 		return fmt.Errorf("ensure sync inbox: mysql not initialized")
 	}
-	if err := createSyncInboxRows(store.DB, message, recipientUUIDs); err != nil {
+	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+		return createSyncInboxRows(tx, message, recipientUUIDs)
+	}); err != nil {
 		return fmt.Errorf("ensure sync inbox: %w", err)
 	}
 	return nil
@@ -239,17 +242,16 @@ func createSyncInboxRows(db *gorm.DB, message *model.Message, recipientUUIDs []s
 		return nil
 	}
 
-	seen := make(map[string]struct{}, len(recipientUUIDs))
-	rows := make([]*model.UserSyncInbox, 0, len(recipientUUIDs))
-	for _, recipientUUID := range recipientUUIDs {
-		recipientUUID = strings.TrimSpace(recipientUUID)
-		if recipientUUID == "" {
-			continue
-		}
-		if _, ok := seen[recipientUUID]; ok {
-			continue
-		}
-		seen[recipientUUID] = struct{}{}
+	recipients := uniqueSortedUUIDs(recipientUUIDs)
+	if len(recipients) == 0 {
+		return nil
+	}
+	if err := lockSyncInboxUsers(db, recipients); err != nil {
+		return err
+	}
+
+	rows := make([]*model.UserSyncInbox, 0, len(recipients))
+	for _, recipientUUID := range recipients {
 		rows = append(rows, &model.UserSyncInbox{
 			UserUUID:        recipientUUID,
 			MessageUUID:     message.UUID,
@@ -264,4 +266,41 @@ func createSyncInboxRows(db *gorm.DB, message *model.Message, recipientUUIDs []s
 		return fmt.Errorf("create sync inbox rows: %w", err)
 	}
 	return nil
+}
+
+func uniqueSortedUUIDs(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func lockSyncInboxUsers(db *gorm.DB, userUUIDs []string) error {
+	for _, userUUID := range userUUIDs {
+		state := &model.UserSyncState{UserUUID: userUUID}
+		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(state).Error; err != nil {
+			return fmt.Errorf("ensure sync state for user %s: %w", userUUID, err)
+		}
+
+		var locked model.UserSyncState
+		if err := syncStateLockQuery(db, userUUID).First(&locked).Error; err != nil {
+			return fmt.Errorf("lock sync state for user %s: %w", userUUID, err)
+		}
+	}
+	return nil
+}
+
+func syncStateLockQuery(db *gorm.DB, userUUID string) *gorm.DB {
+	return db.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_uuid = ?", userUUID)
 }

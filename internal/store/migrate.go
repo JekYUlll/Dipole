@@ -14,6 +14,7 @@ func AutoMigrate() error {
 	if err := DB.AutoMigrate(
 		&model.User{},
 		&model.Message{},
+		&model.UserSyncState{},
 		&model.UserSyncInbox{},
 		&model.UploadedFile{},
 		&model.Conversation{},
