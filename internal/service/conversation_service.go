@@ -281,7 +281,7 @@ func (s *ConversationService) dispatchDirectReadReceipt(receipt *ConversationRea
 		if err := s.events.PublishEvent(
 			context.Background(),
 			"conversation.direct.read",
-			receipt.TargetUUID,
+			receipt.ConversationKey,
 			"conversation.direct.read",
 			receipt,
 			nil,

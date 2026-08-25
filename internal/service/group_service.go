@@ -53,6 +53,10 @@ type groupUserFinder interface {
 	ListByUUIDs(uuids []string) ([]*model.User, error)
 }
 
+type groupSystemMessenger interface {
+	SendSystemGroupMessage(groupUUID, content string) error
+}
+
 type groupAvatarFileRepository interface {
 	Create(file *model.UploadedFile) error
 	GetByUUID(uuid string) (*model.UploadedFile, error)
@@ -100,14 +104,15 @@ type GroupMemberView struct {
 }
 
 type GroupService struct {
-	repo           groupRepository
-	userFinder     groupUserFinder
-	events         eventPublisher
-	hotGroups      groupHeatReader
-	fileRepo       groupAvatarFileRepository
-	storage        groupAvatarStorage
-	avatarMaxBytes int64
-	avatarURLTTL   time.Duration
+	repo            groupRepository
+	userFinder      groupUserFinder
+	events          eventPublisher
+	hotGroups       groupHeatReader
+	fileRepo        groupAvatarFileRepository
+	storage         groupAvatarStorage
+	avatarMaxBytes  int64
+	avatarURLTTL    time.Duration
+	systemMessenger groupSystemMessenger
 }
 
 type groupHeatReader interface {
@@ -146,6 +151,11 @@ func (s *GroupService) WithAvatarStorage(fileRepo groupAvatarFileRepository, sto
 	if urlTTL > 0 {
 		s.avatarURLTTL = urlTTL
 	}
+	return s
+}
+
+func (s *GroupService) WithSystemMessenger(m groupSystemMessenger) *GroupService {
+	s.systemMessenger = m
 	return s
 }
 
@@ -409,6 +419,17 @@ func (s *GroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs
 		OccurredAt:     now,
 	})
 
+	if s.systemMessenger != nil {
+		if operator, err := s.userFinder.GetByUUID(currentUserUUID); err == nil && operator != nil {
+			for _, member := range addedMembers {
+				if u, ok := userByUUID[member.UserUUID]; ok {
+					content := u.Nickname + " 由 " + operator.Nickname + " 邀请入群"
+					_ = s.systemMessenger.SendSystemGroupMessage(group.UUID, content)
+				}
+			}
+		}
+	}
+
 	return views, nil
 }
 
@@ -477,6 +498,13 @@ func (s *GroupService) UpdateGroup(currentUserUUID, groupUUID string, input Upda
 		RecipientUUIDs: recipients,
 		OccurredAt:     group.UpdatedAt,
 	})
+
+	if s.systemMessenger != nil && name != "" {
+		if operator, err := s.userFinder.GetByUUID(currentUserUUID); err == nil && operator != nil {
+			content := operator.Nickname + " 修改群名称为\"" + group.Name + "\""
+			_ = s.systemMessenger.SendSystemGroupMessage(group.UUID, content)
+		}
+	}
 
 	owner, err := s.userFinder.GetByUUID(group.OwnerUUID)
 	if err != nil {

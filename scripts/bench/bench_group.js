@@ -83,7 +83,7 @@ function fetchGroupMessages(token, groupUUID, afterID) {
   return parseEnvelope(res.body);
 }
 
-function collectBenchMessages(messages, seenMessageIDs) {
+function collectBenchMessages(messages, seenMessageIDs, runToken) {
   let maxID = 0;
   let received = 0;
 
@@ -95,10 +95,11 @@ function collectBenchMessages(messages, seenMessageIDs) {
     if (messageID && seenMessageIDs.has(messageID)) continue;
     if (messageID) seenMessageIDs.add(messageID);
 
-    const match = ((msg.content || "") + "").match(/^bench:(\d+)$/);
+    const match = ((msg.content || "") + "").match(/^bench:([^:]+):(\d+)$/);
     if (!match) continue;
+    if (match[1] !== runToken) continue;
 
-    msgLatency.add(Date.now() - parseInt(match[1]), { scenario: "group_blast_hot" });
+    msgLatency.add(Date.now() - parseInt(match[2]), { scenario: "group_blast_hot" });
     msgReceived.add(1);
     msgDeliveryRate.add(1);
     received++;
@@ -141,6 +142,7 @@ function createGroup(token, memberUUIDs) {
 }
 
 export function setup() {
+  const runToken = String(Date.now());
   console.log(`[setup] registering ${GROUP_SIZE} users...`);
   for (let i = 0; i < GROUP_SIZE; i++) {
     registerUser(i);
@@ -164,7 +166,7 @@ export function setup() {
   const groupUUID = sessions[0] ? createGroup(sessions[0].token, memberUUIDs) : null;
   console.log(`[setup] group: ${groupUUID}`);
 
-  return { sessions, groupUUID, recipientCount: memberUUIDs.length };
+  return { sessions, groupUUID, recipientCount: memberUUIDs.length, runToken };
 }
 
 export default function(data) {
@@ -175,7 +177,7 @@ export default function(data) {
     return;
   }
 
-  const { sessions, groupUUID, recipientCount } = data;
+  const { sessions, groupUUID, recipientCount, runToken } = data;
   if (!groupUUID) {
     sleep(IDLE_SECONDS);
     return;
@@ -205,7 +207,7 @@ export default function(data) {
           socket.setInterval(() => {
             if (i >= SEND_COUNT) return;
             const sentAt = Date.now();
-            socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: groupUUID, content: `bench:${sentAt}` } }));
+            socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: groupUUID, content: `bench:${runToken}:${sentAt}` } }));
             msgSent.add(1);
             msgExpected.add(recipientCount);
             i++;
@@ -217,6 +219,9 @@ export default function(data) {
       try {
         const evt = JSON.parse(raw);
         if (evt.type === "chat.message") {
+          if (evt.data?.target_type !== 1 || evt.data?.target_uuid !== groupUUID) {
+            return;
+          }
           const messageID = evt.data && evt.data.message_id;
           if (messageID && seenMessageIDs.has(messageID)) {
             return;
@@ -224,17 +229,21 @@ export default function(data) {
           if (messageID) {
             seenMessageIDs.add(messageID);
           }
-          const m = (evt.data && evt.data.content || "").match(/^bench:(\d+)$/);
+          const m = (evt.data && evt.data.content || "").match(/^bench:([^:]+):(\d+)$/);
           if (m && !isSender) {
-            msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "group_blast_push" });
+            if (m[1] !== runToken) return;
+            msgLatency.add(Date.now() - parseInt(m[2]), { scenario: "group_blast_push" });
             msgReceived.add(1);
             msgDeliveryRate.add(1);
           }
         } else if (evt.type === "group.message.notify" && !isSender) {
+          if (evt.data?.group_uuid !== groupUUID) {
+            return;
+          }
           // 热群模式只推 notify，正文通过 after_id 增量补拉拿回。
           // 这样压测结果能分别看到 push 广播和 notify + pull 两条链路的差异。
           const pulled = fetchGroupMessages(myS.token, groupUUID, lastMessageID);
-          const { maxID } = collectBenchMessages(pulled, seenMessageIDs);
+          const { maxID } = collectBenchMessages(pulled, seenMessageIDs, runToken);
           if (maxID > lastMessageID) {
             lastMessageID = maxID;
           }

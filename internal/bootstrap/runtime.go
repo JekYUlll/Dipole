@@ -133,6 +133,15 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err := RegisterKafkaHandlers(wsEventSender); err != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
 	}
+	if kafkaCfg.Enabled && platformKafka.Client != nil {
+		if err := platformKafka.Client.EnsureTopics(kafkaManagedTopics()); err != nil {
+			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
+		}
+		logger.Info("kafka topics ensured",
+			zap.Int("partitions", kafkaCfg.TopicPartitions),
+			zap.Int("replication_factor", kafkaCfg.TopicReplicationFactor),
+		)
+	}
 	if platformKafka.Subscriber != nil {
 		if err := platformKafka.Subscriber.Start(ctx); err != nil {
 			return nil, fmt.Errorf("kafka consumer start failed: %w", err)

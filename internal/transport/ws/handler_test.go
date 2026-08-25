@@ -42,42 +42,42 @@ func (s *stubUserFinder) GetByUUID(uuid string) (*model.User, error) {
 }
 
 type stubDirectMessageService struct {
-	sendDirectMessageFn     func(senderUUID, targetUUID, content string) (*model.Message, error)
-	sendGroupMessageFn      func(senderUUID, groupUUID, content string) (*model.Message, []string, error)
-	sendDirectFileMessageFn func(senderUUID, targetUUID, fileUUID string) (*model.Message, error)
-	sendGroupFileMessageFn  func(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error)
+	sendDirectMessageFn     func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	sendGroupMessageFn      func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
+	sendDirectFileMessageFn func(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
+	sendGroupFileMessageFn  func(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
-func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	if s.sendDirectMessageFn == nil {
 		return nil, errors.New("unexpected send direct message call")
 	}
 
-	return s.sendDirectMessageFn(senderUUID, targetUUID, content)
+	return s.sendDirectMessageFn(senderUUID, targetUUID, content, clientMessageID)
 }
 
-func (s *stubDirectMessageService) SendGroupMessage(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+func (s *stubDirectMessageService) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 	if s.sendGroupMessageFn == nil {
 		return nil, nil, errors.New("unexpected send group message call")
 	}
 
-	return s.sendGroupMessageFn(senderUUID, groupUUID, content)
+	return s.sendGroupMessageFn(senderUUID, groupUUID, content, clientMessageID)
 }
 
-func (s *stubDirectMessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID string) (*model.Message, error) {
+func (s *stubDirectMessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
 	if s.sendDirectFileMessageFn == nil {
 		return nil, errors.New("unexpected send direct file message call")
 	}
 
-	return s.sendDirectFileMessageFn(senderUUID, targetUUID, fileUUID)
+	return s.sendDirectFileMessageFn(senderUUID, targetUUID, fileUUID, clientMessageID)
 }
 
-func (s *stubDirectMessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID string) (*model.Message, []string, error) {
+func (s *stubDirectMessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
 	if s.sendGroupFileMessageFn == nil {
 		return nil, nil, errors.New("unexpected send group file message call")
 	}
 
-	return s.sendGroupFileMessageFn(senderUUID, groupUUID, fileUUID)
+	return s.sendGroupFileMessageFn(senderUUID, groupUUID, fileUUID, clientMessageID)
 }
 
 type stubConversationUpdater struct {
@@ -141,10 +141,10 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 	hub := NewHub()
 	userFinder := &stubUserFinder{}
 	handler := NewHandler(NewAuthenticator(&stubTokenResolver{}, userFinder), hub, NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			return nil, errors.New("unexpected send direct message call")
 		},
-		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+		sendGroupMessageFn: func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 			return nil, nil, errors.New("unexpected send group message call")
 		},
 	}, &stubConversationUpdater{}, true))
@@ -202,10 +202,10 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			return nil, errors.New("unexpected send direct message call")
 		},
-		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+		sendGroupMessageFn: func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 			return nil, nil, errors.New("unexpected send group message call")
 		},
 	}, &stubConversationUpdater{}, true))
@@ -288,7 +288,7 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 		},
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			if senderUUID != "U100" {
 				t.Fatalf("unexpected sender uuid: %s", senderUUID)
 			}
@@ -298,18 +298,22 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			if content != "hello from U100" {
 				t.Fatalf("unexpected content: %s", content)
 			}
+			if clientMessageID != "cmid-handler-1" {
+				t.Fatalf("unexpected client message id: %s", clientMessageID)
+			}
 
 			return &model.Message{
-				UUID:        "M100",
-				SenderUUID:  senderUUID,
-				TargetUUID:  targetUUID,
-				TargetType:  model.MessageTargetDirect,
-				MessageType: model.MessageTypeText,
-				Content:     content,
-				SentAt:      time.Now().UTC(),
+				UUID:            "M100",
+				ClientMessageID: clientMessageID,
+				SenderUUID:      senderUUID,
+				TargetUUID:      targetUUID,
+				TargetType:      model.MessageTargetDirect,
+				MessageType:     model.MessageTypeText,
+				Content:         content,
+				SentAt:          time.Now().UTC(),
 			}, nil
 		},
-		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+		sendGroupMessageFn: func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 			return nil, nil, errors.New("unexpected send group message call")
 		},
 	}, &stubConversationUpdater{
@@ -339,8 +343,9 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	readWebSocketJSON(t, second, &connectedB)
 
 	payload, err := EncodeCommand(TypeChatSend, SendTextMessageInput{
-		TargetUUID: "U200",
-		Content:    "hello from U100",
+		TargetUUID:      "U200",
+		Content:         "hello from U100",
+		ClientMessageID: "cmid-handler-1",
 	})
 	if err != nil {
 		t.Fatalf("encode command: %v", err)
@@ -356,6 +361,9 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	if ack.Data.TargetUUID != "U200" {
 		t.Fatalf("expected ack target U200, got %s", ack.Data.TargetUUID)
+	}
+	if ack.Data.ClientMessageID != "cmid-handler-1" {
+		t.Fatalf("expected ack client message id cmid-handler-1, got %s", ack.Data.ClientMessageID)
 	}
 	if !ack.Data.Delivered {
 		t.Fatalf("expected delivered ack, got false")
@@ -403,10 +411,10 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 		},
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			return nil, errors.New("unexpected send direct message call")
 		},
-		sendGroupMessageFn: func(senderUUID, groupUUID, content string) (*model.Message, []string, error) {
+		sendGroupMessageFn: func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 			return &model.Message{
 				UUID:        "M200",
 				SenderUUID:  senderUUID,
@@ -497,7 +505,7 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 		},
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			return nil, service.ErrMessageFriendRequired
 		},
 	}, &stubConversationUpdater{}, true)
@@ -560,7 +568,7 @@ func TestHandlerRejectsMessageWhenRateLimited(t *testing.T) {
 		},
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
-		sendDirectMessageFn: func(senderUUID, targetUUID, content string) (*model.Message, error) {
+		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			t.Fatalf("message service should not be called when rate limited")
 			return nil, nil
 		},

@@ -9,4 +9,4 @@ configs/config.yaml
 node_modules
 *.log
 scripts/bench/results
-dist
+# keep dist/dipole-server in build context for runtime packaging

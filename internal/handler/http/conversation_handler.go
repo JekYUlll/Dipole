@@ -28,6 +28,16 @@ func NewConversationHandler(service conversationService) *ConversationHandler {
 	return &ConversationHandler{service: service}
 }
 
+// List godoc
+// @Summary 获取会话列表
+// @Tags Conversation
+// @Security BearerAuth
+// @Produce json
+// @Param limit query int false "返回数量"
+// @Success 200 {object} ConversationListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /conversations [get]
 func (h *ConversationHandler) List(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -44,6 +54,18 @@ func (h *ConversationHandler) List(c *gin.Context) {
 	Success(c, httpdto.ToConversationResponses(conversations))
 }
 
+// MarkDirectRead godoc
+// @Summary 标记单聊已读
+// @Tags Conversation
+// @Security BearerAuth
+// @Produce json
+// @Param target_uuid path string true "目标用户 UUID"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /conversations/direct/{target_uuid}/read [patch]
 func (h *ConversationHandler) MarkDirectRead(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -68,6 +90,19 @@ func (h *ConversationHandler) MarkDirectRead(c *gin.Context) {
 	})
 }
 
+// MarkGroupRead godoc
+// @Summary 标记群会话已读
+// @Tags Conversation
+// @Security BearerAuth
+// @Produce json
+// @Param group_uuid path string true "群 UUID"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /conversations/group/{group_uuid}/read [patch]
 func (h *ConversationHandler) MarkGroupRead(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -94,6 +129,21 @@ func (h *ConversationHandler) MarkGroupRead(c *gin.Context) {
 	})
 }
 
+// UpdateGroupRemark godoc
+// @Summary 更新群会话备注
+// @Tags Conversation
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param group_uuid path string true "群 UUID"
+// @Param request body httpdto.UpdateConversationRemarkRequest true "备注内容"
+// @Success 200 {object} ConversationRemarkResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /conversations/group/{group_uuid}/remark [patch]
 func (h *ConversationHandler) UpdateGroupRemark(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

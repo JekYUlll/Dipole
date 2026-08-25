@@ -33,6 +33,15 @@ func NewContactHandler(service contactService) *ContactHandler {
 	return &ContactHandler{service: service}
 }
 
+// ListFriends godoc
+// @Summary 获取好友列表
+// @Tags Contact
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} ContactListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts [get]
 func (h *ContactHandler) ListFriends(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -49,6 +58,20 @@ func (h *ContactHandler) ListFriends(c *gin.Context) {
 	Success(c, httpdto.ToContactResponses(items))
 }
 
+// Apply godoc
+// @Summary 发起好友申请
+// @Tags Contact
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.ApplyContactRequest true "好友申请"
+// @Success 200 {object} IDStatusResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 409 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/applications [post]
 func (h *ContactHandler) Apply(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -90,6 +113,17 @@ func (h *ContactHandler) Apply(c *gin.Context) {
 	})
 }
 
+// ListApplications godoc
+// @Summary 获取好友申请列表
+// @Tags Contact
+// @Security BearerAuth
+// @Produce json
+// @Param box query string false "incoming 或 outgoing"
+// @Success 200 {object} ContactApplicationListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/applications [get]
 func (h *ContactHandler) ListApplications(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -119,6 +153,21 @@ func (h *ContactHandler) ListApplications(c *gin.Context) {
 	Success(c, httpdto.ToContactApplicationResponses(items))
 }
 
+// HandleApplication godoc
+// @Summary 处理好友申请
+// @Tags Contact
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "申请 ID"
+// @Param request body httpdto.HandleContactApplicationRequest true "处理动作"
+// @Success 200 {object} IDStatusResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/applications/{id} [patch]
 func (h *ContactHandler) HandleApplication(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -164,6 +213,18 @@ func (h *ContactHandler) HandleApplication(c *gin.Context) {
 	})
 }
 
+// DeleteFriend godoc
+// @Summary 删除好友
+// @Tags Contact
+// @Security BearerAuth
+// @Produce json
+// @Param friend_uuid path string true "好友 UUID"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/{friend_uuid} [delete]
 func (h *ContactHandler) DeleteFriend(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -188,6 +249,20 @@ func (h *ContactHandler) DeleteFriend(c *gin.Context) {
 	})
 }
 
+// UpdateRemark godoc
+// @Summary 更新好友备注
+// @Tags Contact
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param friend_uuid path string true "好友 UUID"
+// @Param request body httpdto.UpdateContactRemarkRequest true "备注内容"
+// @Success 200 {object} ContactRemarkResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/{friend_uuid}/remark [patch]
 func (h *ContactHandler) UpdateRemark(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -223,6 +298,20 @@ func (h *ContactHandler) UpdateRemark(c *gin.Context) {
 	})
 }
 
+// UpdateBlockStatus godoc
+// @Summary 更新好友拉黑状态
+// @Tags Contact
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param friend_uuid path string true "好友 UUID"
+// @Param request body httpdto.UpdateContactBlockStatusRequest true "拉黑状态"
+// @Success 200 {object} ContactBlockResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /contacts/{friend_uuid}/block [patch]
 func (h *ContactHandler) UpdateBlockStatus(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

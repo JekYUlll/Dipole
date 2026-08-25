@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -70,8 +71,25 @@ type ContactApplicationView struct {
 }
 
 type ContactService struct {
-	repo       contactRepository
-	userFinder contactUserFinder
+	repo            contactRepository
+	userFinder      contactUserFinder
+	notifier        contactNotifier
+	events          eventPublisher
+	systemMessenger contactSystemMessenger
+}
+
+type contactNotifier interface {
+	NotifyFriendDeleted(userUUID, friendUUID string, occurredAt time.Time)
+}
+
+type contactSystemMessenger interface {
+	SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
+}
+
+type ContactFriendDeletedPayload struct {
+	UserUUID   string    `json:"user_uuid"`
+	FriendUUID string    `json:"friend_uuid"`
+	OccurredAt time.Time `json:"occurred_at"`
 }
 
 func NewContactService(repo contactRepository, userFinder contactUserFinder) *ContactService {
@@ -79,6 +97,21 @@ func NewContactService(repo contactRepository, userFinder contactUserFinder) *Co
 		repo:       repo,
 		userFinder: userFinder,
 	}
+}
+
+func (s *ContactService) WithNotifier(notifier contactNotifier) *ContactService {
+	s.notifier = notifier
+	return s
+}
+
+func (s *ContactService) WithEvents(events eventPublisher) *ContactService {
+	s.events = events
+	return s
+}
+
+func (s *ContactService) WithSystemMessenger(m contactSystemMessenger) *ContactService {
+	s.systemMessenger = m
+	return s
 }
 
 func (s *ContactService) Apply(currentUserUUID string, input ApplyContactInput) (*model.ContactApplication, error) {
@@ -304,6 +337,11 @@ func (s *ContactService) HandleApplication(currentUserUUID string, applicationID
 			return nil, fmt.Errorf("create friendship in handle application: %w", err)
 		}
 		application.Status = model.ContactApplicationAccepted
+		if s.systemMessenger != nil {
+			const friendMsg = "你们已经添加为好友，现在可以开始聊天了"
+			_, _ = s.systemMessenger.SendSystemDirectMessage(application.ApplicantUUID, application.TargetUUID, friendMsg)
+			_, _ = s.systemMessenger.SendSystemDirectMessage(application.TargetUUID, application.ApplicantUUID, friendMsg)
+		}
 	case ContactActionReject:
 		application.Status = model.ContactApplicationRejected
 	default:
@@ -334,6 +372,29 @@ func (s *ContactService) DeleteFriend(currentUserUUID, friendUUID string) error 
 
 	if err := s.repo.DeleteFriendship(currentUserUUID, friendUUID); err != nil {
 		return fmt.Errorf("delete friendship in delete friend: %w", err)
+	}
+
+	occurredAt := time.Now().UTC()
+	if s.events != nil {
+		payload := ContactFriendDeletedPayload{
+			UserUUID:   currentUserUUID,
+			FriendUUID: friendUUID,
+			OccurredAt: occurredAt,
+		}
+		if err := s.events.PublishEvent(context.Background(), "contact.friend.deleted", currentUserUUID, "contact.friend.deleted", payload, nil); err != nil {
+			return fmt.Errorf("publish contact friend deleted event for user: %w", err)
+		}
+		reversePayload := ContactFriendDeletedPayload{
+			UserUUID:   friendUUID,
+			FriendUUID: currentUserUUID,
+			OccurredAt: occurredAt,
+		}
+		if err := s.events.PublishEvent(context.Background(), "contact.friend.deleted", friendUUID, "contact.friend.deleted", reversePayload, nil); err != nil {
+			return fmt.Errorf("publish contact friend deleted event for friend: %w", err)
+		}
+	} else if s.notifier != nil {
+		s.notifier.NotifyFriendDeleted(currentUserUUID, friendUUID, occurredAt)
+		s.notifier.NotifyFriendDeleted(friendUUID, currentUserUUID, occurredAt)
 	}
 
 	return nil

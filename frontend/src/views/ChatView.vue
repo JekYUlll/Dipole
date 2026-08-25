@@ -9,14 +9,20 @@
         <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
       </button>
       <div class="nav-icons">
-        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">💬</button>
+        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">
+          <IconChat :size="22" />
+        </button>
         <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人">
-          👥
+          <IconContacts :size="22" />
           <span v-if="pendingApplications.length > 0" class="nav-badge">{{ pendingApplications.length }}</span>
         </button>
-        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">🏠</button>
+        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
+          <IconGroups :size="22" />
+        </button>
       </div>
-      <button class="icon-btn logout-btn" @click="handleLogout" title="退出">🚪</button>
+      <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
+        <IconLogout :size="22" />
+      </button>
     </div>
 
     <!-- Session Panel -->
@@ -36,7 +42,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -45,7 +51,10 @@
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
-              <span class="conv-preview">{{ conv.last_message?.preview || '' }}</span>
+              <span class="conv-preview">
+                <template v-if="conv.target_type === 1 && conv.last_message?.sender_uuid">
+                  <span class="conv-preview-sender">{{ convLastSenderName(conv) }}：</span>
+                </template>{{ conv.last_message?.preview || '' }}</span>
               <span v-if="conv.unread_count > 0" class="conv-badge">{{ conv.unread_count }}</span>
             </div>
           </div>
@@ -111,7 +120,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon">👥</span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -120,7 +129,10 @@
               <span class="conv-time">{{ conv.last_message ? formatTime(conv.last_message.sent_at) : '' }}</span>
             </div>
             <div class="conv-bottom">
-              <span class="conv-preview">{{ conv.last_message?.preview || '' }}</span>
+              <span class="conv-preview">
+                <template v-if="conv.target_type === 1 && conv.last_message?.sender_uuid">
+                  <span class="conv-preview-sender">{{ convLastSenderName(conv) }}：</span>
+                </template>{{ conv.last_message?.preview || '' }}</span>
               <span v-if="conv.unread_count > 0" class="conv-badge">{{ conv.unread_count }}</span>
             </div>
           </div>
@@ -133,19 +145,27 @@
     <div class="chat-area">
       <template v-if="activeConv">
         <div class="chat-header">
-          <button class="back-btn" @click="chat.activeKey = ''">‹</button>
+          <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
           <span class="chat-header-title">{{ activeConvName }}</span>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
-          <button class="detail-toggle" @click="showDetail = !showDetail" title="详情">ℹ️</button>
+          <span v-else-if="isDirectConversationReadonly" class="status-chip warning">
+            <span class="status-chip-icon">!</span>
+            已删好友
+          </span>
+          <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
         </div>
 
         <div class="msg-list" ref="msgListRef">
-          <button class="load-more-btn" @click="loadMore">加载更多</button>
+          <button class="load-more-btn" @click="loadMore"><IconLoadMore :size="13" /> 加载更多</button>
           <div
-            v-for="msg in currentMessages"
+            v-for="(msg, index) in currentMessages"
             :key="msg.message_id"
             :class="msgItemClass(msg)"
           >
+            <!-- Time divider -->
+            <div v-if="shouldShowTimestamp(index)" class="msg-time-divider">
+              {{ formatMsgTimestamp(msg.sent_at) }}
+            </div>
             <!-- System message -->
             <template v-if="msg.message_type === 3">
               <div class="msg-system">{{ msg.content }}</div>
@@ -180,7 +200,7 @@
                       <div v-else class="media-placeholder">图片</div>
                       <div class="media-caption">
                         <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
                       </div>
                     </div>
                     <div v-else-if="isVideoMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
@@ -194,7 +214,7 @@
                       <div v-else class="media-placeholder">视频</div>
                       <div class="media-caption">
                         <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)">⬇ 下载</button>
+                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
                       </div>
                     </div>
                     <div v-else class="file-card" @click="downloadFile(msg)">
@@ -216,22 +236,36 @@
         </div>
 
         <div class="input-area">
+          <div v-if="isDirectConversationReadonly" class="chat-notice-banner">
+            <span class="chat-notice-icon">!</span>
+            <span>你们已不是好友，当前仅可查看历史消息。</span>
+          </div>
+          <div v-if="sendErrorMessage" class="chat-notice-banner danger">
+            <span class="chat-notice-icon">!</span>
+            <span>{{ sendErrorMessage }}</span>
+          </div>
           <div class="input-toolbar">
-            <label class="tool-btn" :class="{ disabled: isGroupDismissed }" :title="isGroupDismissed ? '群已解散，无法发送文件' : '发送文件'">
-              📎
-              <input type="file" style="display:none" :disabled="isGroupDismissed" @change="uploadFile" />
+            <label
+              class="tool-btn"
+              :class="{ disabled: isInputDisabled }"
+              :title="inputDisabledReason"
+            >
+              <IconPaperclip :size="18" />
+              <input type="file" style="display:none" :disabled="isInputDisabled" @change="uploadFile" />
             </label>
             <span v-if="uploadingFileLabel" class="upload-status">{{ uploadingFileLabel }}</span>
           </div>
           <textarea
             v-model="inputText"
-            :disabled="isGroupDismissed"
-            :placeholder="isGroupDismissed ? '群已解散，仅可查看历史消息' : '输入消息...'"
+            :disabled="isInputDisabled"
+            :placeholder="inputPlaceholder"
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.enter.shift.exact="inputText += '\n'"
           />
           <div class="send-row">
-            <button class="send-btn" :disabled="isGroupDismissed" @click="sendMessage">发送</button>
+          <button class="send-btn" :disabled="isInputDisabled" @click="sendMessage">
+            <IconSend :size="14" /> 发送
+          </button>
           </div>
         </div>
       </template>
@@ -248,7 +282,7 @@
         <div class="detail-header">
           <div class="detail-avatar">
             <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
-            <div v-else class="detail-avatar-fallback group-avatar-fallback">👥</div>
+            <div v-else class="detail-avatar-fallback group-avatar-fallback"><IconUsers :size="28" /></div>
           </div>
           <div class="detail-name">{{ convName(activeConv) }}</div>
           <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
@@ -308,7 +342,7 @@
             <div v-if="m.role === 0" class="member-role-badge">主</div>
           </div>
           <div v-if="isGroupOwner && !isGroupDismissed" class="member-grid-item" @click="openInviteMembers">
-            <div class="member-grid-avatar member-grid-add">+</div>
+            <div class="member-grid-avatar member-grid-add"><IconUserPlus :size="18" /></div>
             <div class="member-grid-name">邀请</div>
           </div>
         </div>
@@ -335,7 +369,7 @@
     <div v-if="showProfileModal" class="modal-overlay">
       <div class="modal-backdrop" @click="closeProfileModal"></div>
       <div class="modal user-profile-card">
-        <button class="upc-close" @click="closeProfileModal">✕</button>
+        <button class="upc-close" @click="closeProfileModal"><IconClose :size="14" /></button>
         <div class="upc-avatar" style="cursor:pointer" @click="avatarInputRef?.click()">
           <img v-if="auth.currentUser?.avatar" :src="auth.currentUser.avatar" alt="profile-avatar" />
           <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
@@ -344,6 +378,10 @@
         <input ref="avatarInputRef" type="file" accept="image/*" style="display:none" @change="handleAvatarSelected" />
         <div class="upc-name">{{ auth.currentUser?.nickname }}</div>
         <div class="upc-uuid">{{ auth.currentUser?.email || auth.currentUser?.telephone }}</div>
+        <div class="upc-uuid upc-uuid-copyable" @click="copyUUID" :title="uuidCopied ? '已复制' : '点击复制 UUID'">
+          ID: {{ auth.currentUser?.uuid }}
+          <span class="upc-copy-hint">{{ uuidCopied ? '已复制' : '复制' }}</span>
+        </div>
         <textarea v-model="profileSignature" class="upc-signature-input" placeholder="写点个性签名" maxlength="255"></textarea>
         <div v-if="selectedAvatarName" class="upc-file-hint">已选择：{{ selectedAvatarName }}</div>
         <div class="upc-actions">
@@ -360,7 +398,7 @@
     <div v-if="showUserProfileModal && viewedUser" class="modal-overlay">
       <div class="modal-backdrop" @click="closeUserProfileModal"></div>
       <div class="modal user-profile-card">
-        <button class="upc-close" @click="closeUserProfileModal">✕</button>
+        <button class="upc-close" @click="closeUserProfileModal"><IconClose :size="14" /></button>
         <div class="upc-avatar">
           <img v-if="viewedUser.avatar" :src="viewedUser.avatar" alt="user-profile-avatar" />
           <span v-else>{{ getInitials(viewedUser.nickname) }}</span>
@@ -379,6 +417,13 @@
         <div class="upc-actions">
           <button class="upc-btn primary" @click="startDirectChatFromViewedUser">发起单聊</button>
           <button v-if="!isFriend(viewedUser.uuid) && viewedUser.uuid !== auth.currentUser?.uuid" class="upc-btn" @click="quickApplyFriend(viewedUser)">加好友</button>
+          <button
+            v-if="isFriend(viewedUser.uuid)"
+            class="upc-btn danger"
+            @click="removeFriendFromViewedUser"
+          >
+            删除好友
+          </button>
         </div>
       </div>
     </div>
@@ -448,13 +493,25 @@
         <div class="modal-body">
           <div class="member-select-list">
             <div v-if="chat.contacts.length === 0" style="font-size:12px;color:#aaa;padding:8px">暂无联系人</div>
-            <label v-for="c in chat.contacts" :key="c.user.uuid" class="member-select-item">
-              <input type="checkbox" :value="c.user.uuid" v-model="inviteSelected" />
+            <label
+              v-for="c in chat.contacts"
+              :key="c.user.uuid"
+              class="member-select-item"
+              :class="{ 'member-select-item--disabled': currentGroupMemberUUIDs.has(c.user.uuid) }"
+            >
+              <input
+                type="checkbox"
+                :value="c.user.uuid"
+                v-model="inviteSelected"
+                :disabled="currentGroupMemberUUIDs.has(c.user.uuid)"
+                :checked="currentGroupMemberUUIDs.has(c.user.uuid) || inviteSelected.includes(c.user.uuid)"
+              />
               <div class="conv-avatar small">
                 <img v-if="c.user.avatar" :src="c.user.avatar" />
                 <span v-else>{{ getInitials(c.user.nickname) }}</span>
               </div>
               <span style="font-size:13px">{{ c.remark || c.user.nickname }}</span>
+              <span v-if="currentGroupMemberUUIDs.has(c.user.uuid)" style="font-size:11px;color:#aaa;margin-left:4px">已在群中</span>
             </label>
           </div>
         </div>
@@ -465,10 +522,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container">
+    <transition-group name="toast">
+      <div
+        v-for="t in toasts"
+        :key="t.id"
+        class="toast"
+        :class="`toast-${t.type}`"
+        @click="removeToast(t.id)"
+      >
+        <span class="toast-icon">
+          <IconXCircle v-if="t.type === 'error'" :size="16" />
+          <IconCheckCircle v-else-if="t.type === 'success'" :size="16" />
+          <IconAlertCircle v-else :size="16" />
+        </span>
+        <span class="toast-msg">{{ t.message }}</span>
+      </div>
+    </transition-group>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import {
+  IconChat, IconContacts, IconGroups, IconLogout,
+  IconInfo, IconBack, IconPaperclip, IconSend,
+  IconDownload, IconClose, IconAlertCircle,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore,
+} from '@/components/icons'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -479,6 +562,27 @@ import api from '@/api'
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+interface Toast { id: number; message: string; type: 'error' | 'success' | 'info' }
+const toasts = ref<Toast[]>([])
+let toastSeq = 0
+
+const showToast = (message: string, type: Toast['type'] = 'info', duration = 3000) => {
+  const id = ++toastSeq
+  toasts.value.push({ id, message, type })
+  setTimeout(() => removeToast(id), duration)
+}
+const removeToast = (id: number) => {
+  const i = toasts.value.findIndex(t => t.id === id)
+  if (i !== -1) toasts.value.splice(i, 1)
+}
+const toast = {
+  error: (msg: string) => showToast(msg, 'error', 4000),
+  success: (msg: string) => showToast(msg, 'success', 2500),
+  info: (msg: string) => showToast(msg, 'info', 2500),
+}
 
 const navTab = ref<'chat' | 'contacts' | 'groups'>('chat')
 const searchText = ref('')
@@ -492,6 +596,7 @@ const selectedAvatarName = ref('')
 const uploadingAvatar = ref(false)
 const profileSignature = ref('')
 const savingProfile = ref(false)
+const uuidCopied = ref(false)
 const showUserProfileModal = ref(false)
 const viewedUser = ref<PublicUser | null>(null)
 const viewedUserRemark = ref('')
@@ -503,10 +608,17 @@ const selectedGroupAvatarFile = ref<File | null>(null)
 const selectedGroupAvatarName = ref('')
 const uploadingGroupAvatar = ref(false)
 const uploadingFileLabel = ref('')
+const sendErrorMessage = ref('')
 const mediaPreviewMap = ref<Record<string, string>>({})
 const mediaPreviewInflight = new Map<string, Promise<void>>()
 
 const directUploadThresholdBytes = 4 * 1024 * 1024
+const maxTextMessageRunes = 1000
+type PendingWsMessage = {
+  type: 'chat.send' | 'chat.send_file'
+  data: Record<string, unknown> & { client_message_id: string }
+}
+const pendingOutboundMessages = new Map<string, PendingWsMessage>()
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -530,10 +642,53 @@ const formatTime = (t: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+// 微信风格时间戳：相邻消息超过 5 分钟才显示
+const MSG_TIME_GAP_MS = 5 * 60 * 1000
+
+const formatMsgTimestamp = (t: string): string => {
+  const d = new Date(t)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+  const hhmm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (d.toDateString() === now.toDateString()) return hhmm
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+  if (d.toDateString() === yesterday.toDateString()) return `昨天 ${hhmm}`
+  if (diffDays < 7) {
+    const weekdays = ['周日','周一','周二','周三','周四','周五','周六']
+    return `${weekdays[d.getDay()]} ${hhmm}`
+  }
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${d.getMonth() + 1}月${d.getDate()}日 ${hhmm}`
+  }
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hhmm}`
+}
+
+// 返回每条消息是否需要在其上方显示时间戳
+const shouldShowTimestamp = (index: number): boolean => {
+  const msgs = currentMessages.value
+  if (index === 0) return true
+  const cur = new Date(msgs[index].sent_at).getTime()
+  const prev = new Date(msgs[index - 1].sent_at).getTime()
+  return cur - prev > MSG_TIME_GAP_MS
+}
+
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+const newClientMessageID = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 const fileName = (msg: Message) => msg.file?.file_name || msg.file_name || '文件'
@@ -578,22 +733,17 @@ const wsDataToMessage = (data: Record<string, unknown>): Message => ({
   sent_at: data.sent_at as string,
 })
 
-const pushIncomingMessage = (msg: Message) => {
-  const key = deriveMessageKey(msg, auth.currentUser!.uuid)
-  const list = chat.messageMap.get(key) || []
-  if (!list.some(m => m.message_id === msg.message_id)) {
-    list.push(msg)
-    list.sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
-    chat.messageMap.set(key, list)
-  }
-}
 
 const latestLoadedMessageID = (key: string) => {
   const list = chat.messageMap.get(key) || []
   return list.reduce((max, item) => Math.max(max, item.id || 0), 0)
 }
 
-const pullHotGroupMessages = async (groupUUID: string) => {
+const hotGroupPullTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const hotGroupPullInFlight = new Map<string, Promise<void>>()
+const hotGroupPullPending = new Set<string>()
+
+const performHotGroupPull = async (groupUUID: string) => {
   const key = `group:${groupUUID}`
   const existing = chat.messageMap.get(key) || []
   if (existing.length === 0) {
@@ -609,13 +759,76 @@ const pullHotGroupMessages = async (groupUUID: string) => {
   await chat.fetchGroupMessagesAfter(groupUUID, afterID)
 }
 
+const flushHotGroupPull = async (groupUUID: string) => {
+  hotGroupPullTimers.delete(groupUUID)
+
+  if (hotGroupPullInFlight.has(groupUUID)) {
+    hotGroupPullPending.add(groupUUID)
+    return
+  }
+
+  const request = (async () => {
+    try {
+      await performHotGroupPull(groupUUID)
+      const activeKey = `group:${groupUUID}`
+      if (chat.activeKey === activeKey) {
+        const conv = chat.conversations.find(item => item.conversation_key === activeKey)
+        if (conv) {
+          await chat.markRead(conv).catch(() => {})
+        }
+        scrollToBottom()
+      }
+    } finally {
+      hotGroupPullInFlight.delete(groupUUID)
+      if (hotGroupPullPending.delete(groupUUID)) {
+        scheduleHotGroupPull(groupUUID)
+      }
+    }
+  })()
+
+  hotGroupPullInFlight.set(groupUUID, request)
+  await request
+}
+
+const scheduleHotGroupPull = (groupUUID: string) => {
+  if (!groupUUID || hotGroupPullTimers.has(groupUUID)) return
+
+  const timer = setTimeout(() => {
+    void flushHotGroupPull(groupUUID)
+  }, 150)
+  hotGroupPullTimers.set(groupUUID, timer)
+}
+
+const clearHotGroupPullSchedulers = () => {
+  hotGroupPullTimers.forEach(timer => clearTimeout(timer))
+  hotGroupPullTimers.clear()
+  hotGroupPullPending.clear()
+  hotGroupPullInFlight.clear()
+}
+
+const enqueuePendingOutboundMessage = (message: PendingWsMessage) => {
+  pendingOutboundMessages.set(message.data.client_message_id, message)
+  ws.send(message.type, message.data)
+}
+
+const authHeaders = (): Record<string, string> => {
+  const token = auth.token || localStorage.getItem('dipole.web.token') || ''
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+const resendPendingOutboundMessages = () => {
+  for (const message of pendingOutboundMessages.values()) {
+    ws.send(message.type, message.data)
+  }
+}
+
 const revokeMediaPreviewURLs = () => {
   Object.values(mediaPreviewMap.value).forEach((url) => URL.revokeObjectURL(url))
   mediaPreviewMap.value = {}
   mediaPreviewInflight.clear()
 }
 
-const loadMediaPreview = async (msg: Message) => {
+const loadMediaPreview = async (msg: Message, retries = 4, delayMs = 600) => {
   if (!isInlineMediaMessage(msg)) return
   if (mediaPreviewMap.value[msg.message_id]) return
   if (mediaPreviewInflight.has(msg.message_id)) {
@@ -628,19 +841,19 @@ const loadMediaPreview = async (msg: Message) => {
   if (!contentPath || !token) return
 
   const request = (async () => {
-    const response = await fetch(contentPath, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    if (!response.ok) {
-      throw new Error(`media preview request failed: ${response.status}`)
-    }
-    const blob = await response.blob()
-    const objectURL = URL.createObjectURL(blob)
-    mediaPreviewMap.value = {
-      ...mediaPreviewMap.value,
-      [msg.message_id]: objectURL,
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, delayMs * attempt))
+      const response = await fetch(contentPath, { headers: authHeaders() })
+      if (response.ok) {
+        const blob = await response.blob()
+        const objectURL = URL.createObjectURL(blob)
+        mediaPreviewMap.value = { ...mediaPreviewMap.value, [msg.message_id]: objectURL }
+        return
+      }
+      // 403 on own sent files = Kafka hasn't persisted yet; retry
+      if (response.status !== 403 || attempt === retries) {
+        throw new Error(`media preview request failed: ${response.status}`)
+      }
     }
   })()
 
@@ -703,6 +916,8 @@ const activeConvName = computed(() => {
   return convName(conv)
 })
 
+const isAIConversation = computed(() => activeConv.value?.target_type === 0 && activeConv.value?.target_user?.user_type === 1)
+
 const isGroupOwner = computed(() => {
   const conv = activeConv.value
   if (!conv || conv.target_type !== 1) return false
@@ -717,6 +932,27 @@ const isGroupDismissed = computed(() => {
   const conv = activeConv.value
   if (!conv || conv.target_type !== 1) return false
   return groupFromConv(conv)?.status === 1
+})
+
+const isDirectConversationReadonly = computed(() => {
+  const conv = activeConv.value
+  if (!conv || conv.target_type !== 0 || !conv.target_user) return false
+  if (isAIConversation.value) return false
+  return !isFriend(conv.target_user.uuid)
+})
+
+const isInputDisabled = computed(() => isGroupDismissed.value || isDirectConversationReadonly.value)
+
+const inputPlaceholder = computed(() => {
+  if (isGroupDismissed.value) return '群已解散，仅可查看历史消息'
+  if (isDirectConversationReadonly.value) return '已删除好友，仅可查看历史消息'
+  return '输入消息...'
+})
+
+const inputDisabledReason = computed(() => {
+  if (isGroupDismissed.value) return '群已解散，无法发送文件'
+  if (isDirectConversationReadonly.value) return '已删除好友，无法继续发送消息'
+  return '发送文件'
 })
 
 const currentMessages = computed(() =>
@@ -769,6 +1005,16 @@ const convAvatar = (conv: Conversation) => {
   return conv.target_user?.avatar ?? ''
 }
 
+const convLastSenderName = (conv: Conversation): string => {
+  const senderUUID = conv.last_message?.sender_uuid
+  if (!senderUUID) return ''
+  if (senderUUID === auth.currentUser?.uuid) return '我'
+  const group = groupFromConv(conv)
+  const member = group?.members?.find(m => m.user.uuid === senderUUID)
+  if (member) return member.user.nickname
+  return chat.users.get(senderUUID)?.nickname ?? senderUUID
+}
+
 // ── Message helpers ───────────────────────────────────────────────────────────
 
 const msgItemClass = (msg: Message) => {
@@ -808,6 +1054,7 @@ const selectConversation = async (conv: Conversation) => {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
     await chat.fetchGroup(groupUUID).catch(() => {})
     await chat.fetchGroupMessages(groupUUID)
+    await chat.markRead(conv).catch(() => {})
   } else if (conv.target_user) {
     await chat.fetchDirectMessages(conv.target_user.uuid)
     await chat.markRead(conv)
@@ -816,14 +1063,27 @@ const selectConversation = async (conv: Conversation) => {
 }
 
 const sendMessage = () => {
-  if (!inputText.value.trim() || !activeConv.value) return
+  sendErrorMessage.value = ''
+  const content = inputText.value.trim()
+  if (!content || !activeConv.value) return
   if (isGroupDismissed.value) return
+  if ([...content].length > maxTextMessageRunes) {
+    sendErrorMessage.value = `消息过长，最多 ${maxTextMessageRunes} 个字符。`
+    return
+  }
   const conv = activeConv.value
+  const clientMessageID = newClientMessageID()
   if (conv.target_type === 1) {
     const groupUUID = conv.target_group?.uuid ?? conv.conversation_key.replace('group:', '')
-    ws.send('chat.send', { target_uuid: groupUUID, target_type: 1, content: inputText.value.trim() })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send',
+      data: { target_uuid: groupUUID, target_type: 1, content, client_message_id: clientMessageID },
+    })
   } else {
-    ws.send('chat.send', { target_uuid: conv.target_user!.uuid, target_type: 0, content: inputText.value.trim() })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send',
+      data: { target_uuid: conv.target_user!.uuid, target_type: 0, content, client_message_id: clientMessageID },
+    })
   }
   inputText.value = ''
 }
@@ -838,9 +1098,17 @@ const uploadFile = async (e: Event) => {
     : conv.target_user!.uuid
   try {
     const res = await uploadChatFile(file)
-    ws.send('chat.send_file', { target_uuid: targetUUID, target_type: conv.target_type, file_id: res.file_id })
+    enqueuePendingOutboundMessage({
+      type: 'chat.send_file',
+      data: {
+        target_uuid: targetUUID,
+        target_type: conv.target_type,
+        file_id: res.file_id,
+        client_message_id: newClientMessageID(),
+      },
+    })
   } catch (err: any) {
-    alert(err?.message || '文件上传失败')
+    toast.error(err?.message || '文件上传失败')
   } finally {
     uploadingFileLabel.value = ''
     ;(e.target as HTMLInputElement).value = ''
@@ -850,8 +1118,27 @@ const uploadFile = async (e: Event) => {
 const downloadFile = async (msg: Message) => {
   const fileId = msg.file?.file_id || (msg as any).file_id
   if (!fileId) return
-  const res = await api.get(`/api/v1/files/${fileId}/download`) as { download_url: string }
-  window.open(res.download_url, '_blank', 'noopener,noreferrer')
+  try {
+    const contentPath = fileContentPath(msg) || `/api/v1/files/${encodeURIComponent(fileId)}/content`
+    const response = await fetch(contentPath, {
+      headers: authHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error(`文件下载失败: ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    const objectURL = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectURL
+    link.download = fileName(msg)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectURL)
+  } catch (err: any) {
+    toast.error(err?.message || '文件下载失败')
+  }
 }
 
 const loadMore = async () => {
@@ -870,6 +1157,7 @@ const loadMore = async () => {
 }
 
 const handleLogout = async () => {
+  pendingOutboundMessages.clear()
   ws.close()
   await auth.logout()
   router.push({ name: 'login' })
@@ -885,6 +1173,18 @@ const closeProfileModal = () => {
 const openSelfProfile = () => {
   profileSignature.value = auth.currentUser?.signature || ''
   showProfileModal.value = true
+}
+
+const copyUUID = async () => {
+  const uuid = auth.currentUser?.uuid
+  if (!uuid) return
+  try {
+    await navigator.clipboard.writeText(uuid)
+    uuidCopied.value = true
+    setTimeout(() => { uuidCopied.value = false }, 2000)
+  } catch {
+    toast.info(uuid)
+  }
 }
 
 const handleAvatarSelected = (e: Event) => {
@@ -904,7 +1204,7 @@ const uploadAvatar = async () => {
     await auth.fetchMe()
     closeProfileModal()
   } catch (e: any) {
-    alert(e?.message || '头像上传失败')
+    toast.error(e?.message || '头像上传失败')
   } finally {
     uploadingAvatar.value = false
   }
@@ -920,7 +1220,7 @@ const saveProfile = async () => {
     await auth.fetchMe()
     profileSignature.value = auth.currentUser?.signature || ''
   } catch (e: any) {
-    alert(e?.message || '资料保存失败')
+    toast.error(e?.message || '资料保存失败')
   } finally {
     savingProfile.value = false
   }
@@ -984,7 +1284,7 @@ const openDirectChatByUser = async (user: PublicUser) => {
       target_type: 0,
       target_user: user,
       remark: contactOf(user.uuid)?.remark || '',
-      last_message: { message_id: '', message_type: 0, preview: '', sent_at: '' },
+      last_message: { message_id: '', message_type: 0, preview: '', sent_at: '', sender_uuid: '' },
       unread_count: 0,
     })
   }
@@ -1009,7 +1309,7 @@ const openUserProfile = async (user: PublicUser) => {
     viewedUserRemark.value = contactOf(detail.uuid)?.remark || ''
     showUserProfileModal.value = true
   } catch (e: any) {
-    alert(e?.message || '获取用户资料失败')
+    toast.error(e?.message || '获取用户资料失败')
   }
 }
 
@@ -1053,18 +1353,34 @@ const saveUserRemark = async () => {
       viewedUser.value = { ...viewedUser.value }
     }
   } catch (e: any) {
-    alert(e?.message || '备注保存失败')
+    toast.error(e?.message || '备注保存失败')
   } finally {
     savingUserRemark.value = false
+  }
+}
+
+const removeFriendFromViewedUser = async () => {
+  if (!viewedUser.value) return
+  const target = viewedUser.value
+  const confirmed = window.confirm(`确认删除好友“${displayUserName(target)}”吗？历史消息会保留。`)
+  if (!confirmed) return
+
+  try {
+    await api.delete(`/api/v1/contacts/${encodeURIComponent(target.uuid)}`)
+    await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
+    viewedUserRemark.value = ''
+    closeUserProfileModal()
+  } catch (e: any) {
+    toast.error(e?.message || '删除好友失败')
   }
 }
 
 const quickApplyFriend = async (user: PublicUser) => {
   try {
     await api.post('/api/v1/contacts/applications', { target_uuid: user.uuid, message: '' })
-    alert('好友申请已发送')
+    toast.success('好友申请已发送')
   } catch (e: any) {
-    alert(e?.message || '发送好友申请失败')
+    toast.error(e?.message || '发送好友申请失败')
   }
 }
 
@@ -1107,10 +1423,10 @@ const sendFriendRequest = async () => {
   if (!friendTarget.value) return
   try {
     await api.post('/api/v1/contacts/applications', { target_uuid: friendTarget.value.uuid, message: friendRequestMsg.value.trim() })
-    alert('好友申请已发送')
+    toast.success('好友申请已发送')
     closeAddFriend()
   } catch (e: any) {
-    alert(e?.message || '发送失败')
+    toast.error(e?.message || '发送失败')
   }
 }
 
@@ -1137,7 +1453,7 @@ const createGroup = async () => {
     setTimeout(() => chat.fetchConversations(), 5000)
   } catch (e: any) {
     console.error('[createGroup] error:', e)
-    alert(e?.message || String(e) || '创建失败')
+    toast.error(e?.message || String(e) || '创建失败')
   }
 }
 
@@ -1145,6 +1461,11 @@ const createGroup = async () => {
 
 const showInviteMembers = ref(false)
 const inviteSelected = ref<string[]>([])
+
+const currentGroupMemberUUIDs = computed<Set<string>>(() => {
+  const group = activeConv.value ? groupFromConv(activeConv.value) : null
+  return new Set((group?.members ?? []).map(m => m.user.uuid))
+})
 
 const openInviteMembers = () => {
   inviteSelected.value = []
@@ -1161,7 +1482,7 @@ const inviteMembers = async () => {
     showInviteMembers.value = false
     await chat.fetchGroup(groupUUID)
   } catch (e: any) {
-    alert(e?.message || '邀请失败')
+    toast.error(e?.message || '邀请失败')
   }
 }
 
@@ -1174,7 +1495,7 @@ const saveGroupProfile = async () => {
     })
     await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
   } catch (e: any) {
-    alert(e?.message || '群资料保存失败')
+    toast.error(e?.message || '群资料保存失败')
   }
 }
 
@@ -1201,7 +1522,7 @@ const uploadGroupAvatar = async () => {
     selectedGroupAvatarName.value = ''
     if (groupAvatarInputRef.value) groupAvatarInputRef.value.value = ''
   } catch (e: any) {
-    alert(e?.message || '群头像上传失败')
+    toast.error(e?.message || '群头像上传失败')
   } finally {
     uploadingGroupAvatar.value = false
   }
@@ -1216,7 +1537,7 @@ const dismissGroup = async () => {
     await api.post(`/api/v1/groups/${encodeURIComponent(groupUUID)}/dismiss`)
     await Promise.allSettled([chat.fetchConversations(), chat.fetchGroup(groupUUID)])
   } catch (e: any) {
-    alert(e?.message || '解散群失败')
+    toast.error(e?.message || '解散群失败')
   }
 }
 
@@ -1230,7 +1551,7 @@ const saveGroupRemark = async () => {
     activeConv.value.remark = data.remark || ''
     await chat.fetchConversations()
   } catch (e: any) {
-    alert(e?.message || '群备注保存失败')
+    toast.error(e?.message || '群备注保存失败')
   }
 }
 
@@ -1244,15 +1565,40 @@ const handleWsPacket = async (packet: WsPacket) => {
       break
     case 'chat.message':
     case 'chat.sent': {
+      const clientMessageID = typeof (data as any)?.client_message_id === 'string'
+        ? String((data as any).client_message_id)
+        : ''
+      if (clientMessageID) {
+        pendingOutboundMessages.delete(clientMessageID)
+      }
       const msg = wsDataToMessage(data as Record<string, unknown>)
-      pushIncomingMessage(msg)
-      await chat.fetchConversations()
+      chat.pushMessage(msg)
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
-      if (key === chat.activeKey) scrollToBottom()
+      if (key === chat.activeKey) {
+        scrollToBottom()
+        // 立即加载新消息的媒体预览（图片/视频）
+        if (isInlineMediaMessage(msg)) {
+          nextTick(() => loadMediaPreview(msg))
+        }
+      }
+      break
+    }
+    case 'error': {
+      const requestType = String((data as any)?.request_type || '')
+      const clientMessageID = String((data as any)?.client_message_id || '')
+      if (clientMessageID && (requestType === 'chat.send' || requestType === 'chat.send_file')) {
+        const pending = pendingOutboundMessages.get(clientMessageID)
+        pendingOutboundMessages.delete(clientMessageID)
+        const message = String((data as any)?.message || '消息发送失败')
+        sendErrorMessage.value = message
+        if (requestType === 'chat.send' && pending && typeof pending.data.content === 'string') {
+          inputText.value = pending.data.content
+        }
+      }
       break
     }
     case 'session.kicked':
-      alert(`被踢下线: ${(data as any)?.reason || ''}`)
+      toast.error(`被踢下线: ${(data as any)?.reason || ''}`)
       await auth.logout()
       router.push({ name: 'login' })
       break
@@ -1277,6 +1623,7 @@ const handleWsPacket = async (packet: WsPacket) => {
           message_type: notify.message_type,
           preview: notify.preview || '',
           sent_at: notify.sent_at,
+          sender_uuid: notify.sender_uuid || '',
         }
         if (chat.activeKey !== key) {
           conv.unread_count += 1
@@ -1290,19 +1637,24 @@ const handleWsPacket = async (packet: WsPacket) => {
         group.recent_message_count = notify.recent_message_count
       }
       if (chat.activeKey === key && groupUUID) {
-        await pullHotGroupMessages(groupUUID)
-        const activeConv = chat.conversations.find(item => item.conversation_key === key)
-        if (activeConv) {
-          await chat.markRead(activeConv).catch(() => {})
-        }
-        scrollToBottom()
+        scheduleHotGroupPull(groupUUID)
+      }
+      break
+    }
+    case 'contact.friend_deleted': {
+      await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
+      if (viewedUser.value?.uuid === (data as any)?.friend_uuid) {
+        viewedUserRemark.value = ''
       }
       break
     }
   }
 }
 
-const ws = useWebSocket({ onMessage: handleWsPacket })
+const ws = useWebSocket({
+  onMessage: handleWsPacket,
+  onConnected: resendPendingOutboundMessages,
+})
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -1333,6 +1685,8 @@ watch(() => activeConv.value?.conversation_key, () => {
 })
 
 onBeforeUnmount(() => {
+  clearHotGroupPullSchedulers()
+  pendingOutboundMessages.clear()
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()
 })
@@ -1589,6 +1943,13 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
+.upc-btn.danger {
+  background: #fff3f3;
+  border-color: #f3c5c5;
+  color: #bb4a4a;
+  font-weight: 500;
+}
+
 .upc-btn:hover { opacity: 0.88; }
 
 .upc-avatar {
@@ -1627,6 +1988,32 @@ onBeforeUnmount(() => {
 
 .upc-signature-input:focus { border-color: #07c160; }
 
+.upc-uuid-copyable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  transition: background 0.15s;
+}
+
+.upc-uuid-copyable:hover {
+  background: #f0f0f0;
+}
+
+.upc-copy-hint {
+  font-size: 10px;
+  color: #07c160;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.upc-uuid-copyable:hover .upc-copy-hint {
+  opacity: 1;
+}
+
 .upc-file-hint {
   font-size: 11px;
   color: #aaa;
@@ -1646,18 +2033,22 @@ onBeforeUnmount(() => {
 .icon-btn {
   background: none;
   border: none;
-  font-size: 22px;
   cursor: pointer;
   opacity: 0.5;
   color: white;
-  padding: 0;
+  padding: 6px;
   line-height: 1;
-  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .icon-btn:hover,
 .icon-btn.active {
   opacity: 1;
+  background: rgba(255,255,255,0.1);
 }
 
 .logout-btn {
@@ -1801,6 +2192,10 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.conv-preview-sender {
+  color: #888;
+}
+
 .conv-badge {
   background: #f00;
   color: #fff;
@@ -1847,17 +2242,44 @@ onBeforeUnmount(() => {
   color: #c53b3b;
 }
 
+.status-chip.warning {
+  background: #fff1f1;
+  color: #c53b3b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-chip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c53b3b;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .detail-toggle {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
-  opacity: 0.5;
-  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .detail-toggle:hover {
   opacity: 1;
+  background: #ebebeb;
 }
 
 .msg-list {
@@ -1871,6 +2293,9 @@ onBeforeUnmount(() => {
 
 .load-more-btn {
   align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   background: none;
   border: 1px solid #ddd;
   border-radius: 12px;
@@ -1952,6 +2377,19 @@ onBeforeUnmount(() => {
   border: 1px solid #d0b0ff;
 }
 
+/* 微信风格消息时间戳 */
+.msg-time-divider {
+  align-self: center;
+  font-size: 11px;
+  color: #b2b2b2;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  padding: 2px 8px;
+  margin: 4px 0 2px;
+  pointer-events: none;
+  user-select: none;
+}
+
 .msg-system {
   text-align: center;
   color: #aaa;
@@ -2003,13 +2441,19 @@ onBeforeUnmount(() => {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
   opacity: 0.6;
-  transition: opacity 0.15s;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
 }
 
 .tool-btn:hover {
   opacity: 1;
+  background: #f0f0f0;
 }
 
 .tool-btn.disabled {
@@ -2020,6 +2464,30 @@ onBeforeUnmount(() => {
 .upload-status {
   font-size: 12px;
   color: #666;
+}
+
+.chat-notice-banner {
+  padding: 8px 14px 0;
+  font-size: 12px;
+  color: #b13d3d;
+  background: linear-gradient(180deg, rgba(255, 239, 239, 0.96), rgba(255, 239, 239, 0));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-notice-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c53b3b;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .msg-bubble.media {
@@ -2091,6 +2559,9 @@ onBeforeUnmount(() => {
 }
 
 .file-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
@@ -2134,6 +2605,9 @@ onBeforeUnmount(() => {
 }
 
 .send-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 16px;
   background: #07c160;
   color: #fff;
@@ -2706,4 +3180,53 @@ onBeforeUnmount(() => {
 .member-select-item:hover {
   background: #f5f5f5;
 }
+
+.member-select-item--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.member-select-item--disabled:hover {
+  background: transparent;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  pointer-events: all;
+  cursor: pointer;
+  max-width: 360px;
+  word-break: break-all;
+  backdrop-filter: blur(4px);
+}
+
+.toast-error   { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+.toast-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+.toast-info    { background: #e6f4ff; border: 1px solid #91caff; color: #0958d9; }
+
+.toast-icon { display: flex; align-items: center; flex-shrink: 0; }
+
+.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+.toast-enter-from { opacity: 0; transform: translateY(-12px); }
+.toast-leave-to   { opacity: 0; transform: translateY(-8px); }
 </style>

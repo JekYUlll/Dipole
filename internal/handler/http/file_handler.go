@@ -56,6 +56,20 @@ func (h *FileHandler) WithLimiter(limiter fileRateLimiter) *FileHandler {
 	return h
 }
 
+// Upload godoc
+// @Summary 上传聊天文件
+// @Tags File
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "文件"
+// @Success 200 {object} UploadedFileResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 429 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files [post]
 func (h *FileHandler) Upload(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -108,6 +122,19 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	Success(c, httpdto.ToUploadedFileResponse(file))
 }
 
+// Download godoc
+// @Summary 获取文件下载链接
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param file_id path string true "文件 UUID"
+// @Success 200 {object} FileDownloadResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/{file_id}/download [get]
 func (h *FileHandler) Download(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -135,6 +162,19 @@ func (h *FileHandler) Download(c *gin.Context) {
 	Success(c, httpdto.ToFileDownloadResponse(result))
 }
 
+// Content godoc
+// @Summary 获取文件内容流
+// @Tags File
+// @Security BearerAuth
+// @Produce application/octet-stream
+// @Param file_id path string true "文件 UUID"
+// @Success 200 {file} binary
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/{file_id}/content [get]
 func (h *FileHandler) Content(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -180,6 +220,20 @@ func (h *FileHandler) Content(c *gin.Context) {
 	_, _ = io.Copy(c.Writer, result.Content)
 }
 
+// InitiateMultipart godoc
+// @Summary 初始化分片上传
+// @Tags File
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.FileMultipartInitiateRequest true "文件信息"
+// @Success 200 {object} FileMultipartInitiateResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 429 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/initiate [post]
 func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -219,6 +273,22 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 	Success(c, httpdto.ToFileMultipartInitiateResponse(result))
 }
 
+// UploadPart godoc
+// @Summary 上传分片
+// @Tags File
+// @Security BearerAuth
+// @Accept octet-stream
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Param part_number path int true "分片编号"
+// @Success 200 {object} MultipartPartResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/parts/{part_number} [put]
 func (h *FileHandler) UploadPart(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -246,6 +316,19 @@ func (h *FileHandler) UploadPart(c *gin.Context) {
 	Success(c, gin.H{"part_number": partNumber})
 }
 
+// CompleteMultipart godoc
+// @Summary 完成分片上传
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Success 200 {object} UploadedFileResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/complete [post]
 func (h *FileHandler) CompleteMultipart(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -261,6 +344,19 @@ func (h *FileHandler) CompleteMultipart(c *gin.Context) {
 	Success(c, httpdto.ToUploadedFileResponse(file))
 }
 
+// AbortMultipart godoc
+// @Summary 取消分片上传
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Success 200 {object} MultipartAbortResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id} [delete]
 func (h *FileHandler) AbortMultipart(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

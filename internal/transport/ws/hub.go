@@ -178,6 +178,16 @@ func (h *Hub) sendToUser(userUUID string, payload []byte) int {
 	return delivered
 }
 
+func (h *Hub) CloseAll(reason string) int {
+	clients := h.snapshotAllClients()
+	closed := 0
+	for _, client := range clients {
+		closed += h.disconnectClient(client, reason)
+	}
+
+	return closed
+}
+
 func (h *Hub) snapshotClients(userUUID string) []*Client {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -186,6 +196,20 @@ func (h *Hub) snapshotClients(userUUID string) []*Client {
 	clients := make([]*Client, 0, len(userClients))
 	for client := range userClients {
 		clients = append(clients, client)
+	}
+
+	return clients
+}
+
+func (h *Hub) snapshotAllClients() []*Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	clients := make([]*Client, 0)
+	for _, userClients := range h.clients {
+		for client := range userClients {
+			clients = append(clients, client)
+		}
 	}
 
 	return clients

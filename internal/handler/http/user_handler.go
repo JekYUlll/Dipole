@@ -43,6 +43,14 @@ func (h *UserHandler) WithAvatarMaxUploadBytes(maxUploadBytes int64) *UserHandle
 	return h
 }
 
+// GetCurrent godoc
+// @Summary 获取当前用户资料
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} PrivateUserResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Router /users/me [get]
 func (h *UserHandler) GetCurrent(c *gin.Context) {
 	user, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -53,6 +61,17 @@ func (h *UserHandler) GetCurrent(c *gin.Context) {
 	Success(c, httpdto.PresentUserForViewer(user, user))
 }
 
+// Search godoc
+// @Summary 搜索用户
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Param keyword query string false "搜索关键词"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} PublicUserListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users [get]
 func (h *UserHandler) Search(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -74,6 +93,17 @@ func (h *UserHandler) Search(c *gin.Context) {
 	Success(c, httpdto.PresentUsersForViewer(currentUser, users))
 }
 
+// GetByUUID godoc
+// @Summary 获取用户资料
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Param uuid path string true "用户 UUID"
+// @Success 200 {object} PublicUserResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/{uuid} [get]
 func (h *UserHandler) GetByUUID(c *gin.Context) {
 	currentUser, _ := middleware.CurrentUser(c)
 	user, err := h.service.GetByUUID(c.Param("uuid"))
@@ -90,6 +120,16 @@ func (h *UserHandler) GetByUUID(c *gin.Context) {
 	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
+// GetAvatar godoc
+// @Summary 获取用户头像
+// @Tags User
+// @Produce image/png
+// @Param uuid path string true "用户 UUID"
+// @Success 200 {file} binary
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/{uuid}/avatar [get]
 func (h *UserHandler) GetAvatar(c *gin.Context) {
 	avatar, err := h.service.GetAvatarResponse(c.Param("uuid"))
 	if err != nil {
@@ -131,6 +171,20 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	c.Redirect(http.StatusFound, avatar.RedirectURL)
 }
 
+// ListForAdmin godoc
+// @Summary 管理员查询用户列表
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param keyword query string false "搜索关键词"
+// @Param status query int false "用户状态"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} PrivateUserListResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /admin/users [get]
 func (h *UserHandler) ListForAdmin(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -166,6 +220,21 @@ func (h *UserHandler) ListForAdmin(c *gin.Context) {
 	Success(c, httpdto.PresentUsersForViewer(currentUser, users))
 }
 
+// UpdateProfile godoc
+// @Summary 更新用户资料
+// @Tags User
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uuid path string true "用户 UUID"
+// @Param request body httpdto.UpdateProfileRequest true "资料更新内容"
+// @Success 200 {object} PrivateUserResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/{uuid}/profile [patch]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -205,6 +274,22 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
+// UploadAvatar godoc
+// @Summary 上传用户头像
+// @Tags User
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Param uuid path string true "用户 UUID"
+// @Param avatar formData file true "头像文件"
+// @Success 200 {object} PrivateUserResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/{uuid}/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
@@ -248,6 +333,21 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	Success(c, httpdto.PresentUserForViewer(currentUser, user))
 }
 
+// UpdateStatus godoc
+// @Summary 管理员修改用户状态
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uuid path string true "用户 UUID"
+// @Param request body httpdto.UpdateStatusRequest true "状态更新内容"
+// @Success 200 {object} PrivateUserResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /admin/users/{uuid}/status [patch]
 func (h *UserHandler) UpdateStatus(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {

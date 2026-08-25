@@ -87,6 +87,7 @@ export interface LastMessage {
   message_type: number
   preview: string
   sent_at: string
+  sender_uuid?: string
 }
 
 export interface Conversation {
@@ -120,4 +121,5 @@ export interface GroupMessageNotify {
   preview: string
   recent_message_count: number
   sent_at: string
+  sender_uuid?: string
 }

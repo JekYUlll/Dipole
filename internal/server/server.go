@@ -3,10 +3,14 @@ package server
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
+	_ "github.com/JekYUlll/Dipole/docs/swagger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
@@ -24,8 +28,10 @@ import (
 )
 
 type Server struct {
-	engine *gin.Engine
-	wsHub  *wsTransport.Hub
+	engine     *gin.Engine
+	wsHub      *wsTransport.Hub
+	mu         sync.Mutex
+	httpServer *http.Server
 }
 
 type serverEventPublisher interface {
@@ -48,6 +54,7 @@ func New() *Server {
 			"env":    appCfg.Env,
 		})
 	})
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	userRepo := repository.NewUserRepository()
 	messageRepo := repository.NewMessageRepository()
@@ -77,13 +84,13 @@ func New() *Server {
 	}
 	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
 	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
-	contactService := service.NewContactService(contactRepo, userRepo)
+	contactService := service.NewContactService(contactRepo, userRepo).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messageService)
 	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		fileRepo,
 		platformStorage.Client,
 		5*1024*1024,
 		10*time.Minute,
-	)
+	).WithSystemMessenger(messageService)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
@@ -102,6 +109,7 @@ func New() *Server {
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageService)
+	syncHandler := httpHandler.NewSyncHandler(service.NewSyncService(repository.NewSyncRepository()))
 	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, userRepo)
@@ -146,6 +154,7 @@ func New() *Server {
 			protected.GET("/messages/offline", messageHandler.ListOffline)
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+			protected.GET("/sync", syncHandler.List)
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)
@@ -176,11 +185,44 @@ type wsTransportConversationUpdater interface {
 }
 
 func (s *Server) Run(addr string) error {
-	return s.engine.Run(addr)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: s.engine,
+	}
+	s.setHTTPServer(server)
+	defer s.clearHTTPServer(server)
+
+	return server.ListenAndServe()
 }
 
 func (s *Server) RunTLS(addr, certFile, keyFile string) error {
-	return s.engine.RunTLS(addr, certFile, keyFile)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: s.engine,
+	}
+	s.setHTTPServer(server)
+	defer s.clearHTTPServer(server)
+
+	return server.ListenAndServeTLS(certFile, keyFile)
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+
+	server := s.currentHTTPServer()
+	if server != nil {
+		if err := server.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
+
+	if s.wsHub != nil {
+		s.wsHub.CloseAll("server_shutdown")
+	}
+
+	return nil
 }
 
 func (s *Server) Engine() *gin.Engine {
@@ -206,4 +248,24 @@ func minInt64(a, b int64) int64 {
 	default:
 		return b
 	}
+}
+
+func (s *Server) setHTTPServer(server *http.Server) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.httpServer = server
+}
+
+func (s *Server) clearHTTPServer(server *http.Server) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.httpServer == server {
+		s.httpServer = nil
+	}
+}
+
+func (s *Server) currentHTTPServer() *http.Server {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.httpServer
 }
