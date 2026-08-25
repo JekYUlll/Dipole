@@ -111,6 +111,28 @@
 - **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
+### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-26
+- **影响范围：** `internal/model`、`internal/repository`、`internal/store`、服务启动与数据库发布
+- **现状：** 数据库映射、查询和 schema 演进依赖 GORM，服务启动时执行 `AutoMigrate`；约 20 个 Go 文件直接耦合 GORM API 或类型。
+- **风险：** schema 变化缺少显式版本、审查、部署顺序和稳定回滚记录；跨语言服务难以共享一致的数据契约。
+- **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
+- **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。
+
+### AD-011：前端缺少可版本化的完整设计基线
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-26
+- **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
+- **现状：** 当前只有 Login 与 Chat 路由，仓库内没有 `.pen`、design token、组件状态规范和视觉回归资产。
+- **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
+- **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
+- **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
+
 ## 已关闭
 
 当前无已关闭条目。
