@@ -35,11 +35,12 @@ type TLS struct {
 }
 
 type MySQL struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
+	Host        string `mapstructure:"host"`
+	Port        int    `mapstructure:"port"`
+	User        string `mapstructure:"user"`
+	Password    string `mapstructure:"password"`
+	DBName      string `mapstructure:"dbname"`
+	AutoMigrate bool   `mapstructure:"auto_migrate"`
 }
 
 type Redis struct {
@@ -170,6 +171,7 @@ func Load() error {
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
+		v.SetDefault("mysql.auto_migrate", false)
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")

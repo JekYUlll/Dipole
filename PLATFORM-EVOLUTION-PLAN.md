@@ -125,7 +125,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M2：从 GORM 渐进迁移到 sqlc
 
-- [ ] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
+- [x] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
 - [ ] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
 - [ ] 对同一 Repository Port 建立 GORM/sqlc contract test，按低风险到高风险逐仓储迁移。
 - [ ] 最后迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。

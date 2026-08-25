@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/JekYUlll/Dipole/db/migrations"
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
@@ -90,8 +92,23 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("storage is disabled")
 	}
 
-	if err := store.AutoMigrate(); err != nil {
-		return nil, fmt.Errorf("auto migrate failed: %w", err)
+	if mysqlCfg.AutoMigrate {
+		logger.Warn("legacy GORM auto migration enabled; run cmd/migrate before disabling the fallback")
+		if err := store.AutoMigrate(); err != nil {
+			return nil, fmt.Errorf("auto migrate failed: %w", err)
+		}
+	} else {
+		sqlDB, err := store.DB.DB()
+		if err != nil {
+			return nil, fmt.Errorf("get mysql connection for migration validation: %w", err)
+		}
+		runner, err := migration.NewRunner(sqlDB, migrations.Files)
+		if err != nil {
+			return nil, fmt.Errorf("initialize migration validation: %w", err)
+		}
+		if err := runner.ValidateCurrent(ctx); err != nil {
+			return nil, fmt.Errorf("database schema is not ready: %w", err)
+		}
 	}
 	repos := appComposition.NewRepositories()
 	if err := ensureAIAssistantUser(repos.Users); err != nil {
