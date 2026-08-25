@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -57,24 +57,25 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		events = platformKafka.Client
 	}
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
+	repos := appComposition.NewRepositories()
 	messageService := service.NewMessageService(
-		repository.NewMessageRepository(),
-		repository.NewUserRepository(),
-		repository.NewContactRepository(),
-		repository.NewGroupRepository(),
-		service.NewFileService(repository.NewFileRepository(), repository.NewMessageRepository(), nil),
+		repos.Messages,
+		repos.Users,
+		repos.Contacts,
+		repos.Groups,
+		service.NewFileService(repos.Files, repos.Messages, nil),
 		events,
 		hotGroupDetector,
 	)
 	conversationService := service.NewConversationService(
-		repository.NewConversationRepository(),
-		repository.NewUserRepository(),
-		repository.NewGroupRepository(),
+		repos.Conversations,
+		repos.Users,
+		repos.Groups,
 		nil,
 		events,
 	)
 	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(conversationService))
-	if aiService, err := newAIService(messageService); err != nil {
+	if aiService, err := newAIService(repos, messageService); err != nil {
 		return err
 	} else if aiService != nil {
 		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
@@ -371,22 +372,20 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(messageService *service.MessageService) (*aiModule.Service, error) {
+func newAIService(repos *appComposition.Repositories, messageService *service.MessageService) (*aiModule.Service, error) {
 	aiConfig := config.AIConfig()
 	if !aiConfig.Enabled {
 		return nil, nil
 	}
 
-	userRepo := repository.NewUserRepository()
-	messageRepo := repository.NewMessageRepository()
 	contextBuilder := aiModule.NewContextBuilder(
-		messageRepo,
-		userRepo,
+		repos.Messages,
+		repos.Users,
 		aiConfig.MaxContextMessages,
 	)
 	agent, err := aiModule.NewConfiguredAgent(
 		context.Background(),
-		aiModule.NewTools(userRepo, messageRepo, repository.NewConversationRepository(), messageService, aiConfig.AssistantUUID)...,
+		aiModule.NewTools(repos.Users, repos.Messages, repos.Conversations, messageService, aiConfig.AssistantUUID)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("init ai agent: %w", err)
@@ -394,7 +393,7 @@ func newAIService(messageService *service.MessageService) (*aiModule.Service, er
 
 	return aiModule.NewService(
 		contextBuilder,
-		repository.NewAICallLogRepository(),
+		repos.AICallLogs,
 		messageService,
 		agent,
 	), nil
