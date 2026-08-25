@@ -24,6 +24,9 @@ func TestAutoMigrateCreatesCompositeIndexes(t *testing.T) {
 	if err := AutoMigrate(); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
+	if !db.Migrator().HasTable("user_sync_states") {
+		t.Fatal("expected user_sync_states table to exist")
+	}
 
 	checks := []struct {
 		model any
