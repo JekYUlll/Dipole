@@ -9,19 +9,13 @@ import (
 
 	"go.uber.org/zap"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type inboundHandler interface {
 	Handle(client *Client, payload []byte)
-}
-
-type directMessageService interface {
-	SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
-	SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
-	SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
-	SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
 type conversationUpdater interface {
@@ -35,13 +29,13 @@ type messageRateLimiter interface {
 
 type Dispatcher struct {
 	hub                 *Hub
-	messageService      directMessageService
+	messageService      applicationPort.MessageCommand
 	conversationUpdater conversationUpdater
 	syncDispatch        bool
 	limiter             messageRateLimiter
 }
 
-func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
+func NewDispatcher(hub *Hub, messageService applicationPort.MessageCommand, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
 	return &Dispatcher{
 		hub:                 hub,
 		messageService:      messageService,

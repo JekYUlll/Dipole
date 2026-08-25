@@ -6,21 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
-type syncService interface {
-	List(userUUID string, afterSeq uint64, limit int) (*service.SyncPage, error)
-}
-
 type SyncHandler struct {
-	service syncService
+	service applicationPort.SyncApplication
 }
 
-func NewSyncHandler(service syncService) *SyncHandler {
+func NewSyncHandler(service applicationPort.SyncApplication) *SyncHandler {
 	return &SyncHandler{service: service}
 }
 

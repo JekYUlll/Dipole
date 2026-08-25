@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type stubSyncService struct {
@@ -19,11 +19,11 @@ type stubSyncService struct {
 	limit    int
 }
 
-func (s *stubSyncService) List(userUUID string, afterSeq uint64, limit int) (*service.SyncPage, error) {
+func (s *stubSyncService) List(userUUID string, afterSeq uint64, limit int) (*applicationPort.SyncPage, error) {
 	s.userUUID = userUUID
 	s.afterSeq = afterSeq
 	s.limit = limit
-	return &service.SyncPage{
+	return &applicationPort.SyncPage{
 		Items: []*model.SyncMessage{{
 			SyncSeq:         8,
 			ConversationKey: "direct:U100:U200",
