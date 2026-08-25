@@ -115,7 +115,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 - [x] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复 Repository 与消息域 Service 构造收口到 Composition Root。
 - [x] 定义 `MessageApplication`、`SyncApplication` 与 `EventPublisher`，并提供 Local adapter。
-- [ ] 定义 `CoreCapability`，供 Message 与 Agent 复用受控的 User/Group/Contact 查询。
+- [x] 定义 `CoreCapability` 与 Local adapter，供 Message 与 Agent 复用受控的 User/Group/Contact 查询。
 - [x] 将 repository 接口保留在使用方 Service，避免 handler 和 transport 依赖具体 repository。
 - [x] 禁止跨模块直接 `repository.NewXXXRepository()`，统一由 Composition Root 创建并通过构造参数注入。
 - [x] 建立架构约束测试，阻止 Server、Handler 和 Transport 直接导入数据库实现。
