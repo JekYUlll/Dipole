@@ -26,6 +26,7 @@
 - 增加 TypeScript Agent Runtime 设计，明确 Durable Task、Capability、Context、Memory、MCP、评测和渐进迁移方案。
 - 增加 GORM 到 sqlc 的渐进迁移计划，以及基于 Pencil `.pen` 的前端设计与视觉回归维护规范。
 - 增加版本化 MySQL migration、独立 `cmd/migrate` runner、schema ledger 与真实 MySQL drift 测试。
+- 增加固定 sqlc `v1.31.1` 的生成配置与漂移门禁、`database/sql` 事务 Store、错误映射及首组 AICallLog 类型安全查询。
 
 ### 变更
 
@@ -57,6 +58,7 @@
 - 已通过 Kafka `sync_fanout` 新旧字段契约测试和幂等目标隔离测试。
 - 已通过 MySQL 8.4 双事务提交顺序集成测试、`FOR UPDATE` 方言测试和 Sync 锁行回滚测试。
 - 已通过 MySQL 8.4 空库升级、现有 GORM schema 接管、重复执行、baseline 回滚和 schema drift 对照测试。
+- 已通过 sqlc Store 的 MySQL 8.4 提交、回滚与幂等插入集成测试。
 
 ### 已知问题
 

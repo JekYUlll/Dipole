@@ -1,0 +1,14 @@
+version: "2"
+sql:
+  - name: mysql
+    engine: mysql
+    schema: db/migrations
+    queries: db/queries
+    gen:
+      go:
+        package: generated
+        out: internal/data/mysql/generated
+        sql_package: database/sql
+        emit_interface: true
+        emit_empty_slices: true
+        omit_unused_structs: true
