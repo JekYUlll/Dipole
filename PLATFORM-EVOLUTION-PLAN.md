@@ -1,4 +1,4 @@
-# Dipole 三阶段演进计划
+# Dipole 四阶段演进计划
 
 > 状态：计划中
 >
@@ -8,11 +8,12 @@
 
 ## 1. 目标
 
-Dipole 按以下顺序完成三次独立演进：
+Dipole 按以下顺序完成四次独立演进：
 
 1. **微服务改造：** 从模块化单体渐进拆出 Gateway、Message 和 Sync 服务，Core 暂时保留 User、Group、Contact、File、Auth。
 2. **架构重构：** 建立 MySQL 元数据、Kafka 事件流、Cassandra 消息存储、Elasticsearch 搜索索引和 Redis 实时状态的分层架构。
-3. **Agent 化：** 将进程内 Eino AI 模块演进为独立 Agent Runtime，通过事件和受控 Capability API 参与 IM 业务。
+3. **Agent 化：** 将进程内 Eino AI 模块演进为 TypeScript Agent Runtime，通过事件和受控 Capability API 参与 IM 业务。
+4. **C++ 实时数据面：** 在稳定协议和性能基线之上评估 Realtime Delivery 与 Gateway 替换，只在收益可复现时灰度切流。
 
 整个过程采用 Strangler Fig 和事件驱动抽离，任何阶段结束时都必须存在可部署、可测试、可回滚的版本。
 
@@ -40,7 +41,7 @@ Dipole 按以下顺序完成三次独立演进：
 | 事件 | 单节点 Kafka + Transactional Outbox | 需要事件版本、兼容测试和集群化 |
 | 实时状态 | Redis Presence / PubSub / Hot Group | 继续保持临时状态职责 |
 | 文件 | MinIO | 保持独立对象存储，不随消息库迁移 |
-| AI | 进程内 Eino Agent，消费 `message.direct.created` | 已有天然事件边界，第三阶段独立部署 |
+| AI | 进程内 Eino Agent，消费 `message.direct.created` | 已有天然事件边界，第三阶段迁移到 TypeScript Runtime |
 
 ## 4. 总体目标架构
 
@@ -75,7 +76,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ## 5. 前置门禁 G0
 
-三阶段实施前先完成以下基线治理，当前仅列入计划：
+各阶段实施前先完成以下基线治理，当前仅列入计划：
 
 - [ ] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
 - [ ] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
@@ -223,43 +224,71 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ## 8. 阶段三：Agent 化
 
-### G1：抽离现有 Eino Agent Runtime
+### G1：固化迁移基线与 Capability API
 
-- [ ] 新增 `dipole-agent`，第一步沿用 Go + Eino，避免同时更换语言和进程边界。
-- [ ] 消费版本化 `message.direct.created`，使用独立 consumer group 和幂等执行记录。
-- [ ] 删除 Agent 对 GORM repository 的直接依赖，所有读取和动作通过 Capability API。
+- [ ] 将现有 Go/Eino Agent 固化为行为基线，建立事件、回复、Tool 轨迹和权限评测集。
+- [ ] 删除 Agent 对 GORM repository 的直接依赖，读取和动作统一进入版本化 Capability API。
+- [ ] 引入由认证系统生成的 `ExecutionContext`，模型不能设置 principal、tenant、权限和审计身份。
 - [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
-- [ ] 增加 `agent.mode=embedded|shadow|remote|off`，先 shadow 再 remote。
+- [ ] 增加 `agent.mode=embedded|shadow|remote|off`，保留 Eino 回滚窗口。
 
-**验收：** Embedded 与 Remote 对同一测试集产生等价动作；Agent 停机不影响传统 IM；重复事件不会产生重复回复。
+**验收：** Capability contract test 通过；Embedded 基线可重复评测；Agent 停机不影响传统 IM。
 
-### G2：建立受控 Capability API
+### G2：建立 TypeScript Agent Runtime
 
-- [ ] 提供读取会话上下文、用户资料、群信息和消息历史的最小权限接口。
-- [ ] 提供发送消息、创建任务等写能力，并为每个 Tool 定义参数 Schema、超时和幂等键。
-- [ ] Agent 使用服务身份和用户委托上下文，记录每次 Tool 调用的授权依据。
-- [ ] 高风险动作增加审批、撤销或人工确认策略。
-- [ ] Capability 层设置调用预算、速率限制和审计日志。
+- [ ] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
+- [ ] 实现 `ExecutionContext`、Capability Registry、Policy Engine、模型路由与调用预算。
+- [ ] 使用独立 consumer group 消费版本化事件，通过事件 ID 和 Task ID 幂等。
+- [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。
+- [ ] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter。
 
-### G3：Agent Runtime 能力化
+### G3：Durable Task、Context 与 Memory
 
-- [ ] 短期记忆从 Message Service 按会话窗口获取，长期记忆使用独立 Memory Store。
-- [ ] 将 Planning、Tool Calling、Memory 和最终 IM Action 分成可追踪步骤。
-- [ ] 支持任务状态、超时、取消、重试和失败补偿。
-- [ ] 防止 Agent 自己的输出再次触发无限循环，事件中携带 origin/causation 信息。
-- [ ] 建立 Prompt、Tool Schema、模型和策略版本管理。
+- [ ] 使用 Temporal TypeScript SDK 实现 AgentTask 状态机、Signal、Timer、Retry、取消和恢复。
+- [ ] 实现 Context Compiler，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
+- [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
+- [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
+- [ ] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact。
+- [ ] 事件携带 origin、causation 和 task 标识，阻断同一因果链的循环触发。
 
-### G4：评估、观测与安全门禁
+### G4：MCP、评估、观测与安全门禁
 
-- [ ] 建立离线评测集：回答质量、工具选择、权限边界、幂等和拒绝行为。
-- [ ] 记录模型调用延迟、Token、成本、Tool 成功率和端到端任务成功率。
-- [ ] 对 Prompt Injection、越权 Tool、敏感数据外发和循环调用进行专项测试。
-- [ ] 模型或策略升级先 shadow evaluation，再按用户灰度。
-- [ ] 保留 Agent 总开关，关闭后传统 IM 链路完整可用。
+- [ ] Runtime 作为 MCP Client 接入外部工具，并以 MCP Server 暴露受控 Dipole Capability。
+- [ ] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
+- [ ] 通过 OpenTelemetry 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
+- [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
+- [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
+- [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。
 
 **阶段三验收：** Agent Runtime 可独立部署和扩容；故障与升级不影响 IM Core；权限、审计、成本和效果均可观测。
 
-## 9. 全程测试矩阵
+详细设计见 [Agent Runtime 设计](AGENT-RUNTIME-DESIGN.md)。
+
+## 9. 阶段四：C++ 实时数据面
+
+该阶段只在微服务与现代存储架构稳定后启动，并与 Agent Runtime 保持独立发布。优先评估 Realtime Delivery，再依据数据决定是否替换 Gateway。
+
+### C1：建立 Go 数据面基准
+
+- [ ] 固化连接数、消息吞吐、P50/P95/P99、CPU、RSS、context switch 和故障恢复基线。
+- [ ] 将连接管理、投递路由、背压、重试和热群聚合定义为版本化协议与 contract test。
+- [ ] 明确 Gateway 与 Delivery 的进程边界，禁止 C++ 数据面访问业务数据库。
+
+### C2：C++ Realtime Delivery Shadow
+
+- [ ] 实现 Kafka 消费、Redis Presence 查询、节点级批处理、有界队列、背压和 QoS。
+- [ ] 与 Go Delivery 并行消费 shadow 流量，比较目标节点、收件人、顺序和延迟，不重复投递客户端。
+- [ ] 通过压测与故障注入证明收益；收益不足时保留 Go 实现并停止替换。
+
+### C3：灰度切换与 Gateway 评估
+
+- [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
+- [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
+- [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
+
+**阶段四验收：** C++ 实现通过同一 contract test，在目标负载下取得可复现收益，故障不会影响 Go 业务控制面，并完成自动回切演练。
+
+## 10. 全程测试矩阵
 
 | 测试层 | 必须覆盖 |
 | --- | --- |
@@ -273,7 +302,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
 
-## 10. 回滚开关
+## 11. 回滚开关
 
 | 开关 | 值 | 用途 |
 | --- | --- | --- |
@@ -282,19 +311,21 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
+| `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
 
-## 11. 明确暂不实施
+## 12. 明确暂不实施
 
 - 暂不把 User、Group、Contact、File、Conversation 拆成五个独立服务。
 - 暂不让 Gateway 直接访问 MySQL、Cassandra 或 Elasticsearch。
 - 暂不使用 Redis 保存 Durable Inbox、设备 Cursor 或消息事实。
 - 暂不在应用事务中直接双写 MySQL 和 Cassandra。
-- 暂不同时将 Eino 迁往 Python/TypeScript；独立进程稳定后再依据生态和团队成本评估。
+- 暂不在 Capability 契约与 Eino 基线评测完成前让 TypeScript Runtime 执行生产写操作。
+- 暂不因技术栈覆盖直接替换 Go Gateway；C++ 替换必须先通过独立基准和 shadow 对比。
 - 暂不移除 `/messages/offline`、`after_id` 和 `UnreadCount` 兼容层。
 
-## 12. 滚动执行顺序
+## 13. 滚动执行顺序
 
 ```text
 G0 基线门禁
@@ -305,12 +336,15 @@ A1 Timeline/Store → A2 集群 → A3 Cassandra 影子 → A4 切流
   ↓
 A5 Search → A6 Sync Service
   ↓
-G1 Agent 抽离 → G2 Capability → G3 Runtime → G4 Eval/Safety
+  ├─ G1 Capability → G2 TS Runtime → G3 Durable Agent → G4 Eval/Safety
+  └─ C1 Benchmark → C2 C++ Delivery Shadow → C3 Gray Release
 ```
 
 任何里程碑未通过验收时停留在当前形态，修复后再进入下一步，避免将未验证风险传递到后续阶段。
 
-## 13. 分支与合并策略
+Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一里程碑分支中修改相同运行链路。C++ Gateway 评估必须等待 Delivery 灰度稳定。
+
+## 14. 分支与合并策略
 
 ### 主要分支
 
@@ -319,13 +353,14 @@ G1 Agent 抽离 → G2 Capability → G3 Runtime → G4 Eval/Safety
 | `epic/01-microservices` | G0、M1-M5 | 最新 `master` | 微服务阶段验收全部通过 |
 | `epic/02-storage-architecture` | A1-A6 | 阶段一合并后的 `master` | 存储迁移、回滚和故障测试通过 |
 | `epic/03-agent-runtime` | G1-G4 | 阶段二合并后的 `master` | Agent 效果、安全和隔离门禁通过 |
+| `epic/04-cpp-realtime` | C1-C3 | 阶段二合并后的 `master` | 性能收益、故障隔离和回切门禁通过 |
 
-三条 Epic 分支可以提前建立远端引用，用于固定路线。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
+四条 Epic 分支可以提前建立远端引用，用于固定路线。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
 
 ### 里程碑分支
 
 - 每个里程碑从对应 Epic 分支创建短期分支，例如 `feature/m1-composition-root`、`feature/a3-cassandra-shadow`。
-- 一个短期分支只处理一个里程碑或一个可独立回滚的问题，禁止同时跨越微服务、存储和 Agent 三个维度。
+- 一个短期分支只处理一个里程碑或一个可独立回滚的问题，禁止同时跨越微服务、存储、Agent 和 C++ 数据面多个维度。
 - 短期分支完成测试和 diff 审查后合并到 Epic；Epic 达到阶段验收后再合并到 `master`。
 - 紧急修复从 `master` 创建 `fix/*`，合并后同步回所有仍活跃的 Epic 分支。
 - 禁止对已推送的共享分支执行 force push，避免破坏阶段历史和迁移证据。
