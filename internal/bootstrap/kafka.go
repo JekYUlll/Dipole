@@ -8,6 +8,7 @@ import (
 	"time"
 
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -47,7 +48,7 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		return nil
 	}
 
-	var events appComposition.EventPublisher
+	var events applicationPort.EventPublisher
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
@@ -355,7 +356,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(repos *appComposition.Repositories, messageService *service.MessageService) (*aiModule.Service, error) {
+func newAIService(repos *appComposition.Repositories, messageService *appComposition.LocalMessageApplication) (*aiModule.Service, error) {
 	aiConfig := config.AIConfig()
 	if !aiConfig.Enabled {
 		return nil, nil

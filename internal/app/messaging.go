@@ -1,17 +1,11 @@
 package app
 
 import (
-	"context"
-
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
-
-type EventPublisher interface {
-	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
-	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
-}
 
 type HotGroupObserver interface {
 	ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error)
@@ -23,7 +17,7 @@ type ConversationNotifier interface {
 }
 
 type MessagingDependencies struct {
-	Events               EventPublisher
+	Events               applicationPort.EventPublisher
 	HotGroups            HotGroupObserver
 	Storage              platformStorage.ObjectStorage
 	ConversationNotifier ConversationNotifier
@@ -31,9 +25,17 @@ type MessagingDependencies struct {
 
 type MessagingServices struct {
 	Files         *service.FileService
-	Messages      *service.MessageService
+	Messages      *LocalMessageApplication
 	Conversations *service.ConversationService
-	Sync          *service.SyncService
+	Sync          *LocalSyncApplication
+}
+
+type LocalMessageApplication struct {
+	*service.MessageService
+}
+
+type LocalSyncApplication struct {
+	*service.SyncService
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
@@ -41,7 +43,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 
 	return &MessagingServices{
 		Files: files,
-		Messages: service.NewMessageService(
+		Messages: &LocalMessageApplication{MessageService: service.NewMessageService(
 			repos.Messages,
 			repos.Users,
 			repos.Contacts,
@@ -49,7 +51,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 			files,
 			dependencies.Events,
 			dependencies.HotGroups,
-		),
+		)},
 		Conversations: service.NewConversationService(
 			repos.Conversations,
 			repos.Users,
@@ -57,6 +59,6 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 			dependencies.ConversationNotifier,
 			dependencies.Events,
 		),
-		Sync: service.NewSyncService(repos.Sync),
+		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync)},
 	}
 }

@@ -4,17 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 type syncRepository interface {
 	ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error)
-}
-
-type SyncPage struct {
-	Items   []*model.SyncMessage
-	NextSeq uint64
-	HasMore bool
 }
 
 type SyncService struct {
@@ -25,7 +20,7 @@ func NewSyncService(repo syncRepository) *SyncService {
 	return &SyncService{repo: repo}
 }
 
-func (s *SyncService) List(userUUID string, afterSeq uint64, limit int) (*SyncPage, error) {
+func (s *SyncService) List(userUUID string, afterSeq uint64, limit int) (*applicationPort.SyncPage, error) {
 	limit = normalizeSyncListLimit(limit)
 	items, err := s.repo.ListByUserAfter(strings.TrimSpace(userUUID), afterSeq, limit+1)
 	if err != nil {
@@ -40,7 +35,7 @@ func (s *SyncService) List(userUUID string, afterSeq uint64, limit int) (*SyncPa
 	if len(items) > 0 {
 		nextSeq = items[len(items)-1].SyncSeq
 	}
-	return &SyncPage{Items: items, NextSeq: nextSeq, HasMore: hasMore}, nil
+	return &applicationPort.SyncPage{Items: items, NextSeq: nextSeq, HasMore: hasMore}, nil
 }
 
 func normalizeSyncListLimit(limit int) int {

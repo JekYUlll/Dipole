@@ -13,6 +13,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -66,7 +67,7 @@ func New() *Server {
 		10*time.Minute,
 	)
 	adminService := service.NewAdminService(repos.Admin, wsHub)
-	var kafkaEvents appComposition.EventPublisher
+	var kafkaEvents applicationPort.EventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
