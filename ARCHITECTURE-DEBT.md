@@ -89,6 +89,28 @@
 - **建议方向：** 将 `docs/*.md` 改为按需忽略，或显式允许需要版本化的架构文档。
 - **处理门槛：** 项目开始通过 PR 协作或需要公开架构文档时处理。
 
+### AD-008：Agent Tool 允许模型提供用户身份参数
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-26
+- **影响范围：** `internal/modules/ai/tools.go`、会话读取、用户资料、系统消息发送
+- **现状：** 多个 Tool Schema 暴露 `user_uuid`，执行时直接使用模型生成的参数查询资源或确定消息目标。
+- **风险：** Tool 缺少由认证链注入的 principal 与统一 Capability Policy，模型参数可能造成越权读取、错误目标写入或审计身份不清。
+- **建议方向：** 引入不可由模型覆盖的 `ExecutionContext`，将 principal、委托身份、权限和 trace 注入 Tool；模型只提交资源参数，Capability API 执行服务端授权。
+- **处理门槛：** TypeScript Agent Runtime 获得任何生产读写流量前完成。
+
+### AD-009：Agent 仅有调用级日志，缺少持久任务生命周期
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-26
+- **影响范围：** `ai_call_logs`、长任务、审批、失败恢复和评测
+- **现状：** 当前记录 trigger、response、Token 和 latency，执行仍以单次 Kafka handler 和模型调用为中心。
+- **风险：** 服务重启、等待用户输入或审批、Tool 重试和多步骤 Artifact 无法形成可恢复、可审计的统一状态。
+- **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
+- **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
+
 ## 已关闭
 
 当前无已关闭条目。
