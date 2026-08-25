@@ -122,17 +122,14 @@
 - **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
 - **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。
 
+## 已关闭
+
 ### AD-011：前端缺少可版本化的完整设计基线
 
 - **优先级：** P2
-- **状态：** 暂缓
+- **状态：** 已解决
 - **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
 - **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
-- **现状：** 当前只有 Login 与 Chat 路由，仓库内没有 `.pen`、design token、组件状态规范和视觉回归资产。
-- **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
-- **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
-- **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
-
-## 已关闭
-
-当前无已关闭条目。
+- **解决方案：** 建立 canonical `design/dipole-ui.pen`、设计 token、可复用组件、Login/Chat desktop/mobile、关键异常状态、设计日志和 2x 评审导出图。
+- **验证：** Pencil app state 包含 6 个 F1 顶层 frame；结构检查无裁剪或布局崩塌输出；总览与逐 frame PNG 已导出。
