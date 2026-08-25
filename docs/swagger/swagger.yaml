@@ -241,6 +241,13 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.PublicUserResponse'
     type: object
+  http.SyncPageResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.SyncPageResponse'
+    type: object
   http.UploadedFileResponseEnvelope:
     properties:
       code:
@@ -345,6 +352,8 @@ definitions:
       message_type:
         type: integer
       preview:
+        type: string
+      sender_uuid:
         type: string
       sent_at:
         type: string
@@ -598,6 +607,26 @@ definitions:
         type: array
     required:
     - member_uuids
+    type: object
+  httpdto.SyncMessageResponse:
+    properties:
+      conversation_key:
+        type: string
+      message:
+        $ref: '#/definitions/httpdto.MessageResponse'
+      sync_seq:
+        type: integer
+    type: object
+  httpdto.SyncPageResponse:
+    properties:
+      has_more:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/httpdto.SyncMessageResponse'
+        type: array
+      next_seq:
+        type: integer
     type: object
   httpdto.UpdateContactBlockStatusRequest:
     properties:
@@ -2157,6 +2186,41 @@ paths:
       summary: 获取离线消息
       tags:
       - Message
+  /sync:
+    get:
+      parameters:
+      - description: 同步游标
+        in: query
+        name: after_seq
+        type: integer
+      - description: 返回数量
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SyncPageResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 增量同步用户消息
+      tags:
+      - Sync
   /users:
     get:
       parameters:

@@ -2360,6 +2360,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/sync": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "增量同步用户消息",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "同步游标",
+                        "name": "after_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "返回数量",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SyncPageResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -3197,6 +3253,17 @@ const docTemplate = `{
                 }
             }
         },
+        "http.SyncPageResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.SyncPageResponse"
+                }
+            }
+        },
         "http.UploadedFileResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3355,6 +3422,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "preview": {
+                    "type": "string"
+                },
+                "sender_uuid": {
                     "type": "string"
                 },
                 "sent_at": {
@@ -3734,6 +3804,37 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "httpdto.SyncMessageResponse": {
+            "type": "object",
+            "properties": {
+                "conversation_key": {
+                    "type": "string"
+                },
+                "message": {
+                    "$ref": "#/definitions/httpdto.MessageResponse"
+                },
+                "sync_seq": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpdto.SyncPageResponse": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.SyncMessageResponse"
+                    }
+                },
+                "next_seq": {
+                    "type": "integer"
                 }
             }
         },

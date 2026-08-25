@@ -5,9 +5,9 @@ go 1.26.0
 require (
 	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/bwmarrin/snowflake v0.3.0
-	github.com/cloudwego/eino v0.8.8
+	github.com/cloudwego/eino v0.9.15
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.9
-	github.com/cloudwego/eino-ext/components/model/openai v0.1.12
+	github.com/cloudwego/eino-ext/components/model/openai v0.1.13
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-sql-driver/mysql v1.7.0
@@ -40,7 +40,7 @@ require (
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/cloudwego/eino-ext/libs/acl/openai v0.1.16 // indirect
+	github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eino-contrib/jsonschema v1.0.3 // indirect

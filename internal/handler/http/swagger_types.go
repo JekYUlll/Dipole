@@ -68,6 +68,11 @@ type MessageListResponseEnvelope struct {
 	Data []*httpdto.MessageResponse `json:"data"`
 }
 
+type SyncPageResponseEnvelope struct {
+	Code int                       `json:"code"`
+	Data *httpdto.SyncPageResponse `json:"data"`
+}
+
 type UploadedFileResponseEnvelope struct {
 	Code int                           `json:"code"`
 	Data *httpdto.UploadedFileResponse `json:"data"`

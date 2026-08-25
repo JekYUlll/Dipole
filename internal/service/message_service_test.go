@@ -17,26 +17,28 @@ import (
 )
 
 type stubMessageRepository struct {
-	mu                  sync.Mutex
-	createErr           error
-	storeWithOutboxErr  error
-	ensureOutboxErr     error
-	listErr             error
-	createdMessages     []*model.Message
-	outboxEvents        []*model.OutboxEvent
-	ensuredOutboxEvents []*model.OutboxEvent
-	listMessages        []*model.Message
-	listAfterMessages   []*model.Message
-	offlineMessages     []*model.Message
-	messagesByUUID      map[string]*model.Message
-	hasConversation     bool
-	lastConversationKey string
-	lastBeforeID        uint
-	lastAfterID         uint
-	lastLimit           int
-	lastUserUUID        string
-	listAfterCallCount  int
-	listAfterDelay      time.Duration
+	mu                    sync.Mutex
+	createErr             error
+	storeWithOutboxErr    error
+	ensureOutboxErr       error
+	listErr               error
+	createdMessages       []*model.Message
+	outboxEvents          []*model.OutboxEvent
+	ensuredOutboxEvents   []*model.OutboxEvent
+	syncRecipients        []string
+	ensuredSyncRecipients []string
+	listMessages          []*model.Message
+	listAfterMessages     []*model.Message
+	offlineMessages       []*model.Message
+	messagesByUUID        map[string]*model.Message
+	hasConversation       bool
+	lastConversationKey   string
+	lastBeforeID          uint
+	lastAfterID           uint
+	lastLimit             int
+	lastUserUUID          string
+	listAfterCallCount    int
+	listAfterDelay        time.Duration
 }
 
 func (r *stubMessageRepository) Create(message *model.Message) error {
@@ -95,6 +97,10 @@ func (r *stubMessageRepository) HasConversationMessages(conversationKey string) 
 }
 
 func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
+	return r.StoreWithOutboxAndSync(message, event, nil)
+}
+
+func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -108,6 +114,24 @@ func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *m
 	}
 	r.messagesByUUID[message.UUID] = message
 	r.outboxEvents = append(r.outboxEvents, event)
+	r.syncRecipients = append([]string(nil), recipientUUIDs...)
+	return nil
+}
+
+func (r *stubMessageRepository) CreateWithSync(message *model.Message, recipientUUIDs []string) error {
+	if err := r.Create(message); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	r.syncRecipients = append([]string(nil), recipientUUIDs...)
+	r.mu.Unlock()
+	return nil
+}
+
+func (r *stubMessageRepository) EnsureSyncInbox(_ *model.Message, recipientUUIDs []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ensuredSyncRecipients = append([]string(nil), recipientUUIDs...)
 	return nil
 }
 
@@ -269,6 +293,10 @@ type stubHotGroupObserver struct {
 func (o *stubHotGroupObserver) ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error) {
 	o.groupUUIDs = append(o.groupUUIDs, groupUUID)
 	o.memberCounts = append(o.memberCounts, memberCount)
+	return o.status, o.err
+}
+
+func (o *stubHotGroupObserver) Status(groupUUID string, memberCount int) (platformHotGroup.Status, error) {
 	return o.status, o.err
 }
 
@@ -1011,6 +1039,10 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	if len(publisher.keys) != 1 || publisher.keys[0] != model.DirectConversationKey("U100", "U200") {
 		t.Fatalf("expected direct routing key %s, got %+v", model.DirectConversationKey("U100", "U200"), publisher.keys)
 	}
+	payload := publisher.payloads[0].(MessageEventPayload)
+	if !payload.SyncFanout {
+		t.Fatal("expected direct message sync fanout")
+	}
 }
 
 func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *testing.T) {
@@ -1044,6 +1076,37 @@ func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *t
 	if len(publisher.keys) != 1 || publisher.keys[0] != "G100" {
 		t.Fatalf("expected group routing key G100, got %+v", publisher.keys)
 	}
+	payload := publisher.payloads[0].(MessageEventPayload)
+	if !payload.SyncFanout {
+		t.Fatal("expected regular group sync fanout")
+	}
+}
+
+func TestMessageServiceSkipsSyncFanoutForHotGroup(t *testing.T) {
+	publisher := &stubEventPublisher{}
+	service := NewMessageService(
+		&stubMessageRepository{},
+		&stubMessageUserFinder{},
+		nil,
+		&stubGroupMessageChecker{
+			groups: map[string]*model.Group{"G100": {UUID: "G100", Status: model.GroupStatusNormal}},
+			members: map[string]map[string]*model.GroupMember{"G100": {
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+				"U200": {GroupUUID: "G100", UserUUID: "U200"},
+			}},
+		},
+		nil,
+		publisher,
+		&stubHotGroupObserver{status: platformHotGroup.Status{IsHot: true}},
+	)
+
+	if _, _, err := service.SendGroupMessage("U100", "G100", "hot", "cmid-hot"); err != nil {
+		t.Fatalf("send hot group message: %v", err)
+	}
+	payload := publisher.payloads[0].(MessageEventPayload)
+	if payload.SyncFanout {
+		t.Fatal("expected hot group to keep notify-and-pull without inbox fanout")
+	}
 }
 
 func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) {
@@ -1061,6 +1124,7 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
+		SyncFanout:      true,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1076,6 +1140,29 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if repo.outboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
+	}
+	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
+		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)
+	}
+}
+
+func TestMessageServicePersistRequestedLegacyDirectEventStillWritesSyncInbox(t *testing.T) {
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	if _, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M-legacy",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "legacy",
+	}); err != nil {
+		t.Fatalf("persist legacy direct event: %v", err)
+	}
+	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
+		t.Fatalf("expected legacy direct event to sync both participants, got %+v", repo.syncRecipients)
 	}
 }
 
@@ -1108,6 +1195,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
+		SyncFanout:      true,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1123,6 +1211,9 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 	}
 	if repo.ensuredOutboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected ensured outbox topic message.direct.created, got %s", repo.ensuredOutboxEvents[0].Topic)
+	}
+	if len(repo.ensuredSyncRecipients) != 2 {
+		t.Fatalf("expected duplicate replay to ensure sync inbox, got %+v", repo.ensuredSyncRecipients)
 	}
 }
 

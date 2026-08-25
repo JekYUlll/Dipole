@@ -2,11 +2,13 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MessageRepository struct{}
@@ -18,7 +20,23 @@ func NewMessageRepository() *MessageRepository {
 // TODO: 为消息表接入自动分表策略，每 10 万条消息滚动到下一张物理表。
 // 分表路由应收口在 repository / storage 层，避免 service 和 handler 直接感知表名。
 func (r *MessageRepository) Create(message *model.Message) error {
-	if err := store.DB.Create(message).Error; err != nil {
+	return r.CreateWithSync(message, nil)
+}
+
+func (r *MessageRepository) CreateWithSync(message *model.Message, recipientUUIDs []string) error {
+	if store.DB == nil {
+		return fmt.Errorf("create message with sync: mysql not initialized")
+	}
+
+	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(message).Error; err != nil {
+			return fmt.Errorf("create message: %w", err)
+		}
+		if err := createSyncInboxRows(tx, message, recipientUUIDs); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return fmt.Errorf("create message: %w", err)
 	}
 
@@ -26,6 +44,10 @@ func (r *MessageRepository) Create(message *model.Message) error {
 }
 
 func (r *MessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
+	return r.StoreWithOutboxAndSync(message, event, nil)
+}
+
+func (r *MessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error {
 	if store.DB == nil {
 		return fmt.Errorf("store message with outbox: mysql not initialized")
 	}
@@ -35,6 +57,9 @@ func (r *MessageRepository) StoreWithOutbox(message *model.Message, event *model
 		if err := tx.Create(message).Error; err != nil {
 			return fmt.Errorf("create message: %w", err)
 		}
+		if err := createSyncInboxRows(tx, message, recipientUUIDs); err != nil {
+			return err
+		}
 		if err := outboxRepo.Enqueue(tx, event); err != nil {
 			return fmt.Errorf("enqueue outbox event: %w", err)
 		}
@@ -43,6 +68,16 @@ func (r *MessageRepository) StoreWithOutbox(message *model.Message, event *model
 		return fmt.Errorf("store message with outbox: %w", err)
 	}
 
+	return nil
+}
+
+func (r *MessageRepository) EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error {
+	if store.DB == nil {
+		return fmt.Errorf("ensure sync inbox: mysql not initialized")
+	}
+	if err := createSyncInboxRows(store.DB, message, recipientUUIDs); err != nil {
+		return fmt.Errorf("ensure sync inbox: %w", err)
+	}
 	return nil
 }
 
@@ -197,4 +232,36 @@ func reverseMessages(messages []*model.Message) {
 	for left, right := 0, len(messages)-1; left < right; left, right = left+1, right-1 {
 		messages[left], messages[right] = messages[right], messages[left]
 	}
+}
+
+func createSyncInboxRows(db *gorm.DB, message *model.Message, recipientUUIDs []string) error {
+	if db == nil || message == nil || len(recipientUUIDs) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(recipientUUIDs))
+	rows := make([]*model.UserSyncInbox, 0, len(recipientUUIDs))
+	for _, recipientUUID := range recipientUUIDs {
+		recipientUUID = strings.TrimSpace(recipientUUID)
+		if recipientUUID == "" {
+			continue
+		}
+		if _, ok := seen[recipientUUID]; ok {
+			continue
+		}
+		seen[recipientUUID] = struct{}{}
+		rows = append(rows, &model.UserSyncInbox{
+			UserUUID:        recipientUUID,
+			MessageUUID:     message.UUID,
+			ConversationKey: message.ConversationKey,
+		})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&rows).Error; err != nil {
+		return fmt.Errorf("create sync inbox rows: %w", err)
+	}
+	return nil
 }
