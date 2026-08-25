@@ -44,8 +44,15 @@ type groupHeatReader interface {
 }
 
 func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
+	return RegisterKafkaHandlersWithRepositories(hub, appComposition.NewRepositories())
+}
+
+func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
 	if platformKafka.Subscriber == nil {
 		return nil
+	}
+	if repos == nil {
+		repos = appComposition.NewRepositories()
 	}
 
 	var events applicationPort.EventPublisher
@@ -53,7 +60,6 @@ func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
 		events = platformKafka.Client
 	}
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
-	repos := appComposition.NewRepositories()
 	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
 		Events:    events,
 		HotGroups: hotGroupDetector,

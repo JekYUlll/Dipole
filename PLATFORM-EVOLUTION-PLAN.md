@@ -117,7 +117,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 定义 `MessageApplication`、`SyncApplication` 与 `EventPublisher`，并提供 Local adapter。
 - [ ] 定义 `CoreCapability`，供 Message 与 Agent 复用受控的 User/Group/Contact 查询。
 - [x] 将 repository 接口保留在使用方 Service，避免 handler 和 transport 依赖具体 repository。
-- [ ] 禁止跨模块直接 `repository.NewXXXRepository()`，统一通过构造参数注入。
+- [x] 禁止跨模块直接 `repository.NewXXXRepository()`，统一由 Composition Root 创建并通过构造参数注入。
 - [x] 建立架构约束测试，阻止 Server、Handler 和 Transport 直接导入数据库实现。
 - [x] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
 
