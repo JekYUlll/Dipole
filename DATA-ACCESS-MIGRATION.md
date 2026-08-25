@@ -43,10 +43,19 @@ internal/data/mysql/
 
 ### D1：冻结 schema 与替换 AutoMigrate
 
-- 从当前 MySQL 结构生成基线 migration，并在空库和现有库上验证。
-- 引入独立 migration runner，部署先执行 migration，再启动应用。
-- CI 校验 migration 顺序、重复执行、回滚和 schema drift。
-- 保留 `AutoMigrate` 开关作为一个发布窗口内的紧急回退，默认关闭后再删除。
+- [x] 从当前 MySQL 结构生成基线 migration，并在空库和现有库上验证。
+- [x] 引入独立 migration runner，部署先执行 migration，再启动应用。
+- [x] 校验 migration 顺序、重复执行、回滚和与当前 GORM schema 的 drift。
+- [x] 保留 `AutoMigrate` 开关作为一个发布窗口内的紧急回退，默认关闭后再删除。
+
+当前操作顺序：
+
+```bash
+go run ./cmd/migrate -direction up
+go run ./cmd/server
+```
+
+应用默认只读校验 `schema_migrations` 版本，不在启动阶段修改 schema。baseline down 会删除全部业务表，仅允许在一次性测试库中显式使用 `-allow-destructive`。
 
 ### D2：建立 sqlc 基础设施
 

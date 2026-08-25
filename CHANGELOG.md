@@ -25,12 +25,14 @@
 - 增加分阶段平台演进计划与架构债务台账，明确微服务、存储架构和 Agent Runtime 的分支、验收及回滚策略。
 - 增加 TypeScript Agent Runtime 设计，明确 Durable Task、Capability、Context、Memory、MCP、评测和渐进迁移方案。
 - 增加 GORM 到 sqlc 的渐进迁移计划，以及基于 Pencil `.pen` 的前端设计与视觉回归维护规范。
+- 增加版本化 MySQL migration、独立 `cmd/migrate` runner、schema ledger 与真实 MySQL drift 测试。
 
 ### 变更
 
 - 普通群消息按成员写入 Inbox；热群沿用 notify + pull，跳过成员级 Inbox 写扩散。
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
 - Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
+- 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
@@ -42,8 +44,8 @@
 
 ### 迁移说明
 
-- 服务启动迁移会创建 `user_sync_inbox` 表，无需手工执行 SQL。
-- 服务启动迁移会创建 `user_sync_states` 锁表；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
+- 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
+- baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
 - 现有 `/messages/offline` 接口继续保留，客户端可以渐进迁移到 `/sync`。
 - 兼容缺少 `sync_fanout` 字段的旧私聊和群聊 Kafka 事件，避免滚动部署期间漏写 Inbox。
@@ -54,6 +56,7 @@
 - 已通过新增同步 repository、service、handler 及消息 service 的定向 race 测试。
 - 已通过 Kafka `sync_fanout` 新旧字段契约测试和幂等目标隔离测试。
 - 已通过 MySQL 8.4 双事务提交顺序集成测试、`FOR UPDATE` 方言测试和 Sync 锁行回滚测试。
+- 已通过 MySQL 8.4 空库升级、现有 GORM schema 接管、重复执行、baseline 回滚和 schema drift 对照测试。
 
 ### 已知问题
 

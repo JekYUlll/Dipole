@@ -13,3 +13,14 @@ Dipole
 [GORM 到 sqlc 迁移计划](DATA-ACCESS-MIGRATION.md)
 
 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)
+
+## 数据库迁移
+
+启动服务前先执行版本化 migration：
+
+```bash
+go run ./cmd/migrate -direction up
+go run ./cmd/server
+```
+
+`mysql.auto_migrate` 默认关闭，仅在 GORM 到 sqlc 的兼容窗口内用于紧急回退。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
