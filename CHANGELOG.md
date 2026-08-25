@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。
 - 增加用户同步 Inbox Timeline：通过 `user_sync_inbox` 按用户维护持久化 `sync_seq`，支持离线和多端增量同步。
 - 增加 `GET /api/v1/sync` 接口，支持 `after_seq` 游标、分页上限、`next_seq` 和 `has_more`。
 - 消息持久化、Inbox 写入与 Transactional Outbox 进入同一数据库事务，避免消息事实与同步状态分离提交。

@@ -308,7 +308,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ## 10. 持续轨道：Pencil 前端设计
 
-- [ ] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
+- [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
 - [ ] F2：覆盖 Contact、Group、File、Search、Sync、Device 与 Settings 的完整页面和异常状态。
 - [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
 - [ ] F4：建立 Pencil 增量更新、设计日志、Vue token 映射、Playwright E2E 与视觉回归流程。
