@@ -14,6 +14,7 @@ type Repositories struct {
 	Admin         *repository.AdminRepository
 	Sync          *repository.SyncRepository
 	AICallLogs    *repository.AICallLogRepository
+	Outbox        *repository.OutboxRepository
 }
 
 func NewRepositories() *Repositories {
@@ -27,5 +28,6 @@ func NewRepositories() *Repositories {
 		Admin:         repository.NewAdminRepository(),
 		Sync:          repository.NewSyncRepository(),
 		AICallLogs:    repository.NewAICallLogRepository(),
+		Outbox:        repository.NewOutboxRepository(),
 	}
 }

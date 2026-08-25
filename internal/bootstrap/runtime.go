@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -12,7 +13,6 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"github.com/JekYUlll/Dipole/internal/store"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
@@ -93,7 +93,8 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err := store.AutoMigrate(); err != nil {
 		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
-	if err := ensureAIAssistantUser(); err != nil {
+	repos := appComposition.NewRepositories()
+	if err := ensureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -111,7 +112,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("bloom filter distributed mode enabled, local filter bypassed")
 	}
 
-	srv := server.New()
+	srv := server.NewWithRepositories(repos)
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
@@ -130,7 +131,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			)
 		}
 	}
-	if err := RegisterKafkaHandlers(wsEventSender); err != nil {
+	if err := RegisterKafkaHandlersWithRepositories(wsEventSender, repos); err != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
@@ -149,7 +150,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = newOutboxRelay(repository.NewOutboxRepository())
+		rt.outboxFlow = newOutboxRelay(repos.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
@@ -213,7 +214,11 @@ func ensureTLSFiles(tlsCfg config.TLS) error {
 	return nil
 }
 
-func ensureAIAssistantUser() error {
+type aiAssistantUserRepository interface {
+	UpsertAssistant(user *model.User) error
+}
+
+func ensureAIAssistantUser(users aiAssistantUserRepository) error {
 	cfg := config.AIConfig()
 	if !cfg.Enabled {
 		return nil
@@ -239,7 +244,7 @@ func ensureAIAssistantUser() error {
 		assistant.Avatar = model.DefaultAvatarURL
 	}
 
-	if err := repository.NewUserRepository().UpsertAssistant(assistant); err != nil {
+	if err := users.UpsertAssistant(assistant); err != nil {
 		return err
 	}
 

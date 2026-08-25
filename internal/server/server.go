@@ -36,6 +36,14 @@ type Server struct {
 }
 
 func New() *Server {
+	return NewWithRepositories(appComposition.NewRepositories())
+}
+
+func NewWithRepositories(repos *appComposition.Repositories) *Server {
+	if repos == nil {
+		repos = appComposition.NewRepositories()
+	}
+
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
@@ -52,7 +60,6 @@ func New() *Server {
 	})
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	repos := appComposition.NewRepositories()
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	redisPresence := platformPresence.NewRedisPresence()
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))

@@ -30,6 +30,7 @@
 
 - 普通群消息按成员写入 Inbox；热群沿用 notify + pull，跳过成员级 Inbox 写扩散。
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
+- Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 

@@ -19,6 +19,7 @@ func TestNewRepositoriesBuildsApplicationRepositorySet(t *testing.T) {
 		"admin":         repos.Admin,
 		"sync":          repos.Sync,
 		"ai_call_logs":  repos.AICallLogs,
+		"outbox":        repos.Outbox,
 	}
 	for name, repo := range required {
 		if repo == nil {
