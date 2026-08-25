@@ -59,10 +59,18 @@ go run ./cmd/server
 
 ### D2：建立 sqlc 基础设施
 
-- 固定 sqlc 配置、生成命令和生成代码检查策略。
-- 建立 `DBTX`、事务 helper、错误映射、观测 hook 和测试数据库 fixture。
+- [x] 固定 sqlc `v1.31.1` 配置、生成命令和生成代码检查策略。
+- [x] 建立 `DBTX`、事务 helper、错误映射和真实 MySQL 测试 fixture。
 - 为同一 Application Port 建立 GORM 与 sqlc contract test。
-- CI 执行 `sqlc generate` 后检查工作区无差异，防止生成代码过期。
+- [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
+
+开发命令：
+
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+scripts/sqlc.sh generate
+scripts/check-sqlc.sh
+```
 
 ### D3：按风险逐仓储迁移
 

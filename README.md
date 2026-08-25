@@ -24,3 +24,11 @@ go run ./cmd/server
 ```
 
 `mysql.auto_migrate` 默认关闭，仅在 GORM 到 sqlc 的兼容窗口内用于紧急回退。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
+
+sqlc 生成固定使用 `v1.31.1`：
+
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+scripts/sqlc.sh generate
+scripts/check-sqlc.sh
+```
