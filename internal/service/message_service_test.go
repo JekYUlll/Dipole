@@ -41,6 +41,35 @@ type stubMessageRepository struct {
 	listAfterDelay        time.Duration
 }
 
+type stubCoreCapability struct {
+	users              map[string]*model.User
+	directMessageAllow bool
+	userLookups        []string
+	friendshipChecks   [][2]string
+}
+
+func (c *stubCoreCapability) GetUserByUUID(userUUID string) (*model.User, error) {
+	c.userLookups = append(c.userLookups, userUUID)
+	return c.users[userUUID], nil
+}
+
+func (c *stubCoreCapability) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
+	c.friendshipChecks = append(c.friendshipChecks, [2]string{userUUID, friendUUID})
+	return c.directMessageAllow, nil
+}
+
+func (c *stubCoreCapability) GetGroupByUUID(string) (*model.Group, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error) {
+	return nil, nil
+}
+
 func (r *stubMessageRepository) Create(message *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -359,6 +388,35 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 	}
 	if message.MessageType != model.MessageTypeText {
 		t.Fatalf("expected text message type, got %d", message.MessageType)
+	}
+}
+
+func TestMessageServiceWithCoreListsDirectMessagesThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{{UUID: "M100"}},
+	}
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(repo, core, nil, nil, nil)
+
+	messages, err := service.ListDirectMessages("U100", " U200 ", 0, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 || messages[0].UUID != "M100" {
+		t.Fatalf("unexpected messages: %#v", messages)
+	}
+	if len(core.userLookups) != 1 || core.userLookups[0] != "U200" {
+		t.Fatalf("unexpected user lookups: %#v", core.userLookups)
+	}
+	if len(core.friendshipChecks) != 1 || core.friendshipChecks[0] != [2]string{"U100", "U200"} {
+		t.Fatalf("unexpected friendship checks: %#v", core.friendshipChecks)
 	}
 }
 

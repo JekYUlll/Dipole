@@ -40,14 +40,13 @@ type LocalSyncApplication struct {
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
 	files := service.NewFileService(repos.Files, repos.Messages, dependencies.Storage)
+	core := NewLocalCoreCapability(repos)
 
 	return &MessagingServices{
 		Files: files,
-		Messages: &LocalMessageApplication{MessageService: service.NewMessageService(
+		Messages: &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
 			repos.Messages,
-			repos.Users,
-			repos.Contacts,
-			repos.Groups,
+			core,
 			files,
 			dependencies.Events,
 			dependencies.HotGroups,

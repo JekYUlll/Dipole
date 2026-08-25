@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
@@ -113,6 +114,46 @@ func NewMessageService(repo messageRepository, userFinder messageUserFinder, fri
 		fileFinder:    fileFinder,
 		hotGroups:     hotGroups,
 	}
+}
+
+func NewMessageServiceWithCore(repo messageRepository, core applicationPort.CoreCapability, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
+	if core == nil {
+		return NewMessageService(repo, nil, nil, nil, fileFinder, events, hotGroups)
+	}
+
+	return NewMessageService(
+		repo,
+		coreUserFinder{core: core},
+		core,
+		coreGroupChecker{core: core},
+		fileFinder,
+		events,
+		hotGroups,
+	)
+}
+
+type coreUserFinder struct {
+	core applicationPort.CoreCapability
+}
+
+func (f coreUserFinder) GetByUUID(userUUID string) (*model.User, error) {
+	return f.core.GetUserByUUID(userUUID)
+}
+
+type coreGroupChecker struct {
+	core applicationPort.CoreCapability
+}
+
+func (c coreGroupChecker) GetByUUID(groupUUID string) (*model.Group, error) {
+	return c.core.GetGroupByUUID(groupUUID)
+}
+
+func (c coreGroupChecker) GetMember(groupUUID, userUUID string) (*model.GroupMember, error) {
+	return c.core.GetGroupMember(groupUUID, userUUID)
+}
+
+func (c coreGroupChecker) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
+	return c.core.ListGroupMembers(groupUUID)
 }
 
 func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {

@@ -36,6 +36,14 @@ type SyncApplication interface {
 	List(userUUID string, afterSeq uint64, limit int) (*SyncPage, error)
 }
 
+type CoreCapability interface {
+	GetUserByUUID(userUUID string) (*model.User, error)
+	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
+	GetGroupByUUID(groupUUID string) (*model.Group, error)
+	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
+	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
