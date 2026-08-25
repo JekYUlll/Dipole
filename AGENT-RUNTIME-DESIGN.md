@@ -1,0 +1,180 @@
+# Dipole Agent Runtime 设计
+
+本文档定义 Dipole 的 Agent 产品边界、TypeScript 技术栈、核心抽象和渐进迁移路线。实现状态以 [平台演进计划](PLATFORM-EVOLUTION-PLAN.md) 为准，发布变化记录在 [更新日志](CHANGELOG.md)。
+
+## 1. 产品定位
+
+Dipole Agent Runtime 是建立在 IM Event Bus 与业务 Capability 之上的事件驱动、可持久化执行平台。首个产品形态是 IM-native Project Guardian：持续观察指定会话，提取决策、任务和风险，在需要输入或高风险动作时等待用户确认。
+
+运行形态分为三类：
+
+- Interactive Agent：响应用户指令，检索会话并生成回复或 Artifact。
+- Event-driven Agent：订阅消息、文件、成员变更等领域事件，按规则和语义过滤触发任务。
+- Durable Task Agent：支持长时间运行、失败恢复、等待输入、等待审批、取消和继续执行。
+
+Agent 只能通过版本化 Capability API 读取或修改 IM 数据，禁止直接访问 Message Store、Sync Store 和业务 Repository。
+
+## 2. 语言与技术栈
+
+| 层 | 选择 | 职责 |
+| --- | --- | --- |
+| Language / Runtime | TypeScript + Node.js | Agent Runtime 与集成层 |
+| HTTP | Fastify | 健康检查、管理 API、Webhook |
+| Internal RPC | Connect 或 gRPC | 调用 Go Capability API |
+| Event | Kafka | IM 事件触发和执行结果事件 |
+| Agent primitives | Vercel AI SDK | 模型适配、流式输出、结构化输出、Tool Calling |
+| Schema | Zod + JSON Schema | Capability 输入输出契约 |
+| Durable execution | Temporal TypeScript SDK | Workflow、Signal、Retry、Timer 和恢复 |
+| Tool protocol | MCP TypeScript SDK | 外部 Tool 接入与 Dipole 能力开放 |
+| Metadata | MySQL | Agent、Task、Run、Approval 和 Artifact 元数据 |
+| Ephemeral state | Redis | 限流、短期缓存和分布式协调 |
+| Retrieval | Elasticsearch | 消息混合检索和语义召回 |
+| Artifact | MinIO | 报告、结构化结果和大对象 |
+| Observability | OpenTelemetry + Prometheus | Trace、Metric、审计和成本 |
+| Test / Eval | Vitest + 自研 Eval Harness | 单测、轨迹、结果、权限和成本评测 |
+
+Mastra、OpenAI Agents SDK 和 LangGraph.js 用作设计参考或可插拔 adapter。Runtime 的身份、权限、状态机、上下文、事件触发和评测由 Dipole 自己维护，避免核心语义被单一框架绑定。
+
+## 3. 总体架构
+
+```text
+IM Gateway / Core ── gRPC/Connect ──► Capability API
+        │                                  ▲
+        └──────── Kafka Events ────────────┤
+                                           │
+                                 ┌─────────┴──────────┐
+                                 │ TS Agent Runtime   │
+                                 ├────────────────────┤
+                                 │ Trigger Engine     │
+                                 │ Agent Kernel       │
+                                 │ Context Compiler   │
+                                 │ Capability Registry│
+                                 │ Memory Policy      │
+                                 └─────────┬──────────┘
+                                           │
+                         ┌─────────────────┼───────────────┐
+                         ▼                 ▼               ▼
+                     Temporal          Model API        MCP Servers
+                         │
+                         ▼
+                   Task / Approval / Artifact
+```
+
+Kafka 承担领域事件传播，Temporal 承担一次 Agent Task 的可靠执行。MCP Task 仅作为未来对外协议能力，不替代内部 Workflow 状态。
+
+## 4. 核心抽象
+
+### ExecutionContext
+
+`ExecutionContext` 由认证与触发链生成，模型不能设置主体身份和权限。
+
+```ts
+type ExecutionContext = {
+  principalUserId: string;
+  agentId: string;
+  taskId: string;
+  conversationId?: string;
+  capabilities: ReadonlySet<string>;
+  traceId: string;
+  causationId: string;
+};
+```
+
+### Capability Registry
+
+Capability 是受控业务能力，Tool、MCP Tool 和 Agent-as-Tool 都是它的 adapter。
+
+```ts
+interface AgentCapability<I, O> {
+  id: string;
+  inputSchema: z.ZodType<I>;
+  outputSchema: z.ZodType<O>;
+  risk: "read" | "write" | "destructive";
+  requiredPermissions: readonly string[];
+  execute(input: I, context: ExecutionContext): Promise<O>;
+}
+```
+
+Policy Engine 在执行前完成授权、预算、限流、审批和审计。写操作携带幂等键；破坏性操作默认要求人工审批。
+
+### Agent Task
+
+```text
+CREATED → RUNNING → WAITING_INPUT / WAITING_APPROVAL
+                    ↓                 ↓
+                 RUNNING ←────────────┘
+                    ↓
+          COMPLETED / FAILED / CANCELLED
+```
+
+Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Approval 和 ArtifactCreate 等 Step。Temporal Workflow ID 使用 Task ID，确保重复 Kafka 事件不会创建重复任务。
+
+### Context Compiler
+
+Context Compiler 根据 token 预算组合系统策略、Agent 身份、任务状态、相关会话、检索结果、Memory 和可用 Tool。它负责检索、裁剪、摘要、证据引用和预算分配，避免固定截取最近消息。
+
+### Memory Policy
+
+- Working Memory：当前任务计划、临时事实和执行进度。
+- Episodic Memory：已完成任务及其结论、证据和反馈。
+- Semantic Memory：项目、用户和资源的稳定事实。
+- Procedural Memory：可复用工作流与 Skill。
+- Observational Memory：将持续消息流压缩为 observation 和 reflection，降低长会话上下文衰减。
+
+每次记忆写入需要来源、作用域、版本、置信度和过期策略；用户可查看、纠正和删除长期记忆。
+
+## 5. Event Trigger
+
+`AgentSubscription` 描述 Agent、资源范围、事件类型、过滤策略和 Capability 授权。事件先经过规则、小模型或向量召回做低成本筛选，相关事件才创建 Durable Task。
+
+所有 Agent 产生的消息携带 `origin_agent_id`、`task_id` 和 `causation_id`。Trigger Engine 默认忽略同一因果链中的 Agent 输出，防止循环触发。
+
+## 6. Human-in-the-loop 与 Artifact
+
+高风险动作进入 `WAITING_APPROVAL`，通过 Temporal Signal 接收批准或拒绝。缺少结构化输入时进入 `WAITING_INPUT`，客户端展示表单；后续可通过 MCP Elicitation adapter 对外提供同类能力。
+
+任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
+
+## 7. 数据模型
+
+首期包含：
+
+- `agent_definitions`：所有者、指令、模型策略、版本和状态。
+- `agent_subscriptions`：事件、资源、过滤器和策略。
+- `agent_tasks`：目标、触发来源、主体、状态和 Workflow ID。
+- `agent_runs` / `agent_steps`：模型、Token、延迟、输入输出摘要和执行轨迹。
+- `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态。
+- `agent_artifacts`：类型、URI、版本、来源和元数据。
+- `agent_memories`：作用域、类型、来源、置信度和过期时间。
+
+敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
+
+## 8. 可观测性与评测
+
+Trace 层级采用 `Task → Run → ContextCompile / ModelCall / ToolCall / Approval / ArtifactCreate`。指标至少覆盖任务完成率、Tool 成功率、审批拒绝率、Token 与成本、上下文大小、检索命中、模型回退和端到端延迟。
+
+Eval Harness 同时评估：
+
+- Outcome：结果是否满足目标并包含必要证据。
+- Trajectory：Tool 选择、顺序和调用次数是否合理。
+- Permission：是否访问越权资源或尝试绕过审批。
+- Retrieval：关键证据召回率和引用正确性。
+- Cost：模型调用、Token、延迟和失败重试是否在预算内。
+
+模型、Prompt、Tool Schema 和 Memory Policy 升级先跑离线数据集，再进入 shadow，最后按 Agent 或用户灰度。
+
+## 9. 渐进路线
+
+1. 固化 Go/Eino 行为基线、事件契约和评测集，建立 Capability API 与 Agent Command API。
+2. 建立 TS Runtime 骨架，实现 ExecutionContext、Capability Registry、Kafka shadow consumer 和执行审计。
+3. 引入 Temporal AgentTask，支持等待输入、审批、重试、取消和恢复。
+4. 实现 Context Compiler、分层 Memory、Event Subscription 和 Artifact。
+5. 接入 MCP client/server、OpenTelemetry 和完整 Eval Harness。
+6. shadow 结果达到门禁后逐步切换 `agent.mode=remote`，保留 Eino 回滚窗口。
+7. 后期按明确场景评估多 Agent、A2A Agent Card 和 MCP experimental Tasks。
+
+## 10. 首个演示验收
+
+Project Guardian 订阅一个项目群，每日维护决策、任务和风险；发现缺失负责人时向用户索取输入；准备向群内发送提醒时等待审批；进程重启后继续原 Task；所有读取、Tool、审批、Artifact 和模型调用均可追踪。
+
+首期避免引入无明确职责的多 Agent 编排，也避免每条消息直接调用高成本模型。
