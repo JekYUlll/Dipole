@@ -107,7 +107,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 目标是在一个进程内完成边界整理，不增加网络调用。
 
-- [ ] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复构造逻辑收口到 Composition Root。
+- [x] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复 Repository 与消息域 Service 构造收口到 Composition Root。
 - [ ] 按领域定义应用端口：`MessageApplication`、`CoreCapability`、`SyncApplication`、`EventPublisher`。
 - [ ] 将 repository 接口移动到使用方领域，避免 handler/bootstrap 依赖具体 repository。
 - [ ] 禁止跨模块直接 `repository.NewXXXRepository()`，统一通过构造参数注入。

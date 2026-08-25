@@ -34,11 +34,6 @@ type Server struct {
 	httpServer *http.Server
 }
 
-type serverEventPublisher interface {
-	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
-	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
-}
-
 func New() *Server {
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
@@ -70,21 +65,24 @@ func New() *Server {
 		5*1024*1024,
 		10*time.Minute,
 	)
-	fileService := service.NewFileService(repos.Files, repos.Messages, platformStorage.Client)
 	adminService := service.NewAdminService(repos.Admin, wsHub)
-	var kafkaEvents serverEventPublisher
+	var kafkaEvents appComposition.EventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
-	messageService := service.NewMessageService(repos.Messages, repos.Users, repos.Contacts, repos.Groups, fileService, kafkaEvents, hotGroupDetector)
-	conversationService := service.NewConversationService(repos.Conversations, repos.Users, repos.Groups, newConversationNotifier(wsHub), kafkaEvents)
-	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messageService)
+	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+		Events:               kafkaEvents,
+		HotGroups:            hotGroupDetector,
+		Storage:              platformStorage.Client,
+		ConversationNotifier: newConversationNotifier(wsHub),
+	})
+	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messaging.Messages)
 	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		repos.Files,
 		platformStorage.Client,
 		5*1024*1024,
 		10*time.Minute,
-	).WithSystemMessenger(messageService)
+	).WithSystemMessenger(messaging.Messages)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
@@ -92,19 +90,19 @@ func New() *Server {
 	// Passing nil here prevents the dispatcher from doing a redundant synchronous update.
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
-		conversationUpdater = conversationService
+		conversationUpdater = messaging.Conversations
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messaging.Messages, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
 	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
-	conversationHandler := httpHandler.NewConversationHandler(conversationService)
+	conversationHandler := httpHandler.NewConversationHandler(messaging.Conversations)
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
-	messageHandler := httpHandler.NewMessageHandler(messageService)
-	syncHandler := httpHandler.NewSyncHandler(service.NewSyncService(repos.Sync))
-	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
+	messageHandler := httpHandler.NewMessageHandler(messaging.Messages)
+	syncHandler := httpHandler.NewSyncHandler(messaging.Sync)
+	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, repos.Users)
 
