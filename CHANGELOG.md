@@ -29,17 +29,23 @@
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
+### 修复
+
+- 修复旧群消息 Kafka 事件缺少 `sync_fanout` 时被误判为热群的问题，滚动部署期间默认保留普通群 Inbox fanout。
+- 修复幂等冲突复用已有消息时可能沿用新目标收件人的问题，路由身份不一致时拒绝 Outbox/Inbox 修复。
+
 ### 迁移说明
 
 - 服务启动迁移会创建 `user_sync_inbox` 表，无需手工执行 SQL。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
 - 现有 `/messages/offline` 接口继续保留，客户端可以渐进迁移到 `/sync`。
-- 兼容缺少 `sync_fanout` 字段的旧私聊 Kafka 事件，避免滚动部署期间漏写接收方 Inbox。
+- 兼容缺少 `sync_fanout` 字段的旧私聊和群聊 Kafka 事件，避免滚动部署期间漏写 Inbox。
 
 ### 验证
 
 - 已通过 `go test ./...`、`go vet ./...` 和 `go mod verify`。
 - 已通过新增同步 repository、service、handler 及消息 service 的定向 race 测试。
+- 已通过 Kafka `sync_fanout` 新旧字段契约测试和幂等目标隔离测试。
 
 ### 已知问题
 

@@ -78,8 +78,8 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 三阶段实施前先完成以下基线治理，当前仅列入计划：
 
 - [ ] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
-- [ ] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
-- [ ] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
+- [x] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
+- [x] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
 - [ ] 为核心事件建立版本化契约和新旧版本兼容测试。
 - [ ] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout。
 - [ ] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。

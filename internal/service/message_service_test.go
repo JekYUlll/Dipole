@@ -1040,7 +1040,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		t.Fatalf("expected direct routing key %s, got %+v", model.DirectConversationKey("U100", "U200"), publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected direct message sync fanout")
 	}
 }
@@ -1077,7 +1077,7 @@ func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *t
 		t.Fatalf("expected group routing key G100, got %+v", publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected regular group sync fanout")
 	}
 }
@@ -1104,7 +1104,7 @@ func TestMessageServiceSkipsSyncFanoutForHotGroup(t *testing.T) {
 		t.Fatalf("send hot group message: %v", err)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if payload.SyncFanout {
+	if payload.SyncFanout == nil || *payload.SyncFanout {
 		t.Fatal("expected hot group to keep notify-and-pull without inbox fanout")
 	}
 }
@@ -1124,7 +1124,7 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1166,6 +1166,27 @@ func TestMessageServicePersistRequestedLegacyDirectEventStillWritesSyncInbox(t *
 	}
 }
 
+func TestMessageServicePersistRequestedLegacyGroupEventDefaultsToSyncFanout(t *testing.T) {
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	if _, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M-legacy-group",
+		ConversationKey: model.GroupConversationKey("G100"),
+		SenderUUID:      "U100",
+		TargetUUID:      "G100",
+		TargetType:      model.MessageTargetGroup,
+		MessageType:     model.MessageTypeText,
+		Content:         "legacy group",
+		RecipientUUIDs:  []string{"U100", "U200"},
+	}); err != nil {
+		t.Fatalf("persist legacy group event: %v", err)
+	}
+	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
+		t.Fatalf("expected legacy group event to default to sync fanout, got %+v", repo.syncRecipients)
+	}
+}
+
 func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testing.T) {
 	t.Parallel()
 
@@ -1195,7 +1216,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1256,5 +1277,72 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 	}
 	if len(repo.ensuredOutboxEvents) != 1 {
 		t.Fatalf("expected ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
+	}
+}
+
+func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		messagesByUUID:     map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	_, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no duplicate repair for conflicting target, outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
+	}
+}
+
+func TestMessageServicePersistLocalMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+	}
+	repo := &stubMessageRepository{
+		createErr:      gorm.ErrDuplicatedKey,
+		messagesByUUID: map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)
+	requested := &model.Message{
+		UUID:            "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+	}
+
+	_, err := service.persistLocalMessage(requested, "persist direct message", []string{"U100", "U300"})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no local inbox repair for conflicting target, got %+v", repo.ensuredSyncRecipients)
 	}
 }
