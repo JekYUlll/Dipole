@@ -1,4 +1,4 @@
-# Dipole 四阶段演进计划
+# Dipole 平台演进计划
 
 > 状态：计划中
 >
@@ -8,12 +8,14 @@
 
 ## 1. 目标
 
-Dipole 按以下顺序完成四次独立演进：
+Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨道：
 
 1. **微服务改造：** 从模块化单体渐进拆出 Gateway、Message 和 Sync 服务，Core 暂时保留 User、Group、Contact、File、Auth。
 2. **架构重构：** 建立 MySQL 元数据、Kafka 事件流、Cassandra 消息存储、Elasticsearch 搜索索引和 Redis 实时状态的分层架构。
 3. **Agent 化：** 将进程内 Eino AI 模块演进为 TypeScript Agent Runtime，通过事件和受控 Capability API 参与 IM 业务。
 4. **C++ 实时数据面：** 在稳定协议和性能基线之上评估 Realtime Delivery 与 Gateway 替换，只在收益可复现时灰度切流。
+
+微服务阶段内先将 GORM 渐进迁移到 sqlc；前端从当前阶段开始维护 Pencil `.pen` 设计基线，并随 IM、Agent 和数据面能力持续更新。
 
 整个过程采用 Strangler Fig 和事件驱动抽离，任何阶段结束时都必须存在可部署、可测试、可回滚的版本。
 
@@ -27,6 +29,8 @@ Dipole 按以下顺序完成四次独立演进：
 - **兼容旧客户端：** `/messages/offline`、历史 `after_id` 和现有 WS 协议在替代链路完成验收前继续保留。
 - **测试驱动：** 每次抽离先补契约测试、故障测试和回滚测试，再改变生产路由。
 - **控制服务数量：** 没有压测或团队协作需求时，不单独拆 User、Group、Contact、File 和 Conversation。
+- **SQL 是数据契约：** schema 与 query 进入版本控制，sqlc 负责 Go 侧生成；跨语言服务通过 API 和事件协作，不跨边界共享业务表。
+- **设计先行：** 用户可见功能先更新 Pencil 设计稿和状态矩阵，再实现 Vue 与视觉回归。
 
 ## 3. 当前基线
 
@@ -94,12 +98,14 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 | 债务 | 计划里程碑 | 解除条件 |
 | --- | --- | --- |
 | `AD-001` | G0 / A1 | 用户级序号和并发提交乱序测试通过 |
-| `AD-002` | G0 / M2 | 新旧群事件兼容测试通过 |
-| `AD-003` | G0 / M3 | 幂等身份冲突与收件人隔离测试通过 |
+| `AD-002` | G0 / M3 | 新旧群事件兼容测试通过 |
+| `AD-003` | G0 / M4 | 幂等身份冲突与收件人隔离测试通过 |
 | `AD-004` | A1 / A6 | 热群持久化 checkpoint 和客户端补拉通过 |
 | `AD-005` | A2 / A6 | 压测证明写扩散受控，或完成对应投影优化 |
 | `AD-006` | M1 | 仓储写入口完成收敛 |
 | `AD-007` | G0 | 关键架构文档可随代码审查和追溯 |
+| `AD-010` | M2 | GORM 和 AutoMigrate 完成退出，sqlc 与 migration 门禁通过 |
+| `AD-011` | F1 | canonical `.pen`、设计 token 与现有页面状态完成评审 |
 
 ## 6. 阶段一：渐进式微服务改造
 
@@ -116,7 +122,19 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 **验收：** HTTP/WS 契约不变；`go test ./...`、race 定向测试和现有端到端测试通过；单体镜像仍可独立部署。
 
-### M2：定义远程契约但仍走本地实现
+### M2：从 GORM 渐进迁移到 sqlc
+
+- [ ] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
+- [ ] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
+- [ ] 对同一 Repository Port 建立 GORM/sqlc contract test，按低风险到高风险逐仓储迁移。
+- [ ] 最后迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
+- [ ] 全部生产路径稳定后删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
+
+**验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
+
+详细步骤见 [GORM 到 sqlc 迁移计划](DATA-ACCESS-MIGRATION.md)。
+
+### M3：定义远程契约但仍走本地实现
 
 - [ ] 使用 protobuf 定义 Message Command、History Query、Core Authorization 和 Sync Query 契约。
 - [ ] 明确错误码、超时、幂等键、分页游标和认证上下文传递规则。
@@ -124,9 +142,9 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [ ] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
 - [ ] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`。
 
-**验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M1 一致。
+**验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M2 一致。
 
-### M3：抽离 Message Service
+### M4：抽离 Message Service
 
 - [ ] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
 - [ ] 当前单体先作为 Gateway/Core，通过 gRPC 调用 Message Service。
@@ -137,7 +155,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 
-### M4：抽离 IM Gateway
+### M5：抽离 IM Gateway
 
 - [ ] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
 - [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有 GORM repository。
@@ -147,7 +165,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 **验收：** 多节点 WS 路由、断线重连、踢下线、跨节点投递和滚动升级通过；Gateway 进程断开数据库后仍能正常处理其职责。
 
-### M5：形成最小服务集合
+### M6：形成最小服务集合
 
 阶段一结束时保持以下部署边界：
 
@@ -288,7 +306,16 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 **阶段四验收：** C++ 实现通过同一 contract test，在目标负载下取得可复现收益，故障不会影响 Go 业务控制面，并完成自动回切演练。
 
-## 10. 全程测试矩阵
+## 10. 持续轨道：Pencil 前端设计
+
+- [ ] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
+- [ ] F2：覆盖 Contact、Group、File、Search、Sync、Device 与 Settings 的完整页面和异常状态。
+- [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
+- [ ] F4：建立 Pencil 增量更新、设计日志、Vue token 映射、Playwright E2E 与视觉回归流程。
+
+设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
+
+## 11. 全程测试矩阵
 
 | 测试层 | 必须覆盖 |
 | --- | --- |
@@ -299,10 +326,12 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | Migration | 回填、双轨比较、影子读、灰度切换、回滚和重放 |
 | Failure | 节点宕机、超时、重复事件、乱序、Kafka lag、存储不可用 |
 | Performance | 普通群/热群吞吐、P95/P99 延迟、成员级写放大、搜索和 Agent 延迟 |
+| Data access | SQL migration、sqlc 生成漂移、GORM/sqlc contract、真实 MySQL 事务 |
+| Frontend | Vue 类型检查、组件、Playwright E2E、视觉回归、响应式和可访问性 |
 
 每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
 
-## 11. 回滚开关
+## 12. 回滚开关
 
 | 开关 | 值 | 用途 |
 | --- | --- | --- |
@@ -312,10 +341,11 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
+| `data.mysql_adapter` | `gorm / sqlc` | Repository 分批迁移期间回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
 
-## 12. 明确暂不实施
+## 13. 明确暂不实施
 
 - 暂不把 User、Group、Contact、File、Conversation 拆成五个独立服务。
 - 暂不让 Gateway 直接访问 MySQL、Cassandra 或 Elasticsearch。
@@ -324,13 +354,15 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - 暂不在 Capability 契约与 Eino 基线评测完成前让 TypeScript Runtime 执行生产写操作。
 - 暂不因技术栈覆盖直接替换 Go Gateway；C++ 替换必须先通过独立基准和 shadow 对比。
 - 暂不移除 `/messages/offline`、`after_id` 和 `UnreadCount` 兼容层。
+- 暂不让 TypeScript 或 C++ 服务直接复用 Go 的 sqlc 生成代码或跨服务访问 Core 数据表。
+- 暂不在设计稿缺少 mobile、loading、empty、error 和 offline 状态时直接重写对应页面。
 
-## 13. 滚动执行顺序
+## 14. 滚动执行顺序
 
 ```text
 G0 基线门禁
   ↓
-M1 模块边界 → M2 远程契约 → M3 Message Service → M4 Gateway
+M1 模块边界 → M2 sqlc → M3 远程契约 → M4 Message Service → M5 Gateway → M6 最小服务集
   ↓
 A1 Timeline/Store → A2 集群 → A3 Cassandra 影子 → A4 切流
   ↓
@@ -344,18 +376,21 @@ A5 Search → A6 Sync Service
 
 Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一里程碑分支中修改相同运行链路。C++ Gateway 评估必须等待 Delivery 灰度稳定。
 
-## 14. 分支与合并策略
+前端 F1 可以在 M1 期间开始；F2 随现代 IM API 推进，F3 随 Agent 状态机推进。设计资产与实现按独立短分支交付。
+
+## 15. 分支与合并策略
 
 ### 主要分支
 
 | 分支 | 覆盖范围 | 创建基线 | 合并条件 |
 | --- | --- | --- | --- |
-| `epic/01-microservices` | G0、M1-M5 | 最新 `master` | 微服务阶段验收全部通过 |
+| `epic/01-microservices` | G0、M1-M6，含 sqlc 迁移 | 最新 `master` | 微服务与数据访问阶段验收全部通过 |
 | `epic/02-storage-architecture` | A1-A6 | 阶段一合并后的 `master` | 存储迁移、回滚和故障测试通过 |
 | `epic/03-agent-runtime` | G1-G4 | 阶段二合并后的 `master` | Agent 效果、安全和隔离门禁通过 |
 | `epic/04-cpp-realtime` | C1-C3 | 阶段二合并后的 `master` | 性能收益、故障隔离和回切门禁通过 |
+| `epic/05-frontend-experience` | F1-F4 | 最新 `master` | 设计、交互、视觉和可访问性门禁通过 |
 
-四条 Epic 分支可以提前建立远端引用，用于固定路线。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
+五条 Epic 分支可以提前建立远端引用，用于固定路线。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
 
 ### 里程碑分支
 
