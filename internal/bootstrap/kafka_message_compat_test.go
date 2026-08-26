@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 func TestDecodeMessageEventPayloadPreservesSyncFanoutPresence(t *testing.T) {
@@ -61,6 +62,19 @@ func TestDecodeMessageEventPayloadPreservesOptionalConversationSequence(t *testi
 				t.Fatalf("message sequence = %d, want %d", decoded.MessageSeq, tt.want)
 			}
 		})
+	}
+}
+
+func TestDecodeMessageEventPayloadNormalizesLegacyCreatedMutation(t *testing.T) {
+	decoded, err := decodeMessageEventPayload(platformKafka.Event{Envelope: &platformKafka.Envelope{
+		EventType: "message.direct.created",
+		Payload:   json.RawMessage(`{"message_id":"M1","sender_uuid":"U1"}`),
+	}})
+	if err != nil {
+		t.Fatalf("decode legacy created mutation: %v", err)
+	}
+	if decoded.MutationType != service.MessageMutationCreated || decoded.Revision != 1 || decoded.ActorUUID != "U1" {
+		t.Fatalf("unexpected normalized mutation: %+v", decoded)
 	}
 }
 
