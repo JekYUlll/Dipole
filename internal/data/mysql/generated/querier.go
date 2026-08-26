@@ -31,6 +31,8 @@ type Querier interface {
 	CreateGroupMember(ctx context.Context, arg CreateGroupMemberParams) (sql.Result, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (sql.Result, error)
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (sql.Result, error)
+	CreateSyncInboxBaselineEntry(ctx context.Context, arg CreateSyncInboxBaselineEntryParams) error
+	CreateSyncInboxBaselineJob(ctx context.Context, arg CreateSyncInboxBaselineJobParams) error
 	CreateUploadedFile(ctx context.Context, arg CreateUploadedFileParams) (sql.Result, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error)
 	CreateUserSyncInbox(ctx context.Context, arg CreateUserSyncInboxParams) (sql.Result, error)
@@ -64,6 +66,9 @@ type Querier interface {
 	GetMessageSearchState(ctx context.Context, messageUuid string) (GetMessageSearchStateRow, error)
 	GetSearchBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetSearchBackfillJob(ctx context.Context, jobName string) (SearchBackfillJob, error)
+	GetSyncCreatedOutboxBounds(ctx context.Context) (GetSyncCreatedOutboxBoundsRow, error)
+	GetSyncInboxBaselineJob(ctx context.Context, jobName string) (SyncInboxBaselineJob, error)
+	GetSyncInboxHighWatermark(ctx context.Context) (int64, error)
 	GetSyncReplayHighWatermark(ctx context.Context) (uint64, error)
 	GetSyncReplayJob(ctx context.Context, jobName string) (SyncReplayJob, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
@@ -78,6 +83,8 @@ type Querier interface {
 	ListGroupSyncCheckpoints(ctx context.Context, arg ListGroupSyncCheckpointsParams) ([]ListGroupSyncCheckpointsRow, error)
 	ListIncomingContactApplications(ctx context.Context, targetUuid string) ([]ContactApplication, error)
 	ListLatestSearchMutationsForBackfill(ctx context.Context, arg ListLatestSearchMutationsForBackfillParams) ([]ListLatestSearchMutationsForBackfillRow, error)
+	ListLegacySyncInbox(ctx context.Context) ([]ListLegacySyncInboxRow, error)
+	ListLegacySyncInboxThrough(ctx context.Context, throughSyncSeq uint64) ([]ListLegacySyncInboxThroughRow, error)
 	ListMessagesByConversationAfter(ctx context.Context, arg ListMessagesByConversationAfterParams) ([]Message, error)
 	ListMessagesByConversationBefore(ctx context.Context, arg ListMessagesByConversationBeforeParams) ([]Message, error)
 	ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error)
@@ -87,6 +94,7 @@ type Querier interface {
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
+	ListSyncInboxBaselineEntries(ctx context.Context, jobName string) ([]ListSyncInboxBaselineEntriesRow, error)
 	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)
 	ListSyncReplayEvents(ctx context.Context, arg ListSyncReplayEventsParams) ([]ListSyncReplayEventsRow, error)
 	ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncInboxAfterParams) ([]UserSyncInbox, error)
@@ -104,6 +112,7 @@ type Querier interface {
 	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
+	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)

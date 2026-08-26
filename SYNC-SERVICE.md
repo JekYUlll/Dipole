@@ -76,7 +76,7 @@ go run ./cmd/sync-reconcile --job sync-inbox-20260827 --batch-size 500
 
 Replay 只读取 `message.direct.created` 与 `message.group.created` Outbox，并在首次领取 job 时固化相关事件最大 ID。每批全部成功后才推进 checkpoint；进程中断、lease 过期或目标冲突时可以由新 owner 继续。热群事件计入处理水位，但按 `sync_fanout=false` 跳过用户 Inbox。
 
-该快照覆盖具有 created Outbox 的消息。早期未产生 Outbox 的本地消息不在报告内，尤其不能使用当前群成员关系猜测历史群收件人；对应 baseline 归档与跨边界恢复由 `AD-024` 跟踪。
+该快照覆盖具有 created Outbox 的消息。早期未产生 Outbox 的本地消息通过下述历史 baseline 保留原始 recipient/locator，禁止使用当前群成员关系猜测历史收件人。
 
 Reconcile 要求对应 job 已完成，对快照内每个 Message UUID 精确比较预期收件人与实际 `user_uuid + conversation_key + message_seq`。一致时退出 0；缺行、额外收件人或 locator 冲突时输出有界 JSON 示例并退出 2。已完成 job 永久绑定原始高水位；需要再次修复时创建新 job 名，保留每次审计的快照边界。
 
@@ -86,4 +86,31 @@ Reconcile 要求对应 job 已完成，对快照内每个 Message UUID 精确比
 ./scripts/smoke-sync-recovery.sh
 ```
 
-Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异门禁。历史 baseline、Kafka lag、retry/DLQ 告警、投影 catch-up 窗口以及 Message 写权限退役仍需后续切片完成。
+Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异门禁。Kafka lag、retry/DLQ 告警、投影 catch-up 窗口以及 Message 写权限退役仍需后续切片完成。
+
+## 历史 Inbox baseline
+
+migration v11 增加不可变 baseline Job/Entry。切换写责任前，在 Message 原子写仍开启且业务写入已受控的维护窗口执行：
+
+```bash
+go run ./cmd/sync-baseline --action capture --job sync-legacy-20260827
+go run ./cmd/sync-baseline --action reconcile --job sync-legacy-20260827
+```
+
+Capture 在 Repeatable Read 事务中固定当前 Inbox `sync_seq` 高水位，并归档所有找不到 created Outbox 的行。归档保留原始 `sync_seq + user_uuid + message_uuid + conversation_key + message_seq`，Manifest 记录 created Outbox 首尾 ID、行数和规范化 SHA-256。相同 Job 名重复 Capture 只校验并返回原归档，不移动边界。
+
+Reconcile 扫描全部缺少 created Outbox 的当前 Inbox；快照后继续产生的 legacy 行会报告为 extra，原 recipient/locator 或 `sync_seq` 变化会报告为 conflicting，缺行报告为 missing。差异时输出有界 JSON 并退出 2。
+
+仅 missing 状态允许自动恢复：
+
+```bash
+go run ./cmd/sync-baseline --action restore --job sync-legacy-20260827
+```
+
+Restore 在单事务内以原 `sync_seq` 补齐缺失行。存在 extra/conflicting 时停止并退出 1，避免覆盖 Cursor 或收件人证据。隔离验收命令：
+
+```bash
+./scripts/smoke-sync-baseline.sh
+```
+
+写责任切换门禁需要同时满足历史 baseline Reconcile 与 Outbox-era Replay Reconcile；baseline 表在旧 Offline API 和 Message Inbox 回滚窗口结束前保留。
