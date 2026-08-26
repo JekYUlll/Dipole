@@ -39,6 +39,11 @@ type TLS struct {
 	KeyFile  string `mapstructure:"key_file"`
 }
 
+type Metrics struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Address string `mapstructure:"address"`
+}
+
 type MySQL struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -204,6 +209,8 @@ func Load() error {
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
+		v.SetDefault("metrics.enabled", false)
+		v.SetDefault("metrics.address", "127.0.0.1:9100")
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
@@ -299,6 +306,8 @@ func Load() error {
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
+			"metrics.enabled",
+			"metrics.address",
 			"auth.token_ttl_hours",
 			"auth.jwt_secret",
 			"auth.jwt_issuer",
@@ -466,6 +475,14 @@ func TLSConfig() TLS {
 	}
 
 	return tlsConfig
+}
+
+func MetricsConfig() Metrics {
+	MustLoad()
+	return Metrics{
+		Enabled: cfg.GetBool("metrics.enabled"),
+		Address: strings.TrimSpace(cfg.GetString("metrics.address")),
+	}
 }
 
 func RedisConfig() Redis {

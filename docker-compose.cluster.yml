@@ -51,7 +51,40 @@ services:
     volumes:
       - kafka_cluster_3_data:/var/lib/kafka/data
 
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka-1:9092
+      - --kafka.server=kafka-2:9092
+      - --kafka.server=kafka-3:9092
+      - --topic.filter=^dipole\..*
+      - --group.filter=^dipole.*
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/observability/kafka-alerts.yml:/etc/prometheus/kafka-alerts.yml:ro
+      - prometheus_cluster_data:/prometheus
+    depends_on:
+      - kafka-exporter
+
 volumes:
   kafka_cluster_1_data:
   kafka_cluster_2_data:
   kafka_cluster_3_data:
+  prometheus_cluster_data:
