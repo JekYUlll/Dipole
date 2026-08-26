@@ -6,10 +6,13 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
+	CreateUploadedFile(ctx context.Context, arg CreateUploadedFileParams) (sql.Result, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
+	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error

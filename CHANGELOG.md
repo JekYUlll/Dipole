@@ -29,6 +29,7 @@
 - 增加固定 sqlc `v1.31.1` 的生成配置与漂移门禁、`database/sql` 事务 Store、错误映射及首组 AICallLog 类型安全查询。
 - 增加 `AICallLogStore` application port、GORM 可注入 adapter、sqlc adapter 及共享 MySQL contract test。
 - 增加 `AdminOverviewStore` application port 与 Admin sqlc adapter，以单条聚合查询替代九次独立统计查询，并通过 GORM/sqlc 共享契约验证。
+- 增加 `FileMetadataStore` application port 与 File sqlc adapter，保持创建后的 ID/时间戳回填和缺失查询语义，并纳入统一回切开关。
 
 ### 变更
 
@@ -36,7 +37,7 @@
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
 - Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
 - 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
-- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog 与 Admin Repository，其余仓储保持 GORM。
+- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin 与 File Repository，其余仓储保持 GORM。
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
@@ -65,6 +66,7 @@
 - 已通过 sqlc Store 的 MySQL 8.4 提交、回滚与幂等插入集成测试。
 - 已通过 AICallLog GORM/sqlc 双适配的幂等、成功更新与失败更新契约测试。
 - 已通过 Admin GORM/sqlc 双适配的九项统计结果契约测试。
+- 已通过 File GORM/sqlc 双适配的创建回填、查询与缺失结果契约测试。
 
 ### 已知问题
 

@@ -26,7 +26,7 @@ type RepositoryOptions struct {
 type Repositories struct {
 	Users         *repository.UserRepository
 	Messages      *repository.MessageRepository
-	Files         *repository.FileRepository
+	Files         application.FileMetadataStore
 	Conversations *repository.ConversationRepository
 	Contacts      *repository.ContactRepository
 	Groups        *repository.GroupRepository
@@ -74,6 +74,11 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc admin repository: %w", err)
 		}
 		repos.Admin = adminAdapter
+		fileAdapter, err := sqlcRepository.NewFileRepository(generated.New(options.SQLDB))
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc file repository: %w", err)
+		}
+		repos.Files = fileAdapter
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}
