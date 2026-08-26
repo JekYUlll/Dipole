@@ -1,0 +1,35 @@
+groups:
+  - name: dipole-web-sync-shadow
+    rules:
+      - record: dipole:web_sync_shadow:matches_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}[24h]))
+
+      - record: dipole:web_sync_shadow:terminal_differences_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome=~"legacy_only|sync_only"}[24h]))
+
+      - record: dipole:web_sync_shadow:overflows_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}[24h]))
+
+      - record: dipole:web_sync_shadow:window_complete
+        expr: (count(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"} offset 24h) or vector(0)) > bool 0
+
+      - record: dipole:web_sync_shadow:promotion_ready
+        expr: |
+          dipole:web_sync_shadow:window_complete
+          * (dipole:web_sync_shadow:matches_24h >= bool 100)
+          * (dipole:web_sync_shadow:terminal_differences_24h == bool 0)
+          * (dipole:web_sync_shadow:overflows_24h == bool 0)
+
+      - alert: DipoleWebSyncShadowDivergence
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome=~"legacy_only|sync_only"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Offline and Sync shadow protocols produced a terminal difference
+
+      - alert: DipoleWebSyncShadowOverflow
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Sync shadow comparator exceeded its bounded local state

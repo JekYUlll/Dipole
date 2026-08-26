@@ -18,7 +18,7 @@
 - **状态：** 暂缓
 - **发现日期：** 2026-08-27
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
-- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。Web 已增加默认关闭的 IndexedDB Sync Engine、`shadow` 双跑模式和聚合对照指标，可忽略 Cassandra 响应中的 MySQL internal ID，并在本地事务完成后 ACK `sync_seq`；真实观察窗口和旧客户端兼容周期尚未完成。按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
+- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。Web 已增加默认关闭的 IndexedDB Sync Engine、`shadow` 双跑模式和聚合对照指标，可忽略 Cassandra 响应中的 MySQL internal ID，并在本地事务完成后 ACK `sync_seq`；24 小时门禁已固化为至少 100 个 match、零终态单边差异和零 overflow，真实观察窗口和旧客户端兼容周期尚未完成。按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
 - **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 先灰度 Web IndexedDB Sync Engine 并归档 Offline/Sync UUID 对照结果，再为 Cassandra hydration 增加受控主读与 MySQL fallback。另行建立幂等结果快照或 UUID locator、独立文件授权元数据；所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
