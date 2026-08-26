@@ -152,6 +152,20 @@ type SearchBackfillJob struct {
 	UpdatedAt             time.Time
 }
 
+type SyncReplayJob struct {
+	JobName               string
+	Status                string
+	SourceHighWatermarkID uint64
+	LastProcessedID       uint64
+	OwnerID               string
+	LeaseExpiresAt        sql.NullTime
+	AttemptCount          uint64
+	LastError             string
+	CompletedAt           sql.NullTime
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type UploadedFile struct {
 	ID           uint64
 	Uuid         string

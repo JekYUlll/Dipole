@@ -27,6 +27,12 @@ LIMIT ?;
 -- name: GetLatestUserSyncSequence :one
 SELECT CAST(COALESCE(MAX(sync_seq), 0) AS UNSIGNED) FROM user_sync_inbox WHERE user_uuid = ?;
 
+-- name: ListSyncInboxLocatorsByMessageUUID :many
+SELECT user_uuid, message_uuid, conversation_key, message_seq
+FROM user_sync_inbox
+WHERE message_uuid = ?
+ORDER BY user_uuid ASC;
+
 -- name: GetDeviceSyncCheckpoint :one
 SELECT user_uuid, device_id, sync_seq, created_at, updated_at
 FROM device_sync_checkpoints

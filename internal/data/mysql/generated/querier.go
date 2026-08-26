@@ -17,11 +17,14 @@ type Querier interface {
 	AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error
 	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
 	AdvanceSearchBackfillJob(ctx context.Context, arg AdvanceSearchBackfillJobParams) (sql.Result, error)
+	AdvanceSyncReplayJob(ctx context.Context, arg AdvanceSyncReplayJobParams) (sql.Result, error)
 	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
+	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
 	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CompleteSearchBackfillJob(ctx context.Context, arg CompleteSearchBackfillJobParams) (sql.Result, error)
+	CompleteSyncReplayJob(ctx context.Context, arg CompleteSyncReplayJobParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
 	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (sql.Result, error)
@@ -37,9 +40,11 @@ type Querier interface {
 	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error
+	EnsureSyncReplayJob(ctx context.Context, arg EnsureSyncReplayJobParams) error
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
+	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetCassandraBackfillHighWatermark(ctx context.Context) (uint64, error)
@@ -59,6 +64,8 @@ type Querier interface {
 	GetMessageSearchState(ctx context.Context, messageUuid string) (GetMessageSearchStateRow, error)
 	GetSearchBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetSearchBackfillJob(ctx context.Context, jobName string) (SearchBackfillJob, error)
+	GetSyncReplayHighWatermark(ctx context.Context) (uint64, error)
+	GetSyncReplayJob(ctx context.Context, jobName string) (SyncReplayJob, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
 	GetUserByTelephone(ctx context.Context, telephone string) (User, error)
 	GetUserByUUID(ctx context.Context, uuid string) (User, error)
@@ -80,6 +87,8 @@ type Querier interface {
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
+	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)
+	ListSyncReplayEvents(ctx context.Context, arg ListSyncReplayEventsParams) ([]ListSyncReplayEventsRow, error)
 	ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncInboxAfterParams) ([]UserSyncInbox, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
@@ -87,6 +96,7 @@ type Querier interface {
 	LockCassandraBackfillJob(ctx context.Context, jobName string) (LockCassandraBackfillJobRow, error)
 	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	LockSearchBackfillJob(ctx context.Context, jobName string) (LockSearchBackfillJobRow, error)
+	LockSyncReplayJob(ctx context.Context, jobName string) (LockSyncReplayJobRow, error)
 	LockUserSyncState(ctx context.Context, userUuid string) (string, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error

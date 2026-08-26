@@ -8,3 +8,11 @@ type SyncProjection struct {
 	MessageSeq      uint64
 	RecipientUUIDs  []string
 }
+
+// SyncInboxLocator is one persisted recipient location used by reconciliation.
+type SyncInboxLocator struct {
+	UserUUID        string
+	MessageUUID     string
+	ConversationKey string
+	MessageSeq      uint64
+}

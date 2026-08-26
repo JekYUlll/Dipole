@@ -64,3 +64,26 @@ sync:
 切流前可开启 `sync.shadow_queries=true`，异步比较 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 的 Local/Remote 结果。Checkpoint advance 属于写操作，只会在 `sync.transport` 选定的主实现执行一次，不参与影子调用。关闭影子开关不会改变主链路响应。
 
 Projector 异常时先恢复 `sync.projector_enabled=false` 并重启 `dipole-sync`。Message 事务仍持有 Inbox 写入责任，因此停用 Projector 不会形成新的同步数据缺口。固定快照 Backfill/Reconcile 和 consumer lag 门禁完成前，不得移除 Message 的 Inbox 写权限。
+
+## 固定快照恢复与对账
+
+先使用 migration v10 创建 `sync_replay_jobs`，再执行：
+
+```bash
+go run ./cmd/sync-replay --job sync-inbox-20260827 --owner operator-a --batch-size 500
+go run ./cmd/sync-reconcile --job sync-inbox-20260827 --batch-size 500
+```
+
+Replay 只读取 `message.direct.created` 与 `message.group.created` Outbox，并在首次领取 job 时固化相关事件最大 ID。每批全部成功后才推进 checkpoint；进程中断、lease 过期或目标冲突时可以由新 owner 继续。热群事件计入处理水位，但按 `sync_fanout=false` 跳过用户 Inbox。
+
+该快照覆盖具有 created Outbox 的消息。早期未产生 Outbox 的本地消息不在报告内，尤其不能使用当前群成员关系猜测历史群收件人；对应 baseline 归档与跨边界恢复由 `AD-024` 跟踪。
+
+Reconcile 要求对应 job 已完成，对快照内每个 Message UUID 精确比较预期收件人与实际 `user_uuid + conversation_key + message_seq`。一致时退出 0；缺行、额外收件人或 locator 冲突时输出有界 JSON 示例并退出 2。已完成 job 永久绑定原始高水位；需要再次修复时创建新 job 名，保留每次审计的快照边界。
+
+本地隔离验收：
+
+```bash
+./scripts/smoke-sync-recovery.sh
+```
+
+Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异门禁。历史 baseline、Kafka lag、retry/DLQ 告警、投影 catch-up 窗口以及 Message 写权限退役仍需后续切片完成。

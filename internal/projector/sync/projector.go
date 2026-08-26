@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -51,39 +50,9 @@ func projectionFromEvent(event platformkafka.Event) (*model.SyncProjection, bool
 	if event.Envelope == nil {
 		return nil, false, errors.New("Kafka envelope is required")
 	}
-	expectedTarget := int8(-1)
-	switch event.Envelope.EventType {
-	case topics[0]:
-		expectedTarget = model.MessageTargetDirect
-	case topics[1]:
-		expectedTarget = model.MessageTargetGroup
-	default:
-		return nil, false, fmt.Errorf("unsupported Sync projection event type %q", event.Envelope.EventType)
-	}
 	var payload service.MessageEventPayload
 	if err := json.Unmarshal(event.Envelope.Payload, &payload); err != nil {
 		return nil, false, fmt.Errorf("decode Sync projection payload: %w", err)
 	}
-	if payload.TargetType != expectedTarget {
-		return nil, false, fmt.Errorf("Sync event target type %d conflicts with %s", payload.TargetType, event.Envelope.EventType)
-	}
-	if strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" || payload.MessageSeq == 0 {
-		return nil, false, errors.New("Sync projection requires message_id, conversation_key, and message_seq")
-	}
-	fanout := payload.SyncFanout == nil || *payload.SyncFanout
-	if !fanout {
-		return nil, false, nil
-	}
-	recipients := append([]string(nil), payload.RecipientUUIDs...)
-	if len(recipients) == 0 && expectedTarget == model.MessageTargetDirect {
-		recipients = []string{payload.SenderUUID, payload.TargetUUID}
-	}
-	if len(recipients) == 0 {
-		return nil, false, errors.New("Sync group projection requires recipient snapshot")
-	}
-	return &model.SyncProjection{
-		EventID: event.Envelope.EventID, MessageUUID: strings.TrimSpace(payload.MessageID),
-		ConversationKey: strings.TrimSpace(payload.ConversationKey), MessageSeq: payload.MessageSeq,
-		RecipientUUIDs: recipients,
-	}, true, nil
+	return service.MessageSyncProjection(event.Envelope.EventID, event.Envelope.EventType, payload)
 }

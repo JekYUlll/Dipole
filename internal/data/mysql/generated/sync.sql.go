@@ -222,6 +222,48 @@ func (q *Queries) ListGroupSyncCheckpoints(ctx context.Context, arg ListGroupSyn
 	return items, nil
 }
 
+const listSyncInboxLocatorsByMessageUUID = `-- name: ListSyncInboxLocatorsByMessageUUID :many
+SELECT user_uuid, message_uuid, conversation_key, message_seq
+FROM user_sync_inbox
+WHERE message_uuid = ?
+ORDER BY user_uuid ASC
+`
+
+type ListSyncInboxLocatorsByMessageUUIDRow struct {
+	UserUuid        string
+	MessageUuid     string
+	ConversationKey string
+	MessageSeq      uint64
+}
+
+func (q *Queries) ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSyncInboxLocatorsByMessageUUID, messageUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSyncInboxLocatorsByMessageUUIDRow{}
+	for rows.Next() {
+		var i ListSyncInboxLocatorsByMessageUUIDRow
+		if err := rows.Scan(
+			&i.UserUuid,
+			&i.MessageUuid,
+			&i.ConversationKey,
+			&i.MessageSeq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserSyncInboxAfter = `-- name: ListUserSyncInboxAfter :many
 SELECT sync_seq, user_uuid, message_uuid, conversation_key, created_at, message_seq FROM user_sync_inbox
 WHERE user_uuid = ? AND sync_seq > ?
