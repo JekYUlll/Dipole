@@ -13,7 +13,10 @@ import (
 	"github.com/apache/cassandra-gocql-driver/v2"
 )
 
-const DefaultTimelineBucketSize uint64 = 10_000
+const (
+	DefaultTimelineBucketSize uint64 = 10_000
+	TimelineTableName                = "timeline_by_conversation_bucket"
+)
 
 var ErrProjectionConflict = errors.New("Cassandra timeline projection conflicts with existing sequence")
 

@@ -1,6 +1,8 @@
 package kafka
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -121,5 +123,24 @@ func TestPublisherRejectsImpossibleDurabilityBeforeDial(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "min ISR 2 exceeds replication factor 1") {
 		t.Fatalf("expected durability configuration error, got %v", err)
+	}
+}
+
+func TestReadTopicPartitionsRetriesMetadataPropagation(t *testing.T) {
+	t.Parallel()
+
+	attempts := 0
+	partitions, err := readTopicPartitionsWithRetry(context.Background(), func() ([]kafkago.Partition, error) {
+		attempts++
+		if attempts < 3 {
+			return nil, errors.New("unknown topic or partition")
+		}
+		return []kafkago.Partition{{Topic: "dipole.message.created", ID: 0}}, nil
+	})
+	if err != nil {
+		t.Fatalf("read topic partitions: %v", err)
+	}
+	if attempts != 3 || len(partitions) != 1 {
+		t.Fatalf("expected metadata on third attempt, attempts=%d partitions=%v", attempts, partitions)
 	}
 }

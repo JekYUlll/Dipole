@@ -20,11 +20,22 @@ compose() {
   docker compose -p "$project" -f "$compose_file" "$@"
 }
 
-if rg -i 'cassandra|elasticsearch' \
+if ! sed -n '/^cassandra:/,/^[^ ]/p' "$root_dir/configs/config.dist.yaml" | rg -q '^  enabled: false$'; then
+  printf 'Cassandra must remain disabled in the default application configuration\n' >&2
+  exit 1
+fi
+if rg -i 'cassandra' \
+  "$root_dir/internal/bootstrap/runtime.go" \
+  "$root_dir/internal/bootstrap/message_runtime.go" \
+  "$root_dir/internal/bootstrap/gateway_runtime.go"; then
+  printf 'Cassandra must stay outside Core, Message, and Gateway composition roots\n' >&2
+  exit 1
+fi
+if rg -i 'elasticsearch' \
   "$root_dir/internal/config" \
   "$root_dir/internal/bootstrap" \
   "$root_dir/configs/config.dist.yaml"; then
-  printf 'Cassandra or Elasticsearch is wired into the application before the isolated-lab gate is complete\n' >&2
+  printf 'Elasticsearch is wired into the application before its projection phase\n' >&2
   exit 1
 fi
 
@@ -75,5 +86,5 @@ if [[ "$elastic_hits" != "1" ]]; then
 fi
 compose exec -T elasticsearch curl -fsS -X DELETE http://127.0.0.1:9200/dipole-search-smoke >/dev/null
 
-printf 'Storage lab smoke passed: Cassandra %s and Elasticsearch %s completed isolated CRUD with zero application wiring.\n' \
+printf 'Storage lab smoke passed: Cassandra %s and Elasticsearch %s completed isolated CRUD with zero production traffic.\n' \
   "$cassandra_version" "$elastic_version"

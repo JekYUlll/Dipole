@@ -33,6 +33,9 @@ func TestTimelineStoreContract(t *testing.T) {
 
 	session := openCassandraSession(t, hosts, "dipole_message_shadow")
 	t.Cleanup(func() { session.Close() })
+	if err := ValidateTimelineSchema(context.Background(), session, "dipole_message_shadow"); err != nil {
+		t.Fatalf("validate Cassandra timeline schema: %v", err)
+	}
 	if err := session.Query("TRUNCATE timeline_by_conversation_bucket").Exec(); err != nil {
 		t.Fatalf("truncate Cassandra timeline: %v", err)
 	}
