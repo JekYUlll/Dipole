@@ -1,0 +1,14 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "message_uuid": { "type": "keyword" },
+    "conversation_key": { "type": "keyword" },
+    "message_seq": { "type": "long" },
+    "revision": { "type": "long" },
+    "sender_uuid": { "type": "keyword" },
+    "message_type": { "type": "byte" },
+    "content": { "type": "text" },
+    "sent_at": { "type": "date" },
+    "payload_hash": { "type": "keyword", "index": false }
+  }
+}

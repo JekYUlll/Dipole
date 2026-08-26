@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-020：Search 删除接口缺少 mutation revision
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** `SearchIndex.Delete`、Elasticsearch recall/delete、Kafka 乱序重放
+- **现状：** Elasticsearch Upsert 已使用外部 revision 和 payload hash 分类重放、旧事件与冲突；现有存储中立接口仍是 `Delete(messageUUID)`，无法表达 recall/delete 的单调 revision。Elasticsearch 的物理删除标记有保留期，较晚到达的旧 created/edited 事件可能重新创建文档。
+- **风险：** mutation projector 若直接复用当前 Delete，会失去跨事件顺序保护，搜索结果可能短暂或长期恢复已撤回内容。
+- **建议方向：** 定义版本化 Search mutation 契约；recall/delete 写入无正文、不可搜索的 tombstone 文档并保留 revision/hash，edited 使用同一 external version 规则。MySQL 逻辑索引同步增加 revision 条件，保证两种实现共享行为 contract。
+- **处理门槛：** 独立 Search Indexer 订阅 edited/recalled/deleted Topic 前完成，并通过乱序、重复和同 revision 冲突测试。
+
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
 - **优先级：** P1
