@@ -18,6 +18,7 @@ type ConversationNotifier interface {
 
 type MessagingDependencies struct {
 	Events               applicationPort.EventPublisher
+	Core                 applicationPort.CoreCapability
 	HotGroups            HotGroupObserver
 	Storage              platformStorage.ObjectStorage
 	ConversationNotifier ConversationNotifier
@@ -40,14 +41,17 @@ type LocalSyncApplication struct {
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
 	files := service.NewFileService(repos.Files, repos.Messages, dependencies.Storage)
-	core := NewLocalCoreCapability(repos)
+	core := dependencies.Core
+	if core == nil {
+		core = NewLocalCoreCapability(repos)
+	}
 
 	return &MessagingServices{
 		Files: files,
 		Messages: &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
 			repos.Messages,
 			core,
-			files,
+			nil,
 			dependencies.Events,
 			dependencies.HotGroups,
 		)},
@@ -60,4 +64,14 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		),
 		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync)},
 	}
+}
+
+func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *LocalMessageApplication {
+	return &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
+		messages,
+		core,
+		nil,
+		dependencies.Events,
+		dependencies.HotGroups,
+	)}
 }

@@ -29,3 +29,11 @@ func (c *LocalCoreCapability) GetGroupMember(groupUUID, userUUID string) (*model
 func (c *LocalCoreCapability) ListGroupMembers(groupUUID string) ([]*model.GroupMember, error) {
 	return c.repos.Groups.ListMembers(groupUUID)
 }
+
+func (c *LocalCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	file, err := c.repos.Files.GetByUUID(fileUUID)
+	if err != nil || file == nil || file.UploaderUUID != uploaderUUID {
+		return nil, err
+	}
+	return file, nil
+}

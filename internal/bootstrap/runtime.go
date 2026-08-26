@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
@@ -29,6 +30,7 @@ type Runtime struct {
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *outboxRelay
 	messageFlow *messageApplicationTransport
+	coreRPC     *InternalRPCServer
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -133,15 +135,29 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		HotGroups: platformHotGroup.NewRedisDetector(),
 		Storage:   platformStorage.Client,
 	})
-	messageFlow, err := newMessageApplicationTransport(config.MessageConfig(), localMessaging.Messages)
+	rpcCfg := config.InternalRPCConfig()
+	var coreRPC *InternalRPCServer
+	if rpcCfg.Enabled {
+		coreRPC, err = NewCoreRPCServer(rpcCfg, appComposition.NewLocalCoreCapability(repos))
+		if err != nil {
+			return nil, fmt.Errorf("initialize core rpc server: %w", err)
+		}
+		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
+	}
+	messageFlow, err := newMessageApplicationTransport(ctx, config.MessageConfig(), rpcCfg, localMessaging.Messages)
 	if err != nil {
+		if coreRPC != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			coreRPC.Close(shutdownCtx)
+			cancel()
+		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application})
+	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Messaging: localMessaging})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
-	rt := &Runtime{server: srv, messageFlow: messageFlow}
+	rt := &Runtime{server: srv, messageFlow: messageFlow, coreRPC: coreRPC}
 	var wsEventSender kafkaWSEventSender = srv.WSHub()
 	if kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
 		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
@@ -156,10 +172,16 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			)
 		}
 	}
-	if err := RegisterKafkaHandlersWithRepositories(wsEventSender, repos); err != nil {
-		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
+	registerErr := registerCoreKafkaHandlers(
+		wsEventSender,
+		repos,
+		localMessaging,
+		config.MessageConfig().Transport != "grpc",
+	)
+	if registerErr != nil {
+		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}
-	if kafkaCfg.Enabled && platformKafka.Client != nil {
+	if kafkaCfg.Enabled && platformKafka.Client != nil && config.MessageConfig().Transport != "grpc" {
 		if err := platformKafka.Client.EnsureTopics(kafkaManagedTopics()); err != nil {
 			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
 		}
@@ -211,6 +233,15 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if r.coreRPC != nil {
+		shutdownSeconds := config.InternalRPCConfig().ShutdownTimeoutSeconds
+		if shutdownSeconds <= 0 {
+			shutdownSeconds = 15
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownSeconds)*time.Second)
+		r.coreRPC.Close(ctx)
+		cancel()
+	}
 	if r.messageFlow != nil {
 		r.messageFlow.Close()
 	}

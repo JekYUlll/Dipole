@@ -13,6 +13,25 @@ func TestNewRepositoriesRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestNewMessageProcessRepositoriesRequiresDatabase(t *testing.T) {
+	if _, err := NewMessageProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+}
+
+func TestNewMessageProcessRepositoriesBuildsOnlyOwnedAdapters(t *testing.T) {
+	repos, err := NewMessageProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new message process repositories: %v", err)
+	}
+	if _, ok := repos.Messages.(*sqlcRepository.MessageRepository); !ok {
+		t.Fatalf("expected sqlc message repository, got %T", repos.Messages)
+	}
+	if _, ok := repos.Outbox.(*sqlcRepository.OutboxRepository); !ok {
+		t.Fatalf("expected sqlc outbox repository, got %T", repos.Outbox)
+	}
+}
+
 func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	repos, err := NewRepositories(&sql.DB{})
 	if err != nil {

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -23,6 +24,8 @@ const (
 type outboxRelay struct {
 	repo   application.OutboxRelayStore
 	stopCh chan struct{}
+	stop   sync.Once
+	work   sync.WaitGroup
 }
 
 func newOutboxRelay(repo application.OutboxRelayStore) *outboxRelay {
@@ -41,7 +44,11 @@ func (r *outboxRelay) Start() {
 		return
 	}
 
-	go r.loop()
+	r.work.Add(1)
+	go func() {
+		defer r.work.Done()
+		r.loop()
+	}()
 }
 
 func (r *outboxRelay) Stop() {
@@ -49,11 +56,8 @@ func (r *outboxRelay) Stop() {
 		return
 	}
 
-	select {
-	case <-r.stopCh:
-	default:
-		close(r.stopCh)
-	}
+	r.stop.Do(func() { close(r.stopCh) })
+	r.work.Wait()
 }
 
 func (r *outboxRelay) loop() {

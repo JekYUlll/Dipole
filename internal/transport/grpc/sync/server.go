@@ -24,7 +24,10 @@ func NewServer(application application.SyncApplication) (*Server, error) {
 	return &Server{application: application}, nil
 }
 
-func (s *Server) ListSyncMessages(_ context.Context, request *syncv1.ListSyncMessagesRequest) (*syncv1.ListSyncMessagesResponse, error) {
+func (s *Server) ListSyncMessages(ctx context.Context, request *syncv1.ListSyncMessagesRequest) (*syncv1.ListSyncMessagesResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
 	principal, err := grpccommon.Principal(request.GetContext())
 	if err != nil {
 		return nil, err

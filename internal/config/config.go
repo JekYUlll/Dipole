@@ -69,7 +69,26 @@ type Kafka struct {
 }
 
 type Message struct {
-	Transport string `mapstructure:"transport"`
+	Transport            string `mapstructure:"transport"`
+	RuntimeMode          string `mapstructure:"runtime_mode"`
+	ShadowQueries        bool   `mapstructure:"shadow_queries"`
+	EnforceDBPermissions bool   `mapstructure:"enforce_db_permissions"`
+}
+
+type InternalRPC struct {
+	Enabled                bool   `mapstructure:"enabled"`
+	SharedSecret           string `mapstructure:"shared_secret"`
+	CoreListenAddress      string `mapstructure:"core_listen_address"`
+	CoreTarget             string `mapstructure:"core_target"`
+	MessageListenAddress   string `mapstructure:"message_listen_address"`
+	MessageTarget          string `mapstructure:"message_target"`
+	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled             bool   `mapstructure:"tls_enabled"`
+	TLSCertFile            string `mapstructure:"tls_cert_file"`
+	TLSKeyFile             string `mapstructure:"tls_key_file"`
+	TLSCAFile              string `mapstructure:"tls_ca_file"`
+	TLSServerName          string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
@@ -185,6 +204,22 @@ func Load() error {
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
 		v.SetDefault("message.transport", "local")
+		v.SetDefault("message.runtime_mode", "owner")
+		v.SetDefault("message.shadow_queries", false)
+		v.SetDefault("message.enforce_db_permissions", false)
+		v.SetDefault("internal_rpc.enabled", false)
+		v.SetDefault("internal_rpc.shared_secret", "")
+		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.core_target", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.message_listen_address", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.message_target", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
+		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
+		v.SetDefault("internal_rpc.tls_enabled", false)
+		v.SetDefault("internal_rpc.tls_cert_file", "")
+		v.SetDefault("internal_rpc.tls_key_file", "")
+		v.SetDefault("internal_rpc.tls_ca_file", "")
+		v.SetDefault("internal_rpc.tls_server_name", "")
 		v.SetDefault("storage.enabled", false)
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
@@ -265,6 +300,22 @@ func Load() error {
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
 			"message.transport",
+			"message.runtime_mode",
+			"message.shadow_queries",
+			"message.enforce_db_permissions",
+			"internal_rpc.enabled",
+			"internal_rpc.shared_secret",
+			"internal_rpc.core_listen_address",
+			"internal_rpc.core_target",
+			"internal_rpc.message_listen_address",
+			"internal_rpc.message_target",
+			"internal_rpc.dial_timeout_seconds",
+			"internal_rpc.shutdown_timeout_seconds",
+			"internal_rpc.tls_enabled",
+			"internal_rpc.tls_cert_file",
+			"internal_rpc.tls_key_file",
+			"internal_rpc.tls_ca_file",
+			"internal_rpc.tls_server_name",
 			"storage.enabled",
 			"storage.provider",
 			"storage.endpoint",
@@ -436,7 +487,36 @@ func KafkaConfig() Kafka {
 func MessageConfig() Message {
 	MustLoad()
 
-	return Message{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport")))}
+	return Message{
+		Transport:            strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
+		RuntimeMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
+		ShadowQueries:        cfg.GetBool("message.shadow_queries"),
+		EnforceDBPermissions: cfg.GetBool("message.enforce_db_permissions"),
+	}
+}
+
+func InternalRPCConfig() InternalRPC {
+	MustLoad()
+
+	var internalRPC InternalRPC
+	if err := cfg.UnmarshalKey("internal_rpc", &internalRPC); err != nil {
+		panic(fmt.Errorf("unmarshal internal rpc config: %w", err))
+	}
+	internalRPC.Enabled = cfg.GetBool("internal_rpc.enabled")
+	internalRPC.SharedSecret = strings.TrimSpace(cfg.GetString("internal_rpc.shared_secret"))
+	internalRPC.CoreListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.core_listen_address"))
+	internalRPC.CoreTarget = strings.TrimSpace(cfg.GetString("internal_rpc.core_target"))
+	internalRPC.MessageListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.message_listen_address"))
+	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
+	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
+	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
+	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")
+	internalRPC.TLSCertFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_cert_file"))
+	internalRPC.TLSKeyFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_key_file"))
+	internalRPC.TLSCAFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_ca_file"))
+	internalRPC.TLSServerName = strings.TrimSpace(cfg.GetString("internal_rpc.tls_server_name"))
+
+	return internalRPC
 }
 
 func StorageConfig() Storage {

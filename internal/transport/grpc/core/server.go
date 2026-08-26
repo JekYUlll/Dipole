@@ -24,8 +24,8 @@ func NewServer(capability application.CoreCapability) (*Server, error) {
 	return &Server{capability: capability}, nil
 }
 
-func (s *Server) GetUser(_ context.Context, request *corev1.GetUserRequest) (*corev1.GetUserResponse, error) {
-	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+func (s *Server) GetUser(ctx context.Context, request *corev1.GetUserRequest) (*corev1.GetUserResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
 	user, err := s.capability.GetUserByUUID(request.GetUserId())
@@ -35,8 +35,8 @@ func (s *Server) GetUser(_ context.Context, request *corev1.GetUserRequest) (*co
 	return &corev1.GetUserResponse{User: userToProto(user)}, nil
 }
 
-func (s *Server) CanSendDirectMessage(_ context.Context, request *corev1.CanSendDirectMessageRequest) (*corev1.CanSendDirectMessageResponse, error) {
-	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+func (s *Server) CanSendDirectMessage(ctx context.Context, request *corev1.CanSendDirectMessageRequest) (*corev1.CanSendDirectMessageResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
 	allowed, err := s.capability.CanSendDirectMessage(request.GetUserId(), request.GetTargetUserId())
@@ -46,8 +46,8 @@ func (s *Server) CanSendDirectMessage(_ context.Context, request *corev1.CanSend
 	return &corev1.CanSendDirectMessageResponse{Allowed: allowed}, nil
 }
 
-func (s *Server) GetGroup(_ context.Context, request *corev1.GetGroupRequest) (*corev1.GetGroupResponse, error) {
-	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+func (s *Server) GetGroup(ctx context.Context, request *corev1.GetGroupRequest) (*corev1.GetGroupResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
 	group, err := s.capability.GetGroupByUUID(request.GetGroupId())
@@ -57,8 +57,8 @@ func (s *Server) GetGroup(_ context.Context, request *corev1.GetGroupRequest) (*
 	return &corev1.GetGroupResponse{Group: groupToProto(group)}, nil
 }
 
-func (s *Server) GetGroupMember(_ context.Context, request *corev1.GetGroupMemberRequest) (*corev1.GetGroupMemberResponse, error) {
-	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+func (s *Server) GetGroupMember(ctx context.Context, request *corev1.GetGroupMemberRequest) (*corev1.GetGroupMemberResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
 	member, err := s.capability.GetGroupMember(request.GetGroupId(), request.GetUserId())
@@ -68,8 +68,8 @@ func (s *Server) GetGroupMember(_ context.Context, request *corev1.GetGroupMembe
 	return &corev1.GetGroupMemberResponse{Member: memberToProto(member)}, nil
 }
 
-func (s *Server) ListGroupMembers(_ context.Context, request *corev1.ListGroupMembersRequest) (*corev1.ListGroupMembersResponse, error) {
-	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+func (s *Server) ListGroupMembers(ctx context.Context, request *corev1.ListGroupMembersRequest) (*corev1.ListGroupMembersResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
 	members, err := s.capability.ListGroupMembers(request.GetGroupId())
@@ -83,6 +83,17 @@ func (s *Server) ListGroupMembers(_ context.Context, request *corev1.ListGroupMe
 		}
 	}
 	return response, nil
+}
+
+func (s *Server) GetOwnedFile(ctx context.Context, request *corev1.GetOwnedFileRequest) (*corev1.GetOwnedFileResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	file, err := s.capability.GetOwnedFile(request.GetUploaderUserId(), request.GetFileId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "core file lookup failed")
+	}
+	return &corev1.GetOwnedFileResponse{File: fileToProto(file)}, nil
 }
 
 func userToProto(user *model.User) *corev1.UserSnapshot {
@@ -117,4 +128,18 @@ func memberToProto(member *model.GroupMember) *corev1.GroupMemberSnapshot {
 		return nil
 	}
 	return &corev1.GroupMemberSnapshot{GroupId: member.GroupUUID, UserId: member.UserUUID, Role: int32(member.Role)}
+}
+
+func fileToProto(file *model.UploadedFile) *corev1.FileSnapshot {
+	if file == nil {
+		return nil
+	}
+	return &corev1.FileSnapshot{
+		FileId:         file.UUID,
+		UploaderUserId: file.UploaderUUID,
+		FileName:       file.FileName,
+		FileSize:       file.FileSize,
+		ContentType:    file.ContentType,
+		Url:            file.URL,
+	}
 }

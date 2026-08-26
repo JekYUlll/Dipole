@@ -74,6 +74,13 @@ func NewConversationService(repo conversationRepository, userFinder conversation
 	}
 }
 
+func (s *ConversationService) WithNotifier(notifier conversationNotifier) *ConversationService {
+	if s != nil {
+		s.notifier = notifier
+	}
+	return s
+}
+
 func (s *ConversationService) UpdateDirectConversations(message *model.Message) error {
 	if message == nil || message.TargetType != model.MessageTargetDirect {
 		return nil

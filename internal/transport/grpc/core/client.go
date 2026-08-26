@@ -91,6 +91,20 @@ func (c *Client) ListGroupMembers(groupUUID string) ([]*model.GroupMember, error
 	return members, nil
 }
 
+func (c *Client) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.GetOwnedFile(ctx, &corev1.GetOwnedFileRequest{
+		Context:        coreContext(uploaderUUID),
+		UploaderUserId: uploaderUUID,
+		FileId:         fileUUID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return fileFromProto(response.GetFile()), nil
+}
+
 func coreContext(principal string) *commonv1.RequestContext {
 	return grpccommon.RequestContext(principal, "dipole-message")
 }
@@ -114,4 +128,18 @@ func memberFromProto(member *corev1.GroupMemberSnapshot) *model.GroupMember {
 		return nil
 	}
 	return &model.GroupMember{GroupUUID: member.GetGroupId(), UserUUID: member.GetUserId(), Role: int8(member.GetRole())}
+}
+
+func fileFromProto(file *corev1.FileSnapshot) *model.UploadedFile {
+	if file == nil {
+		return nil
+	}
+	return &model.UploadedFile{
+		UUID:         file.GetFileId(),
+		UploaderUUID: file.GetUploaderUserId(),
+		FileName:     file.GetFileName(),
+		FileSize:     file.GetFileSize(),
+		ContentType:  file.GetContentType(),
+		URL:          file.GetUrl(),
+	}
 }

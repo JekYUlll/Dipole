@@ -44,6 +44,14 @@ type groupHeatReader interface {
 }
 
 func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
+	return registerCoreKafkaHandlers(hub, repos, nil, true)
+}
+
+func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
+	return registerCoreKafkaHandlers(hub, repos, nil, false)
+}
+
+func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
@@ -56,10 +64,12 @@ func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appCom
 		events = platformKafka.Client
 	}
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
-	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
-		Events:    events,
-		HotGroups: hotGroupDetector,
-	})
+	if messaging == nil {
+		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+			Events:    events,
+			HotGroups: hotGroupDetector,
+		})
+	}
 	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
 	if aiService, err := newAIService(repos, messaging.Messages); err != nil {
 		return err
@@ -68,8 +78,9 @@ func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appCom
 	}
 	hotGroupNotifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 
-	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(messaging.Messages, "direct"))
-	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(messaging.Messages, "group"))
+	if includeMessagePersistence {
+		RegisterMessageKafkaHandlers(messaging.Messages)
+	}
 	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
 	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
 	if hub != nil {
@@ -132,6 +143,14 @@ func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appCom
 	platformKafka.Subscriber.Register("contact.friend.deleted", logKafkaEventHandler("contact.friend.deleted"))
 
 	return nil
+}
+
+func RegisterMessageKafkaHandlers(persister kafkaMessagePersister) {
+	if platformKafka.Subscriber == nil || persister == nil {
+		return
+	}
+	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(persister, "direct"))
+	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(persister, "group"))
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {

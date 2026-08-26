@@ -242,6 +242,90 @@ func (x *GroupMemberSnapshot) GetRole() int32 {
 	return 0
 }
 
+type FileSnapshot struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	FileId         string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	UploaderUserId string                 `protobuf:"bytes,2,opt,name=uploader_user_id,json=uploaderUserId,proto3" json:"uploader_user_id,omitempty"`
+	FileName       string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	FileSize       int64                  `protobuf:"varint,4,opt,name=file_size,json=fileSize,proto3" json:"file_size,omitempty"`
+	ContentType    string                 `protobuf:"bytes,5,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Url            string                 `protobuf:"bytes,6,opt,name=url,proto3" json:"url,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FileSnapshot) Reset() {
+	*x = FileSnapshot{}
+	mi := &file_dipole_core_v1_core_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileSnapshot) ProtoMessage() {}
+
+func (x *FileSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_core_v1_core_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileSnapshot.ProtoReflect.Descriptor instead.
+func (*FileSnapshot) Descriptor() ([]byte, []int) {
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FileSnapshot) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+func (x *FileSnapshot) GetUploaderUserId() string {
+	if x != nil {
+		return x.UploaderUserId
+	}
+	return ""
+}
+
+func (x *FileSnapshot) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *FileSnapshot) GetFileSize() int64 {
+	if x != nil {
+		return x.FileSize
+	}
+	return 0
+}
+
+func (x *FileSnapshot) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *FileSnapshot) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
 type GetUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
@@ -252,7 +336,7 @@ type GetUserRequest struct {
 
 func (x *GetUserRequest) Reset() {
 	*x = GetUserRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[3]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -264,7 +348,7 @@ func (x *GetUserRequest) String() string {
 func (*GetUserRequest) ProtoMessage() {}
 
 func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[3]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -277,7 +361,7 @@ func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserRequest.ProtoReflect.Descriptor instead.
 func (*GetUserRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{3}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetUserRequest) GetContext() *v1.RequestContext {
@@ -303,7 +387,7 @@ type GetUserResponse struct {
 
 func (x *GetUserResponse) Reset() {
 	*x = GetUserResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[4]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +399,7 @@ func (x *GetUserResponse) String() string {
 func (*GetUserResponse) ProtoMessage() {}
 
 func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[4]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -328,7 +412,7 @@ func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserResponse.ProtoReflect.Descriptor instead.
 func (*GetUserResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{4}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetUserResponse) GetUser() *UserSnapshot {
@@ -349,7 +433,7 @@ type CanSendDirectMessageRequest struct {
 
 func (x *CanSendDirectMessageRequest) Reset() {
 	*x = CanSendDirectMessageRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[5]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -361,7 +445,7 @@ func (x *CanSendDirectMessageRequest) String() string {
 func (*CanSendDirectMessageRequest) ProtoMessage() {}
 
 func (x *CanSendDirectMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[5]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -374,7 +458,7 @@ func (x *CanSendDirectMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanSendDirectMessageRequest.ProtoReflect.Descriptor instead.
 func (*CanSendDirectMessageRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{5}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CanSendDirectMessageRequest) GetContext() *v1.RequestContext {
@@ -407,7 +491,7 @@ type CanSendDirectMessageResponse struct {
 
 func (x *CanSendDirectMessageResponse) Reset() {
 	*x = CanSendDirectMessageResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[6]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -419,7 +503,7 @@ func (x *CanSendDirectMessageResponse) String() string {
 func (*CanSendDirectMessageResponse) ProtoMessage() {}
 
 func (x *CanSendDirectMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[6]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -432,7 +516,7 @@ func (x *CanSendDirectMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanSendDirectMessageResponse.ProtoReflect.Descriptor instead.
 func (*CanSendDirectMessageResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{6}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CanSendDirectMessageResponse) GetAllowed() bool {
@@ -452,7 +536,7 @@ type GetGroupRequest struct {
 
 func (x *GetGroupRequest) Reset() {
 	*x = GetGroupRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[7]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -464,7 +548,7 @@ func (x *GetGroupRequest) String() string {
 func (*GetGroupRequest) ProtoMessage() {}
 
 func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[7]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -477,7 +561,7 @@ func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{7}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetGroupRequest) GetContext() *v1.RequestContext {
@@ -503,7 +587,7 @@ type GetGroupResponse struct {
 
 func (x *GetGroupResponse) Reset() {
 	*x = GetGroupResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[8]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -515,7 +599,7 @@ func (x *GetGroupResponse) String() string {
 func (*GetGroupResponse) ProtoMessage() {}
 
 func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[8]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -528,7 +612,7 @@ func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{8}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetGroupResponse) GetGroup() *GroupSnapshot {
@@ -549,7 +633,7 @@ type GetGroupMemberRequest struct {
 
 func (x *GetGroupMemberRequest) Reset() {
 	*x = GetGroupMemberRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[9]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -561,7 +645,7 @@ func (x *GetGroupMemberRequest) String() string {
 func (*GetGroupMemberRequest) ProtoMessage() {}
 
 func (x *GetGroupMemberRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[9]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -574,7 +658,7 @@ func (x *GetGroupMemberRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupMemberRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupMemberRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{9}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetGroupMemberRequest) GetContext() *v1.RequestContext {
@@ -607,7 +691,7 @@ type GetGroupMemberResponse struct {
 
 func (x *GetGroupMemberResponse) Reset() {
 	*x = GetGroupMemberResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[10]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +703,7 @@ func (x *GetGroupMemberResponse) String() string {
 func (*GetGroupMemberResponse) ProtoMessage() {}
 
 func (x *GetGroupMemberResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[10]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +716,7 @@ func (x *GetGroupMemberResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupMemberResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupMemberResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{10}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetGroupMemberResponse) GetMember() *GroupMemberSnapshot {
@@ -652,7 +736,7 @@ type ListGroupMembersRequest struct {
 
 func (x *ListGroupMembersRequest) Reset() {
 	*x = ListGroupMembersRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[11]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -664,7 +748,7 @@ func (x *ListGroupMembersRequest) String() string {
 func (*ListGroupMembersRequest) ProtoMessage() {}
 
 func (x *ListGroupMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[11]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -677,7 +761,7 @@ func (x *ListGroupMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupMembersRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{11}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListGroupMembersRequest) GetContext() *v1.RequestContext {
@@ -703,7 +787,7 @@ type ListGroupMembersResponse struct {
 
 func (x *ListGroupMembersResponse) Reset() {
 	*x = ListGroupMembersResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[12]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +799,7 @@ func (x *ListGroupMembersResponse) String() string {
 func (*ListGroupMembersResponse) ProtoMessage() {}
 
 func (x *ListGroupMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[12]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,12 +812,116 @@ func (x *ListGroupMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupMembersResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupMembersResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{12}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListGroupMembersResponse) GetMembers() []*GroupMemberSnapshot {
 	if x != nil {
 		return x.Members
+	}
+	return nil
+}
+
+type GetOwnedFileRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Context        *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	UploaderUserId string                 `protobuf:"bytes,2,opt,name=uploader_user_id,json=uploaderUserId,proto3" json:"uploader_user_id,omitempty"`
+	FileId         string                 `protobuf:"bytes,3,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetOwnedFileRequest) Reset() {
+	*x = GetOwnedFileRequest{}
+	mi := &file_dipole_core_v1_core_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOwnedFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOwnedFileRequest) ProtoMessage() {}
+
+func (x *GetOwnedFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_core_v1_core_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOwnedFileRequest.ProtoReflect.Descriptor instead.
+func (*GetOwnedFileRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetOwnedFileRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *GetOwnedFileRequest) GetUploaderUserId() string {
+	if x != nil {
+		return x.UploaderUserId
+	}
+	return ""
+}
+
+func (x *GetOwnedFileRequest) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+type GetOwnedFileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	File          *FileSnapshot          `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOwnedFileResponse) Reset() {
+	*x = GetOwnedFileResponse{}
+	mi := &file_dipole_core_v1_core_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOwnedFileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOwnedFileResponse) ProtoMessage() {}
+
+func (x *GetOwnedFileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_core_v1_core_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOwnedFileResponse.ProtoReflect.Descriptor instead.
+func (*GetOwnedFileResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetOwnedFileResponse) GetFile() *FileSnapshot {
+	if x != nil {
+		return x.File
 	}
 	return nil
 }
@@ -759,7 +947,14 @@ const file_dipole_core_v1_core_proto_rawDesc = "" +
 	"\x13GroupMemberSnapshot\x12\x19\n" +
 	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\x05R\x04role\"e\n" +
+	"\x04role\x18\x03 \x01(\x05R\x04role\"\xc0\x01\n" +
+	"\fFileSnapshot\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12(\n" +
+	"\x10uploader_user_id\x18\x02 \x01(\tR\x0euploaderUserId\x12\x1b\n" +
+	"\tfile_name\x18\x03 \x01(\tR\bfileName\x12\x1b\n" +
+	"\tfile_size\x18\x04 \x01(\x03R\bfileSize\x12!\n" +
+	"\fcontent_type\x18\x05 \x01(\tR\vcontentType\x12\x10\n" +
+	"\x03url\x18\x06 \x01(\tR\x03url\"e\n" +
 	"\x0eGetUserRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"C\n" +
@@ -786,13 +981,20 @@ const file_dipole_core_v1_core_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"Y\n" +
 	"\x18ListGroupMembersResponse\x12=\n" +
-	"\amembers\x18\x01 \x03(\v2#.dipole.core.v1.GroupMemberSnapshotR\amembers2\xed\x03\n" +
+	"\amembers\x18\x01 \x03(\v2#.dipole.core.v1.GroupMemberSnapshotR\amembers\"\x94\x01\n" +
+	"\x13GetOwnedFileRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12(\n" +
+	"\x10uploader_user_id\x18\x02 \x01(\tR\x0euploaderUserId\x12\x17\n" +
+	"\afile_id\x18\x03 \x01(\tR\x06fileId\"H\n" +
+	"\x14GetOwnedFileResponse\x120\n" +
+	"\x04file\x18\x01 \x01(\v2\x1c.dipole.core.v1.FileSnapshotR\x04file2\xc8\x04\n" +
 	"\x15CoreCapabilityService\x12J\n" +
 	"\aGetUser\x12\x1e.dipole.core.v1.GetUserRequest\x1a\x1f.dipole.core.v1.GetUserResponse\x12q\n" +
 	"\x14CanSendDirectMessage\x12+.dipole.core.v1.CanSendDirectMessageRequest\x1a,.dipole.core.v1.CanSendDirectMessageResponse\x12M\n" +
 	"\bGetGroup\x12\x1f.dipole.core.v1.GetGroupRequest\x1a .dipole.core.v1.GetGroupResponse\x12_\n" +
 	"\x0eGetGroupMember\x12%.dipole.core.v1.GetGroupMemberRequest\x1a&.dipole.core.v1.GetGroupMemberResponse\x12e\n" +
-	"\x10ListGroupMembers\x12'.dipole.core.v1.ListGroupMembersRequest\x1a(.dipole.core.v1.ListGroupMembersResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1;corev1b\x06proto3"
+	"\x10ListGroupMembers\x12'.dipole.core.v1.ListGroupMembersRequest\x1a(.dipole.core.v1.ListGroupMembersResponse\x12Y\n" +
+	"\fGetOwnedFile\x12#.dipole.core.v1.GetOwnedFileRequest\x1a$.dipole.core.v1.GetOwnedFileResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1;corev1b\x06proto3"
 
 var (
 	file_dipole_core_v1_core_proto_rawDescOnce sync.Once
@@ -806,48 +1008,55 @@ func file_dipole_core_v1_core_proto_rawDescGZIP() []byte {
 	return file_dipole_core_v1_core_proto_rawDescData
 }
 
-var file_dipole_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_dipole_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dipole_core_v1_core_proto_goTypes = []any{
 	(*UserSnapshot)(nil),                 // 0: dipole.core.v1.UserSnapshot
 	(*GroupSnapshot)(nil),                // 1: dipole.core.v1.GroupSnapshot
 	(*GroupMemberSnapshot)(nil),          // 2: dipole.core.v1.GroupMemberSnapshot
-	(*GetUserRequest)(nil),               // 3: dipole.core.v1.GetUserRequest
-	(*GetUserResponse)(nil),              // 4: dipole.core.v1.GetUserResponse
-	(*CanSendDirectMessageRequest)(nil),  // 5: dipole.core.v1.CanSendDirectMessageRequest
-	(*CanSendDirectMessageResponse)(nil), // 6: dipole.core.v1.CanSendDirectMessageResponse
-	(*GetGroupRequest)(nil),              // 7: dipole.core.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),             // 8: dipole.core.v1.GetGroupResponse
-	(*GetGroupMemberRequest)(nil),        // 9: dipole.core.v1.GetGroupMemberRequest
-	(*GetGroupMemberResponse)(nil),       // 10: dipole.core.v1.GetGroupMemberResponse
-	(*ListGroupMembersRequest)(nil),      // 11: dipole.core.v1.ListGroupMembersRequest
-	(*ListGroupMembersResponse)(nil),     // 12: dipole.core.v1.ListGroupMembersResponse
-	(*v1.RequestContext)(nil),            // 13: dipole.common.v1.RequestContext
+	(*FileSnapshot)(nil),                 // 3: dipole.core.v1.FileSnapshot
+	(*GetUserRequest)(nil),               // 4: dipole.core.v1.GetUserRequest
+	(*GetUserResponse)(nil),              // 5: dipole.core.v1.GetUserResponse
+	(*CanSendDirectMessageRequest)(nil),  // 6: dipole.core.v1.CanSendDirectMessageRequest
+	(*CanSendDirectMessageResponse)(nil), // 7: dipole.core.v1.CanSendDirectMessageResponse
+	(*GetGroupRequest)(nil),              // 8: dipole.core.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),             // 9: dipole.core.v1.GetGroupResponse
+	(*GetGroupMemberRequest)(nil),        // 10: dipole.core.v1.GetGroupMemberRequest
+	(*GetGroupMemberResponse)(nil),       // 11: dipole.core.v1.GetGroupMemberResponse
+	(*ListGroupMembersRequest)(nil),      // 12: dipole.core.v1.ListGroupMembersRequest
+	(*ListGroupMembersResponse)(nil),     // 13: dipole.core.v1.ListGroupMembersResponse
+	(*GetOwnedFileRequest)(nil),          // 14: dipole.core.v1.GetOwnedFileRequest
+	(*GetOwnedFileResponse)(nil),         // 15: dipole.core.v1.GetOwnedFileResponse
+	(*v1.RequestContext)(nil),            // 16: dipole.common.v1.RequestContext
 }
 var file_dipole_core_v1_core_proto_depIdxs = []int32{
-	13, // 0: dipole.core.v1.GetUserRequest.context:type_name -> dipole.common.v1.RequestContext
+	16, // 0: dipole.core.v1.GetUserRequest.context:type_name -> dipole.common.v1.RequestContext
 	0,  // 1: dipole.core.v1.GetUserResponse.user:type_name -> dipole.core.v1.UserSnapshot
-	13, // 2: dipole.core.v1.CanSendDirectMessageRequest.context:type_name -> dipole.common.v1.RequestContext
-	13, // 3: dipole.core.v1.GetGroupRequest.context:type_name -> dipole.common.v1.RequestContext
+	16, // 2: dipole.core.v1.CanSendDirectMessageRequest.context:type_name -> dipole.common.v1.RequestContext
+	16, // 3: dipole.core.v1.GetGroupRequest.context:type_name -> dipole.common.v1.RequestContext
 	1,  // 4: dipole.core.v1.GetGroupResponse.group:type_name -> dipole.core.v1.GroupSnapshot
-	13, // 5: dipole.core.v1.GetGroupMemberRequest.context:type_name -> dipole.common.v1.RequestContext
+	16, // 5: dipole.core.v1.GetGroupMemberRequest.context:type_name -> dipole.common.v1.RequestContext
 	2,  // 6: dipole.core.v1.GetGroupMemberResponse.member:type_name -> dipole.core.v1.GroupMemberSnapshot
-	13, // 7: dipole.core.v1.ListGroupMembersRequest.context:type_name -> dipole.common.v1.RequestContext
+	16, // 7: dipole.core.v1.ListGroupMembersRequest.context:type_name -> dipole.common.v1.RequestContext
 	2,  // 8: dipole.core.v1.ListGroupMembersResponse.members:type_name -> dipole.core.v1.GroupMemberSnapshot
-	3,  // 9: dipole.core.v1.CoreCapabilityService.GetUser:input_type -> dipole.core.v1.GetUserRequest
-	5,  // 10: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:input_type -> dipole.core.v1.CanSendDirectMessageRequest
-	7,  // 11: dipole.core.v1.CoreCapabilityService.GetGroup:input_type -> dipole.core.v1.GetGroupRequest
-	9,  // 12: dipole.core.v1.CoreCapabilityService.GetGroupMember:input_type -> dipole.core.v1.GetGroupMemberRequest
-	11, // 13: dipole.core.v1.CoreCapabilityService.ListGroupMembers:input_type -> dipole.core.v1.ListGroupMembersRequest
-	4,  // 14: dipole.core.v1.CoreCapabilityService.GetUser:output_type -> dipole.core.v1.GetUserResponse
-	6,  // 15: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:output_type -> dipole.core.v1.CanSendDirectMessageResponse
-	8,  // 16: dipole.core.v1.CoreCapabilityService.GetGroup:output_type -> dipole.core.v1.GetGroupResponse
-	10, // 17: dipole.core.v1.CoreCapabilityService.GetGroupMember:output_type -> dipole.core.v1.GetGroupMemberResponse
-	12, // 18: dipole.core.v1.CoreCapabilityService.ListGroupMembers:output_type -> dipole.core.v1.ListGroupMembersResponse
-	14, // [14:19] is the sub-list for method output_type
-	9,  // [9:14] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	16, // 9: dipole.core.v1.GetOwnedFileRequest.context:type_name -> dipole.common.v1.RequestContext
+	3,  // 10: dipole.core.v1.GetOwnedFileResponse.file:type_name -> dipole.core.v1.FileSnapshot
+	4,  // 11: dipole.core.v1.CoreCapabilityService.GetUser:input_type -> dipole.core.v1.GetUserRequest
+	6,  // 12: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:input_type -> dipole.core.v1.CanSendDirectMessageRequest
+	8,  // 13: dipole.core.v1.CoreCapabilityService.GetGroup:input_type -> dipole.core.v1.GetGroupRequest
+	10, // 14: dipole.core.v1.CoreCapabilityService.GetGroupMember:input_type -> dipole.core.v1.GetGroupMemberRequest
+	12, // 15: dipole.core.v1.CoreCapabilityService.ListGroupMembers:input_type -> dipole.core.v1.ListGroupMembersRequest
+	14, // 16: dipole.core.v1.CoreCapabilityService.GetOwnedFile:input_type -> dipole.core.v1.GetOwnedFileRequest
+	5,  // 17: dipole.core.v1.CoreCapabilityService.GetUser:output_type -> dipole.core.v1.GetUserResponse
+	7,  // 18: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:output_type -> dipole.core.v1.CanSendDirectMessageResponse
+	9,  // 19: dipole.core.v1.CoreCapabilityService.GetGroup:output_type -> dipole.core.v1.GetGroupResponse
+	11, // 20: dipole.core.v1.CoreCapabilityService.GetGroupMember:output_type -> dipole.core.v1.GetGroupMemberResponse
+	13, // 21: dipole.core.v1.CoreCapabilityService.ListGroupMembers:output_type -> dipole.core.v1.ListGroupMembersResponse
+	15, // 22: dipole.core.v1.CoreCapabilityService.GetOwnedFile:output_type -> dipole.core.v1.GetOwnedFileResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dipole_core_v1_core_proto_init() }
@@ -861,7 +1070,7 @@ func file_dipole_core_v1_core_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_core_v1_core_proto_rawDesc), len(file_dipole_core_v1_core_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

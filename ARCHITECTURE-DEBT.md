@@ -12,27 +12,16 @@
 
 ## 待处理
 
-### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
-
-- **优先级：** P2
-- **状态：** 处理中
-- **发现日期：** 2026-08-26
-- **影响范围：** Composition Root、Message transport、进程内缓存与 singleflight
-- **现状：** Runtime 为 bufconn backing service 创建一组 Local Messaging Services，Server 同时为 File、Conversation、Contact 与 Group 辅助链路创建另一组；两者共享同一 Repository、Kafka Publisher、Redis 和对象存储，不会形成第二份数据库连接或重复消息写入。
-- **风险：** MessageService 的进程内 singleflight 与未来本地缓存分散在两个实例，构造关系也会增加 M4 抽离时的理解成本。
-- **建议方向：** M4 将 Messaging Services 所有权完全提升到 Runtime/Composition Root，Server 只接收 application ports；Kafka persister、系统消息和 Gateway 用户命令按明确端口注入。
-- **处理门槛：** `cmd/message-service` 独立部署前完成。
-
-### AD-013：内部 RPC 调用身份尚未绑定服务认证
+### AD-015：Message Service 数据库账号尚未收敛表级权限
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
-- **影响范围：** Message gRPC、Gateway、Core、审计身份
-- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。`message.transport=grpc` 当前只使用进程内 bufconn，尚未部署网络服务身份认证或拦截器。
-- **风险：** 若在缺少 mTLS、服务凭证和入口隔离时暴露 RPC，调用方可能伪造 principal 并以其他用户身份执行消息命令或查询。
-- **建议方向：** 在 M4 前加入内部网络入口限制、服务身份认证与 unary interceptor；由 Gateway 的已认证用户上下文生成 principal，服务端拒绝外部直接传入的未认证身份，并记录 service/principal/device/request/trace 审计字段。
-- **处理门槛：** `message.transport=grpc` 获得任何非测试流量前完成。
+- **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
+- **现状：** 用户、好友、群和文件所有权校验均通过 Core Capability gRPC 完成；独立 Runtime 只组合 Message 与 Outbox adapters。部署仍复用 Core 的 MySQL schema 与数据库账号。
+- **风险：** 代码依赖已经收敛，数据库凭据仍具备访问 Core 表的能力，误用或注入风险下的 blast radius 大于 Message Service 实际职责。
+- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
+- **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
 
 ### AD-004：热群消息缺少持久化同步补偿
 
@@ -123,6 +112,24 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** Runtime 成为 Messaging Services 的唯一 Composition Root，并把同一实例注入 Server 与 Kafka handler 注册；Server 只在兼容构造入口缺少注入时创建服务集合。Conversation notifier 在 Server 建立 WS Hub 后注入现有实例。
+- **验证：** Local/Remote transport、Server、Kafka 和 Bootstrap 全部复用 Runtime 的 Messaging Services，并通过相关包 race 测试。
+
+### AD-013：内部 RPC 调用身份尚未绑定服务认证
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 内部 RPC 同时启用共享服务凭据、caller allowlist、常量时间密钥比较和 TLS 1.3 mTLS；认证服务身份写入调用 context，并与 protobuf `caller_service` 强制一致。明文 listener 与 target 仅允许 loopback。
+- **验证：** 通过合法/缺失/错误凭据、未授权 caller、payload caller 冲突、真实临时 CA mTLS，以及非 loopback 明文拒绝测试。
 
 ### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
 

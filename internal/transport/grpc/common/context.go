@@ -1,8 +1,10 @@
 package grpccommon
 
 import (
+	"context"
 	"strings"
 
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,9 +24,13 @@ func Principal(requestContext *commonv1.RequestContext) (string, error) {
 	return strings.TrimSpace(requestContext.GetPrincipalUserId()), nil
 }
 
-func Caller(requestContext *commonv1.RequestContext) (string, error) {
+func Caller(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	if requestContext == nil || strings.TrimSpace(requestContext.GetCallerService()) == "" {
 		return "", status.Error(codes.Unauthenticated, "caller_service is required")
 	}
-	return strings.TrimSpace(requestContext.GetCallerService()), nil
+	claimed := strings.TrimSpace(requestContext.GetCallerService())
+	if authenticated, ok := grpcauth.CallerService(ctx); ok && authenticated != claimed {
+		return "", status.Error(codes.PermissionDenied, "caller_service does not match authenticated service")
+	}
+	return claimed, nil
 }

@@ -36,7 +36,8 @@ type Server struct {
 }
 
 type Dependencies struct {
-	Messages applicationPort.MessageApplication
+	Messages  applicationPort.MessageApplication
+	Messaging *appComposition.MessagingServices
 }
 
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
@@ -82,12 +83,15 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
-	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
-		Events:               kafkaEvents,
-		HotGroups:            hotGroupDetector,
-		Storage:              platformStorage.Client,
-		ConversationNotifier: newConversationNotifier(wsHub),
-	})
+	messaging := dependencies.Messaging
+	if messaging == nil {
+		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+			Events:    kafkaEvents,
+			HotGroups: hotGroupDetector,
+			Storage:   platformStorage.Client,
+		})
+	}
+	messaging.Conversations.WithNotifier(newConversationNotifier(wsHub))
 	messageApplication := applicationPort.MessageApplication(messaging.Messages)
 	if dependencies.Messages != nil {
 		messageApplication = dependencies.Messages
