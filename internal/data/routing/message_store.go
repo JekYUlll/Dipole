@@ -1,0 +1,201 @@
+package routing
+
+import (
+	"context"
+	"hash/fnv"
+	"time"
+
+	"github.com/JekYUlll/Dipole/internal/application"
+	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
+	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
+)
+
+type HighWatermarkReader interface {
+	LatestConversationSequence(conversationKey string) (uint64, error)
+}
+
+type TimelineRangeReader interface {
+	ListRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]cassandraData.TimelineRecord, error)
+}
+
+type ReadObservation struct {
+	ConversationKey string
+	Route           string
+	FallbackReason  string
+	AfterSeq        uint64
+	HighWatermark   uint64
+	ResultCount     int
+	Latency         time.Duration
+}
+
+type MessageStore struct {
+	application.MessageStore
+	highWatermark HighWatermarkReader
+	timeline      TimelineRangeReader
+	percentage    int
+	observe       func(ReadObservation)
+	requests      *prometheus.CounterVec
+	latency       *prometheus.HistogramVec
+}
+
+var _ application.MessageStore = (*MessageStore)(nil)
+
+func NewMessageStore(primary application.MessageStore, highWatermark HighWatermarkReader, timeline TimelineRangeReader, percentage int, observe func(ReadObservation)) *MessageStore {
+	if percentage < 0 {
+		percentage = 0
+	}
+	if percentage > 100 {
+		percentage = 100
+	}
+	if observe == nil {
+		observe = logReadObservation
+	}
+	requests := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "dipole_message_read_route_total",
+		Help: "Message Seq reads by selected storage route and fallback reason.",
+	}, []string{"route", "fallback_reason"})
+	latency := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "dipole_message_read_route_duration_seconds",
+		Help:    "Message Seq read latency by selected storage route.",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"route"})
+	return &MessageStore{
+		MessageStore: primary, highWatermark: highWatermark, timeline: timeline,
+		percentage: percentage, observe: observe, requests: requests, latency: latency,
+	}
+}
+
+func (s *MessageStore) ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	if limit <= 0 {
+		return s.MessageStore.ListByConversationSeqAfter(conversationKey, afterSeq, limit)
+	}
+	if !conversationInCohort(conversationKey, s.percentage) {
+		startedAt := time.Now()
+		page, err := s.MessageStore.ListByConversationSeqAfter(conversationKey, afterSeq, limit)
+		s.record(ReadObservation{
+			ConversationKey: conversationKey, Route: "mysql", AfterSeq: afterSeq,
+			ResultCount: len(page), Latency: time.Since(startedAt),
+		})
+		return page, err
+	}
+	startedAt := time.Now()
+	observation := ReadObservation{ConversationKey: conversationKey, AfterSeq: afterSeq}
+	highWatermark, err := s.highWatermark.LatestConversationSequence(conversationKey)
+	observation.HighWatermark = highWatermark
+	if err != nil {
+		return s.fallback(conversationKey, afterSeq, limit, observation, "high_watermark_error", startedAt)
+	}
+	if afterSeq >= highWatermark {
+		observation.Route = "cassandra"
+		observation.Latency = time.Since(startedAt)
+		s.record(observation)
+		return []*model.Message{}, nil
+	}
+
+	lastSeq := highWatermark
+	if uint64(limit) < highWatermark-afterSeq {
+		lastSeq = afterSeq + uint64(limit)
+	}
+	records, err := s.timeline.ListRange(context.Background(), conversationKey, afterSeq+1, lastSeq)
+	if err != nil {
+		return s.fallback(conversationKey, afterSeq, limit, observation, "cassandra_error", startedAt)
+	}
+	if !continuous(records, afterSeq+1, lastSeq) {
+		return s.fallback(conversationKey, afterSeq, limit, observation, "incomplete_page", startedAt)
+	}
+
+	page := recordsToMessages(records)
+	observation.Route = "cassandra"
+	observation.ResultCount = len(page)
+	observation.Latency = time.Since(startedAt)
+	s.record(observation)
+	return page, nil
+}
+
+func (s *MessageStore) fallback(conversationKey string, afterSeq uint64, limit int, observation ReadObservation, reason string, startedAt time.Time) ([]*model.Message, error) {
+	page, err := s.MessageStore.ListByConversationSeqAfter(conversationKey, afterSeq, limit)
+	observation.Route = "mysql_fallback"
+	observation.FallbackReason = reason
+	observation.ResultCount = len(page)
+	observation.Latency = time.Since(startedAt)
+	s.record(observation)
+	return page, err
+}
+
+func (s *MessageStore) record(observation ReadObservation) {
+	s.requests.WithLabelValues(observation.Route, observation.FallbackReason).Inc()
+	s.latency.WithLabelValues(observation.Route).Observe(observation.Latency.Seconds())
+	s.observe(observation)
+}
+
+func (s *MessageStore) Describe(descriptions chan<- *prometheus.Desc) {
+	s.requests.Describe(descriptions)
+	s.latency.Describe(descriptions)
+}
+
+func (s *MessageStore) Collect(metrics chan<- prometheus.Metric) {
+	s.requests.Collect(metrics)
+	s.latency.Collect(metrics)
+}
+
+func continuous(records []cassandraData.TimelineRecord, firstSeq, lastSeq uint64) bool {
+	if uint64(len(records)) != lastSeq-firstSeq+1 {
+		return false
+	}
+	for index, record := range records {
+		if record.Projection.MessageSeq != firstSeq+uint64(index) {
+			return false
+		}
+	}
+	return true
+}
+
+func recordsToMessages(records []cassandraData.TimelineRecord) []*model.Message {
+	messages := make([]*model.Message, len(records))
+	for index, record := range records {
+		projection := record.Projection
+		messages[index] = &model.Message{
+			UUID: projection.MessageUUID, ClientMessageID: projection.ClientMessageID,
+			ConversationKey: projection.ConversationKey, Seq: projection.MessageSeq,
+			SenderUUID: projection.SenderUUID, TargetType: projection.TargetType,
+			TargetUUID: projection.TargetUUID, MessageType: projection.MessageType,
+			Content: projection.Content, FileID: projection.FileID, FileName: projection.FileName,
+			FileSize: projection.FileSize, FileURL: projection.FileURL,
+			FileContentType: projection.FileContentType, FileExpiresAt: projection.FileExpiresAt,
+			SentAt: projection.SentAt,
+		}
+	}
+	return messages
+}
+
+func conversationInCohort(conversationKey string, percentage int) bool {
+	if percentage <= 0 {
+		return false
+	}
+	if percentage >= 100 {
+		return true
+	}
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(conversationKey))
+	return int(hash.Sum32()%100) < percentage
+}
+
+func logReadObservation(observation ReadObservation) {
+	fields := []zap.Field{
+		zap.String("conversation_key", observation.ConversationKey),
+		zap.String("route", observation.Route),
+		zap.String("fallback_reason", observation.FallbackReason),
+		zap.Uint64("after_seq", observation.AfterSeq),
+		zap.Uint64("high_watermark", observation.HighWatermark),
+		zap.Int("result_count", observation.ResultCount),
+		zap.Duration("latency", observation.Latency),
+	}
+	if observation.FallbackReason == "" {
+		logger.L().Debug("message read routed", fields...)
+		return
+	}
+	logger.L().Warn("Cassandra message read fell back", fields...)
+}

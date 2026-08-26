@@ -22,4 +22,13 @@ func TestValidateCassandraShadowConfigRequiresExplicitCassandraEnablement(t *tes
 	); err != nil {
 		t.Fatalf("enabled Cassandra shadow reads should pass validation: %v", err)
 	}
+	if err := validateCassandraShadowConfig(config.Message{CassandraReadPercent: 101}, config.Cassandra{Enabled: true}); err == nil {
+		t.Fatal("expected percentage above 100 to fail")
+	}
+	if err := validateCassandraShadowConfig(config.Message{CassandraShadowReads: true, CassandraReadPercent: 1}, config.Cassandra{Enabled: true}); err == nil {
+		t.Fatal("expected shadow and primary Cassandra reads to be mutually exclusive")
+	}
+	if err := validateCassandraShadowConfig(config.Message{CassandraReadPercent: 10}, config.Cassandra{}); err == nil {
+		t.Fatal("expected Cassandra cohort without Cassandra to fail")
+	}
 }

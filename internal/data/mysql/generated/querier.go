@@ -43,6 +43,7 @@ type Querier interface {
 	GetContactApplicationByID(ctx context.Context, id uint64) (ContactApplication, error)
 	GetContactApplicationByPair(ctx context.Context, arg GetContactApplicationByPairParams) (ContactApplication, error)
 	GetConversationByUserAndKey(ctx context.Context, arg GetConversationByUserAndKeyParams) (Conversation, error)
+	GetConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSyncCheckpointParams) (DeviceSyncCheckpoint, error)
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)

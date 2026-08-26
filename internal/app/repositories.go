@@ -27,8 +27,9 @@ type Repositories struct {
 }
 
 type MessageProcessRepositories struct {
-	Messages application.MessageStore
-	Outbox   application.OutboxRelayStore
+	Messages             application.MessageStore
+	Outbox               application.OutboxRelayStore
+	ConversationSequence *sqlcRepository.ConversationSequenceRepository
 }
 
 func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
@@ -47,7 +48,10 @@ func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, err
 	if err != nil {
 		return nil, fmt.Errorf("create message outbox repository: %w", err)
 	}
-	return &MessageProcessRepositories{Messages: messages, Outbox: outbox}, nil
+	return &MessageProcessRepositories{
+		Messages: messages, Outbox: outbox,
+		ConversationSequence: sqlcRepository.NewConversationSequenceRepository(generated.New(db)),
+	}, nil
 }
 
 func NewRepositories(db *sql.DB) (*Repositories, error) {

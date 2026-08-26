@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func startRuntimeMetrics(cfg config.Metrics, consumer *platformKafka.Consumer) (*platformObservability.MetricsServer, error) {
+func startRuntimeMetrics(cfg config.Metrics, consumer *platformKafka.Consumer, collectors ...prometheus.Collector) (*platformObservability.MetricsServer, error) {
 	if !cfg.Enabled {
 		return nil, nil
 	}
@@ -21,6 +21,11 @@ func startRuntimeMetrics(cfg config.Metrics, consumer *platformKafka.Consumer) (
 	registry := prometheus.NewRegistry()
 	if consumer != nil {
 		registry.MustRegister(platformKafka.NewConsumerCollector(consumer))
+	}
+	for _, collector := range collectors {
+		if collector != nil {
+			registry.MustRegister(collector)
+		}
 	}
 	return platformObservability.StartMetricsServer(cfg.Address, registry)
 }

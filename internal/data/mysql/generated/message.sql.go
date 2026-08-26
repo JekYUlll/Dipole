@@ -154,6 +154,18 @@ func (q *Queries) FindLatestAccessibleFileMessage(ctx context.Context, arg FindL
 	return i, err
 }
 
+const getConversationSequence = `-- name: GetConversationSequence :one
+SELECT last_seq FROM conversation_sequences
+WHERE conversation_key = ?
+`
+
+func (q *Queries) GetConversationSequence(ctx context.Context, conversationKey string) (uint64, error) {
+	row := q.db.QueryRowContext(ctx, getConversationSequence, conversationKey)
+	var last_seq uint64
+	err := row.Scan(&last_seq)
+	return last_seq, err
+}
+
 const getMessageBySenderAndClientID = `-- name: GetMessageBySenderAndClientID :one
 SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages WHERE sender_uuid = ? AND client_message_id = ? LIMIT 1
 `

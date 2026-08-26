@@ -87,6 +87,8 @@ message:
   shadow_queries: false
   # Compare Message Store history pages with Cassandra asynchronously; MySQL remains the response source.
   cassandra_shadow_reads: false
+  # Deterministic conversation cohort for Cassandra after_seq reads; 0 is the emergency rollback.
+  cassandra_read_percentage: 0
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
 
