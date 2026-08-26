@@ -391,6 +391,23 @@ func (s *MessageService) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID
 	return messages, nil
 }
 
+func (s *MessageService) ListDirectMessagesAfterSeq(currentUserUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	targetUUID = strings.TrimSpace(targetUUID)
+	if targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureReadableDirectMessagePermission(currentUserUUID, targetUUID); err != nil {
+		return nil, err
+	}
+	messages, err := s.repo.ListByConversationSeqAfter(
+		model.DirectConversationKey(currentUserUUID, targetUUID), afterSeq, normalizeMessageListLimit(limit),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list direct messages after sequence: %w", err)
+	}
+	return messages, nil
+}
+
 func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	content = strings.TrimSpace(content)

@@ -65,6 +65,14 @@ func (s *messageShadowApplication) ListDirectMessagesBeforeSeq(userUUID, targetU
 	return primary, err
 }
 
+func (s *messageShadowApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	primary, err := s.primary.ListDirectMessagesAfterSeq(userUUID, targetUUID, afterSeq, limit)
+	s.compare("list_direct_history_after_seq", primary, err, func() ([]*model.Message, error) {
+		return s.shadow.ListDirectMessagesAfterSeq(userUUID, targetUUID, afterSeq, limit)
+	})
+	return primary, err
+}
+
 func (s *messageShadowApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	primary, err := s.primary.ListGroupMessages(userUUID, groupUUID, beforeID, limit)
 	s.compare("list_group_history", primary, err, func() ([]*model.Message, error) {

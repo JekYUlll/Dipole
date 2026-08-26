@@ -21,6 +21,7 @@ import (
 type stubMessageApplication struct {
 	sendDirect          func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	listDirectBeforeSeq func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
+	listDirectAfterSeq  func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	listGroup           func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
 	listGroupBeforeSeq  func(currentUserUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error)
 }
@@ -50,6 +51,13 @@ func (s *stubMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUI
 		return nil, nil
 	}
 	return s.listDirectBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
+}
+
+func (s *stubMessageApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listDirectAfterSeq == nil {
+		return nil, nil
+	}
+	return s.listDirectAfterSeq(userUUID, targetUUID, afterSeq, limit)
 }
 
 func (s *stubMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -147,7 +155,7 @@ func TestServerDispatchesAfterCursor(t *testing.T) {
 	}
 }
 
-func TestClientAndServerPreserveBeforeSequenceCursor(t *testing.T) {
+func TestClientAndServerPreserveDirectSequenceCursors(t *testing.T) {
 	application := &stubMessageApplication{
 		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
 		listGroup:  emptyGroupList,
@@ -156,6 +164,12 @@ func TestClientAndServerPreserveBeforeSequenceCursor(t *testing.T) {
 				t.Fatalf("unexpected direct Seq query: user=%q target=%q cursor=%d limit=%d", userUUID, targetUUID, cursor, limit)
 			}
 			return []*model.Message{{Seq: 40, UUID: "MD40"}}, nil
+		},
+		listDirectAfterSeq: func(userUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error) {
+			if userUUID != "U100" || targetUUID != "U200" || cursor != 41 || limit != 20 {
+				t.Fatalf("unexpected direct after Seq query: user=%q target=%q cursor=%d limit=%d", userUUID, targetUUID, cursor, limit)
+			}
+			return []*model.Message{{Seq: 42, UUID: "MD42"}}, nil
 		},
 		listGroupBeforeSeq: func(userUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error) {
 			if userUUID != "U100" || groupUUID != "G1" || cursor != 51 || limit != 25 {
@@ -171,6 +185,10 @@ func TestClientAndServerPreserveBeforeSequenceCursor(t *testing.T) {
 	direct, err := remote.ListDirectMessagesBeforeSeq("U100", "U200", 41, 20)
 	if err != nil || len(direct) != 1 || direct[0].Seq != 40 {
 		t.Fatalf("unexpected direct response=%+v err=%v", direct, err)
+	}
+	directAfter, err := remote.ListDirectMessagesAfterSeq("U100", "U200", 41, 20)
+	if err != nil || len(directAfter) != 1 || directAfter[0].Seq != 42 {
+		t.Fatalf("unexpected direct after response=%+v err=%v", directAfter, err)
 	}
 	group, err := remote.ListGroupMessagesBeforeSeq("U100", "G1", 51, 25)
 	if err != nil || len(group) != 1 || group[0].Seq != 50 {
@@ -191,6 +209,14 @@ func TestServerRejectsMixedDirectCursorDomains(t *testing.T) {
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("expected InvalidArgument, got %v", err)
+	}
+	afterSeq := uint64(42)
+	_, err = client.ListDirectHistory(context.Background(), &messagev1.ListDirectHistoryRequest{
+		Context: grpccommon.RequestContext("U100", "dipole-gateway"), TargetUserId: "U200",
+		BeforeSequence: &beforeSeq, AfterSequence: &afterSeq,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for two sequence directions, got %v", err)
 	}
 }
 

@@ -130,6 +130,19 @@ func (c *Client) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string,
 	return messagesFromProto(response.GetMessages()), nil
 }
 
+func (c *Client) ListDirectMessagesAfterSeq(currentUserUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListDirectHistory(ctx, &messagev1.ListDirectHistoryRequest{
+		Context: c.invocation(currentUserUUID), TargetUserId: targetUUID,
+		AfterSequence: &afterSeq, PageSize: requestPageSize(limit),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return messagesFromProto(response.GetMessages()), nil
+}
+
 func (c *Client) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()

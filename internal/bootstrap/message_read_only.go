@@ -41,6 +41,10 @@ func (a *queryOnlyMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targ
 	return a.queries.ListDirectMessagesBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
 }
 
+func (a *queryOnlyMessageApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListDirectMessagesAfterSeq(userUUID, targetUUID, afterSeq, limit)
+}
+
 func (a *queryOnlyMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	return a.queries.ListGroupMessages(userUUID, groupUUID, beforeID, limit)
 }

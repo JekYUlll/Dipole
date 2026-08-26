@@ -2181,6 +2181,10 @@ paths:
         in: query
         name: before_seq
         type: integer
+      - description: 会话序号增量补拉游标
+        in: query
+        name: after_seq
+        type: integer
       - description: 返回数量
         in: query
         name: limit
@@ -2214,7 +2218,7 @@ paths:
             $ref: '#/definitions/http.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: 获取单聊历史消息
+      summary: 获取单聊历史或增量消息
       tags:
       - Message
   /messages/group/{group_uuid}:
