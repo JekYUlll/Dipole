@@ -65,6 +65,7 @@
 
 - 可设置 `DIPOLE_DATA_MYSQL_ADAPTER=sqlc` 启用已迁移仓储，发生异常时设置为 `gorm` 并重启节点即可回切；未知配置会直接拒绝启动。
 - Message、Inbox 与 Outbox Producer 已作为同一事务边界迁移到 sqlc；切换 `DIPOLE_DATA_MYSQL_ADAPTER` 时三者整体切换，避免跨连接提交。
+- 默认 `data.mysql_adapter` 从 `gorm` 调整为 `sqlc`；GORM adapters 在兼容窗口内仅作为显式回滚路径和契约测试基线保留。
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
