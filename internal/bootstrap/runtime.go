@@ -173,7 +173,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize Sync transport: %w", err)
 	}
-	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Sync: syncFlow.Application, Messaging: localMessaging})
+	syncComparisonMetrics := platformObservability.NewClientSyncComparisonCollector()
+	srv := server.NewWithDependencies(repos, server.Dependencies{
+		Messages:       messageFlow.Application,
+		Sync:           syncFlow.Application,
+		SyncComparison: syncComparisonMetrics,
+		Messaging:      localMessaging,
+	})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
@@ -226,7 +232,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, syncComparisonMetrics)
 	if err != nil {
 		rt.Close()
 		return nil, fmt.Errorf("start runtime metrics: %w", err)

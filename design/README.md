@@ -34,7 +34,7 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 - `Sync/Mobile/Restoring`
 - `Component/Sync Status`：页面和标题栏共享的同步状态语义。
 
-批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_ENABLED=true` 控制。
+批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_MODE=off|shadow|primary` 控制，默认关闭。
 
 ## Sync 交互契约
 

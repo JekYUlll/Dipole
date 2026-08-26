@@ -73,8 +73,8 @@ describe('MessageSyncEngine', () => {
     }
     const delivered: string[][] = []
 
-    const result = await new MessageSyncEngine(store, transport).recover('U1', messages => {
-      events.push(`deliver:${messages.map(item => item.message_id).join(',')}`)
+    const result = await new MessageSyncEngine(store, transport).recover('U1', (messages, source) => {
+      events.push(`deliver:${source}:${messages.map(item => item.message_id).join(',')}`)
       delivered.push(messages.map(item => item.message_id))
     })
 
@@ -82,11 +82,11 @@ describe('MessageSyncEngine', () => {
     expect(delivered).toEqual([['M2'], ['M3', 'M4']])
     expect(events).toEqual([
       'load',
-      'deliver:M2',
+      'deliver:local:M2',
       'ack:2',
       'list:2',
       'commit:4',
-      'deliver:M3,M4',
+      'deliver:remote:M3,M4',
       'ack:4',
     ])
   })

@@ -36,6 +36,8 @@ export interface SyncRecoveryResult {
   syncSeq: number
 }
 
+export type SyncDeliverySource = 'local' | 'remote'
+
 export class MessageSyncEngine {
   private readonly pageSize: number
 
@@ -47,9 +49,9 @@ export class MessageSyncEngine {
     this.pageSize = Math.min(200, Math.max(1, options.pageSize ?? 100))
   }
 
-  async recover(userUUID: string, deliver: (messages: Message[]) => void): Promise<SyncRecoveryResult> {
+  async recover(userUUID: string, deliver: (messages: Message[], source: SyncDeliverySource) => void): Promise<SyncRecoveryResult> {
     const snapshot = await this.store.load(userUUID)
-    if (snapshot.messages.length > 0) deliver(snapshot.messages)
+    if (snapshot.messages.length > 0) deliver(snapshot.messages, 'local')
 
     let cursor = snapshot.syncSeq
     let synchronized = 0
@@ -62,7 +64,7 @@ export class MessageSyncEngine {
       const page = validatePage(rawPage, cursor)
       if (page.items.length > 0) {
         await this.store.commitPage(userUUID, page)
-        deliver(page.items.map(item => item.message))
+        deliver(page.items.map(item => item.message), 'remote')
         synchronized += page.items.length
         cursor = page.next_seq
         await this.transport.acknowledge(cursor)

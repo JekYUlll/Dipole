@@ -17,6 +17,15 @@ type AdvanceSyncCheckpointRequest struct {
 	SyncSeq uint64 `json:"sync_seq"`
 }
 
+type ClientSyncComparisonRequest struct {
+	Baseline   bool `json:"baseline"`
+	Match      int  `json:"match"`
+	Pending    int  `json:"pending"`
+	LegacyOnly int  `json:"legacy_only"`
+	SyncOnly   int  `json:"sync_only"`
+	Overflow   int  `json:"overflow"`
+}
+
 type DeviceSyncCheckpointResponse struct {
 	DeviceID string `json:"device_id"`
 	SyncSeq  uint64 `json:"sync_seq"`

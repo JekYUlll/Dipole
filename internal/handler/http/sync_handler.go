@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,7 +16,8 @@ import (
 )
 
 type SyncHandler struct {
-	service applicationPort.SyncApplication
+	service            applicationPort.SyncApplication
+	comparisonObserver applicationPort.ClientSyncComparisonObserver
 }
 
 // GetCheckpoint godoc
@@ -145,6 +147,63 @@ func (h *SyncHandler) AdvanceGroupCheckpoint(c *gin.Context) {
 
 func NewSyncHandler(service applicationPort.SyncApplication) *SyncHandler {
 	return &SyncHandler{service: service}
+}
+
+func (h *SyncHandler) WithComparisonObserver(observer applicationPort.ClientSyncComparisonObserver) *SyncHandler {
+	h.comparisonObserver = observer
+	return h
+}
+
+// ReportComparison godoc
+// @Summary 上报 Web 同步协议聚合对照结果
+// @Description 仅接收计数，不接收消息 ID 或正文
+// @Tags Sync
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param X-Device-ID header string true "稳定设备 ID"
+// @Param request body httpdto.ClientSyncComparisonRequest true "旧 Offline 与 Sync 聚合对照结果"
+// @Success 200 {object} SuccessEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Router /sync/comparison [post]
+func (h *SyncHandler) ReportComparison(c *gin.Context) {
+	if _, ok := middleware.CurrentUser(c); !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	deviceID := strings.TrimSpace(c.GetHeader("X-Device-ID"))
+	if deviceID == "" || len(deviceID) > 128 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "device ID is invalid")
+		return
+	}
+	var request httpdto.ClientSyncComparisonRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "comparison report is invalid")
+		return
+	}
+	counts := map[string]int{
+		"match":       request.Match,
+		"pending":     request.Pending,
+		"legacy_only": request.LegacyOnly,
+		"sync_only":   request.SyncOnly,
+		"overflow":    request.Overflow,
+	}
+	for _, count := range counts {
+		if count < 0 || count > 10000 {
+			ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "comparison count is invalid")
+			return
+		}
+	}
+	if h.comparisonObserver != nil {
+		if request.Baseline {
+			h.comparisonObserver.ObserveClientSyncComparison("baseline", 1)
+		}
+		for outcome, count := range counts {
+			h.comparisonObserver.ObserveClientSyncComparison(outcome, count)
+		}
+	}
+	Success(c, gin.H{})
 }
 
 // List godoc

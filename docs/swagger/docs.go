@@ -2591,6 +2591,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/sync/comparison": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "仅接收计数，不接收消息 ID 或正文",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "上报 Web 同步协议聚合对照结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "旧 Offline 与 Sync 聚合对照结果",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.ClientSyncComparisonRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SuccessEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/sync/groups/checkpoints": {
             "get": {
                 "security": [
@@ -3610,6 +3668,15 @@ const docTemplate = `{
                 }
             }
         },
+        "http.SuccessEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {}
+            }
+        },
         "http.SyncPageResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3736,6 +3803,29 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/httpdto.PrivateUserResponse"
+                }
+            }
+        },
+        "httpdto.ClientSyncComparisonRequest": {
+            "type": "object",
+            "properties": {
+                "baseline": {
+                    "type": "boolean"
+                },
+                "legacy_only": {
+                    "type": "integer"
+                },
+                "match": {
+                    "type": "integer"
+                },
+                "overflow": {
+                    "type": "integer"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "sync_only": {
+                    "type": "integer"
                 }
             }
         },
@@ -4254,6 +4344,12 @@ const docTemplate = `{
                 },
                 "message": {
                     "$ref": "#/definitions/httpdto.MessageResponse"
+                },
+                "message_seq": {
+                    "type": "integer"
+                },
+                "message_uuid": {
+                    "type": "string"
                 },
                 "sync_seq": {
                     "type": "integer"

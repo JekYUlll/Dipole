@@ -36,9 +36,10 @@ type Server struct {
 }
 
 type Dependencies struct {
-	Messages  applicationPort.MessageApplication
-	Sync      applicationPort.SyncApplication
-	Messaging *appComposition.MessagingServices
+	Messages       applicationPort.MessageApplication
+	Sync           applicationPort.SyncApplication
+	SyncComparison applicationPort.ClientSyncComparisonObserver
+	Messaging      *appComposition.MessagingServices
 }
 
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
@@ -126,7 +127,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if dependencies.Sync != nil {
 		syncApplication = dependencies.Sync
 	}
-	syncHandler := httpHandler.NewSyncHandler(syncApplication)
+	syncHandler := httpHandler.NewSyncHandler(syncApplication).WithComparisonObserver(dependencies.SyncComparison)
 	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, repos.Users)
@@ -176,6 +177,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 			protected.GET("/sync", syncHandler.List)
 			protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
 			protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+			protected.POST("/sync/comparison", syncHandler.ReportComparison)
 			protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
 			protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
 			protected.POST("/files", fileHandler.Upload)
