@@ -63,6 +63,9 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil || checkpoint.HighWatermarkID != 3 || checkpoint.LastProcessedID != 0 || checkpoint.Status != cassandrabackfill.StatusRunning {
 		t.Fatalf("initial checkpoint=%+v err=%v", checkpoint, err)
 	}
+	if _, err := checkpoints.CompletedHighWatermark(context.Background(), "timeline-v1"); !errors.Is(err, mysqlStore.ErrCassandraBackfillIncomplete) {
+		t.Fatalf("running job reconciliation watermark error=%v", err)
+	}
 	if _, err := checkpoints.Acquire(context.Background(), "timeline-v1", "owner-b", 99, time.Minute); !errors.Is(err, mysqlStore.ErrCassandraBackfillLeaseHeld) {
 		t.Fatalf("second owner error=%v", err)
 	}
@@ -82,6 +85,10 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 	}
 	if err := checkpoints.Complete(context.Background(), "timeline-v1", "owner-b"); err != nil {
 		t.Fatalf("complete checkpoint: %v", err)
+	}
+	completedHighWatermark, err := checkpoints.CompletedHighWatermark(context.Background(), "timeline-v1")
+	if err != nil || completedHighWatermark != 3 {
+		t.Fatalf("completed reconciliation watermark=%d err=%v", completedHighWatermark, err)
 	}
 	checkpoint, err = checkpoints.Acquire(context.Background(), "timeline-v1", "owner-c", 99, time.Minute)
 	if err != nil || checkpoint.Status != cassandrabackfill.StatusCompleted || checkpoint.HighWatermarkID != 3 || checkpoint.LastProcessedID != 3 {

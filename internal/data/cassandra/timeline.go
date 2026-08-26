@@ -46,6 +46,11 @@ type AppendResult struct {
 	Duplicate bool
 }
 
+type TimelineRecord struct {
+	Projection  TimelineProjection
+	PayloadHash string
+}
+
 type TimelineStore struct {
 	session    *gocql.Session
 	bucketSize uint64
@@ -127,6 +132,54 @@ IF NOT EXISTS`,
 		return AppendResult{Duplicate: true}, nil
 	}
 	return AppendResult{}, fmt.Errorf("%w: conversation=%s seq=%d", ErrProjectionConflict, projection.ConversationKey, projection.MessageSeq)
+}
+
+func (s *TimelineStore) Lookup(ctx context.Context, conversationKey string, sequence uint64) (TimelineRecord, bool, error) {
+	conversationKey = strings.TrimSpace(conversationKey)
+	if conversationKey == "" {
+		return TimelineRecord{}, false, fmt.Errorf("Cassandra timeline lookup conversation key is required")
+	}
+	bucket, err := BucketForSequence(sequence, s.bucketSize)
+	if err != nil {
+		return TimelineRecord{}, false, err
+	}
+
+	var record TimelineRecord
+	var fileExpiresAt *time.Time
+	err = s.session.Query(`
+SELECT message_uuid, client_message_id, sender_uuid, target_type, target_uuid,
+       message_type, content, file_id, file_name, file_size, file_url,
+       file_content_type, file_expires_at, sent_at, payload_hash
+FROM timeline_by_conversation_bucket
+WHERE conversation_key = ? AND bucket = ? AND message_seq = ?`,
+		conversationKey, bucket, int64(sequence),
+	).WithContext(ctx).Scan(
+		&record.Projection.MessageUUID,
+		&record.Projection.ClientMessageID,
+		&record.Projection.SenderUUID,
+		&record.Projection.TargetType,
+		&record.Projection.TargetUUID,
+		&record.Projection.MessageType,
+		&record.Projection.Content,
+		&record.Projection.FileID,
+		&record.Projection.FileName,
+		&record.Projection.FileSize,
+		&record.Projection.FileURL,
+		&record.Projection.FileContentType,
+		&fileExpiresAt,
+		&record.Projection.SentAt,
+		&record.PayloadHash,
+	)
+	if errors.Is(err, gocql.ErrNotFound) {
+		return TimelineRecord{}, false, nil
+	}
+	if err != nil {
+		return TimelineRecord{}, false, fmt.Errorf("lookup Cassandra timeline projection: %w", err)
+	}
+	record.Projection.ConversationKey = conversationKey
+	record.Projection.MessageSeq = sequence
+	record.Projection.FileExpiresAt = fileExpiresAt
+	return record, true, nil
 }
 
 func (p TimelineProjection) PayloadHash() (string, error) {

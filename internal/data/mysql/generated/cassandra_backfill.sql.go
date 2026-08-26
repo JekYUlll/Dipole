@@ -134,6 +134,29 @@ func (q *Queries) GetCassandraBackfillHighWatermark(ctx context.Context) (uint64
 	return id, err
 }
 
+const getCassandraBackfillJob = `-- name: GetCassandraBackfillJob :one
+SELECT job_name, status, source_high_watermark_id, last_processed_id, owner_id, lease_expires_at, attempt_count, last_error, completed_at, created_at, updated_at FROM cassandra_backfill_jobs WHERE job_name = ?
+`
+
+func (q *Queries) GetCassandraBackfillJob(ctx context.Context, jobName string) (CassandraBackfillJob, error) {
+	row := q.db.QueryRowContext(ctx, getCassandraBackfillJob, jobName)
+	var i CassandraBackfillJob
+	err := row.Scan(
+		&i.JobName,
+		&i.Status,
+		&i.SourceHighWatermarkID,
+		&i.LastProcessedID,
+		&i.OwnerID,
+		&i.LeaseExpiresAt,
+		&i.AttemptCount,
+		&i.LastError,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listMessagesForCassandraBackfill = `-- name: ListMessagesForCassandraBackfill :many
 SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
 WHERE id > ?

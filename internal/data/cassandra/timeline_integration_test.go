@@ -52,6 +52,20 @@ func TestTimelineStoreContract(t *testing.T) {
 	if err != nil || !result.Inserted || result.Duplicate {
 		t.Fatalf("append first projection: result=%+v err=%v", result, err)
 	}
+	record, found, err := store.Lookup(ctx, first.ConversationKey, first.MessageSeq)
+	if err != nil || !found || record.Projection.Content != first.Content {
+		t.Fatalf("lookup first projection: record=%+v found=%v err=%v", record, found, err)
+	}
+	if record.Projection.FileExpiresAt != nil {
+		t.Fatalf("lookup nullable file expiry=%v", record.Projection.FileExpiresAt)
+	}
+	expectedHash, err := first.PayloadHash()
+	if err != nil || record.PayloadHash != expectedHash {
+		t.Fatalf("lookup payload hash=%s expected=%s err=%v", record.PayloadHash, expectedHash, err)
+	}
+	if _, found, err := store.Lookup(ctx, first.ConversationKey, 2); err != nil || found {
+		t.Fatalf("lookup missing projection: found=%v err=%v", found, err)
+	}
 
 	replay := first
 	replay.EventID = "E-REPLAY"
@@ -72,9 +86,17 @@ func TestTimelineStoreContract(t *testing.T) {
 		projection.EventID = "E" + time.Now().Format("150405.000000000")
 		projection.MessageSeq = sequence
 		projection.MessageUUID = "M" + time.Now().Format("150405.000000000")
+		if sequence == 10_001 {
+			expiresAt := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+			projection.FileExpiresAt = &expiresAt
+		}
 		if _, err := store.Append(ctx, projection); err != nil {
 			t.Fatalf("append sequence %d: %v", sequence, err)
 		}
+	}
+	fileRecord, found, err := store.Lookup(ctx, first.ConversationKey, 10_001)
+	if err != nil || !found || fileRecord.Projection.FileExpiresAt == nil || !fileRecord.Projection.FileExpiresAt.Equal(time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)) {
+		t.Fatalf("lookup file expiry: record=%+v found=%v err=%v", fileRecord, found, err)
 	}
 
 	iter := session.Query(`

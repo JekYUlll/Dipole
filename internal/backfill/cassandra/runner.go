@@ -15,6 +15,7 @@ const (
 	StatusRunning   = "running"
 	StatusFailed    = "failed"
 	StatusCompleted = "completed"
+	MaxBatchSize    = 10_000
 	maxLeaseSeconds = int64(^uint32(0) >> 1)
 )
 
@@ -81,6 +82,8 @@ func NewRunner(source Source, checkpoints CheckpointStore, timeline TimelineAppe
 		return nil, errors.New("Cassandra backfill owner ID is required")
 	case cfg.BatchSize <= 0:
 		return nil, errors.New("Cassandra backfill batch size must be positive")
+	case cfg.BatchSize > MaxBatchSize:
+		return nil, fmt.Errorf("Cassandra backfill batch size cannot exceed %d", MaxBatchSize)
 	case cfg.LeaseDuration < time.Second:
 		return nil, errors.New("Cassandra backfill lease duration must be at least one second")
 	case int64(cfg.LeaseDuration/time.Second) > maxLeaseSeconds:
@@ -118,7 +121,7 @@ func (r *Runner) Run(ctx context.Context) (Result, error) {
 			if sourceMessage.SourceID <= lastID || sourceMessage.SourceID > result.HighWatermarkID {
 				return result, r.recordFailure(ctx, fmt.Errorf("Cassandra backfill source ID %d is outside (%d, %d]", sourceMessage.SourceID, lastID, result.HighWatermarkID))
 			}
-			appendResult, appendErr := r.timeline.Append(ctx, projection(sourceMessage.Message))
+			appendResult, appendErr := r.timeline.Append(ctx, ProjectionForMessage(sourceMessage.Message))
 			if appendErr != nil {
 				return result, r.recordFailure(ctx, fmt.Errorf("append Cassandra backfill message %s: %w", sourceMessage.Message.UUID, appendErr))
 			}
@@ -152,7 +155,7 @@ func (r *Runner) recordFailure(ctx context.Context, cause error) error {
 	return cause
 }
 
-func projection(message model.Message) cassandradata.TimelineProjection {
+func ProjectionForMessage(message model.Message) cassandradata.TimelineProjection {
 	return cassandradata.TimelineProjection{
 		EventID: "backfill:" + message.UUID, EventVersion: "v1",
 		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,

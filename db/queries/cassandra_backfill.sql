@@ -18,6 +18,9 @@ SELECT cassandra_backfill_jobs.*, NOW(3) AS database_now FROM cassandra_backfill
 WHERE job_name = ?
 FOR UPDATE;
 
+-- name: GetCassandraBackfillJob :one
+SELECT * FROM cassandra_backfill_jobs WHERE job_name = ?;
+
 -- name: ClaimCassandraBackfillJob :exec
 UPDATE cassandra_backfill_jobs
 SET status = 'running',

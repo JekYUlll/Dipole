@@ -76,8 +76,9 @@ cmd_backend() {
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-migrate" ./cmd/migrate
 	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-projector" ./cmd/cassandra-projector
 	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-backfill" ./cmd/cassandra-backfill
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-reconcile" ./cmd/cassandra-reconcile
   )
-  echo "==> Backend built → dist/dipole-{server,gateway,message,migrate,cassandra-projector,cassandra-backfill}"
+  echo "==> Backend built → dist/dipole-{server,gateway,message,migrate,cassandra-projector,cassandra-backfill,cassandra-reconcile}"
 }
 
 cmd_build() {

@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	ErrCassandraBackfillLeaseHeld = errors.New("Cassandra backfill lease is held by another owner")
-	ErrCassandraBackfillLeaseLost = errors.New("Cassandra backfill lease was lost")
+	ErrCassandraBackfillLeaseHeld  = errors.New("Cassandra backfill lease is held by another owner")
+	ErrCassandraBackfillLeaseLost  = errors.New("Cassandra backfill lease was lost")
+	ErrCassandraBackfillIncomplete = errors.New("Cassandra backfill job is not complete")
 )
 
 type CassandraBackfillSource struct{ queries *generated.Queries }
@@ -116,6 +117,18 @@ func (s *CassandraBackfillCheckpointStore) Fail(ctx context.Context, jobName, ow
 func (s *CassandraBackfillCheckpointStore) Complete(ctx context.Context, jobName, ownerID string) error {
 	result, err := s.store.Queries().CompleteCassandraBackfillJob(ctx, generated.CompleteCassandraBackfillJobParams{JobName: jobName, OwnerID: ownerID})
 	return requireBackfillOwnership(result, err, "complete")
+}
+
+func (s *CassandraBackfillCheckpointStore) CompletedHighWatermark(ctx context.Context, jobName string) (uint64, error) {
+	job, err := s.store.Queries().GetCassandraBackfillJob(ctx, strings.TrimSpace(jobName))
+	if err != nil {
+		return 0, fmt.Errorf("read Cassandra backfill job: %w", err)
+	}
+	if job.Status != cassandrabackfill.StatusCompleted || job.LastProcessedID != job.SourceHighWatermarkID {
+		return 0, fmt.Errorf("%w: job=%s status=%s checkpoint=%d high_watermark=%d",
+			ErrCassandraBackfillIncomplete, job.JobName, job.Status, job.LastProcessedID, job.SourceHighWatermarkID)
+	}
+	return job.SourceHighWatermarkID, nil
 }
 
 func requireBackfillOwnership(result sql.Result, err error, operation string) error {

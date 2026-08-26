@@ -8,11 +8,13 @@ mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-cassandra-backfill-migrate.XXXXXX)
 backfill_binary=$(mktemp /tmp/dipole-cassandra-backfill.XXXXXX)
 backfill_log=$(mktemp /tmp/dipole-cassandra-backfill.XXXXXX.log)
+reconcile_binary=$(mktemp /tmp/dipole-cassandra-reconcile.XXXXXX)
+reconcile_report=$(mktemp /tmp/dipole-cassandra-reconcile.XXXXXX.json)
 
 cleanup() {
   local exit_code=$?
   docker rm -f "$mysql_container" >/dev/null 2>&1 || true
-  rm -f "$migrate_binary" "$backfill_binary" "$backfill_log"
+  rm -f "$migrate_binary" "$backfill_binary" "$backfill_log" "$reconcile_binary" "$reconcile_report"
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     docker compose -p "$project" -f "$storage_compose" down --volumes --remove-orphans >/dev/null 2>&1 || true
   else
@@ -50,6 +52,7 @@ docker exec "$mysql_container" mysqladmin ping -h 127.0.0.1 -uroot -pdipole-root
   cd "$root_dir"
   CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
   CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/cassandra-backfill
+  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/cassandra-reconcile
 )
 
 runtime_args=(
@@ -63,11 +66,11 @@ docker run --rm "${runtime_args[@]}" -v "$migrate_binary:/app/dipole-migrate:ro"
 docker exec -i "$mysql_container" mysql -uroot -pdipole-root dipole <<'SQL'
 INSERT INTO messages (
   uuid, client_message_id, conversation_key, seq, sender_uuid,
-  target_type, target_uuid, message_type, content, sent_at
+  target_type, target_uuid, message_type, content, file_expires_at, sent_at
 ) VALUES
-  ('M-BACKFILL-1', 'C-BACKFILL-1', 'direct:U100:U200', 1, 'U100', 0, 'U200', 0, 'first', '2026-08-27 00:00:01.000'),
-  ('M-BACKFILL-2', 'C-BACKFILL-2', 'direct:U100:U200', 0, 'U100', 0, 'U200', 0, 'retry', '2026-08-27 00:00:02.000'),
-  ('M-BACKFILL-3', 'C-BACKFILL-3', 'direct:U100:U200', 3, 'U100', 0, 'U200', 0, 'last', '2026-08-27 00:00:03.000');
+  ('M-BACKFILL-1', 'C-BACKFILL-1', 'direct:U100:U200', 1, 'U100', 0, 'U200', 0, 'first', NULL, '2026-08-27 00:00:01.000'),
+  ('M-BACKFILL-2', 'C-BACKFILL-2', 'direct:U100:U200', 0, 'U100', 0, 'U200', 0, 'retry', '2026-09-01 00:00:00.000', '2026-08-27 00:00:02.000'),
+  ('M-BACKFILL-3', 'C-BACKFILL-3', 'direct:U100:U200', 3, 'U100', 0, 'U200', 0, 'last', NULL, '2026-08-27 00:00:03.000');
 SQL
 
 set +e
@@ -123,4 +126,33 @@ grep -q 'processed=0 inserted=0 duplicates=0' "$backfill_log" || {
   exit 1
 }
 
-printf 'Cassandra backfill smoke passed: failed batch kept checkpoint 0, recovery replayed one duplicate, and job completed at source ID 3.\n'
+docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-cassandra-reconcile:ro" \
+  alpine:3.22 /app/dipole-cassandra-reconcile --job smoke-v1 --batch-size 2 --sample-modulus 1 \
+  >"$reconcile_report"
+jq -e '.consistent == true and .source_count == 3 and .target_found_count == 3 and .hash_matched_count == 3 and .sampled_count == 3' \
+  "$reconcile_report" >/dev/null || {
+  printf 'Expected a consistent Cassandra reconciliation report\n' >&2
+  cat "$reconcile_report"
+  exit 1
+}
+
+compose exec -T cassandra cqlsh -e "UPDATE dipole_message_shadow.timeline_by_conversation_bucket SET content = 'corrupted', payload_hash = 'corrupted-hash' WHERE conversation_key = 'direct:U100:U200' AND bucket = 0 AND message_seq = 2;"
+set +e
+docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-cassandra-reconcile:ro" \
+  alpine:3.22 /app/dipole-cassandra-reconcile --job smoke-v1 --batch-size 2 --sample-modulus 1 \
+  >"$reconcile_report"
+reconcile_exit=$?
+set -e
+if [[ "$reconcile_exit" -ne 2 ]]; then
+  printf 'Expected inconsistent reconciliation to exit 2, got %d\n' "$reconcile_exit" >&2
+  cat "$reconcile_report"
+  exit 1
+fi
+jq -e '.consistent == false and .hash_mismatch_count == 1 and .sample_mismatch_count == 1' \
+  "$reconcile_report" >/dev/null || {
+  printf 'Expected hash and sample mismatch diagnostics\n' >&2
+  cat "$reconcile_report"
+  exit 1
+}
+
+printf 'Cassandra backfill/reconciliation smoke passed: recovery completed at source ID 3, clean data matched, and corruption returned exit 2.\n'
