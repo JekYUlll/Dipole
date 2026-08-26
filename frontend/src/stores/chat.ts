@@ -2,7 +2,14 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser, GroupSyncCheckpoint } from '@/types'
 import api from '@/api'
-import { browserSyncEnabled, clearBrowserMessages, recoverBrowserMessages } from '@/sync/browserSync'
+import {
+  browserSyncEnabled,
+  browserSyncMode,
+  clearBrowserMessages,
+  compareBrowserSyncMessages,
+  recoverBrowserMessages,
+} from '@/sync/browserSync'
+import { drainLegacyOffline } from '@/sync/legacyOffline'
 
 export type MessageSyncStatus = 'idle' | 'restoring' | 'current' | 'error'
 
@@ -19,6 +26,7 @@ export const useChatStore = defineStore('chat', () => {
   const safeSyncSeq = ref(0)
   const lastOfflineID = ref(Number(localStorage.getItem('dipole.web.lastOfflineID') || '0'))
   let activeSync: Promise<number> | undefined
+  let pendingComparisonTimer: ReturnType<typeof setTimeout> | undefined
   // current user UUID — set by auth store after login, needed for key derivation
   const myUUID = ref(localStorage.getItem('dipole.web.user')
     ? (() => { try { return JSON.parse(localStorage.getItem('dipole.web.user')!).uuid } catch { return '' } })()
@@ -104,10 +112,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const syncOffline = async () => {
-    const data = await api.get(`/api/v1/messages/offline?after_id=${lastOfflineID.value}&limit=100`) as Message[]
-    const items = Array.isArray(data) ? data : []
-    items.forEach(m => pushMessage(m))
-    _updateLastOfflineID(items)
+    const items = await _fetchLegacyOfflineMessages(true)
     return items.length
   }
 
@@ -115,13 +120,30 @@ export const useChatStore = defineStore('chat', () => {
     if (!browserSyncEnabled || !myUUID.value) return Promise.resolve(0)
     if (activeSync) return activeSync
     syncStatus.value = 'restoring'
-    activeSync = recoverBrowserMessages(myUUID.value, messages => {
-      messages.forEach(message => pushMessage(message))
-    }).then(result => {
+    activeSync = (async () => {
+      let legacyMessages: Message[] | undefined
+      try {
+        legacyMessages = await _fetchLegacyOfflineMessages(browserSyncMode === 'shadow')
+      } catch (error) {
+        if (browserSyncMode === 'shadow') throw error
+      }
+
+      const remoteSyncMessages: Message[] = []
+      const result = await recoverBrowserMessages(myUUID.value, (messages, source) => {
+        if (source === 'remote') remoteSyncMessages.push(...messages)
+        if (browserSyncMode === 'primary') messages.forEach(message => pushMessage(message))
+      })
+      if (legacyMessages) {
+        const comparison = await compareBrowserSyncMessages(myUUID.value, legacyMessages, remoteSyncMessages)
+        if (pendingComparisonTimer) clearTimeout(pendingComparisonTimer)
+        pendingComparisonTimer = comparison.pending > 0
+          ? setTimeout(() => { void syncMessages().catch(() => {}) }, 61_000)
+          : undefined
+      }
       safeSyncSeq.value = result.syncSeq
       syncStatus.value = 'current'
       return result.synchronized
-    }).catch(error => {
+    })().catch(error => {
       syncStatus.value = 'error'
       throw error
     }).finally(() => {
@@ -132,6 +154,8 @@ export const useChatStore = defineStore('chat', () => {
 
   const clearLocalMessages = async (userUUID = myUUID.value) => {
     if (activeSync) await activeSync.catch(() => {})
+    if (pendingComparisonTimer) clearTimeout(pendingComparisonTimer)
+    pendingComparisonTimer = undefined
     if (userUUID) await clearBrowserMessages(userUUID)
     messageMap.value = new Map()
     activeKey.value = ''
@@ -239,6 +263,21 @@ export const useChatStore = defineStore('chat', () => {
   const _updateLastOfflineID = (msgs: Message[]) => {
     msgs.forEach(m => { if (m.id > lastOfflineID.value) lastOfflineID.value = m.id })
     localStorage.setItem('dipole.web.lastOfflineID', String(lastOfflineID.value))
+  }
+
+  const _fetchLegacyOfflineMessages = async (deliver: boolean) => {
+    return drainLegacyOffline(
+      lastOfflineID.value,
+      async (afterID, limit) => {
+        const data = await api.get(`/api/v1/messages/offline?after_id=${afterID}&limit=${limit}`) as Message[]
+        return Array.isArray(data) ? data : []
+      },
+      (items, nextID) => {
+        if (deliver) items.forEach(message => pushMessage(message))
+        lastOfflineID.value = nextID
+        localStorage.setItem('dipole.web.lastOfflineID', String(nextID))
+      },
+    )
   }
 
   return {

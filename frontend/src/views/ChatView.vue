@@ -775,6 +775,17 @@ const latestLoadedMessageSeq = (key: string) => {
 const hotGroupPullTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const hotGroupPullInFlight = new Map<string, Promise<void>>()
 const hotGroupPullPending = new Set<string>()
+let syncComparisonTimer: ReturnType<typeof setTimeout> | null = null
+
+const scheduleSyncComparison = (message: Message) => {
+  const currentUserUUID = auth.currentUser?.uuid
+  if (!currentUserUUID || message.target_type !== 0 || message.target_uuid !== currentUserUUID || message.from_uuid === currentUserUUID) return
+  if (syncComparisonTimer) clearTimeout(syncComparisonTimer)
+  syncComparisonTimer = setTimeout(() => {
+    syncComparisonTimer = null
+    void chat.syncMessages().catch(() => {})
+  }, 1000)
+}
 
 const performHotGroupPull = async (groupUUID: string) => {
   const key = `group:${groupUUID}`
@@ -1644,6 +1655,7 @@ const handleWsPacket = async (packet: WsPacket) => {
       }
       const msg = wsDataToMessage(data as Record<string, unknown>)
       chat.pushMessage(msg)
+      scheduleSyncComparison(msg)
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
       if (key === chat.activeKey) {
         scrollToBottom()
@@ -1761,6 +1773,7 @@ watch(() => activeConv.value?.conversation_key, () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalSearchShortcut)
   clearHotGroupPullSchedulers()
+  if (syncComparisonTimer) clearTimeout(syncComparisonTimer)
   pendingOutboundMessages.clear()
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()

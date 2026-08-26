@@ -24,6 +24,63 @@ type stubSyncService struct {
 	groupUUID     string
 }
 
+type syncComparisonObserverStub struct {
+	outcomes map[string]int
+}
+
+func (s *syncComparisonObserverStub) ObserveClientSyncComparison(outcome string, count int) {
+	if s.outcomes == nil {
+		s.outcomes = make(map[string]int)
+	}
+	s.outcomes[outcome] += count
+}
+
+func TestSyncHandlerRecordsBoundedClientComparison(t *testing.T) {
+	observer := &syncComparisonObserverStub{}
+	handler := NewSyncHandler(&stubSyncService{}).WithComparisonObserver(observer)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/sync/comparison", strings.NewReader(`{"baseline":false,"match":3,"pending":2,"legacy_only":1,"sync_only":0,"overflow":0}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Request.Header.Set("X-Device-ID", "web-1")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U1"})
+
+	handler.ReportComparison(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if observer.outcomes["match"] != 3 || observer.outcomes["pending"] != 2 || observer.outcomes["legacy_only"] != 1 {
+		t.Fatalf("unexpected outcomes: %+v", observer.outcomes)
+	}
+}
+
+func TestSyncHandlerRejectsInvalidClientComparison(t *testing.T) {
+	handler := NewSyncHandler(&stubSyncService{}).WithComparisonObserver(&syncComparisonObserverStub{})
+	for name, testCase := range map[string]struct {
+		deviceID string
+		body     string
+	}{
+		"missing device":  {body: `{"match":1}`},
+		"negative count":  {deviceID: "web-1", body: `{"match":-1}`},
+		"excessive count": {deviceID: "web-1", body: `{"pending":10001}`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(recorder)
+			context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/sync/comparison", strings.NewReader(testCase.body))
+			context.Request.Header.Set("Content-Type", "application/json")
+			context.Request.Header.Set("X-Device-ID", testCase.deviceID)
+			context.Set(middleware.ContextUserKey, &model.User{UUID: "U1"})
+
+			handler.ReportComparison(context)
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("expected status 400, got %d: %s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func (s *stubSyncService) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
 	s.userUUID = userUUID
 	s.deviceID = deviceID

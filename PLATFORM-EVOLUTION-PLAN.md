@@ -270,7 +270,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 验证 earliest consumer 与固定 Outbox Replay 拼接后的在线追平窗口，并以 lag=0、retry/DLQ 无增量和 Reconcile 一致作为停止门槛。
 - [x] 迁移 Message 的 Inbox 写责任和数据库权限：Sync/Message 使用操作级最小账号，`projector` 停止 Message Inbox 写入，`atomic` 保留一键恢复窗口，并通过真实 MySQL 演练解决 `AD-023`。
 - [x] 前端增加默认关闭的 IndexedDB Sync Engine，以同一事务提交消息和本地游标，恢复/重连后再显式 ACK 服务端设备 Cursor。
-- [ ] 灰度双跑 `/messages/offline` 与 `/sync`，归档按稳定 Message UUID 比较的结果并完成旧 Offline 兼容窗口。
+- [x] 增加 `shadow` 双跑模式、持久化 UUID 基线/pending 窗口和 Prometheus 聚合遥测；首批只比较两个协议语义一致的收到私聊消息。
+- [ ] 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，再结束旧 Offline 兼容窗口。
 - [ ] 默认启用前统一显式退出、401、WS kick 与账号切换的本地清理，并建立容量水位和安全淘汰策略，解决 `AD-025`。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。

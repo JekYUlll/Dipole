@@ -18,7 +18,7 @@
 - **状态：** 暂缓
 - **发现日期：** 2026-08-27
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
-- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。Web 已增加默认关闭的 IndexedDB Sync Engine，可忽略 Cassandra 响应中的 MySQL internal ID，并在本地事务完成后 ACK `sync_seq`；`/messages/offline` 对照观测和旧客户端兼容窗口尚未完成。按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
+- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。Web 已增加默认关闭的 IndexedDB Sync Engine、`shadow` 双跑模式和聚合对照指标，可忽略 Cassandra 响应中的 MySQL internal ID，并在本地事务完成后 ACK `sync_seq`；真实观察窗口和旧客户端兼容周期尚未完成。按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
 - **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 先灰度 Web IndexedDB Sync Engine 并归档 Offline/Sync UUID 对照结果，再为 Cassandra hydration 增加受控主读与 MySQL fallback。另行建立幂等结果快照或 UUID locator、独立文件授权元数据；所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
@@ -54,7 +54,7 @@
 - **现状：** 首版 Sync Engine 按用户隔离消息与游标，显式退出和 WS 强制下线会等待在途同步后尽力清除当前账号；Axios 收到 HTTP 401 时仍直接移除 Token 并跳转，尚未进入统一清理入口。本地消息当前没有容量上限或按会话淘汰策略，功能默认关闭。
 - **风险：** 被动会话失效或 IndexedDB 删除失败时，共享设备可能继续保留本地消息；长期运行会持续增长浏览器占用，最终触发配额错误并暂停同步。
 - **建议方向：** 建立统一 Session Termination 流程，覆盖显式退出、401、WS kick 和账号切换；增加按用户的缓存 manifest、容量水位、最近会话淘汰和 quota error 可观测状态，同时保证淘汰不推进安全 Sync Cursor。
-- **处理门槛：** `VITE_SYNC_ENGINE_ENABLED` 计划改为默认开启前完成清理故障测试、容量压测和共享设备验收。
+- **处理门槛：** `VITE_SYNC_ENGINE_MODE` 计划从 `off/shadow` 改为默认 `primary` 前完成清理故障测试、容量压测和共享设备验收。
 
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 

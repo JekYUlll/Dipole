@@ -44,6 +44,10 @@ type SyncApplication interface {
 	AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error)
 }
 
+type ClientSyncComparisonObserver interface {
+	ObserveClientSyncComparison(outcome string, count int)
+}
+
 type SearchApplication interface {
 	Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error)
 }

@@ -19,6 +19,8 @@
 
 - 增加默认关闭的 Web Sync Engine：按用户将 Sync 消息与安全 `sync_seq` 原子写入 IndexedDB，启动和 WebSocket 重连时从本地恢复并分页追平 `/sync`，仅在本地事务完成后确认设备 Cursor。
 - 增加同步恢复的 Pencil 状态矩阵、desktop/mobile 恢复页面和 Vue 标题栏状态，覆盖恢复中、已同步、离线可读与可重试中断语义。
+- 增加 Web `off|shadow|primary` 同步模式；shadow 保持旧 Offline 驱动界面，同时持久化 `/sync` 并按收到的私聊 Message UUID 做带宽限期的有界对照。
+- 增加认证聚合遥测 `POST /api/v1/sync/comparison` 与 `dipole_web_sync_comparison_total{scope,outcome}`，只接收 baseline、match、pending、legacy_only、sync_only、overflow 计数，不接收消息 ID 或正文。
 - 增加 Sync 专用 MySQL 配置覆盖、`dipole_sync` 最小授权模板和启动权限门禁，精确验证 Inbox/Checkpoint/恢复表读写及 Message/Core 越权拒绝。
 - 增加 `message.inbox_write_mode=atomic|projector`；独立 Message owner 可停止 Inbox 写入并保留 Message、Conversation Seq、群高水位与 Transactional Outbox 原子提交，模块化单体继续固定使用 atomic 路径。
 - 增加 `dipole_message_projector` 最小授权模板、Sync mTLS 证书身份和 Compose 运行时定义。
@@ -195,7 +197,7 @@
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`；`000001_baseline` 创建或接管基础业务表，`000002_conversation_sequence` 回填历史会话序号并建立 allocator。
 - `000002` 按 `conversation_key + id` 为历史消息回填 `1..N`；先完成 migration，再滚动发布新 Message 节点。旧 `before_id`/`after_id` 接口在客户端迁移期间继续保留。
 - `000003` 通过现有最后消息与未读计数回填会话读位置，并创建 `device_sync_checkpoints`；只有启用具备 IndexedDB 事务提交能力的 Web Sync Engine 后，客户端才会自动 ACK Sync 页面。
-- Web Sync Engine 通过构建变量 `VITE_SYNC_ENGINE_ENABLED=true` 灰度启用；默认关闭时保持现有客户端行为，旧 `/messages/offline` 在双跑比较和兼容窗口结束前继续保留。
+- Web Sync Engine 通过构建变量 `VITE_SYNC_ENGINE_MODE=off|shadow|primary` 灰度；默认 `off` 保持现有客户端行为，`shadow` 以旧 Offline 为界面主路径，`primary` 才由 `/sync` 恢复界面。旧布尔开关 `VITE_SYNC_ENGINE_ENABLED=true` 暂时映射到 primary 兼容已构建环境。
 - `000004` 创建可重建的 `message_search_documents` 逻辑索引；当前不自动回填，A5 Search Indexer 上线前搜索入口保持关闭。
 - `000005` 回填群消息高水位并创建设备群 checkpoint；Message 账号新增 `group_sync_states` 写权限，继续拒绝设备 checkpoint 与其他 Core 表。
 - `000006` 创建 `cassandra_backfill_jobs`；先确认实时 Projector 已接管增量，再运行 `dipole-cassandra-backfill` 固定历史快照并补齐 Cassandra。
@@ -211,7 +213,8 @@
 
 ### 验证
 
-- 已通过 7 个 Web Sync 单元测试，覆盖本地优先恢复、多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、IndexedDB 重开、账号隔离和游标单调性；全量 13 个前端测试以及 Sync 开启/关闭两种生产构建通过。
+- 已通过 17 个 Web Sync 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开、账号隔离、游标单调性、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复和私聊语义过滤；全量 23 个前端测试通过。
+- 已通过 Web Sync `off|shadow|primary` 三种生产构建、聚合遥测 Handler 边界测试、Prometheus Collector 测试、OpenAPI 生成和全量 Go 测试。
 - 已通过 Pencil 结构与截图检查，确认 Sync 状态矩阵、desktop 及 mobile frame 无 clipping 或残留 placeholder，并导出批准预览。
 - 已通过 MySQL 8.4 与 Cassandra 5.0.9 真实 Sync hydration contract，覆盖一致结果、payload mismatch、缺少 Cassandra 投影及 MySQL 主结果隔离。
 - 新增真实 MySQL 8.4 写责任烟测，覆盖 Sync/Message 最小权限启动探针、Message+Outbox 提交但不写 Inbox、Projector 收敛和 atomic 回退恢复。
@@ -275,6 +278,7 @@
 - Sync Inbox、旧 Offline、幂等结果、文件授权和 Cassandra 恢复工具仍依赖 MySQL 完整消息，正文退役条件记录为 AD-019。
 - Inbox 清理策略与 `/messages/offline` 对照观测仍待后续迭代；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 的被动 401 清理与容量淘汰策略尚未统一，默认启用门禁记录为 `AD-025`。
+- Web 协议对照首批仅覆盖收到的私聊消息；群聊存在普通群 fanout 与热群 notify/pull 两套语义，需按群类型建立独立比较契约后再纳入。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
 - 独立 Message Service 已停止在代码中读取 Core Repository；当前仍与 Core 共用 MySQL schema 和数据库账号，最小数据库授权记录为 AD-015。
 - M5 的非 WS HTTP、Swagger 与静态 Web 仍由私网 Core 提供，Gateway 通过反向代理暴露；后续服务拆分前必须保持 Core 不直接暴露公网。
