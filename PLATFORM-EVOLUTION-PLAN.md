@@ -252,6 +252,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
 - [x] 使用固定 Outbox mutation 高水位全量重建索引，ES 故障不阻断消息发送。
 - [x] 完成 Pencil Search desktop/mobile 的 Results、Loading、Empty、Error 四态和可复用组件。
+- [x] 实现默认关闭的 Vue Search 工作区、Gateway/前端双开关、请求防抖、乱序响应淘汰和组件测试。
 - [ ] 搜索全量重建源切到 Cassandra 或归档事件，解除对 MySQL 历史正文的恢复依赖。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
@@ -337,9 +338,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ## 10. 持续轨道：Pencil 前端设计
 
 - [ ] F1：已建立 `design/dipole-ui.pen`、首组 design tokens 与 Search 核心组件；Login/Chat desktop/mobile 待完成。
-- [ ] F2：Search desktop/mobile 四态已完成；Contact、Group、File、Search Vue、Sync、Device 与 Settings 待完成。
+- [ ] F2：Search desktop/mobile 四态及 Vue 工作区已完成；Contact、Group、File、Sync、Device 与 Settings 待完成。
 - [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
-- [ ] F4：建立 Pencil 增量更新、设计日志、Vue token 映射、Playwright E2E 与视觉回归流程。
+- [ ] F4：已建立 Pencil 增量更新、设计日志和 Vitest 组件测试基线；Vue token 映射、Playwright E2E 与视觉回归待完成。
 
 设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
 

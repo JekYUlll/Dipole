@@ -1,7 +1,7 @@
 <template>
   <div class="im-container">
     <!-- Left Panel (nav + session) -->
-    <div class="left-panel" :class="{ hidden: !!chat.activeKey }">
+    <div class="left-panel" :class="{ hidden: !!chat.activeKey || showMessageSearch }">
       <!-- Nav Bar -->
     <div class="nav-bar">
       <button class="nav-avatar profile-btn" @click="openSelfProfile" title="个人资料">
@@ -28,7 +28,15 @@
     <!-- Session Panel -->
     <div class="session-panel">
       <div class="search-wrap">
-        <input v-model="searchText" type="text" placeholder="搜索" />
+        <input
+          v-model="searchText"
+          type="text"
+          :placeholder="messageSearchEnabled ? '筛选会话，回车搜索消息' : '搜索'"
+          @keydown.enter="handleSearchEnter"
+        />
+        <button v-if="messageSearchEnabled" class="message-search-btn" type="button" title="搜索消息" aria-label="搜索消息" @click="openMessageSearch">
+          <IconSearch :size="15" />
+        </button>
       </div>
 
       <!-- 消息列表 -->
@@ -141,8 +149,17 @@
     </div><!-- /session-panel -->
     </div><!-- /left-panel -->
 
+    <SearchWorkspace
+      v-if="showMessageSearch"
+      :conversations="chat.conversations"
+      :current-user="auth.currentUser ?? undefined"
+      :initial-query="searchText"
+      @close="closeMessageSearch"
+      @select="openSearchResult"
+    />
+
     <!-- Chat Area -->
-    <div class="chat-area">
+    <div v-else class="chat-area">
       <template v-if="activeConv">
         <div class="chat-header">
           <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
@@ -276,7 +293,7 @@
     </div>
 
     <!-- Detail Panel -->
-    <div v-if="activeConv && showDetail" class="detail-panel">
+    <div v-if="activeConv && showDetail && !showMessageSearch" class="detail-panel">
       <template v-if="activeConv.target_type === 1">
         <!-- 群头像 + 基本信息 -->
         <div class="detail-header">
@@ -550,18 +567,20 @@ import {
   IconChat, IconContacts, IconGroups, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
 } from '@/components/icons'
+import SearchWorkspace from '@/components/SearchWorkspace.vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser } from '@/types'
+import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult } from '@/types'
 import api from '@/api'
 
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
+const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -586,6 +605,7 @@ const toast = {
 
 const navTab = ref<'chat' | 'contacts' | 'groups'>('chat')
 const searchText = ref('')
+const showMessageSearch = ref(false)
 const inputText = ref('')
 const showDetail = ref(false)
 const msgListRef = ref<HTMLDivElement | null>(null)
@@ -1061,6 +1081,40 @@ const selectConversation = async (conv: Conversation) => {
     await chat.markRead(conv)
   }
   nextTick(scrollToBottom)
+}
+
+const openMessageSearch = () => {
+  if (!messageSearchEnabled) return
+  showDetail.value = false
+  showMessageSearch.value = true
+}
+
+const closeMessageSearch = () => {
+  showMessageSearch.value = false
+}
+
+const handleSearchEnter = (event: KeyboardEvent) => {
+  if (!messageSearchEnabled) return
+  event.preventDefault()
+  openMessageSearch()
+}
+
+const openSearchResult = async (message: SearchMessageResult) => {
+  const conversation = chat.conversations.find(item => item.conversation_key === message.conversation_key)
+  if (!conversation) {
+    toast.error('该会话当前不可用')
+    return
+  }
+  showMessageSearch.value = false
+  await selectConversation(conversation)
+}
+
+const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
+  if (!messageSearchEnabled) return
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    openMessageSearch()
+  }
 }
 
 const sendMessage = () => {
@@ -1663,6 +1717,7 @@ const ws = useWebSocket({
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleGlobalSearchShortcut)
   if (!auth.token) return
   await auth.fetchMe()
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
@@ -1690,6 +1745,7 @@ watch(() => activeConv.value?.conversation_key, () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalSearchShortcut)
   clearHotGroupPullSchedulers()
   pendingOutboundMessages.clear()
   revokeMediaPreviewURLs()
@@ -2089,15 +2145,38 @@ onBeforeUnmount(() => {
 .search-wrap {
   padding: 8px 10px;
   background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .search-wrap input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 5px 10px;
   border-radius: 14px;
   border: none;
   background: #d4d4d4;
   font-size: 13px;
+  outline: none;
+}
+
+.message-search-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: #f7fff9;
+  background: #172126;
+  cursor: pointer;
+}
+
+.message-search-btn:hover,
+.message-search-btn:focus-visible {
+  background: #007a4e;
   outline: none;
 }
 

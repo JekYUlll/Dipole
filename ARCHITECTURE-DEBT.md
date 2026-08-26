@@ -34,6 +34,17 @@
 - **建议方向：** 建立按事件 ID 校验的对象存储归档或独立 Event Store，记录分段 hash、覆盖水位和恢复演练；仅允许删除已被归档且通过 Reconcile 的 Outbox 分段。
 - **处理门槛：** 归档源能够提供与现有 `SearchBackfillSource` 等价的固定高水位和单调分页契约，完成一次从空索引重建、hash 对账和回滚演练。
 
+### AD-022：前端开发工具链仍停留在 Vite 5
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** 前端本地开发服务器、Vite、Vitest、esbuild、依赖审计
+- **现状：** 生产依赖高危公告已修复且 `npm audit --omit=dev` 为零漏洞；完整开发依赖审计仍报告 Vite 5 间接使用旧 esbuild，自动修复要求跨主版本升级到 Vite 8，并同步升级测试链。
+- **风险：** 开发服务器在不受信任网络上运行时可能暴露响应读取风险；直接强制升级会同时改变构建、插件和测试运行时，缺少独立兼容验证。
+- **建议方向：** 在独立前端工具链分支升级 Vite/Vitest，验证 Node LTS、生产 bundle、代理 WebSocket、测试和静态资源基路径后再合并。
+- **处理门槛：** 前端开发服务器需要暴露到共享网络前完成；当前仅绑定可信本机开发环境。
+
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **优先级：** P2
@@ -137,10 +148,10 @@
 ### AD-011：前端缺少可版本化的完整设计基线
 
 - **优先级：** P2
-- **状态：** 进行中
+- **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
-- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志和 Search desktop/mobile 四态预览；Login/Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
+- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志、Search desktop/mobile 四态预览和 Vue 工作区；Login/Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
 - **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
 - **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
