@@ -48,6 +48,16 @@ redis:
   sentinel_addresses: []
   sentinel_password: ""
 
+cassandra:
+  # Shadow projector remains off until its schema and Kafka consumer are deployed independently.
+  enabled: false
+  hosts:
+    - 127.0.0.1:19042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+  connect_timeout_seconds: 5
+
 kafka:
   enabled: true
   brokers:

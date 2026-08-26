@@ -21,6 +21,8 @@ const (
 	// IM text/file messages favor tail latency over batching throughput.
 	kafkaWriterBatchSize    = 1
 	kafkaWriterBatchTimeout = 5 * time.Millisecond
+	topicMetadataAttempts   = 30
+	topicMetadataBackoff    = 100 * time.Millisecond
 )
 
 type Publisher struct {
@@ -255,7 +257,11 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 		return fmt.Errorf("create kafka topics: %w", err)
 	}
 
-	partitionMetadata, err := controllerConn.ReadPartitions(topicNames(configs)...)
+	metadataContext, cancel := context.WithTimeout(context.Background(), p.timeout)
+	defer cancel()
+	partitionMetadata, err := readTopicPartitionsWithRetry(metadataContext, func() ([]kafkago.Partition, error) {
+		return controllerConn.ReadPartitions(topicNames(configs)...)
+	})
 	if err != nil {
 		return fmt.Errorf("read kafka partitions after create: %w", err)
 	}
@@ -298,6 +304,26 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 	}
 
 	return nil
+}
+
+func readTopicPartitionsWithRetry(ctx context.Context, read func() ([]kafkago.Partition, error)) ([]kafkago.Partition, error) {
+	var lastErr error
+	for attempt := 1; attempt <= topicMetadataAttempts; attempt++ {
+		partitions, err := read()
+		if err == nil {
+			return partitions, nil
+		}
+		lastErr = err
+		if attempt == topicMetadataAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, errors.Join(lastErr, ctx.Err())
+		case <-time.After(topicMetadataBackoff):
+		}
+	}
+	return nil, lastErr
 }
 
 func (p *Publisher) topicName(topic string) string {

@@ -63,6 +63,15 @@ type Redis struct {
 	SentinelPassword   string   `mapstructure:"sentinel_password"`
 }
 
+type Cassandra struct {
+	Enabled               bool     `mapstructure:"enabled"`
+	Hosts                 []string `mapstructure:"hosts"`
+	Keyspace              string   `mapstructure:"keyspace"`
+	LocalDatacenter       string   `mapstructure:"local_datacenter"`
+	TimelineBucketSize    uint64   `mapstructure:"timeline_bucket_size"`
+	ConnectTimeoutSeconds int      `mapstructure:"connect_timeout_seconds"`
+}
+
 type Auth struct {
 	TokenTTLHours int    `mapstructure:"token_ttl_hours"`
 	JWTSecret     string `mapstructure:"jwt_secret"`
@@ -219,6 +228,12 @@ func Load() error {
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
 		v.SetDefault("redis.mode", "single")
+		v.SetDefault("cassandra.enabled", false)
+		v.SetDefault("cassandra.hosts", []string{"127.0.0.1:19042"})
+		v.SetDefault("cassandra.keyspace", "dipole_message_shadow")
+		v.SetDefault("cassandra.local_datacenter", "datacenter1")
+		v.SetDefault("cassandra.timeline_bucket_size", 10000)
+		v.SetDefault("cassandra.connect_timeout_seconds", 5)
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
@@ -329,6 +344,12 @@ func Load() error {
 			"redis.sentinel_master_name",
 			"redis.sentinel_addresses",
 			"redis.sentinel_password",
+			"cassandra.enabled",
+			"cassandra.hosts",
+			"cassandra.keyspace",
+			"cassandra.local_datacenter",
+			"cassandra.timeline_bucket_size",
+			"cassandra.connect_timeout_seconds",
 			"kafka.enabled",
 			"kafka.brokers",
 			"kafka.client_id",
@@ -503,6 +524,17 @@ func RedisConfig() Redis {
 	}
 
 	return redis
+}
+
+func CassandraConfig() Cassandra {
+	MustLoad()
+
+	var cassandra Cassandra
+	if err := cfg.UnmarshalKey("cassandra", &cassandra); err != nil {
+		panic(fmt.Errorf("unmarshal Cassandra config: %w", err))
+	}
+
+	return cassandra
 }
 
 func AuthConfig() Auth {

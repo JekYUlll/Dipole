@@ -216,7 +216,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### A3：Cassandra Message Store 影子投影
 
 - [x] 设计按稳定 `conversation_key + bucket` 分区、按 `conversation_seq` 聚簇排序的 Timeline 表。
-- [ ] 通过 Kafka `message.created.vN` 将 MySQL 已确认消息投影到 Cassandra，消费者按事件 ID 幂等。
+- [x] 通过 Kafka `message.created.vN` 将 MySQL 已确认消息投影到 Cassandra，消费者按事件负载幂等。
 - [ ] 先回填历史数据，再持续追平增量；记录 checkpoint 和失败重试。
 - [ ] 建立数量、哈希、抽样内容和会话序号连续性校验。
 - [ ] Message Service 执行 shadow-read，对比 Cassandra 与 MySQL，客户端仍读取 MySQL。

@@ -39,10 +39,34 @@ bucket = (message_seq - 1) / 10000
 ## Current Boundary
 
 - 已引入 Apache Cassandra GoCQL Driver v2，并通过 Cassandra 5.0.9 真实 contract。
-- Runtime 尚未创建 Cassandra session，配置文件也没有 Cassandra endpoint。
-- Kafka projector、checkpoint、backfill、reconciliation 和 shadow-read 留在后续 A3 切片。
+- 独立 `cmd/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
+- Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core、Message 或 Gateway Composition Root。
+- Backfill、reconciliation 和 shadow-read 留在后续 A3 切片；新 consumer 从当前 Kafka 尾部开始，历史事实由 backfill 补齐。
 - 当前表只支持 Conversation Timeline；按 UUID 查询、搜索和用户 Inbox 继续由现有存储负责。
 - Schema 不由应用启动自动修改，后续 projector 接线前需要独立 migration owner。
+
+## Projector Runtime
+
+启用独立进程：
+
+```yaml
+cassandra:
+  enabled: true
+  hosts:
+    - cassandra-1:9042
+    - cassandra-2:9042
+    - cassandra-3:9042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+  connect_timeout_seconds: 5
+```
+
+```bash
+/app/dipole-cassandra-projector
+```
+
+执行 `scripts/smoke-cassandra-projector.sh` 可验证三节点 Kafka 到 Cassandra 的完整链路。脚本等待 consumer group 获得 partition assignment 后发布两次相同事件，并确认最终只有一条 Timeline 记录。
 
 ## Verified Contract
 
@@ -54,6 +78,7 @@ bucket = (message_seq - 1) / 10000
 - 不同 event ID 的相同 payload 安全重放。
 - 相同 Seq 的冲突 payload 拒绝覆盖。
 - schema 文件按版本顺序加载。
+- 独立 Kafka consumer group 对重复 created event 的端到端投影。
 
 ## References
 

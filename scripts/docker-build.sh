@@ -21,9 +21,10 @@ if [[ -z "${GO_BIN}" && -x "${BREW_BIN}/go" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend]"
+  echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend|backend]"
   echo ""
   echo "  frontend  Build frontend only (outputs to internal/server/webapp/)"
+  echo "  backend   Build Go service binaries only (outputs to dist/)"
   echo "  build     Build frontend and Go service binaries locally, then package Docker image"
   echo "  up        Build image and start all services"
   echo "  deploy    Rebuild image and force-recreate dipole nodes (zero-downtime redeploy)"
@@ -73,8 +74,9 @@ cmd_backend() {
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-gateway" ./cmd/gateway
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-message" ./cmd/message-service
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-migrate" ./cmd/migrate
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-projector" ./cmd/cassandra-projector
   )
-  echo "==> Backend built → dist/dipole-{server,gateway,message,migrate}"
+  echo "==> Backend built → dist/dipole-{server,gateway,message,migrate,cassandra-projector}"
 }
 
 cmd_build() {
@@ -126,6 +128,7 @@ cmd_logs() {
 
 case "${1:-}" in
   frontend) cmd_frontend ;;
+  backend)  cmd_backend ;;
   build)    cmd_build ;;
   up)       cmd_up ;;
   deploy)   cmd_deploy ;;
