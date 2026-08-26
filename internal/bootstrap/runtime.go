@@ -37,7 +37,14 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	mysqlCfg := config.MySQLConfig()
 	redisCfg := config.RedisConfig()
 	kafkaCfg := config.KafkaConfig()
+	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
+	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
+		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
+	}
+	if gatewayCfg.Mode == "remote" && config.MessageConfig().Transport != "grpc" {
+		return nil, fmt.Errorf("gateway.mode=remote requires message.transport=grpc")
+	}
 
 	if err := store.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
@@ -158,8 +165,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
 	rt := &Runtime{server: srv, messageFlow: messageFlow, coreRPC: coreRPC}
-	var wsEventSender kafkaWSEventSender = srv.WSHub()
-	if kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
+	var wsEventSender kafkaWSEventSender
+	if gatewayCfg.Mode == "embedded" {
+		wsEventSender = srv.WSHub()
+	}
+	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
 		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
 		redisPresence := platformPresence.NewRedisPresence()
 		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, store.RDB)

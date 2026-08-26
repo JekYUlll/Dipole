@@ -3,6 +3,7 @@ package coregrpc
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -15,22 +16,31 @@ import (
 const queryTimeout = 2 * time.Second
 
 type Client struct {
-	rpc corev1.CoreCapabilityServiceClient
+	rpc           corev1.CoreCapabilityServiceClient
+	callerService string
 }
 
 var _ application.CoreCapability = (*Client)(nil)
 
 func NewClient(rpc corev1.CoreCapabilityServiceClient) (*Client, error) {
+	return NewClientForService(rpc, "dipole-message")
+}
+
+func NewClientForService(rpc corev1.CoreCapabilityServiceClient, callerService string) (*Client, error) {
 	if rpc == nil {
 		return nil, errors.New("core capability rpc client is required")
 	}
-	return &Client{rpc: rpc}, nil
+	callerService = strings.TrimSpace(callerService)
+	if callerService == "" {
+		return nil, errors.New("core capability caller service is required")
+	}
+	return &Client{rpc: rpc, callerService: callerService}, nil
 }
 
 func (c *Client) GetUserByUUID(userUUID string) (*model.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
-	response, err := c.rpc.GetUser(ctx, &corev1.GetUserRequest{Context: coreContext(""), UserId: userUUID})
+	response, err := c.rpc.GetUser(ctx, &corev1.GetUserRequest{Context: c.requestContext(""), UserId: userUUID})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +51,7 @@ func (c *Client) CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.CanSendDirectMessage(ctx, &corev1.CanSendDirectMessageRequest{
-		Context:      coreContext(userUUID),
+		Context:      c.requestContext(userUUID),
 		UserId:       userUUID,
 		TargetUserId: friendUUID,
 	})
@@ -54,7 +64,7 @@ func (c *Client) CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 func (c *Client) GetGroupByUUID(groupUUID string) (*model.Group, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
-	response, err := c.rpc.GetGroup(ctx, &corev1.GetGroupRequest{Context: coreContext(""), GroupId: groupUUID})
+	response, err := c.rpc.GetGroup(ctx, &corev1.GetGroupRequest{Context: c.requestContext(""), GroupId: groupUUID})
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +75,7 @@ func (c *Client) GetGroupMember(groupUUID, userUUID string) (*model.GroupMember,
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.GetGroupMember(ctx, &corev1.GetGroupMemberRequest{
-		Context: coreContext(userUUID),
+		Context: c.requestContext(userUUID),
 		GroupId: groupUUID,
 		UserId:  userUUID,
 	})
@@ -78,7 +88,7 @@ func (c *Client) GetGroupMember(groupUUID, userUUID string) (*model.GroupMember,
 func (c *Client) ListGroupMembers(groupUUID string) ([]*model.GroupMember, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
-	response, err := c.rpc.ListGroupMembers(ctx, &corev1.ListGroupMembersRequest{Context: coreContext(""), GroupId: groupUUID})
+	response, err := c.rpc.ListGroupMembers(ctx, &corev1.ListGroupMembersRequest{Context: c.requestContext(""), GroupId: groupUUID})
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +105,7 @@ func (c *Client) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFil
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.GetOwnedFile(ctx, &corev1.GetOwnedFileRequest{
-		Context:        coreContext(uploaderUUID),
+		Context:        c.requestContext(uploaderUUID),
 		UploaderUserId: uploaderUUID,
 		FileId:         fileUUID,
 	})
@@ -105,8 +115,8 @@ func (c *Client) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFil
 	return fileFromProto(response.GetFile()), nil
 }
 
-func coreContext(principal string) *commonv1.RequestContext {
-	return grpccommon.RequestContext(principal, "dipole-message")
+func (c *Client) requestContext(principal string) *commonv1.RequestContext {
+	return grpccommon.RequestContext(principal, c.callerService)
 }
 
 func userFromProto(user *corev1.UserSnapshot) *model.User {

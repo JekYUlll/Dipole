@@ -9,6 +9,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
+	"google.golang.org/grpc"
 )
 
 type stubMessageApplication struct{}
@@ -83,6 +85,35 @@ func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 			}
 			defer transport.Close()
 			runMessageApplicationContract(t, transport.Application)
+		})
+	}
+}
+
+func TestGatewayAndCoreHaveDistinctMessageRPCIdentities(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", MessageListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	server, err := NewMessageRPCServer(cfg, stubMessageApplication{})
+	if err != nil {
+		t.Fatalf("start message rpc server: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		server.Close(ctx)
+	})
+	cfg.MessageTarget = server.Address()
+	for name, dial := range map[string]func(context.Context, config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error){
+		"gateway": DialMessageApplication,
+		"core":    DialCoreMessageApplication,
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, connection, err := dial(context.Background(), cfg)
+			if err != nil {
+				t.Fatalf("dial message service: %v", err)
+			}
+			defer connection.Close()
+			if _, err := client.ListOfflineMessages("U1", 0, 10); err != nil {
+				t.Fatalf("query message service: %v", err)
+			}
 		})
 	}
 }
@@ -167,7 +198,7 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 }
 
 func BenchmarkMessageTransportDirectHistory(b *testing.B) {
-	certFile, keyFile, caFile := writeRPCIdentity(b, gatewayServiceName)
+	certFile, keyFile, caFile := writeRPCIdentity(b, coreServiceName)
 	rpcCfg := config.InternalRPC{
 		Enabled:              true,
 		SharedSecret:         "benchmark-secret",

@@ -48,6 +48,20 @@ type Consumer struct {
 
 func InitConsumer() error {
 	cfg := config.KafkaConfig()
+	return initConsumer(cfg)
+}
+
+func InitConsumerForService(serviceName string) error {
+	cfg := config.KafkaConfig()
+	serviceName = strings.TrimSpace(serviceName)
+	if serviceName == "" {
+		return errors.New("kafka consumer service name is required")
+	}
+	cfg.ClientID = serviceName
+	return initConsumer(cfg)
+}
+
+func initConsumer(cfg config.Kafka) error {
 	if !cfg.Enabled {
 		Subscriber = nil
 		return nil

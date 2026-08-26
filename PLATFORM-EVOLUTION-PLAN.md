@@ -156,17 +156,17 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 提供按节点逐步切换 `message.transport=grpc` 的 shadow/owner 运行模式、consumer group 交接手册和 Local 快速回切能力。
 - [x] 明确 Message Service 数据表所有权；远程模式下 Core 停止写 `messages` 和 `outbox_events`，独立进程只组合 Message 与 Outbox adapters。
 
-当前过渡限制：Message 与 Core 仍使用同一 MySQL schema 和数据库账号；代码侧文件所有权已迁入 Core Capability，数据库最小权限继续由 AD-015 跟踪。内部 RPC 仅允许 loopback/private network，mTLS 门禁继续由 AD-013 跟踪。
+当前过渡限制：Message 与 Core 仍使用同一 MySQL schema 和数据库账号；代码侧文件所有权已迁入 Core Capability，数据库最小权限继续由 AD-015 跟踪。内部 RPC 已通过 AD-013 完成 TLS 1.3 mTLS 与 caller 身份绑定。
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 
 ### M5：抽离 IM Gateway
 
-- [ ] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
-- [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
-- [ ] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
-- [ ] 将静态 Web、Swagger 和管理入口的归属显式化，避免 Gateway 混入后台任务。
-- [ ] 保留现有单体入口作为回滚部署，直到 Gateway 完成全流量验证。
+- [x] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
+- [x] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
+- [x] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
+- [x] 将静态 Web、Swagger 和管理入口的归属显式化；M5 期间由 Gateway 代理到私网 Core。
+- [x] 保留 `gateway.mode=embedded` 单体入口作为无数据回滚部署。
 
 **验收：** 多节点 WS 路由、断线重连、踢下线、跨节点投递和滚动升级通过；Gateway 进程断开数据库后仍能正常处理其职责。
 

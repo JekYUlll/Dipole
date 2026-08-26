@@ -67,7 +67,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	redisPresence := platformPresence.NewRedisPresence()
-	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
+	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(repos.Users, tokenService)
@@ -128,7 +128,9 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 
 	v1 := engine.Group("/api/v1")
 	{
-		v1.GET("/ws", wsHandler.Handle)
+		if config.GatewayConfig().Mode == "embedded" {
+			v1.GET("/ws", wsHandler.Handle)
+		}
 
 		authGroup := v1.Group("/auth")
 		{

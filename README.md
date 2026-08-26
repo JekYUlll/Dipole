@@ -14,6 +14,8 @@ Dipole
 
 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)
 
+[IM Gateway 渐进部署手册](GATEWAY-DEPLOYMENT.md)
+
 ## 数据库迁移
 
 启动服务前先执行版本化 migration：
