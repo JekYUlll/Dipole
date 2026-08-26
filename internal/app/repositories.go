@@ -30,7 +30,7 @@ type Repositories struct {
 	Conversations *repository.ConversationRepository
 	Contacts      *repository.ContactRepository
 	Groups        *repository.GroupRepository
-	Admin         *repository.AdminRepository
+	Admin         application.AdminOverviewStore
 	Sync          *repository.SyncRepository
 	AICallLogs    application.AICallLogStore
 	Outbox        *repository.OutboxRepository
@@ -69,6 +69,11 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
 		}
 		repos.AICallLogs = adapter
+		adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(options.SQLDB))
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc admin repository: %w", err)
+		}
+		repos.Admin = adminAdapter
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}

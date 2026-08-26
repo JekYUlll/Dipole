@@ -45,6 +45,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		if _, ok := repos.AICallLogs.(*gormRepository.AICallLogRepository); !ok {
 			t.Fatalf("expected GORM adapter, got %T", repos.AICallLogs)
 		}
+		if _, ok := repos.Admin.(*gormRepository.AdminRepository); !ok {
+			t.Fatalf("expected GORM admin adapter, got %T", repos.Admin)
+		}
 	})
 
 	t.Run("sqlc", func(t *testing.T) {
@@ -57,6 +60,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		}
 		if _, ok := repos.AICallLogs.(*sqlcRepository.AICallLogRepository); !ok {
 			t.Fatalf("expected sqlc adapter, got %T", repos.AICallLogs)
+		}
+		if _, ok := repos.Admin.(*sqlcRepository.AdminRepository); !ok {
+			t.Fatalf("expected sqlc admin adapter, got %T", repos.Admin)
 		}
 	})
 

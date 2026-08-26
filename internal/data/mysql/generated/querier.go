@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error

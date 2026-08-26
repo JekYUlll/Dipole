@@ -50,6 +50,22 @@ type AICallLogStore interface {
 	MarkFailed(triggerMessageUUID, errorMessage string, latencyMS int64) error
 }
 
+type AdminOverviewCounts struct {
+	UserTotal                      int64
+	AdminUserTotal                 int64
+	DisabledUserTotal              int64
+	GroupTotal                     int64
+	DismissedGroupTotal            int64
+	MessageTotal                   int64
+	ConversationTotal              int64
+	ContactTotal                   int64
+	PendingContactApplicationTotal int64
+}
+
+type AdminOverviewStore interface {
+	OverviewCounts() (*AdminOverviewCounts, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
