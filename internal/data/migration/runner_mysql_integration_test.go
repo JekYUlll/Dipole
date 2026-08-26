@@ -33,7 +33,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 12)
+		assertCurrentVersion(t, runner, 13)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
@@ -42,16 +42,21 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 12)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (13, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 13)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (14, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 13"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 14"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Search source identity migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 12)
+		assertTableCount(t, db, 24)
 
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Message Metadata migration: %v", err)
@@ -174,6 +179,41 @@ func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	}
 }
 
+func TestSearchSourceIdentityMigrationBackfillsExistingJobs(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db := openTemporaryDatabase(t, adminDSN, "search_source_identity")
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	ctx := context.Background()
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back source identity migration: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO search_backfill_jobs (
+		job_name, target_index, status, source_high_watermark_id, last_processed_id, last_error
+	) VALUES ('legacy-search-v1', 'dipole-messages-v1-build-a', 'completed', 42, 42, '')`); err != nil {
+		t.Fatalf("insert legacy Search job: %v", err)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("apply source identity migration: %v", err)
+	}
+	var kind, snapshotID, hash string
+	if err := db.QueryRow(`SELECT source_kind, source_snapshot_id, source_sha256
+		FROM search_backfill_jobs WHERE job_name = 'legacy-search-v1'`).Scan(&kind, &snapshotID, &hash); err != nil {
+		t.Fatalf("read migrated Search source identity: %v", err)
+	}
+	if kind != "mysql_outbox" || snapshotID != "mysql-outbox:42" || hash != "" {
+		t.Fatalf("unexpected migrated Search source identity: kind=%s snapshot=%s hash=%s", kind, snapshotID, hash)
+	}
+}
+
 func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {
@@ -208,7 +248,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 12)
+	assertMigrationCount(t, db, 13)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {

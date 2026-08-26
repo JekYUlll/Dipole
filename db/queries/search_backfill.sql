@@ -32,8 +32,11 @@ ORDER BY candidate.id ASC
 LIMIT ?;
 
 -- name: EnsureSearchBackfillJob :exec
-INSERT INTO search_backfill_jobs (job_name, target_index, source_high_watermark_id, last_error)
-VALUES (?, ?, ?, '')
+INSERT INTO search_backfill_jobs (
+  job_name, target_index, source_kind, source_snapshot_id, source_sha256,
+  source_high_watermark_id, last_error
+)
+VALUES (?, ?, ?, ?, ?, ?, '')
 ON DUPLICATE KEY UPDATE job_name = VALUES(job_name);
 
 -- name: LockSearchBackfillJob :one

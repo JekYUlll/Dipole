@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/config"
 	searchcutover "github.com/JekYUlll/Dipole/internal/cutover/search"
 	"github.com/JekYUlll/Dipole/internal/data/elasticsearch"
@@ -21,6 +22,8 @@ type SearchAliasOptions struct {
 	MaxExamples          int
 	MaintenanceConfirmed bool
 	RollbackWindow       time.Duration
+	Source               string
+	ArchiveManifest      string
 }
 
 func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (searchcutover.Receipt, error) {
@@ -37,14 +40,15 @@ func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (s
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
-	source, err := mysqldata.NewSearchBackfillSource(store)
+	source, err := openSearchSnapshotSource(options.Source, options.ArchiveManifest, store)
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
-	snapshot, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.ToIndex)
+	checkpoints, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.ToIndex)
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
+	snapshot := &sourceBoundSearchSnapshot{checkpoints: checkpoints, source: source}
 	index, client, err := openSearchMaintenanceIndex(elasticsearchCfg)
 	if err != nil {
 		return searchcutover.Receipt{}, err
@@ -66,6 +70,23 @@ func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (s
 		return searchcutover.Receipt{}, err
 	}
 	return switcher.Run(ctx)
+}
+
+type sourceBoundSearchSnapshot struct {
+	checkpoints *mysqldata.SearchBackfillCheckpointStore
+	source      searchbackfill.Source
+}
+
+func (s *sourceBoundSearchSnapshot) CompletedHighWatermark(ctx context.Context, jobName string) (uint64, error) {
+	highWatermark, err := s.checkpoints.CompletedHighWatermark(ctx, jobName)
+	if err != nil {
+		return 0, err
+	}
+	descriptor, err := s.source.Descriptor(ctx, highWatermark)
+	if err != nil {
+		return 0, err
+	}
+	return s.checkpoints.CompletedHighWatermarkForSource(ctx, jobName, descriptor)
 }
 
 type searchCutoverVerifier struct {

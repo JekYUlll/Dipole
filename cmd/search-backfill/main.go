@@ -20,6 +20,8 @@ func main() {
 	ownerID := flag.String("owner", defaultOwnerID(), "lease owner identity")
 	batchSize := flag.Int("batch-size", 500, "final message states applied before checkpoint advance")
 	leaseSeconds := flag.Int("lease-seconds", 60, "owner lease duration renewed after each batch")
+	source := flag.String("source", bootstrap.SearchSourceMySQL, "snapshot source: mysql or archive")
+	archiveManifest := flag.String("archive-manifest", "", "verified archive manifest when source=archive")
 	flag.Parse()
 	if strings.TrimSpace(*targetIndex) == "" {
 		fmt.Fprintln(os.Stderr, "-target-index is required")
@@ -34,6 +36,7 @@ func main() {
 	result, err := bootstrap.RunSearchBackfill(ctx, bootstrap.SearchBackfillOptions{
 		JobName: *jobName, OwnerID: *ownerID, TargetIndex: *targetIndex,
 		BatchSize: *batchSize, LeaseDuration: time.Duration(*leaseSeconds) * time.Second,
+		Source: *source, ArchiveManifest: *archiveManifest,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

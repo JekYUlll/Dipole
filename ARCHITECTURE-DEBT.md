@@ -26,13 +26,13 @@
 ### AD-021：Search 重建依赖 Outbox 事件保留契约
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Elasticsearch 全量重建、事件归档、Outbox 清理、MySQL 消息正文退役
-- **现状：** Search Backfill 在固定 Outbox ID 高水位内选取每个 Message UUID 的最终 mutation，可完整恢复 edited 与 recalled/deleted tombstone。当前 `outbox_events` 没有自动删除逻辑，也没有正式的不可变归档、保留期和清理门禁。
-- **风险：** 后续若直接清理已发布 Outbox，会让新索引无法恢复历史最终状态；长期在业务 MySQL 保存完整事件正文也会阻碍 AD-019 的正文退役目标。
-- **建议方向：** 建立按事件 ID 校验的对象存储归档或独立 Event Store，记录分段 hash、覆盖水位和恢复演练；仅允许删除已被归档且通过 Reconcile 的 Outbox 分段。
-- **处理门槛：** 归档源能够提供与现有 `SearchBackfillSource` 等价的固定高水位和单调分页契约，完成一次从空索引重建、hash 对账和回滚演练。
+- **现状：** `dipole-search-archive` 可按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 与 SHA-256 manifest；migration v13 将 source kind、snapshot ID 和 hash 绑定到 Backfill Job。Backfill、Reconcile、Alias 均可显式使用归档，并拒绝换源、篡改或高水位不一致。隔离演练删除历史 Message Outbox 后完成索引重建、3/3 hash 对账、正向切换与回滚。
+- **风险：** 当前归档由运维路径写入文件系统，尚未固化 MinIO versioning/object lock、保留期、分段上传和自动清理门禁；生产环境仍不得依据单一本地副本清理 Outbox。
+- **建议方向：** 将 manifest/NDJSON 上传到启用版本控制和保留策略的对象存储，记录对象版本与责任人；增加“归档校验 + 空索引 Reconcile”清理凭证后，再允许按高水位删除已发布 Outbox 分段。
+- **处理门槛：** 对象存储归档具备版本、保留与恢复演练证据；清理命令只接受已验证凭证，并证明删除后仍可从空索引完成 hash 对账和回滚。
 
 ### AD-022：前端开发工具链仍停留在 Vite 5
 

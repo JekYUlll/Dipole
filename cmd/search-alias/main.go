@@ -25,6 +25,8 @@ func main() {
 	maxExamples := flag.Int("max-examples", 100, "maximum reconciliation mismatch examples")
 	rollbackHours := flag.Int("rollback-window-hours", 24, "old-index retention window recorded in the receipt")
 	confirmed := flag.Bool("confirm-maintenance-window", false, "confirm Message mutation producers are paused for the operation")
+	source := flag.String("source", bootstrap.SearchSourceMySQL, "snapshot source: mysql or archive")
+	archiveManifest := flag.String("archive-manifest", "", "verified archive manifest when source=archive")
 	flag.Parse()
 
 	if strings.TrimSpace(*jobName) == "" || strings.TrimSpace(*fromIndex) == "" || strings.TrimSpace(*toIndex) == "" {
@@ -41,6 +43,7 @@ func main() {
 		Action: searchcutover.Action(strings.TrimSpace(*action)), JobName: *jobName,
 		FromIndex: *fromIndex, ToIndex: *toIndex, BatchSize: *batchSize, MaxExamples: *maxExamples,
 		MaintenanceConfirmed: *confirmed, RollbackWindow: time.Duration(*rollbackHours) * time.Hour,
+		Source: *source, ArchiveManifest: *archiveManifest,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -7,17 +7,21 @@ project="dipole-search-backfill-${RANDOM}-$$"
 mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-search-backfill-migrate.XXXXXX)
 backfill_binary=$(mktemp /tmp/dipole-search-backfill.XXXXXX)
+archive_binary=$(mktemp /tmp/dipole-search-archive.XXXXXX)
 reconcile_binary=$(mktemp /tmp/dipole-search-reconcile.XXXXXX)
 alias_binary=$(mktemp /tmp/dipole-search-alias.XXXXXX)
 reconcile_report=$(mktemp /tmp/dipole-search-reconcile.XXXXXX.json)
 alias_receipt=$(mktemp /tmp/dipole-search-alias.XXXXXX.json)
+archive_dir=$(mktemp -d /tmp/dipole-search-archive.XXXXXX)
+archive_manifest="$archive_dir/search-v1.json"
 target_index="dipole-smoke-messages-v1-build-a"
 old_index="dipole-smoke-messages-v1-old"
 
 cleanup() {
   local exit_code=$?
   docker rm -f "$mysql_container" >/dev/null 2>&1 || true
-  rm -f "$migrate_binary" "$backfill_binary" "$reconcile_binary" "$alias_binary" "$reconcile_report" "$alias_receipt"
+  rm -f "$migrate_binary" "$backfill_binary" "$archive_binary" "$reconcile_binary" "$alias_binary" "$reconcile_report" "$alias_receipt"
+  rm -rf "$archive_dir"
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     docker compose -p "$project" -f "$storage_compose" down --volumes --remove-orphans >/dev/null 2>&1 || true
   else
@@ -51,6 +55,7 @@ done
   cd "$root_dir"
   CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
   CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/search-backfill
+  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/search-archive
   CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/search-reconcile
   CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/search-alias
 )
@@ -58,6 +63,7 @@ done
 runtime_args=(
   --network "${project}_default"
   -v "$root_dir/deploy/elasticsearch/search-backfill-smoke.yaml:/app/configs/config.yaml:ro"
+  -v "$archive_dir:/archive"
   -w /app
 )
 docker run --rm "${runtime_args[@]}" -v "$migrate_binary:/app/dipole-migrate:ro" \
@@ -87,15 +93,28 @@ INSERT INTO outbox_events (
 SQL
 
 docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
-  alpine:3.22 /app/dipole-search-backfill --job smoke-v1 --target-index "$target_index" \
-  --owner smoke-owner --batch-size 2 --lease-seconds 60 >/dev/null
-docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
-  alpine:3.22 /app/dipole-search-backfill --job smoke-old-v1 --target-index "$old_index" \
+  alpine:3.22 /app/dipole-search-backfill --job smoke-stale-v1 --target-index "$target_index" \
   --owner smoke-owner --batch-size 2 --lease-seconds 60 >/dev/null
 
+docker run --rm "${runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
+  alpine:3.22 /app/dipole-search-archive --manifest /archive/search-v1.json \
+  --snapshot-id smoke-search-v1 --batch-size 2 >/dev/null
+
+docker exec "$mysql_container" mysql -uroot -pdipole-root dipole \
+  -e "DELETE FROM outbox_events WHERE aggregate_type = 'message';"
+
+docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+  alpine:3.22 /app/dipole-search-backfill --job smoke-v1 --target-index "$target_index" \
+  --owner smoke-owner --batch-size 2 --lease-seconds 60 \
+  --source archive --archive-manifest /archive/search-v1.json >/dev/null
+docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+  alpine:3.22 /app/dipole-search-backfill --job smoke-old-v1 --target-index "$old_index" \
+  --owner smoke-owner --batch-size 2 --lease-seconds 60 \
+  --source archive --archive-manifest /archive/search-v1.json >/dev/null
+
 completed_state=$(docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
-  -e "SELECT CONCAT(status, ':', last_processed_id, ':', source_high_watermark_id) FROM search_backfill_jobs WHERE job_name = 'smoke-v1';")
-[[ "$completed_state" == "completed:5:5" ]] || { printf 'Unexpected Search checkpoint: %s\n' "$completed_state" >&2; exit 1; }
+  -e "SELECT CONCAT(status, ':', last_processed_id, ':', source_high_watermark_id, ':', source_kind, ':', source_snapshot_id, ':', LENGTH(source_sha256)) FROM search_backfill_jobs WHERE job_name = 'smoke-v1';")
+[[ "$completed_state" == "completed:5:5:event_archive:smoke-search-v1:64" ]] || { printf 'Unexpected Search checkpoint: %s\n' "$completed_state" >&2; exit 1; }
 
 document() {
   local id=$1
@@ -107,6 +126,7 @@ document() {
 
 docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
   alpine:3.22 /app/dipole-search-reconcile --job smoke-v1 --target-index "$target_index" --batch-size 2 \
+  --source archive --archive-manifest /archive/search-v1.json \
   >"$reconcile_report"
 jq -e '.consistent == true and .source_count == 3 and .target_count == 3 and .hash_matched_count == 3' \
   "$reconcile_report" >/dev/null
@@ -114,6 +134,7 @@ jq -e '.consistent == true and .source_count == 3 and .target_count == 3 and .ha
 docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
   alpine:3.22 /app/dipole-search-alias --action switch --job smoke-v1 \
   --from-index "$old_index" --to-index "$target_index" --confirm-maintenance-window \
+  --source archive --archive-manifest /archive/search-v1.json \
   >"$alias_receipt"
 jq -e --arg from "$old_index" --arg to "$target_index" \
   '.action == "switch" and .from_index == $from and .to_index == $to and .source_high_watermark_id == 5' \
@@ -125,6 +146,7 @@ compose exec -T elasticsearch curl -fsS \
 docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
   alpine:3.22 /app/dipole-search-alias --action rollback --job smoke-old-v1 \
   --from-index "$target_index" --to-index "$old_index" --confirm-maintenance-window \
+  --source archive --archive-manifest /archive/search-v1.json \
   >"$alias_receipt"
 jq -e '.action == "rollback" and .source_high_watermark_id == 5' "$alias_receipt" >/dev/null
 compose exec -T elasticsearch curl -fsS \
@@ -139,7 +161,7 @@ INSERT INTO outbox_events (
 SQL
 set +e
 docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
-  alpine:3.22 /app/dipole-search-alias --action switch --job smoke-v1 \
+  alpine:3.22 /app/dipole-search-alias --action switch --job smoke-stale-v1 \
   --from-index "$old_index" --to-index "$target_index" --confirm-maintenance-window \
   >"$alias_receipt" 2>&1
 stale_exit=$?
@@ -160,6 +182,7 @@ compose exec -T elasticsearch curl -fsS -X PUT \
 set +e
 docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
   alpine:3.22 /app/dipole-search-reconcile --job smoke-v1 --target-index "$target_index" --batch-size 2 \
+  --source archive --archive-manifest /archive/search-v1.json \
   >"$reconcile_report"
 reconcile_exit=$?
 set -e
