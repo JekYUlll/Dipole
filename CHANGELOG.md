@@ -17,6 +17,9 @@
 
 ### 新增
 
+- 增加 `dipole-sync-baseline` 运维命令与 migration v11，按固定 Inbox `sync_seq` 高水位归档所有缺少 created Outbox 的历史 recipient/locator，保存规范化 SHA-256，并支持精确 Reconcile 与 missing-only Restore。
+- Sync 历史基线恢复保留原始 `sync_seq`，发现新增 legacy 行、recipient/locator 偏移或 Cursor 序号冲突时拒绝自动修复，避免按当前群成员关系推断早期收件人。
+- 增加真实 MySQL 8.4 Sync baseline smoke，覆盖重复 Capture、差异退出码 2、原 Cursor 恢复、冲突退出码 1 和最终收敛。
 - 增加默认关闭的 `sync.projector_enabled`；`dipole-sync` 可使用独立 Kafka consumer group 将私聊和普通群 `message.created` 物化到 Durable Inbox，热群继续遵循 `sync_fanout=false` 的 notify + pull 路径。
 - 增加 storage-neutral `SyncProjectionStore` 与 sqlc 事务适配器，按固定用户顺序锁定 Sync state，并以 `message_uuid + conversation_key + message_seq` 实现双运行精确重放和冲突回滚。
 - 增加真实 Kafka 三节点与 MySQL 8.4 Sync Projector smoke，覆盖 Message 预写、重复事件收敛和热群无 Inbox 写扩散。
@@ -146,6 +149,8 @@
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
+
+- 修正 MySQL migration 集成测试仍将已存在的 v10 当作未来版本的问题，并将真实上下迁移与并发 owner 门禁推进到 v11。
 
 - 修复 WS 暂态回声先占用 `message_id` 时，后续持久化历史消息无法回填正 `message_seq` 的问题；消息合并现在优先保留持久化等级更高的版本。
 - 修复并发消息事务可能造成同一用户 Sync Cursor 永久跳过迟提交消息的问题，Inbox 写入现在按用户锁行串行化。

@@ -265,7 +265,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 为 `dipole-sync` 增加默认关闭的独立 Kafka consumer，按事件时收件人快照维护 Durable Inbox；精确重放幂等，冲突整批回滚，热群跳过用户 fanout。
 - [ ] 将群 checkpoint/设备 Cursor 的恢复事件纳入独立投影，并完成 consumer lag 与 DLQ 发布门禁。
 - [x] 增加固定 Outbox 高水位、lease/checkpoint Replay 和 recipient/locator Reconcile；差异报告返回退出码 2，修复事件复用在线投影幂等模型。
-- [ ] 审计 created Outbox 历史覆盖起点，为更早 Inbox 建立不可变 baseline 与跨边界 Reconcile，解决 `AD-024`。
+- [x] 审计 created Outbox 历史覆盖，为缺少 created Outbox 的 Inbox 建立固定高水位、SHA-256 不可变 baseline、精确 Reconcile 与保序 Restore，解决 `AD-024`。
 - [ ] 验证在线 consumer 追平固定快照后的无缝窗口，再迁移 Message 的 Inbox 写责任和数据库权限。
 - [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。

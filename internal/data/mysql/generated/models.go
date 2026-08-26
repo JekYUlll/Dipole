@@ -152,6 +152,16 @@ type SearchBackfillJob struct {
 	UpdatedAt             time.Time
 }
 
+type SyncInboxBaselineJob struct {
+	JobName                    string
+	SourceHighWatermarkSyncSeq uint64
+	FirstCreatedOutboxID       uint64
+	LastCreatedOutboxID        uint64
+	EntryCount                 uint64
+	EntriesSha256              string
+	CapturedAt                 time.Time
+}
+
 type SyncReplayJob struct {
 	JobName               string
 	Status                string

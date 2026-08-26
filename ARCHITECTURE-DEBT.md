@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-024：Sync Replay 的历史覆盖受 created Outbox 边界限制
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-27
-- **影响范围：** `cmd/sync-replay`、历史群消息、Outbox 保留、Message Inbox 写权限退役
-- **现状：** 固定快照 Replay/Reconcile 能恢复并核对所有具有 `message.direct.created` 或 `message.group.created` Outbox 的消息。早期 Kafka/Outbox 未启用期间，本地消息可能只原子写入 Message 与 Inbox；群聊的事件时成员快照无法从当前群成员关系安全重建。
-- **风险：** 若把 Outbox-era 的一致性报告解释为全历史覆盖，清空或迁移旧 Inbox 后可能永久漏掉早期离线消息。使用当前群成员回填会向后来加入的成员泄露历史消息，也可能遗漏已经退群的原收件人。
-- **建议方向：** 在迁移前记录可证明的 Outbox 覆盖起点；对更早数据保留现有 Inbox 作为 baseline，或导出带 recipient/locator hash 的不可变基线清单并单独对账。仅在 baseline 与 Outbox 增量拼接后无 gap 时允许迁移写责任。
-- **处理门槛：** Message Inbox 写权限退役与旧 Offline API 冻结前，完成历史覆盖审计、baseline 归档/恢复演练和跨边界 Reconcile。
-
 ### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
 
 - **优先级：** P1
@@ -179,6 +168,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-024：Sync Replay 的历史覆盖受 created Outbox 边界限制
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** `cmd/sync-baseline`、历史群消息、Outbox 保留、Message Inbox 写权限退役
+- **解决方式：** migration v11 增加不可变 baseline Job/Entry；Capture 在 Repeatable Read 固定 Inbox 高水位，并归档所有缺少 created Outbox 的原始 `sync_seq + recipient + locator`，以规范化 SHA-256 校验完整性。Reconcile 同时扫描快照后新增 legacy 行；Restore 仅修复 missing，保留原 Cursor，并拒绝 extra/conflicting 状态。
+- **验证：** 纯领域测试覆盖稳定摘要和差异分类；真实 MySQL 8.4 integration/smoke 覆盖重复 Capture、删行检测、原 `sync_seq` 恢复、越界冲突拒绝、v11 down/up 与并发 migration owner。
 
 ### AD-020：Search 删除接口缺少 mutation revision
 

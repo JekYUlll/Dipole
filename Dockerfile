@@ -14,6 +14,7 @@ COPY dist/dipole-search /app/dipole-search
 COPY dist/dipole-sync /app/dipole-sync
 COPY dist/dipole-sync-replay /app/dipole-sync-replay
 COPY dist/dipole-sync-reconcile /app/dipole-sync-reconcile
+COPY dist/dipole-sync-baseline /app/dipole-sync-baseline
 COPY dist/dipole-search-backfill /app/dipole-search-backfill
 COPY dist/dipole-search-reconcile /app/dipole-search-reconcile
 COPY dist/dipole-search-alias /app/dipole-search-alias

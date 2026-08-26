@@ -33,25 +33,37 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 9)
+		assertCurrentVersion(t, runner, 11)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 20)
+		assertTableCount(t, db, 23)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 9)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (10, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 11)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (12, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 10"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 12"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Sync Inbox baseline migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 10)
+		assertTableCount(t, db, 21)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Sync replay job migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 9)
+		assertTableCount(t, db, 20)
 
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Sync locator migration: %v", err)
@@ -147,7 +159,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 9)
+	assertMigrationCount(t, db, 11)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
