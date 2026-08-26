@@ -1,7 +1,10 @@
 // Package app owns process-level dependency composition shared by transports.
 package app
 
-import "github.com/JekYUlll/Dipole/internal/repository"
+import (
+	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/repository"
+)
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
@@ -13,7 +16,7 @@ type Repositories struct {
 	Groups        *repository.GroupRepository
 	Admin         *repository.AdminRepository
 	Sync          *repository.SyncRepository
-	AICallLogs    *repository.AICallLogRepository
+	AICallLogs    application.AICallLogStore
 	Outbox        *repository.OutboxRepository
 }
 

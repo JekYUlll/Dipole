@@ -3,15 +3,25 @@ package repository
 import (
 	"fmt"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-type AICallLogRepository struct{}
+var _ application.AICallLogStore = (*AICallLogRepository)(nil)
+
+type AICallLogRepository struct {
+	db *gorm.DB
+}
 
 func NewAICallLogRepository() *AICallLogRepository {
 	return &AICallLogRepository{}
+}
+
+func NewAICallLogRepositoryWithDB(db *gorm.DB) *AICallLogRepository {
+	return &AICallLogRepository{db: db}
 }
 
 func (r *AICallLogRepository) Begin(log *model.AICallLog) (bool, error) {
@@ -19,7 +29,7 @@ func (r *AICallLogRepository) Begin(log *model.AICallLog) (bool, error) {
 		return false, nil
 	}
 
-	result := store.DB.Clauses(clause.OnConflict{
+	result := r.database().Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "trigger_message_uuid"}},
 		DoNothing: true,
 	}).Create(log)
@@ -31,7 +41,7 @@ func (r *AICallLogRepository) Begin(log *model.AICallLog) (bool, error) {
 }
 
 func (r *AICallLogRepository) MarkSucceeded(triggerMessageUUID, responseMessageUUID string, promptTokens, completionTokens, totalTokens int, latencyMS int64) error {
-	if err := store.DB.Model(&model.AICallLog{}).
+	if err := r.database().Model(&model.AICallLog{}).
 		Where("trigger_message_uuid = ?", triggerMessageUUID).
 		Updates(map[string]any{
 			"status":                model.AICallStatusSucceeded,
@@ -49,7 +59,7 @@ func (r *AICallLogRepository) MarkSucceeded(triggerMessageUUID, responseMessageU
 }
 
 func (r *AICallLogRepository) MarkFailed(triggerMessageUUID, errorMessage string, latencyMS int64) error {
-	if err := store.DB.Model(&model.AICallLog{}).
+	if err := r.database().Model(&model.AICallLog{}).
 		Where("trigger_message_uuid = ?", triggerMessageUUID).
 		Updates(map[string]any{
 			"status":        model.AICallStatusFailed,
@@ -60,4 +70,11 @@ func (r *AICallLogRepository) MarkFailed(triggerMessageUUID, errorMessage string
 	}
 
 	return nil
+}
+
+func (r *AICallLogRepository) database() *gorm.DB {
+	if r != nil && r.db != nil {
+		return r.db
+	}
+	return store.DB
 }
