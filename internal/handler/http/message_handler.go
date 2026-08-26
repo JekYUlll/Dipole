@@ -82,6 +82,7 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 // @Param group_uuid path string true "群 UUID"
 // @Param before_id query int false "向前翻页游标"
 // @Param after_id query int false "增量补拉游标"
+// @Param after_seq query int false "会话序号增量补拉游标"
 // @Param limit query int false "返回数量"
 // @Success 200 {object} MessageListResponseEnvelope
 // @Failure 400 {object} ErrorEnvelope
@@ -107,14 +108,22 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
 		return
 	}
-	if beforeID > 0 && afterID > 0 {
-		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id and after_id cannot be used together")
+	_, hasAfterSeq := c.GetQuery("after_seq")
+	afterSeq, err := queryOptionalUint64(c, "after_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_seq is invalid")
+		return
+	}
+	if boolCount(beforeID > 0, afterID > 0, hasAfterSeq) > 1 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, after_id and after_seq cannot be used together")
 		return
 	}
 
 	limit := queryInt(c, "limit")
 	var messages []*model.Message
-	if afterID > 0 {
+	if hasAfterSeq {
+		messages, err = h.service.ListGroupMessagesAfterSeq(currentUser.UUID, c.Param("group_uuid"), afterSeq, limit)
+	} else if afterID > 0 {
 		// 热群 notify + pull 会走这一支：客户端记住最近一条已同步消息的自增 ID，
 		// 服务端按 after_id 做增量补拉，避免每次都回放整段历史。
 		messages, err = h.service.ListGroupMessagesAfter(
@@ -146,6 +155,16 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 	}
 
 	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+func boolCount(values ...bool) int {
+	count := 0
+	for _, value := range values {
+		if value {
+			count++
+		}
+	}
+	return count
 }
 
 // ListOffline godoc

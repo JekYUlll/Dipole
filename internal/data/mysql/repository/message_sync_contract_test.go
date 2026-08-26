@@ -139,6 +139,24 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if groupMessage.Seq != 1 {
 		t.Fatalf("group conversation sequence = %d, want 1", groupMessage.Seq)
 	}
+	groupState, err := stores.sync.GetGroupSyncState(groupUUID)
+	if err != nil || groupState == nil || groupState.LatestMessageSeq != 1 || groupState.LatestMessageUUID != groupMessage.UUID {
+		t.Fatalf("group sync high-water: state=%+v err=%v", groupState, err)
+	}
+	groupCheckpoints, err := stores.sync.ListGroupSyncCheckpoints(groupRecipient, "web-a", []string{groupUUID})
+	if err != nil || len(groupCheckpoints) != 1 || groupCheckpoints[0].PulledMessageSeq != 0 {
+		t.Fatalf("initial group checkpoint: checkpoints=%+v err=%v", groupCheckpoints, err)
+	}
+	if err := stores.sync.AdvanceDeviceGroupSyncCheckpoint(groupRecipient, "web-a", groupUUID, 1); err != nil {
+		t.Fatalf("advance group checkpoint: %v", err)
+	}
+	if err := stores.sync.AdvanceDeviceGroupSyncCheckpoint(groupRecipient, "web-a", groupUUID, 0); err != nil {
+		t.Fatalf("repeat lower group checkpoint: %v", err)
+	}
+	groupCheckpoints, err = stores.sync.ListGroupSyncCheckpoints(groupRecipient, "web-a", []string{groupUUID})
+	if err != nil || len(groupCheckpoints) != 1 || groupCheckpoints[0].PulledMessageSeq != 1 {
+		t.Fatalf("group checkpoint regressed: checkpoints=%+v err=%v", groupCheckpoints, err)
+	}
 	offline, err := stores.message.ListOfflineByUserUUID("U-"+prefix+"-target", 0, 10)
 	if err != nil || len(offline) != 3 || offline[2].UUID != groupMessage.UUID {
 		t.Fatalf("offline direct messages: messages=%+v err=%v", offline, err)
@@ -200,6 +218,18 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	}
 	if rollback.ID != 0 || rollback.Seq != 0 || !rollback.CreatedAt.IsZero() || !rollback.UpdatedAt.IsZero() {
 		t.Fatalf("rolled-back message retained persisted fields: %+v", rollback)
+	}
+	groupRollback := contractStoredMessage(prefix+"-group-rollback", model.GroupConversationKey(groupUUID), now.Add(3500*time.Millisecond))
+	groupRollback.TargetType = model.MessageTargetGroup
+	groupRollback.TargetUUID = groupUUID
+	badGroupEvent := contractOutboxEvent(groupRollback.UUID)
+	badGroupEvent.Topic = strings.Repeat("x", 200)
+	if err := stores.message.StoreWithOutboxAndSync(groupRollback, staticOutboxBuilder(badGroupEvent), nil); err == nil {
+		t.Fatal("expected invalid group outbox event to roll back transaction")
+	}
+	groupState, err = stores.sync.GetGroupSyncState(groupUUID)
+	if err != nil || groupState == nil || groupState.LatestMessageSeq != 1 || groupState.LatestMessageUUID != groupMessage.UUID {
+		t.Fatalf("group high-water survived rollback incorrectly: state=%+v err=%v", groupState, err)
 	}
 	afterRollback := contractStoredMessage(prefix+"-after-rollback", conversationKey, now.Add(4*time.Second))
 	if err := stores.message.CreateWithSync(afterRollback, nil); err != nil {

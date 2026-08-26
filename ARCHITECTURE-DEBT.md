@@ -31,19 +31,8 @@
 - **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
 - **现状：** 用户、好友、群和文件所有权校验均通过 Core Capability gRPC 完成；独立 Runtime 只组合 Message 与 Outbox adapters。部署仍复用 Core 的 MySQL schema 与数据库账号。
 - **风险：** 代码依赖已经收敛，数据库凭据仍具备访问 Core 表的能力，误用或注入风险下的 blast radius 大于 Message Service 实际职责。
-- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`conversation_sequences`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
+- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`conversation_sequences`、`group_sync_states`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
 - **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
-
-### AD-004：热群消息缺少持久化同步补偿
-
-- **优先级：** P2
-- **状态：** 暂缓
-- **发现日期：** 2026-08-26
-- **影响范围：** 热群、离线设备、多端同步
-- **现状：** 热群跳过成员 Inbox，在线用户依赖 `group.message.notify + group timeline pull`；现有 Web 客户端仍通过 `/messages/offline` 补拉。
-- **风险：** 只调用 `/sync` 的新客户端无法发现离线期间的热群消息，因此 `/messages/offline` 当前仍承担热群与升级前历史的兼容补偿。
-- **建议方向：** 持久化群级 checkpoint/notify，或定义并实现 `/sync + group timeline pull` 混合同步协议及客户端游标。
-- **处理门槛：** 移除 `/messages/offline` 或让前端全面迁移到 `/sync` 前完成。
 
 ### AD-005：群消息成员级写扩散仍然叠加
 
@@ -123,6 +112,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-004：热群消息缺少持久化同步补偿
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** Message 事务以 O(1) 写入群 Timeline 高水位，Sync 保存用户/设备/群拉取位点；客户端重连后提交已知群列表，经 Core 成员权限校验取得最新 Seq，并使用 `after_seq` 分页追平。在线 notify 聚合继续保留，Redis 或 Gateway 重启不会丢失离线发现依据。
+- **验证：** 通过历史 migration 回填、消息/Outbox/高水位原子回滚、设备 ACK 单调性、越权拒绝、Message/Sync gRPC、HTTP 零 Seq cursor、Web 类型检查、真实 MySQL contract 和定向 race 测试。
+- **兼容说明：** Web 本地消息库上线前不自动 ACK；`/messages/offline` 继续覆盖升级前历史和旧客户端，移除工作另行安排。
 
 ### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
 

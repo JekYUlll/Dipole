@@ -229,6 +229,10 @@ func (r *stubMessageRepository) ListByConversationKeyAfter(conversationKey strin
 	return messages, nil
 }
 
+func (r *stubMessageRepository) ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return r.ListByConversationKeyAfter(conversationKey, uint(afterSeq), limit)
+}
+
 func (r *stubMessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	r.mu.Lock()
 	r.lastUserUUID = userUUID

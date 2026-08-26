@@ -53,6 +53,11 @@ func (r *MessageRepository) storeWithSync(message *model.Message, buildOutbox ap
 			return fmt.Errorf("reload message with sqlc: %w", err)
 		}
 		*message = *mapper.Message(row)
+		if message.TargetType == model.MessageTargetGroup {
+			if err := q.UpsertGroupSyncState(ctx, generated.UpsertGroupSyncStateParams{GroupUuid: message.TargetUUID, LatestMessageSeq: message.Seq, LatestMessageUuid: message.UUID}); err != nil {
+				return fmt.Errorf("advance group sync state with sqlc: %w", err)
+			}
+		}
 		if err := createSQLCSyncInbox(ctx, q, message, recipients); err != nil {
 			return err
 		}

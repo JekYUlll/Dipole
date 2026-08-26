@@ -17,10 +17,11 @@ import (
 )
 
 type stubMessageService struct {
-	listDirectFn     func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupFn      func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupAfterFn func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
-	listOfflineFn    func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listDirectFn        func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupFn         func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupAfterFn    func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listGroupAfterSeqFn func(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
+	listOfflineFn       func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -45,6 +46,13 @@ func (s *stubMessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID s
 	}
 
 	return s.listGroupAfterFn(currentUserUUID, groupUUID, afterID, limit)
+}
+
+func (s *stubMessageService) ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listGroupAfterSeqFn == nil {
+		return nil, nil
+	}
+	return s.listGroupAfterSeqFn(currentUserUUID, groupUUID, afterSeq, limit)
 }
 
 func (s *stubMessageService) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -287,6 +295,26 @@ func TestMessageHandlerListGroupAfterSuccess(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestMessageHandlerListGroupAfterSequenceFromZero(t *testing.T) {
+	called := false
+	handler := NewMessageHandler(&stubMessageService{listGroupAfterSeqFn: func(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+		called = true
+		if userUUID != "U100" || groupUUID != "G100" || afterSeq != 0 || limit != 20 {
+			t.Fatalf("unexpected sequence query: user=%s group=%s after=%d limit=%d", userUUID, groupUUID, afterSeq, limit)
+		}
+		return []*model.Message{{UUID: "M1", Seq: 1}}, nil
+	}})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/group/G100?after_seq=0&limit=20", nil)
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ListGroup(context)
+	if recorder.Code != http.StatusOK || !called {
+		t.Fatalf("expected sequence path, status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 

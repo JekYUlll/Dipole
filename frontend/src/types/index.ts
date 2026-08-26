@@ -127,3 +127,10 @@ export interface GroupMessageNotify {
   sent_at: string
   sender_uuid?: string
 }
+
+export interface GroupSyncCheckpoint {
+	group_uuid: string
+	latest_message_seq: number
+	latest_message_id: string
+	pulled_message_seq: number
+}

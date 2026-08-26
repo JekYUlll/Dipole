@@ -724,6 +724,7 @@ const deriveMessageKey = (msg: Message, myUUID: string): string => {
 const wsDataToMessage = (data: Record<string, unknown>): Message => ({
   id: 0,
   message_id: data.message_id as string,
+	message_seq: Number(data.message_seq || 0),
   from_uuid: data.from_uuid as string,
   target_uuid: data.target_uuid as string,
   target_type: data.target_type as number,
@@ -1563,7 +1564,8 @@ const handleWsPacket = async (packet: WsPacket) => {
   const { type, data } = packet
   switch (type) {
     case 'connected':
-      await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
+	  await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
+	  await chat.recoverGroupMessages().catch(() => {})
       break
     case 'chat.message':
     case 'chat.sent': {
@@ -1664,6 +1666,7 @@ onMounted(async () => {
   if (!auth.token) return
   await auth.fetchMe()
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
+	await chat.recoverGroupMessages().catch(() => {})
   ws.connect(auth.token)
   setupMediaObserver()
 })

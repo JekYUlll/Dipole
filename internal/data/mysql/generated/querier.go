@@ -13,6 +13,7 @@ type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
 	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
+	AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error
 	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
 	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
@@ -38,6 +39,7 @@ type Querier interface {
 	GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSyncCheckpointParams) (DeviceSyncCheckpoint, error)
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
+	GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error)
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
@@ -50,6 +52,7 @@ type Querier interface {
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
 	ListGroupMembers(ctx context.Context, groupUuid string) ([]GroupMember, error)
+	ListGroupSyncCheckpoints(ctx context.Context, arg ListGroupSyncCheckpointsParams) ([]ListGroupSyncCheckpointsRow, error)
 	ListIncomingContactApplications(ctx context.Context, targetUuid string) ([]ContactApplication, error)
 	ListMessagesByConversationAfter(ctx context.Context, arg ListMessagesByConversationAfterParams) ([]Message, error)
 	ListMessagesByConversationBefore(ctx context.Context, arg ListMessagesByConversationBeforeParams) ([]Message, error)
@@ -80,6 +83,7 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error)
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 	UpsertConversationMessage(ctx context.Context, arg UpsertConversationMessageParams) (sql.Result, error)
+	UpsertGroupSyncState(ctx context.Context, arg UpsertGroupSyncStateParams) error
 	UpsertMessageSearchDocument(ctx context.Context, arg UpsertMessageSearchDocumentParams) error
 }
 

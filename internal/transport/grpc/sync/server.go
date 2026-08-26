@@ -45,6 +45,34 @@ func (s *Server) AdvanceDeviceCheckpoint(ctx context.Context, request *syncv1.Ad
 	return checkpointResponse(checkpoint), nil
 }
 
+func (s *Server) ListGroupCheckpoints(ctx context.Context, request *syncv1.ListGroupCheckpointsRequest) (*syncv1.ListGroupCheckpointsResponse, error) {
+	principal, deviceID, err := syncPrincipalAndDevice(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	checkpoints, err := s.application.ListGroupCheckpoints(principal, deviceID, request.GetGroupIds())
+	if err != nil {
+		return nil, syncCheckpointStatus(err)
+	}
+	response := &syncv1.ListGroupCheckpointsResponse{Checkpoints: make([]*syncv1.GroupCheckpoint, 0, len(checkpoints))}
+	for _, checkpoint := range checkpoints {
+		response.Checkpoints = append(response.Checkpoints, groupCheckpointResponse(checkpoint))
+	}
+	return response, nil
+}
+
+func (s *Server) AdvanceGroupCheckpoint(ctx context.Context, request *syncv1.AdvanceGroupCheckpointRequest) (*syncv1.GroupCheckpoint, error) {
+	principal, deviceID, err := syncPrincipalAndDevice(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	checkpoint, err := s.application.AdvanceGroupCheckpoint(principal, deviceID, request.GetGroupId(), request.GetMessageSequence())
+	if err != nil {
+		return nil, syncCheckpointStatus(err)
+	}
+	return groupCheckpointResponse(checkpoint), nil
+}
+
 func syncPrincipalAndDevice(ctx context.Context, requestContext *commonv1.RequestContext) (string, string, error) {
 	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
 		return "", "", err
@@ -67,8 +95,21 @@ func checkpointResponse(checkpoint *model.DeviceSyncCheckpoint) *syncv1.DeviceCh
 	return &syncv1.DeviceCheckpointResponse{DeviceId: checkpoint.DeviceID, SyncSeq: checkpoint.SyncSeq}
 }
 
+func groupCheckpointResponse(checkpoint *model.GroupSyncCheckpoint) *syncv1.GroupCheckpoint {
+	if checkpoint == nil {
+		return &syncv1.GroupCheckpoint{}
+	}
+	return &syncv1.GroupCheckpoint{GroupId: checkpoint.GroupUUID, LatestMessageSequence: checkpoint.LatestMessageSeq, LatestMessageId: checkpoint.LatestMessageUUID, PulledMessageSequence: checkpoint.PulledMessageSeq}
+}
+
 func syncCheckpointStatus(err error) error {
+	if errors.Is(err, service.ErrSyncGroupForbidden) {
+		return status.Error(codes.PermissionDenied, err.Error())
+	}
 	if errors.Is(err, service.ErrSyncDeviceIDRequired) || errors.Is(err, service.ErrSyncDeviceIDInvalid) || errors.Is(err, service.ErrSyncCheckpointAhead) {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	if errors.Is(err, service.ErrSyncGroupRequired) || errors.Is(err, service.ErrSyncGroupLimit) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return status.Error(codes.Internal, "sync checkpoint operation failed")

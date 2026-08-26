@@ -150,6 +150,19 @@ func (c *Client) ListGroupMessagesAfter(currentUserUUID, groupUUID string, after
 	return messagesFromProto(response.GetMessages()), nil
 }
 
+func (c *Client) ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListGroupHistory(ctx, &messagev1.ListGroupHistoryRequest{
+		Context: c.invocation(currentUserUUID), GroupId: groupUUID,
+		Cursor: &messagev1.ListGroupHistoryRequest_AfterSequence{AfterSequence: afterSeq}, PageSize: requestPageSize(limit),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return messagesFromProto(response.GetMessages()), nil
+}
+
 func (c *Client) ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()

@@ -51,6 +51,10 @@ func (s *stubMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID stri
 	return s.listGroup(userUUID, groupUUID, afterID, limit, true)
 }
 
+func (s *stubMessageApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return s.listGroup(userUUID, groupUUID, uint(afterSeq), limit, true)
+}
+
 func (s *stubMessageApplication) ListOfflineMessages(string, uint, int) ([]*model.Message, error) {
 	return nil, nil
 }

@@ -73,6 +73,14 @@ func (s *messageShadowApplication) ListGroupMessagesAfter(userUUID, groupUUID st
 	return primary, err
 }
 
+func (s *messageShadowApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	primary, err := s.primary.ListGroupMessagesAfterSeq(userUUID, groupUUID, afterSeq, limit)
+	s.compare("list_group_history_after_seq", primary, err, func() ([]*model.Message, error) {
+		return s.shadow.ListGroupMessagesAfterSeq(userUUID, groupUUID, afterSeq, limit)
+	})
+	return primary, err
+}
+
 func (s *messageShadowApplication) ListOfflineMessages(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	primary, err := s.primary.ListOfflineMessages(userUUID, afterID, limit)
 	s.compare("list_offline_messages", primary, err, func() ([]*model.Message, error) {

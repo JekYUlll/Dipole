@@ -43,6 +43,7 @@ type messageRepository interface {
 	HasConversationMessages(conversationKey string) (bool, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
+	ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -543,6 +544,43 @@ func (s *MessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID strin
 		return nil, fmt.Errorf("list group messages after: unexpected singleflight result %T", value)
 	}
 
+	return cloneMessageSlice(messages), nil
+}
+
+func (s *MessageService) ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureReadableGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+		return nil, err
+	}
+
+	normalizedLimit := normalizeMessageListLimit(limit)
+	cacheKey := platformCache.HotGroupMessagesSeqKey(groupUUID, afterSeq, normalizedLimit)
+	if cached := s.loadCachedGroupMessagesPage(cacheKey); len(cached) > 0 {
+		return cached, nil
+	}
+	sfKey := fmt.Sprintf("group_pull_seq:%s:%d:%d", groupUUID, afterSeq, normalizedLimit)
+	value, err, _ := s.groupPulls.Do(sfKey, func() (any, error) {
+		if cached := s.loadCachedGroupMessagesPage(cacheKey); len(cached) > 0 {
+			return cached, nil
+		}
+		messages, listErr := s.repo.ListByConversationSeqAfter(model.GroupConversationKey(groupUUID), afterSeq, normalizedLimit)
+		if listErr != nil {
+			return nil, fmt.Errorf("list group messages after sequence: %w", listErr)
+		}
+		cloned := cloneMessageSlice(messages)
+		s.storeCachedGroupMessagesPage(cacheKey, cloned)
+		return cloned, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	messages, ok := value.([]*model.Message)
+	if !ok {
+		return nil, fmt.Errorf("list group messages after sequence: unexpected singleflight result %T", value)
+	}
 	return cloneMessageSlice(messages), nil
 }
 

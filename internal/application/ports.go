@@ -19,6 +19,7 @@ type MessageQuery interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
+	ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -37,6 +38,8 @@ type SyncApplication interface {
 	List(userUUID string, afterSeq uint64, limit int) (*SyncPage, error)
 	GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
 	AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error)
+	ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error)
+	AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error)
 }
 
 type CoreCapability interface {
@@ -104,6 +107,9 @@ type SyncStore interface {
 	GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
 	GetLatestUserSyncSequence(userUUID string) (uint64, error)
 	AdvanceDeviceSyncCheckpoint(userUUID, deviceID string, syncSeq uint64) error
+	ListGroupSyncCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error)
+	GetGroupSyncState(groupUUID string) (*model.GroupSyncState, error)
+	AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error
 }
 
 type UserStore interface {

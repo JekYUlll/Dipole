@@ -45,6 +45,10 @@ func (a *queryOnlyMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID
 	return a.queries.ListGroupMessagesAfter(userUUID, groupUUID, afterID, limit)
 }
 
+func (a *queryOnlyMessageApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListGroupMessagesAfterSeq(userUUID, groupUUID, afterSeq, limit)
+}
+
 func (a *queryOnlyMessageApplication) ListOfflineMessages(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	return a.queries.ListOfflineMessages(userUUID, afterID, limit)
 }

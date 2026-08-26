@@ -42,6 +42,14 @@ func (s stubSyncApplication) AdvanceCheckpoint(userUUID, deviceID string, syncSe
 	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}, nil
 }
 
+func (s stubSyncApplication) ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error) {
+	return []*model.GroupSyncCheckpoint{{GroupUUID: groupUUIDs[0], LatestMessageSeq: 12, LatestMessageUUID: "M12", PulledMessageSeq: 9}}, nil
+}
+
+func (s stubSyncApplication) AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error) {
+	return &model.GroupSyncCheckpoint{GroupUUID: groupUUID, LatestMessageSeq: 12, LatestMessageUUID: "M12", PulledMessageSeq: messageSeq}, nil
+}
+
 func TestRemoteClientImplementsSyncApplication(t *testing.T) {
 	rpc := newBufconnRPCClient(t, stubSyncApplication{t: t})
 	client, err := NewClient(rpc)
@@ -65,6 +73,14 @@ func TestRemoteClientImplementsSyncApplication(t *testing.T) {
 	checkpoint, err = client.AdvanceCheckpoint("U1", "web-1", 9)
 	if err != nil || checkpoint.SyncSeq != 9 {
 		t.Fatalf("advance remote checkpoint: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	groups, err := client.ListGroupCheckpoints("U1", "web-1", []string{"G1"})
+	if err != nil || len(groups) != 1 || groups[0].LatestMessageSeq != 12 || groups[0].PulledMessageSeq != 9 {
+		t.Fatalf("list remote group checkpoints: checkpoints=%+v err=%v", groups, err)
+	}
+	group, err := client.AdvanceGroupCheckpoint("U1", "web-1", "G1", 11)
+	if err != nil || group.GroupUUID != "G1" || group.PulledMessageSeq != 11 {
+		t.Fatalf("advance remote group checkpoint: checkpoint=%+v err=%v", group, err)
 	}
 }
 
