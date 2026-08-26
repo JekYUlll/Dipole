@@ -9,11 +9,14 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
+	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
+	shadowData "github.com/JekYUlll/Dipole/internal/data/shadow"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/apache/cassandra-gocql-driver/v2"
 	"google.golang.org/grpc"
 )
 
@@ -23,13 +26,19 @@ type MessageRuntime struct {
 	outboxFlow  *outboxRelay
 	shutdownSec int
 	metrics     *platformObservability.MetricsServer
+	shadowStore *shadowData.MessageStore
+	cassandra   *gocql.Session
 }
 
 func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	messageCfg := config.MessageConfig()
+	cassandraCfg := config.CassandraConfig()
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("message service requires internal_rpc.enabled")
+	}
+	if err := validateCassandraShadowConfig(messageCfg, cassandraCfg); err != nil {
+		return nil, err
 	}
 	if err := store.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("message mysql init failed: %w", err)
@@ -69,6 +78,24 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, err
 	}
 	runtime := &MessageRuntime{coreConn: coreConn, shutdownSec: rpcCfg.ShutdownTimeoutSeconds}
+	if messageCfg.CassandraShadowReads {
+		runtime.cassandra, err = cassandraData.OpenSession(cassandraCfg)
+		if err != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("open Cassandra shadow-read session: %w", err)
+		}
+		if err := cassandraData.ValidateTimelineSchema(ctx, runtime.cassandra, cassandraCfg.Keyspace); err != nil {
+			runtime.Close()
+			return nil, err
+		}
+		timeline, err := cassandraData.NewTimelineStore(runtime.cassandra, cassandraCfg.TimelineBucketSize)
+		if err != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("create Cassandra shadow timeline reader: %w", err)
+		}
+		runtime.shadowStore = shadowData.NewMessageStore(repos.Messages, timeline, nil)
+		repos.Messages = runtime.shadowStore
+	}
 
 	var events applicationPort.EventPublisher
 	if platformKafka.Client != nil {
@@ -125,6 +152,13 @@ func messageOwnedKafkaTopics() []string {
 	}
 }
 
+func validateCassandraShadowConfig(messageCfg config.Message, cassandraCfg config.Cassandra) error {
+	if messageCfg.CassandraShadowReads && !cassandraCfg.Enabled {
+		return fmt.Errorf("message.cassandra_shadow_reads requires cassandra.enabled")
+	}
+	return nil
+}
+
 func (r *MessageRuntime) Address() string {
 	if r == nil || r.rpc == nil {
 		return ""
@@ -145,6 +179,13 @@ func (r *MessageRuntime) Close() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownSec)*time.Second)
 		r.rpc.Close(ctx)
 		cancel()
+	}
+	if r.shadowStore != nil {
+		r.shadowStore.Wait()
+	}
+	if r.cassandra != nil {
+		r.cassandra.Close()
+		r.cassandra = nil
 	}
 	if err := platformKafka.CloseConsumer(); err != nil {
 		_ = err

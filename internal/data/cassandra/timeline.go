@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 
 const (
 	DefaultTimelineBucketSize uint64 = 10_000
+	maxTimelineRangeBuckets          = 64
 	TimelineTableName                = "timeline_by_conversation_bucket"
 )
 
@@ -180,6 +183,96 @@ WHERE conversation_key = ? AND bucket = ? AND message_seq = ?`,
 	record.Projection.MessageSeq = sequence
 	record.Projection.FileExpiresAt = fileExpiresAt
 	return record, true, nil
+}
+
+func (s *TimelineStore) ListRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]TimelineRecord, error) {
+	conversationKey = strings.TrimSpace(conversationKey)
+	if conversationKey == "" {
+		return nil, fmt.Errorf("Cassandra timeline range conversation key is required")
+	}
+	if lastSeq > math.MaxInt64 {
+		return nil, fmt.Errorf("Cassandra timeline range end %d exceeds bigint capacity", lastSeq)
+	}
+	buckets, err := bucketsForRange(firstSeq, lastSeq, s.bucketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	records := make([]TimelineRecord, 0)
+	for _, bucket := range buckets {
+		iter := s.session.Query(`
+SELECT message_seq, message_uuid, client_message_id, sender_uuid, target_type,
+       target_uuid, message_type, content, file_id, file_name, file_size,
+       file_url, file_content_type, file_expires_at, sent_at, payload_hash
+FROM timeline_by_conversation_bucket
+WHERE conversation_key = ? AND bucket = ? AND message_seq >= ? AND message_seq <= ?`,
+			conversationKey, bucket, int64(firstSeq), int64(lastSeq),
+		).WithContext(ctx).Iter()
+		for {
+			var record TimelineRecord
+			var sequence int64
+			var fileExpiresAt *time.Time
+			if !iter.Scan(
+				&sequence,
+				&record.Projection.MessageUUID,
+				&record.Projection.ClientMessageID,
+				&record.Projection.SenderUUID,
+				&record.Projection.TargetType,
+				&record.Projection.TargetUUID,
+				&record.Projection.MessageType,
+				&record.Projection.Content,
+				&record.Projection.FileID,
+				&record.Projection.FileName,
+				&record.Projection.FileSize,
+				&record.Projection.FileURL,
+				&record.Projection.FileContentType,
+				&fileExpiresAt,
+				&record.Projection.SentAt,
+				&record.PayloadHash,
+			) {
+				break
+			}
+			record.Projection.ConversationKey = conversationKey
+			record.Projection.MessageSeq = uint64(sequence)
+			record.Projection.FileExpiresAt = fileExpiresAt
+			records = append(records, record)
+		}
+		if err := iter.Close(); err != nil {
+			return nil, fmt.Errorf("list Cassandra timeline range bucket %d: %w", bucket, err)
+		}
+	}
+	sort.Slice(records, func(left, right int) bool {
+		return records[left].Projection.MessageSeq < records[right].Projection.MessageSeq
+	})
+	return records, nil
+}
+
+func bucketsForRange(firstSeq, lastSeq, bucketSize uint64) ([]int64, error) {
+	if firstSeq == 0 || lastSeq == 0 {
+		return nil, fmt.Errorf("Cassandra timeline range sequences must be positive")
+	}
+	if firstSeq > lastSeq {
+		return nil, fmt.Errorf("Cassandra timeline range start %d exceeds end %d", firstSeq, lastSeq)
+	}
+	firstBucket, err := BucketForSequence(firstSeq, bucketSize)
+	if err != nil {
+		return nil, err
+	}
+	lastBucket, err := BucketForSequence(lastSeq, bucketSize)
+	if err != nil {
+		return nil, err
+	}
+	if lastBucket-firstBucket+1 > maxTimelineRangeBuckets {
+		return nil, fmt.Errorf("Cassandra timeline range spans more than %d buckets", maxTimelineRangeBuckets)
+	}
+	buckets := make([]int64, 0, lastBucket-firstBucket+1)
+	for bucket := firstBucket; ; bucket++ {
+		buckets = append(buckets, bucket)
+		if bucket == lastBucket {
+			break
+		}
+	}
+	return buckets, nil
 }
 
 func (p TimelineProjection) PayloadHash() (string, error) {

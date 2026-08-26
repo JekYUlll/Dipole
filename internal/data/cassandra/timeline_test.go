@@ -1,6 +1,8 @@
 package cassandra
 
 import (
+	"context"
+	"math"
 	"testing"
 	"time"
 )
@@ -32,6 +34,35 @@ func TestBucketForSequenceRejectsInvalidInputs(t *testing.T) {
 	}
 	if _, err := BucketForSequence(1, 0); err == nil {
 		t.Fatal("expected zero bucket size to fail")
+	}
+}
+
+func TestBucketsForRangeIncludesEveryBucket(t *testing.T) {
+	buckets, err := bucketsForRange(10_000, 20_001, DefaultTimelineBucketSize)
+	if err != nil {
+		t.Fatalf("buckets for range: %v", err)
+	}
+	want := []int64{0, 1, 2}
+	if len(buckets) != len(want) {
+		t.Fatalf("expected %v, got %v", want, buckets)
+	}
+	for index := range want {
+		if buckets[index] != want[index] {
+			t.Fatalf("expected %v, got %v", want, buckets)
+		}
+	}
+	if _, err := bucketsForRange(3, 2, DefaultTimelineBucketSize); err == nil {
+		t.Fatal("expected reversed range to fail")
+	}
+	if _, err := bucketsForRange(1, 65, 1); err == nil {
+		t.Fatal("expected an excessive bucket span to fail")
+	}
+}
+
+func TestTimelineRangeRejectsSequenceOutsideCassandraBigint(t *testing.T) {
+	store := &TimelineStore{bucketSize: DefaultTimelineBucketSize}
+	if _, err := store.ListRange(context.Background(), "group:G1", 1, uint64(math.MaxInt64)+1); err == nil {
+		t.Fatal("expected sequence outside Cassandra bigint to fail")
 	}
 }
 

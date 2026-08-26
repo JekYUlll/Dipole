@@ -102,6 +102,7 @@ type Message struct {
 	Transport            string `mapstructure:"transport"`
 	RuntimeMode          string `mapstructure:"runtime_mode"`
 	ShadowQueries        bool   `mapstructure:"shadow_queries"`
+	CassandraShadowReads bool   `mapstructure:"cassandra_shadow_reads"`
 	EnforceDBPermissions bool   `mapstructure:"enforce_db_permissions"`
 }
 
@@ -254,6 +255,7 @@ func Load() error {
 		v.SetDefault("message.transport", "local")
 		v.SetDefault("message.runtime_mode", "owner")
 		v.SetDefault("message.shadow_queries", false)
+		v.SetDefault("message.cassandra_shadow_reads", false)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
@@ -363,6 +365,7 @@ func Load() error {
 			"message.transport",
 			"message.runtime_mode",
 			"message.shadow_queries",
+			"message.cassandra_shadow_reads",
 			"message.enforce_db_permissions",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
@@ -586,6 +589,7 @@ func MessageConfig() Message {
 		Transport:            strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
 		RuntimeMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
 		ShadowQueries:        cfg.GetBool("message.shadow_queries"),
+		CassandraShadowReads: cfg.GetBool("message.cassandra_shadow_reads"),
 		EnforceDBPermissions: cfg.GetBool("message.enforce_db_permissions"),
 	}
 }

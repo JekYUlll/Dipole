@@ -24,12 +24,15 @@ if ! sed -n '/^cassandra:/,/^[^ ]/p' "$root_dir/configs/config.dist.yaml" | rg -
   printf 'Cassandra must remain disabled in the default application configuration\n' >&2
   exit 1
 fi
-if rg -i 'cassandra' \
-  "$root_dir/internal/bootstrap/runtime.go" \
-  "$root_dir/internal/bootstrap/message_runtime.go" \
-  "$root_dir/internal/bootstrap/gateway_runtime.go"; then
-  printf 'Cassandra must stay outside Core, Message, and Gateway composition roots\n' >&2
+if ! sed -n '/^message:/,/^[^ ]/p' "$root_dir/configs/config.dist.yaml" | rg -q '^  cassandra_shadow_reads: false$'; then
+  printf 'Cassandra Message shadow reads must remain disabled by default\n' >&2
   exit 1
+fi
+if rg -i 'cassandra' \
+	"$root_dir/internal/bootstrap/runtime.go" \
+	"$root_dir/internal/bootstrap/gateway_runtime.go"; then
+	printf 'Cassandra must stay outside Core and Gateway composition roots\n' >&2
+	exit 1
 fi
 if rg -i 'elasticsearch' \
   "$root_dir/internal/config" \
