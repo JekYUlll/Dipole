@@ -65,9 +65,10 @@
 - 增加进程级 Kafka Prometheus Collector、独立 metrics listener、Kafka exporter、Prometheus 告警规则与自动故障 smoke，覆盖 lag、ISR、retry 和 DLQ。
 - 增加 MySQL 8.4 三成员 InnoDB Cluster、MySQL Router writer endpoint、AdminAPI 初始化/恢复脚本与连接池主切换故障 smoke。
 - 增加 Redis Sentinel 连接模式、三节点 Redis/三 Sentinel 隔离拓扑与自动故障 smoke。
-- 增加 Cassandra 5.0.9 与 Elasticsearch 9.5.2 零接线 Storage Lab、资源基线与自动 CRUD smoke。
+- 增加 Cassandra 5.0.9 与 Elasticsearch 9.5.2 隔离 Storage Lab、资源基线与自动 CRUD smoke。
 - 增加 Cassandra Conversation Timeline 版本化 CQL、10,000 Seq bucket 规则和 LWT 幂等投影 primitive。
 - 增加默认关闭的独立 Cassandra Projector Runtime、专属 Kafka consumer group、schema readiness 与端到端 smoke。
+- 增加独立 Cassandra 历史 Backfill、固定 MySQL 高水位、owner lease、批次 checkpoint 和失败恢复烟测。
 
 ### 变更
 
@@ -126,6 +127,7 @@
 - `000003` 通过现有最后消息与未读计数回填会话读位置，并创建 `device_sync_checkpoints`；Web 端在具备 IndexedDB 等持久本地消息库前不会自动 ACK Sync 页面。
 - `000004` 创建可重建的 `message_search_documents` 逻辑索引；当前不自动回填，A5 Search Indexer 上线前搜索入口保持关闭。
 - `000005` 回填群消息高水位并创建设备群 checkpoint；Message 账号新增 `group_sync_states` 写权限，继续拒绝设备 checkpoint 与其他 Core 表。
+- `000006` 创建 `cassandra_backfill_jobs`；先确认实时 Projector 已接管增量，再运行 `dipole-cassandra-backfill` 固定历史快照并补齐 Cassandra。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
 - 现有 `/messages/offline` 接口继续保留，客户端可以渐进迁移到 `/sync`。
@@ -168,9 +170,10 @@
 - 已通过 MySQL Router writer 演练：停止 PRIMARY 后同一 `database/sql` 池约 4.1 秒内连接新 writer，切换前后已提交记录均可见，旧节点通过 AdminAPI 成功 rejoin。
 - 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
 - 已通过 Redis Sentinel 演练：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、热点和限流状态可用，旧 master 重新加入为 replica。
-- 已通过隔离 Storage Lab 演练：Cassandra 与 Elasticsearch 健康启动并完成临时 CRUD，应用配置、Bootstrap 和 Go 依赖保持零接线。
+- 已通过隔离 Storage Lab 演练：Cassandra 与 Elasticsearch 健康启动并完成临时 CRUD，Core、Message、Gateway 和客户端生产读路径保持断开。
 - 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
+- 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。
 
 ### 已知问题
 
