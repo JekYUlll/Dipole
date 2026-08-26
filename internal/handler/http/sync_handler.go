@@ -155,8 +155,8 @@ func (h *SyncHandler) WithComparisonObserver(observer applicationPort.ClientSync
 }
 
 // ReportComparison godoc
-// @Summary 上报 Web 同步协议聚合对照结果
-// @Description 仅接收计数，不接收消息 ID 或正文
+// @Summary 上报 Web 同步协议聚合观测结果
+// @Description 仅接收对照与客户端错误计数，不接收消息 ID 或正文
 // @Tags Sync
 // @Security BearerAuth
 // @Accept json
@@ -183,11 +183,13 @@ func (h *SyncHandler) ReportComparison(c *gin.Context) {
 		return
 	}
 	counts := map[string]int{
-		"match":       request.Match,
-		"pending":     request.Pending,
-		"legacy_only": request.LegacyOnly,
-		"sync_only":   request.SyncOnly,
-		"overflow":    request.Overflow,
+		"match":        request.Match,
+		"pending":      request.Pending,
+		"legacy_only":  request.LegacyOnly,
+		"sync_only":    request.SyncOnly,
+		"overflow":     request.Overflow,
+		"storage_full": request.StorageFull,
+		"sync_error":   request.SyncError,
 	}
 	for _, count := range counts {
 		if count < 0 || count > 10000 {

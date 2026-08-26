@@ -77,12 +77,21 @@ VITE_SYNC_ENGINE_MODE=primary -> shadow -> off
 ```bash
 ./scripts/check-web-sync-alerts.sh
 docker compose -f docker-compose.cluster.yml --profile observability config
+cd frontend
+npm ci
+npm run test:e2e:install
+npm run test:e2e
 ```
+
+Playwright 运行 Chromium、Firefox、WebKit 的生产 IndexedDB 实现，覆盖容量淘汰、重开、账号隔离、延迟清理和页面重载中断事务。Linux WebKit 需要先执行 Playwright 官方 `install-deps webkit`，CI 可使用与 `@playwright/test` 版本一致的官方镜像。
+
+Chromium CDP `Storage.overrideQuotaForOrigin` 当前属于实验能力；如果它报告 active 但仍允许 IndexedDB 写入，用例会明确 skip。该结果不能替代受限磁盘 profile 或真实设备产生的 `QuotaExceededError` 证据，AD-025 因此继续保持处理中。
 
 生产 Prometheus 查询：
 
 ```promql
 dipole:web_sync_shadow:promotion_ready
-ALERTS{alertname=~"DipoleWebSyncShadow(Divergence|Overflow)",alertstate="firing"}
+ALERTS{alertname=~"DipoleWebSync(ShadowDivergence|ShadowOverflow|StorageFull|ClientErrors)",alertstate="firing"}
 sum by (outcome) (increase(dipole_web_sync_comparison_total{scope="incoming_direct"}[24h]))
+sum by (outcome) (increase(dipole_web_sync_client_errors_total[24h]))
 ```

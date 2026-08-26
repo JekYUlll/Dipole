@@ -8,6 +8,7 @@ import {
   clearBrowserMessages,
   compareBrowserSyncMessages,
   isLocalSyncCapacityError,
+  reportBrowserSyncFailure,
   recoverBrowserGroupMessages,
   recoverBrowserMessages,
 } from '@/sync/browserSync'
@@ -155,6 +156,7 @@ export const useChatStore = defineStore('chat', () => {
       return result.synchronized
     })().catch(error => {
       syncStatus.value = isLocalSyncCapacityError(error) ? 'storage_full' : 'error'
+      void reportBrowserSyncFailure(error)
       throw error
     }).finally(() => {
       activeSync = undefined

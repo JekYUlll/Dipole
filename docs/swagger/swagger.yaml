@@ -375,6 +375,10 @@ definitions:
         type: integer
       pending:
         type: integer
+      storage_full:
+        type: integer
+      sync_error:
+        type: integer
       sync_only:
         type: integer
     type: object
@@ -2446,7 +2450,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 仅接收计数，不接收消息 ID 或正文
+      description: 仅接收对照与客户端错误计数，不接收消息 ID 或正文
       parameters:
       - description: 稳定设备 ID
         in: header
@@ -2476,7 +2480,7 @@ paths:
             $ref: '#/definitions/http.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: 上报 Web 同步协议聚合对照结果
+      summary: 上报 Web 同步协议聚合观测结果
       tags:
       - Sync
   /sync/groups/{group_uuid}/checkpoint:

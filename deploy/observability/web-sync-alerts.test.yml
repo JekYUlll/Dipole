@@ -121,3 +121,31 @@ tests:
               severity: critical
             exp_annotations:
               summary: Web Sync shadow comparator exceeded its bounded local state
+
+  - name: browser storage full alerts on the first observation
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_client_errors_total{outcome="storage_full"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebSyncStorageFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Web Sync could not persist a page because local browser storage is full
+
+  - name: repeated browser sync recovery errors alert
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_client_errors_total{outcome="sync_error"}'
+        values: '0 0 2 4 6 7'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DipoleWebSyncClientErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Web Sync client recovery errors are increasing

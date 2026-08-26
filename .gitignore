@@ -21,6 +21,8 @@ scripts/bench/results
 tmp/
 frontend/chat-server
 frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
 
 # Test binary, built with `go test -c`
 *.test

@@ -2598,7 +2598,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "仅接收计数，不接收消息 ID 或正文",
+                "description": "仅接收对照与客户端错误计数，不接收消息 ID 或正文",
                 "consumes": [
                     "application/json"
                 ],
@@ -2608,7 +2608,7 @@ const docTemplate = `{
                 "tags": [
                     "Sync"
                 ],
-                "summary": "上报 Web 同步协议聚合对照结果",
+                "summary": "上报 Web 同步协议聚合观测结果",
                 "parameters": [
                     {
                         "type": "string",
@@ -3822,6 +3822,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "pending": {
+                    "type": "integer"
+                },
+                "storage_full": {
+                    "type": "integer"
+                },
+                "sync_error": {
                     "type": "integer"
                 },
                 "sync_only": {
