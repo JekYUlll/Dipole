@@ -203,7 +203,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### A2：基础设施集群化
 
-- [ ] MySQL Cluster 承载用户、群、联系人、文件元数据、幂等记录、Outbox、Conversation 和迁移控制表。
+- [x] MySQL Cluster 承载用户、群、联系人、文件元数据、幂等记录、Outbox、Conversation 和迁移控制表。
 - [x] Kafka Cluster 设置明确的 partition key、复制因子、最小 ISR、保留期和 `acks=all`，并验证单 broker 故障与 quorum 恢复。
 - [x] 固定 Kafka consumer rebalance policy，验证成员退出后的 partition 接管与 lag 归零，并提供进程内处理结果 snapshot。
 - [x] 增加 lag、under-replicated partitions、retry 和 DLQ 的 Prometheus 监控门禁。
