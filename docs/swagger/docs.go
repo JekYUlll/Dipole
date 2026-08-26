@@ -2378,6 +2378,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/messages/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Message"
+                ],
+                "summary": "搜索当前用户可访问的消息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "检索文本，1..256 个字符",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "返回数量，1..100",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SearchMessageListResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/sync": {
             "get": {
                 "security": [
@@ -3539,6 +3596,20 @@ const docTemplate = `{
                 }
             }
         },
+        "http.SearchMessageListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.SearchMessageResponse"
+                    }
+                }
+            }
+        },
         "http.SyncPageResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -4143,6 +4214,35 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "httpdto.SearchMessageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "conversation_key": {
+                    "type": "string"
+                },
+                "from_uuid": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
+                },
+                "message_seq": {
+                    "type": "integer"
+                },
+                "message_type": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "sent_at": {
+                    "type": "string"
                 }
             }
         },

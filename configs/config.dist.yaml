@@ -106,6 +106,10 @@ message:
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
 
+search:
+  # Gateway registers the public Search route only after the independent Search RPC is deployed.
+  enabled: false
+
 internal_rpc:
   # Keep disabled until Core and Message are deployed as separate processes.
   enabled: false

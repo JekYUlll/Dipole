@@ -68,6 +68,11 @@ type MessageListResponseEnvelope struct {
 	Data []*httpdto.MessageResponse `json:"data"`
 }
 
+type SearchMessageListResponseEnvelope struct {
+	Code int                              `json:"code"`
+	Data []*httpdto.SearchMessageResponse `json:"data"`
+}
+
 type SyncPageResponseEnvelope struct {
 	Code int                       `json:"code"`
 	Data *httpdto.SyncPageResponse `json:"data"`

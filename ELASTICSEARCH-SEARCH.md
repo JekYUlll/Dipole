@@ -75,7 +75,7 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 
 `cmd/search-service` 是独立只读查询进程。内部 `dipole.search.v1.SearchService` 请求只包含认证上下文、查询文本和页大小；Search Application 每次向 Core 获取 principal scope，空 scope 不访问 Elasticsearch。启动通过 `ValidateReadiness` 动态发现当前双 Alias 的唯一物理 owner 并校验 strict mapping，不创建索引或修改 Alias。
 
-Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也不直接构造 Elasticsearch adapter。内部 RPC 首期只允许 Gateway 调用，公开 HTTP 接线保留为下一可回滚切片。
+Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也不直接构造 Elasticsearch adapter。内部 RPC 只允许 Gateway 调用。Gateway 在 `search.enabled=true` 时注册认证 `GET /api/v1/messages/search`，从 JWT 会话取得 principal 并转发 1..256 字符的查询文本与 1..100 的 limit；依赖故障返回有界 502。
 
 ## Alias Migration
 
@@ -141,7 +141,7 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 将 Gateway 认证 HTTP API 接到内部 Search RPC，并补前端设计稿与交互状态。
+1. 使用 Pencil `.pen` 设计稿补齐搜索入口、结果列表、空态、加载态与故障态，再实现前端页面。
 2. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References

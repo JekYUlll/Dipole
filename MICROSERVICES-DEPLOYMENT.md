@@ -43,7 +43,7 @@ docker compose -f docker-compose.microservices.yml up -d --wait
 
 三个应用进程共用一个镜像，通过 entrypoint 选择二进制。migration 作为一次性服务先执行；Core 与 Message 就绪后，Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
 
-启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。Gateway 公共搜索路由将在后续里程碑开放，当前 profile 可独立验证内部查询链路。
+启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。内部链路就绪后以 `DIPOLE_SEARCH_ENABLED=true` 重建 Gateway，才会注册认证搜索路由；默认 false 保持原有反代行为。
 
 ## 自动验收
 

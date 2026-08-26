@@ -258,6 +258,7 @@ services:
       <<: *internal-rpc
       DIPOLE_GATEWAY_MODE: remote
       DIPOLE_GATEWAY_CORE_HTTP_TARGET: http://core:8081
+      DIPOLE_SEARCH_ENABLED: ${DIPOLE_SEARCH_ENABLED:-false}
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/gateway.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/gateway-key.pem
       DIPOLE_PRESENCE_NODE_ID: gateway-1

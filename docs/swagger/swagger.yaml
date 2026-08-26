@@ -264,6 +264,15 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.PublicUserResponse'
     type: object
+  http.SearchMessageListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.SearchMessageResponse'
+        type: array
+    type: object
   http.SyncPageResponseEnvelope:
     properties:
       code:
@@ -664,6 +673,25 @@ definitions:
         type: array
     required:
     - member_uuids
+    type: object
+  httpdto.SearchMessageResponse:
+    properties:
+      content:
+        type: string
+      conversation_key:
+        type: string
+      from_uuid:
+        type: string
+      message_id:
+        type: string
+      message_seq:
+        type: integer
+      message_type:
+        type: integer
+      revision:
+        type: integer
+      sent_at:
+        type: string
     type: object
   httpdto.SyncMessageResponse:
     properties:
@@ -2253,6 +2281,42 @@ paths:
       security:
       - BearerAuth: []
       summary: 获取离线消息
+      tags:
+      - Message
+  /messages/search:
+    get:
+      parameters:
+      - description: 检索文本，1..256 个字符
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 返回数量，1..100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SearchMessageListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 搜索当前用户可访问的消息
       tags:
       - Message
   /sync:
