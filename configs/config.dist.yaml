@@ -47,6 +47,9 @@ kafka:
   topic_prefix: dipole
   topic_partitions: 6
   topic_replication_factor: 1
+  topic_min_insync_replicas: 1
+  topic_retention_hours: 168
+  required_acks: one
   dial_timeout_seconds: 5
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3

@@ -67,6 +67,9 @@ type Kafka struct {
 	TopicPrefix             string   `mapstructure:"topic_prefix"`
 	TopicPartitions         int      `mapstructure:"topic_partitions"`
 	TopicReplicationFactor  int      `mapstructure:"topic_replication_factor"`
+	TopicMinInSyncReplicas  int      `mapstructure:"topic_min_insync_replicas"`
+	TopicRetentionHours     int      `mapstructure:"topic_retention_hours"`
+	RequiredAcks            string   `mapstructure:"required_acks"`
 	DialTimeoutSeconds      int      `mapstructure:"dial_timeout_seconds"`
 	WriteTimeoutSeconds     int      `mapstructure:"write_timeout_seconds"`
 	ConsumeRetryMaxAttempts int      `mapstructure:"consume_retry_max_attempts"`
@@ -206,6 +209,9 @@ func Load() error {
 		v.SetDefault("kafka.topic_prefix", "dipole")
 		v.SetDefault("kafka.topic_partitions", 6)
 		v.SetDefault("kafka.topic_replication_factor", 1)
+		v.SetDefault("kafka.topic_min_insync_replicas", 1)
+		v.SetDefault("kafka.topic_retention_hours", 168)
+		v.SetDefault("kafka.required_acks", "one")
 		v.SetDefault("kafka.dial_timeout_seconds", 5)
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
@@ -492,6 +498,9 @@ func KafkaConfig() Kafka {
 	kafkaConfig.TopicPrefix = cfg.GetString("kafka.topic_prefix")
 	kafkaConfig.TopicPartitions = cfg.GetInt("kafka.topic_partitions")
 	kafkaConfig.TopicReplicationFactor = cfg.GetInt("kafka.topic_replication_factor")
+	kafkaConfig.TopicMinInSyncReplicas = cfg.GetInt("kafka.topic_min_insync_replicas")
+	kafkaConfig.TopicRetentionHours = cfg.GetInt("kafka.topic_retention_hours")
+	kafkaConfig.RequiredAcks = strings.ToLower(strings.TrimSpace(cfg.GetString("kafka.required_acks")))
 	kafkaConfig.DialTimeoutSeconds = cfg.GetInt("kafka.dial_timeout_seconds")
 	kafkaConfig.WriteTimeoutSeconds = cfg.GetInt("kafka.write_timeout_seconds")
 	kafkaConfig.ConsumeRetryMaxAttempts = cfg.GetInt("kafka.consume_retry_max_attempts")
