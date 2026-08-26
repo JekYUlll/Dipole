@@ -56,5 +56,18 @@ docker compose -p dipole-kafka-cluster-smoke -f docker-compose.cluster.yml down 
 ## Remaining Gates
 
 - 增加真实 Dipole Topic 的配置 drift/reconciliation 工具。
-- 验证 Message/Core/Gateway consumer group 在 broker 故障与成员重启时的 rebalance。
 - 暴露 under-replicated partitions、ISR、consumer lag、retry 和 DLQ 指标及告警。
+
+## Consumer Rebalance
+
+Dipole Consumer 显式使用 round-robin group balancer、同步 offset commit、3 秒 heartbeat、30 秒 session timeout 和 30 秒 rebalance timeout。成功处理或成功转移到 retry/DLQ 后才提交 offset；commit failure 会保留未提交位置并计入 snapshot。
+
+执行消费组门禁：
+
+```bash
+./scripts/smoke-kafka-rebalance.sh
+```
+
+脚本创建 6-partition Topic 和两个同组 consumer，验证初始各分配 3 个 partition；终止一个 member 后，剩余 member 接管全部 6 个 partition，并在新增消息后把 group lag 重新降到 0。
+
+`Consumer.CollectStats()` 提供累计 fetched/handled/committed、fetch/commit errors、retry/DLQ 发布数，以及 kafka-go reader 的周期增量 rebalances/errors/queue 指标。该 snapshot 只应由单一指标采集器周期读取；Prometheus 暴露与 broker/group lag exporter 留在后续观测切片。
