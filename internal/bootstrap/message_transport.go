@@ -28,7 +28,7 @@ func newMessageApplicationTransport(ctx context.Context, cfg config.Message, rpc
 		if !rpcCfg.Enabled {
 			return nil, fmt.Errorf("message shadow queries require internal_rpc.enabled")
 		}
-		remote, connection, err := DialMessageApplication(ctx, rpcCfg)
+		remote, connection, err := DialCoreMessageApplication(ctx, rpcCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +38,7 @@ func newMessageApplicationTransport(ctx context.Context, cfg config.Message, rpc
 		if !rpcCfg.Enabled {
 			return nil, fmt.Errorf("message grpc transport requires internal_rpc.enabled")
 		}
-		client, connection, err := DialMessageApplication(ctx, rpcCfg)
+		client, connection, err := DialCoreMessageApplication(ctx, rpcCfg)
 		if err != nil {
 			return nil, err
 		}

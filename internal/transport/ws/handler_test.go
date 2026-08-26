@@ -135,7 +135,6 @@ type chatMessageEvent struct {
 
 func TestHandlerRejectsMissingToken(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
 	hub := NewHub()
@@ -174,7 +173,6 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 
 func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	authenticator := NewAuthenticator(
@@ -261,7 +259,6 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 
 func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -384,7 +381,6 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 
 func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -483,7 +479,6 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 
 func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -549,7 +544,6 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 
 func TestHandlerRejectsMessageWhenRateLimited(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	authenticator := NewAuthenticator(

@@ -28,6 +28,7 @@ import (
 
 const (
 	gatewayServiceName = "dipole-gateway"
+	coreServiceName    = "dipole-core"
 	messageServiceName = "dipole-message"
 )
 
@@ -43,20 +44,28 @@ func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName}, func(server *grpc.Server) {
+	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName}, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
 	})
 }
 
 func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	return dialCoreCapabilityAs(ctx, cfg, messageServiceName)
+}
+
+func DialGatewayCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	return dialCoreCapabilityAs(ctx, cfg, gatewayServiceName)
+}
+
+func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*coregrpc.Client, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{
-		Service: messageServiceName,
+		Service: callerService,
 		Secret:  cfg.SharedSecret,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial core rpc: %w", err)
 	}
-	client, err := coregrpc.NewClient(corev1.NewCoreCapabilityServiceClient(connection))
+	client, err := coregrpc.NewClientForService(corev1.NewCoreCapabilityServiceClient(connection), callerService)
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, fmt.Errorf("create core capability client: %w", err)
@@ -69,20 +78,28 @@ func NewMessageRPCServer(cfg config.InternalRPC, messages application.MessageApp
 	if err != nil {
 		return nil, fmt.Errorf("create message rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.MessageListenAddress, []string{gatewayServiceName}, func(server *grpc.Server) {
+	return newInternalRPCServer(cfg, cfg.MessageListenAddress, []string{gatewayServiceName, coreServiceName}, func(server *grpc.Server) {
 		messagev1.RegisterMessageServiceServer(server, adapter)
 	})
 }
 
 func DialMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {
+	return dialMessageApplicationAs(ctx, cfg, gatewayServiceName)
+}
+
+func DialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {
+	return dialMessageApplicationAs(ctx, cfg, coreServiceName)
+}
+
+func dialMessageApplicationAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*messagegrpc.Client, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.MessageTarget, grpcauth.Credentials{
-		Service: gatewayServiceName,
+		Service: callerService,
 		Secret:  cfg.SharedSecret,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial message rpc: %w", err)
 	}
-	client, err := messagegrpc.NewClient(messagev1.NewMessageServiceClient(connection))
+	client, err := messagegrpc.NewClientForService(messagev1.NewMessageServiceClient(connection), callerService)
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, fmt.Errorf("create message application client: %w", err)

@@ -28,6 +28,11 @@ type Server struct {
 	Port int    `mapstructure:"port"`
 }
 
+type Gateway struct {
+	Mode           string `mapstructure:"mode"`
+	CoreHTTPTarget string `mapstructure:"core_http_target"`
+}
+
 type TLS struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	CertFile string `mapstructure:"cert_file"`
@@ -187,6 +192,8 @@ func Load() error {
 		v.SetDefault("log.file_rotate_daily", true)
 		v.SetDefault("server.host", "0.0.0.0")
 		v.SetDefault("server.port", 8080)
+		v.SetDefault("gateway.mode", "embedded")
+		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
@@ -274,6 +281,7 @@ func Load() error {
 			"log.file_rotate_daily",
 			"server.host",
 			"server.port",
+			"gateway.core_http_target",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
@@ -414,6 +422,14 @@ func ServerConfig() Server {
 	server.Port = cfg.GetInt("server.port")
 
 	return server
+}
+
+func GatewayConfig() Gateway {
+	MustLoad()
+	return Gateway{
+		Mode:           strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget: strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+	}
 }
 
 func MySQLConfig() MySQL {

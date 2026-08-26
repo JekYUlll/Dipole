@@ -88,6 +88,12 @@ func TestServerRejectsMissingCallerService(t *testing.T) {
 	}
 }
 
+func TestClientRequiresCallerService(t *testing.T) {
+	if _, err := NewClientForService(newBufconnRPCClient(t, stubCoreCapability{}), " "); err == nil {
+		t.Fatal("expected empty caller service to fail")
+	}
+}
+
 func newBufconnRPCClient(t *testing.T, capability stubCoreCapability) corev1.CoreCapabilityServiceClient {
 	t.Helper()
 	adapter, err := NewServer(capability)
