@@ -38,6 +38,7 @@ type Querier interface {
 	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetCassandraBackfillHighWatermark(ctx context.Context) (uint64, error)
+	GetCassandraBackfillJob(ctx context.Context, jobName string) (CassandraBackfillJob, error)
 	GetContact(ctx context.Context, arg GetContactParams) (Contact, error)
 	GetContactApplicationByID(ctx context.Context, id uint64) (ContactApplication, error)
 	GetContactApplicationByPair(ctx context.Context, arg GetContactApplicationByPairParams) (ContactApplication, error)

@@ -176,6 +176,15 @@ func TestRunnerReportsLeaseLossWithoutCheckpointAdvance(t *testing.T) {
 	}
 }
 
+func TestRunnerRejectsOversizedBatch(t *testing.T) {
+	_, err := NewRunner(&sourceStub{}, &checkpointStub{}, &timelineStub{}, Config{
+		JobName: "timeline-v1", OwnerID: "worker-a", BatchSize: MaxBatchSize + 1, LeaseDuration: time.Minute,
+	})
+	if err == nil {
+		t.Fatal("expected oversized backfill batch to fail")
+	}
+}
+
 func message(id uint64) SourceMessage {
 	return SourceMessage{SourceID: id, Message: model.Message{
 		UUID: fmt.Sprintf("M-%d", id), ClientMessageID: fmt.Sprintf("C-%d", id),
