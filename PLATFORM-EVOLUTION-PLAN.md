@@ -195,7 +195,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] 增加会话内单调 `conversation_seq`，消息唯一 ID 与排序序号分离。
 - [x] 增加 `read_seq` 和设备级同步 checkpoint，保留旧 `UnreadCount` 兼容投影。
-- [ ] 定义 `MessageStore`、`SyncStore` 和 `SearchIndex` 接口，MySQL 实现先通过完整 contract test。
+- [x] 定义 `MessageStore`、`SyncStore` 和 `SearchIndex` 接口，MySQL 实现先通过完整 contract test。
 - [ ] 为热群定义持久化 checkpoint，解决 `AD-004` 后再计划移除旧离线接口。
 - [ ] 为消息创建、撤回、编辑和删除预留版本化 mutation 事件，当前只实现已支持的动作。
 

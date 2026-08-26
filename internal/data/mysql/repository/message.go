@@ -165,6 +165,26 @@ func (r *MessageRepository) ListByConversationKeyAfter(key string, afterID uint,
 	return mapper.Messages(rows), nil
 }
 
+func (r *MessageRepository) ListByConversationSeqBefore(key string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	rows, err := r.store.Queries().ListMessagesByConversationSeqBefore(context.Background(), generated.ListMessagesByConversationSeqBeforeParams{ConversationKey: key, BeforeSeq: beforeSeq, Limit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	messages := mapper.Messages(rows)
+	for left, right := 0, len(messages)-1; left < right; left, right = left+1, right-1 {
+		messages[left], messages[right] = messages[right], messages[left]
+	}
+	return messages, nil
+}
+
+func (r *MessageRepository) ListByConversationSeqAfter(key string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	rows, err := r.store.Queries().ListMessagesByConversationSeqAfter(context.Background(), generated.ListMessagesByConversationSeqAfterParams{ConversationKey: key, AfterSeq: afterSeq, Limit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	return mapper.Messages(rows), nil
+}
+
 func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	userUUID = strings.TrimSpace(userUUID)
 	rows, err := r.store.Queries().ListOfflineMessagesByUser(context.Background(), generated.ListOfflineMessagesByUserParams{AfterID: uint64(afterID), DirectType: model.MessageTargetDirect, UserUuid: userUUID, GroupType: model.MessageTargetGroup, GroupNormalStatus: model.GroupStatusNormal, GroupDismissedStatus: model.GroupStatusDismissed, Limit: int32(limit)})

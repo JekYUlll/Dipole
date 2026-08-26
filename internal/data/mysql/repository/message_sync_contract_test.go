@@ -114,6 +114,14 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err != nil || len(after) != 1 || after[0].UUID != second.UUID {
 		t.Fatalf("history after cursor: messages=%+v err=%v", after, err)
 	}
+	seqBefore, err := stores.message.ListByConversationSeqBefore(conversationKey, second.Seq, 10)
+	if err != nil || len(seqBefore) != 1 || seqBefore[0].UUID != first.UUID {
+		t.Fatalf("history before sequence: messages=%+v err=%v", seqBefore, err)
+	}
+	seqAfter, err := stores.message.ListByConversationSeqAfter(conversationKey, first.Seq, 10)
+	if err != nil || len(seqAfter) != 1 || seqAfter[0].UUID != second.UUID {
+		t.Fatalf("history after sequence: messages=%+v err=%v", seqAfter, err)
+	}
 	groupUUID := "G-" + prefix
 	groupRecipient := "U-" + prefix + "-target"
 	if _, err := db.Exec("INSERT INTO `groups` (uuid, name, owner_uuid, member_count, status, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?, ?)", groupUUID, "Contract Group", first.SenderUUID, model.GroupStatusNormal, now, now); err != nil {

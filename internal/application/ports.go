@@ -87,8 +87,16 @@ type MessageStore interface {
 	HasConversationMessages(conversationKey string) (bool, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
+	ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error)
+	ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
+}
+
+type SearchIndex interface {
+	Upsert(document *model.MessageSearchDocument) error
+	Delete(messageUUID string) error
+	Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error)
 }
 
 type SyncStore interface {

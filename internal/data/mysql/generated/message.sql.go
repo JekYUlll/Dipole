@@ -356,6 +356,125 @@ func (q *Queries) ListMessagesByConversationBefore(ctx context.Context, arg List
 	return items, nil
 }
 
+const listMessagesByConversationSeqAfter = `-- name: ListMessagesByConversationSeqAfter :many
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
+WHERE conversation_key = ?
+  AND seq > ?
+ORDER BY seq ASC
+LIMIT ?
+`
+
+type ListMessagesByConversationSeqAfterParams struct {
+	ConversationKey string
+	AfterSeq        uint64
+	Limit           int32
+}
+
+func (q *Queries) ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByConversationSeqAfter, arg.ConversationKey, arg.AfterSeq, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.ClientMessageID,
+			&i.ConversationKey,
+			&i.SenderUuid,
+			&i.TargetType,
+			&i.TargetUuid,
+			&i.MessageType,
+			&i.Content,
+			&i.FileID,
+			&i.FileName,
+			&i.FileSize,
+			&i.FileUrl,
+			&i.FileContentType,
+			&i.FileExpiresAt,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Seq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessagesByConversationSeqBefore = `-- name: ListMessagesByConversationSeqBefore :many
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
+WHERE conversation_key = ?
+  AND (? = 0 OR seq < ?)
+ORDER BY seq DESC
+LIMIT ?
+`
+
+type ListMessagesByConversationSeqBeforeParams struct {
+	ConversationKey string
+	BeforeSeq       uint64
+	Limit           int32
+}
+
+func (q *Queries) ListMessagesByConversationSeqBefore(ctx context.Context, arg ListMessagesByConversationSeqBeforeParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByConversationSeqBefore,
+		arg.ConversationKey,
+		arg.BeforeSeq,
+		arg.BeforeSeq,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.ClientMessageID,
+			&i.ConversationKey,
+			&i.SenderUuid,
+			&i.TargetType,
+			&i.TargetUuid,
+			&i.MessageType,
+			&i.Content,
+			&i.FileID,
+			&i.FileName,
+			&i.FileSize,
+			&i.FileUrl,
+			&i.FileContentType,
+			&i.FileExpiresAt,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Seq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMessagesByUUIDs = `-- name: ListMessagesByUUIDs :many
 SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages WHERE uuid IN (/*SLICE:uuids*/?)
 `

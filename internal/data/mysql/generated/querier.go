@@ -26,6 +26,7 @@ type Querier interface {
 	DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (sql.Result, error)
 	DeleteGroupMember(ctx context.Context, arg DeleteGroupMemberParams) (sql.Result, error)
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
+	DeleteMessageSearchDocument(ctx context.Context, messageUuid string) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
@@ -52,6 +53,8 @@ type Querier interface {
 	ListIncomingContactApplications(ctx context.Context, targetUuid string) ([]ContactApplication, error)
 	ListMessagesByConversationAfter(ctx context.Context, arg ListMessagesByConversationAfterParams) ([]Message, error)
 	ListMessagesByConversationBefore(ctx context.Context, arg ListMessagesByConversationBeforeParams) ([]Message, error)
+	ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error)
+	ListMessagesByConversationSeqBefore(ctx context.Context, arg ListMessagesByConversationSeqBeforeParams) ([]Message, error)
 	ListMessagesByUUIDs(ctx context.Context, uuids []string) ([]Message, error)
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
@@ -68,6 +71,7 @@ type Querier interface {
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
+	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
 	UpdateContact(ctx context.Context, arg UpdateContactParams) (sql.Result, error)
 	UpdateContactApplication(ctx context.Context, arg UpdateContactApplicationParams) (sql.Result, error)
@@ -76,6 +80,7 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error)
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 	UpsertConversationMessage(ctx context.Context, arg UpsertConversationMessageParams) (sql.Result, error)
+	UpsertMessageSearchDocument(ctx context.Context, arg UpsertMessageSearchDocumentParams) error
 }
 
 var _ Querier = (*Queries)(nil)

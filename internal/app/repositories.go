@@ -21,6 +21,7 @@ type Repositories struct {
 	Groups        application.GroupStore
 	Admin         application.AdminOverviewStore
 	Sync          application.SyncStore
+	Search        application.SearchIndex
 	AICallLogs    application.AICallLogStore
 	Outbox        application.OutboxRelayStore
 }
@@ -93,6 +94,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc sync repository: %w", err)
 	}
 	repos.Sync = syncAdapter
+	searchAdapter, err := sqlcRepository.NewSearchIndexRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
+	}
+	repos.Search = searchAdapter
 	groupAdapter, err := sqlcRepository.NewGroupRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc group repository: %w", err)

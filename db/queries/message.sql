@@ -43,6 +43,20 @@ WHERE conversation_key = sqlc.arg(conversation_key)
 ORDER BY id ASC
 LIMIT ?;
 
+-- name: ListMessagesByConversationSeqBefore :many
+SELECT * FROM messages
+WHERE conversation_key = sqlc.arg(conversation_key)
+  AND (sqlc.arg(before_seq) = 0 OR seq < sqlc.arg(before_seq))
+ORDER BY seq DESC
+LIMIT ?;
+
+-- name: ListMessagesByConversationSeqAfter :many
+SELECT * FROM messages
+WHERE conversation_key = sqlc.arg(conversation_key)
+  AND seq > sqlc.arg(after_seq)
+ORDER BY seq ASC
+LIMIT ?;
+
 -- name: ListMessagesByUUIDs :many
 SELECT * FROM messages WHERE uuid IN (sqlc.slice('uuids'));
 
