@@ -45,16 +45,16 @@
 - **建议方向：** 在独立前端工具链分支升级 Vite/Vitest，验证 Node LTS、生产 bundle、代理 WebSocket、测试和静态资源基路径后再合并。
 - **处理门槛：** 前端开发服务器需要暴露到共享网络前完成；当前仅绑定可信本机开发环境。
 
-### AD-025：Web 本地消息库缺少统一会话清理与容量策略
+### AD-025：Web 本地消息库清理与容量策略需真实浏览器验收
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** IndexedDB Sync Engine、共享设备隐私、浏览器配额、401/强制下线
-- **现状：** Sync Engine 按用户隔离消息与游标；显式退出、HTTP 401、WS kick 和账号切换现已进入统一 Session Termination。终止时先同步撤销凭据和运行时身份，再等待在途 Sync 收敛后清除该用户 IndexedDB；并发终止复用 singleflight，快速重登等待旧清理完成。清理错误保持隔离且不会恢复凭据。本地消息仍没有容量上限或按会话淘汰策略，功能默认关闭。
-- **风险：** IndexedDB 删除失败时，共享设备仍可能保留本地消息；长期运行会持续增长浏览器占用，最终触发配额错误并暂停同步。
-- **建议方向：** 增加按用户的缓存 manifest、容量水位、最近会话淘汰和 quota error 可观测状态，同时保证淘汰不推进安全 Sync Cursor；补充浏览器强制关闭造成的清理中断说明。
-- **处理门槛：** `VITE_SYNC_ENGINE_MODE` 计划从 `off/shadow` 改为默认 `primary` 前完成清理故障测试、容量压测和共享设备验收。
+- **现状：** Sync Engine 按用户隔离消息与游标；显式退出、HTTP 401、WS kick 和账号切换进入统一 Session Termination。凭据与运行时消息先同步撤销，在途 Sync 收敛并删除账号 IndexedDB 后才跳转登录页，避免导航中止清理；并发终止复用 singleflight，快速重登等待旧清理完成。IndexedDB v2 增加逐用户 `message_count/compacted` manifest、5000/4000 默认高低水位和按会话保底淘汰；单页消息、淘汰和完整 `next_seq` 在同一事务提交，配额失败映射为 `storage_full`。
+- **风险：** IndexedDB 删除失败或浏览器进程强退时，共享设备仍可能保留本地消息；浏览器总配额还会受其他站点数据和实现差异影响。极端会话数超过低水位时，为满足硬上限会淘汰部分会话的最后一条本地缓存，历史仍可从服务端重新拉取。
+- **建议方向：** 在 Chromium、Firefox 和 WebKit 执行真实配额注入、共享设备退出/401/kick、清理中断和恢复验收；记录浏览器清站点数据说明，并将 `storage_full` 纳入客户端错误指标。
+- **处理门槛：** `VITE_SYNC_ENGINE_MODE` 计划从 `off/shadow` 改为默认 `primary` 前完成真实浏览器容量压测、共享设备和进程强退验收；当前单元测试与 Pencil 交互基线只完成实现门禁。
 
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 

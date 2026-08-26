@@ -58,7 +58,8 @@ dipole:web_sync_shadow:promotion_ready
 2. 确认至少 100 个收到私聊的匹配样本，终态差异与溢出均为零。
 3. 先对受控节点构建 `VITE_SYNC_ENGINE_MODE=primary`；`/sync` 驱动界面，旧 Offline 继续作为观测路径。
 4. 验证登录恢复、断网重连、多页追平、多设备 Cursor、显式退出和账号切换。
-5. 保留 `shadow` 或 `off` bundle 以及服务端旧接口，在 AD-025 清理与容量策略完成前不扩大默认范围。
+5. 验证高低水位淘汰后本地安全 Cursor 保持完整，配额失败显示 `storage_full` 且不 ACK 未持久化页面。
+6. 保留 `shadow` 或 `off` bundle 以及服务端旧接口，在 AD-025 的真实浏览器、共享设备和进程强退验收完成前不扩大默认范围。
 
 ## 6. 回切
 
@@ -68,7 +69,7 @@ dipole:web_sync_shadow:promotion_ready
 VITE_SYNC_ENGINE_MODE=primary -> shadow -> off
 ```
 
-`shadow` 回切后旧 Offline 重新驱动界面，并继续收集对照证据；紧急情况下直接回到 `off`。IndexedDB 中已提交的 Sync 数据按用户隔离保留，显式退出会尝试清理；被动 401 与容量淘汰仍由 AD-025 跟踪。
+`shadow` 回切后旧 Offline 重新驱动界面，并继续收集对照证据；紧急情况下直接回到 `off`。IndexedDB 中已提交的 Sync 数据按用户隔离保留；显式退出、被动 401、WS kick 和账号切换统一清理当前账号。清理失败、浏览器进程强退与真实配额行为继续由 AD-025 的外部验收跟踪。
 
 ## 7. 验证命令
 

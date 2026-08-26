@@ -1,6 +1,6 @@
 import api from '@/api'
 import type { Message } from '@/types'
-import { IndexedDBSyncStore } from './indexedDBSyncStore'
+import { IndexedDBSyncStore, isLocalSyncCapacityError } from './indexedDBSyncStore'
 import {
   compareSyncMessages,
   emptySyncComparisonState,
@@ -17,6 +17,7 @@ export const browserSyncMode: BrowserSyncMode = configuredMode === 'shadow' || c
   ? configuredMode
   : import.meta.env.VITE_SYNC_ENGINE_ENABLED === 'true' ? 'primary' : 'off'
 export const browserSyncEnabled = browserSyncMode !== 'off'
+export { isLocalSyncCapacityError }
 
 let store: IndexedDBSyncStore | undefined
 

@@ -29,9 +29,10 @@ describe('BrowserSessionTerminator', () => {
     expect(storage.entries.size).toBe(0)
     expect(clearRuntime).toHaveBeenCalledOnce()
     expect(clearUserData).toHaveBeenCalledWith('U1')
-    expect(redirect).toHaveBeenCalledOnce()
+    expect(redirect).not.toHaveBeenCalled()
     releaseCleanup()
     await pending
+    expect(redirect).toHaveBeenCalledOnce()
   })
 
   it('coalesces cleanup while allowing a later caller to request redirect', async () => {
@@ -46,9 +47,10 @@ describe('BrowserSessionTerminator', () => {
     const second = terminator.terminate('U1', true)
 
     expect(clearUserData).toHaveBeenCalledOnce()
-    expect(redirect).toHaveBeenCalledOnce()
+    expect(redirect).not.toHaveBeenCalled()
     releaseCleanup()
     await Promise.all([first, second])
+    expect(redirect).toHaveBeenCalledOnce()
   })
 
   it('contains cleanup failures and can terminate a later session', async () => {

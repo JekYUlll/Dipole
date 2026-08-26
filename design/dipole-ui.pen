@@ -5905,7 +5905,7 @@
       "y": 192,
       "name": "Sync/State Matrix",
       "width": 760,
-      "height": 650,
+      "height": 760,
       "fill": "$canvas",
       "layout": "vertical",
       "gap": 16,
@@ -6036,6 +6036,35 @@
                 },
                 "kMA0H": {
                   "content": "重新尝试",
+                  "fill": "$danger"
+                }
+              }
+            },
+            {
+              "id": "SlnHm",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Sync State Storage Full",
+              "width": "fill_container",
+              "descendants": {
+                "jM6LK": {
+                  "fill": "$danger-soft"
+                },
+                "jf6tQ": {
+                  "icon": "database-zap",
+                  "fill": "$danger"
+                },
+                "x3xxvF": {
+                  "content": "本地空间不足"
+                },
+                "Y2nPer": {
+                  "content": "安全游标不会前移；释放浏览器空间后可重新尝试同步。"
+                },
+                "PBChJ": {
+                  "fill": "$danger-soft"
+                },
+                "kMA0H": {
+                  "content": "释放空间后重试",
                   "fill": "$danger"
                 }
               }

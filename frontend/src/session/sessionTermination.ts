@@ -9,7 +9,7 @@ type LoginRedirect = () => void
 
 export class BrowserSessionTerminator {
   private active: Promise<void> | undefined
-  private redirected = false
+  private redirectRequested = false
 
   constructor(
     private readonly storage: SessionStorage,
@@ -20,15 +20,14 @@ export class BrowserSessionTerminator {
 
   terminate(userUUID: string, redirect: boolean): Promise<void> {
     if (this.active) {
-      if (redirect) this.redirect()
+      this.redirectRequested ||= redirect
       return this.active
     }
 
     const capturedUserUUID = userUUID || this.storedUserUUID()
-    this.redirected = false
+    this.redirectRequested = redirect
     this.clearCredentials()
     try { this.clearRuntime() } catch { /* persistent cleanup still proceeds */ }
-    if (redirect) this.redirect()
 
     let cleanup: Promise<void>
     try {
@@ -39,8 +38,9 @@ export class BrowserSessionTerminator {
     this.active = cleanup
       .catch(() => undefined)
       .finally(() => {
+        if (this.redirectRequested) this.redirect()
         this.active = undefined
-        this.redirected = false
+        this.redirectRequested = false
       })
     return this.active
   }
@@ -65,8 +65,6 @@ export class BrowserSessionTerminator {
   }
 
   private redirect() {
-    if (this.redirected) return
-    this.redirected = true
     try { this.redirectToLogin() } catch { /* session remains locally revoked */ }
   }
 }

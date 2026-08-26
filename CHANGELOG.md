@@ -17,6 +17,8 @@
 
 ### 新增
 
+- Web IndexedDB 升级到 v2，增加逐用户缓存 manifest、5000/4000 默认高低水位和按会话保底的最近消息淘汰；超量页面在同一事务内压缩到低水位，同时保留完整安全 `sync_seq`。
+- Web Sync 增加 `storage_full` 状态和 Pencil 批准预览；浏览器拒绝持久化时提示释放空间后重试，未落库页面不会确认设备 Cursor。
 - 增加默认关闭的 Web Sync Engine：按用户将 Sync 消息与安全 `sync_seq` 原子写入 IndexedDB，启动和 WebSocket 重连时从本地恢复并分页追平 `/sync`，仅在本地事务完成后确认设备 Cursor。
 - 增加同步恢复的 Pencil 状态矩阵、desktop/mobile 恢复页面和 Vue 标题栏状态，覆盖恢复中、已同步、离线可读与可重试中断语义。
 - 增加 Web `off|shadow|primary` 同步模式；shadow 保持旧 Offline 驱动界面，同时持久化 `/sync` 并按收到的私聊 Message UUID 做带宽限期的有界对照。
@@ -217,7 +219,7 @@
 
 ### 验证
 
-- 已通过 23 个 Web Sync/Session 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开、账号隔离、游标单调性、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复、私聊语义过滤、终止 singleflight、先撤销后清理、存储/清理失败隔离、401 接线和跨账号登录；全量 29 个前端测试通过。
+- 已通过 29 个 Web Sync/Session 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开与 v1→v2 升级、账号隔离、游标单调性、高低水位淘汰、会话保底、大页面硬上限、quota 分类、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复、私聊语义过滤、终止 singleflight、先撤销后清理、存储/清理失败隔离、401 接线和跨账号登录；全量 35 个前端测试通过。
 - 已通过 Web Sync `off|shadow|primary` 三种生产构建、聚合遥测 Handler 边界测试、Prometheus Collector 测试、OpenAPI 生成和全量 Go 测试。
 - 已通过 Web Sync Prometheus 七条规则静态检查与固定时序测试，覆盖窗口不足、样本不足、干净晋级、终态差异和比较器溢出。
 - 已通过 Pencil 结构与截图检查，确认 Sync 状态矩阵、desktop 及 mobile frame 无 clipping 或残留 placeholder，并导出批准预览。
@@ -281,8 +283,8 @@
 
 - 前端完整开发依赖审计仍受 Vite 5/esbuild 链影响，主版本升级和兼容验证记录为 `AD-022`；生产依赖审计已通过。
 - Sync Inbox、旧 Offline、幂等结果、文件授权和 Cassandra 恢复工具仍依赖 MySQL 完整消息，正文退役条件记录为 AD-019。
-- Inbox 清理策略与 `/messages/offline` 对照观测仍待后续迭代；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
-- Web IndexedDB 的被动 401 清理与容量淘汰策略尚未统一，默认启用门禁记录为 `AD-025`。
+- `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
+- Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。
 - Web 协议对照首批仅覆盖收到的私聊消息；群聊存在普通群 fanout 与热群 notify/pull 两套语义，需按群类型建立独立比较契约后再纳入。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
 - 独立 Message Service 已停止在代码中读取 Core Repository；当前仍与 Core 共用 MySQL schema 和数据库账号，最小数据库授权记录为 AD-015。
