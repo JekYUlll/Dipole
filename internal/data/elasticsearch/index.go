@@ -232,15 +232,35 @@ func (i *Index) validateMapping(ctx context.Context, physicalIndex string) error
 }
 
 func (i *Index) SwitchAliases(ctx context.Context, fromIndex, toIndex string) error {
-	if !indexPrefixPattern.MatchString(fromIndex) || !indexPrefixPattern.MatchString(toIndex) || fromIndex == toIndex {
+	if i.validatePhysicalIndexName(fromIndex) != nil || i.validatePhysicalIndexName(toIndex) != nil || fromIndex == toIndex {
 		return errors.New("Elasticsearch alias switch indices are invalid")
+	}
+	if err := i.validateExclusiveAliasOwner(ctx, fromIndex); err != nil {
+		return fmt.Errorf("validate Elasticsearch current alias owner: %w", err)
 	}
 	if err := i.validateMapping(ctx, toIndex); err != nil {
 		return fmt.Errorf("validate Elasticsearch alias target: %w", err)
 	}
+	if err := i.applyAliasSwitch(ctx, fromIndex, toIndex); err != nil {
+		return err
+	}
+	if err := i.validateExclusiveAliasOwner(ctx, toIndex); err != nil {
+		validationErr := fmt.Errorf("validate Elasticsearch switched alias owner: %w", err)
+		if compensationErr := i.applyAliasSwitch(ctx, toIndex, fromIndex); compensationErr != nil {
+			return errors.Join(validationErr, fmt.Errorf("compensate Elasticsearch alias validation failure: %w", compensationErr))
+		}
+		if compensationValidationErr := i.validateExclusiveAliasOwner(ctx, fromIndex); compensationValidationErr != nil {
+			return errors.Join(validationErr, fmt.Errorf("validate compensated Elasticsearch alias owner: %w", compensationValidationErr))
+		}
+		return fmt.Errorf("%w; aliases restored to %s", validationErr, fromIndex)
+	}
+	return nil
+}
+
+func (i *Index) applyAliasSwitch(ctx context.Context, fromIndex, toIndex string) error {
 	actions := []any{
-		map[string]any{"remove": map[string]any{"index": fromIndex, "alias": i.readAlias}},
-		map[string]any{"remove": map[string]any{"index": fromIndex, "alias": i.writeAlias}},
+		map[string]any{"remove": map[string]any{"index": fromIndex, "alias": i.readAlias, "must_exist": true}},
+		map[string]any{"remove": map[string]any{"index": fromIndex, "alias": i.writeAlias, "must_exist": true}},
 		map[string]any{"add": map[string]any{"index": toIndex, "alias": i.readAlias}},
 		map[string]any{"add": map[string]any{"index": toIndex, "alias": i.writeAlias, "is_write_index": true}},
 	}
@@ -256,6 +276,10 @@ func (i *Index) SwitchAliases(ctx context.Context, fromIndex, toIndex string) er
 		return responseError("switch Elasticsearch aliases", status, response)
 	}
 	return nil
+}
+
+func (i *Index) Switch(ctx context.Context, fromIndex, toIndex string) error {
+	return i.SwitchAliases(ctx, fromIndex, toIndex)
 }
 
 func (i *Index) Apply(mutation *model.MessageSearchMutation) error {
@@ -455,6 +479,40 @@ func (i *Index) validateAliases(ctx context.Context, physicalIndex string) error
 		return fmt.Errorf("Elasticsearch read alias %s is missing", i.readAlias)
 	}
 	write, ok := index.Aliases[i.writeAlias]
+	if !ok || !write.IsWriteIndex {
+		return fmt.Errorf("Elasticsearch write alias %s is not active", i.writeAlias)
+	}
+	return nil
+}
+
+func (i *Index) validateExclusiveAliasOwner(ctx context.Context, physicalIndex string) error {
+	path := fmt.Sprintf("/_alias/%s,%s", i.readAlias, i.writeAlias)
+	status, response, err := i.request(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return responseError("validate Elasticsearch exclusive aliases", status, response)
+	}
+	var aliases map[string]struct {
+		Aliases map[string]struct {
+			IsWriteIndex bool `json:"is_write_index"`
+		} `json:"aliases"`
+	}
+	if err := json.Unmarshal(response, &aliases); err != nil {
+		return fmt.Errorf("decode Elasticsearch exclusive aliases: %w", err)
+	}
+	if len(aliases) != 1 {
+		return fmt.Errorf("Elasticsearch production aliases must have one physical owner, got %d", len(aliases))
+	}
+	owner, ok := aliases[physicalIndex]
+	if !ok {
+		return fmt.Errorf("Elasticsearch production aliases are not owned by %s", physicalIndex)
+	}
+	if _, ok := owner.Aliases[i.readAlias]; !ok {
+		return fmt.Errorf("Elasticsearch read alias %s is missing", i.readAlias)
+	}
+	write, ok := owner.Aliases[i.writeAlias]
 	if !ok || !write.IsWriteIndex {
 		return fmt.Errorf("Elasticsearch write alias %s is not active", i.writeAlias)
 	}
