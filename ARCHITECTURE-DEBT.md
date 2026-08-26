@@ -137,10 +137,10 @@
 ### AD-011：前端缺少可版本化的完整设计基线
 
 - **优先级：** P2
-- **状态：** 暂缓
+- **状态：** 进行中
 - **发现日期：** 2026-08-26
 - **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
-- **现状：** 当前只有 Login 与 Chat 路由，仓库内没有 `.pen`、design token、组件状态规范和视觉回归资产。
+- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志和 Search desktop/mobile 四态预览；Login/Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
 - **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
 - **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
