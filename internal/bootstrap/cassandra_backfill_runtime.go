@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
@@ -17,10 +18,12 @@ import (
 )
 
 type CassandraBackfillOptions struct {
-	JobName       string
-	OwnerID       string
-	BatchSize     int
-	LeaseDuration time.Duration
+	JobName         string
+	OwnerID         string
+	BatchSize       int
+	LeaseDuration   time.Duration
+	Source          string
+	ArchiveManifest string
 }
 
 func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions) (cassandrabackfill.Result, error) {
@@ -29,26 +32,16 @@ func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions)
 		return cassandrabackfill.Result{}, fmt.Errorf("Cassandra backfill requires cassandra.enabled")
 	}
 
-	db, err := sql.Open("mysql", mysqlconfig.DSN(config.MySQLConfig(), false))
-	if err != nil {
-		return cassandrabackfill.Result{}, fmt.Errorf("open Cassandra backfill MySQL source: %w", err)
-	}
-	defer db.Close()
-	if err := db.PingContext(ctx); err != nil {
-		return cassandrabackfill.Result{}, fmt.Errorf("ping Cassandra backfill MySQL source: %w", err)
-	}
-	migrationRunner, err := migration.NewRunner(db, migrations.Files)
+	db, err := openCassandraMaintenanceMySQL(ctx, "backfill")
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
-	if err := migrationRunner.ValidateCurrent(ctx); err != nil {
-		return cassandrabackfill.Result{}, fmt.Errorf("validate Cassandra backfill MySQL schema: %w", err)
-	}
+	defer db.Close()
 	mysqlStore, err := mysqldata.NewStore(db)
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
-	source, err := mysqldata.NewCassandraBackfillSource(mysqlStore)
+	source, err := openCassandraSnapshotSource(options.Source, options.ArchiveManifest, mysqlStore)
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
@@ -77,4 +70,39 @@ func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions)
 		return cassandrabackfill.Result{}, err
 	}
 	return runner.Run(ctx)
+}
+
+func openCassandraSnapshotSource(kind, manifestPath string, store *mysqldata.Store) (cassandrabackfill.Source, error) {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "", "mysql":
+		return mysqldata.NewCassandraBackfillSource(store)
+	case "archive":
+		if strings.TrimSpace(manifestPath) == "" {
+			return nil, fmt.Errorf("Cassandra archive source requires an archive manifest")
+		}
+		return cassandrabackfill.OpenArchive(manifestPath)
+	default:
+		return nil, fmt.Errorf("unsupported Cassandra snapshot source: %s", kind)
+	}
+}
+
+func openCassandraMaintenanceMySQL(ctx context.Context, operation string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", mysqlconfig.DSN(config.MySQLConfig(), false))
+	if err != nil {
+		return nil, fmt.Errorf("open Cassandra %s MySQL metadata: %w", operation, err)
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping Cassandra %s MySQL metadata: %w", operation, err)
+	}
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err := runner.ValidateCurrent(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("validate Cassandra %s MySQL schema: %w", operation, err)
+	}
+	return db, nil
 }

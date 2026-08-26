@@ -96,7 +96,10 @@ services:
       mc mb --ignore-existing local/dipole-files &&
       mc mb --ignore-existing --with-lock local/dipole-search-archives &&
       mc version enable local/dipole-search-archives &&
-      mc retention set --default governance 30d local/dipole-search-archives
+      mc retention set --default governance 30d local/dipole-search-archives &&
+      mc mb --ignore-existing --with-lock local/dipole-message-archives &&
+      mc version enable local/dipole-message-archives &&
+      mc retention set --default governance 30d local/dipole-message-archives
       "
 
 volumes:

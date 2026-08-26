@@ -15,10 +15,18 @@ type sourceStub struct {
 	highWatermark uint64
 	messages      []SourceMessage
 	err           error
+	descriptor    SourceDescriptor
 }
 
 func (s *sourceStub) HighWatermark(context.Context) (uint64, error) {
 	return s.highWatermark, s.err
+}
+
+func (s *sourceStub) Descriptor(context.Context, uint64) (SourceDescriptor, error) {
+	if s.descriptor.Kind == "" {
+		return SourceDescriptor{Kind: SourceKindMySQLMessages, SnapshotID: fmt.Sprintf("mysql-messages:%d", s.highWatermark)}, s.err
+	}
+	return s.descriptor, s.err
 }
 
 func (s *sourceStub) ListAfter(_ context.Context, afterID, throughID uint64, limit int) ([]SourceMessage, error) {
@@ -44,17 +52,33 @@ type checkpointStub struct {
 	completed  bool
 	advanceErr error
 	acquireErr error
+	descriptor SourceDescriptor
 }
 
-func (s *checkpointStub) Acquire(_ context.Context, _ string, _ string, highWatermark uint64, _ time.Duration) (Checkpoint, error) {
+func (s *checkpointStub) Acquire(_ context.Context, _ string, _ string, descriptor SourceDescriptor, highWatermark uint64, _ time.Duration) (Checkpoint, error) {
 	if s.acquireErr != nil {
 		return Checkpoint{}, s.acquireErr
 	}
+	s.descriptor = descriptor
 	if s.state.HighWatermarkID == 0 {
 		s.state.HighWatermarkID = highWatermark
 	}
 	s.state.Status = StatusRunning
 	return s.state, nil
+}
+
+func TestRunnerBindsImmutableSourceDescriptor(t *testing.T) {
+	descriptor := SourceDescriptor{Kind: SourceKindMessageArchive, SnapshotID: "snapshot-3", SHA256: "abc123"}
+	source := &sourceStub{highWatermark: 3, descriptor: descriptor, messages: []SourceMessage{message(3)}}
+	checkpoints := &checkpointStub{}
+	runner := mustRunner(t, source, checkpoints, &timelineStub{}, Config{JobName: "timeline-v1", OwnerID: "worker-a", BatchSize: 3, LeaseDuration: time.Minute})
+
+	if _, err := runner.Run(context.Background()); err != nil {
+		t.Fatalf("run archive backfill: %v", err)
+	}
+	if checkpoints.descriptor != descriptor {
+		t.Fatalf("checkpoint descriptor = %+v, want %+v", checkpoints.descriptor, descriptor)
+	}
 }
 
 func (s *checkpointStub) Advance(_ context.Context, _ string, _ string, sourceID uint64, _ time.Duration) error {

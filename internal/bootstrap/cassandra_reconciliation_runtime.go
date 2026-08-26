@@ -2,24 +2,21 @@ package bootstrap
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	cassandrareconcile "github.com/JekYUlll/Dipole/internal/reconcile/cassandra"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type CassandraReconciliationOptions struct {
-	JobName       string
-	BatchSize     int
-	SampleModulus uint64
-	MaxExamples   int
+	JobName         string
+	BatchSize       int
+	SampleModulus   uint64
+	MaxExamples     int
+	Source          string
+	ArchiveManifest string
 }
 
 func RunCassandraReconciliation(ctx context.Context, options CassandraReconciliationOptions) (cassandrareconcile.Report, error) {
@@ -27,26 +24,16 @@ func RunCassandraReconciliation(ctx context.Context, options CassandraReconcilia
 	if !cassandraCfg.Enabled {
 		return cassandrareconcile.Report{}, fmt.Errorf("Cassandra reconciliation requires cassandra.enabled")
 	}
-	db, err := sql.Open("mysql", mysqlconfig.DSN(config.MySQLConfig(), false))
-	if err != nil {
-		return cassandrareconcile.Report{}, fmt.Errorf("open Cassandra reconciliation MySQL source: %w", err)
-	}
-	defer db.Close()
-	if err := db.PingContext(ctx); err != nil {
-		return cassandrareconcile.Report{}, fmt.Errorf("ping Cassandra reconciliation MySQL source: %w", err)
-	}
-	migrationRunner, err := migration.NewRunner(db, migrations.Files)
+	db, err := openCassandraMaintenanceMySQL(ctx, "reconciliation")
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}
-	if err := migrationRunner.ValidateCurrent(ctx); err != nil {
-		return cassandrareconcile.Report{}, fmt.Errorf("validate Cassandra reconciliation MySQL schema: %w", err)
-	}
+	defer db.Close()
 	mysqlStore, err := mysqldata.NewStore(db)
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}
-	source, err := mysqldata.NewCassandraBackfillSource(mysqlStore)
+	source, err := openCassandraSnapshotSource(options.Source, options.ArchiveManifest, mysqlStore)
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}
@@ -56,6 +43,13 @@ func RunCassandraReconciliation(ctx context.Context, options CassandraReconcilia
 	}
 	highWatermark, err := checkpoints.CompletedHighWatermark(ctx, options.JobName)
 	if err != nil {
+		return cassandrareconcile.Report{}, err
+	}
+	descriptor, err := source.Descriptor(ctx, highWatermark)
+	if err != nil {
+		return cassandrareconcile.Report{}, fmt.Errorf("describe Cassandra reconciliation source: %w", err)
+	}
+	if _, err := checkpoints.CompletedHighWatermarkForSource(ctx, options.JobName, descriptor); err != nil {
 		return cassandrareconcile.Report{}, err
 	}
 

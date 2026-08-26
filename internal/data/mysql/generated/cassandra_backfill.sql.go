@@ -87,18 +87,30 @@ func (q *Queries) CompleteCassandraBackfillJob(ctx context.Context, arg Complete
 }
 
 const ensureCassandraBackfillJob = `-- name: EnsureCassandraBackfillJob :exec
-INSERT INTO cassandra_backfill_jobs (job_name, source_high_watermark_id, last_error)
-VALUES (?, ?, '')
+INSERT INTO cassandra_backfill_jobs (
+  job_name, source_kind, source_snapshot_id, source_sha256,
+  source_high_watermark_id, last_error
+)
+VALUES (?, ?, ?, ?, ?, '')
 ON DUPLICATE KEY UPDATE job_name = VALUES(job_name)
 `
 
 type EnsureCassandraBackfillJobParams struct {
 	JobName               string
+	SourceKind            string
+	SourceSnapshotID      string
+	SourceSha256          string
 	SourceHighWatermarkID uint64
 }
 
 func (q *Queries) EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error {
-	_, err := q.db.ExecContext(ctx, ensureCassandraBackfillJob, arg.JobName, arg.SourceHighWatermarkID)
+	_, err := q.db.ExecContext(ctx, ensureCassandraBackfillJob,
+		arg.JobName,
+		arg.SourceKind,
+		arg.SourceSnapshotID,
+		arg.SourceSha256,
+		arg.SourceHighWatermarkID,
+	)
 	return err
 }
 
@@ -135,7 +147,7 @@ func (q *Queries) GetCassandraBackfillHighWatermark(ctx context.Context) (uint64
 }
 
 const getCassandraBackfillJob = `-- name: GetCassandraBackfillJob :one
-SELECT job_name, status, source_high_watermark_id, last_processed_id, owner_id, lease_expires_at, attempt_count, last_error, completed_at, created_at, updated_at FROM cassandra_backfill_jobs WHERE job_name = ?
+SELECT job_name, status, source_high_watermark_id, last_processed_id, owner_id, lease_expires_at, attempt_count, last_error, completed_at, created_at, updated_at, source_kind, source_snapshot_id, source_sha256 FROM cassandra_backfill_jobs WHERE job_name = ?
 `
 
 func (q *Queries) GetCassandraBackfillJob(ctx context.Context, jobName string) (CassandraBackfillJob, error) {
@@ -153,6 +165,9 @@ func (q *Queries) GetCassandraBackfillJob(ctx context.Context, jobName string) (
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SourceKind,
+		&i.SourceSnapshotID,
+		&i.SourceSha256,
 	)
 	return i, err
 }
@@ -215,7 +230,7 @@ func (q *Queries) ListMessagesForCassandraBackfill(ctx context.Context, arg List
 }
 
 const lockCassandraBackfillJob = `-- name: LockCassandraBackfillJob :one
-SELECT cassandra_backfill_jobs.job_name, cassandra_backfill_jobs.status, cassandra_backfill_jobs.source_high_watermark_id, cassandra_backfill_jobs.last_processed_id, cassandra_backfill_jobs.owner_id, cassandra_backfill_jobs.lease_expires_at, cassandra_backfill_jobs.attempt_count, cassandra_backfill_jobs.last_error, cassandra_backfill_jobs.completed_at, cassandra_backfill_jobs.created_at, cassandra_backfill_jobs.updated_at, NOW(3) AS database_now FROM cassandra_backfill_jobs
+SELECT cassandra_backfill_jobs.job_name, cassandra_backfill_jobs.status, cassandra_backfill_jobs.source_high_watermark_id, cassandra_backfill_jobs.last_processed_id, cassandra_backfill_jobs.owner_id, cassandra_backfill_jobs.lease_expires_at, cassandra_backfill_jobs.attempt_count, cassandra_backfill_jobs.last_error, cassandra_backfill_jobs.completed_at, cassandra_backfill_jobs.created_at, cassandra_backfill_jobs.updated_at, cassandra_backfill_jobs.source_kind, cassandra_backfill_jobs.source_snapshot_id, cassandra_backfill_jobs.source_sha256, NOW(3) AS database_now FROM cassandra_backfill_jobs
 WHERE job_name = ?
 FOR UPDATE
 `
@@ -232,6 +247,9 @@ type LockCassandraBackfillJobRow struct {
 	CompletedAt           sql.NullTime
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	SourceKind            string
+	SourceSnapshotID      string
+	SourceSha256          string
 	DatabaseNow           time.Time
 }
 
@@ -250,6 +268,9 @@ func (q *Queries) LockCassandraBackfillJob(ctx context.Context, jobName string) 
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SourceKind,
+		&i.SourceSnapshotID,
+		&i.SourceSha256,
 		&i.DatabaseNow,
 	)
 	return i, err

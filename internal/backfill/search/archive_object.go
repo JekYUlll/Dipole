@@ -5,25 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	platformarchive "github.com/JekYUlll/Dipole/internal/platform/archive"
 )
 
 const ArchiveReceiptSchemaV1 = "dipole.search-archive-receipt.v1"
 
 var archiveSnapshotIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
-type ArchiveObjectVersion struct {
-	Bucket    string `json:"bucket"`
-	ObjectKey string `json:"object_key"`
-	VersionID string `json:"version_id"`
-	ETag      string `json:"etag"`
-}
+type ArchiveObjectVersion = platformarchive.ObjectVersion
 
 type ArchiveReceipt struct {
 	SchemaVersion   string               `json:"schema_version"`
@@ -35,11 +31,7 @@ type ArchiveReceipt struct {
 	Data            ArchiveObjectVersion `json:"data"`
 }
 
-type VersionedArchiveObjectStore interface {
-	ValidateRetention(context.Context, time.Duration) error
-	PutFile(context.Context, string, string, time.Time) (ArchiveObjectVersion, error)
-	GetVersion(context.Context, ArchiveObjectVersion, io.Writer) error
-}
+type VersionedArchiveObjectStore = platformarchive.VersionedObjectStore
 
 func PublishArchive(ctx context.Context, store VersionedArchiveObjectStore, manifestPath, prefix string, now time.Time, retention time.Duration) (ArchiveReceipt, error) {
 	if store == nil || retention <= 0 {
