@@ -208,7 +208,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 固定 Kafka consumer rebalance policy，验证成员退出后的 partition 接管与 lag 归零，并提供进程内处理结果 snapshot。
 - [x] 增加 lag、under-replicated partitions、retry 和 DLQ 的 Prometheus 监控门禁。
 - [x] Redis 使用可故障转移拓扑，并验证 Presence、PubSub、热点检测和限流语义。
-- [ ] Cassandra 与 Elasticsearch 先进入隔离环境，不接生产读流量。
+- [x] Cassandra 与 Elasticsearch 先进入隔离环境，不接生产读流量。
 - [x] Local Compose 保持单节点开发模式，新增 cluster profile 用于集成和故障演练。
 
 **验收：** 单节点故障演练、Kafka 重平衡、MySQL 主节点切换和 Redis 故障转移期间不丢已确认消息。

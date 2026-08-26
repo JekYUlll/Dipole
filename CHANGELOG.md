@@ -65,6 +65,7 @@
 - 增加进程级 Kafka Prometheus Collector、独立 metrics listener、Kafka exporter、Prometheus 告警规则与自动故障 smoke，覆盖 lag、ISR、retry 和 DLQ。
 - 增加 MySQL 8.4 三成员 InnoDB Cluster、MySQL Router writer endpoint、AdminAPI 初始化/恢复脚本与连接池主切换故障 smoke。
 - 增加 Redis Sentinel 连接模式、三节点 Redis/三 Sentinel 隔离拓扑与自动故障 smoke。
+- 增加 Cassandra 5.0.9 与 Elasticsearch 9.5.2 零接线 Storage Lab、资源基线与自动 CRUD smoke。
 
 ### 变更
 
@@ -164,6 +165,7 @@
 - 已通过 MySQL Router writer 演练：停止 PRIMARY 后同一 `database/sql` 池约 4.1 秒内连接新 writer，切换前后已提交记录均可见，旧节点通过 AdminAPI 成功 rejoin。
 - 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
 - 已通过 Redis Sentinel 演练：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、热点和限流状态可用，旧 master 重新加入为 replica。
+- 已通过隔离 Storage Lab 演练：Cassandra 与 Elasticsearch 健康启动并完成临时 CRUD，应用配置、Bootstrap 和 Go 依赖保持零接线。
 
 ### 已知问题
 
