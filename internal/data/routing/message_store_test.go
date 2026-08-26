@@ -15,13 +15,19 @@ import (
 
 type primaryStore struct {
 	application.MessageStore
-	page     []*model.Message
-	err      error
-	seqCalls int
+	page        []*model.Message
+	err         error
+	seqCalls    int
+	beforeCalls int
 }
 
 func (s *primaryStore) ListByConversationSeqAfter(string, uint64, int) ([]*model.Message, error) {
 	s.seqCalls++
+	return s.page, s.err
+}
+
+func (s *primaryStore) ListByConversationSeqBefore(string, uint64, int) ([]*model.Message, error) {
+	s.beforeCalls++
 	return s.page, s.err
 }
 
@@ -88,6 +94,79 @@ func TestCassandraReadRouterServesCompleteContinuousPage(t *testing.T) {
 	observation := <-observations
 	if observation.Route != "cassandra" || observation.FallbackReason != "" {
 		t.Fatalf("unexpected observation: %+v", observation)
+	}
+}
+
+func TestCassandraReadRouterServesLatestAndEarlierBeforeSequencePages(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		beforeSeq   uint64
+		first, last uint64
+	}{
+		{name: "latest", beforeSeq: 0, first: 3, last: 5},
+		{name: "earlier", beforeSeq: 5, first: 2, last: 4},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			primary := &primaryStore{page: []*model.Message{{Seq: test.last, Content: "mysql"}}}
+			timeline := &timelineReader{records: []cassandraData.TimelineRecord{
+				timelineRecord(test.first, "first"), timelineRecord(test.first+1, "middle"), timelineRecord(test.last, "last"),
+			}}
+			observations := make(chan ReadObservation, 1)
+			store := NewMessageStore(primary, &highWaterReader{sequence: 5}, timeline, 100, func(observation ReadObservation) { observations <- observation })
+
+			page, err := store.ListByConversationSeqBefore("group:G1", test.beforeSeq, 3)
+			if err != nil || len(page) != 3 || page[0].Seq != test.first || page[2].Seq != test.last {
+				t.Fatalf("unexpected Cassandra before page=%+v err=%v", page, err)
+			}
+			if primary.beforeCalls != 0 || timeline.first != test.first || timeline.last != test.last {
+				t.Fatalf("unexpected route calls primary=%d range=%d..%d", primary.beforeCalls, timeline.first, timeline.last)
+			}
+			observation := <-observations
+			if observation.Route != "cassandra" || observation.Operation != "before_seq" || observation.BeforeSeq != test.beforeSeq {
+				t.Fatalf("unexpected observation: %+v", observation)
+			}
+		})
+	}
+}
+
+func TestCassandraReadRouterBeforeSequenceFallsBackAsOnePage(t *testing.T) {
+	primary := &primaryStore{page: []*model.Message{{ID: 10, Seq: 3, Content: "mysql-three"}, {ID: 11, Seq: 4, Content: "mysql-four"}}}
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "two"), timelineRecord(4, "four")}}
+	observations := make(chan ReadObservation, 1)
+	store := NewMessageStore(primary, &highWaterReader{sequence: 5}, timeline, 100, func(observation ReadObservation) { observations <- observation })
+
+	page, err := store.ListByConversationSeqBefore("group:G1", 5, 3)
+	if err != nil || len(page) != 2 || page[0].ID == 0 || primary.beforeCalls != 1 {
+		t.Fatalf("unexpected fallback page=%+v err=%v calls=%d", page, err, primary.beforeCalls)
+	}
+	observation := <-observations
+	if observation.Route != "mysql_fallback" || observation.FallbackReason != "incomplete_page" || observation.Operation != "before_seq" {
+		t.Fatalf("unexpected observation: %+v", observation)
+	}
+}
+
+func TestCassandraReadRouterBeforeSequenceEmptyBoundariesAvoidTimelineRead(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		beforeSeq uint64
+		highWater uint64
+	}{
+		{name: "before first sequence", beforeSeq: 1, highWater: 5},
+		{name: "empty conversation", beforeSeq: 0, highWater: 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			timeline := &timelineReader{}
+			observations := make(chan ReadObservation, 1)
+			store := NewMessageStore(&primaryStore{}, &highWaterReader{sequence: test.highWater}, timeline, 100, func(observation ReadObservation) { observations <- observation })
+
+			page, err := store.ListByConversationSeqBefore("group:G1", test.beforeSeq, 20)
+			if err != nil || len(page) != 0 || timeline.calls != 0 {
+				t.Fatalf("unexpected empty page=%+v err=%v timeline_calls=%d", page, err, timeline.calls)
+			}
+			if observation := <-observations; observation.Route != "cassandra" || observation.ResultCount != 0 {
+				t.Fatalf("unexpected observation: %+v", observation)
+			}
+		})
 	}
 }
 

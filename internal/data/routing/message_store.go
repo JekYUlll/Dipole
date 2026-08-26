@@ -23,8 +23,10 @@ type TimelineRangeReader interface {
 
 type ReadObservation struct {
 	ConversationKey string
+	Operation       string
 	Route           string
 	FallbackReason  string
+	BeforeSeq       uint64
 	AfterSeq        uint64
 	HighWatermark   uint64
 	ResultCount     int
@@ -76,13 +78,13 @@ func (s *MessageStore) ListByConversationSeqAfter(conversationKey string, afterS
 		startedAt := time.Now()
 		page, err := s.MessageStore.ListByConversationSeqAfter(conversationKey, afterSeq, limit)
 		s.record(ReadObservation{
-			ConversationKey: conversationKey, Route: "mysql", AfterSeq: afterSeq,
+			ConversationKey: conversationKey, Operation: "after_seq", Route: "mysql", AfterSeq: afterSeq,
 			ResultCount: len(page), Latency: time.Since(startedAt),
 		})
 		return page, err
 	}
 	startedAt := time.Now()
-	observation := ReadObservation{ConversationKey: conversationKey, AfterSeq: afterSeq}
+	observation := ReadObservation{ConversationKey: conversationKey, Operation: "after_seq", AfterSeq: afterSeq}
 	highWatermark, err := s.highWatermark.LatestConversationSequence(conversationKey)
 	observation.HighWatermark = highWatermark
 	if err != nil {
@@ -115,8 +117,74 @@ func (s *MessageStore) ListByConversationSeqAfter(conversationKey string, afterS
 	return page, nil
 }
 
+func (s *MessageStore) ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	if limit <= 0 {
+		return s.MessageStore.ListByConversationSeqBefore(conversationKey, beforeSeq, limit)
+	}
+	if !conversationInCohort(conversationKey, s.percentage) {
+		startedAt := time.Now()
+		page, err := s.MessageStore.ListByConversationSeqBefore(conversationKey, beforeSeq, limit)
+		s.record(ReadObservation{
+			ConversationKey: conversationKey, Operation: "before_seq", Route: "mysql", BeforeSeq: beforeSeq,
+			ResultCount: len(page), Latency: time.Since(startedAt),
+		})
+		return page, err
+	}
+
+	startedAt := time.Now()
+	observation := ReadObservation{ConversationKey: conversationKey, Operation: "before_seq", BeforeSeq: beforeSeq}
+	if beforeSeq == 1 {
+		observation.Route = "cassandra"
+		observation.Latency = time.Since(startedAt)
+		s.record(observation)
+		return []*model.Message{}, nil
+	}
+	highWatermark, err := s.highWatermark.LatestConversationSequence(conversationKey)
+	observation.HighWatermark = highWatermark
+	if err != nil {
+		return s.fallbackBefore(conversationKey, beforeSeq, limit, observation, "high_watermark_error", startedAt)
+	}
+	lastSeq := highWatermark
+	if beforeSeq > 1 && beforeSeq-1 < lastSeq {
+		lastSeq = beforeSeq - 1
+	}
+	if lastSeq == 0 {
+		observation.Route = "cassandra"
+		observation.Latency = time.Since(startedAt)
+		s.record(observation)
+		return []*model.Message{}, nil
+	}
+	firstSeq := uint64(1)
+	if uint64(limit) < lastSeq {
+		firstSeq = lastSeq - uint64(limit) + 1
+	}
+	records, err := s.timeline.ListRange(context.Background(), conversationKey, firstSeq, lastSeq)
+	if err != nil {
+		return s.fallbackBefore(conversationKey, beforeSeq, limit, observation, "cassandra_error", startedAt)
+	}
+	if !continuous(records, firstSeq, lastSeq) {
+		return s.fallbackBefore(conversationKey, beforeSeq, limit, observation, "incomplete_page", startedAt)
+	}
+	page := recordsToMessages(records)
+	observation.Route = "cassandra"
+	observation.ResultCount = len(page)
+	observation.Latency = time.Since(startedAt)
+	s.record(observation)
+	return page, nil
+}
+
 func (s *MessageStore) fallback(conversationKey string, afterSeq uint64, limit int, observation ReadObservation, reason string, startedAt time.Time) ([]*model.Message, error) {
 	page, err := s.MessageStore.ListByConversationSeqAfter(conversationKey, afterSeq, limit)
+	observation.Route = "mysql_fallback"
+	observation.FallbackReason = reason
+	observation.ResultCount = len(page)
+	observation.Latency = time.Since(startedAt)
+	s.record(observation)
+	return page, err
+}
+
+func (s *MessageStore) fallbackBefore(conversationKey string, beforeSeq uint64, limit int, observation ReadObservation, reason string, startedAt time.Time) ([]*model.Message, error) {
+	page, err := s.MessageStore.ListByConversationSeqBefore(conversationKey, beforeSeq, limit)
 	observation.Route = "mysql_fallback"
 	observation.FallbackReason = reason
 	observation.ResultCount = len(page)
@@ -186,8 +254,10 @@ func conversationInCohort(conversationKey string, percentage int) bool {
 func logReadObservation(observation ReadObservation) {
 	fields := []zap.Field{
 		zap.String("conversation_key", observation.ConversationKey),
+		zap.String("operation", observation.Operation),
 		zap.String("route", observation.Route),
 		zap.String("fallback_reason", observation.FallbackReason),
+		zap.Uint64("before_seq", observation.BeforeSeq),
 		zap.Uint64("after_seq", observation.AfterSeq),
 		zap.Uint64("high_watermark", observation.HighWatermark),
 		zap.Int("result_count", observation.ResultCount),

@@ -19,8 +19,10 @@ import (
 )
 
 type stubMessageApplication struct {
-	sendDirect func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
-	listGroup  func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
+	sendDirect          func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	listDirectBeforeSeq func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
+	listGroup           func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
+	listGroupBeforeSeq  func(currentUserUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageApplication) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -43,8 +45,22 @@ func (s *stubMessageApplication) ListDirectMessages(string, string, uint, int) (
 	return nil, nil
 }
 
+func (s *stubMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listDirectBeforeSeq == nil {
+		return nil, nil
+	}
+	return s.listDirectBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
+}
+
 func (s *stubMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	return s.listGroup(userUUID, groupUUID, beforeID, limit, false)
+}
+
+func (s *stubMessageApplication) ListGroupMessagesBeforeSeq(userUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listGroupBeforeSeq != nil {
+		return s.listGroupBeforeSeq(userUUID, groupUUID, beforeSeq, limit)
+	}
+	return s.listGroup(userUUID, groupUUID, uint(beforeSeq), limit, false)
 }
 
 func (s *stubMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -128,6 +144,53 @@ func TestServerDispatchesAfterCursor(t *testing.T) {
 	}
 	if len(response.GetMessages()) != 2 || response.GetFirstId() != 78 || response.GetLastId() != 79 {
 		t.Fatalf("unexpected history response: %+v", response)
+	}
+}
+
+func TestClientAndServerPreserveBeforeSequenceCursor(t *testing.T) {
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+		listDirectBeforeSeq: func(userUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error) {
+			if userUUID != "U100" || targetUUID != "U200" || cursor != 41 || limit != 20 {
+				t.Fatalf("unexpected direct Seq query: user=%q target=%q cursor=%d limit=%d", userUUID, targetUUID, cursor, limit)
+			}
+			return []*model.Message{{Seq: 40, UUID: "MD40"}}, nil
+		},
+		listGroupBeforeSeq: func(userUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error) {
+			if userUUID != "U100" || groupUUID != "G1" || cursor != 51 || limit != 25 {
+				t.Fatalf("unexpected group Seq query: user=%q group=%q cursor=%d limit=%d", userUUID, groupUUID, cursor, limit)
+			}
+			return []*model.Message{{Seq: 50, UUID: "MG50"}}, nil
+		},
+	}
+	remote, err := NewClient(newBufconnClient(t, application))
+	if err != nil {
+		t.Fatalf("new remote client: %v", err)
+	}
+	direct, err := remote.ListDirectMessagesBeforeSeq("U100", "U200", 41, 20)
+	if err != nil || len(direct) != 1 || direct[0].Seq != 40 {
+		t.Fatalf("unexpected direct response=%+v err=%v", direct, err)
+	}
+	group, err := remote.ListGroupMessagesBeforeSeq("U100", "G1", 51, 25)
+	if err != nil || len(group) != 1 || group[0].Seq != 50 {
+		t.Fatalf("unexpected group response=%+v err=%v", group, err)
+	}
+}
+
+func TestServerRejectsMixedDirectCursorDomains(t *testing.T) {
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+	}
+	client := newBufconnClient(t, application)
+	beforeSeq := uint64(41)
+	_, err := client.ListDirectHistory(context.Background(), &messagev1.ListDirectHistoryRequest{
+		Context: grpccommon.RequestContext("U100", "dipole-gateway"), TargetUserId: "U200",
+		BeforeId: 20, BeforeSequence: &beforeSeq,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument, got %v", err)
 	}
 }
 

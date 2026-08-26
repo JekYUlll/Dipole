@@ -43,6 +43,7 @@ type messageRepository interface {
 	HasConversationMessages(conversationKey string) (bool, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
+	ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error)
 	ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
@@ -318,27 +319,8 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 	}
 	conversationKey := model.DirectConversationKey(currentUserUUID, targetUUID)
 
-	targetUser, err := s.userFinder.GetByUUID(targetUUID)
-	if err != nil {
-		return nil, fmt.Errorf("find target user in list direct messages: %w", err)
-	}
-	if targetUser == nil {
-		return nil, ErrMessageTargetNotFound
-	}
-	if !targetUser.IsAssistant() {
-		areFriends, err := s.friendChecker.CanSendDirectMessage(strings.TrimSpace(currentUserUUID), targetUUID)
-		if err != nil {
-			return nil, fmt.Errorf("check friendship in list direct messages: %w", err)
-		}
-		if !areFriends {
-			hasHistory, err := s.repo.HasConversationMessages(conversationKey)
-			if err != nil {
-				return nil, fmt.Errorf("check direct conversation history: %w", err)
-			}
-			if !hasHistory {
-				return nil, ErrMessageFriendRequired
-			}
-		}
+	if err := s.ensureReadableDirectMessagePermission(currentUserUUID, targetUUID); err != nil {
+		return nil, err
 	}
 
 	messages, err := s.repo.ListByConversationKey(
@@ -350,6 +332,51 @@ func (s *MessageService) ListDirectMessages(currentUserUUID, targetUUID string, 
 		return nil, fmt.Errorf("list direct messages: %w", err)
 	}
 
+	return messages, nil
+}
+
+func (s *MessageService) ensureReadableDirectMessagePermission(currentUserUUID, targetUUID string) error {
+	targetUser, err := s.userFinder.GetByUUID(targetUUID)
+	if err != nil {
+		return fmt.Errorf("find target user in list direct messages: %w", err)
+	}
+	if targetUser == nil {
+		return ErrMessageTargetNotFound
+	}
+	if targetUser.IsAssistant() {
+		return nil
+	}
+	areFriends, err := s.friendChecker.CanSendDirectMessage(strings.TrimSpace(currentUserUUID), targetUUID)
+	if err != nil {
+		return fmt.Errorf("check friendship in list direct messages: %w", err)
+	}
+	if areFriends {
+		return nil
+	}
+	hasHistory, err := s.repo.HasConversationMessages(model.DirectConversationKey(currentUserUUID, targetUUID))
+	if err != nil {
+		return fmt.Errorf("check direct conversation history: %w", err)
+	}
+	if !hasHistory {
+		return ErrMessageFriendRequired
+	}
+	return nil
+}
+
+func (s *MessageService) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	targetUUID = strings.TrimSpace(targetUUID)
+	if targetUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureReadableDirectMessagePermission(currentUserUUID, targetUUID); err != nil {
+		return nil, err
+	}
+	messages, err := s.repo.ListByConversationSeqBefore(
+		model.DirectConversationKey(currentUserUUID, targetUUID), beforeSeq, normalizeMessageListLimit(limit),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list direct messages before sequence: %w", err)
+	}
 	return messages, nil
 }
 
@@ -499,6 +526,23 @@ func (s *MessageService) ListGroupMessages(currentUserUUID, groupUUID string, be
 		return nil, fmt.Errorf("list group messages: %w", err)
 	}
 
+	return messages, nil
+}
+
+func (s *MessageService) ListGroupMessagesBeforeSeq(currentUserUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	groupUUID = strings.TrimSpace(groupUUID)
+	if groupUUID == "" {
+		return nil, ErrMessageTargetRequired
+	}
+	if err := s.ensureReadableGroupMessagePermission(currentUserUUID, groupUUID); err != nil {
+		return nil, err
+	}
+	messages, err := s.repo.ListByConversationSeqBefore(
+		model.GroupConversationKey(groupUUID), beforeSeq, normalizeMessageListLimit(limit),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list group messages before sequence: %w", err)
+	}
 	return messages, nil
 }
 

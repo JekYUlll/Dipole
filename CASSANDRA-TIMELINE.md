@@ -1,6 +1,6 @@
 # Cassandra Conversation Timeline
 
-本文档记录 A3 Cassandra Message Store 的 schema、实时投影、历史回填、对账与影子读取契约。当前 Cassandra 仍是影子存储，MySQL 继续承担生产消息写入和客户端响应。
+本文档记录 Cassandra Message Store 的 schema、实时投影、历史回填、对账、影子读取与 A4 灰度主读契约。MySQL 继续承担生产消息写入；显式 Seq cursor 可按会话 cohort 从 Cassandra 读取。
 
 ## Partition Model
 
@@ -43,7 +43,7 @@ bucket = (message_seq - 1) / 10000
 - Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core 或 Gateway Composition Root。
 - 独立 `cmd/cassandra-backfill` 按固定 MySQL 高水位补齐历史数据，并使用持久 checkpoint 和 owner lease 支持失败恢复。
 - 独立 `cmd/cassandra-reconcile` 对已完成 Backfill 的固定快照执行数量、全量 hash、确定性内容样本和会话 Seq 连续性校验。
-- 独立 Message Service 可按开关执行 query-only Shadow-read；客户端响应、消息写入和 Offline Inbox 查询继续使用 MySQL。
+- 独立 Message Service 可执行 query-only Shadow-read，也可按稳定会话 cohort 服务显式 Seq cursor；消息写入、ID cursor 和 Offline Inbox 查询继续使用 MySQL。
 - 当前表只支持 Conversation Timeline；按 UUID 查询、搜索和用户 Inbox 继续由现有存储负责。
 - Schema 不由应用启动自动修改，后续 projector 接线前需要独立 migration owner。
 
@@ -142,7 +142,7 @@ Offline 查询属于 User Sync Timeline，单条消息/幂等查询和全部写�
 
 ## Gradual Seq Read Routing
 
-A4 首批灰度只覆盖已经使用 `after_seq` 的群消息增量补拉。MySQL `conversation_sequences` 提供轻量高水位，Cassandra 读取消息正文；`before_id`、`after_id`、Offline Inbox、单条查询和全部写操作继续访问 MySQL。
+A4 灰度覆盖 Direct/Group `before_seq` 历史与 Group `after_seq` 增量补拉。MySQL `conversation_sequences` 提供轻量高水位，Cassandra 读取消息正文；`before_id`、`after_id`、Offline Inbox、单条查询和全部写操作继续访问 MySQL。
 
 ```yaml
 cassandra:
@@ -153,7 +153,9 @@ message:
   cassandra_read_percentage: 10
 ```
 
-会话键经过稳定 FNV-1a 哈希后进入 `0..99` cohort，同一会话在所有 Message 节点保持一致路由。Cassandra 返回页必须完整覆盖 `(after_seq, min(high_watermark, after_seq+limit)]` 且逐项连续；高水位读取失败、Cassandra 错误或缺行都会使用原 `after_seq` 回退 MySQL。
+会话键经过稳定 FNV-1a 哈希后进入 `0..99` cohort，同一会话在所有 Message 节点保持一致路由。`after_seq` 页必须完整覆盖 `(after_seq, min(high_watermark, after_seq+limit)]`；`before_seq` 的零值表示最新页，正值表示不包含上界，并读取最后 `limit` 个 Seq。两种方向都要求逐项连续；高水位读取失败、Cassandra 错误或缺行会使用原 Seq cursor 整页回退 MySQL。
+
+新版 Web 历史首屏显式请求 `before_seq=0`，后续使用当前最旧正 `message_seq`，热群增量使用当前最大 `message_seq` 调用 `after_seq`。Cassandra 不保存 MySQL 内部自增 ID，客户端以 `message_id` 去重、以 `message_seq` 排序和分页；legacy ID cursor 不进入 Cassandra cohort。
 
 `cassandra_read_percentage: 0` 是即时回滚开关。Prometheus 暴露 `dipole_message_read_route_total{route,fallback_reason}` 和 `dipole_message_read_route_duration_seconds{route}`，可按 1%、5%、10% 逐步提升并观察回退率和延迟。
 
@@ -174,6 +176,7 @@ message:
 - 人工篡改 Cassandra 后返回退出码 2，并提供有界、无正文的差异诊断。
 - Query-only MessageStore 装饰器保持 MySQL 响应，异步比较 Cassandra 公开字段，并在容量耗尽时主动跳过。
 - Cassandra 真实 contract 覆盖跨 bucket Seq 范围读取与升序合并。
+- 真实 MySQL/Cassandra 路由同时覆盖 before/after Seq 完整页；人工删除 Timeline 行后，两种方向均整页回退 MySQL。
 
 ## References
 

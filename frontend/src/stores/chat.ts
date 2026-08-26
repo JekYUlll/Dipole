@@ -40,19 +40,19 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   // ── messages ───────────────────────────────────────────────────
-  const fetchDirectMessages = async (targetUUID: string, beforeID?: number) => {
-    const q = beforeID ? `?before_id=${beforeID}&limit=30` : '?limit=30'
+  const fetchDirectMessages = async (targetUUID: string, beforeSeq = 0) => {
+    const q = `?before_seq=${beforeSeq}&limit=30`
     const data = await api.get(`/api/v1/messages/direct/${targetUUID}${q}`) as Message[]
     const key = myUUID.value
       ? `direct:${[myUUID.value, targetUUID].sort().join(':')}`
       : `direct:${targetUUID}`
-    _mergeMessages(key, Array.isArray(data) ? data : [], Boolean(beforeID))
+    _mergeMessages(key, Array.isArray(data) ? data : [], beforeSeq > 0)
   }
 
-  const fetchGroupMessages = async (groupUUID: string, beforeID?: number) => {
-    const q = beforeID ? `?before_id=${beforeID}&limit=30` : '?limit=30'
+  const fetchGroupMessages = async (groupUUID: string, beforeSeq = 0) => {
+    const q = `?before_seq=${beforeSeq}&limit=30`
     const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
-    _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], Boolean(beforeID))
+    _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], beforeSeq > 0)
   }
 
   const fetchGroupMessagesAfter = async (groupUUID: string, afterID: number) => {
@@ -108,20 +108,19 @@ export const useChatStore = defineStore('chat', () => {
   const pushMessage = (msg: Message) => {
     const key = _deriveKey(msg)
     const list = messageMap.value.get(key) || []
-    if (!list.some(m => m.message_id === msg.message_id)) {
+    const existingIndex = list.findIndex(message => message.message_id === msg.message_id)
+    if (existingIndex < 0) {
       list.push(msg)
-      list.sort((a, b) => {
-        // id:0 means not yet persisted (WS echo before Kafka commit) — sort by sent_at only
-        if (a.id === 0 || b.id === 0) return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
-        return a.id - b.id
-      })
-      messageMap.value.set(key, list)
       const conv = conversations.value.find(c => c.conversation_key === key)
       if (conv) {
         conv.last_message = { message_id: msg.message_id, message_type: msg.message_type, preview: msg.content, sent_at: msg.sent_at, sender_uuid: msg.from_uuid }
         conv.unread_count = key === activeKey.value ? 0 : conv.unread_count + 1
       }
+    } else if (_messagePersistenceRank(msg) > _messagePersistenceRank(list[existingIndex])) {
+      list[existingIndex] = msg
     }
+    list.sort(_compareMessages)
+    messageMap.value.set(key, list)
     _updateLastOfflineID([msg])
   }
 
@@ -173,13 +172,34 @@ export const useChatStore = defineStore('chat', () => {
   const _mergeMessages = (key: string, items: Message[], prepend: boolean) => {
     const existing = messageMap.value.get(key) || []
     const merged = _dedupe(prepend ? [...items, ...existing] : [...existing, ...items])
-	merged.sort((a, b) => (a.message_seq || 0) - (b.message_seq || 0) || a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
+    merged.sort(_compareMessages)
     messageMap.value.set(key, merged)
   }
 
   const _dedupe = (msgs: Message[]) => {
-    const seen = new Set<string>()
-    return msgs.filter(m => { if (seen.has(m.message_id)) return false; seen.add(m.message_id); return true })
+    const deduped: Message[] = []
+    const positions = new Map<string, number>()
+    msgs.forEach(message => {
+      const position = positions.get(message.message_id)
+      if (position === undefined) {
+        positions.set(message.message_id, deduped.length)
+        deduped.push(message)
+      } else if (_messagePersistenceRank(message) > _messagePersistenceRank(deduped[position])) {
+        deduped[position] = message
+      }
+    })
+    return deduped
+  }
+
+  const _messagePersistenceRank = (message: Message) =>
+    ((message.message_seq || 0) > 0 ? 2 : 0) + (message.id > 0 ? 1 : 0)
+
+  const _compareMessages = (left: Message, right: Message) => {
+    const leftSeq = left.message_seq || 0
+    const rightSeq = right.message_seq || 0
+    if (leftSeq > 0 && rightSeq > 0 && leftSeq !== rightSeq) return leftSeq - rightSeq
+    const sentAt = new Date(left.sent_at).getTime() - new Date(right.sent_at).getTime()
+    return sentAt || left.id - right.id
   }
 
   const _updateLastOfflineID = (msgs: Message[]) => {

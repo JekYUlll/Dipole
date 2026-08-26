@@ -17,11 +17,13 @@ import (
 )
 
 type stubMessageService struct {
-	listDirectFn        func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupFn         func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	listGroupAfterFn    func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
-	listGroupAfterSeqFn func(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
-	listOfflineFn       func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listDirectFn          func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listDirectBeforeSeqFn func(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error)
+	listGroupFn           func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	listGroupBeforeSeqFn  func(currentUserUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error)
+	listGroupAfterFn      func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
+	listGroupAfterSeqFn   func(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
+	listOfflineFn         func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
 func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -32,12 +34,81 @@ func (s *stubMessageService) ListDirectMessages(currentUserUUID, targetUUID stri
 	return s.listDirectFn(currentUserUUID, targetUUID, beforeID, limit)
 }
 
+func (s *stubMessageService) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listDirectBeforeSeqFn == nil {
+		return nil, nil
+	}
+	return s.listDirectBeforeSeqFn(currentUserUUID, targetUUID, beforeSeq, limit)
+}
+
 func (s *stubMessageService) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	if s.listGroupFn == nil {
 		return nil, nil
 	}
 
 	return s.listGroupFn(currentUserUUID, groupUUID, beforeID, limit)
+}
+
+func (s *stubMessageService) ListGroupMessagesBeforeSeq(currentUserUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	if s.listGroupBeforeSeqFn == nil {
+		return nil, nil
+	}
+	return s.listGroupBeforeSeqFn(currentUserUUID, groupUUID, beforeSeq, limit)
+}
+
+func TestMessageHandlerListDirectBeforeSeq(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	called := false
+	handler := NewMessageHandler(&stubMessageService{
+		listDirectBeforeSeqFn: func(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+			called = true
+			if userUUID != "U100" || targetUUID != "U200" || beforeSeq != 41 || limit != 10 {
+				t.Fatalf("unexpected Seq query: user=%q target=%q before=%d limit=%d", userUUID, targetUUID, beforeSeq, limit)
+			}
+			return []*model.Message{{Seq: 40, UUID: "M40"}}, nil
+		},
+	})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/messages/direct/U200?before_seq=41&limit=10", nil)
+	context.Params = gin.Params{{Key: "target_uuid", Value: "U200"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.ListDirect(context)
+	if recorder.Code != http.StatusOK || !called {
+		t.Fatalf("expected Seq route status=200 called=true, got status=%d called=%t", recorder.Code, called)
+	}
+}
+
+func TestMessageHandlerRejectsMixedHistoryCursorDomains(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, test := range []struct {
+		name   string
+		path   string
+		group  bool
+		params gin.Params
+	}{
+		{name: "direct zero ID plus Seq", path: "/api/v1/messages/direct/U200?before_id=0&before_seq=41", params: gin.Params{{Key: "target_uuid", Value: "U200"}}},
+		{name: "group ID plus Seq", path: "/api/v1/messages/group/G100?before_id=20&before_seq=41", group: true, params: gin.Params{{Key: "group_uuid", Value: "G100"}}},
+		{name: "group two Seq directions", path: "/api/v1/messages/group/G100?before_seq=41&after_seq=40", group: true, params: gin.Params{{Key: "group_uuid", Value: "G100"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(recorder)
+			context.Request = httptest.NewRequest(http.MethodGet, test.path, nil)
+			context.Params = test.params
+			context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+			handler := NewMessageHandler(&stubMessageService{})
+			if test.group {
+				handler.ListGroup(context)
+			} else {
+				handler.ListDirect(context)
+			}
+			if recorder.Code != http.StatusBadRequest {
+				t.Fatalf("expected status 400, got %d", recorder.Code)
+			}
+		})
+	}
 }
 
 func (s *stubMessageService) ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {

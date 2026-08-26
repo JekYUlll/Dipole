@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-018：Cassandra Seq 响应不携带 MySQL 内部 ID
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-27
-- **影响范围：** Cassandra 主读、Message API、Web 本地消息合并、legacy `before_id/after_id`
-- **现状：** Cassandra Timeline 保存全局消息 UUID 与会话 Seq，不保存 MySQL 自增 ID；A4 首批仅允许显式 `after_seq` 请求进入 Cassandra cohort，返回消息的兼容 `id` 为零。
-- **风险：** 若普通历史或仍依赖 ID 的客户端进入 Cassandra 主读，后续 `before_id/after_id` 可能回放错误页面或无法继续翻页。
-- **建议方向：** 增加 Direct/Group `before_seq` 协议并让新版客户端只在同一 cursor domain 内翻页；完成 IndexedDB 合并与双轨验证后，再扩大 Cassandra 主读范围。
-- **处理门槛：** Cassandra 主读扩展到首屏历史、Direct History 或任何 ID cursor 请求前完成。
-
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **优先级：** P2
@@ -135,6 +124,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-018：Cassandra Seq 响应不携带 MySQL 内部 ID
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **完成日期：** 2026-08-27
+- **解决方式：** Direct/Group HTTP 与 Message v1 RPC 增加互斥的 `before_seq`；Web 历史首屏固定从 `before_seq=0` 开始，向前分页使用最旧正 Seq，热群补拉改用 `after_seq`，同 UUID 合并优先保留带持久 Seq 的版本。Cassandra 路由只覆盖显式 Seq cursor，legacy ID cursor 始终留在 MySQL。
+- **验证：** Local/gRPC 应用契约、HTTP 游标互斥、Service 权限与 Seq 透传测试通过；真实 MySQL 8.4/Cassandra 5.0.9 演练确认 before/after 完整页由 Cassandra 返回，人工缺行后整页回退 MySQL。
+- **保留兼容：** Cassandra 响应的 `id` 继续为零；全局身份使用 `message_id`，会话排序和分页使用 `message_seq`。IndexedDB 持久同步仍由 A6 独立推进。
 
 ### AD-004：热群消息缺少持久化同步补偿
 

@@ -45,9 +45,19 @@ func (p *shadowProbeApplication) ListDirectMessages(userUUID, targetUUID string,
 	return messages, err
 }
 
+func (p *shadowProbeApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	p.recordQuery()
+	return p.stubMessageApplication.ListDirectMessagesBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
+}
+
 func (p *shadowProbeApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	p.recordQuery()
 	return p.stubMessageApplication.ListGroupMessages(userUUID, groupUUID, beforeID, limit)
+}
+
+func (p *shadowProbeApplication) ListGroupMessagesBeforeSeq(userUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	p.recordQuery()
+	return p.stubMessageApplication.ListGroupMessagesBeforeSeq(userUUID, groupUUID, beforeSeq, limit)
 }
 
 func (p *shadowProbeApplication) ListGroupMessagesAfter(userUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -86,7 +96,7 @@ func (p *shadowProbeApplication) counts() (int, int) {
 func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 	primary := &shadowProbeApplication{}
 	shadow := &shadowProbeApplication{}
-	comparisons := make(chan messageShadowComparison, 5)
+	comparisons := make(chan messageShadowComparison, 7)
 	application := newMessageShadowApplication(primary, shadow, func(comparison messageShadowComparison) {
 		comparisons <- comparison
 	})
@@ -97,10 +107,10 @@ func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 
 	primaryCommands, primaryQueries := primary.counts()
 	shadowCommands, shadowQueries := shadow.counts()
-	if primaryCommands != 4 || primaryQueries != 5 {
+	if primaryCommands != 4 || primaryQueries != 7 {
 		t.Fatalf("unexpected primary calls: commands=%d queries=%d", primaryCommands, primaryQueries)
 	}
-	if shadowCommands != 0 || shadowQueries != 5 {
+	if shadowCommands != 0 || shadowQueries != 7 {
 		t.Fatalf("shadow must remain query-only: commands=%d queries=%d", shadowCommands, shadowQueries)
 	}
 	for comparison := range comparisons {

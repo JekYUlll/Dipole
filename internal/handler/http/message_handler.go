@@ -30,6 +30,7 @@ func NewMessageHandler(service applicationPort.MessageQuery) *MessageHandler {
 // @Produce json
 // @Param target_uuid path string true "目标用户 UUID"
 // @Param before_id query int false "向前翻页游标"
+// @Param before_seq query int false "会话序号向前翻页游标"
 // @Param limit query int false "返回数量"
 // @Success 200 {object} MessageListResponseEnvelope
 // @Failure 400 {object} ErrorEnvelope
@@ -45,18 +46,29 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 		return
 	}
 
+	_, hasBeforeID := c.GetQuery("before_id")
 	beforeID, err := queryOptionalUint(c, "before_id")
 	if err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
 		return
 	}
+	_, hasBeforeSeq := c.GetQuery("before_seq")
+	beforeSeq, err := queryOptionalUint64(c, "before_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_seq is invalid")
+		return
+	}
+	if hasBeforeID && hasBeforeSeq {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id and before_seq cannot be used together")
+		return
+	}
 
-	messages, err := h.service.ListDirectMessages(
-		currentUser.UUID,
-		c.Param("target_uuid"),
-		beforeID,
-		queryInt(c, "limit"),
-	)
+	var messages []*model.Message
+	if hasBeforeSeq {
+		messages, err = h.service.ListDirectMessagesBeforeSeq(currentUser.UUID, c.Param("target_uuid"), beforeSeq, queryInt(c, "limit"))
+	} else {
+		messages, err = h.service.ListDirectMessages(currentUser.UUID, c.Param("target_uuid"), beforeID, queryInt(c, "limit"))
+	}
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrMessageTargetRequired):
@@ -81,6 +93,7 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 // @Produce json
 // @Param group_uuid path string true "群 UUID"
 // @Param before_id query int false "向前翻页游标"
+// @Param before_seq query int false "会话序号向前翻页游标"
 // @Param after_id query int false "增量补拉游标"
 // @Param after_seq query int false "会话序号增量补拉游标"
 // @Param limit query int false "返回数量"
@@ -98,14 +111,22 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 		return
 	}
 
+	_, hasBeforeID := c.GetQuery("before_id")
 	beforeID, err := queryOptionalUint(c, "before_id")
 	if err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
 		return
 	}
+	_, hasAfterID := c.GetQuery("after_id")
 	afterID, err := queryOptionalUint(c, "after_id")
 	if err != nil {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
+		return
+	}
+	_, hasBeforeSeq := c.GetQuery("before_seq")
+	beforeSeq, err := queryOptionalUint64(c, "before_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_seq is invalid")
 		return
 	}
 	_, hasAfterSeq := c.GetQuery("after_seq")
@@ -114,8 +135,8 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_seq is invalid")
 		return
 	}
-	if boolCount(beforeID > 0, afterID > 0, hasAfterSeq) > 1 {
-		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, after_id and after_seq cannot be used together")
+	if boolCount(hasBeforeID, hasBeforeSeq, hasAfterID, hasAfterSeq) > 1 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, before_seq, after_id and after_seq cannot be used together")
 		return
 	}
 
@@ -123,6 +144,8 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 	var messages []*model.Message
 	if hasAfterSeq {
 		messages, err = h.service.ListGroupMessagesAfterSeq(currentUser.UUID, c.Param("group_uuid"), afterSeq, limit)
+	} else if hasBeforeSeq {
+		messages, err = h.service.ListGroupMessagesBeforeSeq(currentUser.UUID, c.Param("group_uuid"), beforeSeq, limit)
 	} else if afterID > 0 {
 		// 热群 notify + pull 会走这一支：客户端记住最近一条已同步消息的自增 ID，
 		// 服务端按 after_id 做增量补拉，避免每次都回放整段历史。

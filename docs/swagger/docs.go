@@ -2178,6 +2178,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "会话序号向前翻页游标",
+                        "name": "before_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "返回数量",
                         "name": "limit",
                         "in": "query"
@@ -2249,6 +2255,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "向前翻页游标",
                         "name": "before_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话序号向前翻页游标",
+                        "name": "before_seq",
                         "in": "query"
                     },
                     {
