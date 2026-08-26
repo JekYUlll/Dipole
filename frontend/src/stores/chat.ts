@@ -7,11 +7,12 @@ import {
   browserSyncMode,
   clearBrowserMessages,
   compareBrowserSyncMessages,
+  isLocalSyncCapacityError,
   recoverBrowserMessages,
 } from '@/sync/browserSync'
 import { drainLegacyOffline } from '@/sync/legacyOffline'
 
-export type MessageSyncStatus = 'idle' | 'restoring' | 'current' | 'error'
+export type MessageSyncStatus = 'idle' | 'restoring' | 'current' | 'error' | 'storage_full'
 
 export const useChatStore = defineStore('chat', () => {
   const conversations = ref<Conversation[]>([])
@@ -144,7 +145,7 @@ export const useChatStore = defineStore('chat', () => {
       syncStatus.value = 'current'
       return result.synchronized
     })().catch(error => {
-      syncStatus.value = 'error'
+      syncStatus.value = isLocalSyncCapacityError(error) ? 'storage_full' : 'error'
       throw error
     }).finally(() => {
       activeSync = undefined
@@ -157,6 +158,10 @@ export const useChatStore = defineStore('chat', () => {
     if (pendingComparisonTimer) clearTimeout(pendingComparisonTimer)
     pendingComparisonTimer = undefined
     if (userUUID) await clearBrowserMessages(userUUID)
+    resetRuntimeMessages()
+  }
+
+  const resetRuntimeMessages = () => {
     messageMap.value = new Map()
     activeKey.value = ''
     safeSyncSeq.value = 0
@@ -284,7 +289,7 @@ export const useChatStore = defineStore('chat', () => {
     conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
     syncStatus, safeSyncSeq,
     fetchConversations, markRead,
-    fetchDirectMessages, fetchGroupMessages, syncOffline, syncMessages, clearLocalMessages, pushMessage,
+    fetchDirectMessages, fetchGroupMessages, syncOffline, syncMessages, clearLocalMessages, resetRuntimeMessages, pushMessage,
 	fetchGroupMessagesAfter,
 	fetchGroupMessagesAfterSeq, recoverGroupMessages,
     fetchContacts, fetchApplications,

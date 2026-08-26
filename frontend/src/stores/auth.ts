@@ -54,7 +54,9 @@ export const useAuthStore = defineStore('auth', () => {
   const _clearRuntime = () => {
     token.value = ''
     currentUser.value = null
-    useChatStore().myUUID = ''
+    const chat = useChatStore()
+    chat.myUUID = ''
+    chat.resetRuntimeMessages()
   }
 
   const _storedUserUUID = () => {

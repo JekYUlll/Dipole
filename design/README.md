@@ -29,14 +29,14 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 ### Sync v1
 
-- `Sync/State Matrix`：Restoring、Current、Offline、Error 四态。
+- `Sync/State Matrix`：Restoring、Current、Offline、Error、Storage Full 五态。
 - `Sync/Desktop/Restoring`
 - `Sync/Mobile/Restoring`
 - `Component/Sync Status`：页面和标题栏共享的同步状态语义。
 
 批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_MODE=off|shadow|primary` 控制，默认关闭。
 
-`shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述四态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
+`shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述状态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
 
 显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
 
@@ -45,6 +45,8 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
 - 每页消息与本地游标在同一 IndexedDB 事务中提交；只有事务成功后才能更新内存并 ACK 服务端设备 Cursor。
 - 网络中断时保留本地可读消息；同步失败采用局部状态和显式重试，不遮挡聊天主链路。
+- 单用户消息数超过高水位时，在同一事务内淘汰到低水位；优先保留每个会话的最新消息，淘汰不推进安全 `sync_seq`。
+- 浏览器拒绝 IndexedDB 写入时展示“本地空间不足”，用户释放浏览器空间后可重试，失败页面不暗示游标已经安全前移。
 - 本地数据按认证用户隔离，显式退出账号时清除此账号的消息与游标。
 - `message_uuid` 负责稳定身份，`message_seq` 负责会话排序，`sync_seq` 负责设备增量恢复；页面不依赖 MySQL 内部自增 ID。
 

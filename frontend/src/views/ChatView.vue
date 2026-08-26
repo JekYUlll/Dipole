@@ -173,12 +173,13 @@
             v-if="chat.syncStatus !== 'idle'"
             class="sync-status"
             :class="`sync-status-${chat.syncStatus}`"
-            :title="chat.syncStatus === 'error' ? '点击重试消息同步' : `安全同步游标 ${chat.safeSyncSeq}`"
-            @click="chat.syncStatus === 'error' && chat.syncMessages().catch(() => {})"
+            :title="chat.syncStatus === 'storage_full' ? '本地消息空间不足，点击重试' : chat.syncStatus === 'error' ? '点击重试消息同步' : `安全同步游标 ${chat.safeSyncSeq}`"
+            @click="(chat.syncStatus === 'error' || chat.syncStatus === 'storage_full') && chat.syncMessages().catch(() => {})"
           >
             <span class="sync-status-dot" aria-hidden="true"></span>
             <span v-if="chat.syncStatus === 'restoring'">正在恢复</span>
             <span v-else-if="chat.syncStatus === 'error'">同步中断</span>
+            <span v-else-if="chat.syncStatus === 'storage_full'">本地空间不足</span>
             <span v-else>已同步</span>
           </button>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
@@ -2401,7 +2402,8 @@ onBeforeUnmount(() => {
   animation: sync-pulse 1s ease-in-out infinite;
 }
 
-.sync-status-error {
+.sync-status-error,
+.sync-status-storage_full {
   background: #fdeaea;
   color: #c53b3b;
   cursor: pointer;

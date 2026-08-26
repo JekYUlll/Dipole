@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   post: vi.fn(),
   get: vi.fn(),
   clearLocalMessages: vi.fn(),
-  chat: { myUUID: '', clearLocalMessages: vi.fn() },
+  chat: { myUUID: '', clearLocalMessages: vi.fn(), resetRuntimeMessages: vi.fn() },
   unauthorizedHandler: undefined as undefined | (() => void | Promise<void>),
 }))
 
@@ -54,6 +54,7 @@ describe('auth session lifecycle', () => {
     mocks.get.mockReset()
     mocks.chat.myUUID = ''
     mocks.chat.clearLocalMessages = vi.fn().mockResolvedValue(undefined)
+    mocks.chat.resetRuntimeMessages = vi.fn()
     mocks.unauthorizedHandler = undefined
     setActivePinia(createPinia())
     window.history.replaceState({}, '', '/app/login')
@@ -70,6 +71,7 @@ describe('auth session lifecycle', () => {
     expect(auth.currentUser).toBeNull()
     expect(localStorage.getItem('dipole.web.token')).toBeNull()
     expect(mocks.chat.myUUID).toBe('')
+    expect(mocks.chat.resetRuntimeMessages).toHaveBeenCalledOnce()
     await cleanup
     expect(mocks.chat.clearLocalMessages).toHaveBeenCalledWith('U1')
   })
