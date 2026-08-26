@@ -1,0 +1,10 @@
+app:
+  name: dipole-sync-recovery-smoke
+  env: test
+
+mysql:
+  host: mysql
+  port: 3306
+  user: root
+  password: dipole-root
+  dbname: dipole

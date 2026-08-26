@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-024：Sync Replay 的历史覆盖受 created Outbox 边界限制
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** `cmd/sync-replay`、历史群消息、Outbox 保留、Message Inbox 写权限退役
+- **现状：** 固定快照 Replay/Reconcile 能恢复并核对所有具有 `message.direct.created` 或 `message.group.created` Outbox 的消息。早期 Kafka/Outbox 未启用期间，本地消息可能只原子写入 Message 与 Inbox；群聊的事件时成员快照无法从当前群成员关系安全重建。
+- **风险：** 若把 Outbox-era 的一致性报告解释为全历史覆盖，清空或迁移旧 Inbox 后可能永久漏掉早期离线消息。使用当前群成员回填会向后来加入的成员泄露历史消息，也可能遗漏已经退群的原收件人。
+- **建议方向：** 在迁移前记录可证明的 Outbox 覆盖起点；对更早数据保留现有 Inbox 作为 baseline，或导出带 recipient/locator hash 的不可变基线清单并单独对账。仅在 baseline 与 Outbox 增量拼接后无 gap 时允许迁移写责任。
+- **处理门槛：** Message Inbox 写权限退役与旧 Offline API 冻结前，完成历史覆盖审计、baseline 归档/恢复演练和跨边界 Reconcile。
+
 ### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
 
 - **优先级：** P1
@@ -20,7 +31,7 @@
 - **影响范围：** `cmd/sync-service`、`user_sync_inbox`、设备/群 checkpoint、MySQL 最小权限
 - **现状：** 独立 Sync Runtime 组合 sqlc Sync Store/Projection Store，并可通过默认关闭的 Kafka consumer 幂等投影 Inbox；部署配置仍复用通用 MySQL 账号。Message 事务当前继续原子写 Inbox，Sync Runtime 同时需要查询和推进 checkpoint。
 - **风险：** 进程代码边界已收敛，数据库凭据仍可访问超出 Sync 职责的表；过早撤销 Message 的 Inbox 写权限会破坏消息、Inbox 与 Outbox 的原子提交。
-- **建议方向：** 当前真实 Kafka/MySQL smoke 已证明精确重放和热群跳过 fanout；固定快照回放、全量对账、lag/DLQ 和提交窗口验证完成前，继续保留 Message 对 Inbox 的写权限。为 `dipole_sync` 配置仅覆盖 Inbox/Sync state/checkpoint 和 migration ledger 的最小账号，并增加启动验收；投影切换后再按所有权迁移顺序收窄 Message 权限。
+- **建议方向：** 当前真实 Kafka/MySQL smoke 已证明精确重放、热群跳过 fanout、固定快照恢复和 recipient/locator 全量对账；lag/DLQ、快照后 catch-up 窗口和权限启动验收完成前，继续保留 Message 对 Inbox 的写权限。为 `dipole_sync` 配置仅覆盖 Inbox/Sync state/checkpoint、replay job 和 migration ledger 的最小账号；投影切换后再按所有权迁移顺序收窄 Message 权限。
 - **处理门槛：** Sync Compose/mTLS 灰度前完成 Sync 账号验收；Message Inbox 写权限在实时投影切换门禁通过后移除。
 
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
