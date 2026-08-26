@@ -110,7 +110,17 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("database schema is not ready: %w", err)
 		}
 	}
-	repos := appComposition.NewRepositories()
+	sqlDB, err := store.DB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get mysql connection for repository composition: %w", err)
+	}
+	repos, err := appComposition.NewRepositoriesWithOptions(appComposition.RepositoryOptions{
+		MySQLAdapter: config.DataConfig().MySQLAdapter,
+		SQLDB:        sqlDB,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("compose repositories: %w", err)
+	}
 	if err := ensureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}

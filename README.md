@@ -32,3 +32,5 @@ go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 scripts/sqlc.sh generate
 scripts/check-sqlc.sh
 ```
+
+迁移窗口可通过 `DIPOLE_DATA_MYSQL_ADAPTER=gorm|sqlc` 选择数据适配器。当前 `sqlc` 只接管已经通过双适配契约测试的 Repository，设置为 `gorm` 可整体回切已迁移仓储。
