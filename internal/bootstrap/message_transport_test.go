@@ -1,8 +1,10 @@
 package bootstrap
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -48,7 +50,7 @@ func (stubMessageApplication) ListOfflineMessages(userUUID string, afterID uint,
 
 func TestMessageTransportDefaultsToLocal(t *testing.T) {
 	local := stubMessageApplication{}
-	transport, err := newMessageApplicationTransport(config.Message{}, local)
+	transport, err := newMessageApplicationTransport(context.Background(), config.Message{}, config.InternalRPC{}, local)
 	if err != nil {
 		t.Fatalf("new local transport: %v", err)
 	}
@@ -61,7 +63,21 @@ func TestMessageTransportDefaultsToLocal(t *testing.T) {
 func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 	for _, mode := range []string{"local", "grpc"} {
 		t.Run(mode, func(t *testing.T) {
-			transport, err := newMessageApplicationTransport(config.Message{Transport: mode}, stubMessageApplication{})
+			rpcCfg := config.InternalRPC{}
+			if mode == "grpc" {
+				rpcCfg = config.InternalRPC{Enabled: true, SharedSecret: "test-secret", MessageListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+				server, err := NewMessageRPCServer(rpcCfg, stubMessageApplication{})
+				if err != nil {
+					t.Fatalf("start message rpc server: %v", err)
+				}
+				t.Cleanup(func() {
+					ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+					defer cancel()
+					server.Close(ctx)
+				})
+				rpcCfg.MessageTarget = server.Address()
+			}
+			transport, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
 			if err != nil {
 				t.Fatalf("new %s transport: %v", mode, err)
 			}
@@ -72,7 +88,7 @@ func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 }
 
 func TestMessageTransportRejectsUnknownMode(t *testing.T) {
-	_, err := newMessageApplicationTransport(config.Message{Transport: "shadow"}, stubMessageApplication{})
+	_, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "shadow"}, config.InternalRPC{}, stubMessageApplication{})
 	if err == nil {
 		t.Fatal("expected unknown message transport to fail")
 	}

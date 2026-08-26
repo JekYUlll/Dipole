@@ -72,6 +72,17 @@ type Message struct {
 	Transport string `mapstructure:"transport"`
 }
 
+type InternalRPC struct {
+	Enabled                bool   `mapstructure:"enabled"`
+	SharedSecret           string `mapstructure:"shared_secret"`
+	CoreListenAddress      string `mapstructure:"core_listen_address"`
+	CoreTarget             string `mapstructure:"core_target"`
+	MessageListenAddress   string `mapstructure:"message_listen_address"`
+	MessageTarget          string `mapstructure:"message_target"`
+	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
+}
+
 type Storage struct {
 	Enabled                bool   `mapstructure:"enabled"`
 	Provider               string `mapstructure:"provider"`
@@ -185,6 +196,14 @@ func Load() error {
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
 		v.SetDefault("message.transport", "local")
+		v.SetDefault("internal_rpc.enabled", false)
+		v.SetDefault("internal_rpc.shared_secret", "")
+		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.core_target", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.message_listen_address", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.message_target", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
+		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("storage.enabled", false)
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
@@ -265,6 +284,14 @@ func Load() error {
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
 			"message.transport",
+			"internal_rpc.enabled",
+			"internal_rpc.shared_secret",
+			"internal_rpc.core_listen_address",
+			"internal_rpc.core_target",
+			"internal_rpc.message_listen_address",
+			"internal_rpc.message_target",
+			"internal_rpc.dial_timeout_seconds",
+			"internal_rpc.shutdown_timeout_seconds",
 			"storage.enabled",
 			"storage.provider",
 			"storage.endpoint",
@@ -437,6 +464,25 @@ func MessageConfig() Message {
 	MustLoad()
 
 	return Message{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport")))}
+}
+
+func InternalRPCConfig() InternalRPC {
+	MustLoad()
+
+	var internalRPC InternalRPC
+	if err := cfg.UnmarshalKey("internal_rpc", &internalRPC); err != nil {
+		panic(fmt.Errorf("unmarshal internal rpc config: %w", err))
+	}
+	internalRPC.Enabled = cfg.GetBool("internal_rpc.enabled")
+	internalRPC.SharedSecret = strings.TrimSpace(cfg.GetString("internal_rpc.shared_secret"))
+	internalRPC.CoreListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.core_listen_address"))
+	internalRPC.CoreTarget = strings.TrimSpace(cfg.GetString("internal_rpc.core_target"))
+	internalRPC.MessageListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.message_listen_address"))
+	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
+	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
+	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
+
+	return internalRPC
 }
 
 func StorageConfig() Storage {

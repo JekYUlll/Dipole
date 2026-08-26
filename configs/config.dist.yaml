@@ -47,8 +47,19 @@ kafka:
   consume_retry_backoff_ms: 500
 
 message:
-  # local keeps direct in-process calls; grpc exercises the versioned RPC contract over bufconn.
+  # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
   transport: local
+
+internal_rpc:
+  # Keep disabled until Core and Message are deployed as separate processes.
+  enabled: false
+  shared_secret: ""  # set with DIPOLE_INTERNAL_RPC_SHARED_SECRET
+  core_listen_address: 127.0.0.1:9091
+  core_target: 127.0.0.1:9091
+  message_listen_address: 127.0.0.1:9092
+  message_target: 127.0.0.1:9092
+  dial_timeout_seconds: 5
+  shutdown_timeout_seconds: 15
 
 storage:
   enabled: true

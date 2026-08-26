@@ -149,12 +149,14 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M4：抽离 Message Service
 
-- [ ] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
-- [ ] 当前单体先作为 Gateway/Core，通过 gRPC 调用 Message Service。
-- [ ] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取 Core 表。
+- [x] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
+- [x] 当前单体先作为 Gateway/Core，通过受认证 gRPC 调用 Message Service，并保留 `local` 回切。
+- [x] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取这些 Core 表。
 - [ ] 使用影子请求比对 Local 与 Remote 响应，影子链路禁止产生第二次业务写入。
 - [ ] 按节点逐步将 `message.transport` 切换为 `grpc`，保留快速回切能力。
 - [ ] 明确 Message Service 数据表所有权，其他进程停止直接写 `messages` 和 `outbox_events`。
+
+当前过渡限制：文件消息仍通过共享 MySQL 读取 File metadata，已记录为 AD-015；内部 RPC 仅允许 loopback/private network，mTLS 门禁继续由 AD-013 跟踪。
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 

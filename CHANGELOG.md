@@ -40,6 +40,7 @@
 - 增加共享 `dipole.common.v1.RequestContext`、Core Capability 与 Sync Query v1 契约，以及实现现有 application ports 的 Local server/Remote client adapters。
 - 增加 Kafka schema version 兼容校验与事件契约，legacy 空版本和 v1 minor 保持兼容，未知主版本跳过业务 Handler 并直接进入 DLQ。
 - 增加内部 gRPC 服务身份认证基元，客户端注入服务名与共享凭据，服务端以常量时间比较校验凭据并执行调用方 allowlist。
+- 增加独立 `cmd/message-service` 运行时，拥有 Message RPC、消息持久化 Kafka consumer、Transactional Outbox Relay 和远程 Core Capability client。
 
 ### 变更
 
@@ -49,6 +50,9 @@
 - Kafka Topic 初始化显式覆盖主 Topic、`.retry` 与 `.dead`；Publisher 和 Transactional Outbox 同时写入 `version` 与 `schema_version` headers。
 - 增加 `message.transport=local|grpc` Composition Root 开关；默认 Local，grpc 模式通过进程内 channel 执行同一 MessageApplication 契约并支持安全回切。
 - Messaging Composition Root 支持注入远程兼容的 `CoreCapability`，为独立 Message Service 停止直接读取 Core Repository 建立切换边界。
+- `message.transport=grpc` 升级为受认证的真实 TCP channel；Core 先开放 Capability listener 再连接 Message，避免冷启动循环等待，`local` 继续作为默认回切路径。
+- Kafka handler 按 Core 与 Message 进程拆分；远程模式下 Core 停止消费 `message.*.send_requested` 并停止运行 Outbox Relay。
+- Outbox Relay 停止时等待 worker 退出，避免 Kafka publisher 关闭后仍有并发发布。
 - 服务启动只读校验 migration 版本，已移除运行时 schema mutation 和 `AutoMigrate` 配置。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -83,6 +87,7 @@
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
 - 现有 `/messages/offline` 接口继续保留，客户端可以渐进迁移到 `/sync`。
 - 兼容缺少 `sync_fanout` 字段的旧私聊和群聊 Kafka 事件，避免滚动部署期间漏写 Inbox。
+- 独立部署先启动启用 `internal_rpc` 的 Core，再启动 `cmd/message-service`；两端通过 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 注入同一服务凭据，Gateway/Core 节点随后将 `message.transport` 切换为 `grpc`。
 
 ### 验证
 
@@ -105,8 +110,8 @@
 - HTTP handler 包全量 race 测试仍会触发现有并行测试对 `gin.SetMode` 的竞态；新增 Sync Handler 的定向 race 测试已通过。
 - 会话内 `message_seq`、`read_seq`、设备级 cursor 和 Inbox 清理策略留待后续迭代。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
-- 内部 RPC 尚未接入服务身份认证，`RequestContext` 只允许在进程内契约测试使用；远程接流量前必须完成 AD-013。
-- `message.transport=grpc` 当前使用 bufconn 验证进程内协议；网络 endpoint、mTLS 与服务发现留待 M4。
+- 内部 RPC 已接入共享凭据与调用方 allowlist；当前 channel 使用明文 HTTP/2，只允许 loopback/private network，非受控网络流量前必须完成 AD-013 的 TLS/mTLS 门禁。
+- 独立 Message Service 暂时读取共享 MySQL 的 File metadata，并仍构造完整 Repository 集合，边界收敛记录为 AD-015。
 
 ## 发布归档
 

@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-015：Message Service 暂时共享 File metadata 与完整 Repository composition
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-26
+- **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
+- **现状：** 独立 Message Runtime 的用户、好友和群校验已通过 Core Capability gRPC 完成；文件消息仍从共享 MySQL 读取 File metadata，并复用当前完整 `Repositories` composition。
+- **风险：** Message 数据库凭据仍可访问 Core 表，文件所有权校验跨越计划中的服务边界，多语言或独立数据库部署时会形成不兼容。
+- **建议方向：** 将文件所有权与消息所需快照加入受认证 Core Capability，增加只组合 Message/Inbox/Outbox 的 Repository factory，并为 Message 数据库账号收敛表权限。
+- **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
+
 ### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
 
 - **优先级：** P2
@@ -29,7 +40,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** Message gRPC、Gateway、Core、审计身份
-- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。已增加共享凭据与 caller allowlist 的 unary interceptor，并以常量时间比较密钥；`message.transport=grpc` 当前仍使用进程内 bufconn，网络监听、凭据配置与 TLS 尚未接入运行时。
+- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。网络运行时已启用共享凭据与 caller allowlist 的 unary interceptor，并以常量时间比较密钥；当前 channel 使用明文 HTTP/2，尚未接入 TLS/mTLS。
 - **风险：** 若在缺少 mTLS、服务凭证和入口隔离时暴露 RPC，调用方可能伪造 principal 并以其他用户身份执行消息命令或查询。
 - **建议方向：** M4 网络运行时必须启用现有 unary interceptor，并从环境注入服务凭据；随后增加 TLS/mTLS、入口限制与审计字段绑定。Gateway 继续从已认证用户上下文生成 principal，RPC 服务只接受 allowlist 内服务的调用。
 - **处理门槛：** `message.transport=grpc` 获得任何非测试流量前完成。
