@@ -12,38 +12,16 @@
 
 ## 待处理
 
-### AD-001：并发事务可能造成 Sync Cursor 永久跳过消息
+### AD-015：Message Service 数据库账号尚未收敛表级权限
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 处理中
 - **发现日期：** 2026-08-26
-- **影响范围：** `user_sync_inbox`、`GET /api/v1/sync`
-- **现状：** `sync_seq` 使用 MySQL 全局自增主键，客户端将当前页最后一个序号保存为下一次 `after_seq`。
-- **风险：** 并发事务可能先分配较小序号但后提交。客户端在间隙中读取较大序号并推进游标后，迟提交的较小序号将无法再次查询。
-- **建议方向：** 引入按用户维护的同步状态行，在事务中按固定用户顺序加锁并分配用户级序号；补充并发提交乱序测试。
-- **处理门槛：** 在客户端将 `/sync` 作为主同步协议前完成。
-
-### AD-002：旧群消息事件与热群 Sync Fanout 标志存在歧义
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-26
-- **影响范围：** Kafka 滚动部署、普通群 Inbox 投影
-- **现状：** `sync_fanout` 使用普通布尔字段；旧版群事件缺少该字段时会被解析为 `false`。
-- **风险：** 新版消费者会将缺失字段解释为热群跳过 Inbox，导致滚动部署期间的普通群消息漏写同步记录。私聊已有目标参与者兜底，群聊尚无等价兼容逻辑。
-- **建议方向：** 使用可区分“未提供”和“显式关闭”的 `*bool`，或引入版本化 `sync_mode`；旧事件默认执行普通群 fanout。
-- **处理门槛：** 下一次存在新旧消息节点并行运行的部署前完成。
-
-### AD-003：幂等冲突可能使用新事件收件人修复旧消息 Inbox
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-26
-- **影响范围：** `(sender_uuid, client_message_id)` 幂等、Inbox 数据隔离
-- **现状：** 消息发生幂等冲突后会复用已有消息，但 Inbox 修复仍可能沿用冲突事件预先计算的收件人。
-- **风险：** 同一发送者复用 `client_message_id` 并更换目标会话时，已有消息可能被投影到错误用户的 Inbox。
-- **建议方向：** 在处理冲突时校验会话、目标和消息身份一致性；复用已有消息后重新计算可信收件人，对不一致事件返回明确冲突错误。
-- **处理门槛：** 对外开放 `/sync` 客户端接入前完成。
+- **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
+- **现状：** 用户、好友、群和文件所有权校验均通过 Core Capability gRPC 完成；独立 Runtime 只组合 Message 与 Outbox adapters。部署仍复用 Core 的 MySQL schema 与数据库账号。
+- **风险：** 代码依赖已经收敛，数据库凭据仍具备访问 Core 表的能力，误用或注入风险下的 blast radius 大于 Message Service 实际职责。
+- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
+- **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
 
 ### AD-004：热群消息缺少持久化同步补偿
 
@@ -111,16 +89,16 @@
 - **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
-### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
+### AD-012：用户状态常量与 schema 默认值偏移
 
-- **优先级：** P1
+- **优先级：** P2
 - **状态：** 暂缓
 - **发现日期：** 2026-08-26
-- **影响范围：** `internal/model`、`internal/repository`、`internal/store`、服务启动与数据库发布
-- **现状：** 数据库映射、查询和 schema 演进依赖 GORM，服务启动时执行 `AutoMigrate`；约 20 个 Go 文件直接耦合 GORM API 或类型。
-- **风险：** schema 变化缺少显式版本、审查、部署顺序和稳定回滚记录；跨语言服务难以共享一致的数据契约。
-- **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
-- **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。
+- **影响范围：** `model.User`、`users.status`、手写 SQL、跨语言状态契约
+- **现状：** `DefaultAvatarURL` 与用户状态常量位于同一 `const` 块，受 `iota` 行号影响，当前 `UserStatusNormal=1`、`UserStatusDisabled=2`；baseline schema 的默认值仍为 `0`。
+- **风险：** 依赖 schema 默认值或手写字面量的写入/查询可能产生领域未定义状态；多语言服务若只读取 SQL schema，会与 Go 领域值产生分歧。
+- **建议方向：** 新增显式常量值与数据库约束，先审计并迁移现有 `status=0` 数据，再通过共享枚举契约和 migration 收敛。
+- **处理门槛：** User Service 独立部署或其他语言直接消费用户状态前完成。
 
 ### AD-011：前端缺少可版本化的完整设计基线
 
@@ -135,4 +113,56 @@
 
 ## 已关闭
 
-当前无已关闭条目。
+### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** Runtime 成为 Messaging Services 的唯一 Composition Root，并把同一实例注入 Server 与 Kafka handler 注册；Server 只在兼容构造入口缺少注入时创建服务集合。Conversation notifier 在 Server 建立 WS Hub 后注入现有实例。
+- **验证：** Local/Remote transport、Server、Kafka 和 Bootstrap 全部复用 Runtime 的 Messaging Services，并通过相关包 race 测试。
+
+### AD-013：内部 RPC 调用身份尚未绑定服务认证
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 内部 RPC 同时启用共享服务凭据、caller allowlist、常量时间密钥比较和 TLS 1.3 mTLS；认证服务身份写入调用 context，并与 protobuf `caller_service` 强制一致。明文 listener 与 target 仅允许 loopback。
+- **验证：** 通过合法/缺失/错误凭据、未授权 caller、payload caller 冲突、真实临时 CA mTLS，以及非 loopback 明文拒绝测试。
+
+### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 使用版本化 SQL migration 管理 schema，所有 Repository 经共享真实 MySQL 契约渐进迁移到 `database/sql + sqlc`；最终移除 legacy adapters、model tags、AutoMigrate、SQLite 方言测试、兼容配置和 `gorm.io/*` 依赖。
+- **验证：** 全仓 GORM 标识与模块依赖扫描为空；通过 sqlc 生成漂移、全量 Go、真实 MySQL Repository/migration/并发事务、race、vet 和模块完整性测试。
+
+### AD-001：并发事务可能造成 Sync Cursor 永久跳过消息
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 新增 `user_sync_states` 用户锁表；Inbox 事务按用户 UUID 固定顺序获取 `FOR UPDATE` 行锁，再分配全局自增 `sync_seq`。重复投影修复也进入同一事务。
+- **验证：** 使用 MySQL 8.4 双连接测试暂停第一条未提交事务，证明第二条同用户事务被阻塞，释放后 Inbox 游标顺序与提交顺序一致；同时通过迁移、回滚、MySQL SQL 契约和定向 race 测试。
+
+### AD-002：旧群消息事件与热群 Sync Fanout 标志存在歧义
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 将 `sync_fanout` 改为三态字段；旧事件缺失时默认执行普通 fanout，显式 `false` 继续表示热群跳过 Inbox。
+- **验证：** 覆盖旧事件缺失、显式启用和显式关闭的 Kafka JSON 契约测试，并通过完整测试与定向 race 测试。
+
+### AD-003：幂等冲突可能使用新事件收件人修复旧消息 Inbox
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 修复 Outbox/Inbox 前校验发送者、目标类型、目标 UUID 和会话键；冲突时返回明确错误，并基于已有消息重新计算可信收件人。
+- **验证：** 覆盖同一 `client_message_id` 改投其他目标的隔离测试，并通过完整测试与定向 race 测试。

@@ -13,33 +13,25 @@ const (
 )
 
 type Group struct {
-	ID             uint      `gorm:"primaryKey" json:"id"`
-	UUID           string    `gorm:"size:24;uniqueIndex;not null" json:"uuid"`
-	Name           string    `gorm:"size:50;not null" json:"name"`
-	Notice         string    `gorm:"size:500;not null;default:''" json:"notice"`
-	Avatar         string    `gorm:"size:255;not null;default:''" json:"avatar"`
-	AvatarFileUUID string    `gorm:"column:avatar_file_uuid;size:24;index" json:"avatar_file_uuid,omitempty"`
-	OwnerUUID      string    `gorm:"column:owner_uuid;size:24;index;not null" json:"owner_uuid"`
-	MemberCount    int       `gorm:"column:member_count;not null;default:1" json:"member_count"`
-	Status         int8      `gorm:"not null;default:0;index" json:"status"`
+	ID             uint      `json:"id"`
+	UUID           string    `json:"uuid"`
+	Name           string    `json:"name"`
+	Notice         string    `json:"notice"`
+	Avatar         string    `json:"avatar"`
+	AvatarFileUUID string    `json:"avatar_file_uuid,omitempty"`
+	OwnerUUID      string    `json:"owner_uuid"`
+	MemberCount    int       `json:"member_count"`
+	Status         int8      `json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-func (Group) TableName() string {
-	return "groups"
-}
-
 type GroupMember struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	GroupUUID string    `gorm:"column:group_uuid;size:24;not null;uniqueIndex:idx_group_user,priority:1;index;index:idx_user_group,priority:2" json:"group_uuid"`
-	UserUUID  string    `gorm:"column:user_uuid;size:24;not null;uniqueIndex:idx_group_user,priority:2;index;index:idx_user_group,priority:1" json:"user_uuid"`
-	Role      int8      `gorm:"not null" json:"role"`
-	JoinedAt  time.Time `gorm:"column:joined_at;not null" json:"joined_at"`
+	ID        uint      `json:"id"`
+	GroupUUID string    `json:"group_uuid"`
+	UserUUID  string    `json:"user_uuid"`
+	Role      int8      `json:"role"`
+	JoinedAt  time.Time `json:"joined_at"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-func (GroupMember) TableName() string {
-	return "group_members"
 }

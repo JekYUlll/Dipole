@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dipole.sync.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1";
+
+import "dipole/common/v1/context.proto";
+import "dipole/message/v1/message.proto";
+
+message ListSyncMessagesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  uint64 after_seq = 2;
+  int32 page_size = 3;
+}
+
+message SyncMessage {
+  uint64 sync_seq = 1;
+  string conversation_key = 2;
+  dipole.message.v1.Message message = 3;
+}
+
+message ListSyncMessagesResponse {
+  repeated SyncMessage items = 1;
+  uint64 next_seq = 2;
+  bool has_more = 3;
+}
+
+service SyncQueryService {
+  rpc ListSyncMessages(ListSyncMessagesRequest) returns (ListSyncMessagesResponse);
+}

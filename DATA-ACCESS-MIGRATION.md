@@ -13,10 +13,10 @@
 
 ## 2. 当前基线
 
-- GORM 相关代码覆盖 Store、11 个 Repository、migration、缓存适配和测试，共约 20 个 Go 文件。
-- `internal/store/migrate.go` 在服务启动时对 12 个模型执行 `AutoMigrate`。
-- Repository 包含事务、行锁、Upsert、分页、预加载和 Redis cache invalidation 等语义。
-- Sync 并发安全依赖 MySQL `FOR UPDATE`，迁移时必须保留锁顺序和事务边界。
+- 所有生产 Repository 已使用 `database/sql + sqlc`，schema 由版本化 migration 管理。
+- Domain model 只保留 API JSON tags，数据库 nullable 与字段映射集中在 mapper。
+- Message、Sync Inbox 与 Outbox Producer 共用 sqlc 事务，按用户排序获取 `FOR UPDATE` 锁。
+- Redis/Bloom cache policy 位于 Composition Root 装饰器，数据库 adapters 只负责持久化。
 
 ## 3. 目标目录
 
@@ -43,17 +43,40 @@ internal/data/mysql/
 
 ### D1：冻结 schema 与替换 AutoMigrate
 
-- 从当前 MySQL 结构生成基线 migration，并在空库和现有库上验证。
-- 引入独立 migration runner，部署先执行 migration，再启动应用。
-- CI 校验 migration 顺序、重复执行、回滚和 schema drift。
-- 保留 `AutoMigrate` 开关作为一个发布窗口内的紧急回退，默认关闭后再删除。
+- [x] 从当前 MySQL 结构生成基线 migration，并在空库和现有库上验证。
+- [x] 引入独立 migration runner，部署先执行 migration，再启动应用。
+- [x] 校验 migration 顺序、重复执行、回滚和与当前 GORM schema 的 drift。
+- [x] 完成兼容窗口后删除 `AutoMigrate` 开关与运行时 schema mutation。
+
+当前操作顺序：
+
+```bash
+go run ./cmd/migrate -direction up
+go run ./cmd/server
+```
+
+应用默认只读校验 `schema_migrations` 版本，不在启动阶段修改 schema。baseline down 会删除全部业务表，仅允许在一次性测试库中显式使用 `-allow-destructive`。
 
 ### D2：建立 sqlc 基础设施
 
-- 固定 sqlc 配置、生成命令和生成代码检查策略。
-- 建立 `DBTX`、事务 helper、错误映射、观测 hook 和测试数据库 fixture。
-- 为同一 Application Port 建立 GORM 与 sqlc contract test。
-- CI 执行 `sqlc generate` 后检查工作区无差异，防止生成代码过期。
+- [x] 固定 sqlc `v1.31.1` 配置、生成命令和生成代码检查策略。
+- [x] 建立 `DBTX`、事务 helper、错误映射和真实 MySQL 测试 fixture。
+- [x] 迁移期以 GORM/sqlc 共享契约验证行为，退役后保留 sqlc 功能契约。
+- [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
+
+首批 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新；Conversation adapter 使用显式赋值顺序保证消息幂等与未读计算；Outbox Relay adapter 在同一事务内执行 `FOR UPDATE SKIP LOCKED` 领取和租约写入。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
+
+Composition Root 现在只接受 `*sql.DB` 并创建 sqlc adapters；迁移期的 `data.mysql_adapter` 开关已删除。
+
+Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store。
+
+开发命令：
+
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+scripts/sqlc.sh generate
+scripts/check-sqlc.sh
+```
 
 ### D3：按风险逐仓储迁移
 
@@ -68,22 +91,23 @@ internal/data/mysql/
 
 ### D4：移除 GORM
 
-- 全部生产路径切到 sqlc 后运行一段兼容窗口。
-- 删除 GORM adapter、model tag、SQLite 方言测试和 `AutoMigrate`。
-- 移除 `gorm.io/*` 依赖，文档和脚本只保留 SQL migration 流程。
-- 保存最终 schema diff、性能对比和回滚演练证据。
+- [x] 默认适配器切换为 sqlc，生产连接池、migration 与 Bloom 使用共享 `database/sql`。
+- [x] 全部生产路径切到 sqlc 并完成兼容窗口验证。
+- [x] 删除 GORM adapter、model tag、SQLite 方言测试和 `AutoMigrate`。
+- [x] 移除 `gorm.io/*` 依赖，文档和脚本只保留 SQL migration 流程。
+- [x] 保留最终 sqlc 功能契约、migration 回滚和并发事务证据。
 
 ## 5. 测试门禁
 
 - Query unit：参数、nullable、排序、分页和错误映射。
-- Repository contract：GORM/sqlc 在同一 fixture 上行为一致。
+- Repository contract：sqlc adapters 在隔离 MySQL fixture 上覆盖完整 Application Port 行为。
 - Integration：真实 MySQL 覆盖事务、死锁重试、`FOR UPDATE`、Upsert 和唯一约束。
 - Migration：空库升级、现有库升级、重复执行、单版本回滚和 drift 检查。
 - Performance：关键消息写入、Inbox fanout 和历史查询对比基线。
 
 ## 6. 回滚
 
-`data.mysql_adapter=gorm|sqlc` 只在迁移窗口存在。schema 变更遵循 expand/contract：先添加兼容结构，双版本代码稳定后再删除旧结构。Repository 切回 GORM 时不得要求数据回滚。
+GORM 兼容回滚窗口已经关闭。后续 schema 变化继续遵循 expand/contract；应用回滚必须使用仍兼容当前 schema 的已发布版本，并记录 migration checkpoint，禁止依赖运行时 schema mutation。
 
 ## 7. 完成标准
 

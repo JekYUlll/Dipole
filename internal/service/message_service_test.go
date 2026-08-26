@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -12,8 +13,8 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/alicebob/miniredis/v2"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 type stubMessageRepository struct {
@@ -39,6 +40,44 @@ type stubMessageRepository struct {
 	lastUserUUID          string
 	listAfterCallCount    int
 	listAfterDelay        time.Duration
+}
+
+type stubCoreCapability struct {
+	users              map[string]*model.User
+	ownedFiles         map[string]*model.UploadedFile
+	directMessageAllow bool
+	userLookups        []string
+	friendshipChecks   [][2]string
+}
+
+func (c *stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	file := c.ownedFiles[fileUUID]
+	if file == nil || file.UploaderUUID != uploaderUUID {
+		return nil, nil
+	}
+	return file, nil
+}
+
+func (c *stubCoreCapability) GetUserByUUID(userUUID string) (*model.User, error) {
+	c.userLookups = append(c.userLookups, userUUID)
+	return c.users[userUUID], nil
+}
+
+func (c *stubCoreCapability) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
+	c.friendshipChecks = append(c.friendshipChecks, [2]string{userUUID, friendUUID})
+	return c.directMessageAllow, nil
+}
+
+func (c *stubCoreCapability) GetGroupByUUID(string) (*model.Group, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error) {
+	return nil, nil
 }
 
 func (r *stubMessageRepository) Create(message *model.Message) error {
@@ -359,6 +398,35 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 	}
 	if message.MessageType != model.MessageTypeText {
 		t.Fatalf("expected text message type, got %d", message.MessageType)
+	}
+}
+
+func TestMessageServiceWithCoreListsDirectMessagesThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{{UUID: "M100"}},
+	}
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(repo, core, nil, nil, nil)
+
+	messages, err := service.ListDirectMessages("U100", " U200 ", 0, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 || messages[0].UUID != "M100" {
+		t.Fatalf("unexpected messages: %#v", messages)
+	}
+	if len(core.userLookups) != 1 || core.userLookups[0] != "U200" {
+		t.Fatalf("unexpected user lookups: %#v", core.userLookups)
+	}
+	if len(core.friendshipChecks) != 1 || core.friendshipChecks[0] != [2]string{"U100", "U200"} {
+		t.Fatalf("unexpected friendship checks: %#v", core.friendshipChecks)
 	}
 }
 
@@ -975,6 +1043,34 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceWithCoreLoadsOwnedFileThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		ownedFiles: map[string]*model.UploadedFile{
+			"F100": {UUID: "F100", UploaderUUID: "U100", FileName: "remote.txt", FileSize: 64, ContentType: "text/plain", URL: "https://files.test/remote.txt"},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(&stubMessageRepository{}, core, nil, nil, nil)
+
+	message, err := service.SendDirectFileMessage("U100", "U200", "F100", "cmid-core-file")
+	if err != nil {
+		t.Fatalf("send file through core capability: %v", err)
+	}
+	if message == nil || message.FileID != "F100" || message.FileName != "remote.txt" {
+		t.Fatalf("unexpected file message: %+v", message)
+	}
+
+	_, err = service.SendDirectFileMessage("U999", "U200", "F100", "cmid-unowned-file")
+	if !errors.Is(err, ErrMessageFileUnavailable) {
+		t.Fatalf("expected unavailable unowned file, got %v", err)
+	}
+}
+
 func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
 	t.Parallel()
 
@@ -1040,7 +1136,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		t.Fatalf("expected direct routing key %s, got %+v", model.DirectConversationKey("U100", "U200"), publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected direct message sync fanout")
 	}
 }
@@ -1077,7 +1173,7 @@ func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *t
 		t.Fatalf("expected group routing key G100, got %+v", publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected regular group sync fanout")
 	}
 }
@@ -1104,7 +1200,7 @@ func TestMessageServiceSkipsSyncFanoutForHotGroup(t *testing.T) {
 		t.Fatalf("send hot group message: %v", err)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if payload.SyncFanout {
+	if payload.SyncFanout == nil || *payload.SyncFanout {
 		t.Fatal("expected hot group to keep notify-and-pull without inbox fanout")
 	}
 }
@@ -1124,7 +1220,7 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1140,6 +1236,13 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if repo.outboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
+	}
+	var headers map[string]string
+	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
+		t.Fatalf("decode outbox headers: %v", err)
+	}
+	if headers["version"] != "v1" || headers["schema_version"] != "v1" {
+		t.Fatalf("expected versioned outbox headers, got %+v", headers)
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)
@@ -1166,6 +1269,27 @@ func TestMessageServicePersistRequestedLegacyDirectEventStillWritesSyncInbox(t *
 	}
 }
 
+func TestMessageServicePersistRequestedLegacyGroupEventDefaultsToSyncFanout(t *testing.T) {
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	if _, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M-legacy-group",
+		ConversationKey: model.GroupConversationKey("G100"),
+		SenderUUID:      "U100",
+		TargetUUID:      "G100",
+		TargetType:      model.MessageTargetGroup,
+		MessageType:     model.MessageTypeText,
+		Content:         "legacy group",
+		RecipientUUIDs:  []string{"U100", "U200"},
+	}); err != nil {
+		t.Fatalf("persist legacy group event: %v", err)
+	}
+	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
+		t.Fatalf("expected legacy group event to default to sync fanout, got %+v", repo.syncRecipients)
+	}
+}
+
 func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testing.T) {
 	t.Parallel()
 
@@ -1179,7 +1303,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1195,7 +1319,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1231,7 +1355,7 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1256,5 +1380,72 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 	}
 	if len(repo.ensuredOutboxEvents) != 1 {
 		t.Fatalf("expected ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
+	}
+}
+
+func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID:     map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	_, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no duplicate repair for conflicting target, outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
+	}
+}
+
+func TestMessageServicePersistLocalMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+	}
+	repo := &stubMessageRepository{
+		createErr:      &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID: map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)
+	requested := &model.Message{
+		UUID:            "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+	}
+
+	_, err := service.persistLocalMessage(requested, "persist direct message", []string{"U100", "U300"})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no local inbox repair for conflicting target, got %+v", repo.ensuredSyncRecipients)
 	}
 }

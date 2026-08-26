@@ -1,10 +1,10 @@
 package bloom
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 
-	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
@@ -22,9 +22,9 @@ type Registry struct {
 }
 
 var (
-	globalMu     sync.RWMutex
-	global       *Registry
-	distributed  bool // 分布式模式下禁用本地 bloom filter 拦截，始终放行到 DB
+	globalMu    sync.RWMutex
+	global      *Registry
+	distributed bool // 分布式模式下禁用本地 bloom filter 拦截，始终放行到 DB
 )
 
 // SetDistributed 在多节点部署时调用，禁用 bloom filter 的存在性拦截。
@@ -37,22 +37,45 @@ func SetDistributed(enabled bool) {
 }
 
 func Init() error {
-	if store.DB == nil {
+	return InitWithDB(store.SQLDB)
+}
+
+func InitWithDB(db *sql.DB) error {
+	if db == nil {
 		return fmt.Errorf("mysql not initialized")
 	}
 
-	var userUUIDs []string
-	if err := store.DB.Model(&model.User{}).Pluck("uuid", &userUUIDs).Error; err != nil {
+	userUUIDs, err := listUUIDs(db, "SELECT uuid FROM users")
+	if err != nil {
 		return fmt.Errorf("load user uuids for bloom filter: %w", err)
 	}
-
-	var groupUUIDs []string
-	if err := store.DB.Model(&model.Group{}).Pluck("uuid", &groupUUIDs).Error; err != nil {
+	groupUUIDs, err := listUUIDs(db, "SELECT uuid FROM `groups`")
+	if err != nil {
 		return fmt.Errorf("load group uuids for bloom filter: %w", err)
 	}
 
 	Load(userUUIDs, groupUUIDs)
 	return nil
+}
+
+func listUUIDs(db *sql.DB, query string) ([]string, error) {
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	uuids := make([]string, 0)
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		uuids = append(uuids, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return uuids, nil
 }
 
 func Load(userUUIDs, groupUUIDs []string) {
