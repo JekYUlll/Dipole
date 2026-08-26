@@ -84,6 +84,13 @@ func TestRemoteClientImplementsSyncApplication(t *testing.T) {
 	}
 }
 
+func TestNewClientForServiceRequiresCallerIdentity(t *testing.T) {
+	rpc := newBufconnRPCClient(t, stubSyncApplication{t: t})
+	if _, err := NewClientForService(rpc, "  "); err == nil {
+		t.Fatal("expected empty caller service to fail")
+	}
+}
+
 func TestServerRejectsMissingPrincipal(t *testing.T) {
 	rpc := newBufconnRPCClient(t, stubSyncApplication{t: t})
 	_, err := rpc.ListSyncMessages(context.Background(), &syncv1.ListSyncMessagesRequest{})

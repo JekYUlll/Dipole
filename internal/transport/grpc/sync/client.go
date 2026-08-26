@@ -3,6 +3,7 @@ package syncgrpc
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -16,23 +17,32 @@ import (
 const queryTimeout = 2 * time.Second
 
 type Client struct {
-	rpc syncv1.SyncQueryServiceClient
+	rpc     syncv1.SyncQueryServiceClient
+	service string
 }
 
 var _ application.SyncApplication = (*Client)(nil)
 
 func NewClient(rpc syncv1.SyncQueryServiceClient) (*Client, error) {
+	return NewClientForService(rpc, "dipole-gateway")
+}
+
+func NewClientForService(rpc syncv1.SyncQueryServiceClient, service string) (*Client, error) {
 	if rpc == nil {
 		return nil, errors.New("sync query rpc client is required")
 	}
-	return &Client{rpc: rpc}, nil
+	service = strings.TrimSpace(service)
+	if service == "" {
+		return nil, errors.New("sync query caller service is required")
+	}
+	return &Client{rpc: rpc, service: service}, nil
 }
 
 func (c *Client) List(userUUID string, afterSeq uint64, limit int) (*application.SyncPage, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListSyncMessages(ctx, &syncv1.ListSyncMessagesRequest{
-		Context:  grpccommon.RequestContext(userUUID, "dipole-gateway"),
+		Context:  grpccommon.RequestContext(userUUID, c.service),
 		AfterSeq: afterSeq,
 		PageSize: requestPageSize(limit),
 	})
@@ -60,7 +70,7 @@ func (c *Client) List(userUUID string, afterSeq uint64, limit int) (*application
 func (c *Client) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
-	response, err := c.rpc.GetDeviceCheckpoint(ctx, &syncv1.GetDeviceCheckpointRequest{Context: syncRequestContext(userUUID, deviceID)})
+	response, err := c.rpc.GetDeviceCheckpoint(ctx, &syncv1.GetDeviceCheckpointRequest{Context: syncRequestContext(userUUID, deviceID, c.service)})
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func (c *Client) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.AdvanceDeviceCheckpoint(ctx, &syncv1.AdvanceDeviceCheckpointRequest{
-		Context: syncRequestContext(userUUID, deviceID), SyncSeq: syncSeq,
+		Context: syncRequestContext(userUUID, deviceID, c.service), SyncSeq: syncSeq,
 	})
 	if err != nil {
 		return nil, err
@@ -82,7 +92,7 @@ func (c *Client) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*
 func (c *Client) ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
-	response, err := c.rpc.ListGroupCheckpoints(ctx, &syncv1.ListGroupCheckpointsRequest{Context: syncRequestContext(userUUID, deviceID), GroupIds: groupUUIDs})
+	response, err := c.rpc.ListGroupCheckpoints(ctx, &syncv1.ListGroupCheckpointsRequest{Context: syncRequestContext(userUUID, deviceID, c.service), GroupIds: groupUUIDs})
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +109,7 @@ func (c *Client) AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, me
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.AdvanceGroupCheckpoint(ctx, &syncv1.AdvanceGroupCheckpointRequest{
-		Context: syncRequestContext(userUUID, deviceID), GroupId: groupUUID, MessageSequence: messageSeq,
+		Context: syncRequestContext(userUUID, deviceID, c.service), GroupId: groupUUID, MessageSequence: messageSeq,
 	})
 	if err != nil {
 		return nil, err
@@ -114,8 +124,8 @@ func groupCheckpointFromProto(checkpoint *syncv1.GroupCheckpoint) *model.GroupSy
 	return &model.GroupSyncCheckpoint{GroupUUID: checkpoint.GetGroupId(), LatestMessageSeq: checkpoint.GetLatestMessageSequence(), LatestMessageUUID: checkpoint.GetLatestMessageId(), PulledMessageSeq: checkpoint.GetPulledMessageSequence()}
 }
 
-func syncRequestContext(userUUID, deviceID string) *commonv1.RequestContext {
-	requestContext := grpccommon.RequestContext(userUUID, "dipole-gateway")
+func syncRequestContext(userUUID, deviceID, callerService string) *commonv1.RequestContext {
+	requestContext := grpccommon.RequestContext(userUUID, callerService)
 	requestContext.DeviceId = deviceID
 	return requestContext
 }

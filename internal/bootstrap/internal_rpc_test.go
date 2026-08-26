@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
@@ -30,6 +31,31 @@ func (rpcCoreStub) ListSearchConversationKeys(userUUID string) ([]string, error)
 }
 
 type rpcSearchStub struct{}
+
+type rpcSyncStub struct{}
+
+func (rpcSyncStub) List(userUUID string, afterSeq uint64, limit int) (*application.SyncPage, error) {
+	return &application.SyncPage{
+		Items:   []*model.SyncMessage{{SyncSeq: afterSeq + 1, ConversationKey: "direct:" + userUUID + ":U2"}},
+		NextSeq: afterSeq + 1,
+	}, nil
+}
+
+func (rpcSyncStub) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: 9}, nil
+}
+
+func (rpcSyncStub) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}, nil
+}
+
+func (rpcSyncStub) ListGroupCheckpoints(string, string, []string) ([]*model.GroupSyncCheckpoint, error) {
+	return []*model.GroupSyncCheckpoint{{GroupUUID: "G1", LatestMessageSeq: 12}}, nil
+}
+
+func (rpcSyncStub) AdvanceGroupCheckpoint(_, _, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error) {
+	return &model.GroupSyncCheckpoint{GroupUUID: groupUUID, PulledMessageSeq: messageSeq}, nil
+}
 
 func (rpcSearchStub) Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error) {
 	return []*model.MessageSearchDocument{{
@@ -169,6 +195,59 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 	documents, err := search.Search("U1", "migration", 10)
 	if err != nil || len(documents) != 1 || documents[0].Content != "migration" {
 		t.Fatalf("Search rpc result: documents=%+v err=%v", documents, err)
+	}
+}
+
+func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
+	cfg := config.InternalRPC{
+		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
+		SyncListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
+	}
+	coreServer, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	if err != nil {
+		t.Fatalf("start Core rpc server: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		coreServer.Close(ctx)
+	})
+	cfg.CoreTarget = coreServer.Address()
+	core, coreConnection, err := DialSyncCoreCapability(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("dial Core as Sync service: %v", err)
+	}
+	t.Cleanup(func() { _ = coreConnection.Close() })
+	member, err := core.GetGroupMember("G1", "U1")
+	if err != nil || member == nil || member.GroupUUID != "G1" {
+		t.Fatalf("Sync Core membership scope: member=%+v err=%v", member, err)
+	}
+	if _, err := core.GetUserByUUID("U1"); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected Sync identity to be denied unrelated Core capability, got %v", err)
+	}
+
+	syncServer, err := NewSyncRPCServer(cfg, rpcSyncStub{})
+	if err != nil {
+		t.Fatalf("start Sync rpc server: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		syncServer.Close(ctx)
+	})
+	cfg.SyncTarget = syncServer.Address()
+	syncApplication, syncConnection, err := DialCoreSyncApplication(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("dial Sync application as Core: %v", err)
+	}
+	t.Cleanup(func() { _ = syncConnection.Close() })
+	page, err := syncApplication.List("U1", 7, 20)
+	if err != nil || page == nil || page.NextSeq != 8 || len(page.Items) != 1 {
+		t.Fatalf("Sync rpc result: page=%+v err=%v", page, err)
+	}
+	checkpoint, err := syncApplication.GetCheckpoint("U1", "web-1")
+	if err != nil || checkpoint == nil || checkpoint.SyncSeq != 9 || checkpoint.DeviceID != "web-1" {
+		t.Fatalf("Sync checkpoint result: checkpoint=%+v err=%v", checkpoint, err)
 	}
 }
 

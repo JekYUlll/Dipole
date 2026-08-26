@@ -32,6 +32,21 @@ type MessageProcessRepositories struct {
 	ConversationSequence *sqlcRepository.ConversationSequenceRepository
 }
 
+type SyncProcessRepositories struct {
+	Sync application.SyncStore
+}
+
+func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
+	if db == nil {
+		return nil, fmt.Errorf("sync repository composition requires database/sql connection")
+	}
+	syncStore, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sync repository: %w", err)
+	}
+	return &SyncProcessRepositories{Sync: syncStore}, nil
+}
+
 func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("message repository composition requires database/sql connection")

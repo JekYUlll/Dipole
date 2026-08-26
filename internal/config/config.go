@@ -133,6 +133,8 @@ type InternalRPC struct {
 	MessageTarget          string `mapstructure:"message_target"`
 	SearchListenAddress    string `mapstructure:"search_listen_address"`
 	SearchTarget           string `mapstructure:"search_target"`
+	SyncListenAddress      string `mapstructure:"sync_listen_address"`
+	SyncTarget             string `mapstructure:"sync_target"`
 	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
 	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
 	TLSEnabled             bool   `mapstructure:"tls_enabled"`
@@ -297,6 +299,8 @@ func Load() error {
 		v.SetDefault("internal_rpc.message_target", "127.0.0.1:9092")
 		v.SetDefault("internal_rpc.search_listen_address", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
+		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)

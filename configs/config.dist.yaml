@@ -120,6 +120,8 @@ internal_rpc:
   message_target: 127.0.0.1:9092
   search_listen_address: 127.0.0.1:9093
   search_target: 127.0.0.1:9093
+  sync_listen_address: 127.0.0.1:9094
+  sync_target: 127.0.0.1:9094
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
   # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.

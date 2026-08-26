@@ -75,3 +75,7 @@ func NewMessageApplication(messages applicationPort.MessageStore, core applicati
 		dependencies.HotGroups,
 	)}
 }
+
+func NewSyncApplication(syncStore applicationPort.SyncStore, core applicationPort.CoreCapability) *LocalSyncApplication {
+	return &LocalSyncApplication{SyncService: service.NewSyncService(syncStore, core)}
+}
