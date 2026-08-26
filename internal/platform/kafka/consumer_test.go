@@ -87,3 +87,60 @@ func TestDeadLetterHeadersPreserveSchemaDiagnostics(t *testing.T) {
 		t.Fatalf("missing dead-letter diagnostics: %+v", headers)
 	}
 }
+
+func TestConsumerReaderConfigUsesExplicitRebalancePolicy(t *testing.T) {
+	t.Parallel()
+
+	consumer := &Consumer{
+		clientID:          "dipole-message",
+		groupID:           "dipole-message-consumer",
+		brokers:           []string{"kafka-1:9092", "kafka-2:9092"},
+		dialTimeout:       5 * time.Second,
+		groupBalancer:     kafkago.RoundRobinGroupBalancer{},
+		heartbeatInterval: 3 * time.Second,
+		sessionTimeout:    30 * time.Second,
+		rebalanceTimeout:  45 * time.Second,
+	}
+	config := consumer.readerConfig("dipole.message.direct.created")
+	if config.GroupID != consumer.groupID || len(config.GroupBalancers) != 1 || config.GroupBalancers[0].ProtocolName() != "roundrobin" {
+		t.Fatalf("unexpected group configuration: %+v", config)
+	}
+	if config.HeartbeatInterval != 3*time.Second || config.SessionTimeout != 30*time.Second || config.RebalanceTimeout != 45*time.Second {
+		t.Fatalf("unexpected rebalance timing: %+v", config)
+	}
+	if config.Dialer == nil || config.Dialer.ClientID != "dipole-message" || config.Dialer.Timeout != 5*time.Second {
+		t.Fatalf("unexpected consumer dialer: %+v", config.Dialer)
+	}
+}
+
+func TestNormalizeConsumerGroupPolicy(t *testing.T) {
+	t.Parallel()
+
+	balancer, heartbeat, session, rebalance, err := normalizeConsumerGroupPolicy("roundrobin", 3, 30, 45)
+	if err != nil || balancer.ProtocolName() != "roundrobin" || heartbeat != 3*time.Second || session != 30*time.Second || rebalance != 45*time.Second {
+		t.Fatalf("unexpected normalized policy: %T %v %v %v %v", balancer, heartbeat, session, rebalance, err)
+	}
+	if _, _, _, _, err := normalizeConsumerGroupPolicy("cooperative-sticky", 3, 30, 30); err == nil {
+		t.Fatal("expected unsupported balancer to be rejected")
+	}
+	if _, _, _, _, err := normalizeConsumerGroupPolicy("range", 30, 10, 30); err == nil {
+		t.Fatal("expected heartbeat >= session timeout to be rejected")
+	}
+}
+
+func TestConsumerCollectStatsIncludesCumulativeOutcomes(t *testing.T) {
+	t.Parallel()
+
+	consumer := &Consumer{clientID: "core", groupID: "core-consumer", readers: make(map[string]*kafkago.Reader)}
+	consumer.fetched.Add(7)
+	consumer.handled.Add(6)
+	consumer.committed.Add(5)
+	consumer.commitErrors.Add(1)
+	consumer.retryPublished.Add(2)
+	consumer.deadPublished.Add(1)
+
+	stats := consumer.CollectStats()
+	if stats.ClientID != "core" || stats.GroupID != "core-consumer" || stats.Fetched != 7 || stats.Handled != 6 || stats.Committed != 5 || stats.CommitErrors != 1 || stats.RetryPublished != 2 || stats.DeadPublished != 1 {
+		t.Fatalf("unexpected consumer stats: %+v", stats)
+	}
+}
