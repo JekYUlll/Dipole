@@ -27,6 +27,7 @@ var coreOwnedTables = []string{
 	"uploaded_files",
 	"conversations",
 	"device_sync_checkpoints",
+	"message_search_documents",
 	"ai_call_logs",
 }
 

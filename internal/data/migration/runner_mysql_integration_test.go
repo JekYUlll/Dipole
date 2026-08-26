@@ -33,33 +33,39 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 3)
+		assertCurrentVersion(t, runner, 4)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 15)
+		assertTableCount(t, db, 16)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 3)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (4, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 4)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (5, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 4"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 5"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
 
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back baseline: %v", err)
 		}
-		assertCurrentVersion(t, runner, 2)
+		assertCurrentVersion(t, runner, 3)
 		if err := runner.ValidateCurrent(ctx); err == nil {
 			t.Fatal("expected rolled-back database validation to fail")
 		}
+		assertTableCount(t, db, 15)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back baseline: %v", err)
+		}
+		assertCurrentVersion(t, runner, 2)
 		assertTableCount(t, db, 14)
 
 		if err := runner.Down(ctx, 1); err != nil {
