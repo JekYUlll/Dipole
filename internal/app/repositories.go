@@ -34,7 +34,7 @@ type Repositories struct {
 	Admin         application.AdminOverviewStore
 	Sync          *repository.SyncRepository
 	AICallLogs    application.AICallLogStore
-	Outbox        *repository.OutboxRepository
+	Outbox        application.OutboxRelayStore
 }
 
 func NewRepositories() *Repositories {
@@ -104,6 +104,11 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
 		}
 		repos.Conversations = conversationAdapter
+		outboxAdapter, err := sqlcRepository.NewOutboxRepository(mysqlStore)
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc outbox relay repository: %w", err)
+		}
+		repos.Outbox = outboxAdapter
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}

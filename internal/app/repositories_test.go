@@ -75,6 +75,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		if _, ok := repos.Conversations.(*gormRepository.ConversationRepository); !ok {
 			t.Fatalf("expected GORM conversation backend, got %T", repos.Conversations)
 		}
+		if _, ok := repos.Outbox.(*gormRepository.OutboxRepository); !ok {
+			t.Fatalf("expected GORM outbox relay backend, got %T", repos.Outbox)
+		}
 	})
 
 	t.Run("sqlc", func(t *testing.T) {
@@ -117,6 +120,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		}
 		if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
 			t.Fatalf("expected sqlc conversation backend, got %T", repos.Conversations)
+		}
+		if _, ok := repos.Outbox.(*sqlcRepository.OutboxRepository); !ok {
+			t.Fatalf("expected sqlc outbox relay backend, got %T", repos.Outbox)
 		}
 	})
 

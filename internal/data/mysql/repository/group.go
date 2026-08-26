@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/mapper"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -16,16 +15,11 @@ import (
 
 var _ application.GroupStore = (*GroupRepository)(nil)
 
-type groupTransactionStore interface {
-	Queries() *generated.Queries
-	WithinTx(context.Context, *sql.TxOptions, func(*generated.Queries) error) error
-}
-
 type GroupRepository struct {
-	store groupTransactionStore
+	store transactionStore
 }
 
-func NewGroupRepository(store groupTransactionStore) (*GroupRepository, error) {
+func NewGroupRepository(store transactionStore) (*GroupRepository, error) {
 	if store == nil {
 		return nil, errors.New("group transaction store is required")
 	}
@@ -219,5 +213,3 @@ func validSQLCGroupMembers(members []*model.GroupMember) []*model.GroupMember {
 	}
 	return valid
 }
-
-var _ groupTransactionStore = (*mysqlData.Store)(nil)
