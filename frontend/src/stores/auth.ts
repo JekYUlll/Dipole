@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PrivateUser } from '@/types'
-import api from '@/api'
+import api, { setUnauthorizedHandler } from '@/api'
 import { useChatStore } from '@/stores/chat'
+import { BrowserSessionTerminator } from '@/session/sessionTermination'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('dipole.web.token') || '')
@@ -18,12 +19,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = async (telephone: string, password: string) => {
     const data = await api.post('/api/v1/auth/login', { telephone, password }) as { token: string; user: PrivateUser }
-    _setSession(data.token, data.user)
+    await _setSession(data.token, data.user)
   }
 
   const register = async (nickname: string, telephone: string, password: string, email?: string) => {
     const data = await api.post('/api/v1/auth/register', { nickname, telephone, password, email }) as { token: string; user: PrivateUser }
-    _setSession(data.token, data.user)
+    await _setSession(data.token, data.user)
   }
 
   const fetchMe = async () => {
@@ -34,11 +35,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     try { await api.post('/api/v1/auth/logout') } catch { /* ignore */ }
-    try { await useChatStore().clearLocalMessages(currentUser.value?.uuid || '') } catch { /* best effort */ }
-    _clearSession()
+    await terminateSession(false)
   }
 
-  const _setSession = (t: string, user: PrivateUser) => {
+  const _setSession = async (t: string, user: PrivateUser) => {
+    await terminator.waitForCleanup()
+    const previousUserUUID = currentUser.value?.uuid || _storedUserUUID()
+    if (previousUserUUID && previousUserUUID !== user.uuid) {
+      await terminator.terminate(previousUserUUID, false)
+    }
     token.value = t
     currentUser.value = user
     localStorage.setItem('dipole.web.token', t)
@@ -46,14 +51,32 @@ export const useAuthStore = defineStore('auth', () => {
     useChatStore().myUUID = user.uuid
   }
 
-  const _clearSession = () => {
+  const _clearRuntime = () => {
     token.value = ''
     currentUser.value = null
-    localStorage.removeItem('dipole.web.token')
-    localStorage.removeItem('dipole.web.user')
-    localStorage.removeItem('dipole.web.lastOfflineID')
     useChatStore().myUUID = ''
   }
 
-  return { token, currentUser, login, register, fetchMe, logout }
+  const _storedUserUUID = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('dipole.web.user') || '') as { uuid?: unknown }
+      return typeof user.uuid === 'string' ? user.uuid : ''
+    } catch {
+      return ''
+    }
+  }
+
+  const terminator = new BrowserSessionTerminator(
+    localStorage,
+    _clearRuntime,
+    userUUID => useChatStore().clearLocalMessages(userUUID),
+    () => {
+      if (!window.location.pathname.endsWith('/login')) window.location.replace('/app/login')
+    },
+  )
+
+  const terminateSession = (redirectToLogin = true) => terminator.terminate(currentUser.value?.uuid || '', redirectToLogin)
+  setUnauthorizedHandler(() => terminateSession(true))
+
+  return { token, currentUser, login, register, fetchMe, logout, terminateSession }
 })

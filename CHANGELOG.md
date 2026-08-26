@@ -125,6 +125,8 @@
 
 ### 变更
 
+- Web 会话终止统一覆盖显式退出、HTTP 401、WS kick 和账号切换：先撤销本地凭据，再等待在途 Sync 收敛并清理该用户 IndexedDB；并发终止复用 singleflight，快速重登等待旧清理完成。
+
 - Web 同步以 `message_uuid + message_seq + sync_seq` 作为本地身份、排序和恢复契约；MySQL 自增 `id` 继续只服务旧 Offline 兼容路径。
 - A6 将 Durable Inbox 新增写入责任切换到 Sync Projector；默认 `atomic` 仍是即时回滚路径，切换需同时启用 Sync Projector、最小权限账号和启动权限验收。
 - `dipole-sync` 的新 Kafka consumer group 从 earliest retained offset 建立，已有 group 继续使用已提交 offset；Outbox Replay 与历史 baseline 负责覆盖 Kafka retention 之外的数据。
@@ -215,7 +217,7 @@
 
 ### 验证
 
-- 已通过 17 个 Web Sync 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开、账号隔离、游标单调性、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复和私聊语义过滤；全量 23 个前端测试通过。
+- 已通过 23 个 Web Sync/Session 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开、账号隔离、游标单调性、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复、私聊语义过滤、终止 singleflight、先撤销后清理、存储/清理失败隔离、401 接线和跨账号登录；全量 29 个前端测试通过。
 - 已通过 Web Sync `off|shadow|primary` 三种生产构建、聚合遥测 Handler 边界测试、Prometheus Collector 测试、OpenAPI 生成和全量 Go 测试。
 - 已通过 Web Sync Prometheus 七条规则静态检查与固定时序测试，覆盖窗口不足、样本不足、干净晋级、终态差异和比较器溢出。
 - 已通过 Pencil 结构与截图检查，确认 Sync 状态矩阵、desktop 及 mobile frame 无 clipping 或残留 placeholder，并导出批准预览。

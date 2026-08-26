@@ -273,7 +273,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加 `shadow` 双跑模式、持久化 UUID 基线/pending 窗口和 Prometheus 聚合遥测；首批只比较两个协议语义一致的收到私聊消息。
 - [x] 固化 24 小时 Web Sync 观测门禁：至少 100 个 match、零终态单边差异、零 overflow，并以 promtool 固定时序验证晋级和停止条件。
 - [ ] 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，再结束旧 Offline 兼容窗口。
-- [ ] 默认启用前统一显式退出、401、WS kick 与账号切换的本地清理，并建立容量水位和安全淘汰策略，解决 `AD-025`。
+- [x] 统一显式退出、HTTP 401、WS kick 与账号切换的 Session Termination；凭据先撤销，IndexedDB 清理等待在途同步收敛，快速重登等待旧清理完成。
+- [ ] 默认启用前建立 IndexedDB 容量水位、最近会话安全淘汰和 quota error 状态，完成 `AD-025` 剩余门禁。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
