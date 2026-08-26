@@ -46,6 +46,10 @@ kafka:
   consume_retry_max_attempts: 3
   consume_retry_backoff_ms: 500
 
+message:
+  # local keeps direct in-process calls; grpc exercises the versioned RPC contract over bufconn.
+  transport: local
+
 storage:
   enabled: true
   provider: minio

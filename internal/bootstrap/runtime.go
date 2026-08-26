@@ -7,11 +7,13 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
@@ -23,9 +25,10 @@ import (
 )
 
 type Runtime struct {
-	server     *server.Server
-	router     *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
-	outboxFlow *outboxRelay
+	server      *server.Server
+	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	outboxFlow  *outboxRelay
+	messageFlow *messageApplicationTransport
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -121,11 +124,24 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("bloom filter distributed mode enabled, local filter bypassed")
 	}
 
-	srv := server.NewWithRepositories(repos)
+	var messageEvents applicationPort.EventPublisher
+	if kafkaCfg.Enabled {
+		messageEvents = platformKafka.Client
+	}
+	localMessaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+		Events:    messageEvents,
+		HotGroups: platformHotGroup.NewRedisDetector(),
+		Storage:   platformStorage.Client,
+	})
+	messageFlow, err := newMessageApplicationTransport(config.MessageConfig(), localMessaging.Messages)
+	if err != nil {
+		return nil, fmt.Errorf("initialize message transport: %w", err)
+	}
+	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
-	rt := &Runtime{server: srv}
+	rt := &Runtime{server: srv, messageFlow: messageFlow}
 	var wsEventSender kafkaWSEventSender = srv.WSHub()
 	if kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
 		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
@@ -195,6 +211,9 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if r.messageFlow != nil {
+		r.messageFlow.Close()
+	}
 	if r.outboxFlow != nil {
 		r.outboxFlow.Stop()
 	}

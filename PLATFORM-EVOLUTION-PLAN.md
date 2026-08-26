@@ -141,9 +141,9 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 使用 protobuf 定义 Core Authorization 和 Sync Query 契约，并复用 `common.v1.RequestContext`。
 - [x] 明确 Message RPC 错误码、超时、幂等键、分页游标和认证上下文传递规则。
 - [x] 生成 Message gRPC server/client，并用 bufconn 验证 Local server 与 Remote client adapters。
-- [ ] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。
+- [x] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。
 - [x] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
-- [ ] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`。
+- [x] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`；M3 的 grpc 模式先走 bufconn，M4 再替换为受认证网络 channel。
 
 **验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M2 一致。
 

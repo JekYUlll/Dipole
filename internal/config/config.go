@@ -68,6 +68,10 @@ type Kafka struct {
 	ConsumeRetryBackoffMS   int      `mapstructure:"consume_retry_backoff_ms"`
 }
 
+type Message struct {
+	Transport string `mapstructure:"transport"`
+}
+
 type Storage struct {
 	Enabled                bool   `mapstructure:"enabled"`
 	Provider               string `mapstructure:"provider"`
@@ -180,6 +184,7 @@ func Load() error {
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
+		v.SetDefault("message.transport", "local")
 		v.SetDefault("storage.enabled", false)
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
@@ -259,6 +264,7 @@ func Load() error {
 			"kafka.write_timeout_seconds",
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
+			"message.transport",
 			"storage.enabled",
 			"storage.provider",
 			"storage.endpoint",
@@ -425,6 +431,12 @@ func KafkaConfig() Kafka {
 	kafkaConfig.ConsumeRetryBackoffMS = cfg.GetInt("kafka.consume_retry_backoff_ms")
 
 	return kafkaConfig
+}
+
+func MessageConfig() Message {
+	MustLoad()
+
+	return Message{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport")))}
 }
 
 func StorageConfig() Storage {

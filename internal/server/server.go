@@ -35,7 +35,15 @@ type Server struct {
 	httpServer *http.Server
 }
 
+type Dependencies struct {
+	Messages applicationPort.MessageApplication
+}
+
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
+	return NewWithDependencies(repos, Dependencies{})
+}
+
+func NewWithDependencies(repos *appComposition.Repositories, dependencies Dependencies) *Server {
 	if repos == nil {
 		panic("server repositories are required")
 	}
@@ -80,6 +88,10 @@ func NewWithRepositories(repos *appComposition.Repositories) *Server {
 		Storage:              platformStorage.Client,
 		ConversationNotifier: newConversationNotifier(wsHub),
 	})
+	messageApplication := applicationPort.MessageApplication(messaging.Messages)
+	if dependencies.Messages != nil {
+		messageApplication = dependencies.Messages
+	}
 	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messaging.Messages)
 	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		repos.Files,
@@ -96,7 +108,7 @@ func NewWithRepositories(repos *appComposition.Repositories) *Server {
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = messaging.Conversations
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messaging.Messages, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
 	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(messaging.Conversations)
@@ -104,7 +116,7 @@ func NewWithRepositories(repos *appComposition.Repositories) *Server {
 	groupHandler := httpHandler.NewGroupHandler(groupService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
-	messageHandler := httpHandler.NewMessageHandler(messaging.Messages)
+	messageHandler := httpHandler.NewMessageHandler(messageApplication)
 	syncHandler := httpHandler.NewSyncHandler(messaging.Sync)
 	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)

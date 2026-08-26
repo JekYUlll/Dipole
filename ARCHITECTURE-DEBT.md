@@ -12,13 +12,24 @@
 
 ## 待处理
 
+### AD-014：M3 grpc 模式存在重复 Local MessageService 实例
+
+- **优先级：** P2
+- **状态：** 处理中
+- **发现日期：** 2026-08-26
+- **影响范围：** Composition Root、Message transport、进程内缓存与 singleflight
+- **现状：** Runtime 为 bufconn backing service 创建一组 Local Messaging Services，Server 同时为 File、Conversation、Contact 与 Group 辅助链路创建另一组；两者共享同一 Repository、Kafka Publisher、Redis 和对象存储，不会形成第二份数据库连接或重复消息写入。
+- **风险：** MessageService 的进程内 singleflight 与未来本地缓存分散在两个实例，构造关系也会增加 M4 抽离时的理解成本。
+- **建议方向：** M4 将 Messaging Services 所有权完全提升到 Runtime/Composition Root，Server 只接收 application ports；Kafka persister、系统消息和 Gateway 用户命令按明确端口注入。
+- **处理门槛：** `cmd/message-service` 独立部署前完成。
+
 ### AD-013：内部 RPC 调用身份尚未绑定服务认证
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** Message gRPC、Gateway、Core、审计身份
-- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。当前尚未部署服务身份认证或拦截器，远程调用方提供的上下文还不能作为可信身份来源。
+- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。`message.transport=grpc` 当前只使用进程内 bufconn，尚未部署网络服务身份认证或拦截器。
 - **风险：** 若在缺少 mTLS、服务凭证和入口隔离时暴露 RPC，调用方可能伪造 principal 并以其他用户身份执行消息命令或查询。
 - **建议方向：** 在 M4 前加入内部网络入口限制、服务身份认证与 unary interceptor；由 Gateway 的已认证用户上下文生成 principal，服务端拒绝外部直接传入的未认证身份，并记录 service/principal/device/request/trace 审计字段。
 - **处理门槛：** `message.transport=grpc` 获得任何非测试流量前完成。
