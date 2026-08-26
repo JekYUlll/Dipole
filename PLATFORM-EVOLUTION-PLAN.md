@@ -225,9 +225,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### A4：渐进切换 Cassandra 读取与写入职责
 
-- [ ] 按用户或会话灰度将历史读取切到 Cassandra，失败时回退 MySQL 并记录差异。
+- [x] 按会话灰度将 Direct/Group Seq 历史读取切到 Cassandra，失败时使用同一 Seq cursor 整页回退 MySQL。
 - [ ] 逐步提升 Cassandra 读取比例，持续比较结果和延迟。
 - [x] 首批按会话稳定 cohort 灰度群 `after_seq` 增量读取，缺页或存储错误自动回退 MySQL，百分比 0 可即时回切。
+- [x] 增加 Direct/Group `before_seq` HTTP/RPC 契约，Web 首屏、历史分页与热群补拉统一使用 Seq cursor domain。
 - [x] 暴露 Cassandra/MySQL fallback 路由计数和延迟指标，并通过真实双存储缺行演练。
 - [ ] 稳定后停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
 - [ ] 在停止 MySQL 正文写入前完成备份、回放工具和明确回滚窗口。
