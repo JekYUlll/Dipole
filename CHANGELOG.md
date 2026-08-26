@@ -31,6 +31,7 @@
 - 增加 `AdminOverviewStore` application port 与 Admin sqlc adapter，以单条聚合查询替代九次独立统计查询，并通过 GORM/sqlc 共享契约验证。
 - 增加 `FileMetadataStore` application port 与 File sqlc adapter，保持创建后的 ID/时间戳回填和缺失查询语义，并纳入统一回切开关。
 - 增加 `UserStore` application port、共享 Redis/Bloom 缓存装饰器与 User sqlc adapter，覆盖创建、助手 upsert、资料更新、筛选和批量查询。
+- 增加 `ContactStore` application port、共享关系缓存装饰器与 Contact sqlc adapter，覆盖双向好友关系和联系人申请生命周期。
 
 ### 变更
 
@@ -38,8 +39,9 @@
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
 - Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
 - 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
-- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin、File 与 User Repository，其余仓储保持 GORM。
+- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin、File、User 与 Contact Repository，其余仓储保持 GORM。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
+- Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
@@ -48,6 +50,7 @@
 - 修复并发消息事务可能造成同一用户 Sync Cursor 永久跳过迟提交消息的问题，Inbox 写入现在按用户锁行串行化。
 - 修复旧群消息 Kafka 事件缺少 `sync_fanout` 时被误判为热群的问题，滚动部署期间默认保留普通群 Inbox fanout。
 - 修复幂等冲突复用已有消息时可能沿用新目标收件人的问题，路由身份不一致时拒绝 Outbox/Inbox 修复。
+- 修复重复创建已存在好友关系时可能用新建默认值覆盖缓存、造成缓存状态与数据库状态暂时不一致的问题；建交成功后统一失效双向缓存。
 
 ### 迁移说明
 
@@ -70,6 +73,7 @@
 - 已通过 Admin GORM/sqlc 双适配的九项统计结果契约测试。
 - 已通过 File GORM/sqlc 双适配的创建回填、查询与缺失结果契约测试。
 - 已通过 User GORM/sqlc 双适配的创建、更新、筛选、批量顺序与助手 upsert 契约测试。
+- 已通过 Contact GORM/sqlc 双适配的双向建交、状态保留、权限、删除与申请生命周期契约测试。
 
 ### 已知问题
 

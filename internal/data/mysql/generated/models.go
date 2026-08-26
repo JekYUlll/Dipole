@@ -8,6 +8,28 @@ import (
 	"database/sql"
 )
 
+type Contact struct {
+	ID         uint64
+	UserUuid   string
+	FriendUuid string
+	Remark     string
+	Status     int8
+	CreatedAt  sql.NullTime
+	UpdatedAt  sql.NullTime
+}
+
+type ContactApplication struct {
+	ID            uint64
+	ApplicantUuid string
+	TargetUuid    string
+	Message       string
+	Status        int8
+	ExpiresAt     sql.NullTime
+	HandledAt     sql.NullTime
+	CreatedAt     sql.NullTime
+	UpdatedAt     sql.NullTime
+}
+
 type UploadedFile struct {
 	ID           uint64
 	Uuid         string
