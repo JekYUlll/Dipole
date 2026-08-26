@@ -71,6 +71,17 @@ type FileMetadataStore interface {
 	GetByUUID(uuid string) (*model.UploadedFile, error)
 }
 
+type UserStore interface {
+	Create(user *model.User) error
+	UpsertAssistant(user *model.User) error
+	GetByUUID(uuid string) (*model.User, error)
+	GetByTelephone(telephone string) (*model.User, error)
+	Update(user *model.User) error
+	SearchActive(keyword, excludeUUID string, limit int) ([]*model.User, error)
+	List(keyword string, status *int8, limit int) ([]*model.User, error)
+	ListByUUIDs(uuids []string) ([]*model.User, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error

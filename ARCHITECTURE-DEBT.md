@@ -81,13 +81,24 @@
 ### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `internal/model`、`internal/repository`、`internal/store`、服务启动与数据库发布
-- **现状：** 数据库映射、查询和 schema 演进依赖 GORM，服务启动时执行 `AutoMigrate`；约 20 个 Go 文件直接耦合 GORM API 或类型。
+- **现状：** schema 已由版本化 SQL migration 管理，运行时默认关闭 `AutoMigrate`；AICallLog、Admin、File 和 User 已具备 sqlc adapter 与 GORM 回切路径，其余仓储仍直接耦合 GORM API 或类型。
 - **风险：** schema 变化缺少显式版本、审查、部署顺序和稳定回滚记录；跨语言服务难以共享一致的数据契约。
 - **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
 - **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。
+
+### AD-012：用户状态常量与 schema 默认值偏移
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-26
+- **影响范围：** `model.User`、`users.status`、手写 SQL、跨语言状态契约
+- **现状：** `DefaultAvatarURL` 与用户状态常量位于同一 `const` 块，受 `iota` 行号影响，当前 `UserStatusNormal=1`、`UserStatusDisabled=2`；baseline schema 的默认值仍为 `0`。
+- **风险：** 依赖 schema 默认值或手写字面量的写入/查询可能产生领域未定义状态；多语言服务若只读取 SQL schema，会与 Go 领域值产生分歧。
+- **建议方向：** 新增显式常量值与数据库约束，先审计并迁移现有 `status=0` 数据，再通过共享枚举契约和 migration 收敛。
+- **处理门槛：** User Service 独立部署或其他语言直接消费用户状态前完成。
 
 ### AD-011：前端缺少可版本化的完整设计基线
 

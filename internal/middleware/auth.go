@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
@@ -16,7 +15,11 @@ const (
 	ContextTokenKey = "accessToken"
 )
 
-func Auth(tokenService *service.TokenService, userRepo *repository.UserRepository) gin.HandlerFunc {
+type authUserFinder interface {
+	GetByUUID(uuid string) (*model.User, error)
+}
+
+func Auth(tokenService *service.TokenService, userRepo authUserFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := parseBearerToken(c.GetHeader("Authorization"))
 		if !ok {
