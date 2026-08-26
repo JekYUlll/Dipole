@@ -35,16 +35,11 @@ type TLS struct {
 }
 
 type MySQL struct {
-	Host        string `mapstructure:"host"`
-	Port        int    `mapstructure:"port"`
-	User        string `mapstructure:"user"`
-	Password    string `mapstructure:"password"`
-	DBName      string `mapstructure:"dbname"`
-	AutoMigrate bool   `mapstructure:"auto_migrate"`
-}
-
-type Data struct {
-	MySQLAdapter string `mapstructure:"mysql_adapter"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DBName   string `mapstructure:"dbname"`
 }
 
 type Redis struct {
@@ -175,8 +170,6 @@ func Load() error {
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
-		v.SetDefault("mysql.auto_migrate", false)
-		v.SetDefault("data.mysql_adapter", "sqlc")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
@@ -252,8 +245,6 @@ func Load() error {
 			"mysql.user",
 			"mysql.password",
 			"mysql.dbname",
-			"mysql.auto_migrate",
-			"data.mysql_adapter",
 			"redis.host",
 			"redis.port",
 			"redis.password",
@@ -377,17 +368,6 @@ func MySQLConfig() MySQL {
 	}
 
 	return mysql
-}
-
-func DataConfig() Data {
-	MustLoad()
-
-	var data Data
-	if err := cfg.UnmarshalKey("data", &data); err != nil {
-		panic(fmt.Errorf("unmarshal data config: %w", err))
-	}
-	data.MySQLAdapter = strings.ToLower(strings.TrimSpace(cfg.GetString("data.mysql_adapter")))
-	return data
 }
 
 func TLSConfig() TLS {

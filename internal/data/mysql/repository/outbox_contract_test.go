@@ -14,23 +14,16 @@ import (
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
-	gormRepository "github.com/JekYUlll/Dipole/internal/repository"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestOutboxRelayRepositoryContract(t *testing.T) {
-	db, dsn := openContractDatabase(t)
+	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
 	}
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("migrate contract database: %v", err)
-	}
-	gormDB, err := gorm.Open(gormMySQL.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open GORM contract database: %v", err)
 	}
 	mysqlStore, err := mysqlData.NewStore(db)
 	if err != nil {
@@ -40,15 +33,9 @@ func TestOutboxRelayRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sqlc outbox repository: %v", err)
 	}
-	stores := map[string]application.OutboxRelayStore{
-		"gorm": gormRepository.NewOutboxRepositoryWithDB(gormDB),
-		"sqlc": sqlcRepo,
-	}
-	for name, store := range stores {
-		t.Run(name, func(t *testing.T) {
-			runOutboxRelayContract(t, db, store, name)
-		})
-	}
+	t.Run("sqlc", func(t *testing.T) {
+		runOutboxRelayContract(t, db, sqlcRepo, "sqlc")
+	})
 }
 
 func runOutboxRelayContract(t *testing.T, db *sql.DB, store application.OutboxRelayStore, prefix string) {

@@ -14,14 +14,11 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
-	gormRepository "github.com/JekYUlll/Dipole/internal/repository"
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestAICallLogRepositoryContract(t *testing.T) {
-	db, dsn := openContractDatabase(t)
+	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -30,28 +27,14 @@ func TestAICallLogRepositoryContract(t *testing.T) {
 		t.Fatalf("migrate contract database: %v", err)
 	}
 
-	gormDB, err := gorm.Open(gormMySQL.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open GORM contract database: %v", err)
-	}
 	sqlcRepo, err := sqlcRepository.NewAICallLogRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create sqlc repository: %v", err)
 	}
 
-	cases := []struct {
-		name   string
-		prefix string
-		store  application.AICallLogStore
-	}{
-		{name: "gorm", prefix: "gorm", store: gormRepository.NewAICallLogRepositoryWithDB(gormDB)},
-		{name: "sqlc", prefix: "sqlc", store: sqlcRepo},
-	}
-	for _, testCase := range cases {
-		t.Run(testCase.name, func(t *testing.T) {
-			runAICallLogContract(t, db, testCase.store, testCase.prefix)
-		})
-	}
+	t.Run("sqlc", func(t *testing.T) {
+		runAICallLogContract(t, db, sqlcRepo, "sqlc")
+	})
 }
 
 func runAICallLogContract(t *testing.T, db *sql.DB, store application.AICallLogStore, prefix string) {

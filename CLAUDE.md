@@ -38,7 +38,7 @@ HTTP/WebSocket → Handler → Service → Repository → Store (MySQL + Redis)
 **Key packages:**
 - `internal/bootstrap` — initialization orchestration; `runtime.go` is the composition root
 - `internal/service` — all business logic; services are injected with repository interfaces
-- `internal/repository` — GORM-based data access; all repos expose interfaces for testability
+- `internal/data/mysql/repository` — sqlc-backed adapters for application data ports
 - `internal/handler/http` — Gin handlers; thin layer that calls services and writes responses
 - `internal/transport/ws` — WebSocket hub, client lifecycle, message dispatcher, presence integration
 - `internal/modules/ai` — Eino-based AI assistant; has its own DB user (`UserTypeAssistant`) and is initialized at bootstrap

@@ -78,17 +78,6 @@
 - **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
-### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
-
-- **优先级：** P1
-- **状态：** 处理中
-- **发现日期：** 2026-08-26
-- **影响范围：** `internal/model`、`internal/repository`、`internal/store`、服务启动与数据库发布
-- **现状：** schema 已由版本化 SQL migration 管理，运行时默认关闭 `AutoMigrate` 且默认使用 sqlc；MySQL、migration 和 Bloom 已切到共享 `database/sql` 连接池。AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 和 Outbox 已具备 sqlc adapter；legacy GORM adapters、model tags、AutoMigrate 和 SQLite 测试仍在兼容窗口内保留，只有显式回滚时初始化 GORM wrapper。
-- **风险：** schema 变化缺少显式版本、审查、部署顺序和稳定回滚记录；跨语言服务难以共享一致的数据契约。
-- **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
-- **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。
-
 ### AD-012：用户状态常量与 schema 默认值偏移
 
 - **优先级：** P2
@@ -112,6 +101,15 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-010：GORM 模型与运行时 AutoMigrate 绑定数据结构
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-26
+- **解决方式：** 使用版本化 SQL migration 管理 schema，所有 Repository 经共享真实 MySQL 契约渐进迁移到 `database/sql + sqlc`；最终移除 legacy adapters、model tags、AutoMigrate、SQLite 方言测试、兼容配置和 `gorm.io/*` 依赖。
+- **验证：** 全仓 GORM 标识与模块依赖扫描为空；通过 sqlc 生成漂移、全量 Go、真实 MySQL Repository/migration/并发事务、race、vet 和模块完整性测试。
 
 ### AD-001：并发事务可能造成 Sync Cursor 永久跳过消息
 
