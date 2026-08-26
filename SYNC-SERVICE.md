@@ -41,4 +41,6 @@ go run ./cmd/sync-service
 
 ## 回滚
 
-本切片未切换公开 HTTP 路由，也未改变 Inbox 写入路径。停止 `dipole-sync` 后，Core 内现有 Local SyncApplication 仍可继续提供当前 `/sync` 行为；后续远程切流必须保留对应 transport 开关。
+公开 HTTP 路由继续由 Core 提供，Inbox 写入路径保持不变。部署 `dipole-sync` 并验证 RPC 后，可将 Core 的 `sync.transport` 从默认 `local` 改为 `grpc`。独立服务异常时恢复 `local` 并重启 Core，进程内 SyncApplication 会立即接管现有 `/sync` 行为，无需回滚数据。
+
+Checkpoint advance 属于写操作，当前不会执行影子双写。后续影子比较只覆盖 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 等只读调用。

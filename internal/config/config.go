@@ -124,6 +124,10 @@ type Search struct {
 	Enabled bool `mapstructure:"enabled"`
 }
 
+type Sync struct {
+	Transport string `mapstructure:"transport"`
+}
+
 type InternalRPC struct {
 	Enabled                bool   `mapstructure:"enabled"`
 	SharedSecret           string `mapstructure:"shared_secret"`
@@ -291,6 +295,7 @@ func Load() error {
 		v.SetDefault("message.cassandra_read_verify_percentage", 0)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("search.enabled", false)
+		v.SetDefault("sync.transport", "local")
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
 		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
@@ -417,6 +422,7 @@ func Load() error {
 			"message.cassandra_read_verify_percentage",
 			"message.enforce_db_permissions",
 			"search.enabled",
+			"sync.transport",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
 			"internal_rpc.core_listen_address",
@@ -660,6 +666,11 @@ func MessageConfig() Message {
 func SearchConfig() Search {
 	MustLoad()
 	return Search{Enabled: cfg.GetBool("search.enabled")}
+}
+
+func SyncConfig() Sync {
+	MustLoad()
+	return Sync{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport")))}
 }
 
 func InternalRPCConfig() InternalRPC {

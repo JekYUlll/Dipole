@@ -106,6 +106,10 @@ message:
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
 
+sync:
+  # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.
+  transport: local
+
 search:
   # Gateway registers the public Search route only after the independent Search RPC is deployed.
   enabled: false
