@@ -13,7 +13,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -24,6 +26,7 @@ import (
 type Dependencies struct {
 	Messages application.MessageApplication
 	Core     application.CoreCapability
+	Search   application.SearchApplication
 	Presence wsTransport.PresenceTracker
 	Limiter  MessageRateLimiter
 }
@@ -54,7 +57,9 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery(), cors.Default())
 	hub := wsTransport.NewHub(wsTransport.WithPresenceTracker(dependencies.Presence))
-	authenticator := wsTransport.NewAuthenticator(service.NewTokenService(), coreUserFinder{core: dependencies.Core})
+	tokenService := service.NewTokenService()
+	userFinder := coreUserFinder{core: dependencies.Core}
+	authenticator := wsTransport.NewAuthenticator(tokenService, userFinder)
 	limiter := dependencies.Limiter
 	if limiter == nil {
 		limiter = platformRateLimit.NewLimiter()
@@ -66,6 +71,10 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "component": "gateway"})
 	})
 	engine.GET("/api/v1/ws", wsHandler.Handle)
+	if dependencies.Search != nil {
+		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
+		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
+	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
 		logger.Warn("gateway core proxy failed", zap.Error(proxyErr))

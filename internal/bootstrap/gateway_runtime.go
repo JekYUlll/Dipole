@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -24,6 +25,7 @@ type GatewayRuntime struct {
 	router      *wsTransport.PubSubRouter
 	messageConn *grpc.ClientConn
 	coreConn    *grpc.ClientConn
+	searchConn  *grpc.ClientConn
 	redis       *redis.Client
 	metrics     *platformObservability.MetricsServer
 }
@@ -67,11 +69,22 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, err
 	}
 	runtime.coreConn = coreConn
+	var search application.SearchApplication
+	if config.SearchConfig().Enabled {
+		searchClient, searchConnection, err := DialSearchApplication(ctx, rpcCfg)
+		if err != nil {
+			cleanup()
+			return nil, err
+		}
+		search = searchClient
+		runtime.searchConn = searchConnection
+	}
 
 	presence := platformPresence.NewRedisPresence()
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
 		Messages: messages,
 		Core:     core,
+		Search:   search,
 		Presence: wsTransport.NewRedisPresenceTracker(presence),
 		Limiter:  platformRateLimit.NewLimiter(),
 	})
@@ -143,6 +156,10 @@ func (r *GatewayRuntime) Close() {
 	if r.coreConn != nil {
 		_ = r.coreConn.Close()
 		r.coreConn = nil
+	}
+	if r.searchConn != nil {
+		_ = r.searchConn.Close()
+		r.searchConn = nil
 	}
 	if r.redis != nil {
 		_ = r.redis.Close()

@@ -4,11 +4,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/service"
+	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 type gatewayMessageStub struct{}
@@ -51,6 +57,20 @@ type gatewayCoreStub struct{}
 
 type gatewayLimiterStub struct{}
 
+type gatewaySearchStub struct {
+	principal string
+	text      string
+	limit     int
+}
+
+func (s *gatewaySearchStub) Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error) {
+	s.principal, s.text, s.limit = principal, text, limit
+	return []*model.MessageSearchDocument{{
+		MessageUUID: "M1", ConversationKey: "direct:U1:U2", MessageSeq: 1, Revision: 1,
+		SenderUUID: "U2", MessageType: model.MessageTypeText, Content: text, SentAt: time.Unix(1, 0),
+	}}, nil
+}
+
 func (gatewayLimiterStub) AllowMessageSend(string) (bool, time.Duration) { return true, 0 }
 
 func (gatewayCoreStub) GetUserByUUID(userUUID string) (*model.User, error) {
@@ -65,6 +85,7 @@ func (gatewayCoreStub) ListSearchConversationKeys(string) ([]string, error)     
 
 var _ application.MessageApplication = gatewayMessageStub{}
 var _ application.CoreCapability = gatewayCoreStub{}
+var _ application.SearchApplication = (*gatewaySearchStub)(nil)
 
 func TestGatewayOwnsHealthAndProxiesCoreHTTP(t *testing.T) {
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -120,5 +141,53 @@ func TestGatewayRequiresRemoteDependencies(t *testing.T) {
 	}
 	if _, err := NewServer("ftp://127.0.0.1", Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected unsupported core target scheme to fail")
+	}
+}
+
+func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = store.RDB.Close()
+		store.RDB = previousRedis
+	})
+	proxied := 0
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		proxied++
+		writer.WriteHeader(http.StatusTeapot)
+	}))
+	defer core.Close()
+	search := &gatewaySearchStub{}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Search: search, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/messages/search?q=migration", nil))
+	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 {
+		t.Fatalf("unauthorized Search: code=%d proxied=%d", unauthorized.Code, proxied)
+	}
+	token, err := service.NewTokenService().Issue(&model.User{UUID: "U1"})
+	if err != nil {
+		t.Fatalf("issue gateway test token: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/messages/search?q=migration&limit=12", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || proxied != 0 || search.principal != "U1" || search.text != "migration" || search.limit != 12 {
+		t.Fatalf("owned Search: code=%d proxied=%d principal=%q text=%q limit=%d body=%s", response.Code, proxied, search.principal, search.text, search.limit, response.Body.String())
+	}
+	if !strings.Contains(response.Body.String(), `"message_id":"M1"`) {
+		t.Fatalf("unexpected Search response: %s", response.Body.String())
 	}
 }
