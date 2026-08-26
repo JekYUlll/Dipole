@@ -140,6 +140,23 @@ MessageStore 先执行 MySQL 查询并保存结果页快照，再按该页最小
 
 Offline 查询属于 User Sync Timeline，单条消息/幂等查询和全部写操作也继续只访问 MySQL。影子查询错误或差异只写日志，不改变客户端结果。回滚只需关闭 `message.cassandra_shadow_reads` 并滚动重启 Message Service，不涉及数据迁移。
 
+## Gradual Seq Read Routing
+
+A4 首批灰度只覆盖已经使用 `after_seq` 的群消息增量补拉。MySQL `conversation_sequences` 提供轻量高水位，Cassandra 读取消息正文；`before_id`、`after_id`、Offline Inbox、单条查询和全部写操作继续访问 MySQL。
+
+```yaml
+cassandra:
+  enabled: true
+
+message:
+  cassandra_shadow_reads: false
+  cassandra_read_percentage: 10
+```
+
+会话键经过稳定 FNV-1a 哈希后进入 `0..99` cohort，同一会话在所有 Message 节点保持一致路由。Cassandra 返回页必须完整覆盖 `(after_seq, min(high_watermark, after_seq+limit)]` 且逐项连续；高水位读取失败、Cassandra 错误或缺行都会使用原 `after_seq` 回退 MySQL。
+
+`cassandra_read_percentage: 0` 是即时回滚开关。Prometheus 暴露 `dipole_message_read_route_total{route,fallback_reason}` 和 `dipole_message_read_route_duration_seconds{route}`，可按 1%、5%、10% 逐步提升并观察回退率和延迟。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：
