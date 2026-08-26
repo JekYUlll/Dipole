@@ -76,6 +76,8 @@ Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sq
 
 `000004_message_search_index` 增加可重建的 MySQL 搜索投影基线。`SearchIndex` 通过幂等 Upsert/Delete 和显式会话范围查询隔离存储实现；当前索引初始为空，A5 将通过版本化消息事件完成回填、持续投影与 Elasticsearch 切换。`MessageStore` 同时提供基于会话 Seq 的前后游标查询，旧 ID cursor 在兼容期继续保留。
 
+`000005_hot_group_checkpoints` 从历史群 Timeline 回填 `group_sync_states`，并创建用户/设备/群级 `device_group_sync_checkpoints`。后续群消息在 Message、Inbox 与 Outbox 事务内 O(1) 推进群高水位；设备只在消息持久化完成后显式 ACK，低位 ACK 不会使 checkpoint 回退。
+
 开发命令：
 
 ```bash
