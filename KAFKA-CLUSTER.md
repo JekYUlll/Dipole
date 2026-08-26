@@ -53,10 +53,36 @@ KEEP_STACK=1 ./scripts/smoke-kafka-cluster.sh
 docker compose -p dipole-kafka-cluster-smoke -f docker-compose.cluster.yml down -v
 ```
 
+## Prometheus Gates
+
+Cluster Compose 的 `observability` profile 包含 `kafka-exporter:v1.9.0` 与 `prometheus:v3.5.0`；旧 durability/rebalance smoke 继续只启动 broker。规则位于 `deploy/observability/kafka-alerts.yml`，覆盖：
+
+- Dipole consumer group lag 持续高于零。
+- Topic replica 数量与 ISR 数量之间存在缺口。
+- retry Topic offset 或应用 retry 发布计数在五分钟窗口内增长。
+- dead Topic offset 或应用 DLQ 发布计数在五分钟窗口内增长。
+
+Core、Message 与 Gateway 可通过以下配置各自在独立端口暴露 Consumer 指标：
+
+```yaml
+metrics:
+  enabled: true
+  address: 0.0.0.0:9100
+```
+
+容器部署只允许 Prometheus 从私有服务网络访问该端口，不向宿主机或公网发布。裸机默认地址为 `127.0.0.1:9100`。应用指标包含 fetched、handled、committed、fetch/commit errors、retry/DLQ 发布累计值，以及 reader rebalance/error/queue 状态。
+
+执行观测门禁：
+
+```bash
+./scripts/smoke-kafka-observability.sh
+```
+
+脚本校验 Prometheus 配置与规则，制造 consumer lag 和 retry/DLQ 流量，停止一个 broker 验证 ISR 缺口可见，再恢复 broker 并等待缺口归零。所有资源使用隔离 Compose project，并在退出时清理。
+
 ## Remaining Gates
 
 - 增加真实 Dipole Topic 的配置 drift/reconciliation 工具。
-- 暴露 under-replicated partitions、ISR、consumer lag、retry 和 DLQ 指标及告警。
 
 ## Consumer Rebalance
 
@@ -70,4 +96,4 @@ Dipole Consumer 显式使用 round-robin group balancer、同步 offset commit�
 
 脚本创建 6-partition Topic 和两个同组 consumer，验证初始各分配 3 个 partition；终止一个 member 后，剩余 member 接管全部 6 个 partition，并在新增消息后把 group lag 重新降到 0。
 
-`Consumer.CollectStats()` 提供累计 fetched/handled/committed、fetch/commit errors、retry/DLQ 发布数，以及 kafka-go reader 的周期增量 rebalances/errors/queue 指标。该 snapshot 只应由单一指标采集器周期读取；Prometheus 暴露与 broker/group lag exporter 留在后续观测切片。
+`Consumer.CollectStats()` 提供累计 fetched/handled/committed、fetch/commit errors、retry/DLQ 发布数，以及 kafka-go reader 的周期增量 rebalances/errors/queue 指标。Prometheus Collector 是生产环境中的单一周期采集器，并将 reader delta 累加为单调 counter。
