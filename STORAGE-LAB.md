@@ -10,15 +10,15 @@ docker-compose.storage-lab.yml
         ├── Cassandra 5.0.9 / single node / 512 MiB heap
         └── Elasticsearch 9.5.2 / single node / 512 MiB heap
 
-Dipole Runtime ── no connection ──► Storage Lab
+Core / Message / Gateway ── no connection ──► Storage Lab
 ```
 
 当前约束：
 
-- `internal/config` 和 `internal/bootstrap` 没有 Cassandra / Elasticsearch 配置或客户端。
-- A3 已引入 Apache Cassandra GoCQL driver 和未接线的 Timeline schema primitive；Runtime 仍未创建 Cassandra session。
+- A3 已引入 Apache Cassandra GoCQL driver、Timeline schema primitive 和独立 projector Runtime。
+- Projector 默认关闭；Core、Message、Gateway 不创建 Cassandra session。
 - MySQL 继续承担 MessageStore 和 SearchIndex 的生产职责。
-- A2 不创建正式 Timeline 表、索引模板、Kafka projector 或 shadow-read。
+- Elasticsearch 仍没有正式索引模板或 Runtime；Cassandra shadow-read 仍未启用。
 - Cassandra 与 Elasticsearch 数据卷仅属于独立 Compose project，不与默认开发环境共享。
 
 ## Smoke
