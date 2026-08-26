@@ -64,6 +64,7 @@
 - 增加显式 Kafka consumer rebalance policy、处理/提交/retry/DLQ snapshot，以及双 member 到单 member 的 partition 接管故障 smoke。
 - 增加进程级 Kafka Prometheus Collector、独立 metrics listener、Kafka exporter、Prometheus 告警规则与自动故障 smoke，覆盖 lag、ISR、retry 和 DLQ。
 - 增加 MySQL 8.4 三成员 InnoDB Cluster、MySQL Router writer endpoint、AdminAPI 初始化/恢复脚本与连接池主切换故障 smoke。
+- 增加 Redis Sentinel 连接模式、三节点 Redis/三 Sentinel 隔离拓扑与自动故障 smoke。
 
 ### 变更
 
@@ -86,6 +87,7 @@
 - 服务启动只读校验 migration 版本，已移除运行时 schema mutation 和 `AutoMigrate` 配置。
 - Message、Sync Inbox、Conversation Seq allocator 与 Transactional Outbox 在同一 MySQL 事务中提交；Outbox payload 在 Seq 分配后构造，保证事件与消息事实一致。
 - Migration Up/Down 使用 schema-scoped MySQL advisory lock，多个 migration owner 并发启动时按锁串行执行并重新读取 ledger。
+- Redis 单节点配置保持兼容；Sentinel 模式通过 go-redis Failover Client 自动发现当前 master，业务组件继续共享同一客户端。
 - Conversation 投影按 Seq 拒绝重复和过期消息回退；`unread_count` 继续作为兼容投影，由 `last_message_seq - read_seq` 语义维护。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -161,6 +163,7 @@
 - 已通过 Kafka 可观测性演练：Prometheus 规则有效，consumer lag、retry/DLQ 增量和单 broker 故障造成的 ISR 缺口均可查询，broker 恢复后缺口归零。
 - 已通过 MySQL Router writer 演练：停止 PRIMARY 后同一 `database/sql` 池约 4.1 秒内连接新 writer，切换前后已提交记录均可见，旧节点通过 AdminAPI 成功 rejoin。
 - 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
+- 已通过 Redis Sentinel 演练：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、热点和限流状态可用，旧 master 重新加入为 replica。
 
 ### 已知问题
 

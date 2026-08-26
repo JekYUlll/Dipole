@@ -53,10 +53,14 @@ type MySQL struct {
 }
 
 type Redis struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
+	Mode               string   `mapstructure:"mode"`
+	Host               string   `mapstructure:"host"`
+	Port               int      `mapstructure:"port"`
+	Password           string   `mapstructure:"password"`
+	DB                 int      `mapstructure:"db"`
+	SentinelMasterName string   `mapstructure:"sentinel_master_name"`
+	SentinelAddresses  []string `mapstructure:"sentinel_addresses"`
+	SentinelPassword   string   `mapstructure:"sentinel_password"`
 }
 
 type Auth struct {
@@ -214,6 +218,7 @@ func Load() error {
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
+		v.SetDefault("redis.mode", "single")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
@@ -320,6 +325,10 @@ func Load() error {
 			"redis.port",
 			"redis.password",
 			"redis.db",
+			"redis.mode",
+			"redis.sentinel_master_name",
+			"redis.sentinel_addresses",
+			"redis.sentinel_password",
 			"kafka.enabled",
 			"kafka.brokers",
 			"kafka.client_id",

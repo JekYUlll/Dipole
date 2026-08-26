@@ -42,6 +42,7 @@ scripts/check-sqlc.sh
 Kafka Envelope、schema version、重试和死信规则见 [Kafka 事件契约](KAFKA-EVENT-CONTRACT.md)。
 Kafka 三节点开发基线与故障验收见 [Kafka Cluster 文档](KAFKA-CLUSTER.md)。
 MySQL InnoDB Cluster、Router writer 路由与主切换验收见 [MySQL Cluster 文档](MYSQL-CLUSTER.md)。
+Redis Sentinel、实时状态语义与故障验收见 [Redis Cluster 文档](REDIS-CLUSTER.md)。
 
 `message.transport` 默认为 `local`；设为 `grpc` 后通过受认证网络 channel 调用独立 Message Service，关闭开关即可回切本地实现。
 
