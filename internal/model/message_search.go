@@ -6,6 +6,7 @@ type MessageSearchDocument struct {
 	MessageUUID     string
 	ConversationKey string
 	MessageSeq      uint64
+	Revision        uint64
 	SenderUUID      string
 	MessageType     int8
 	Content         string

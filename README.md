@@ -45,6 +45,7 @@ MySQL InnoDB Cluster、Router writer 路由与主切换验收见 [MySQL Cluster 
 Redis Sentinel、实时状态语义与故障验收见 [Redis Cluster 文档](REDIS-CLUSTER.md)。
 Cassandra 与 Elasticsearch 隔离实验及影子投影边界见 [Storage Lab 文档](STORAGE-LAB.md)。
 Cassandra 会话 Timeline 分区与影子写入契约见 [Cassandra Timeline 文档](CASSANDRA-TIMELINE.md)。
+Elasticsearch 版本化索引、Alias 与幂等投影契约见 [Message Search 文档](ELASTICSEARCH-SEARCH.md)。
 
 `message.transport` 默认为 `local`；设为 `grpc` 后通过受认证网络 channel 调用独立 Message Service，关闭开关即可回切本地实现。
 

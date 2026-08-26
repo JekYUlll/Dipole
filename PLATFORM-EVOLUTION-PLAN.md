@@ -244,8 +244,11 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### A5：引入 Elasticsearch Search Projection
 
+- [x] 固化 `dipole-messages-v1` strict mapping、read/write Alias、schema readiness 和原子 Alias 切换契约。
+- [x] 实现 storage-neutral Elasticsearch Search adapter，以 Message UUID 为 `_id`、external revision 与 payload hash 分类重复、乱序和冲突事件。
 - [ ] Search Indexer 消费版本化消息事件，按 `message_id` 幂等写入。
-- [ ] 使用 index alias 支持重建、切换和回滚；索引映射纳入版本控制。
+- [ ] 解决 AD-020，以版本化 tombstone 处理 recall/delete，并让 MySQL/Elasticsearch 共享 mutation contract。
+- [ ] 实现 Backfill/Reconcile 和 Alias 运维命令，完成真实重建、切换和回滚演练。
 - [ ] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
 - [ ] 支持从 Kafka/Message Store 全量重建索引，ES 故障不阻断消息发送。
 - [ ] 搜索全量重建源切到 Cassandra 或归档事件，解除对 MySQL 历史正文的恢复依赖。

@@ -80,6 +80,8 @@
 - 增加 `dipole_message_read_verification_total{operation,outcome}`，区分主读核验 match、mismatch 与 MySQL error。
 - 增加 Cassandra 主读 Prometheus 告警与 promtool 规则测试，覆盖 payload mismatch、核验依赖失败和持续高 fallback 比例。
 - 增加 MySQL 消息正文退役门禁，覆盖 Sync 补全、幂等回放、文件授权、搜索重建、备份与事件回放责任。
+- 增加 Elasticsearch `dipole-messages-v1` strict mapping、read/write Alias、schema readiness 与原子 Alias 切换契约。
+- 增加 Elasticsearch Search adapter，以 Message UUID、external revision 和 payload hash 识别幂等重放、旧事件与同版本冲突，并强制 conversation scope 查询。
 
 ### 变更
 
@@ -192,6 +194,7 @@
 - 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
 - 已通过 Redis Sentinel 演练：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、热点和限流状态可用，旧 master 重新加入为 replica。
 - 已通过隔离 Storage Lab 演练：Cassandra 与 Elasticsearch 健康启动并完成临时 CRUD，Core、Message、Gateway 和客户端生产读路径保持断开。
+- 已通过 Elasticsearch 9.5.2 真实 contract：重复 Bootstrap 校验 mapping/Alias，external revision 支持重放、更新与旧事件 no-op，作用域搜索无隐藏会话泄漏。
 - 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
 - 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。
@@ -199,6 +202,7 @@
 
 ### 已知问题
 
+- 现有 `SearchIndex.Delete(messageUUID)` 缺少 mutation revision，recall/delete 的版本化 tombstone 接线前置条件记录为 AD-020。
 - Sync Inbox、旧 Offline、幂等结果、文件授权和 Cassandra 恢复工具仍依赖 MySQL 完整消息，正文退役条件记录为 AD-019。
 - Inbox 清理策略和 Web 本地消息数据库留待后续迭代；旧消息历史接口仍使用数据库 ID cursor。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
