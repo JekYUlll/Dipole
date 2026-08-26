@@ -64,9 +64,9 @@ go run ./cmd/server
 - 为同一 Application Port 建立 GORM 与 sqlc contract test。
 - [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
 
-首批 AICallLog、Admin、File、User、Contact 与 Group GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
+首批 AICallLog、Admin、File、User、Contact、Group 与 Conversation GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新；Conversation adapter 使用显式赋值顺序保证消息幂等与未读计算。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
 
-`data.mysql_adapter=gorm|sqlc` 已接入 Composition Root。兼容窗口内，`sqlc` 只选择已经完成 contract test 的 AICallLog、Admin、File、User、Contact 与 Group Repository，尚未迁移的 Repository 继续使用 GORM；设置未知值会阻止服务启动。可通过环境变量 `DIPOLE_DATA_MYSQL_ADAPTER=gorm` 立即回切。
+`data.mysql_adapter=gorm|sqlc` 已接入 Composition Root。兼容窗口内，`sqlc` 只选择已经完成 contract test 的 AICallLog、Admin、File、User、Contact、Group 与 Conversation Repository，尚未迁移的 Repository 继续使用 GORM；设置未知值会阻止服务启动。可通过环境变量 `DIPOLE_DATA_MYSQL_ADAPTER=gorm` 立即回切。
 
 开发命令：
 

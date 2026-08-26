@@ -84,7 +84,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `internal/model`、`internal/repository`、`internal/store`、服务启动与数据库发布
-- **现状：** schema 已由版本化 SQL migration 管理，运行时默认关闭 `AutoMigrate`；AICallLog、Admin、File、User、Contact 和 Group 已具备 sqlc adapter 与 GORM 回切路径，其余仓储仍直接耦合 GORM API 或类型。
+- **现状：** schema 已由版本化 SQL migration 管理，运行时默认关闭 `AutoMigrate`；AICallLog、Admin、File、User、Contact、Group 和 Conversation 已具备 sqlc adapter 与 GORM 回切路径，其余仓储仍直接耦合 GORM API 或类型。
 - **风险：** schema 变化缺少显式版本、审查、部署顺序和稳定回滚记录；跨语言服务难以共享一致的数据契约。
 - **建议方向：** 先引入版本化 SQL migration，再通过 Repository Port 与 contract test 分批迁移到 `database/sql + sqlc`，最后删除 GORM。
 - **处理门槛：** Message Service 独立拥有数据库和 Cassandra 投影开始前完成。

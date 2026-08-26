@@ -72,6 +72,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		if _, ok := cachedGroups.backend.(*gormRepository.GroupRepository); !ok {
 			t.Fatalf("expected GORM group backend, got %T", cachedGroups.backend)
 		}
+		if _, ok := repos.Conversations.(*gormRepository.ConversationRepository); !ok {
+			t.Fatalf("expected GORM conversation backend, got %T", repos.Conversations)
+		}
 	})
 
 	t.Run("sqlc", func(t *testing.T) {
@@ -111,6 +114,9 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		}
 		if _, ok := cachedGroups.backend.(*sqlcRepository.GroupRepository); !ok {
 			t.Fatalf("expected sqlc group backend, got %T", cachedGroups.backend)
+		}
+		if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
+			t.Fatalf("expected sqlc conversation backend, got %T", repos.Conversations)
 		}
 	})
 

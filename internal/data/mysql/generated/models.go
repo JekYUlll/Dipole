@@ -31,6 +31,23 @@ type ContactApplication struct {
 	UpdatedAt     sql.NullTime
 }
 
+type Conversation struct {
+	ID                    uint64
+	UserUuid              string
+	TargetType            int8
+	TargetUuid            string
+	ConversationKey       string
+	LastMessageUuid       string
+	LastMessageType       int8
+	LastMessagePreview    string
+	LastMessageAt         time.Time
+	LastMessageSenderUuid string
+	UnreadCount           int64
+	Remark                string
+	CreatedAt             sql.NullTime
+	UpdatedAt             sql.NullTime
+}
+
 type Group struct {
 	ID             uint64
 	Uuid           string
