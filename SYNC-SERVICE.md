@@ -13,14 +13,17 @@
 
 运行时固定初始化 `database/sql + sqlc SyncStore`、MySQL migration readiness、内部 gRPC 和 metrics，不初始化 Redis、完整 Core Repository 或 Message Service。仅当 `sync.projector_enabled=true` 时初始化 Kafka publisher/consumer；默认关闭时保持纯查询与 checkpoint 运行时。
 
-## 过渡写入边界
+## 写入所有权
 
-当前 Message 事务继续原子提交 Message、普通群/私聊 Inbox 和 Transactional Outbox。这个边界在异步 Sync Projector 具备以下门禁前保持不变：
+默认 `message.inbox_write_mode=atomic` 时，Message 事务原子提交 Message、普通群/私聊 Inbox 和 Transactional Outbox。完成下列门禁后，可在独立 Message owner 设置 `projector`，让 Sync Projector 接管 Durable Inbox 新增写入：
 
 1. 消费者按消息 locator 和收件人幂等，并让同位置冲突进入重试/DLQ。
 2. 固定高水位 Backfill 与事件重放能够恢复 Inbox。
 3. 双写/影子比较覆盖离线、多设备、热群和提交乱序。
 4. 故障恢复验证不会让设备 Cursor 永久跳过消息。
+5. `dipole_sync` 与 `dipole_message_projector` 最小权限启动探针通过，Message owner 的 Kafka 已启用并通过连接初始化。
+
+`projector` 模式继续在同一事务提交 Message、Conversation Seq、群高水位与 Outbox，并跳过 `user_sync_inbox/user_sync_states`。模块化单体和其他无 Kafka 本地路径继续使用默认构造器，保持 atomic 行为。
 
 当前读取仍按 `message_uuid` 从 MySQL 批量补全完整 Message。locator 已独立持久化并通过 HTTP/gRPC 暴露，后续可以按相同 `(conversation_key, message_seq)` 从 Cassandra 影子补全并比较，而无需改变客户端 Cursor。
 
@@ -45,6 +48,15 @@ go run ./cmd/sync-service
 
 配置至少需要启用 `internal_rpc.enabled`，提供共享凭据、Core target、Sync listen address 和可用的 MySQL schema。生产构建产物为 `dist/dipole-sync`。
 
+Sync 可通过 `sync.mysql.*` 或 `DIPOLE_SYNC_MYSQL_*` 使用专用账号；空字段继承全局 MySQL 配置。迁移完成后应用 `configs/mysql/sync-service-grants.dist.sql`，并设置：
+
+```yaml
+sync:
+  enforce_db_permissions: true
+```
+
+Message 切换 projector 权限时应用 `configs/mysql/message-service-projector-grants.dist.sql`，使用对应账号，并同时启用 `message.enforce_db_permissions=true`。该账号无 Inbox 权限，仅为旧 `/messages/offline` 保留 `groups/group_members` 的只读过滤能力；这两项临时授权随 AD-019 的客户端兼容周期结束后撤销。权限不满足职责边界时进程在开放 RPC 前失败。
+
 Projector 双运行验证阶段额外设置：
 
 ```yaml
@@ -65,7 +77,8 @@ Sync 新 consumer group 从 Kafka earliest retained offset 建立；已经提交
 2. 执行固定 Outbox Replay 与历史 baseline Reconcile。
 3. 等待 `dipole-sync-consumer` lag 归零，并确认 retry/DLQ 在约定观察窗没有新增。
 4. 创建新的 Replay job 固化当前 Outbox 高水位，再次 Reconcile。
-5. 以上门禁持续通过后，才进入独立的数据库权限与 Message 写责任切换里程碑。
+5. 应用 Sync/Message projector 最小授权并启用两侧权限门禁。
+6. 将 `message.inbox_write_mode` 切为 `projector`，再次确认新消息最终进入 Inbox。
 
 Prometheus 加载 `deploy/observability/sync-projector-alerts.yml`。`DipoleSyncProjectorLag` 持续两分钟触发 warning，retry 触发 warning，dead-letter 触发 critical；任一告警阻止写责任迁移。
 
@@ -75,7 +88,15 @@ Prometheus 加载 `deploy/observability/sync-projector-alerts.yml`。`DipoleSync
 
 切流前可开启 `sync.shadow_queries=true`，异步比较 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 的 Local/Remote 结果。Checkpoint advance 属于写操作，只会在 `sync.transport` 选定的主实现执行一次，不参与影子调用。关闭影子开关不会改变主链路响应。
 
-Projector 异常时先恢复 `sync.projector_enabled=false` 并重启 `dipole-sync`。Message 事务仍持有 Inbox 写入责任，因此停用 Projector 不会形成新的同步数据缺口。固定快照 Backfill/Reconcile 和 consumer lag 门禁完成前，不得移除 Message 的 Inbox 写权限。
+Projector 异常时先将 Message 账号恢复为 `configs/mysql/message-service-grants.dist.sql` 对应权限，将 `message.inbox_write_mode` 改回 `atomic` 并重启 Message owner。确认新消息已在事务内产生 Inbox 后，再停用 Sync Projector。故障窗口内的缺口通过固定 Outbox Replay/Reconcile 修复；历史缺口通过 baseline Restore 修复。
+
+本地隔离验收：
+
+```bash
+./scripts/smoke-sync-write-ownership.sh
+```
+
+该 smoke 使用真实 MySQL 8.4 验证两类最小账号、Message+Outbox 无 Inbox 写入、Projector 收敛和 atomic 回退。
 
 ## 固定快照恢复与对账
 
@@ -98,7 +119,7 @@ Reconcile 要求对应 job 已完成，对快照内每个 Message UUID 精确比
 ./scripts/smoke-sync-recovery.sh
 ```
 
-Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异门禁。Kafka lag、retry/DLQ 告警、投影 catch-up 窗口以及 Message 写权限退役仍需后续切片完成。
+Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异门禁。Kafka lag、retry/DLQ 告警、投影 catch-up 窗口及 Message Inbox 写权限切换已通过独立真实环境演练。
 
 ## 历史 Inbox baseline
 

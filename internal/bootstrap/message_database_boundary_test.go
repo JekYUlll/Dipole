@@ -13,6 +13,7 @@ import (
 type databasePermissionProbeStub struct {
 	allowedError error
 	coreAllowed  string
+	denyInbox    bool
 	queries      []string
 }
 
@@ -26,30 +27,54 @@ func (s *databasePermissionProbeStub) ExecContext(_ context.Context, query strin
 			return nil, &mysqlDriver.MySQLError{Number: 1142, Message: "SELECT denied"}
 		}
 	}
+	for _, table := range messageAtomicInboxTables {
+		if strings.Contains(query, "`"+table+"`") {
+			if table == s.coreAllowed {
+				return nil, nil
+			}
+			if s.denyInbox {
+				return nil, &mysqlDriver.MySQLError{Number: 1142, Message: "SELECT denied"}
+			}
+			return nil, s.allowedError
+		}
+	}
 	return nil, s.allowedError
 }
 
 func TestVerifyMessageDatabaseBoundaryAcceptsLeastPrivilegeAccount(t *testing.T) {
 	probe := &databasePermissionProbeStub{}
-	if err := verifyMessageDatabaseBoundary(context.Background(), probe); err != nil {
+	if err := verifyMessageDatabaseBoundary(context.Background(), probe, true); err != nil {
 		t.Fatalf("verify message database boundary: %v", err)
 	}
-	wantQueries := len(messageOwnedTables) + len(coreOwnedTables)
+	wantQueries := len(messageOwnedTables) + len(messageAtomicInboxTables) + len(coreOwnedTables)
 	if len(probe.queries) != wantQueries {
 		t.Fatalf("permission probes = %d, want %d", len(probe.queries), wantQueries)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryRejectsCoreTableAccess(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "users"})
+	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "users"}, true)
 	if err == nil || !strings.Contains(err.Error(), "core-owned table users") {
 		t.Fatalf("expected users access rejection, got %v", err)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryRejectsMissingOwnedTableAccess(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{allowedError: errors.New("denied")})
+	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{allowedError: errors.New("denied")}, true)
 	if err == nil || !strings.Contains(err.Error(), "owned table messages") {
 		t.Fatalf("expected owned table rejection, got %v", err)
+	}
+}
+
+func TestVerifyMessageDatabaseBoundaryProjectorModeRejectsInboxAccess(t *testing.T) {
+	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "user_sync_inbox"}, false)
+	if err == nil || !strings.Contains(err.Error(), "core-owned table user_sync_inbox") {
+		t.Fatalf("expected Inbox access rejection, got %v", err)
+	}
+}
+
+func TestVerifyMessageDatabaseBoundaryAcceptsProjectorAccountWithoutInboxAccess(t *testing.T) {
+	if err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{denyInbox: true}, false); err != nil {
+		t.Fatalf("verify projector account: %v", err)
 	}
 }

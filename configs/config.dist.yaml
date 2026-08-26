@@ -105,6 +105,8 @@ message:
   cassandra_read_verify_percentage: 0
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
+  # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.
+  inbox_write_mode: atomic
 
 sync:
   # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.
@@ -113,6 +115,15 @@ sync:
   shadow_queries: false
   # Consume message.created into the durable Inbox; keep disabled until dual-run verification passes.
   projector_enabled: false
+  # Fail startup when the Sync account can modify Message-owned state or read Core-owned data.
+  enforce_db_permissions: false
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
 
 search:
   # Gateway registers the public Search route only after the independent Search RPC is deployed.

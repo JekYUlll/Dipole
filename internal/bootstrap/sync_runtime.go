@@ -30,7 +30,7 @@ type SyncRuntime struct {
 }
 
 func InitializeSyncService(ctx context.Context) (*SyncRuntime, error) {
-	return initializeSyncService(ctx, config.InternalRPCConfig(), config.MySQLConfig(), config.MetricsConfig(), config.SyncConfig(), config.KafkaConfig())
+	return initializeSyncService(ctx, config.InternalRPCConfig(), config.SyncMySQLConfig(), config.MetricsConfig(), config.SyncConfig(), config.KafkaConfig())
 }
 
 func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysqlCfg config.MySQL, metricsCfg config.Metrics, syncCfg config.Sync, kafkaCfg config.Kafka) (*SyncRuntime, error) {
@@ -58,6 +58,12 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 	if err := migrationRunner.ValidateCurrent(ctx); err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("Sync Service database schema is not ready: %w", err)
+	}
+	if syncCfg.EnforceDBPermissions {
+		if err := verifySyncDatabaseBoundary(ctx, db); err != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("verify Sync Service database permissions: %w", err)
+		}
 	}
 	repositories, err := appcomposition.NewSyncProcessRepositories(db)
 	if err != nil {
