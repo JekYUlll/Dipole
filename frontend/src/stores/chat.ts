@@ -8,6 +8,7 @@ import {
   clearBrowserMessages,
   compareBrowserSyncMessages,
   isLocalSyncCapacityError,
+  recoverBrowserGroupMessages,
   recoverBrowserMessages,
 } from '@/sync/browserSync'
 import { drainLegacyOffline } from '@/sync/legacyOffline'
@@ -96,9 +97,17 @@ export const useChatStore = defineStore('chat', () => {
 	const checkpoints = await api.get(`/api/v1/sync/groups/checkpoints?${query.toString()}`) as GroupSyncCheckpoint[]
 	let recovered = 0
 	for (const checkpoint of Array.isArray(checkpoints) ? checkpoints : []) {
+	  if (browserSyncEnabled && myUUID.value) {
+		const result = await recoverBrowserGroupMessages(
+		  myUUID.value,
+		  { groupUUID: checkpoint.group_uuid, latestMessageSeq: checkpoint.latest_message_seq },
+		  messages => _mergeMessages(groupKey(checkpoint.group_uuid), messages, false),
+		)
+		recovered += result.synchronized
+		continue
+	  }
 	  const key = groupKey(checkpoint.group_uuid)
-	  // Volatile Web memory cannot trust a durable ACK after refresh. IndexedDB clients
-	  // may combine pulled_message_seq with their locally committed high-water later.
+	  // Compatibility mode has no durable local group checkpoint and cannot safely ACK.
 	  let afterSeq = Math.max(0, ...(messageMap.value.get(key) || []).map(message => message.message_seq || 0))
 	  while (afterSeq < checkpoint.latest_message_seq) {
 		const page = await fetchGroupMessagesAfterSeq(checkpoint.group_uuid, afterSeq)

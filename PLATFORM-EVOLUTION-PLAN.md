@@ -276,7 +276,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 统一显式退出、HTTP 401、WS kick 与账号切换的 Session Termination；凭据先撤销，IndexedDB 清理等待在途同步收敛，快速重登等待旧清理完成。
 - [x] 建立 IndexedDB 高低容量水位、按会话保底的最近消息安全淘汰、缓存 manifest 和 quota error 状态；淘汰与 Cursor 提交保持同一事务且不额外推进安全游标。
 - [ ] 默认启用前完成真实浏览器配额、共享设备和进程强退验收，关闭 `AD-025`。
-- [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
+- [x] Web Sync Engine 将热群补拉消息与群 `message_seq` 原子写入 IndexedDB，落库后再 ACK 设备群 checkpoint；`off` 模式保持不 ACK 的内存兼容路径。
+- [ ] 在线 Sync Item 通知直接驱动客户端按 `conversation_seq` 拉取 Cassandra 主 Timeline，并完成主读灰度门禁。
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
 - [ ] 达到观察门槛后为 Cassandra hydration 增加受控主读与 MySQL fallback；切换前补齐告警、灰度比例和无 MySQL 内部 ID 的兼容审计。

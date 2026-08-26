@@ -1,11 +1,14 @@
 import type { Message } from '@/types'
+import type { LocalGroupSyncSnapshot, LocalGroupSyncStore } from './groupSyncEngine'
 import type { LocalSyncSnapshot, LocalSyncStore, SyncPage } from './syncEngine'
 
 const messageStoreName = 'messages'
 const stateStoreName = 'state'
+const groupStateStoreName = 'group_state'
 const userIndexName = 'by_user'
 const userSyncIndexName = 'by_user_sync_seq'
-const databaseVersion = 2
+const userConversationSyncIndexName = 'by_user_conversation_sync_seq'
+const databaseVersion = 3
 
 export interface IndexedDBSyncStoreOptions {
   highWaterMessages?: number
@@ -35,13 +38,20 @@ interface StoredState {
   compacted?: boolean
 }
 
+interface StoredGroupState {
+  key: string
+  user_uuid: string
+  group_uuid: string
+  message_seq: number
+}
+
 export interface LocalSyncManifest {
   syncSeq: number
   messageCount: number
   compacted: boolean
 }
 
-export class IndexedDBSyncStore implements LocalSyncStore {
+export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
   private database?: Promise<IDBDatabase>
   private readonly highWaterMessages: number
   private readonly lowWaterMessages: number
@@ -115,9 +125,86 @@ export class IndexedDBSyncStore implements LocalSyncStore {
     await transactionResult(transaction, () => failure)
   }
 
+  async loadGroup(userUUID: string, groupUUID: string): Promise<LocalGroupSyncSnapshot> {
+    const database = await this.open()
+    const transaction = database.transaction([messageStoreName, groupStateStoreName], 'readonly')
+    const conversationKey = `group:${groupUUID}`
+    const range = this.keyRange.bound(
+      [userUUID, conversationKey, 0],
+      [userUUID, conversationKey, Number.MAX_SAFE_INTEGER],
+    )
+    const messagesRequest = transaction.objectStore(messageStoreName)
+      .index(userConversationSyncIndexName).getAll(range)
+    const stateRequest = transaction.objectStore(groupStateStoreName).get(groupStateKey(userUUID, groupUUID))
+    const [records, state] = await Promise.all([
+      requestResult<StoredMessage[]>(messagesRequest),
+      requestResult<StoredGroupState | undefined>(stateRequest),
+      transactionResult(transaction),
+    ])
+    return {
+      messageSeq: state?.message_seq ?? 0,
+      messages: records.map(record => record.message),
+    }
+  }
+
+  async commitGroupPage(userUUID: string, groupUUID: string, page: Message[], messageSeq: number): Promise<void> {
+    const database = await this.open()
+    const transaction = database.transaction(
+      [messageStoreName, stateStoreName, groupStateStoreName],
+      'readwrite',
+    )
+    const messages = transaction.objectStore(messageStoreName)
+    const states = transaction.objectStore(stateStoreName)
+    const groupStates = transaction.objectStore(groupStateStoreName)
+    const stateRequest = states.get(userUUID)
+    const groupStateRequest = groupStates.get(groupStateKey(userUUID, groupUUID))
+    let currentState: StoredState | undefined
+    let currentGroupState: StoredGroupState | undefined
+    let loaded = 0
+    let failure: Error | undefined
+
+    const commit = () => {
+      loaded += 1
+      if (loaded < 2) return
+      if ((currentGroupState?.message_seq ?? 0) > messageSeq) {
+        failure = new Error('local group sync cursor cannot move backwards')
+        transaction.abort()
+        return
+      }
+      const conversationKey = `group:${groupUUID}`
+      for (const message of page) {
+        messages.put({
+          key: `${userUUID}\u0000${message.message_id}`,
+          user_uuid: userUUID,
+          conversation_key: conversationKey,
+          sync_seq: message.message_seq!,
+          message,
+        } satisfies StoredMessage)
+      }
+      groupStates.put({
+        key: groupStateKey(userUUID, groupUUID),
+        user_uuid: userUUID,
+        group_uuid: groupUUID,
+        message_seq: messageSeq,
+      } satisfies StoredGroupState)
+      const syncSeq = currentState?.sync_seq ?? 0
+      states.put({
+        user_uuid: userUUID,
+        sync_seq: syncSeq,
+        message_count: currentState?.message_count ?? 0,
+        compacted: currentState?.compacted ?? false,
+      } satisfies StoredState)
+      this.evictIfNeeded(messages, states, userUUID, syncSeq, currentState?.compacted ?? false)
+    }
+    stateRequest.onsuccess = () => { currentState = stateRequest.result; commit() }
+    groupStateRequest.onsuccess = () => { currentGroupState = groupStateRequest.result; commit() }
+
+    await transactionResult(transaction, () => failure)
+  }
+
   async clearUser(userUUID: string): Promise<void> {
     const database = await this.open()
-    const transaction = database.transaction([messageStoreName, stateStoreName], 'readwrite')
+    const transaction = database.transaction([messageStoreName, stateStoreName, groupStateStoreName], 'readwrite')
     const messages = transaction.objectStore(messageStoreName)
     const cursorRequest = messages.index(userIndexName).openKeyCursor(this.keyRange.only(userUUID))
     cursorRequest.onsuccess = () => {
@@ -127,6 +214,14 @@ export class IndexedDBSyncStore implements LocalSyncStore {
       cursor.continue()
     }
     transaction.objectStore(stateStoreName).delete(userUUID)
+    const groupStates = transaction.objectStore(groupStateStoreName)
+    const groupCursorRequest = groupStates.index(userIndexName).openKeyCursor(this.keyRange.only(userUUID))
+    groupCursorRequest.onsuccess = () => {
+      const cursor = groupCursorRequest.result
+      if (!cursor) return
+      groupStates.delete(cursor.primaryKey)
+      cursor.continue()
+    }
     await transactionResult(transaction)
   }
 
@@ -167,6 +262,12 @@ export class IndexedDBSyncStore implements LocalSyncStore {
         if (event.oldVersion < 2) {
           request.transaction!.objectStore(messageStoreName)
             .createIndex(userSyncIndexName, ['user_uuid', 'sync_seq'], { unique: false })
+        }
+        if (event.oldVersion < 3) {
+          request.transaction!.objectStore(messageStoreName)
+            .createIndex(userConversationSyncIndexName, ['user_uuid', 'conversation_key', 'sync_seq'], { unique: false })
+          const groupStates = database.createObjectStore(groupStateStoreName, { keyPath: 'key' })
+          groupStates.createIndex(userIndexName, 'user_uuid', { unique: false })
         }
       }
       request.onsuccess = () => resolve(request.result)
@@ -238,6 +339,10 @@ export class IndexedDBSyncStore implements LocalSyncStore {
       }
     }
   }
+}
+
+function groupStateKey(userUUID: string, groupUUID: string) {
+  return `${userUUID}\u0000${groupUUID}`
 }
 
 function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number) {
