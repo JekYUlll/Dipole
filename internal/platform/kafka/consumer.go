@@ -25,6 +25,7 @@ type Event struct {
 	Value     []byte
 	Headers   map[string]string
 	Envelope  *Envelope
+	DecodeErr error
 	Partition int
 	Offset    int64
 	Time      time.Time
@@ -179,9 +180,11 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 			Offset:    message.Offset,
 			Time:      message.Time,
 		}
-		envelope, err := decodeEnvelope(message.Value)
-		if err == nil {
+		envelope, decodeErr := decodeEnvelope(message.Value)
+		if decodeErr == nil {
 			event.Envelope = envelope
+		} else {
+			event.DecodeErr = decodeErr
 		}
 
 		if c.handleWithRetry(ctx, event, handlers) {
@@ -191,6 +194,10 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 }
 
 func (c *Consumer) handleWithRetry(ctx context.Context, event Event, handlers []Handler) bool {
+	if event.DecodeErr != nil {
+		return c.publishDeadLetter(ctx, event, event.DecodeErr, "invalid_envelope")
+	}
+
 	attempts := c.maxAttempts
 	if attempts <= 0 {
 		attempts = 1
@@ -274,10 +281,10 @@ func decodeHeaders(headers []kafkago.Header) map[string]string {
 func decodeEnvelope(value []byte) (*Envelope, error) {
 	var envelope Envelope
 	if err := json.Unmarshal(value, &envelope); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode kafka event envelope: %w", err)
 	}
-	if envelope.EventType == "" {
-		return nil, fmt.Errorf("kafka event envelope event_type is empty")
+	if err := validateEnvelope(&envelope); err != nil {
+		return nil, err
 	}
 
 	return &envelope, nil
@@ -303,13 +310,30 @@ func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, la
 		}) == nil
 	}
 
-	headers["retry_attempt"] = strconv.Itoa(attempt)
-	deadTopic := deadTopicName(baseTopic)
+	return c.publishDeadLetter(ctx, event, lastErr, "handler_failed")
+}
+
+func (c *Consumer) publishDeadLetter(ctx context.Context, event Event, lastErr error, reason string) bool {
+	if Client == nil {
+		return false
+	}
+	headers := c.deadLetterHeaders(event, lastErr, reason)
+	deadTopic := deadTopicName(c.baseTopicName(event.Topic))
 	return Client.Publish(ctx, deadTopic, Message{
 		Key:     event.Key,
 		Value:   event.Value,
 		Headers: headers,
 	}) == nil
+}
+
+func (c *Consumer) deadLetterHeaders(event Event, lastErr error, reason string) map[string]string {
+	headers := cloneHeaders(event.Headers)
+	headers["retry_attempt"] = strconv.Itoa(headerRetryAttempt(event.Headers))
+	headers["last_error"] = lastErr.Error()
+	headers["dead_reason"] = reason
+	headers["original_topic"] = c.baseTopicName(event.Topic)
+	headers["failed_at"] = time.Now().UTC().Format(time.RFC3339Nano)
+	return headers
 }
 
 func (c *Consumer) baseTopicName(topic string) string {

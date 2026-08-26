@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -1198,6 +1199,13 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if repo.outboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
+	}
+	var headers map[string]string
+	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
+		t.Fatalf("decode outbox headers: %v", err)
+	}
+	if headers["version"] != "v1" || headers["schema_version"] != "v1" {
+		t.Fatalf("expected versioned outbox headers, got %+v", headers)
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)

@@ -746,10 +746,11 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 	}
 
 	headers, err := json.Marshal(map[string]string{
-		"event_type": envelope.EventType,
-		"version":    envelope.Version,
-		"source":     envelope.Source,
-		"event_id":   envelope.EventID,
+		"event_type":     envelope.EventType,
+		"version":        envelope.Version,
+		"schema_version": envelope.Version,
+		"source":         envelope.Source,
+		"event_id":       envelope.EventID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshal outbox headers: %w", err)
