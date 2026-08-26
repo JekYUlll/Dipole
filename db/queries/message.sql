@@ -82,23 +82,3 @@ WHERE messages.id > sqlc.arg(after_id)
   )
 ORDER BY messages.id ASC
 LIMIT ?;
-
--- name: FindLatestAccessibleFileMessage :one
-SELECT messages.* FROM messages
-WHERE file_id = sqlc.arg(file_uuid)
-  AND message_type = sqlc.arg(file_message_type)
-  AND (
-    (target_type = sqlc.arg(direct_type)
-      AND (sender_uuid = sqlc.arg(user_uuid) OR target_uuid = sqlc.arg(user_uuid)))
-    OR
-    (target_type = sqlc.arg(group_type)
-      AND EXISTS (
-        SELECT 1 FROM group_members gm
-        JOIN `groups` g ON g.uuid = gm.group_uuid
-        WHERE gm.group_uuid = messages.target_uuid
-          AND gm.user_uuid = sqlc.arg(user_uuid)
-          AND g.status IN (sqlc.arg(group_normal_status), sqlc.arg(group_dismissed_status))
-      ))
-  )
-ORDER BY sent_at DESC, id DESC
-LIMIT 1;

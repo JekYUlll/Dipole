@@ -40,6 +40,7 @@ type MessageStore struct {
 const defaultMaxConcurrentComparisons = 32
 
 var _ application.MessageStore = (*MessageStore)(nil)
+var _ application.MessageMetadataStore = (*MessageStore)(nil)
 
 func NewMessageStore(primary application.MessageStore, timeline TimelineRangeReader, observe func(MessageComparison)) *MessageStore {
 	return newMessageStore(primary, timeline, observe, defaultMaxConcurrentComparisons)
@@ -80,6 +81,22 @@ func (s *MessageStore) GetByUUID(uuid string) (*model.Message, error) {
 
 func (s *MessageStore) GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error) {
 	return s.primary.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+}
+
+func (s *MessageStore) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
+	if store, ok := s.primary.(application.MessageMetadataStore); ok {
+		return store.GetMetadataByUUID(uuid)
+	}
+	message, err := s.primary.GetByUUID(uuid)
+	return model.MetadataFromMessage(message), err
+}
+
+func (s *MessageStore) GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error) {
+	if store, ok := s.primary.(application.MessageMetadataStore); ok {
+		return store.GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID)
+	}
+	message, err := s.primary.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+	return model.MetadataFromMessage(message), err
 }
 
 func (s *MessageStore) HasConversationMessages(conversationKey string) (bool, error) {

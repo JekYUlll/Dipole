@@ -33,25 +33,31 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 11)
+		assertCurrentVersion(t, runner, 12)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 23)
+		assertTableCount(t, db, 24)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 11)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (12, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 12)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (13, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 12"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 13"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Message Metadata migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 11)
+		assertTableCount(t, db, 23)
 
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Sync Inbox baseline migration: %v", err)
@@ -125,6 +131,49 @@ func TestMySQLBaselineMigration(t *testing.T) {
 
 }
 
+func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db := openTemporaryDatabase(t, adminDSN, "message_metadata")
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	ctx := context.Background()
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back metadata migration: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO messages (
+		uuid, client_message_id, conversation_key, seq, sender_uuid, target_type,
+		target_uuid, message_type, content, file_id, file_expires_at, sent_at
+	) VALUES ('M-meta-legacy', 'CM-meta-legacy', 'direct:U1:U2', 7, 'U1', 0,
+		'U2', 1, '', 'F-meta-legacy', '2026-08-28 12:00:00.000', '2026-08-27 12:00:00.000')`); err != nil {
+		t.Fatalf("seed legacy message: %v", err)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("apply metadata migration: %v", err)
+	}
+
+	var messageUUID, clientMessageID, fileID, payloadSHA string
+	var messageSeq uint64
+	var expiresAt time.Time
+	if err := db.QueryRow(`SELECT message_uuid, client_message_id, message_seq, file_id,
+		file_expires_at, payload_sha256 FROM message_metadata WHERE message_uuid = 'M-meta-legacy'`).
+		Scan(&messageUUID, &clientMessageID, &messageSeq, &fileID, &expiresAt, &payloadSHA); err != nil {
+		t.Fatalf("read backfilled metadata: %v", err)
+	}
+	if messageUUID != "M-meta-legacy" || clientMessageID != "CM-meta-legacy" || messageSeq != 7 ||
+		fileID != "F-meta-legacy" || expiresAt.IsZero() || payloadSHA != "" {
+		t.Fatalf("unexpected backfilled metadata: uuid=%s client=%s seq=%d file=%s expires=%s hash=%q",
+			messageUUID, clientMessageID, messageSeq, fileID, expiresAt, payloadSHA)
+	}
+}
+
 func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {
@@ -159,7 +208,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 11)
+	assertMigrationCount(t, db, 12)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {

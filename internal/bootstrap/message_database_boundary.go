@@ -11,6 +11,7 @@ import (
 
 var messageOwnedTables = []string{
 	"messages",
+	"message_metadata",
 	"conversation_sequences",
 	"group_sync_states",
 	"outbox_events",

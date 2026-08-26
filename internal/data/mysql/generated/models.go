@@ -118,6 +118,23 @@ type Message struct {
 	Seq             uint64
 }
 
+type MessageMetadatum struct {
+	MessageUuid     string
+	ClientMessageID string
+	ConversationKey string
+	MessageSeq      uint64
+	SenderUuid      string
+	TargetType      int8
+	TargetUuid      string
+	MessageType     int8
+	FileID          string
+	FileExpiresAt   sql.NullTime
+	PayloadSha256   string
+	SentAt          time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type OutboxEvent struct {
 	ID            uint64
 	AggregateType string
