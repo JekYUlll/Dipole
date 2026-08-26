@@ -1682,7 +1682,7 @@ const handleWsPacket = async (packet: WsPacket) => {
     }
     case 'session.kicked':
       toast.error(`被踢下线: ${(data as any)?.reason || ''}`)
-      await auth.logout()
+      await auth.terminateSession(false)
       router.push({ name: 'login' })
       break
     case 'group.created':

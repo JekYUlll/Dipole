@@ -1,6 +1,23 @@
 import axios from 'axios'
 import { getDeviceID } from '@/device'
 
+type UnauthorizedHandler = () => void | Promise<void>
+
+let unauthorizedHandler: UnauthorizedHandler | undefined
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
+  unauthorizedHandler = handler
+}
+
+function fallbackUnauthorizedCleanup() {
+  for (const key of ['dipole.web.token', 'dipole.web.user', 'dipole.web.lastOfflineID']) {
+    try { localStorage.removeItem(key) } catch { /* keep clearing the remaining keys */ }
+  }
+  if (!window.location.pathname.endsWith('/login')) {
+    try { window.location.replace('/app/login') } catch { /* credentials remain locally revoked */ }
+  }
+}
+
 const api = axios.create({
   baseURL: '/',
   timeout: 10000,
@@ -11,9 +28,9 @@ api.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
   }
-	if (config.headers) {
-		config.headers['X-Device-ID'] = getDeviceID()
-	}
+  if (config.headers) {
+    config.headers['X-Device-ID'] = getDeviceID()
+  }
   return config
 })
 
@@ -27,11 +44,10 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('dipole.web.token')
-      localStorage.removeItem('dipole.web.user')
-      // Only redirect if not already on login page
-      if (!window.location.pathname.endsWith('/login')) {
-        window.location.replace('/app/login')
+      if (unauthorizedHandler) {
+        try { void Promise.resolve(unauthorizedHandler()).catch(() => {}) } catch { fallbackUnauthorizedCleanup() }
+      } else {
+        fallbackUnauthorizedCleanup()
       }
     }
     const msg = error.response?.data?.message || error.message || '网络错误'

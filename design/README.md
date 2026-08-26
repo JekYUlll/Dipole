@@ -38,6 +38,8 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 `shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述四态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
 
+显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
