@@ -137,6 +137,55 @@ func (q *Queries) ListConversationsByUser(ctx context.Context, arg ListConversat
 	return items, nil
 }
 
+const listSearchConversationKeysByUser = `-- name: ListSearchConversationKeysByUser :many
+SELECT c.conversation_key FROM conversations c
+WHERE c.user_uuid = ?
+  AND c.target_type = ?
+UNION
+SELECT CONCAT('group:', gm.group_uuid) AS conversation_key
+FROM group_members gm
+JOIN ` + "`" + `groups` + "`" + ` g ON g.uuid = gm.group_uuid
+WHERE gm.user_uuid = ?
+  AND g.status IN (?, ?)
+ORDER BY conversation_key ASC
+`
+
+type ListSearchConversationKeysByUserParams struct {
+	UserUuid             string
+	DirectTargetType     int8
+	GroupNormalStatus    int8
+	GroupDismissedStatus int8
+}
+
+func (q *Queries) ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listSearchConversationKeysByUser,
+		arg.UserUuid,
+		arg.DirectTargetType,
+		arg.UserUuid,
+		arg.GroupNormalStatus,
+		arg.GroupDismissedStatus,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var conversation_key string
+		if err := rows.Scan(&conversation_key); err != nil {
+			return nil, err
+		}
+		items = append(items, conversation_key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markConversationReadThrough = `-- name: MarkConversationReadThrough :execresult
 UPDATE conversations
 SET read_seq = GREATEST(read_seq, LEAST(last_message_seq, CAST(? AS UNSIGNED))),

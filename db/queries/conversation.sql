@@ -48,6 +48,18 @@ WHERE user_uuid = ?
 ORDER BY last_message_at DESC
 LIMIT ?;
 
+-- name: ListSearchConversationKeysByUser :many
+SELECT c.conversation_key FROM conversations c
+WHERE c.user_uuid = sqlc.arg(user_uuid)
+  AND c.target_type = sqlc.arg(direct_target_type)
+UNION
+SELECT CONCAT('group:', gm.group_uuid) AS conversation_key
+FROM group_members gm
+JOIN `groups` g ON g.uuid = gm.group_uuid
+WHERE gm.user_uuid = sqlc.arg(user_uuid)
+  AND g.status IN (sqlc.arg(group_normal_status), sqlc.arg(group_dismissed_status))
+ORDER BY conversation_key ASC;
+
 -- name: GetConversationByUserAndKey :one
 SELECT * FROM conversations
 WHERE user_uuid = ? AND conversation_key = ?

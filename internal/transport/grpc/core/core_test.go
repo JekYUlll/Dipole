@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -43,6 +44,10 @@ func (stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.Up
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "design.pen", FileSize: 42, ContentType: "application/octet-stream", URL: "https://files.test/design.pen"}, nil
 }
 
+func (stubCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	return []string{"direct:" + userUUID + ":U2", "group:G1"}, nil
+}
+
 func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	rpc := newBufconnRPCClient(t, stubCoreCapability{})
 	client, err := NewClient(rpc)
@@ -78,6 +83,10 @@ func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	if err != nil || file != nil {
 		t.Fatalf("expected hidden unowned file, got %+v err=%v", file, err)
 	}
+	keys, err := client.ListSearchConversationKeys("U1")
+	if err != nil || len(keys) != 2 || keys[0] != "direct:U1:U2" {
+		t.Fatalf("unexpected Search scope: keys=%v err=%v", keys, err)
+	}
 }
 
 func TestServerRejectsMissingCallerService(t *testing.T) {
@@ -85,6 +94,16 @@ func TestServerRejectsMissingCallerService(t *testing.T) {
 	_, err := rpc.GetUser(context.Background(), &corev1.GetUserRequest{UserId: "U1"})
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("expected Unauthenticated, got %v", err)
+	}
+}
+
+func TestServerRejectsMissingSearchPrincipal(t *testing.T) {
+	rpc := newBufconnRPCClient(t, stubCoreCapability{})
+	_, err := rpc.ListSearchConversationKeys(context.Background(), &corev1.ListSearchConversationKeysRequest{
+		Context: &commonv1.RequestContext{CallerService: "dipole-search"},
+	})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("expected missing principal to be Unauthenticated, got %v", err)
 	}
 }
 

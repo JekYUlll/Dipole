@@ -79,6 +79,7 @@ type Querier interface {
 	ListMessagesForCassandraBackfill(ctx context.Context, arg ListMessagesForCassandraBackfillParams) ([]Message, error)
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
+	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
 	ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncInboxAfterParams) ([]UserSyncInbox, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
