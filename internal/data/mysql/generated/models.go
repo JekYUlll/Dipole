@@ -3,3 +3,21 @@
 //   sqlc v1.31.1
 
 package generated
+
+import (
+	"database/sql"
+)
+
+type UploadedFile struct {
+	ID           uint64
+	Uuid         string
+	UploaderUuid string
+	Bucket       string
+	ObjectKey    string
+	FileName     string
+	FileSize     int64
+	ContentType  string
+	Url          string
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+}

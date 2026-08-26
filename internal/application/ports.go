@@ -66,6 +66,11 @@ type AdminOverviewStore interface {
 	OverviewCounts() (*AdminOverviewCounts, error)
 }
 
+type FileMetadataStore interface {
+	Create(file *model.UploadedFile) error
+	GetByUUID(uuid string) (*model.UploadedFile, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
