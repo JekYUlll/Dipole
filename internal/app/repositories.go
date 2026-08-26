@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/repository"
@@ -29,7 +30,7 @@ type Repositories struct {
 	Files         application.FileMetadataStore
 	Conversations *repository.ConversationRepository
 	Contacts      application.ContactStore
-	Groups        *repository.GroupRepository
+	Groups        application.GroupStore
 	Admin         application.AdminOverviewStore
 	Sync          *repository.SyncRepository
 	AICallLogs    application.AICallLogStore
@@ -51,7 +52,7 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 		Files:         repository.NewFileRepository(),
 		Conversations: repository.NewConversationRepository(),
 		Contacts:      NewCachedContactStore(repository.NewContactRepository()),
-		Groups:        repository.NewGroupRepository(),
+		Groups:        NewCachedGroupStore(repository.NewGroupRepository()),
 		Admin:         repository.NewAdminRepository(),
 		Sync:          repository.NewSyncRepository(),
 		AICallLogs:    repository.NewAICallLogRepository(),
@@ -89,6 +90,15 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc contact repository: %w", err)
 		}
 		repos.Contacts = NewCachedContactStore(contactAdapter)
+		mysqlStore, err := mysqlData.NewStore(options.SQLDB)
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc transaction store: %w", err)
+		}
+		groupAdapter, err := sqlcRepository.NewGroupRepository(mysqlStore)
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc group repository: %w", err)
+		}
+		repos.Groups = NewCachedGroupStore(groupAdapter)
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}

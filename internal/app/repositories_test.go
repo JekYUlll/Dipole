@@ -65,6 +65,13 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		if _, ok := cachedContacts.backend.(*gormRepository.ContactRepository); !ok {
 			t.Fatalf("expected GORM contact backend, got %T", cachedContacts.backend)
 		}
+		cachedGroups, ok := repos.Groups.(*CachedGroupStore)
+		if !ok {
+			t.Fatalf("expected cached group store, got %T", repos.Groups)
+		}
+		if _, ok := cachedGroups.backend.(*gormRepository.GroupRepository); !ok {
+			t.Fatalf("expected GORM group backend, got %T", cachedGroups.backend)
+		}
 	})
 
 	t.Run("sqlc", func(t *testing.T) {
@@ -97,6 +104,13 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		}
 		if _, ok := cachedContacts.backend.(*sqlcRepository.ContactRepository); !ok {
 			t.Fatalf("expected sqlc contact backend, got %T", cachedContacts.backend)
+		}
+		cachedGroups, ok := repos.Groups.(*CachedGroupStore)
+		if !ok {
+			t.Fatalf("expected cached group store, got %T", repos.Groups)
+		}
+		if _, ok := cachedGroups.backend.(*sqlcRepository.GroupRepository); !ok {
+			t.Fatalf("expected sqlc group backend, got %T", cachedGroups.backend)
 		}
 	})
 

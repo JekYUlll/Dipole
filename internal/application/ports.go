@@ -98,6 +98,17 @@ type ContactStore interface {
 	ListOutgoingApplications(userUUID string) ([]*model.ContactApplication, error)
 }
 
+type GroupStore interface {
+	Create(group *model.Group, members []*model.GroupMember) error
+	GetByUUID(groupUUID string) (*model.Group, error)
+	GetMember(groupUUID, userUUID string) (*model.GroupMember, error)
+	ListMembers(groupUUID string) ([]*model.GroupMember, error)
+	AddMembers(groupUUID string, members []*model.GroupMember) error
+	Update(group *model.Group) error
+	RemoveMembers(groupUUID string, memberUUIDs []string) error
+	RemoveMember(groupUUID, userUUID string) error
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
