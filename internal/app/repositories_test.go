@@ -1,6 +1,12 @@
 package app
 
-import "testing"
+import (
+	"database/sql"
+	"testing"
+
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	gormRepository "github.com/JekYUlll/Dipole/internal/repository"
+)
 
 func TestNewRepositoriesBuildsApplicationRepositorySet(t *testing.T) {
 	repos := NewRepositories()
@@ -26,4 +32,43 @@ func TestNewRepositoriesBuildsApplicationRepositorySet(t *testing.T) {
 			t.Errorf("repository %s is nil", name)
 		}
 	}
+}
+
+func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("gorm default", func(t *testing.T) {
+		repos, err := NewRepositoriesWithOptions(RepositoryOptions{})
+		if err != nil {
+			t.Fatalf("compose repositories: %v", err)
+		}
+		if _, ok := repos.AICallLogs.(*gormRepository.AICallLogRepository); !ok {
+			t.Fatalf("expected GORM adapter, got %T", repos.AICallLogs)
+		}
+	})
+
+	t.Run("sqlc", func(t *testing.T) {
+		repos, err := NewRepositoriesWithOptions(RepositoryOptions{
+			MySQLAdapter: MySQLAdapterSQLC,
+			SQLDB:        &sql.DB{},
+		})
+		if err != nil {
+			t.Fatalf("compose repositories: %v", err)
+		}
+		if _, ok := repos.AICallLogs.(*sqlcRepository.AICallLogRepository); !ok {
+			t.Fatalf("expected sqlc adapter, got %T", repos.AICallLogs)
+		}
+	})
+
+	t.Run("sqlc requires connection", func(t *testing.T) {
+		if _, err := NewRepositoriesWithOptions(RepositoryOptions{MySQLAdapter: MySQLAdapterSQLC}); err == nil {
+			t.Fatal("expected missing SQL connection to fail")
+		}
+	})
+
+	t.Run("unknown adapter", func(t *testing.T) {
+		if _, err := NewRepositoriesWithOptions(RepositoryOptions{MySQLAdapter: "unknown"}); err == nil {
+			t.Fatal("expected unknown adapter to fail")
+		}
+	})
 }

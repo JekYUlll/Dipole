@@ -35,6 +35,7 @@
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
 - Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
 - 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
+- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围仅包含已通过双适配契约的 AICallLog Repository，其余仓储保持 GORM。
 - Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
@@ -46,6 +47,7 @@
 
 ### 迁移说明
 
+- 可设置 `DIPOLE_DATA_MYSQL_ADAPTER=sqlc` 启用已迁移仓储，发生异常时设置为 `gorm` 并重启节点即可回切；未知配置会直接拒绝启动。
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。

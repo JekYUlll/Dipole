@@ -66,6 +66,8 @@ go run ./cmd/server
 
 首个 AICallLog GORM/sqlc adapter 已通过同一套真实 MySQL contract test。GORM 会回填输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
 
+`data.mysql_adapter=gorm|sqlc` 已接入 Composition Root。兼容窗口内，`sqlc` 只选择已经完成 contract test 的 Repository，尚未迁移的 Repository 继续使用 GORM；设置未知值会阻止服务启动。可通过环境变量 `DIPOLE_DATA_MYSQL_ADAPTER=gorm` 立即回切。
+
 开发命令：
 
 ```bash
