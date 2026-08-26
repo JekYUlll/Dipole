@@ -71,9 +71,19 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 
 ## Alias Migration
 
-新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。回滚使用同一原子操作反向切换。
+新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收两个生产 Alias 全局只有一个 owner，并校验目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。remove action 使用 `must_exist=true`，并发运维或分裂 owner 会让整个请求失败。请求成功后的 owner 验收失败会触发反向原子补偿；回滚也使用同一受控路径。
 
-索引切换前需要保留：源 checkpoint、目标文档数量/hash、构建开始时间、owner、回滚截止时间和旧索引保留期。ES 故障不得阻断消息持久化，Kafka lag 与 DLQ 负责暴露投影滞后。
+`cmd/search-alias` 要求显式确认维护窗口，并在 Reconcile 前、Alias 操作前、Alias 操作后三次确认 Outbox 高水位仍等于已完成任务的固定快照。切换后的检查发现漂移时，命令立即反向切回原索引；补偿失败与原始错误会一并返回。成功输出 JSON receipt，包含 job、from/to、固定高水位、文档计数、切换时间与回滚截止时间。
+
+安全切换流程：
+
+1. 暂停产生 Message mutation 的业务写入；只停止 Search Indexer 无法冻结 Outbox 高水位。
+2. 对目标物理索引运行一个新的 Backfill job，使固定高水位追平维护窗口起点。
+3. 运行 Reconcile 并确认一致。
+4. 执行 `dipole-search-alias -action switch ... -confirm-maintenance-window`。
+5. 保存 receipt，恢复业务写入，并至少保留旧索引到 `rollback_until`。
+
+回滚前需要在新的维护窗口内对旧索引运行新的 Backfill/Reconcile job，再执行 `-action rollback` 将新索引作为 `from`、旧索引作为 `to`。命令不会直接删除旧索引，也不会允许用陈旧 checkpoint 回切。ES 故障不得阻断消息持久化，Kafka lag 与 DLQ 负责暴露投影滞后。
 
 ## Backfill And Reconciliation
 
@@ -93,7 +103,7 @@ dipole-search-reconcile \
 
 Reconcile 只接受已完成任务的原始高水位，刷新目标索引后逐条比较 revision、searchable 与 canonical payload hash，并同时比较源状态数、目标文档数、缺失数和额外文档数。报告一致时退出 0，执行错误退出 1，确认差异退出 2。
 
-当前恢复源要求已发布 Outbox 事件持续保留；归档与清理契约记录在 `AD-021`。在线 Indexer 只写当前 write Alias，因此生产 Alias 切换前还需要停写窗口或后续双写/catch-up 门禁，本里程碑不自动切换 Alias。
+当前恢复源要求已发布 Outbox 事件持续保留；归档与清理契约记录在 `AD-021`。在线 Indexer 只写当前 write Alias，因此生产 Alias 切换采用显式业务写维护窗口。未来若需要无停写切换，可在不改变 Backfill/Reconcile 语义的前提下增加双写 build target 与 source event watermark。
 
 ## Verified Contract
 
@@ -108,6 +118,7 @@ Reconcile 只接受已完成任务的原始高水位，刷新目标索引后逐�
 - Search Projector 的八类 Topic 映射、legacy created 默认、channel/target 冲突与 adapter 失败传播。
 - 物理构建索引无生产 Alias、显式 direct write、refresh、lookup 与 count。
 - 固定 Outbox 最终状态快照、owner lease、失败恢复、目标绑定和缺失/hash/额外文档对账。
+- 维护窗口确认、新鲜快照三重检查、Alias owner CAS、切换后验收、自动反向补偿与 rollback receipt。
 
 真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。三节点 Kafka 端到端 smoke 进一步验证 created r1、recalled r3 与迟到 edited r2 最终保持 revision 3 tombstone。测试入口：
 
@@ -121,8 +132,8 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 增加受控 catch-up、Alias 切换/回滚命令和旧索引保留窗口。
-2. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
+1. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
+2. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References
 

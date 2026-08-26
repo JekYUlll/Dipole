@@ -99,8 +99,16 @@ func TestSwitchAliasesUsesOneAtomicActionRequest(t *testing.T) {
 		Actions []map[string]map[string]any `json:"actions"`
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet && request.URL.Path == "/_alias/dipole-messages-read,dipole-messages-write" && len(body.Actions) == 0 {
+			_, _ = writer.Write([]byte(validAliasResponse("dipole-messages-v1")))
+			return
+		}
 		if request.Method == http.MethodGet && request.URL.Path == "/dipole-messages-v2/_mapping" {
 			_, _ = writer.Write([]byte(strings.Replace(validExistingMappingResponse(), "dipole-messages-v1", "dipole-messages-v2", 1)))
+			return
+		}
+		if request.Method == http.MethodGet && request.URL.Path == "/_alias/dipole-messages-read,dipole-messages-write" && len(body.Actions) > 0 {
+			_, _ = writer.Write([]byte(validAliasResponse("dipole-messages-v2")))
 			return
 		}
 		if request.Method != http.MethodPost || request.URL.Path != "/_aliases" {
@@ -117,8 +125,62 @@ func TestSwitchAliasesUsesOneAtomicActionRequest(t *testing.T) {
 	if err := index.SwitchAliases(t.Context(), "dipole-messages-v1", "dipole-messages-v2"); err != nil {
 		t.Fatalf("switch aliases: %v", err)
 	}
-	if len(body.Actions) != 4 || body.Actions[3]["add"]["is_write_index"] != true {
+	if len(body.Actions) != 4 || body.Actions[0]["remove"]["must_exist"] != true || body.Actions[3]["add"]["is_write_index"] != true {
 		t.Fatalf("unexpected alias actions: %#v", body.Actions)
+	}
+}
+
+func TestSwitchAliasesRejectsSplitOwnershipBeforeMutation(t *testing.T) {
+	posts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet && request.URL.Path == "/_alias/dipole-messages-read,dipole-messages-write" {
+			_, _ = writer.Write([]byte(`{"dipole-messages-v1":{"aliases":{"dipole-messages-read":{},"dipole-messages-write":{"is_write_index":true}}},"rogue":{"aliases":{"dipole-messages-read":{}}}}`))
+			return
+		}
+		if request.Method == http.MethodPost {
+			posts++
+		}
+	}))
+	defer server.Close()
+
+	err := testIndex(t, server.URL).SwitchAliases(t.Context(), "dipole-messages-v1", "dipole-messages-v2")
+	if err == nil || posts != 0 || !strings.Contains(err.Error(), "one physical owner") {
+		t.Fatalf("expected split ownership rejection: posts=%d err=%v", posts, err)
+	}
+}
+
+func TestSwitchAliasesCompensatesPostValidationFailure(t *testing.T) {
+	owner := "dipole-messages-v1"
+	posts := 0
+	failNewValidation := true
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.Method == http.MethodGet && request.URL.Path == "/_alias/dipole-messages-read,dipole-messages-write":
+			if owner == "dipole-messages-v2" && failNewValidation {
+				failNewValidation = false
+				writer.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = writer.Write([]byte(validAliasResponse(owner)))
+		case request.Method == http.MethodGet && request.URL.Path == "/dipole-messages-v2/_mapping":
+			_, _ = writer.Write([]byte(strings.Replace(validExistingMappingResponse(), "dipole-messages-v1", "dipole-messages-v2", 1)))
+		case request.Method == http.MethodPost && request.URL.Path == "/_aliases":
+			posts++
+			if posts == 1 {
+				owner = "dipole-messages-v2"
+			} else {
+				owner = "dipole-messages-v1"
+			}
+			_, _ = writer.Write([]byte(`{"acknowledged":true}`))
+		default:
+			t.Fatalf("unexpected compensation request %s %s", request.Method, request.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	err := testIndex(t, server.URL).SwitchAliases(t.Context(), "dipole-messages-v1", "dipole-messages-v2")
+	if err == nil || posts != 2 || owner != "dipole-messages-v1" || !strings.Contains(err.Error(), "restored") {
+		t.Fatalf("expected compensated post-check: owner=%s posts=%d err=%v", owner, posts, err)
 	}
 }
 
@@ -311,4 +373,8 @@ func upsertMutation(document *model.MessageSearchDocument) *model.MessageSearchM
 
 func validExistingMappingResponse() string {
 	return `{"dipole-messages-v1":{"mappings":{"dynamic":"strict","properties":{"message_uuid":{"type":"keyword"},"conversation_key":{"type":"keyword"},"message_seq":{"type":"long"},"revision":{"type":"long"},"sender_uuid":{"type":"keyword"},"message_type":{"type":"byte"},"content":{"type":"text"},"sent_at":{"type":"date"},"searchable":{"type":"boolean"},"payload_hash":{"type":"keyword","index":false}}}}}`
+}
+
+func validAliasResponse(index string) string {
+	return `{"` + index + `":{"aliases":{"dipole-messages-read":{},"dipole-messages-write":{"is_write_index":true}}}}`
 }
