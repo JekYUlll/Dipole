@@ -98,6 +98,13 @@ func TestTimelineStoreContract(t *testing.T) {
 	if err != nil || !found || fileRecord.Projection.FileExpiresAt == nil || !fileRecord.Projection.FileExpiresAt.Equal(time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)) {
 		t.Fatalf("lookup file expiry: record=%+v found=%v err=%v", fileRecord, found, err)
 	}
+	rangeRecords, err := store.ListRange(ctx, first.ConversationKey, 10_000, 10_001)
+	if err != nil {
+		t.Fatalf("list cross-bucket range: %v", err)
+	}
+	if len(rangeRecords) != 2 || rangeRecords[0].Projection.MessageSeq != 10_000 || rangeRecords[1].Projection.MessageSeq != 10_001 {
+		t.Fatalf("expected ascending cross-bucket range [10000 10001], got %+v", rangeRecords)
+	}
 
 	iter := session.Query(`
 SELECT message_seq FROM timeline_by_conversation_bucket

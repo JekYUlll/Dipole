@@ -85,6 +85,8 @@ message:
   runtime_mode: owner
   # Query-only comparison; send commands always execute on the selected primary exactly once.
   shadow_queries: false
+  # Compare Message Store history pages with Cassandra asynchronously; MySQL remains the response source.
+  cassandra_shadow_reads: false
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
 
