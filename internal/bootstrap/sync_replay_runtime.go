@@ -86,7 +86,7 @@ func RunSyncReconciliation(ctx context.Context, options SyncReconciliationOption
 }
 
 func openSyncRecoveryStore(ctx context.Context, operation string) (*sql.DB, *mysqldata.Store, error) {
-	db, err := sql.Open("mysql", mysqlconfig.DSN(config.MySQLConfig(), false))
+	db, err := sql.Open("mysql", mysqlconfig.DSN(config.SyncMySQLConfig(), false))
 	if err != nil {
 		return nil, nil, fmt.Errorf("open Sync %s MySQL: %w", operation, err)
 	}

@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"database/sql"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,37 @@ type messageSyncStores struct {
 	message    application.MessageStore
 	sync       application.SyncStore
 	projection application.SyncProjectionStore
+}
+
+func TestMessageProjectorAccountWritesMessageAndOutbox(t *testing.T) {
+	dsn := os.Getenv("DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN")
+	if dsn == "" {
+		t.Skip("DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN is required for Message permission integration tests")
+	}
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		t.Fatalf("open Message projector database: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatalf("create Message projector store: %v", err)
+	}
+	repository, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, false)
+	if err != nil {
+		t.Fatalf("create Message projector repository: %v", err)
+	}
+	message := contractStoredMessage("projector-smoke", model.DirectConversationKey("U-proj-sender", "U-proj-target"), time.Now().UTC())
+	event := contractOutboxEvent(message.UUID)
+	if err := repository.StoreWithOutboxAndSync(message, staticOutboxBuilder(event), []string{"U-proj-target"}); err != nil {
+		t.Fatalf("store Message and Outbox with projector account: %v", err)
+	}
+	if _, err := repository.ListOfflineByUserUUID("U-proj-target", 0, 10); err != nil {
+		t.Fatalf("query legacy offline compatibility with projector account: %v", err)
+	}
+	if message.Seq != 1 {
+		t.Fatalf("message seq = %d, want 1", message.Seq)
+	}
 }
 
 func TestMessageSyncRepositoryContract(t *testing.T) {
@@ -50,6 +82,71 @@ func TestMessageSyncRepositoryContract(t *testing.T) {
 	t.Run("sqlc", func(t *testing.T) {
 		runMessageSyncContract(t, db, messageSyncStores{message: sqlcMessage, sync: sqlcSync, projection: sqlcProjection}, "sqlc")
 	})
+}
+
+func TestMessageInboxWriteOwnershipCanMoveToProjectorAndRollBack(t *testing.T) {
+	db, _ := openContractDatabase(t)
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("migrate contract database: %v", err)
+	}
+	store, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatalf("create MySQL store: %v", err)
+	}
+	projectorMode, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, false)
+	if err != nil {
+		t.Fatalf("create projector-mode repository: %v", err)
+	}
+	projection, err := sqlcRepository.NewSyncProjectionRepository(store)
+	if err != nil {
+		t.Fatalf("create Sync projector: %v", err)
+	}
+
+	recipient := "U-owner-target"
+	message := contractStoredMessage("owner-projector", model.DirectConversationKey("U-owner-sender", recipient), time.Now().UTC())
+	event := contractOutboxEvent(message.UUID)
+	if err := projectorMode.StoreWithOutboxAndSync(message, staticOutboxBuilder(event), []string{recipient}); err != nil {
+		t.Fatalf("store in projector mode: %v", err)
+	}
+	if got := countContractRows(t, db, "messages", "uuid = ?", message.UUID); got != 1 {
+		t.Fatalf("message rows = %d, want 1", got)
+	}
+	if got := countContractRows(t, db, "outbox_events", "aggregate_id = ?", message.UUID); got != 1 {
+		t.Fatalf("outbox rows = %d, want 1", got)
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", message.UUID); got != 0 {
+		t.Fatalf("projector-mode inbox rows = %d, want 0", got)
+	}
+	if err := projectorMode.EnsureSyncInbox(message, []string{recipient}); err != nil {
+		t.Fatalf("projector-mode duplicate repair: %v", err)
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", message.UUID); got != 0 {
+		t.Fatalf("projector-mode repair wrote %d rows", got)
+	}
+
+	if err := projection.Apply(&model.SyncProjection{EventID: "E-" + message.UUID, MessageUUID: message.UUID, ConversationKey: message.ConversationKey, MessageSeq: message.Seq, RecipientUUIDs: []string{recipient}}); err != nil {
+		t.Fatalf("apply projector event: %v", err)
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", message.UUID); got != 1 {
+		t.Fatalf("projected inbox rows = %d, want 1", got)
+	}
+
+	atomicMode, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, true)
+	if err != nil {
+		t.Fatalf("create atomic-mode repository: %v", err)
+	}
+	rollbackMessage := contractStoredMessage("owner-rollback", message.ConversationKey, time.Now().UTC().Add(time.Second))
+	rollbackEvent := contractOutboxEvent(rollbackMessage.UUID)
+	if err := atomicMode.StoreWithOutboxAndSync(rollbackMessage, staticOutboxBuilder(rollbackEvent), []string{recipient}); err != nil {
+		t.Fatalf("store after rollback: %v", err)
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", rollbackMessage.UUID); got != 1 {
+		t.Fatalf("rollback inbox rows = %d, want 1", got)
+	}
 }
 
 func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, prefix string) {

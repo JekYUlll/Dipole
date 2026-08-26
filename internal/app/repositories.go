@@ -57,6 +57,10 @@ func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
 }
 
 func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
+	return NewMessageProcessRepositoriesWithInboxWrites(db, true)
+}
+
+func NewMessageProcessRepositoriesWithInboxWrites(db *sql.DB, enabled bool) (*MessageProcessRepositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("message repository composition requires database/sql connection")
 	}
@@ -64,7 +68,7 @@ func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, err
 	if err != nil {
 		return nil, fmt.Errorf("create message transaction store: %w", err)
 	}
-	messages, err := sqlcRepository.NewMessageRepository(mysqlStore)
+	messages, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(mysqlStore, enabled)
 	if err != nil {
 		return nil, fmt.Errorf("create message repository: %w", err)
 	}

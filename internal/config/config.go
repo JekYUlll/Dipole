@@ -118,6 +118,7 @@ type Message struct {
 	CassandraReadPercent       int    `mapstructure:"cassandra_read_percentage"`
 	CassandraReadVerifyPercent int    `mapstructure:"cassandra_read_verify_percentage"`
 	EnforceDBPermissions       bool   `mapstructure:"enforce_db_permissions"`
+	InboxWriteMode             string `mapstructure:"inbox_write_mode"`
 }
 
 type Search struct {
@@ -125,9 +126,10 @@ type Search struct {
 }
 
 type Sync struct {
-	Transport        string `mapstructure:"transport"`
-	ShadowQueries    bool   `mapstructure:"shadow_queries"`
-	ProjectorEnabled bool   `mapstructure:"projector_enabled"`
+	Transport            string `mapstructure:"transport"`
+	ShadowQueries        bool   `mapstructure:"shadow_queries"`
+	ProjectorEnabled     bool   `mapstructure:"projector_enabled"`
+	EnforceDBPermissions bool   `mapstructure:"enforce_db_permissions"`
 }
 
 type InternalRPC struct {
@@ -296,10 +298,12 @@ func Load() error {
 		v.SetDefault("message.cassandra_read_percentage", 0)
 		v.SetDefault("message.cassandra_read_verify_percentage", 0)
 		v.SetDefault("message.enforce_db_permissions", false)
+		v.SetDefault("message.inbox_write_mode", "atomic")
 		v.SetDefault("search.enabled", false)
 		v.SetDefault("sync.transport", "local")
 		v.SetDefault("sync.shadow_queries", false)
 		v.SetDefault("sync.projector_enabled", false)
+		v.SetDefault("sync.enforce_db_permissions", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
 		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
@@ -425,10 +429,17 @@ func Load() error {
 			"message.cassandra_read_percentage",
 			"message.cassandra_read_verify_percentage",
 			"message.enforce_db_permissions",
+			"message.inbox_write_mode",
 			"search.enabled",
 			"sync.transport",
 			"sync.shadow_queries",
 			"sync.projector_enabled",
+			"sync.enforce_db_permissions",
+			"sync.mysql.host",
+			"sync.mysql.port",
+			"sync.mysql.user",
+			"sync.mysql.password",
+			"sync.mysql.dbname",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
 			"internal_rpc.core_listen_address",
@@ -437,6 +448,8 @@ func Load() error {
 			"internal_rpc.message_target",
 			"internal_rpc.search_listen_address",
 			"internal_rpc.search_target",
+			"internal_rpc.sync_listen_address",
+			"internal_rpc.sync_target",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -666,6 +679,7 @@ func MessageConfig() Message {
 		CassandraReadPercent:       cfg.GetInt("message.cassandra_read_percentage"),
 		CassandraReadVerifyPercent: cfg.GetInt("message.cassandra_read_verify_percentage"),
 		EnforceDBPermissions:       cfg.GetBool("message.enforce_db_permissions"),
+		InboxWriteMode:             strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
 	}
 }
 
@@ -677,10 +691,39 @@ func SearchConfig() Search {
 func SyncConfig() Sync {
 	MustLoad()
 	return Sync{
-		Transport:        strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
-		ShadowQueries:    cfg.GetBool("sync.shadow_queries"),
-		ProjectorEnabled: cfg.GetBool("sync.projector_enabled"),
+		Transport:            strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
+		ShadowQueries:        cfg.GetBool("sync.shadow_queries"),
+		ProjectorEnabled:     cfg.GetBool("sync.projector_enabled"),
+		EnforceDBPermissions: cfg.GetBool("sync.enforce_db_permissions"),
 	}
+}
+
+func SyncMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("sync.mysql.host"), Port: cfg.GetInt("sync.mysql.port"),
+		User: cfg.GetString("sync.mysql.user"), Password: cfg.GetString("sync.mysql.password"),
+		DBName: cfg.GetString("sync.mysql.dbname"),
+	})
+}
+
+func mergeMySQLConfig(result, override MySQL) MySQL {
+	if strings.TrimSpace(override.Host) != "" {
+		result.Host = override.Host
+	}
+	if override.Port != 0 {
+		result.Port = override.Port
+	}
+	if strings.TrimSpace(override.User) != "" {
+		result.User = override.User
+	}
+	if override.Password != "" {
+		result.Password = override.Password
+	}
+	if strings.TrimSpace(override.DBName) != "" {
+		result.DBName = override.DBName
+	}
+	return result
 }
 
 func InternalRPCConfig() InternalRPC {

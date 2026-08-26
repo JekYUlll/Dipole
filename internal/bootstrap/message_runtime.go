@@ -35,6 +35,7 @@ type MessageRuntime struct {
 func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	messageCfg := config.MessageConfig()
+	kafkaCfg := config.KafkaConfig()
 	cassandraCfg := config.CassandraConfig()
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("message service requires internal_rpc.enabled")
@@ -50,6 +51,9 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	}
 	if messageCfg.RuntimeMode != "owner" && messageCfg.RuntimeMode != "shadow" {
 		return nil, fmt.Errorf("unsupported message.runtime_mode %q", messageCfg.RuntimeMode)
+	}
+	if err := validateMessageInboxWriteMode(messageCfg, kafkaCfg); err != nil {
+		return nil, err
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		if err := platformKafka.Init(); err != nil {
@@ -67,11 +71,11 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
 	if messageCfg.EnforceDBPermissions {
-		if err := verifyMessageDatabaseBoundary(ctx, store.SQLDB); err != nil {
+		if err := verifyMessageDatabaseBoundary(ctx, store.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
-	repos, err := appComposition.NewMessageProcessRepositories(store.SQLDB)
+	repos, err := appComposition.NewMessageProcessRepositoriesWithInboxWrites(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
@@ -151,6 +155,19 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("start message rpc server: %w", err)
 	}
 	return runtime, nil
+}
+
+func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Kafka) error {
+	if messageCfg.InboxWriteMode != "atomic" && messageCfg.InboxWriteMode != "projector" {
+		return fmt.Errorf("unsupported message.inbox_write_mode %q", messageCfg.InboxWriteMode)
+	}
+	if messageCfg.InboxWriteMode == "projector" && messageCfg.RuntimeMode != "owner" {
+		return fmt.Errorf("message.inbox_write_mode projector requires message.runtime_mode owner")
+	}
+	if messageCfg.InboxWriteMode == "projector" && !kafkaCfg.Enabled {
+		return fmt.Errorf("message.inbox_write_mode projector requires kafka.enabled")
+	}
+	return nil
 }
 
 func messageOwnedKafkaTopics() []string {

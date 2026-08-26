@@ -16,13 +16,20 @@ import (
 
 var _ application.MessageStore = (*MessageRepository)(nil)
 
-type MessageRepository struct{ store transactionStore }
+type MessageRepository struct {
+	store          transactionStore
+	writeSyncInbox bool
+}
 
 func NewMessageRepository(store transactionStore) (*MessageRepository, error) {
+	return NewMessageRepositoryWithInboxWrites(store, true)
+}
+
+func NewMessageRepositoryWithInboxWrites(store transactionStore, enabled bool) (*MessageRepository, error) {
 	if store == nil {
 		return nil, errors.New("message transaction store is required")
 	}
-	return &MessageRepository{store: store}, nil
+	return &MessageRepository{store: store, writeSyncInbox: enabled}, nil
 }
 
 func (r *MessageRepository) CreateWithSync(message *model.Message, recipients []string) error {
@@ -58,8 +65,10 @@ func (r *MessageRepository) storeWithSync(message *model.Message, buildOutbox ap
 				return fmt.Errorf("advance group sync state with sqlc: %w", err)
 			}
 		}
-		if err := createSQLCSyncInbox(ctx, q, message, recipients); err != nil {
-			return err
+		if r.writeSyncInbox {
+			if err := createSQLCSyncInbox(ctx, q, message, recipients); err != nil {
+				return err
+			}
 		}
 		if buildOutbox != nil {
 			event, err := buildOutbox(message)
@@ -107,6 +116,9 @@ func allocateConversationSequence(ctx context.Context, q *generated.Queries, con
 }
 
 func (r *MessageRepository) EnsureSyncInbox(message *model.Message, recipients []string) error {
+	if !r.writeSyncInbox {
+		return nil
+	}
 	ctx := context.Background()
 	return r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
 		return createSQLCSyncInbox(ctx, q, message, recipients)

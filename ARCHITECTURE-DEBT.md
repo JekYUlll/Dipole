@@ -12,27 +12,16 @@
 
 ## 待处理
 
-### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
-
-- **优先级：** P1
-- **状态：** 处理中
-- **发现日期：** 2026-08-27
-- **影响范围：** `cmd/sync-service`、`user_sync_inbox`、设备/群 checkpoint、MySQL 最小权限
-- **现状：** 独立 Sync Runtime 组合 sqlc Sync Store/Projection Store，并可通过默认关闭的 Kafka consumer 幂等投影 Inbox；部署配置仍复用通用 MySQL 账号。Message 事务当前继续原子写 Inbox，Sync Runtime 同时需要查询和推进 checkpoint。
-- **风险：** 进程代码边界已收敛，数据库凭据仍可访问超出 Sync 职责的表；过早撤销 Message 的 Inbox 写权限会破坏消息、Inbox 与 Outbox 的原子提交。
-- **建议方向：** 当前真实 Kafka/MySQL smoke 已证明 earliest backlog 追平、精确重放、热群跳过 fanout、retry/DLQ 可见、固定快照恢复和 recipient/locator 全量对账。继续保留 Message 对 Inbox 的写权限，直到 `dipole_sync` 最小账号完成启动验收，并在灰度观察窗满足 lag=0、retry/DLQ 无增量和双 Reconcile 一致；随后按所有权迁移顺序收窄 Message 权限。
-- **处理门槛：** Sync Compose/mTLS 灰度前完成 Sync 账号验收；Message Inbox 写权限在实时投影切换门禁通过后移除。
-
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
 - **优先级：** P1
 - **状态：** 暂缓
 - **发现日期：** 2026-08-27
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
-- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator，但 Sync Service 仍通过 MySQL `messages` 批量补全正文；旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 也继续读取 MySQL 完整消息。
+- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator，但 Sync Service 仍通过 MySQL `messages` 批量补全正文；旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 也继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
 - **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 下一步按 locator 从 Cassandra Message Store 补全并与 MySQL UUID hydration 双跑，另行建立幂等结果快照或 UUID locator、独立文件授权元数据。所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
-- **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人。
+- **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 
 ### AD-021：Search 重建依赖 Outbox 事件保留契约
 
@@ -168,6 +157,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** `cmd/sync-service`、`user_sync_inbox`、设备/群 checkpoint、MySQL 最小权限
+- **解决方式：** 增加继承全局配置的 `sync.mysql.*` 专用凭据、操作级 Sync 启动探针和 `dipole_sync` 授权；增加 `message.inbox_write_mode=atomic|projector`，独立 owner 在 projector 模式停止 Inbox 写入，同时保留 Message/Seq/群高水位/Outbox 事务。`dipole_message_projector` 无 Inbox 权限，atomic 配置和原授权模板保留即时回滚。
+- **验证：** 真实 MySQL 8.4 smoke 验证 Sync/Message 两类最小账号、越权拒绝、Message+Outbox 无 Inbox 写入、Sync 投影收敛和 atomic 回退；单元与 repository contract 覆盖模式校验、重复修复 no-op 和权限边界。
 
 ### AD-024：Sync Replay 的历史覆盖受 created Outbox 边界限制
 

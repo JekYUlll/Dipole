@@ -15,6 +15,7 @@ x-internal-rpc: &internal-rpc
   DIPOLE_INTERNAL_RPC_CORE_TARGET: core:9091
   DIPOLE_INTERNAL_RPC_MESSAGE_TARGET: message:9092
   DIPOLE_INTERNAL_RPC_SEARCH_TARGET: search:9093
+  DIPOLE_INTERNAL_RPC_SYNC_TARGET: sync:9094
 
 services:
   mysql:
@@ -179,12 +180,49 @@ services:
     environment:
       <<: *internal-rpc
       DIPOLE_MESSAGE_RUNTIME_MODE: owner
+      DIPOLE_MESSAGE_INBOX_WRITE_MODE: ${DIPOLE_MESSAGE_INBOX_WRITE_MODE:-atomic}
+      DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS: ${DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS:-false}
       DIPOLE_INTERNAL_RPC_MESSAGE_LISTEN_ADDRESS: 0.0.0.0:9092
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/message.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/message-key.pem
       DIPOLE_KAFKA_CLIENT_ID: dipole-message
       DIPOLE_MYSQL_HOST: mysql
+      DIPOLE_MYSQL_USER: ${DIPOLE_MESSAGE_MYSQL_USER:-dipole}
+      DIPOLE_MYSQL_PASSWORD: ${DIPOLE_MESSAGE_MYSQL_PASSWORD:-dipole123}
       DIPOLE_REDIS_HOST: redis
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  sync:
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-sync"]
+    volumes:
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ./certs/internal/sync.pem:/run/dipole/certs/sync.pem:ro
+      - ./certs/internal/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
+    depends_on:
+      core:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: *internal-rpc
+      DIPOLE_SYNC_PROJECTOR_ENABLED: "true"
+      DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS: ${DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS:-false}
+      DIPOLE_SYNC_MYSQL_HOST: mysql
+      DIPOLE_SYNC_MYSQL_USER: ${DIPOLE_SYNC_MYSQL_USER:-dipole}
+      DIPOLE_SYNC_MYSQL_PASSWORD: ${DIPOLE_SYNC_MYSQL_PASSWORD:-dipole123}
+      DIPOLE_SYNC_MYSQL_DBNAME: dipole
+      DIPOLE_INTERNAL_RPC_SYNC_LISTEN_ADDRESS: 0.0.0.0:9094
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/sync.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/sync-key.pem
+      DIPOLE_KAFKA_CLIENT_ID: dipole-sync
     healthcheck:
       test: ["CMD-SHELL", "kill -0 1"]
       interval: 5s
