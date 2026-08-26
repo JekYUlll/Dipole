@@ -26,13 +26,13 @@ type RepositoryOptions struct {
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
 	Users         application.UserStore
-	Messages      *repository.MessageRepository
+	Messages      application.MessageStore
 	Files         application.FileMetadataStore
 	Conversations application.ConversationStore
 	Contacts      application.ContactStore
 	Groups        application.GroupStore
 	Admin         application.AdminOverviewStore
-	Sync          *repository.SyncRepository
+	Sync          application.SyncStore
 	AICallLogs    application.AICallLogStore
 	Outbox        application.OutboxRelayStore
 }
@@ -94,6 +94,16 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 		if err != nil {
 			return nil, fmt.Errorf("create sqlc transaction store: %w", err)
 		}
+		messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc message repository: %w", err)
+		}
+		repos.Messages = messageAdapter
+		syncAdapter, err := sqlcRepository.NewSyncRepository(generated.New(options.SQLDB))
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc sync repository: %w", err)
+		}
+		repos.Sync = syncAdapter
 		groupAdapter, err := sqlcRepository.NewGroupRepository(mysqlStore)
 		if err != nil {
 			return nil, fmt.Errorf("create sqlc group repository: %w", err)

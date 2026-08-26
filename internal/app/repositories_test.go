@@ -78,6 +78,12 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		if _, ok := repos.Outbox.(*gormRepository.OutboxRepository); !ok {
 			t.Fatalf("expected GORM outbox relay backend, got %T", repos.Outbox)
 		}
+		if _, ok := repos.Messages.(*gormRepository.MessageRepository); !ok {
+			t.Fatalf("expected GORM message backend, got %T", repos.Messages)
+		}
+		if _, ok := repos.Sync.(*gormRepository.SyncRepository); !ok {
+			t.Fatalf("expected GORM sync backend, got %T", repos.Sync)
+		}
 	})
 
 	t.Run("sqlc", func(t *testing.T) {
@@ -123,6 +129,12 @@ func TestNewRepositoriesWithOptionsSelectsAICallLogAdapter(t *testing.T) {
 		}
 		if _, ok := repos.Outbox.(*sqlcRepository.OutboxRepository); !ok {
 			t.Fatalf("expected sqlc outbox relay backend, got %T", repos.Outbox)
+		}
+		if _, ok := repos.Messages.(*sqlcRepository.MessageRepository); !ok {
+			t.Fatalf("expected sqlc message backend, got %T", repos.Messages)
+		}
+		if _, ok := repos.Sync.(*sqlcRepository.SyncRepository); !ok {
+			t.Fatalf("expected sqlc sync backend, got %T", repos.Sync)
 		}
 	})
 

@@ -72,6 +72,24 @@ type FileMetadataStore interface {
 	GetByUUID(uuid string) (*model.UploadedFile, error)
 }
 
+type MessageStore interface {
+	CreateWithSync(message *model.Message, recipientUUIDs []string) error
+	StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error
+	EnsureOutbox(event *model.OutboxEvent) error
+	EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error
+	GetByUUID(uuid string) (*model.Message, error)
+	GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error)
+	HasConversationMessages(conversationKey string) (bool, error)
+	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
+	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
+	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
+	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
+}
+
+type SyncStore interface {
+	ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error)
+}
+
 type UserStore interface {
 	Create(user *model.User) error
 	UpsertAssistant(user *model.User) error

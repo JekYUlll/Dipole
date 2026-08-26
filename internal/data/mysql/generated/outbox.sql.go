@@ -11,6 +11,49 @@ import (
 	"strings"
 )
 
+const createOutboxEvent = `-- name: CreateOutboxEvent :execresult
+INSERT INTO outbox_events (
+    aggregate_type, aggregate_id, event_type, topic, message_key, value,
+    headers_json, status, retry_count, last_error, next_retry_at, locked_at,
+    published_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+ON DUPLICATE KEY UPDATE id = id
+`
+
+type CreateOutboxEventParams struct {
+	AggregateType string
+	AggregateID   string
+	EventType     string
+	Topic         string
+	MessageKey    string
+	Value         []byte
+	HeadersJson   sql.NullString
+	Status        string
+	RetryCount    int64
+	LastError     sql.NullString
+	NextRetryAt   sql.NullTime
+	LockedAt      sql.NullTime
+	PublishedAt   sql.NullTime
+}
+
+func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createOutboxEvent,
+		arg.AggregateType,
+		arg.AggregateID,
+		arg.EventType,
+		arg.Topic,
+		arg.MessageKey,
+		arg.Value,
+		arg.HeadersJson,
+		arg.Status,
+		arg.RetryCount,
+		arg.LastError,
+		arg.NextRetryAt,
+		arg.LockedAt,
+		arg.PublishedAt,
+	)
+}
+
 const markOutboxEventsProcessing = `-- name: MarkOutboxEventsProcessing :execresult
 UPDATE outbox_events
 SET status = ?,

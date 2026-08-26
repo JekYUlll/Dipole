@@ -35,6 +35,7 @@
 - 增加 `GroupStore` application port、共享元数据/成员缓存装饰器与事务型 Group sqlc adapter。
 - 增加 `ConversationStore` application port 与 Conversation sqlc adapter，覆盖投影 upsert、列表、初始化、备注和未读状态。
 - 增加 `OutboxRelayStore` application port 与事务型 sqlc adapter，覆盖有序批量领取、过期租约回收、重试退避、发布终态和 Header 解码。
+- 增加 `MessageStore`、`SyncStore` application port 与 sqlc adapters，完整覆盖 Message Store 查询、Inbox Timeline 读取和 Message/Inbox/Outbox 原子写入。
 
 ### 变更
 
@@ -42,7 +43,7 @@
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
 - Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
 - 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
-- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin、File、User、Contact、Group、Conversation 与 Outbox Relay Repository，其余仓储保持 GORM。
+- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox Repository。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -63,7 +64,7 @@
 ### 迁移说明
 
 - 可设置 `DIPOLE_DATA_MYSQL_ADAPTER=sqlc` 启用已迁移仓储，发生异常时设置为 `gorm` 并重启节点即可回切；未知配置会直接拒绝启动。
-- Outbox Relay 的消费侧已支持 sqlc；Message、Inbox 与 Outbox 的事务内生产侧继续使用同一 GORM 事务，待 Message/Sync 写事务整体迁移时统一切换。
+- Message、Inbox 与 Outbox Producer 已作为同一事务边界迁移到 sqlc；切换 `DIPOLE_DATA_MYSQL_ADAPTER` 时三者整体切换，避免跨连接提交。
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
@@ -86,6 +87,7 @@
 - 已通过 Group GORM/sqlc 双适配的建群回滚、成员排序、幂等追加、实际计数、更新与移除契约测试。
 - 已通过 Conversation GORM/sqlc 双适配的消息幂等、未读增量/清零、初始化保护、预览、备注与排序契约测试。
 - 已通过 Outbox Relay GORM/sqlc 双适配的领取顺序、租约回收、退避重试、发布状态和 Header 解码契约测试。
+- 已通过 Message/Sync GORM/sqlc 双适配的事务回滚、重放幂等、历史游标、离线过滤、文件权限和同步顺序契约测试，以及 sqlc 同用户并发提交顺序测试。
 
 ### 已知问题
 

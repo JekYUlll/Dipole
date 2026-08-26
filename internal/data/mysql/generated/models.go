@@ -72,6 +72,27 @@ type GroupMember struct {
 	UpdatedAt sql.NullTime
 }
 
+type Message struct {
+	ID              uint64
+	Uuid            string
+	ClientMessageID string
+	ConversationKey string
+	SenderUuid      string
+	TargetType      int8
+	TargetUuid      string
+	MessageType     int8
+	Content         string
+	FileID          string
+	FileName        string
+	FileSize        int64
+	FileUrl         string
+	FileContentType string
+	FileExpiresAt   sql.NullTime
+	SentAt          time.Time
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
 type OutboxEvent struct {
 	ID            uint64
 	AggregateType string
@@ -120,4 +141,12 @@ type User struct {
 	Status         int8
 	CreatedAt      sql.NullTime
 	UpdatedAt      sql.NullTime
+}
+
+type UserSyncInbox struct {
+	SyncSeq         uint64
+	UserUuid        string
+	MessageUuid     string
+	ConversationKey string
+	CreatedAt       sql.NullTime
 }
