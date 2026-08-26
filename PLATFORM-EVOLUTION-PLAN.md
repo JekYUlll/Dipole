@@ -219,7 +219,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 通过 Kafka `message.created.vN` 将 MySQL 已确认消息投影到 Cassandra，消费者按事件负载幂等。
 - [x] 先回填历史数据，再持续追平增量；记录 checkpoint 和失败重试。
 - [x] 建立数量、哈希、抽样内容和会话序号连续性校验。
-- [ ] Message Service 执行 shadow-read，对比 Cassandra 与 MySQL，客户端仍读取 MySQL。
+- [x] Message Service 执行 shadow-read，对比 Cassandra 与 MySQL，客户端仍读取 MySQL。
 
 **验收：** 全量校验达到约定阈值；Kafka lag 可观测；重复消费和乱序事件不会破坏 Timeline。
 

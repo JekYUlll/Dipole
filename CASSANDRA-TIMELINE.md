@@ -1,6 +1,6 @@
 # Cassandra Conversation Timeline
 
-本文档记录 A3 Cassandra Message Store 的 schema、实时投影与历史回填契约。当前 Cassandra 仍是影子存储，MySQL 继续承担生产消息写入和客户端读取。
+本文档记录 A3 Cassandra Message Store 的 schema、实时投影、历史回填、对账与影子读取契约。当前 Cassandra 仍是影子存储，MySQL 继续承担生产消息写入和客户端响应。
 
 ## Partition Model
 
@@ -40,10 +40,10 @@ bucket = (message_seq - 1) / 10000
 
 - 已引入 Apache Cassandra GoCQL Driver v2，并通过 Cassandra 5.0.9 真实 contract。
 - 独立 `cmd/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
-- Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core、Message 或 Gateway Composition Root。
+- Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core 或 Gateway Composition Root。
 - 独立 `cmd/cassandra-backfill` 按固定 MySQL 高水位补齐历史数据，并使用持久 checkpoint 和 owner lease 支持失败恢复。
 - 独立 `cmd/cassandra-reconcile` 对已完成 Backfill 的固定快照执行数量、全量 hash、确定性内容样本和会话 Seq 连续性校验。
-- Shadow-read 留在后续 A3 切片；客户端与 Message Service 当前不读取 Cassandra。
+- 独立 Message Service 可按开关执行 query-only Shadow-read；客户端响应、消息写入和 Offline Inbox 查询继续使用 MySQL。
 - 当前表只支持 Conversation Timeline；按 UUID 查询、搜索和用户 Inbox 继续由现有存储负责。
 - Schema 不由应用启动自动修改，后续 projector 接线前需要独立 migration owner。
 
@@ -115,6 +115,31 @@ Backfill 按全局、不可变的 MySQL `messages.id` 扫描源数据，Cassandr
 
 第一版按消息主键逐条读取 Cassandra，优先建立正确性门禁。达到大规模数据量后，再以测量结果决定是否增加分区批量读取和受控并发。
 
+## Message Shadow-read
+
+完成 Backfill 与 Reconciliation 后，可在独立 Message Service 上启用：
+
+```yaml
+cassandra:
+  enabled: true
+
+message:
+  cassandra_shadow_reads: true
+```
+
+MessageStore 先执行 MySQL 查询并保存结果页快照，再按该页最小和最大 `message_seq` 异步读取 Cassandra。跨 bucket 范围由 TimelineStore 显式拆分，单次最多访问 64 个分区，结果统一按 Seq 升序比较。比较覆盖 UUID、ClientMessageID、路由目标、消息类型、正文、文件字段、过期时间和发送时间；MySQL 内部主键与维护时间不参与比较。
+
+以下情况不会访问 Cassandra，并通过结构化日志记录 skip reason：
+
+| Skip reason | 含义 |
+| --- | --- |
+| `primary_query_failed` | MySQL 主查询失败 |
+| `empty_primary_page` | 主查询空页，无法从结果推导 Seq 区间 |
+| `invalid_primary_sequence` | 页面含零值或无效 Seq |
+| `shadow_capacity_exhausted` | 32 个异步比较槽位已占满，主动降载 |
+
+Offline 查询属于 User Sync Timeline，单条消息/幂等查询和全部写操作也继续只访问 MySQL。影子查询错误或差异只写日志，不改变客户端结果。回滚只需关闭 `message.cassandra_shadow_reads` 并滚动重启 Message Service，不涉及数据迁移。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：
@@ -130,6 +155,8 @@ Backfill 按全局、不可变的 MySQL `messages.id` 扫描源数据，Cassandr
 - 真实 MySQL/Cassandra 故障恢复：失败批次保持 checkpoint，修复后重放 duplicate 并补齐 Timeline。
 - 固定快照的数量、全量 hash、确定性字段样本与每会话 Seq 连续性报告。
 - 人工篡改 Cassandra 后返回退出码 2，并提供有界、无正文的差异诊断。
+- Query-only MessageStore 装饰器保持 MySQL 响应，异步比较 Cassandra 公开字段，并在容量耗尽时主动跳过。
+- Cassandra 真实 contract 覆盖跨 bucket Seq 范围读取与升序合并。
 
 ## References
 
