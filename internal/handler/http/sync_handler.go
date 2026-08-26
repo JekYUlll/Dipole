@@ -75,11 +75,72 @@ func (h *SyncHandler) AdvanceCheckpoint(c *gin.Context) {
 
 func handleSyncCheckpointError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, service.ErrSyncGroupForbidden):
+		ErrorWithCode(c, http.StatusForbidden, code.Forbidden, err.Error())
 	case errors.Is(err, service.ErrSyncDeviceIDRequired), errors.Is(err, service.ErrSyncDeviceIDInvalid), errors.Is(err, service.ErrSyncCheckpointAhead):
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 	default:
 		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
 	}
+}
+
+// ListGroupCheckpoints godoc
+// @Summary 查询设备的群消息同步位点
+// @Tags Sync
+// @Security BearerAuth
+// @Produce json
+// @Param X-Device-ID header string true "稳定设备 ID"
+// @Param group_id query []string true "客户端已知群 ID"
+// @Success 200 {object} GroupSyncCheckpointListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Router /sync/groups/checkpoints [get]
+func (h *SyncHandler) ListGroupCheckpoints(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	checkpoints, err := h.service.ListGroupCheckpoints(currentUser.UUID, c.GetHeader("X-Device-ID"), c.QueryArray("group_id"))
+	if err != nil {
+		handleSyncCheckpointError(c, err)
+		return
+	}
+	Success(c, httpdto.ToGroupSyncCheckpointResponses(checkpoints))
+}
+
+// AdvanceGroupCheckpoint godoc
+// @Summary 确认设备已持久化的群消息位点
+// @Tags Sync
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param X-Device-ID header string true "稳定设备 ID"
+// @Param group_uuid path string true "群 ID"
+// @Param request body httpdto.AdvanceGroupSyncCheckpointRequest true "已持久化的群消息序号"
+// @Success 200 {object} GroupSyncCheckpointResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Router /sync/groups/{group_uuid}/checkpoint [patch]
+func (h *SyncHandler) AdvanceGroupCheckpoint(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	var request httpdto.AdvanceGroupSyncCheckpointRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
+		return
+	}
+	checkpoint, err := h.service.AdvanceGroupCheckpoint(currentUser.UUID, c.GetHeader("X-Device-ID"), c.Param("group_uuid"), request.MessageSeq)
+	if err != nil {
+		handleSyncCheckpointError(c, err)
+		return
+	}
+	Success(c, httpdto.ToGroupSyncCheckpointResponse(checkpoint))
 }
 
 func NewSyncHandler(service applicationPort.SyncApplication) *SyncHandler {

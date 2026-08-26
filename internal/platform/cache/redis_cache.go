@@ -52,6 +52,10 @@ func HotGroupMessagesKey(groupUUID string, afterID uint, limit int) string {
 	return "group:messages:" + strings.TrimSpace(groupUUID) + ":after:" + fmtUint(afterID) + ":limit:" + fmtInt(limit)
 }
 
+func HotGroupMessagesSeqKey(groupUUID string, afterSeq uint64, limit int) string {
+	return "group:messages:" + strings.TrimSpace(groupUUID) + ":after_seq:" + strconv.FormatUint(afterSeq, 10) + ":limit:" + fmtInt(limit)
+}
+
 func GetJSON(ctx context.Context, key string, target any) (bool, error) {
 	if store.RDB == nil {
 		return false, nil

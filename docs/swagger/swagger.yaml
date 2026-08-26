@@ -154,6 +154,22 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.GroupResponse'
     type: object
+  http.GroupSyncCheckpointListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.GroupSyncCheckpointResponse'
+        type: array
+    type: object
+  http.GroupSyncCheckpointResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.GroupSyncCheckpointResponse'
+    type: object
   http.IDStatusResponse:
     properties:
       handled_at: {}
@@ -303,6 +319,11 @@ definitions:
       tls_enabled:
         type: boolean
       user_total:
+        type: integer
+    type: object
+  httpdto.AdvanceGroupSyncCheckpointRequest:
+    properties:
+      message_seq:
         type: integer
     type: object
   httpdto.AdvanceSyncCheckpointRequest:
@@ -503,6 +524,17 @@ definitions:
         type: integer
       uuid:
         type: string
+    type: object
+  httpdto.GroupSyncCheckpointResponse:
+    properties:
+      group_uuid:
+        type: string
+      latest_message_id:
+        type: string
+      latest_message_seq:
+        type: integer
+      pulled_message_seq:
+        type: integer
     type: object
   httpdto.HandleContactApplicationRequest:
     properties:
@@ -2140,6 +2172,10 @@ paths:
         in: query
         name: after_id
         type: integer
+      - description: 会话序号增量补拉游标
+        in: query
+        name: after_seq
+        type: integer
       - description: 返回数量
         in: query
         name: limit
@@ -2307,6 +2343,91 @@ paths:
       security:
       - BearerAuth: []
       summary: 确认当前设备同步游标
+      tags:
+      - Sync
+  /sync/groups/{group_uuid}/checkpoint:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - description: 群 ID
+        in: path
+        name: group_uuid
+        required: true
+        type: string
+      - description: 已持久化的群消息序号
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AdvanceGroupSyncCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 确认设备已持久化的群消息位点
+      tags:
+      - Sync
+  /sync/groups/checkpoints:
+    get:
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: 客户端已知群 ID
+        in: query
+        items:
+          type: string
+        name: group_id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupSyncCheckpointListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询设备的群消息同步位点
       tags:
       - Sync
   /users:

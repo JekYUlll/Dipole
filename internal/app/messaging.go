@@ -62,7 +62,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 			dependencies.ConversationNotifier,
 			dependencies.Events,
 		),
-		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync)},
+		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync, core)},
 	}
 }
 

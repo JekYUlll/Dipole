@@ -2259,6 +2259,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "会话序号增量补拉游标",
+                        "name": "after_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "返回数量",
                         "name": "limit",
                         "in": "query"
@@ -2509,6 +2515,138 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/groups/checkpoints": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "查询设备的群消息同步位点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "客户端已知群 ID",
+                        "name": "group_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.GroupSyncCheckpointListResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/groups/{group_uuid}/checkpoint": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "确认设备已持久化的群消息位点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "群 ID",
+                        "name": "group_uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "已持久化的群消息序号",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.AdvanceGroupSyncCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.GroupSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/http.ErrorEnvelope"
                         }
@@ -3217,6 +3355,31 @@ const docTemplate = `{
                 }
             }
         },
+        "http.GroupSyncCheckpointListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.GroupSyncCheckpointResponse"
+                    }
+                }
+            }
+        },
+        "http.GroupSyncCheckpointResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.GroupSyncCheckpointResponse"
+                }
+            }
+        },
         "http.IDStatusResponse": {
             "type": "object",
             "properties": {
@@ -3447,6 +3610,14 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "user_total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpdto.AdvanceGroupSyncCheckpointRequest": {
+            "type": "object",
+            "properties": {
+                "message_seq": {
                     "type": "integer"
                 }
             }
@@ -3752,6 +3923,23 @@ const docTemplate = `{
                 },
                 "uuid": {
                     "type": "string"
+                }
+            }
+        },
+        "httpdto.GroupSyncCheckpointResponse": {
+            "type": "object",
+            "properties": {
+                "group_uuid": {
+                    "type": "string"
+                },
+                "latest_message_id": {
+                    "type": "string"
+                },
+                "latest_message_seq": {
+                    "type": "integer"
+                },
+                "pulled_message_seq": {
+                    "type": "integer"
                 }
             }
         },

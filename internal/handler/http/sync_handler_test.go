@@ -20,6 +20,8 @@ type stubSyncService struct {
 	limit         int
 	deviceID      string
 	checkpointSeq uint64
+	groupUUIDs    []string
+	groupUUID     string
 }
 
 func (s *stubSyncService) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
@@ -33,6 +35,16 @@ func (s *stubSyncService) AdvanceCheckpoint(userUUID, deviceID string, syncSeq u
 	s.deviceID = deviceID
 	s.checkpointSeq = syncSeq
 	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}, nil
+}
+
+func (s *stubSyncService) ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error) {
+	s.userUUID, s.deviceID, s.groupUUIDs = userUUID, deviceID, groupUUIDs
+	return []*model.GroupSyncCheckpoint{{GroupUUID: groupUUIDs[0], LatestMessageSeq: 10, PulledMessageSeq: 7}}, nil
+}
+
+func (s *stubSyncService) AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error) {
+	s.userUUID, s.deviceID, s.groupUUID, s.checkpointSeq = userUUID, deviceID, groupUUID, messageSeq
+	return &model.GroupSyncCheckpoint{GroupUUID: groupUUID, LatestMessageSeq: 10, PulledMessageSeq: messageSeq}, nil
 }
 
 func TestSyncHandlerAdvancesDeviceCheckpoint(t *testing.T) {
@@ -110,5 +122,35 @@ func TestSyncHandlerRejectsInvalidCursor(t *testing.T) {
 	handler.List(context)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", recorder.Code)
+	}
+}
+
+func TestSyncHandlerListsGroupCheckpoints(t *testing.T) {
+	stub := &stubSyncService{}
+	handler := NewSyncHandler(stub)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/sync/groups/checkpoints?group_id=G1&group_id=G2", nil)
+	context.Request.Header.Set("X-Device-ID", "web-1")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U1"})
+	handler.ListGroupCheckpoints(context)
+	if recorder.Code != http.StatusOK || stub.userUUID != "U1" || stub.deviceID != "web-1" || len(stub.groupUUIDs) != 2 {
+		t.Fatalf("unexpected group checkpoint query: status=%d stub=%+v body=%s", recorder.Code, stub, recorder.Body.String())
+	}
+}
+
+func TestSyncHandlerAdvancesGroupCheckpoint(t *testing.T) {
+	stub := &stubSyncService{}
+	handler := NewSyncHandler(stub)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/sync/groups/G1/checkpoint", strings.NewReader(`{"message_seq":9}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Request.Header.Set("X-Device-ID", "web-1")
+	context.Params = gin.Params{{Key: "group_uuid", Value: "G1"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U1"})
+	handler.AdvanceGroupCheckpoint(context)
+	if recorder.Code != http.StatusOK || stub.groupUUID != "G1" || stub.checkpointSeq != 9 {
+		t.Fatalf("unexpected group checkpoint advance: status=%d stub=%+v body=%s", recorder.Code, stub, recorder.Body.String())
 	}
 }

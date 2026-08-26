@@ -8,7 +8,35 @@ package generated
 import (
 	"context"
 	"database/sql"
+	"strings"
+	"time"
 )
+
+const advanceDeviceGroupSyncCheckpoint = `-- name: AdvanceDeviceGroupSyncCheckpoint :exec
+INSERT INTO device_group_sync_checkpoints (
+    user_uuid, device_id, group_uuid, pulled_message_seq, created_at, updated_at
+) VALUES (?, ?, ?, ?, NOW(3), NOW(3))
+ON DUPLICATE KEY UPDATE
+    pulled_message_seq = GREATEST(pulled_message_seq, VALUES(pulled_message_seq)),
+    updated_at = NOW(3)
+`
+
+type AdvanceDeviceGroupSyncCheckpointParams struct {
+	UserUuid         string
+	DeviceID         string
+	GroupUuid        string
+	PulledMessageSeq uint64
+}
+
+func (q *Queries) AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error {
+	_, err := q.db.ExecContext(ctx, advanceDeviceGroupSyncCheckpoint,
+		arg.UserUuid,
+		arg.DeviceID,
+		arg.GroupUuid,
+		arg.PulledMessageSeq,
+	)
+	return err
+}
 
 const advanceDeviceSyncCheckpoint = `-- name: AdvanceDeviceSyncCheckpoint :execresult
 INSERT INTO device_sync_checkpoints (user_uuid, device_id, sync_seq, created_at, updated_at)
@@ -79,6 +107,32 @@ func (q *Queries) GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSync
 	return i, err
 }
 
+const getGroupSyncState = `-- name: GetGroupSyncState :one
+SELECT group_uuid, latest_message_seq, latest_message_uuid, updated_at
+FROM group_sync_states
+WHERE group_uuid = ?
+LIMIT 1
+`
+
+type GetGroupSyncStateRow struct {
+	GroupUuid         string
+	LatestMessageSeq  uint64
+	LatestMessageUuid string
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error) {
+	row := q.db.QueryRowContext(ctx, getGroupSyncState, groupUuid)
+	var i GetGroupSyncStateRow
+	err := row.Scan(
+		&i.GroupUuid,
+		&i.LatestMessageSeq,
+		&i.LatestMessageUuid,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getLatestUserSyncSequence = `-- name: GetLatestUserSyncSequence :one
 SELECT CAST(COALESCE(MAX(sync_seq), 0) AS UNSIGNED) FROM user_sync_inbox WHERE user_uuid = ?
 `
@@ -88,6 +142,71 @@ func (q *Queries) GetLatestUserSyncSequence(ctx context.Context, userUuid string
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const listGroupSyncCheckpoints = `-- name: ListGroupSyncCheckpoints :many
+SELECT state.group_uuid, state.latest_message_seq, state.latest_message_uuid,
+       COALESCE(checkpoint.pulled_message_seq, 0) AS pulled_message_seq
+FROM group_sync_states AS state
+LEFT JOIN device_group_sync_checkpoints AS checkpoint
+  ON checkpoint.group_uuid = state.group_uuid
+ AND checkpoint.user_uuid = ?
+ AND checkpoint.device_id = ?
+WHERE state.group_uuid IN (/*SLICE:group_uuids*/?)
+ORDER BY state.group_uuid ASC
+`
+
+type ListGroupSyncCheckpointsParams struct {
+	UserUuid   string
+	DeviceID   string
+	GroupUuids []string
+}
+
+type ListGroupSyncCheckpointsRow struct {
+	GroupUuid         string
+	LatestMessageSeq  uint64
+	LatestMessageUuid string
+	PulledMessageSeq  uint64
+}
+
+func (q *Queries) ListGroupSyncCheckpoints(ctx context.Context, arg ListGroupSyncCheckpointsParams) ([]ListGroupSyncCheckpointsRow, error) {
+	query := listGroupSyncCheckpoints
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.UserUuid)
+	queryParams = append(queryParams, arg.DeviceID)
+	if len(arg.GroupUuids) > 0 {
+		for _, v := range arg.GroupUuids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:group_uuids*/?", strings.Repeat(",?", len(arg.GroupUuids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:group_uuids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGroupSyncCheckpointsRow{}
+	for rows.Next() {
+		var i ListGroupSyncCheckpointsRow
+		if err := rows.Scan(
+			&i.GroupUuid,
+			&i.LatestMessageSeq,
+			&i.LatestMessageUuid,
+			&i.PulledMessageSeq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUserSyncInboxAfter = `-- name: ListUserSyncInboxAfter :many
@@ -141,4 +260,24 @@ func (q *Queries) LockUserSyncState(ctx context.Context, userUuid string) (strin
 	var user_uuid string
 	err := row.Scan(&user_uuid)
 	return user_uuid, err
+}
+
+const upsertGroupSyncState = `-- name: UpsertGroupSyncState :exec
+INSERT INTO group_sync_states (group_uuid, latest_message_seq, latest_message_uuid, created_at, updated_at)
+VALUES (?, ?, ?, NOW(3), NOW(3))
+ON DUPLICATE KEY UPDATE
+    latest_message_uuid = IF(VALUES(latest_message_seq) >= latest_message_seq, VALUES(latest_message_uuid), latest_message_uuid),
+    latest_message_seq = GREATEST(latest_message_seq, VALUES(latest_message_seq)),
+    updated_at = IF(VALUES(latest_message_seq) >= latest_message_seq, NOW(3), updated_at)
+`
+
+type UpsertGroupSyncStateParams struct {
+	GroupUuid         string
+	LatestMessageSeq  uint64
+	LatestMessageUuid string
+}
+
+func (q *Queries) UpsertGroupSyncState(ctx context.Context, arg UpsertGroupSyncStateParams) error {
+	_, err := q.db.ExecContext(ctx, upsertGroupSyncState, arg.GroupUuid, arg.LatestMessageSeq, arg.LatestMessageUuid)
+	return err
 }

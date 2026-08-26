@@ -46,6 +46,10 @@ func (stubMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID string,
 	return []*model.Message{{ID: afterID + 1, SenderUUID: userUUID, TargetUUID: groupUUID, Content: "group-after"}}, nil
 }
 
+func (stubMessageApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return []*model.Message{{Seq: afterSeq + 1, SenderUUID: userUUID, TargetUUID: groupUUID, Content: "group-after-seq"}}, nil
+}
+
 func (stubMessageApplication) ListOfflineMessages(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	return []*model.Message{{ID: afterID + 1, TargetUUID: userUUID, Content: "offline"}}, nil
 }
@@ -190,6 +194,10 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 	groupAfter, err := messages.ListGroupMessagesAfter("U1", "G1", 60, 20)
 	if err != nil || len(groupAfter) != 1 || groupAfter[0].ID != 61 || groupAfter[0].Content != "group-after" {
 		t.Fatalf("group after mismatch: messages=%+v err=%v", groupAfter, err)
+	}
+	groupAfterSeq, err := messages.ListGroupMessagesAfterSeq("U1", "G1", 70, 20)
+	if err != nil || len(groupAfterSeq) != 1 || groupAfterSeq[0].Seq != 71 || groupAfterSeq[0].Content != "group-after-seq" {
+		t.Fatalf("group after sequence mismatch: messages=%+v err=%v", groupAfterSeq, err)
 	}
 	offline, err := messages.ListOfflineMessages("U1", 70, 20)
 	if err != nil || len(offline) != 1 || offline[0].ID != 71 || offline[0].Content != "offline" {

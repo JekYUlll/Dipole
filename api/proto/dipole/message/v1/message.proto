@@ -91,6 +91,7 @@ message ListGroupHistoryRequest {
   oneof cursor {
     uint64 before_id = 3;
     uint64 after_id = 4;
+    uint64 after_sequence = 6;
   }
   int32 page_size = 5;
 }

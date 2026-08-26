@@ -106,6 +106,8 @@ func (s *Server) ListGroupHistory(ctx context.Context, request *messagev1.ListGr
 
 	var messages []*model.Message
 	switch cursor := request.GetCursor().(type) {
+	case *messagev1.ListGroupHistoryRequest_AfterSequence:
+		messages, err = s.application.ListGroupMessagesAfterSeq(principal, request.GetGroupId(), cursor.AfterSequence, limit)
 	case *messagev1.ListGroupHistoryRequest_AfterId:
 		afterID, cursorErr := uintCursor(cursor.AfterId)
 		if cursorErr != nil {

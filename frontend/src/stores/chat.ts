@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser } from '@/types'
+import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser, GroupSyncCheckpoint } from '@/types'
 import api from '@/api'
 
 export const useChatStore = defineStore('chat', () => {
@@ -60,6 +60,41 @@ export const useChatStore = defineStore('chat', () => {
     const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
     _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], false)
     return Array.isArray(data) ? data : []
+  }
+
+  const fetchGroupMessagesAfterSeq = async (groupUUID: string, afterSeq: number) => {
+	const q = `?after_seq=${afterSeq}&limit=100`
+	const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
+	const items = Array.isArray(data) ? data : []
+	_mergeMessages(groupKey(groupUUID), items, false)
+	return items
+  }
+
+  const recoverGroupMessages = async () => {
+	const groupUUIDs = conversations.value
+	  .filter(conversation => conversation.target_type === 1)
+	  .map(conversation => conversation.conversation_key.replace('group:', ''))
+	  .filter(Boolean)
+	if (groupUUIDs.length === 0) return 0
+	const query = new URLSearchParams()
+	groupUUIDs.forEach(groupUUID => query.append('group_id', groupUUID))
+	const checkpoints = await api.get(`/api/v1/sync/groups/checkpoints?${query.toString()}`) as GroupSyncCheckpoint[]
+	let recovered = 0
+	for (const checkpoint of Array.isArray(checkpoints) ? checkpoints : []) {
+	  const key = groupKey(checkpoint.group_uuid)
+	  // Volatile Web memory cannot trust a durable ACK after refresh. IndexedDB clients
+	  // may combine pulled_message_seq with their locally committed high-water later.
+	  let afterSeq = Math.max(0, ...(messageMap.value.get(key) || []).map(message => message.message_seq || 0))
+	  while (afterSeq < checkpoint.latest_message_seq) {
+		const page = await fetchGroupMessagesAfterSeq(checkpoint.group_uuid, afterSeq)
+		if (page.length === 0) break
+		const nextSeq = Math.max(...page.map(message => message.message_seq || 0))
+		if (nextSeq <= afterSeq) break
+		afterSeq = nextSeq
+		recovered += page.length
+	  }
+	}
+	return recovered
   }
 
   const syncOffline = async () => {
@@ -138,7 +173,7 @@ export const useChatStore = defineStore('chat', () => {
   const _mergeMessages = (key: string, items: Message[], prepend: boolean) => {
     const existing = messageMap.value.get(key) || []
     const merged = _dedupe(prepend ? [...items, ...existing] : [...existing, ...items])
-    merged.sort((a, b) => a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
+	merged.sort((a, b) => (a.message_seq || 0) - (b.message_seq || 0) || a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
     messageMap.value.set(key, merged)
   }
 
@@ -156,7 +191,8 @@ export const useChatStore = defineStore('chat', () => {
     conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
     fetchConversations, markRead,
     fetchDirectMessages, fetchGroupMessages, syncOffline, pushMessage,
-    fetchGroupMessagesAfter,
+	fetchGroupMessagesAfter,
+	fetchGroupMessagesAfterSeq, recoverGroupMessages,
     fetchContacts, fetchApplications,
     fetchGroup, fetchDevices, ensureUser,
   }

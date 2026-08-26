@@ -55,6 +55,11 @@ func (p *shadowProbeApplication) ListGroupMessagesAfter(userUUID, groupUUID stri
 	return p.stubMessageApplication.ListGroupMessagesAfter(userUUID, groupUUID, afterID, limit)
 }
 
+func (p *shadowProbeApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	p.recordQuery()
+	return p.stubMessageApplication.ListGroupMessagesAfterSeq(userUUID, groupUUID, afterSeq, limit)
+}
+
 func (p *shadowProbeApplication) ListOfflineMessages(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	p.recordQuery()
 	return p.stubMessageApplication.ListOfflineMessages(userUUID, afterID, limit)
@@ -81,7 +86,7 @@ func (p *shadowProbeApplication) counts() (int, int) {
 func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 	primary := &shadowProbeApplication{}
 	shadow := &shadowProbeApplication{}
-	comparisons := make(chan messageShadowComparison, 4)
+	comparisons := make(chan messageShadowComparison, 5)
 	application := newMessageShadowApplication(primary, shadow, func(comparison messageShadowComparison) {
 		comparisons <- comparison
 	})
@@ -92,10 +97,10 @@ func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 
 	primaryCommands, primaryQueries := primary.counts()
 	shadowCommands, shadowQueries := shadow.counts()
-	if primaryCommands != 4 || primaryQueries != 4 {
+	if primaryCommands != 4 || primaryQueries != 5 {
 		t.Fatalf("unexpected primary calls: commands=%d queries=%d", primaryCommands, primaryQueries)
 	}
-	if shadowCommands != 0 || shadowQueries != 4 {
+	if shadowCommands != 0 || shadowQueries != 5 {
 		t.Fatalf("shadow must remain query-only: commands=%d queries=%d", shadowCommands, shadowQueries)
 	}
 	for comparison := range comparisons {

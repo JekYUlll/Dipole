@@ -37,6 +37,40 @@ func (r *SyncRepository) GetDeviceCheckpoint(userUUID, deviceID string) (*model.
 	return &model.DeviceSyncCheckpoint{UserUUID: row.UserUuid, DeviceID: row.DeviceID, SyncSeq: row.SyncSeq, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
+func (r *SyncRepository) ListGroupSyncCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error) {
+	if len(groupUUIDs) == 0 {
+		return []*model.GroupSyncCheckpoint{}, nil
+	}
+	rows, err := r.queries.ListGroupSyncCheckpoints(context.Background(), generated.ListGroupSyncCheckpointsParams{
+		UserUuid: strings.TrimSpace(userUUID), DeviceID: strings.TrimSpace(deviceID), GroupUuids: groupUUIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.GroupSyncCheckpoint, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &model.GroupSyncCheckpoint{GroupUUID: row.GroupUuid, LatestMessageSeq: row.LatestMessageSeq, LatestMessageUUID: row.LatestMessageUuid, PulledMessageSeq: row.PulledMessageSeq})
+	}
+	return result, nil
+}
+
+func (r *SyncRepository) GetGroupSyncState(groupUUID string) (*model.GroupSyncState, error) {
+	row, err := r.queries.GetGroupSyncState(context.Background(), strings.TrimSpace(groupUUID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &model.GroupSyncState{GroupUUID: row.GroupUuid, LatestMessageSeq: row.LatestMessageSeq, LatestMessageUUID: row.LatestMessageUuid, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *SyncRepository) AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error {
+	return r.queries.AdvanceDeviceGroupSyncCheckpoint(context.Background(), generated.AdvanceDeviceGroupSyncCheckpointParams{
+		UserUuid: strings.TrimSpace(userUUID), DeviceID: strings.TrimSpace(deviceID), GroupUuid: strings.TrimSpace(groupUUID), PulledMessageSeq: messageSeq,
+	})
+}
+
 func (r *SyncRepository) GetLatestUserSyncSequence(userUUID string) (uint64, error) {
 	sequence, err := r.queries.GetLatestUserSyncSequence(context.Background(), strings.TrimSpace(userUUID))
 	if err != nil {

@@ -39,8 +39,32 @@ message DeviceCheckpointResponse {
   uint64 sync_seq = 2;
 }
 
+message ListGroupCheckpointsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  repeated string group_ids = 2;
+}
+
+message GroupCheckpoint {
+  string group_id = 1;
+  uint64 latest_message_sequence = 2;
+  string latest_message_id = 3;
+  uint64 pulled_message_sequence = 4;
+}
+
+message ListGroupCheckpointsResponse {
+  repeated GroupCheckpoint checkpoints = 1;
+}
+
+message AdvanceGroupCheckpointRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  uint64 message_sequence = 3;
+}
+
 service SyncQueryService {
   rpc ListSyncMessages(ListSyncMessagesRequest) returns (ListSyncMessagesResponse);
   rpc GetDeviceCheckpoint(GetDeviceCheckpointRequest) returns (DeviceCheckpointResponse);
   rpc AdvanceDeviceCheckpoint(AdvanceDeviceCheckpointRequest) returns (DeviceCheckpointResponse);
+  rpc ListGroupCheckpoints(ListGroupCheckpointsRequest) returns (ListGroupCheckpointsResponse);
+  rpc AdvanceGroupCheckpoint(AdvanceGroupCheckpointRequest) returns (GroupCheckpoint);
 }

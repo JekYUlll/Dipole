@@ -78,6 +78,16 @@ type DeviceSyncCheckpointResponseEnvelope struct {
 	Data *httpdto.DeviceSyncCheckpointResponse `json:"data"`
 }
 
+type GroupSyncCheckpointResponseEnvelope struct {
+	Code int                                  `json:"code"`
+	Data *httpdto.GroupSyncCheckpointResponse `json:"data"`
+}
+
+type GroupSyncCheckpointListResponseEnvelope struct {
+	Code int                                    `json:"code"`
+	Data []*httpdto.GroupSyncCheckpointResponse `json:"data"`
+}
+
 type UploadedFileResponseEnvelope struct {
 	Code int                           `json:"code"`
 	Data *httpdto.UploadedFileResponse `json:"data"`

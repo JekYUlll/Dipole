@@ -34,6 +34,9 @@ func (gatewayMessageStub) ListGroupMessages(string, string, uint, int) ([]*model
 func (gatewayMessageStub) ListGroupMessagesAfter(string, string, uint, int) ([]*model.Message, error) {
 	return nil, nil
 }
+func (gatewayMessageStub) ListGroupMessagesAfterSeq(string, string, uint64, int) ([]*model.Message, error) {
+	return nil, nil
+}
 func (gatewayMessageStub) ListOfflineMessages(string, uint, int) ([]*model.Message, error) {
 	return nil, nil
 }

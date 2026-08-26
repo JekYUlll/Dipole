@@ -20,6 +20,32 @@ type DeviceSyncCheckpointResponse struct {
 	SyncSeq  uint64 `json:"sync_seq"`
 }
 
+type AdvanceGroupSyncCheckpointRequest struct {
+	MessageSeq uint64 `json:"message_seq"`
+}
+
+type GroupSyncCheckpointResponse struct {
+	GroupUUID         string `json:"group_uuid"`
+	LatestMessageSeq  uint64 `json:"latest_message_seq"`
+	LatestMessageUUID string `json:"latest_message_id"`
+	PulledMessageSeq  uint64 `json:"pulled_message_seq"`
+}
+
+func ToGroupSyncCheckpointResponse(checkpoint *model.GroupSyncCheckpoint) *GroupSyncCheckpointResponse {
+	if checkpoint == nil {
+		return &GroupSyncCheckpointResponse{}
+	}
+	return &GroupSyncCheckpointResponse{GroupUUID: checkpoint.GroupUUID, LatestMessageSeq: checkpoint.LatestMessageSeq, LatestMessageUUID: checkpoint.LatestMessageUUID, PulledMessageSeq: checkpoint.PulledMessageSeq}
+}
+
+func ToGroupSyncCheckpointResponses(checkpoints []*model.GroupSyncCheckpoint) []*GroupSyncCheckpointResponse {
+	result := make([]*GroupSyncCheckpointResponse, 0, len(checkpoints))
+	for _, checkpoint := range checkpoints {
+		result = append(result, ToGroupSyncCheckpointResponse(checkpoint))
+	}
+	return result
+}
+
 func ToDeviceSyncCheckpointResponse(checkpoint *model.DeviceSyncCheckpoint) *DeviceSyncCheckpointResponse {
 	if checkpoint == nil {
 		return &DeviceSyncCheckpointResponse{}

@@ -22,6 +22,8 @@ const (
 	SyncQueryService_ListSyncMessages_FullMethodName        = "/dipole.sync.v1.SyncQueryService/ListSyncMessages"
 	SyncQueryService_GetDeviceCheckpoint_FullMethodName     = "/dipole.sync.v1.SyncQueryService/GetDeviceCheckpoint"
 	SyncQueryService_AdvanceDeviceCheckpoint_FullMethodName = "/dipole.sync.v1.SyncQueryService/AdvanceDeviceCheckpoint"
+	SyncQueryService_ListGroupCheckpoints_FullMethodName    = "/dipole.sync.v1.SyncQueryService/ListGroupCheckpoints"
+	SyncQueryService_AdvanceGroupCheckpoint_FullMethodName  = "/dipole.sync.v1.SyncQueryService/AdvanceGroupCheckpoint"
 )
 
 // SyncQueryServiceClient is the client API for SyncQueryService service.
@@ -31,6 +33,8 @@ type SyncQueryServiceClient interface {
 	ListSyncMessages(ctx context.Context, in *ListSyncMessagesRequest, opts ...grpc.CallOption) (*ListSyncMessagesResponse, error)
 	GetDeviceCheckpoint(ctx context.Context, in *GetDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error)
 	AdvanceDeviceCheckpoint(ctx context.Context, in *AdvanceDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error)
+	ListGroupCheckpoints(ctx context.Context, in *ListGroupCheckpointsRequest, opts ...grpc.CallOption) (*ListGroupCheckpointsResponse, error)
+	AdvanceGroupCheckpoint(ctx context.Context, in *AdvanceGroupCheckpointRequest, opts ...grpc.CallOption) (*GroupCheckpoint, error)
 }
 
 type syncQueryServiceClient struct {
@@ -71,6 +75,26 @@ func (c *syncQueryServiceClient) AdvanceDeviceCheckpoint(ctx context.Context, in
 	return out, nil
 }
 
+func (c *syncQueryServiceClient) ListGroupCheckpoints(ctx context.Context, in *ListGroupCheckpointsRequest, opts ...grpc.CallOption) (*ListGroupCheckpointsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGroupCheckpointsResponse)
+	err := c.cc.Invoke(ctx, SyncQueryService_ListGroupCheckpoints_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *syncQueryServiceClient) AdvanceGroupCheckpoint(ctx context.Context, in *AdvanceGroupCheckpointRequest, opts ...grpc.CallOption) (*GroupCheckpoint, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GroupCheckpoint)
+	err := c.cc.Invoke(ctx, SyncQueryService_AdvanceGroupCheckpoint_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SyncQueryServiceServer is the server API for SyncQueryService service.
 // All implementations must embed UnimplementedSyncQueryServiceServer
 // for forward compatibility.
@@ -78,6 +102,8 @@ type SyncQueryServiceServer interface {
 	ListSyncMessages(context.Context, *ListSyncMessagesRequest) (*ListSyncMessagesResponse, error)
 	GetDeviceCheckpoint(context.Context, *GetDeviceCheckpointRequest) (*DeviceCheckpointResponse, error)
 	AdvanceDeviceCheckpoint(context.Context, *AdvanceDeviceCheckpointRequest) (*DeviceCheckpointResponse, error)
+	ListGroupCheckpoints(context.Context, *ListGroupCheckpointsRequest) (*ListGroupCheckpointsResponse, error)
+	AdvanceGroupCheckpoint(context.Context, *AdvanceGroupCheckpointRequest) (*GroupCheckpoint, error)
 	mustEmbedUnimplementedSyncQueryServiceServer()
 }
 
@@ -96,6 +122,12 @@ func (UnimplementedSyncQueryServiceServer) GetDeviceCheckpoint(context.Context, 
 }
 func (UnimplementedSyncQueryServiceServer) AdvanceDeviceCheckpoint(context.Context, *AdvanceDeviceCheckpointRequest) (*DeviceCheckpointResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdvanceDeviceCheckpoint not implemented")
+}
+func (UnimplementedSyncQueryServiceServer) ListGroupCheckpoints(context.Context, *ListGroupCheckpointsRequest) (*ListGroupCheckpointsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGroupCheckpoints not implemented")
+}
+func (UnimplementedSyncQueryServiceServer) AdvanceGroupCheckpoint(context.Context, *AdvanceGroupCheckpointRequest) (*GroupCheckpoint, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdvanceGroupCheckpoint not implemented")
 }
 func (UnimplementedSyncQueryServiceServer) mustEmbedUnimplementedSyncQueryServiceServer() {}
 func (UnimplementedSyncQueryServiceServer) testEmbeddedByValue()                          {}
@@ -172,6 +204,42 @@ func _SyncQueryService_AdvanceDeviceCheckpoint_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SyncQueryService_ListGroupCheckpoints_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGroupCheckpointsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncQueryServiceServer).ListGroupCheckpoints(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncQueryService_ListGroupCheckpoints_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncQueryServiceServer).ListGroupCheckpoints(ctx, req.(*ListGroupCheckpointsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SyncQueryService_AdvanceGroupCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdvanceGroupCheckpointRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncQueryServiceServer).AdvanceGroupCheckpoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncQueryService_AdvanceGroupCheckpoint_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncQueryServiceServer).AdvanceGroupCheckpoint(ctx, req.(*AdvanceGroupCheckpointRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SyncQueryService_ServiceDesc is the grpc.ServiceDesc for SyncQueryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +258,14 @@ var SyncQueryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdvanceDeviceCheckpoint",
 			Handler:    _SyncQueryService_AdvanceDeviceCheckpoint_Handler,
+		},
+		{
+			MethodName: "ListGroupCheckpoints",
+			Handler:    _SyncQueryService_ListGroupCheckpoints_Handler,
+		},
+		{
+			MethodName: "AdvanceGroupCheckpoint",
+			Handler:    _SyncQueryService_AdvanceGroupCheckpoint_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

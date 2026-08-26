@@ -12,6 +12,7 @@ import (
 var messageOwnedTables = []string{
 	"messages",
 	"conversation_sequences",
+	"group_sync_states",
 	"user_sync_inbox",
 	"user_sync_states",
 	"outbox_events",
@@ -27,6 +28,7 @@ var coreOwnedTables = []string{
 	"uploaded_files",
 	"conversations",
 	"device_sync_checkpoints",
+	"device_group_sync_checkpoints",
 	"message_search_documents",
 	"ai_call_logs",
 }

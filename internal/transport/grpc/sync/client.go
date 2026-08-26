@@ -79,6 +79,41 @@ func (c *Client) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*
 	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: response.GetDeviceId(), SyncSeq: response.GetSyncSeq()}, nil
 }
 
+func (c *Client) ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListGroupCheckpoints(ctx, &syncv1.ListGroupCheckpointsRequest{Context: syncRequestContext(userUUID, deviceID), GroupIds: groupUUIDs})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.GroupSyncCheckpoint, 0, len(response.GetCheckpoints()))
+	for _, checkpoint := range response.GetCheckpoints() {
+		if checkpoint != nil {
+			result = append(result, groupCheckpointFromProto(checkpoint))
+		}
+	}
+	return result, nil
+}
+
+func (c *Client) AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.AdvanceGroupCheckpoint(ctx, &syncv1.AdvanceGroupCheckpointRequest{
+		Context: syncRequestContext(userUUID, deviceID), GroupId: groupUUID, MessageSequence: messageSeq,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return groupCheckpointFromProto(response), nil
+}
+
+func groupCheckpointFromProto(checkpoint *syncv1.GroupCheckpoint) *model.GroupSyncCheckpoint {
+	if checkpoint == nil {
+		return &model.GroupSyncCheckpoint{}
+	}
+	return &model.GroupSyncCheckpoint{GroupUUID: checkpoint.GetGroupId(), LatestMessageSeq: checkpoint.GetLatestMessageSequence(), LatestMessageUUID: checkpoint.GetLatestMessageId(), PulledMessageSeq: checkpoint.GetPulledMessageSequence()}
+}
+
 func syncRequestContext(userUUID, deviceID string) *commonv1.RequestContext {
 	requestContext := grpccommon.RequestContext(userUUID, "dipole-gateway")
 	requestContext.DeviceId = deviceID
