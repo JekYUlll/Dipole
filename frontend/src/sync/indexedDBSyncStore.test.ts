@@ -71,6 +71,51 @@ describe('IndexedDBSyncStore', () => {
     store.close()
   })
 
+  it('persists group messages and their durable message sequence across store instances', async () => {
+    const factory = new IDBFactory()
+    const first = new IndexedDBSyncStore(factory, IDBKeyRange, 'group-sync-reopen')
+    const groupMessage = syncPage(6, 'G-M6', 'group:G1').items[0].message
+    groupMessage.target_type = 1
+    groupMessage.target_uuid = 'G1'
+    await first.commitGroupPage('U1', 'G1', [groupMessage], 6)
+    first.close()
+
+    const second = new IndexedDBSyncStore(factory, IDBKeyRange, 'group-sync-reopen')
+    await expect(second.loadGroup('U1', 'G1')).resolves.toEqual({
+      messageSeq: 6,
+      messages: [expect.objectContaining({ message_id: 'G-M6', message_seq: 6 })],
+    })
+    second.close()
+  })
+
+  it('refuses to move a durable group cursor backwards', async () => {
+    const store = new IndexedDBSyncStore(new IDBFactory(), IDBKeyRange, 'group-sync-monotonic')
+    await store.commitGroupPage('U1', 'G1', [syncPage(8, 'G-M8').items[0].message], 8)
+
+    await expect(store.commitGroupPage('U1', 'G1', [syncPage(7, 'G-M7').items[0].message], 7))
+      .rejects.toThrow('cannot move backwards')
+    await expect(store.loadGroup('U1', 'G1')).resolves.toEqual({
+      messageSeq: 8,
+      messages: [expect.objectContaining({ message_id: 'G-M8' })],
+    })
+    store.close()
+  })
+
+  it('clears group messages and checkpoints for only the requested account', async () => {
+    const store = new IndexedDBSyncStore(new IDBFactory(), IDBKeyRange, 'group-sync-clear')
+    await store.commitGroupPage('U1', 'G1', [syncPage(2, 'U1-G-M2').items[0].message], 2)
+    await store.commitGroupPage('U2', 'G1', [syncPage(3, 'U2-G-M3').items[0].message], 3)
+
+    await store.clearUser('U1')
+
+    await expect(store.loadGroup('U1', 'G1')).resolves.toEqual({ messageSeq: 0, messages: [] })
+    await expect(store.loadGroup('U2', 'G1')).resolves.toEqual({
+      messageSeq: 3,
+      messages: [expect.objectContaining({ message_id: 'U2-G-M3' })],
+    })
+    store.close()
+  })
+
   it('evicts the oldest user messages from high water to low water without moving the cursor', async () => {
     const store = new IndexedDBSyncStore(new IDBFactory(), IDBKeyRange, 'sync-capacity', {
       highWaterMessages: 3,
@@ -187,8 +232,9 @@ describe('IndexedDBSyncStore', () => {
     store.close()
     await Promise.resolve()
     const upgraded = await openDatabase(factory, 'sync-upgrade')
-    expect(upgraded.version).toBe(2)
+    expect(upgraded.version).toBe(3)
     expect(upgraded.transaction('messages').objectStore('messages').indexNames.contains('by_user_sync_seq')).toBe(true)
+    expect(upgraded.objectStoreNames.contains('group_state')).toBe(true)
     upgraded.close()
   })
 

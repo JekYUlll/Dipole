@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Web 热群恢复增加独立 `GroupMessageSyncEngine` 与 IndexedDB v3 群位点：补拉消息和 `message_seq` 原子落库后才展示并 ACK 设备群 checkpoint；刷新后优先恢复本地群消息，并可补交丢失的 ACK。
 - Web IndexedDB 升级到 v2，增加逐用户缓存 manifest、5000/4000 默认高低水位和按会话保底的最近消息淘汰；超量页面在同一事务内压缩到低水位，同时保留完整安全 `sync_seq`。
 - Web Sync 增加 `storage_full` 状态和 Pencil 批准预览；浏览器拒绝持久化时提示释放空间后重试，未落库页面不会确认设备 Cursor。
 - 增加默认关闭的 Web Sync Engine：按用户将 Sync 消息与安全 `sync_seq` 原子写入 IndexedDB，启动和 WebSocket 重连时从本地恢复并分页追平 `/sync`，仅在本地事务完成后确认设备 Cursor。
@@ -219,7 +220,8 @@
 
 ### 验证
 
-- 已通过 29 个 Web Sync/Session 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开与 v1→v2 升级、账号隔离、游标单调性、高低水位淘汰、会话保底、大页面硬上限、quota 分类、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复、私聊语义过滤、终止 singleflight、先撤销后清理、存储/清理失败隔离、401 接线和跨账号登录；全量 35 个前端测试通过。
+- 已通过 43 个前端测试；新增群同步引擎、IndexedDB v2→v3 升级、群位点单调性、逐账号清理和浏览器重开补交 ACK 契约。
+- 已通过 29 个 Web Inbox Sync/Session 单元测试，覆盖本地优先恢复、Sync/Offline 多页推进、事务失败禁止 ACK、断点 ACK 补交、非推进页拒绝、分页上限、IndexedDB 重开与旧 schema 升级、账号隔离、游标单调性、高低水位淘汰、会话保底、大页面硬上限、quota 分类、首轮基线、宽限匹配、单边超时、状态溢出、损坏恢复、私聊语义过滤、终止 singleflight、先撤销后清理、存储/清理失败隔离、401 接线和跨账号登录。
 - 已通过 Web Sync `off|shadow|primary` 三种生产构建、聚合遥测 Handler 边界测试、Prometheus Collector 测试、OpenAPI 生成和全量 Go 测试。
 - 已通过 Web Sync Prometheus 七条规则静态检查与固定时序测试，覆盖窗口不足、样本不足、干净晋级、终态差异和比较器溢出。
 - 已通过 Pencil 结构与截图检查，确认 Sync 状态矩阵、desktop 及 mobile frame 无 clipping 或残留 placeholder，并导出批准预览。

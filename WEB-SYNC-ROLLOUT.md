@@ -59,7 +59,8 @@ dipole:web_sync_shadow:promotion_ready
 3. 先对受控节点构建 `VITE_SYNC_ENGINE_MODE=primary`；`/sync` 驱动界面，旧 Offline 继续作为观测路径。
 4. 验证登录恢复、断网重连、多页追平、多设备 Cursor、显式退出和账号切换。
 5. 验证高低水位淘汰后本地安全 Cursor 保持完整，配额失败显示 `storage_full` 且不 ACK 未持久化页面。
-6. 保留 `shadow` 或 `off` bundle 以及服务端旧接口，在 AD-025 的真实浏览器、共享设备和进程强退验收完成前不扩大默认范围。
+6. 验证热群补拉页面先写入 IndexedDB v3，再 ACK 对应设备群 checkpoint；刷新后不得重复请求已经持久化的 Seq 范围。
+7. 保留 `shadow` 或 `off` bundle 以及服务端旧接口，在 AD-025 的真实浏览器、共享设备和进程强退验收完成前不扩大默认范围。
 
 ## 6. 回切
 

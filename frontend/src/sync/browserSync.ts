@@ -1,5 +1,6 @@
 import api from '@/api'
 import type { Message } from '@/types'
+import { GroupMessageSyncEngine, type GroupSyncTarget } from './groupSyncEngine'
 import { IndexedDBSyncStore, isLocalSyncCapacityError } from './indexedDBSyncStore'
 import {
   compareSyncMessages,
@@ -32,6 +33,23 @@ export async function recoverBrowserMessages(
     },
   })
   return engine.recover(userUUID, deliver)
+}
+
+export async function recoverBrowserGroupMessages(
+  userUUID: string,
+  target: GroupSyncTarget,
+  deliver: (messages: Message[], source: SyncDeliverySource) => void,
+) {
+  const engine = new GroupMessageSyncEngine(getStore(), {
+    list: async (groupUUID, afterSeq, limit) => {
+      const messages = await api.get(`/api/v1/messages/group/${groupUUID}?after_seq=${afterSeq}&limit=${limit}`)
+      return Array.isArray(messages) ? messages as Message[] : []
+    },
+    acknowledge: async (groupUUID, messageSeq) => {
+      await api.patch(`/api/v1/sync/groups/${groupUUID}/checkpoint`, { message_seq: messageSeq })
+    },
+  })
+  return engine.recover(userUUID, target, deliver)
 }
 
 export async function compareBrowserSyncMessages(userUUID: string, legacyMessages: Message[], syncMessages: Message[]) {
