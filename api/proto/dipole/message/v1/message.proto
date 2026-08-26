@@ -5,15 +5,7 @@ package dipole.message.v1;
 option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1;messagev1";
 
 import "google/protobuf/timestamp.proto";
-
-// InvocationContext is asserted by the trusted gateway before an internal RPC.
-// Public clients must never populate this message directly.
-message InvocationContext {
-  string principal_user_id = 1;
-  string device_id = 2;
-  string request_id = 3;
-  string trace_id = 4;
-}
+import "dipole/common/v1/context.proto";
 
 enum ErrorReason {
   ERROR_REASON_UNSPECIFIED = 0;
@@ -53,28 +45,28 @@ message Message {
 }
 
 message SendDirectTextRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string target_user_id = 2;
   string content = 3;
   string client_message_id = 4;
 }
 
 message SendGroupTextRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string group_id = 2;
   string content = 3;
   string client_message_id = 4;
 }
 
 message SendDirectFileRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string target_user_id = 2;
   string file_id = 3;
   string client_message_id = 4;
 }
 
 message SendGroupFileRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string group_id = 2;
   string file_id = 3;
   string client_message_id = 4;
@@ -86,14 +78,14 @@ message SendMessageResponse {
 }
 
 message ListDirectHistoryRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string target_user_id = 2;
   uint64 before_id = 3;
   int32 page_size = 4;
 }
 
 message ListGroupHistoryRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   string group_id = 2;
   oneof cursor {
     uint64 before_id = 3;
@@ -103,7 +95,7 @@ message ListGroupHistoryRequest {
 }
 
 message ListOfflineMessagesRequest {
-  InvocationContext context = 1;
+  dipole.common.v1.RequestContext context = 1;
   uint64 after_id = 2;
   int32 page_size = 3;
 }

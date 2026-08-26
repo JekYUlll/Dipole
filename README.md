@@ -38,6 +38,5 @@ scripts/check-sqlc.sh
 Message gRPC 契约生成固定使用 `protoc-gen-go v1.36.11` 和 `protoc-gen-go-grpc 1.6.2`：
 
 ```bash
-scripts/proto.sh api/proto/dipole/message/v1/message.proto
 scripts/check-proto.sh
 ```
