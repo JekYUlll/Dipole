@@ -4,6 +4,7 @@ global:
 
 rule_files:
   - /etc/prometheus/kafka-alerts.yml
+  - /etc/prometheus/cassandra-read-alerts.yml
 
 scrape_configs:
   - job_name: kafka

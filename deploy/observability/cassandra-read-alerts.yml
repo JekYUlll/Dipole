@@ -1,0 +1,28 @@
+groups:
+  - name: dipole-cassandra-read
+    rules:
+      - alert: DipoleCassandraReadPayloadMismatch
+        expr: sum(increase(dipole_message_read_verification_total{outcome="mismatch"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Cassandra primary-read verification found a payload mismatch
+
+      - alert: DipoleCassandraReadVerificationUnavailable
+        expr: sum(increase(dipole_message_read_verification_total{outcome="mysql_error"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Cassandra primary-read verification could not query MySQL
+
+      - alert: DipoleCassandraReadFallbackRateHigh
+        expr: |
+          sum(rate(dipole_message_read_route_total{route="mysql_fallback"}[5m]))
+          /
+          clamp_min(sum(rate(dipole_message_read_route_total[5m])), 0.001)
+          > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Cassandra message-read fallback ratio remains above five percent
