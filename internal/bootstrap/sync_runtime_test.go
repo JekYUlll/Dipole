@@ -9,9 +9,21 @@ import (
 )
 
 func TestInitializeSyncServiceRequiresInternalRPCBeforeOpeningDatabase(t *testing.T) {
-	_, err := initializeSyncService(context.Background(), config.InternalRPC{}, config.MySQL{}, config.Metrics{}, config.Sync{}, config.Kafka{})
+	_, err := initializeSyncService(context.Background(), config.InternalRPC{}, config.MySQL{}, config.Metrics{}, config.Sync{}, config.Kafka{}, config.Cassandra{})
 	if err == nil || !strings.Contains(err.Error(), "internal_rpc.enabled") {
 		t.Fatalf("expected internal RPC validation, got %v", err)
+	}
+}
+
+func TestValidateSyncHydrationConfig(t *testing.T) {
+	if err := validateSyncHydrationConfig(config.Sync{}, config.Cassandra{}); err != nil {
+		t.Fatalf("disabled shadow: %v", err)
+	}
+	if err := validateSyncHydrationConfig(config.Sync{CassandraShadowHydration: true}, config.Cassandra{}); err == nil || !strings.Contains(err.Error(), "cassandra.enabled") {
+		t.Fatalf("missing Cassandra error=%v", err)
+	}
+	if err := validateSyncHydrationConfig(config.Sync{CassandraShadowHydration: true}, config.Cassandra{Enabled: true}); err != nil {
+		t.Fatalf("enabled shadow: %v", err)
 	}
 }
 

@@ -25,7 +25,7 @@
 
 `projector` 模式继续在同一事务提交 Message、Conversation Seq、群高水位与 Outbox，并跳过 `user_sync_inbox/user_sync_states`。模块化单体和其他无 Kafka 本地路径继续使用默认构造器，保持 atomic 行为。
 
-当前读取仍按 `message_uuid` 从 MySQL 批量补全完整 Message。locator 已独立持久化并通过 HTTP/gRPC 暴露，后续可以按相同 `(conversation_key, message_seq)` 从 Cassandra 影子补全并比较，而无需改变客户端 Cursor。
+当前主读取按 `message_uuid` 从 MySQL 批量补全完整 Message。开启 `sync.cassandra_shadow_hydration` 后，运行时按相同 `(conversation_key, message_seq)` 异步读取 Cassandra Timeline 并比较公开消息字段；客户端响应、错误语义和 Cursor 均继续取自 MySQL。比较任务最多并发 32 个，容量耗尽时记录 skipped，Cassandra 缺行、内容差异或读取错误均不改变主响应。
 
 当前独立运行时已具备默认关闭的 Kafka Inbox 投影。Message 与 Projector 双运行时，正确 locator 重放保持 no-op；任一收件人发生 locator 冲突时，整批收件人事务回滚。旧私聊事件可从发送者/目标恢复收件人，旧群事件缺少事件时成员快照会失败并进入 Kafka 重试策略，避免使用当前成员关系猜测历史收件人。
 
@@ -69,6 +69,18 @@ sync:
 
 独立 consumer group 固定为 `dipole-sync-consumer`。启用前必须完成 migration v9，并先执行 `scripts/smoke-sync-projector.sh`。该 smoke 使用隔离的 Kafka 三节点与 MySQL 8.4，验证 Message 预写、Kafka 重复重放和热群跳过 fanout。
 
+Cassandra hydration 双跑需要 Cassandra Timeline 已由 Projector/Backfill 补齐并通过 Reconcile，然后设置：
+
+```yaml
+cassandra:
+  enabled: true
+
+sync:
+  cassandra_shadow_hydration: true
+```
+
+环境变量为 `DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION=true`。开关启用但 `cassandra.enabled=false` 时，Sync Service 在开放 RPC 前拒绝启动。Prometheus 暴露 `dipole_sync_hydration_shadow_total{outcome}` 和 `dipole_sync_hydration_shadow_duration_seconds{outcome}`；`outcome` 包含 `match`、`mismatch`、`error` 和 `skipped`。
+
 Sync 新 consumer group 从 Kafka earliest retained offset 建立；已经提交过 offset 的 group 继续从自身 checkpoint 恢复。该语义关闭“Replay 固定快照后、consumer 首次建组前”的跳过窗口。Kafka retention 之前的消息由 Outbox Replay 覆盖，缺少 created Outbox 的早期行由历史 baseline 覆盖。
 
 写责任切换观察窗按以下顺序执行：
@@ -87,6 +99,14 @@ Prometheus 加载 `deploy/observability/sync-projector-alerts.yml`。`DipoleSync
 公开 HTTP 路由继续由 Core 提供，Inbox 写入路径保持不变。部署 `dipole-sync` 并验证 RPC 后，可将 Core 的 `sync.transport` 从默认 `local` 改为 `grpc`。独立服务异常时恢复 `local` 并重启 Core，进程内 SyncApplication 会立即接管现有 `/sync` 行为，无需回滚数据。
 
 切流前可开启 `sync.shadow_queries=true`，异步比较 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 的 Local/Remote 结果。Checkpoint advance 属于写操作，只会在 `sync.transport` 选定的主实现执行一次，不参与影子调用。关闭影子开关不会改变主链路响应。
+
+Cassandra hydration 发生 mismatch、error 或持续 skipped 时，设置 `sync.cassandra_shadow_hydration=false` 并滚动重启 Sync Service。该开关未承担主读职责，回滚不涉及 Cursor 或数据迁移。隔离双存储验收命令：
+
+```bash
+./scripts/smoke-sync-cassandra-hydration.sh
+```
+
+该 smoke 使用真实 MySQL 8.4 和 Cassandra 5.0.9 验证 match、payload mismatch、缺少投影和 MySQL 主结果隔离。
 
 Projector 异常时先将 Message 账号恢复为 `configs/mysql/message-service-grants.dist.sql` 对应权限，将 `message.inbox_write_mode` 改回 `atomic` 并重启 Message owner。确认新消息已在事务内产生 Inbox 后，再停用 Sync Projector。故障窗口内的缺口通过固定 Outbox Replay/Reconcile 修复；历史缺口通过 baseline Restore 修复。
 

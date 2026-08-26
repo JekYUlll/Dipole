@@ -9,19 +9,32 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/mapper"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 var _ application.SyncStore = (*SyncRepository)(nil)
 
-type SyncRepository struct{ queries *generated.Queries }
+type SyncRepository struct {
+	queries  *generated.Queries
+	hydrator application.SyncMessageHydrator
+}
 
 func NewSyncRepository(queries *generated.Queries) (*SyncRepository, error) {
+	hydrator, err := NewMySQLSyncMessageHydrator(queries)
+	if err != nil {
+		return nil, err
+	}
+	return NewSyncRepositoryWithHydrator(queries, hydrator)
+}
+
+func NewSyncRepositoryWithHydrator(queries *generated.Queries, hydrator application.SyncMessageHydrator) (*SyncRepository, error) {
 	if queries == nil {
 		return nil, fmt.Errorf("sync queries are required")
 	}
-	return &SyncRepository{queries: queries}, nil
+	if hydrator == nil {
+		return nil, fmt.Errorf("Sync message hydrator is required")
+	}
+	return &SyncRepository{queries: queries, hydrator: hydrator}, nil
 }
 
 func (r *SyncRepository) GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
@@ -98,18 +111,13 @@ func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit
 	if len(inbox) == 0 {
 		return []*model.SyncMessage{}, nil
 	}
-	ids := make([]string, 0, len(inbox))
+	locators := make([]model.SyncMessageLocator, 0, len(inbox))
 	for _, row := range inbox {
-		ids = append(ids, row.MessageUuid)
+		locators = append(locators, model.SyncMessageLocator{MessageUUID: row.MessageUuid, ConversationKey: row.ConversationKey, MessageSeq: row.MessageSeq})
 	}
-	rows, err := r.queries.ListMessagesByUUIDs(ctx, ids)
+	byID, err := r.hydrator.Hydrate(ctx, locators)
 	if err != nil {
 		return nil, err
-	}
-	byID := make(map[string]*model.Message, len(rows))
-	for _, row := range rows {
-		message := mapper.Message(row)
-		byID[message.UUID] = message
 	}
 	items := make([]*model.SyncMessage, 0, len(inbox))
 	for _, row := range inbox {

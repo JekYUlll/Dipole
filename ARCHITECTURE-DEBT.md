@@ -18,9 +18,9 @@
 - **状态：** 暂缓
 - **发现日期：** 2026-08-27
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
-- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator，但 Sync Service 仍通过 MySQL `messages` 批量补全正文；旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 也继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
+- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
-- **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 下一步按 locator 从 Cassandra Message Store 补全并与 MySQL UUID hydration 双跑，另行建立幂等结果快照或 UUID locator、独立文件授权元数据。所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
+- **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 在 shadow hydration 观察稳定后增加 Cassandra 受控主读与 MySQL fallback，并审计 Cassandra projection 不携带 MySQL internal ID 对旧 DTO/客户端的影响。另行建立幂等结果快照或 UUID locator、独立文件授权元数据；所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 
 ### AD-021：Search 重建依赖 Outbox 事件保留契约

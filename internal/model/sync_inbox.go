@@ -26,3 +26,9 @@ type SyncMessage struct {
 	MessageSeq      uint64   `json:"message_seq"`
 	Message         *Message `json:"message"`
 }
+
+type SyncMessageLocator struct {
+	MessageUUID     string
+	ConversationKey string
+	MessageSeq      uint64
+}
