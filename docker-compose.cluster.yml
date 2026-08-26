@@ -80,6 +80,7 @@ services:
       - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/observability/kafka-alerts.yml:/etc/prometheus/kafka-alerts.yml:ro
       - ./deploy/observability/cassandra-read-alerts.yml:/etc/prometheus/cassandra-read-alerts.yml:ro
+      - ./deploy/observability/sync-projector-alerts.yml:/etc/prometheus/sync-projector-alerts.yml:ro
       - prometheus_cluster_data:/prometheus
     depends_on:
       - kafka-exporter

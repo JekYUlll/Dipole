@@ -20,7 +20,7 @@
 - **影响范围：** `cmd/sync-service`、`user_sync_inbox`、设备/群 checkpoint、MySQL 最小权限
 - **现状：** 独立 Sync Runtime 组合 sqlc Sync Store/Projection Store，并可通过默认关闭的 Kafka consumer 幂等投影 Inbox；部署配置仍复用通用 MySQL 账号。Message 事务当前继续原子写 Inbox，Sync Runtime 同时需要查询和推进 checkpoint。
 - **风险：** 进程代码边界已收敛，数据库凭据仍可访问超出 Sync 职责的表；过早撤销 Message 的 Inbox 写权限会破坏消息、Inbox 与 Outbox 的原子提交。
-- **建议方向：** 当前真实 Kafka/MySQL smoke 已证明精确重放、热群跳过 fanout、固定快照恢复和 recipient/locator 全量对账；lag/DLQ、快照后 catch-up 窗口和权限启动验收完成前，继续保留 Message 对 Inbox 的写权限。为 `dipole_sync` 配置仅覆盖 Inbox/Sync state/checkpoint、replay job 和 migration ledger 的最小账号；投影切换后再按所有权迁移顺序收窄 Message 权限。
+- **建议方向：** 当前真实 Kafka/MySQL smoke 已证明 earliest backlog 追平、精确重放、热群跳过 fanout、retry/DLQ 可见、固定快照恢复和 recipient/locator 全量对账。继续保留 Message 对 Inbox 的写权限，直到 `dipole_sync` 最小账号完成启动验收，并在灰度观察窗满足 lag=0、retry/DLQ 无增量和双 Reconcile 一致；随后按所有权迁移顺序收窄 Message 权限。
 - **处理门槛：** Sync Compose/mTLS 灰度前完成 Sync 账号验收；Message Inbox 写权限在实时投影切换门禁通过后移除。
 
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约

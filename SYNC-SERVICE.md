@@ -57,6 +57,18 @@ sync:
 
 独立 consumer group 固定为 `dipole-sync-consumer`。启用前必须完成 migration v9，并先执行 `scripts/smoke-sync-projector.sh`。该 smoke 使用隔离的 Kafka 三节点与 MySQL 8.4，验证 Message 预写、Kafka 重复重放和热群跳过 fanout。
 
+Sync 新 consumer group 从 Kafka earliest retained offset 建立；已经提交过 offset 的 group 继续从自身 checkpoint 恢复。该语义关闭“Replay 固定快照后、consumer 首次建组前”的跳过窗口。Kafka retention 之前的消息由 Outbox Replay 覆盖，缺少 created Outbox 的早期行由历史 baseline 覆盖。
+
+写责任切换观察窗按以下顺序执行：
+
+1. 保持 Message 原子写 Inbox，启动 `sync.projector_enabled=true` 的 Sync Projector。
+2. 执行固定 Outbox Replay 与历史 baseline Reconcile。
+3. 等待 `dipole-sync-consumer` lag 归零，并确认 retry/DLQ 在约定观察窗没有新增。
+4. 创建新的 Replay job 固化当前 Outbox 高水位，再次 Reconcile。
+5. 以上门禁持续通过后，才进入独立的数据库权限与 Message 写责任切换里程碑。
+
+Prometheus 加载 `deploy/observability/sync-projector-alerts.yml`。`DipoleSyncProjectorLag` 持续两分钟触发 warning，retry 触发 warning，dead-letter 触发 critical；任一告警阻止写责任迁移。
+
 ## 回滚
 
 公开 HTTP 路由继续由 Core 提供，Inbox 写入路径保持不变。部署 `dipole-sync` 并验证 RPC 后，可将 Core 的 `sync.transport` 从默认 `local` 改为 `grpc`。独立服务异常时恢复 `local` 并重启 Core，进程内 SyncApplication 会立即接管现有 `/sync` 行为，无需回滚数据。

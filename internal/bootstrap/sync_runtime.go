@@ -83,7 +83,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			return nil, fmt.Errorf("initialize Sync projector Kafka publisher: %w", projectorErr)
 		}
 		runtime.projector = true
-		if projectorErr = platformkafka.InitConsumerForService(syncServiceName); projectorErr != nil {
+		if projectorErr = platformkafka.InitReplayableConsumerForService(syncServiceName); projectorErr != nil {
 			runtime.Close()
 			return nil, fmt.Errorf("initialize Sync projector Kafka consumer: %w", projectorErr)
 		}
