@@ -184,6 +184,66 @@ func TestApplyRejectsValuesOutsideElasticsearchLong(t *testing.T) {
 	}
 }
 
+func TestPhysicalTargetCreatesWithoutAliasesAndSupportsReconciliation(t *testing.T) {
+	var createdAliases any
+	state := model.MessageSearchState{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case request.Method == http.MethodHead && request.URL.Path == "/dipole-messages-v1-build-a":
+			writer.WriteHeader(http.StatusNotFound)
+		case request.Method == http.MethodPut && request.URL.Path == "/dipole-messages-v1-build-a":
+			var body map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatalf("decode physical index create: %v", err)
+			}
+			createdAliases = body["aliases"]
+			_, _ = writer.Write([]byte(`{"acknowledged":true}`))
+		case request.Method == http.MethodPut && request.URL.Path == "/dipole-messages-v1-build-a/_doc/M1":
+			if request.URL.Query().Get("require_alias") != "" || request.URL.Query().Get("version_type") != "external" {
+				t.Fatalf("unexpected physical write query: %s", request.URL.RawQuery)
+			}
+			if err := json.NewDecoder(request.Body).Decode(&state); err != nil {
+				t.Fatalf("decode physical state: %v", err)
+			}
+			writer.WriteHeader(http.StatusCreated)
+		case request.Method == http.MethodGet && request.URL.Path == "/dipole-messages-v1-build-a/_doc/M1":
+			_ = json.NewEncoder(writer).Encode(map[string]any{"_source": state})
+		case request.Method == http.MethodPost && request.URL.Path == "/dipole-messages-v1-build-a/_count":
+			_, _ = writer.Write([]byte(`{"count":1}`))
+		case request.Method == http.MethodPost && request.URL.Path == "/dipole-messages-v1-build-a/_refresh":
+			_, _ = writer.Write([]byte(`{"_shards":{"successful":1}}`))
+		default:
+			t.Fatalf("unexpected physical target request %s %s", request.Method, request.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	index := testIndex(t, server.URL)
+	target, err := index.CreatePhysicalTarget(t.Context(), "dipole-messages-v1-build-a")
+	if err != nil {
+		t.Fatalf("create physical target: %v", err)
+	}
+	if createdAliases != nil {
+		t.Fatalf("build index must not bind production aliases: %#v", createdAliases)
+	}
+	document := validSearchDocument()
+	document.Revision = 1
+	if err := target.Apply(upsertMutation(document)); err != nil {
+		t.Fatalf("apply physical mutation: %v", err)
+	}
+	if err := target.Refresh(t.Context()); err != nil {
+		t.Fatalf("refresh physical target: %v", err)
+	}
+	actual, found, err := target.Lookup(t.Context(), "M1")
+	if err != nil || !found || actual.PayloadHash != state.PayloadHash {
+		t.Fatalf("lookup state=%+v found=%v err=%v", actual, found, err)
+	}
+	count, err := target.Count(t.Context())
+	if err != nil || count != 1 {
+		t.Fatalf("target count=%d err=%v", count, err)
+	}
+}
+
 func TestSearchRequiresAndTransmitsConversationScope(t *testing.T) {
 	var queryBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

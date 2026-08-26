@@ -42,6 +42,7 @@ type Config struct {
 type Index struct {
 	baseURL       *url.URL
 	client        *http.Client
+	indexPrefix   string
 	physicalIndex string
 	readAlias     string
 	writeAlias    string
@@ -89,6 +90,7 @@ func NewIndex(config Config) (*Index, error) {
 	return &Index{
 		baseURL: baseURL, client: client, shards: config.Shards, replicas: config.Replicas,
 		username: username, password: password, apiKey: apiKey,
+		indexPrefix:   prefix,
 		physicalIndex: prefix + "-messages-" + mappingVersion,
 		readAlias:     prefix + "-messages-read", writeAlias: prefix + "-messages-write",
 	}, nil
@@ -112,23 +114,76 @@ func (i *Index) Bootstrap(ctx context.Context) error {
 	if status != http.StatusNotFound {
 		return fmt.Errorf("inspect Elasticsearch index: unexpected status %d", status)
 	}
-	body, err := json.Marshal(map[string]any{
+	return i.createPhysicalIndex(ctx, i.physicalIndex, map[string]any{
+		i.readAlias:  map[string]any{},
+		i.writeAlias: map[string]any{"is_write_index": true},
+	})
+}
+
+type PhysicalTarget struct {
+	index *Index
+	name  string
+}
+
+func (i *Index) CreatePhysicalTarget(ctx context.Context, name string) (*PhysicalTarget, error) {
+	if err := i.validatePhysicalIndexName(name); err != nil {
+		return nil, err
+	}
+	status, _, err := i.request(ctx, http.MethodHead, "/"+name, nil)
+	if err != nil {
+		return nil, err
+	}
+	switch status {
+	case http.StatusOK:
+		if err := i.validateMapping(ctx, name); err != nil {
+			return nil, err
+		}
+	case http.StatusNotFound:
+		if err := i.createPhysicalIndex(ctx, name, nil); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("inspect Elasticsearch physical target: unexpected status %d", status)
+	}
+	return &PhysicalTarget{index: i, name: name}, nil
+}
+
+func (i *Index) PhysicalTarget(ctx context.Context, name string) (*PhysicalTarget, error) {
+	if err := i.validatePhysicalIndexName(name); err != nil {
+		return nil, err
+	}
+	if err := i.validateMapping(ctx, name); err != nil {
+		return nil, err
+	}
+	return &PhysicalTarget{index: i, name: name}, nil
+}
+
+func (i *Index) createPhysicalIndex(ctx context.Context, name string, aliases map[string]any) error {
+	bodyValue := map[string]any{
 		"settings": map[string]any{"number_of_shards": i.shards, "number_of_replicas": i.replicas},
 		"mappings": messageSearchMapping,
-		"aliases": map[string]any{
-			i.readAlias:  map[string]any{},
-			i.writeAlias: map[string]any{"is_write_index": true},
-		},
-	})
+	}
+	if aliases != nil {
+		bodyValue["aliases"] = aliases
+	}
+	body, err := json.Marshal(bodyValue)
 	if err != nil {
 		return fmt.Errorf("encode Elasticsearch index schema: %w", err)
 	}
-	status, response, err := i.request(ctx, http.MethodPut, "/"+i.physicalIndex, body)
+	status, response, err := i.request(ctx, http.MethodPut, "/"+name, body)
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK {
 		return responseError("create Elasticsearch index", status, response)
+	}
+	return nil
+}
+
+func (i *Index) validatePhysicalIndexName(name string) error {
+	name = strings.TrimSpace(name)
+	if !indexPrefixPattern.MatchString(name) || !strings.HasPrefix(name, i.indexPrefix+"-messages-") {
+		return errors.New("Elasticsearch physical index name is invalid")
 	}
 	return nil
 }
@@ -204,6 +259,10 @@ func (i *Index) SwitchAliases(ctx context.Context, fromIndex, toIndex string) er
 }
 
 func (i *Index) Apply(mutation *model.MessageSearchMutation) error {
+	return i.apply(context.Background(), i.writeAlias, true, mutation)
+}
+
+func (i *Index) apply(ctx context.Context, target string, requireAlias bool, mutation *model.MessageSearchMutation) error {
 	source, err := mutation.State()
 	if err != nil {
 		return err
@@ -212,8 +271,12 @@ func (i *Index) Apply(mutation *model.MessageSearchMutation) error {
 	if err != nil {
 		return fmt.Errorf("encode Elasticsearch search document: %w", err)
 	}
-	path := fmt.Sprintf("/%s/_doc/%s?require_alias=true&version=%d&version_type=external", i.writeAlias, url.PathEscape(source.MessageUUID), source.Revision)
-	status, response, err := i.request(context.Background(), http.MethodPut, path, body)
+	query := fmt.Sprintf("version=%d&version_type=external", source.Revision)
+	if requireAlias {
+		query = "require_alias=true&" + query
+	}
+	path := fmt.Sprintf("/%s/_doc/%s?%s", target, url.PathEscape(source.MessageUUID), query)
+	status, response, err := i.request(ctx, http.MethodPut, path, body)
 	if err != nil {
 		return err
 	}
@@ -221,7 +284,7 @@ func (i *Index) Apply(mutation *model.MessageSearchMutation) error {
 		return nil
 	}
 	if status == http.StatusConflict {
-		return i.classifyVersionConflict(context.Background(), source)
+		return i.classifyVersionConflict(ctx, target, source)
 	}
 	return responseError("upsert Elasticsearch search document", status, response)
 }
@@ -287,8 +350,8 @@ func (i *Index) Search(query model.MessageSearchQuery) ([]*model.MessageSearchDo
 	return documents, nil
 }
 
-func (i *Index) classifyVersionConflict(ctx context.Context, candidate model.MessageSearchState) error {
-	path := fmt.Sprintf("/%s/_doc/%s", i.writeAlias, url.PathEscape(candidate.MessageUUID))
+func (i *Index) classifyVersionConflict(ctx context.Context, target string, candidate model.MessageSearchState) error {
+	path := fmt.Sprintf("/%s/_doc/%s", target, url.PathEscape(candidate.MessageUUID))
 	status, response, err := i.request(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return err
@@ -312,6 +375,59 @@ func (i *Index) classifyVersionConflict(ctx context.Context, candidate model.Mes
 	default:
 		return fmt.Errorf("Elasticsearch conflict state regressed: message=%s current=%d candidate=%d", candidate.MessageUUID, current.Source.Revision, candidate.Revision)
 	}
+}
+
+func (t *PhysicalTarget) Apply(mutation *model.MessageSearchMutation) error {
+	return t.index.apply(context.Background(), t.name, false, mutation)
+}
+
+func (t *PhysicalTarget) Lookup(ctx context.Context, messageUUID string) (model.MessageSearchState, bool, error) {
+	path := fmt.Sprintf("/%s/_doc/%s", t.name, url.PathEscape(strings.TrimSpace(messageUUID)))
+	status, response, err := t.index.request(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return model.MessageSearchState{}, false, err
+	}
+	if status == http.StatusNotFound {
+		return model.MessageSearchState{}, false, nil
+	}
+	if status != http.StatusOK {
+		return model.MessageSearchState{}, false, responseError("lookup Elasticsearch search document", status, response)
+	}
+	var current struct {
+		Source model.MessageSearchState `json:"_source"`
+	}
+	if err := json.Unmarshal(response, &current); err != nil {
+		return model.MessageSearchState{}, false, fmt.Errorf("decode Elasticsearch search document: %w", err)
+	}
+	return current.Source, true, nil
+}
+
+func (t *PhysicalTarget) Count(ctx context.Context) (uint64, error) {
+	status, response, err := t.index.request(ctx, http.MethodPost, "/"+t.name+"/_count", []byte(`{"query":{"match_all":{}}}`))
+	if err != nil {
+		return 0, err
+	}
+	if status != http.StatusOK {
+		return 0, responseError("count Elasticsearch search documents", status, response)
+	}
+	var result struct {
+		Count uint64 `json:"count"`
+	}
+	if err := json.Unmarshal(response, &result); err != nil {
+		return 0, fmt.Errorf("decode Elasticsearch search document count: %w", err)
+	}
+	return result.Count, nil
+}
+
+func (t *PhysicalTarget) Refresh(ctx context.Context) error {
+	status, response, err := t.index.request(ctx, http.MethodPost, "/"+t.name+"/_refresh", nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return responseError("refresh Elasticsearch physical target", status, response)
+	}
+	return nil
 }
 
 func (i *Index) validateAliases(ctx context.Context, physicalIndex string) error {

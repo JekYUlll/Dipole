@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -53,41 +52,5 @@ func mutationFromEvent(event platformKafka.Event) (*model.MessageSearchMutation,
 	if err := json.Unmarshal(event.Envelope.Payload, &payload); err != nil {
 		return nil, fmt.Errorf("decode Search projection payload: %w", err)
 	}
-	if err := service.NormalizeMessageMutation(event.Envelope.EventType, &payload); err != nil {
-		return nil, fmt.Errorf("normalize Search mutation: %w", err)
-	}
-	parts := strings.Split(strings.TrimSpace(event.Envelope.EventType), ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("unsupported Search event type %q", event.Envelope.EventType)
-	}
-	expectedTarget := int8(-1)
-	switch parts[1] {
-	case "direct":
-		expectedTarget = model.MessageTargetDirect
-	case "group":
-		expectedTarget = model.MessageTargetGroup
-	default:
-		return nil, fmt.Errorf("unsupported Search event channel %q", parts[1])
-	}
-	if payload.TargetType != expectedTarget {
-		return nil, fmt.Errorf("Search event channel %s conflicts with target type %d", parts[1], payload.TargetType)
-	}
-	mutation := &model.MessageSearchMutation{MessageUUID: payload.MessageID, Revision: payload.Revision}
-	switch payload.MutationType {
-	case service.MessageMutationCreated, service.MessageMutationEdited:
-		mutation.Type = model.MessageSearchMutationUpsert
-		mutation.Document = &model.MessageSearchDocument{
-			MessageUUID: payload.MessageID, ConversationKey: payload.ConversationKey, MessageSeq: payload.MessageSeq,
-			Revision: payload.Revision, SenderUUID: payload.SenderUUID, MessageType: payload.MessageType,
-			Content: payload.Content, SentAt: payload.SentAt,
-		}
-	case service.MessageMutationRecalled, service.MessageMutationDeleted:
-		mutation.Type = model.MessageSearchMutationTombstone
-	default:
-		return nil, fmt.Errorf("unsupported Search mutation %q", payload.MutationType)
-	}
-	if _, err := mutation.State(); err != nil {
-		return nil, fmt.Errorf("validate Search mutation: %w", err)
-	}
-	return mutation, nil
+	return service.MessageSearchMutation(event.Envelope.EventType, payload)
 }

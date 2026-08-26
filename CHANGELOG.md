@@ -84,6 +84,8 @@
 - 增加 Elasticsearch Search adapter，以 Message UUID、external revision 和 payload hash 识别幂等重放、旧事件与同版本冲突，并强制 conversation scope 查询。
 - 增加版本化 `SearchIndex.Apply` 与持久 tombstone，MySQL/Elasticsearch 共享更高 revision 覆盖、旧 revision no-op、相同重放和同版本冲突语义。
 - 增加默认关闭的独立 `cmd/search-indexer`、Elasticsearch 配置/认证、专属 Kafka consumer group 与八类 direct/group mutation Topic 投影。
+- 增加 Outbox 固定快照 Search Backfill、目标索引绑定的 owner lease/checkpoint、最终 mutation 状态折叠与独立 Reconcile JSON 报告。
+- 增加显式 Elasticsearch 物理构建目标；维护写入不绑定生产 Alias，在线 Indexer 继续强制 `require_alias=true`。
 
 ### 变更
 
@@ -200,6 +202,7 @@
 - 已通过 Elasticsearch 9.5.2 真实 contract：重复 Bootstrap 校验 mapping/Alias，external revision 支持重放、更新与旧事件 no-op，作用域搜索无隐藏会话泄漏。
 - 已通过 MySQL 8.4 与 Elasticsearch 9.5.2 版本化 Search contract：同 revision 冲突可检测，tombstone 后旧正文事件无法恢复搜索结果。
 - 已通过三节点 Kafka/Elasticsearch Search Indexer smoke：created r1、recalled r3 与迟到 edited r2 收敛为 revision 3 tombstone。
+- 已通过 MySQL 8.4/Elasticsearch 9.5.2 Search 恢复演练：created/edited 与 created/recalled 折叠为 3 个最终状态，固定高水位对账一致，目标 hash 篡改返回退出码 2。
 - 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
 - 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。

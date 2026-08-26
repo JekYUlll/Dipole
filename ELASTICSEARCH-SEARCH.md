@@ -75,6 +75,26 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 
 索引切换前需要保留：源 checkpoint、目标文档数量/hash、构建开始时间、owner、回滚截止时间和旧索引保留期。ES 故障不得阻断消息持久化，Kafka lag 与 DLQ 负责暴露投影滞后。
 
+## Backfill And Reconciliation
+
+`cmd/search-backfill` 从 Transactional Outbox 捕获一次固定的 Message mutation ID 高水位，并在该快照内按 Message UUID 只选择最终事件。created/edited 恢复完整 searchable 文档，recalled/deleted 恢复持久 tombstone；同一消息的旧 revision 不进入目标构建批次。
+
+任务状态保存在 `search_backfill_jobs`，记录目标物理索引、owner lease、固定高水位、单调 checkpoint、attempt 和失败原因。任务名与目标索引绑定，不能将已完成 checkpoint 复用于另一个构建索引。构建目标名称必须位于当前 `index_prefix-messages-*` 命名空间，创建时不绑定生产 read/write Alias。
+
+```bash
+dipole-search-backfill \
+  -job message-search-v1-build-20260827 \
+  -target-index dipole-messages-v1-build-20260827
+
+dipole-search-reconcile \
+  -job message-search-v1-build-20260827 \
+  -target-index dipole-messages-v1-build-20260827
+```
+
+Reconcile 只接受已完成任务的原始高水位，刷新目标索引后逐条比较 revision、searchable 与 canonical payload hash，并同时比较源状态数、目标文档数、缺失数和额外文档数。报告一致时退出 0，执行错误退出 1，确认差异退出 2。
+
+当前恢复源要求已发布 Outbox 事件持续保留；归档与清理契约记录在 `AD-021`。在线 Indexer 只写当前 write Alias，因此生产 Alias 切换前还需要停写窗口或后续双写/catch-up 门禁，本里程碑不自动切换 Alias。
+
 ## Verified Contract
 
 单元 contract 覆盖：
@@ -86,6 +106,8 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 - conversation scope 去重、排序、fail closed 与 100 条上限。
 - ES 错误响应有界读取，避免诊断内容无限进入内存。
 - Search Projector 的八类 Topic 映射、legacy created 默认、channel/target 冲突与 adapter 失败传播。
+- 物理构建索引无生产 Alias、显式 direct write、refresh、lookup 与 count。
+- 固定 Outbox 最终状态快照、owner lease、失败恢复、目标绑定和缺失/hash/额外文档对账。
 
 真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。三节点 Kafka 端到端 smoke 进一步验证 created r1、recalled r3 与迟到 edited r2 最终保持 revision 3 tombstone。测试入口：
 
@@ -94,11 +116,12 @@ DIPOLE_TEST_ELASTICSEARCH_URL=http://127.0.0.1:9200 \
   go test -count=1 -run TestIndexContract -v ./internal/data/elasticsearch
 
 scripts/smoke-search-indexer.sh
+scripts/smoke-search-backfill.sh
 ```
 
 ## Next Milestones
 
-1. 增加固定快照 Backfill、数量/hash Reconcile 和 Alias 切换命令。
+1. 增加受控 catch-up、Alias 切换/回滚命令和旧索引保留窗口。
 2. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
 
 ## References
