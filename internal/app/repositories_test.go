@@ -19,6 +19,19 @@ func TestNewMessageProcessRepositoriesRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
+	if _, err := NewSyncProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+	repos, err := NewSyncProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new sync process repositories: %v", err)
+	}
+	if _, ok := repos.Sync.(*sqlcRepository.SyncRepository); !ok {
+		t.Fatalf("expected sqlc sync repository, got %T", repos.Sync)
+	}
+}
+
 func TestNewMessageProcessRepositoriesBuildsOnlyOwnedAdapters(t *testing.T) {
 	repos, err := NewMessageProcessRepositories(&sql.DB{})
 	if err != nil {

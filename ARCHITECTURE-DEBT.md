@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** `cmd/sync-service`、`user_sync_inbox`、设备/群 checkpoint、MySQL 最小权限
+- **现状：** 独立 Sync Runtime 只组合 sqlc Sync Store，并通过 Core Capability 校验群成员；部署配置仍复用通用 MySQL 账号。Message 事务当前继续原子写 Inbox，Sync Runtime 同时需要查询和推进 checkpoint。
+- **风险：** 进程代码边界已收敛，数据库凭据仍可访问超出 Sync 职责的表；过早撤销 Message 的 Inbox 写权限会破坏消息、Inbox 与 Outbox 的原子提交。
+- **建议方向：** A6 事件投影具备幂等、回放、回填与提交窗口验证前，保留 Message 对 Inbox 的写权限；为 `dipole_sync` 配置仅覆盖 Inbox/Sync state/checkpoint 和 migration ledger 的最小账号，并增加启动验收。投影切换后再按所有权迁移顺序收窄 Message 权限。
+- **处理门槛：** Sync Compose/mTLS 灰度前完成 Sync 账号验收；Message Inbox 写权限在实时投影切换门禁通过后移除。
+
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
 - **优先级：** P1

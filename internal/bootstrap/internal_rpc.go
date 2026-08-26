@@ -19,8 +19,10 @@ import (
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
+	syncv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
 	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
+	syncgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/sync"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpcCredentials "google.golang.org/grpc/credentials"
@@ -35,6 +37,7 @@ const (
 	coreServiceName    = "dipole-core"
 	messageServiceName = "dipole-message"
 	searchServiceName  = "dipole-search"
+	syncServiceName    = "dipole-sync"
 )
 
 type InternalRPCServer struct {
@@ -49,13 +52,17 @@ func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName, searchServiceName}, func(server *grpc.Server) {
+	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName, searchServiceName, syncServiceName}, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
-	}, restrictSearchCoreMethods)
+	}, restrictCoreServiceMethods)
 }
 
 func DialSearchCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
 	return dialCoreCapabilityAs(ctx, cfg, searchServiceName)
+}
+
+func DialSyncCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	return dialCoreCapabilityAs(ctx, cfg, syncServiceName)
 }
 
 func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
@@ -142,12 +149,51 @@ func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*search
 	return client, connection, nil
 }
 
-func restrictSearchCoreMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func NewSyncRPCServer(cfg config.InternalRPC, syncApplication application.SyncApplication) (*InternalRPCServer, error) {
+	adapter, err := syncgrpc.NewServer(syncApplication)
+	if err != nil {
+		return nil, fmt.Errorf("create sync rpc adapter: %w", err)
+	}
+	return newInternalRPCServer(cfg, cfg.SyncListenAddress, []string{gatewayServiceName, coreServiceName}, func(server *grpc.Server) {
+		syncv1.RegisterSyncQueryServiceServer(server, adapter)
+	})
+}
+
+func DialSyncApplication(ctx context.Context, cfg config.InternalRPC) (*syncgrpc.Client, *grpc.ClientConn, error) {
+	return dialSyncApplicationAs(ctx, cfg, gatewayServiceName)
+}
+
+func DialCoreSyncApplication(ctx context.Context, cfg config.InternalRPC) (*syncgrpc.Client, *grpc.ClientConn, error) {
+	return dialSyncApplicationAs(ctx, cfg, coreServiceName)
+}
+
+func dialSyncApplicationAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*syncgrpc.Client, *grpc.ClientConn, error) {
+	connection, err := dialInternalRPC(ctx, cfg, cfg.SyncTarget, grpcauth.Credentials{
+		Service: callerService,
+		Secret:  cfg.SharedSecret,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial sync rpc: %w", err)
+	}
+	client, err := syncgrpc.NewClientForService(syncv1.NewSyncQueryServiceClient(connection), callerService)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create sync application client: %w", err)
+	}
+	return client, connection, nil
+}
+
+func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	caller, _ := grpcauth.CallerService(ctx)
 	if caller == searchServiceName &&
 		info.FullMethod != corev1.CoreCapabilityService_ListSearchConversationKeys_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {
 		return nil, status.Error(codes.PermissionDenied, "Search service is not allowed to call this Core capability")
+	}
+	if caller == syncServiceName &&
+		info.FullMethod != corev1.CoreCapabilityService_GetGroupMember_FullMethodName &&
+		info.FullMethod != healthv1.Health_Check_FullMethodName {
+		return nil, status.Error(codes.PermissionDenied, "Sync service is not allowed to call this Core capability")
 	}
 	return handler(ctx, request)
 }
