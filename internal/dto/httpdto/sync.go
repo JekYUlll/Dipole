@@ -8,6 +8,8 @@ import (
 type SyncMessageResponse struct {
 	SyncSeq         uint64           `json:"sync_seq"`
 	ConversationKey string           `json:"conversation_key"`
+	MessageUUID     string           `json:"message_uuid"`
+	MessageSeq      uint64           `json:"message_seq"`
 	Message         *MessageResponse `json:"message"`
 }
 
@@ -71,6 +73,8 @@ func ToSyncPageResponse(page *applicationPort.SyncPage) *SyncPageResponse {
 		items = append(items, &SyncMessageResponse{
 			SyncSeq:         item.SyncSeq,
 			ConversationKey: item.ConversationKey,
+			MessageUUID:     item.MessageUUID,
+			MessageSeq:      item.MessageSeq,
 			Message:         ToMessageResponse(item.Message),
 		})
 	}

@@ -61,11 +61,24 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", first.UUID); got != 1 {
 		t.Fatalf("expected one deduplicated inbox row, got %d", got)
 	}
+	var storedConversation string
+	var storedSequence uint64
+	if err := db.QueryRow("SELECT conversation_key, message_seq FROM user_sync_inbox WHERE message_uuid = ?", first.UUID).Scan(&storedConversation, &storedSequence); err != nil {
+		t.Fatalf("read Sync locator: %v", err)
+	}
+	if storedConversation != first.ConversationKey || storedSequence != first.Seq {
+		t.Fatalf("unexpected Sync locator: conversation=%q sequence=%d", storedConversation, storedSequence)
+	}
 	if err := stores.message.EnsureSyncInbox(first, []string{"U-" + prefix + "-target"}); err != nil {
 		t.Fatalf("replay sync inbox: %v", err)
 	}
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", first.UUID); got != 1 {
 		t.Fatalf("inbox replay created duplicates: %d", got)
+	}
+	conflict := *first
+	conflict.Seq++
+	if err := stores.message.EnsureSyncInbox(&conflict, []string{"U-" + prefix + "-target"}); err == nil {
+		t.Fatal("expected conflicting Sync locator replay to fail")
 	}
 
 	second := contractStoredMessage(prefix+"-2", conversationKey, now.Add(time.Second))

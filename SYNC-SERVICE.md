@@ -5,6 +5,7 @@
 `dipole-sync` 是 A6 的第一个可回滚切片，负责以下持久同步查询：
 
 - 按用户 `sync_seq` 读取 Durable Inbox。
+- 每个 Sync Item 固化 `conversation_key + message_uuid + message_seq`，用于跨 MySQL/Cassandra 定位同一消息。
 - 读取和推进设备 Cursor。
 - 读取和推进热群 checkpoint。
 - 通过受认证 Core Capability 校验群成员关系。
@@ -19,6 +20,8 @@
 2. 固定高水位 Backfill 与事件重放能够恢复 Inbox。
 3. 双写/影子比较覆盖离线、多设备、热群和提交乱序。
 4. 故障恢复验证不会让设备 Cursor 永久跳过消息。
+
+当前读取仍按 `message_uuid` 从 MySQL 批量补全完整 Message。locator 已独立持久化并通过 HTTP/gRPC 暴露，后续可以按相同 `(conversation_key, message_seq)` 从 Cassandra 影子补全并比较，而无需改变客户端 Cursor。
 
 因此，当前独立运行时抽离的是查询与 checkpoint 所有权；Kafka 实时投影仍属于后续 A6 切片。
 

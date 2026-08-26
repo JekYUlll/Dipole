@@ -17,6 +17,8 @@ message SyncMessage {
   uint64 sync_seq = 1;
   string conversation_key = 2;
   dipole.message.v1.Message message = 3;
+  string message_uuid = 4;
+  uint64 message_seq = 5;
 }
 
 message ListSyncMessagesResponse {

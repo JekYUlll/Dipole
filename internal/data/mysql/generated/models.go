@@ -189,4 +189,5 @@ type UserSyncInbox struct {
 	MessageUuid     string
 	ConversationKey string
 	CreatedAt       sql.NullTime
+	MessageSeq      uint64
 }

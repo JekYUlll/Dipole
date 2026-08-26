@@ -8,5 +8,5 @@
 - Group checkpoints combine a durable group Timeline high-water mark with a per-user/device pulled sequence. Every requested group is authorized against Core membership before state is returned or advanced.
 - Clients pull stale groups through Message v1 `after_sequence`, then acknowledge only after local durable persistence.
 - `page_size=0` uses the application default of 100; values above 200 are capped, and negative values are rejected.
-- Each item carries the Message v1 snapshot required for local reconciliation.
+- Each item carries `conversation_key + message_uuid + message_seq` as a storage-neutral locator and retains the Message v1 snapshot for backward-compatible local reconciliation.
 - Offline history compatibility remains in Message v1 until clients complete the Sync migration.

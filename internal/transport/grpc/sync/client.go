@@ -58,10 +58,22 @@ func (c *Client) List(userUUID string, afterSeq uint64, limit int) (*application
 		if item == nil {
 			continue
 		}
+		message := grpcmapping.MessageFromProto(item.GetMessage())
+		messageID, messageSequence := item.GetMessageUuid(), item.GetMessageSeq()
+		if message != nil {
+			if messageID == "" {
+				messageID = message.UUID
+			}
+			if messageSequence == 0 {
+				messageSequence = message.Seq
+			}
+		}
 		page.Items = append(page.Items, &model.SyncMessage{
 			SyncSeq:         item.GetSyncSeq(),
 			ConversationKey: item.GetConversationKey(),
-			Message:         grpcmapping.MessageFromProto(item.GetMessage()),
+			MessageUUID:     messageID,
+			MessageSeq:      messageSequence,
+			Message:         message,
 		})
 	}
 	return page, nil

@@ -146,8 +146,8 @@ func TestSQLCDeviceSyncCheckpointIsMonotonicUnderConcurrency(t *testing.T) {
 	const checkpointCount = 24
 	userUUID := "U-checkpoint"
 	for index := 1; index <= checkpointCount; index++ {
-		if _, err := db.Exec(`INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key)
-            VALUES (?, ?, 'direct:checkpoint')`, userUUID, fmt.Sprintf("M-checkpoint-%02d", index)); err != nil {
+		if _, err := db.Exec(`INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, message_seq)
+			VALUES (?, ?, 'direct:checkpoint', ?)`, userUUID, fmt.Sprintf("M-checkpoint-%02d", index), index); err != nil {
 			t.Fatalf("seed sync inbox: %v", err)
 		}
 	}

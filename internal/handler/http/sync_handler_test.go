@@ -72,6 +72,8 @@ func (s *stubSyncService) List(userUUID string, afterSeq uint64, limit int) (*ap
 		Items: []*model.SyncMessage{{
 			SyncSeq:         8,
 			ConversationKey: "direct:U100:U200",
+			MessageUUID:     "M8",
+			MessageSeq:      12,
 			Message:         &model.Message{UUID: "M8"},
 		}},
 		NextSeq: 8,
@@ -99,14 +101,16 @@ func TestSyncHandlerListSuccess(t *testing.T) {
 		Data struct {
 			NextSeq uint64 `json:"next_seq"`
 			Items   []struct {
-				SyncSeq uint64 `json:"sync_seq"`
+				SyncSeq     uint64 `json:"sync_seq"`
+				MessageUUID string `json:"message_uuid"`
+				MessageSeq  uint64 `json:"message_seq"`
 			} `json:"items"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-	if response.Data.NextSeq != 8 || len(response.Data.Items) != 1 || response.Data.Items[0].SyncSeq != 8 {
+	if response.Data.NextSeq != 8 || len(response.Data.Items) != 1 || response.Data.Items[0].SyncSeq != 8 || response.Data.Items[0].MessageUUID != "M8" || response.Data.Items[0].MessageSeq != 12 {
 		t.Fatalf("unexpected response: %s", recorder.Body.String())
 	}
 }
