@@ -33,6 +33,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	redisCfg := config.RedisConfig()
 	kafkaCfg := config.KafkaConfig()
 	storageCfg := config.StorageConfig()
+	dataCfg := config.DataConfig()
 
 	if err := store.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
@@ -43,6 +44,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		zap.String("dbname", mysqlCfg.DBName),
 		zap.String("user", mysqlCfg.User),
 	)
+	if legacyGORMRequired(mysqlCfg.AutoMigrate, dataCfg.MySQLAdapter) {
+		if err := store.InitLegacyGORM(); err != nil {
+			return nil, fmt.Errorf("legacy gorm init failed: %w", err)
+		}
+	}
 
 	if err := store.InitRedis(); err != nil {
 		return nil, fmt.Errorf("redis init failed: %w", err)
@@ -98,11 +104,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("auto migrate failed: %w", err)
 		}
 	} else {
-		sqlDB, err := store.DB.DB()
-		if err != nil {
-			return nil, fmt.Errorf("get mysql connection for migration validation: %w", err)
-		}
-		runner, err := migration.NewRunner(sqlDB, migrations.Files)
+		runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
 		if err != nil {
 			return nil, fmt.Errorf("initialize migration validation: %w", err)
 		}
@@ -110,13 +112,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("database schema is not ready: %w", err)
 		}
 	}
-	sqlDB, err := store.DB.DB()
-	if err != nil {
-		return nil, fmt.Errorf("get mysql connection for repository composition: %w", err)
-	}
 	repos, err := appComposition.NewRepositoriesWithOptions(appComposition.RepositoryOptions{
-		MySQLAdapter: config.DataConfig().MySQLAdapter,
-		SQLDB:        sqlDB,
+		MySQLAdapter: dataCfg.MySQLAdapter,
+		SQLDB:        store.SQLDB,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
@@ -185,6 +183,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 
 	return rt, nil
+}
+
+func legacyGORMRequired(autoMigrate bool, adapter string) bool {
+	return autoMigrate || adapter == appComposition.MySQLAdapterGORM
 }
 
 func (r *Runtime) Server() *server.Server {

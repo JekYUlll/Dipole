@@ -66,6 +66,8 @@
 - 可设置 `DIPOLE_DATA_MYSQL_ADAPTER=sqlc` 启用已迁移仓储，发生异常时设置为 `gorm` 并重启节点即可回切；未知配置会直接拒绝启动。
 - Message、Inbox 与 Outbox Producer 已作为同一事务边界迁移到 sqlc；切换 `DIPOLE_DATA_MYSQL_ADAPTER` 时三者整体切换，避免跨连接提交。
 - 默认 `data.mysql_adapter` 从 `gorm` 调整为 `sqlc`；GORM adapters 在兼容窗口内仅作为显式回滚路径和契约测试基线保留。
+- MySQL 默认运行时连接池改由 `database/sql` 直接初始化，migration、sqlc repositories 与 Bloom Registry 共享同一连接池；仅显式 GORM 回滚或 `AutoMigrate` 时按需创建 legacy wrapper。
+- Bloom Registry 改用 `database/sql` 读取用户和群 UUID，停止依赖全局 GORM 查询。
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
@@ -89,6 +91,7 @@
 - 已通过 Conversation GORM/sqlc 双适配的消息幂等、未读增量/清零、初始化保护、预览、备注与排序契约测试。
 - 已通过 Outbox Relay GORM/sqlc 双适配的领取顺序、租约回收、退避重试、发布状态和 Header 解码契约测试。
 - 已通过 Message/Sync GORM/sqlc 双适配的事务回滚、重放幂等、历史游标、离线过滤、文件权限和同步顺序契约测试，以及 sqlc 同用户并发提交顺序测试。
+- 已通过真实 MySQL 共享连接池测试，确认 legacy GORM wrapper 复用 sqlc 的 `*sql.DB`，并通过初始化策略单元测试验证默认 sqlc 路径不创建 GORM wrapper。
 
 ### 已知问题
 

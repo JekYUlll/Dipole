@@ -91,6 +91,8 @@ scripts/check-sqlc.sh
 
 ### D4：移除 GORM
 
+- [x] 默认适配器切换为 sqlc，生产连接池、migration 与 Bloom 使用共享 `database/sql`。
+- [x] GORM wrapper 改为只在显式回滚或 `AutoMigrate` 时按需初始化。
 - 全部生产路径切到 sqlc 后运行一段兼容窗口。
 - 删除 GORM adapter、model tag、SQLite 方言测试和 `AutoMigrate`。
 - 移除 `gorm.io/*` 依赖，文档和脚本只保留 SQL migration 流程。
