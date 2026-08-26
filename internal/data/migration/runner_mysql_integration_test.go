@@ -33,7 +33,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 5)
+		assertCurrentVersion(t, runner, 6)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
