@@ -37,6 +37,8 @@ scripts/check-sqlc.sh
 
 Kafka Envelope、schema version、重试和死信规则见 [Kafka 事件契约](KAFKA-EVENT-CONTRACT.md)。
 
+`message.transport` 默认为 `local`；M3 可设为 `grpc`，通过进程内 bufconn 验证完整 RPC 契约。远程网络 channel 在 M4 服务抽离并完成 AD-013 服务认证后启用。
+
 Message gRPC 契约生成固定使用 `protoc-gen-go v1.36.11` 和 `protoc-gen-go-grpc 1.6.2`：
 
 ```bash
