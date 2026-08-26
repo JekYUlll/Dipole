@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 canonical Pencil 设计基线，包含消息搜索 desktop/mobile 的结果、加载、空态、错误态和可复用组件，并提供批准预览与持续维护说明。
 - 增加 transport-neutral `MessageApplication`、`SyncApplication`、`CoreCapability` 和 `EventPublisher` 端口、单体 Local adapter 及数据层依赖架构测试。
 - 增加用户同步 Inbox Timeline：通过 `user_sync_inbox` 按用户维护持久化 `sync_seq`，支持离线和多端增量同步。
 - 增加 `GET /api/v1/sync` 接口，支持 `after_seq` 游标、分页上限、`next_seq` 和 `has_more`。
@@ -169,6 +170,7 @@
 
 ### 验证
 
+- 已通过 Pencil 全文档结构检查，确认 Search 八个 frame 无残留 placeholder、clipping 或未命名图层，并导出 desktop 1440x900 与 mobile 390x844 批准预览。
 - 已通过 `go test ./...`、`go vet ./...` 和 `go mod verify`。
 - 已通过新增同步 repository、service、handler 及消息 service 的定向 race 测试。
 - 已通过 Kafka `sync_fanout` 新旧字段契约测试和幂等目标隔离测试。

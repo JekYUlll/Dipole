@@ -141,8 +141,9 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 使用 Pencil `.pen` 设计稿补齐搜索入口、结果列表、空态、加载态与故障态，再实现前端页面。
-2. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
+1. 按 `design/dipole-ui.pen` 已批准的 desktop/mobile 四态实现 Vue 搜索页面、组件测试和可访问性检查。
+2. 增加围绕指定 `conversation_seq` 拉取上下文的历史接口，使搜索结果可以精确定位消息。
+3. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References
 

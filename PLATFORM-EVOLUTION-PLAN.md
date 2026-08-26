@@ -248,9 +248,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 实现 storage-neutral Elasticsearch Search adapter，以 Message UUID 为 `_id`、external revision 与 payload hash 分类重复、乱序和冲突事件。
 - [x] 独立 Search Indexer 使用专属 Kafka consumer group 消费八类版本化 mutation，以 `message_id` 和 revision 幂等投影。
 - [x] 解决 AD-020，以版本化 tombstone 处理 recall/delete，并让 MySQL/Elasticsearch 共享 mutation contract。
-- [ ] 实现 Backfill/Reconcile 和 Alias 运维命令，完成真实重建、切换和回滚演练。
-- [ ] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
-- [ ] 支持从 Kafka/Message Store 全量重建索引，ES 故障不阻断消息发送。
+- [x] 实现 Backfill/Reconcile 和 Alias 运维命令，完成真实重建、切换和回滚演练。
+- [x] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
+- [x] 使用固定 Outbox mutation 高水位全量重建索引，ES 故障不阻断消息发送。
+- [x] 完成 Pencil Search desktop/mobile 的 Results、Loading、Empty、Error 四态和可复用组件。
 - [ ] 搜索全量重建源切到 Cassandra 或归档事件，解除对 MySQL 历史正文的恢复依赖。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
@@ -335,8 +336,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ## 10. 持续轨道：Pencil 前端设计
 
-- [ ] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
-- [ ] F2：覆盖 Contact、Group、File、Search、Sync、Device 与 Settings 的完整页面和异常状态。
+- [ ] F1：已建立 `design/dipole-ui.pen`、首组 design tokens 与 Search 核心组件；Login/Chat desktop/mobile 待完成。
+- [ ] F2：Search desktop/mobile 四态已完成；Contact、Group、File、Search Vue、Sync、Device 与 Settings 待完成。
 - [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
 - [ ] F4：建立 Pencil 增量更新、设计日志、Vue token 映射、Playwright E2E 与视觉回归流程。
 
