@@ -42,7 +42,8 @@ bucket = (message_seq - 1) / 10000
 - 独立 `cmd/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
 - Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core、Message 或 Gateway Composition Root。
 - 独立 `cmd/cassandra-backfill` 按固定 MySQL 高水位补齐历史数据，并使用持久 checkpoint 和 owner lease 支持失败恢复。
-- Reconciliation 和 shadow-read 留在后续 A3 切片；客户端与 Message Service 当前不读取 Cassandra。
+- 独立 `cmd/cassandra-reconcile` 对已完成 Backfill 的固定快照执行数量、全量 hash、确定性内容样本和会话 Seq 连续性校验。
+- Shadow-read 留在后续 A3 切片；客户端与 Message Service 当前不读取 Cassandra。
 - 当前表只支持 Conversation Timeline；按 UUID 查询、搜索和用户 Inbox 继续由现有存储负责。
 - Schema 不由应用启动自动修改，后续 projector 接线前需要独立 migration owner。
 
@@ -89,6 +90,31 @@ Backfill 按全局、不可变的 MySQL `messages.id` 扫描源数据，Cassandr
 
 同一作业只允许一个有效 owner。进程异常退出后，下一 owner 在 lease 过期后接管；显式失败会立即释放 lease。完成的作业再次运行会返回 no-op，不扩大原高水位。执行 `scripts/smoke-cassandra-backfill.sh` 可验证失败不推进 checkpoint、恢复时 duplicate 幂等和最终完成状态。
 
+## Reconciliation
+
+对账只接受状态为 `completed` 且 checkpoint 等于高水位的 Backfill 作业。实时 Projector 可以继续处理新事件，对账范围始终停在该作业固定的 `source_high_watermark_id`。
+
+```bash
+/app/dipole-cassandra-reconcile \
+  --job message-timeline-v1 \
+  --batch-size 500 \
+  --sample-modulus 100 \
+  --max-examples 100 \
+  > reconciliation.json
+```
+
+报告包含源消息数量、Cassandra 命中数、全量 payload hash 匹配数、缺失数、hash 差异数、确定性样本与会话 Seq 缺口。首条消息固定进入样本，其余消息由 Message UUID 的稳定 SHA-256 取模选择。差异样例只记录消息标识和 hash，不输出聊天正文。
+
+退出码约定：
+
+| 退出码 | 含义 |
+| ---: | --- |
+| 0 | 对账完成且报告一致 |
+| 1 | 配置、MySQL、Cassandra 或执行错误，对账未完成 |
+| 2 | 对账完成并确认存在数据差异 |
+
+第一版按消息主键逐条读取 Cassandra，优先建立正确性门禁。达到大规模数据量后，再以测量结果决定是否增加分区批量读取和受控并发。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：
@@ -102,6 +128,8 @@ Backfill 按全局、不可变的 MySQL `messages.id` 扫描源数据，Cassandr
 - 独立 Kafka consumer group 对重复 created event 的端到端投影。
 - MySQL 固定高水位、owner lease、失败释放、checkpoint 恢复和完成后 no-op。
 - 真实 MySQL/Cassandra 故障恢复：失败批次保持 checkpoint，修复后重放 duplicate 并补齐 Timeline。
+- 固定快照的数量、全量 hash、确定性字段样本与每会话 Seq 连续性报告。
+- 人工篡改 Cassandra 后返回退出码 2，并提供有界、无正文的差异诊断。
 
 ## References
 

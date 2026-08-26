@@ -69,6 +69,7 @@
 - 增加 Cassandra Conversation Timeline 版本化 CQL、10,000 Seq bucket 规则和 LWT 幂等投影 primitive。
 - 增加默认关闭的独立 Cassandra Projector Runtime、专属 Kafka consumer group、schema readiness 与端到端 smoke。
 - 增加独立 Cassandra 历史 Backfill、固定 MySQL 高水位、owner lease、批次 checkpoint 和失败恢复烟测。
+- 增加独立 Cassandra Reconciler，以 JSON 报告固定快照的数量、全量 payload hash、确定性字段样本和会话 Seq 连续性；确认差异时返回退出码 2。
 
 ### 变更
 
@@ -174,6 +175,7 @@
 - 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
 - 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。
+- 已通过 Cassandra 对账演练：干净快照全量匹配；人工篡改后检测 hash 与样本差异并返回退出码 2，差异报告不包含消息正文。
 
 ### 已知问题
 
