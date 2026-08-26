@@ -103,6 +103,7 @@ type Message struct {
 	RuntimeMode          string `mapstructure:"runtime_mode"`
 	ShadowQueries        bool   `mapstructure:"shadow_queries"`
 	CassandraShadowReads bool   `mapstructure:"cassandra_shadow_reads"`
+	CassandraReadPercent int    `mapstructure:"cassandra_read_percentage"`
 	EnforceDBPermissions bool   `mapstructure:"enforce_db_permissions"`
 }
 
@@ -256,6 +257,7 @@ func Load() error {
 		v.SetDefault("message.runtime_mode", "owner")
 		v.SetDefault("message.shadow_queries", false)
 		v.SetDefault("message.cassandra_shadow_reads", false)
+		v.SetDefault("message.cassandra_read_percentage", 0)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
@@ -366,6 +368,7 @@ func Load() error {
 			"message.runtime_mode",
 			"message.shadow_queries",
 			"message.cassandra_shadow_reads",
+			"message.cassandra_read_percentage",
 			"message.enforce_db_permissions",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
@@ -590,6 +593,7 @@ func MessageConfig() Message {
 		RuntimeMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
 		ShadowQueries:        cfg.GetBool("message.shadow_queries"),
 		CassandraShadowReads: cfg.GetBool("message.cassandra_shadow_reads"),
+		CassandraReadPercent: cfg.GetInt("message.cassandra_read_percentage"),
 		EnforceDBPermissions: cfg.GetBool("message.enforce_db_permissions"),
 	}
 }

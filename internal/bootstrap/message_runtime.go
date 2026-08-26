@@ -11,6 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
+	routingData "github.com/JekYUlll/Dipole/internal/data/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/data/shadow"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
@@ -27,6 +28,7 @@ type MessageRuntime struct {
 	shutdownSec int
 	metrics     *platformObservability.MetricsServer
 	shadowStore *shadowData.MessageStore
+	readRouter  *routingData.MessageStore
 	cassandra   *gocql.Session
 }
 
@@ -78,7 +80,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, err
 	}
 	runtime := &MessageRuntime{coreConn: coreConn, shutdownSec: rpcCfg.ShutdownTimeoutSeconds}
-	if messageCfg.CassandraShadowReads {
+	if messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0 {
 		runtime.cassandra, err = cassandraData.OpenSession(cassandraCfg)
 		if err != nil {
 			runtime.Close()
@@ -93,8 +95,16 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.Close()
 			return nil, fmt.Errorf("create Cassandra shadow timeline reader: %w", err)
 		}
-		runtime.shadowStore = shadowData.NewMessageStore(repos.Messages, timeline, nil)
-		repos.Messages = runtime.shadowStore
+		if messageCfg.CassandraShadowReads {
+			runtime.shadowStore = shadowData.NewMessageStore(repos.Messages, timeline, nil)
+			repos.Messages = runtime.shadowStore
+		} else {
+			runtime.readRouter = routingData.NewMessageStore(
+				repos.Messages, repos.ConversationSequence, timeline,
+				messageCfg.CassandraReadPercent, nil,
+			)
+			repos.Messages = runtime.readRouter
+		}
 	}
 
 	var events applicationPort.EventPublisher
@@ -130,7 +140,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, runtime.readRouter)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message metrics: %w", err)
@@ -153,8 +163,14 @@ func messageOwnedKafkaTopics() []string {
 }
 
 func validateCassandraShadowConfig(messageCfg config.Message, cassandraCfg config.Cassandra) error {
-	if messageCfg.CassandraShadowReads && !cassandraCfg.Enabled {
-		return fmt.Errorf("message.cassandra_shadow_reads requires cassandra.enabled")
+	if messageCfg.CassandraReadPercent < 0 || messageCfg.CassandraReadPercent > 100 {
+		return fmt.Errorf("message.cassandra_read_percentage must be between 0 and 100")
+	}
+	if messageCfg.CassandraShadowReads && messageCfg.CassandraReadPercent > 0 {
+		return fmt.Errorf("Cassandra shadow reads and primary-read cohorts cannot be enabled together")
+	}
+	if (messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0) && !cassandraCfg.Enabled {
+		return fmt.Errorf("Cassandra Message reads require cassandra.enabled")
 	}
 	return nil
 }

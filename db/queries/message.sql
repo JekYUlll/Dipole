@@ -15,6 +15,10 @@ SELECT last_seq FROM conversation_sequences
 WHERE conversation_key = ?
 FOR UPDATE;
 
+-- name: GetConversationSequence :one
+SELECT last_seq FROM conversation_sequences
+WHERE conversation_key = ?;
+
 -- name: AdvanceConversationSequence :exec
 UPDATE conversation_sequences
 SET last_seq = ?, updated_at = NOW(3)
