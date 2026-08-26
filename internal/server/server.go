@@ -37,6 +37,7 @@ type Server struct {
 
 type Dependencies struct {
 	Messages  applicationPort.MessageApplication
+	Sync      applicationPort.SyncApplication
 	Messaging *appComposition.MessagingServices
 }
 
@@ -121,7 +122,11 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageApplication)
-	syncHandler := httpHandler.NewSyncHandler(messaging.Sync)
+	syncApplication := applicationPort.SyncApplication(messaging.Sync)
+	if dependencies.Sync != nil {
+		syncApplication = dependencies.Sync
+	}
+	syncHandler := httpHandler.NewSyncHandler(syncApplication)
 	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, repos.Users)

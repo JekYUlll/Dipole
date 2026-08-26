@@ -31,6 +31,7 @@ type Runtime struct {
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *outboxRelay
 	messageFlow *messageApplicationTransport
+	syncFlow    *syncApplicationTransport
 	coreRPC     *InternalRPCServer
 	metrics     *platformObservability.MetricsServer
 }
@@ -162,11 +163,21 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Messaging: localMessaging})
+	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	if err != nil {
+		messageFlow.Close()
+		if coreRPC != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			coreRPC.Close(shutdownCtx)
+			cancel()
+		}
+		return nil, fmt.Errorf("initialize Sync transport: %w", err)
+	}
+	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Sync: syncFlow.Application, Messaging: localMessaging})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
-	rt := &Runtime{server: srv, messageFlow: messageFlow, coreRPC: coreRPC}
+	rt := &Runtime{server: srv, messageFlow: messageFlow, syncFlow: syncFlow, coreRPC: coreRPC}
 	var wsEventSender kafkaWSEventSender
 	if gatewayCfg.Mode == "embedded" {
 		wsEventSender = srv.WSHub()
@@ -264,6 +275,9 @@ func (r *Runtime) Close() {
 	}
 	if r.messageFlow != nil {
 		r.messageFlow.Close()
+	}
+	if r.syncFlow != nil {
+		r.syncFlow.Close()
 	}
 	if r.outboxFlow != nil {
 		r.outboxFlow.Stop()

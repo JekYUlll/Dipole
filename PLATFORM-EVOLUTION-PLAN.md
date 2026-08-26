@@ -260,6 +260,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### A6：独立 Sync Service 与实时投影
 
 - [x] 建立独立 `dipole-sync` 查询/Checkpoint 运行时、sqlc 仓储边界和最小权限内部 RPC；Message 事务暂时继续原子写 Inbox。
+- [x] 增加默认 Local 的 Core `sync.transport` 切流开关，独立服务不可用时可无数据迁移地回切进程内实现。
 - [ ] 新增 `dipole-sync`，消费消息事件并维护 Durable Inbox、群 checkpoint 和设备 Cursor。
 - [ ] 通过 checkpoint、重放和回填保证消费者可恢复，修复事件进入同一幂等模型。
 - [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
