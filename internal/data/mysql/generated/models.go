@@ -46,6 +46,16 @@ type Conversation struct {
 	Remark                string
 	CreatedAt             sql.NullTime
 	UpdatedAt             sql.NullTime
+	LastMessageSeq        uint64
+	ReadSeq               uint64
+}
+
+type DeviceSyncCheckpoint struct {
+	UserUuid  string
+	DeviceID  string
+	SyncSeq   uint64
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Group struct {

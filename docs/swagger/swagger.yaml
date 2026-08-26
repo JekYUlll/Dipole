@@ -110,6 +110,13 @@ definitions:
           $ref: '#/definitions/httpdto.DeviceSessionResponse'
         type: array
     type: object
+  http.DeviceSyncCheckpointResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.DeviceSyncCheckpointResponse'
+    type: object
   http.ErrorEnvelope:
     properties:
       code:
@@ -298,6 +305,11 @@ definitions:
       user_total:
         type: integer
     type: object
+  httpdto.AdvanceSyncCheckpointRequest:
+    properties:
+      sync_seq:
+        type: integer
+    type: object
   httpdto.ApplyContactRequest:
     properties:
       message:
@@ -364,6 +376,10 @@ definitions:
         type: string
       last_message:
         $ref: '#/definitions/httpdto.ConversationMessageSummaryResponse'
+      last_message_seq:
+        type: integer
+      read_seq:
+        type: integer
       remark:
         type: string
       target_type:
@@ -409,6 +425,13 @@ definitions:
         type: string
       user_agent:
         type: string
+    type: object
+  httpdto.DeviceSyncCheckpointResponse:
+    properties:
+      device_id:
+        type: string
+      sync_seq:
+        type: integer
     type: object
   httpdto.FileDownloadResponse:
     properties:
@@ -527,6 +550,8 @@ definitions:
         type: integer
       message_id:
         type: string
+      message_seq:
+        type: integer
       message_type:
         type: integer
       sent_at:
@@ -2219,6 +2244,69 @@ paths:
       security:
       - BearerAuth: []
       summary: 增量同步用户消息
+      tags:
+      - Sync
+  /sync/checkpoint:
+    get:
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取当前设备同步游标
+      tags:
+      - Sync
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - description: 已持久化的同步游标
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AdvanceSyncCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 确认当前设备同步游标
       tags:
       - Sync
   /users:

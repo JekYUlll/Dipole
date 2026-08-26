@@ -1,16 +1,37 @@
 package service
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 type stubSyncRepository struct {
-	items    []*model.SyncMessage
-	userUUID string
-	afterSeq uint64
-	limit    int
+	items      []*model.SyncMessage
+	checkpoint *model.DeviceSyncCheckpoint
+	latest     uint64
+	userUUID   string
+	afterSeq   uint64
+	limit      int
+}
+
+func (r *stubSyncRepository) GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
+	if r.checkpoint == nil {
+		return nil, nil
+	}
+	copy := *r.checkpoint
+	return &copy, nil
+}
+
+func (r *stubSyncRepository) GetLatestUserSyncSequence(string) (uint64, error) { return r.latest, nil }
+
+func (r *stubSyncRepository) AdvanceDeviceSyncCheckpoint(userUUID, deviceID string, syncSeq uint64) error {
+	if r.checkpoint != nil && r.checkpoint.SyncSeq > syncSeq {
+		syncSeq = r.checkpoint.SyncSeq
+	}
+	r.checkpoint = &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}
+	return nil
 }
 
 func (r *stubSyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error) {
@@ -18,6 +39,21 @@ func (r *stubSyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, l
 	r.afterSeq = afterSeq
 	r.limit = limit
 	return r.items, nil
+}
+
+func TestSyncServiceAdvancesDeviceCheckpointMonotonically(t *testing.T) {
+	repo := &stubSyncRepository{latest: 20}
+	checkpoint, err := NewSyncService(repo).AdvanceCheckpoint(" U200 ", " web-1 ", 12)
+	if err != nil || checkpoint.SyncSeq != 12 || checkpoint.DeviceID != "web-1" {
+		t.Fatalf("advance checkpoint: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	checkpoint, err = NewSyncService(repo).AdvanceCheckpoint("U200", "web-1", 8)
+	if err != nil || checkpoint.SyncSeq != 12 {
+		t.Fatalf("checkpoint regressed: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	if _, err := NewSyncService(repo).AdvanceCheckpoint("U200", "web-1", 21); !errors.Is(err, ErrSyncCheckpointAhead) {
+		t.Fatalf("expected checkpoint ahead error, got %v", err)
+	}
 }
 
 func TestSyncServiceListsPageAndAdvancesCursor(t *testing.T) {

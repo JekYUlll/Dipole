@@ -2416,6 +2416,106 @@ const docTemplate = `{
                 }
             }
         },
+        "/sync/checkpoint": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "获取当前设备同步游标",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.DeviceSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "确认当前设备同步游标",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "已持久化的同步游标",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.AdvanceSyncCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.DeviceSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -3048,6 +3148,17 @@ const docTemplate = `{
                 }
             }
         },
+        "http.DeviceSyncCheckpointResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.DeviceSyncCheckpointResponse"
+                }
+            }
+        },
         "http.ErrorEnvelope": {
             "type": "object",
             "properties": {
@@ -3340,6 +3451,14 @@ const docTemplate = `{
                 }
             }
         },
+        "httpdto.AdvanceSyncCheckpointRequest": {
+            "type": "object",
+            "properties": {
+                "sync_seq": {
+                    "type": "integer"
+                }
+            }
+        },
         "httpdto.ApplyContactRequest": {
             "type": "object",
             "required": [
@@ -3441,6 +3560,12 @@ const docTemplate = `{
                 "last_message": {
                     "$ref": "#/definitions/httpdto.ConversationMessageSummaryResponse"
                 },
+                "last_message_seq": {
+                    "type": "integer"
+                },
+                "read_seq": {
+                    "type": "integer"
+                },
                 "remark": {
                     "type": "string"
                 },
@@ -3507,6 +3632,17 @@ const docTemplate = `{
                 },
                 "user_agent": {
                     "type": "string"
+                }
+            }
+        },
+        "httpdto.DeviceSyncCheckpointResponse": {
+            "type": "object",
+            "properties": {
+                "device_id": {
+                    "type": "string"
+                },
+                "sync_seq": {
+                    "type": "integer"
                 }
             }
         },
@@ -3686,6 +3822,9 @@ const docTemplate = `{
                 },
                 "message_id": {
                     "type": "string"
+                },
+                "message_seq": {
+                    "type": "integer"
                 },
                 "message_type": {
                     "type": "integer"

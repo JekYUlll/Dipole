@@ -9,6 +9,8 @@ type Conversation struct {
 	TargetUUID            string    `json:"target_uuid"`
 	ConversationKey       string    `json:"conversation_key"`
 	LastMessageUUID       string    `json:"last_message_uuid"`
+	LastMessageSeq        uint64    `json:"last_message_seq"`
+	ReadSeq               uint64    `json:"read_seq"`
 	LastMessageType       int8      `json:"last_message_type"`
 	LastMessagePreview    string    `json:"last_message_preview"`
 	LastMessageAt         time.Time `json:"last_message_at"`

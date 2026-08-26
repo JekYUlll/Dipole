@@ -10,6 +10,24 @@ import (
 	"database/sql"
 )
 
+const advanceDeviceSyncCheckpoint = `-- name: AdvanceDeviceSyncCheckpoint :execresult
+INSERT INTO device_sync_checkpoints (user_uuid, device_id, sync_seq, created_at, updated_at)
+VALUES (?, ?, ?, NOW(3), NOW(3))
+ON DUPLICATE KEY UPDATE
+    sync_seq = GREATEST(sync_seq, VALUES(sync_seq)),
+    updated_at = NOW(3)
+`
+
+type AdvanceDeviceSyncCheckpointParams struct {
+	UserUuid string
+	DeviceID string
+	SyncSeq  uint64
+}
+
+func (q *Queries) AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, advanceDeviceSyncCheckpoint, arg.UserUuid, arg.DeviceID, arg.SyncSeq)
+}
+
 const createUserSyncInbox = `-- name: CreateUserSyncInbox :execresult
 INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, created_at)
 VALUES (?, ?, ?, NOW(3))
@@ -34,6 +52,42 @@ ON DUPLICATE KEY UPDATE user_uuid = user_uuid
 
 func (q *Queries) EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error) {
 	return q.db.ExecContext(ctx, ensureUserSyncState, userUuid)
+}
+
+const getDeviceSyncCheckpoint = `-- name: GetDeviceSyncCheckpoint :one
+SELECT user_uuid, device_id, sync_seq, created_at, updated_at
+FROM device_sync_checkpoints
+WHERE user_uuid = ? AND device_id = ?
+LIMIT 1
+`
+
+type GetDeviceSyncCheckpointParams struct {
+	UserUuid string
+	DeviceID string
+}
+
+func (q *Queries) GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSyncCheckpointParams) (DeviceSyncCheckpoint, error) {
+	row := q.db.QueryRowContext(ctx, getDeviceSyncCheckpoint, arg.UserUuid, arg.DeviceID)
+	var i DeviceSyncCheckpoint
+	err := row.Scan(
+		&i.UserUuid,
+		&i.DeviceID,
+		&i.SyncSeq,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLatestUserSyncSequence = `-- name: GetLatestUserSyncSequence :one
+SELECT CAST(COALESCE(MAX(sync_seq), 0) AS UNSIGNED) FROM user_sync_inbox WHERE user_uuid = ?
+`
+
+func (q *Queries) GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getLatestUserSyncSequence, userUuid)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const listUserSyncInboxAfter = `-- name: ListUserSyncInboxAfter :many

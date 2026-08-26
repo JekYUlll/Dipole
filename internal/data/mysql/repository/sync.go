@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -20,6 +22,37 @@ func NewSyncRepository(queries *generated.Queries) (*SyncRepository, error) {
 		return nil, fmt.Errorf("sync queries are required")
 	}
 	return &SyncRepository{queries: queries}, nil
+}
+
+func (r *SyncRepository) GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
+	row, err := r.queries.GetDeviceSyncCheckpoint(context.Background(), generated.GetDeviceSyncCheckpointParams{
+		UserUuid: strings.TrimSpace(userUUID), DeviceID: strings.TrimSpace(deviceID),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &model.DeviceSyncCheckpoint{UserUUID: row.UserUuid, DeviceID: row.DeviceID, SyncSeq: row.SyncSeq, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *SyncRepository) GetLatestUserSyncSequence(userUUID string) (uint64, error) {
+	sequence, err := r.queries.GetLatestUserSyncSequence(context.Background(), strings.TrimSpace(userUUID))
+	if err != nil {
+		return 0, err
+	}
+	if sequence < 0 {
+		return 0, errors.New("latest user sync sequence is negative")
+	}
+	return uint64(sequence), nil
+}
+
+func (r *SyncRepository) AdvanceDeviceSyncCheckpoint(userUUID, deviceID string, syncSeq uint64) error {
+	_, err := r.queries.AdvanceDeviceSyncCheckpoint(context.Background(), generated.AdvanceDeviceSyncCheckpointParams{
+		UserUuid: strings.TrimSpace(userUUID), DeviceID: strings.TrimSpace(deviceID), SyncSeq: syncSeq,
+	})
+	return err
 }
 
 func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error) {

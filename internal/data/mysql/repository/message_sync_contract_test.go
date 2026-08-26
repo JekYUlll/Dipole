@@ -139,6 +139,28 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err != nil || len(items) != 2 || items[0].Message.UUID != first.UUID || items[1].Message.UUID != second.UUID || items[0].SyncSeq >= items[1].SyncSeq {
 		t.Fatalf("sync timeline order: items=%+v err=%v", items, err)
 	}
+	latestSyncSeq, err := stores.sync.GetLatestUserSyncSequence("U-" + prefix + "-target")
+	if err != nil || latestSyncSeq != items[len(items)-1].SyncSeq {
+		t.Fatalf("latest sync sequence: seq=%d err=%v", latestSyncSeq, err)
+	}
+	checkpoint, err := stores.sync.GetDeviceCheckpoint("U-"+prefix+"-target", "web-a")
+	if err != nil || checkpoint != nil {
+		t.Fatalf("missing device checkpoint: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	if err := stores.sync.AdvanceDeviceSyncCheckpoint("U-"+prefix+"-target", "web-a", items[1].SyncSeq); err != nil {
+		t.Fatalf("advance device checkpoint: %v", err)
+	}
+	if err := stores.sync.AdvanceDeviceSyncCheckpoint("U-"+prefix+"-target", "web-a", items[0].SyncSeq); err != nil {
+		t.Fatalf("repeat lower device checkpoint: %v", err)
+	}
+	checkpoint, err = stores.sync.GetDeviceCheckpoint("U-"+prefix+"-target", "web-a")
+	if err != nil || checkpoint == nil || checkpoint.SyncSeq != items[1].SyncSeq {
+		t.Fatalf("device checkpoint regressed: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	otherCheckpoint, err := stores.sync.GetDeviceCheckpoint("U-"+prefix+"-target", "mobile-b")
+	if err != nil || otherCheckpoint != nil {
+		t.Fatalf("device checkpoints were not isolated: checkpoint=%+v err=%v", otherCheckpoint, err)
+	}
 
 	fileMessage := contractStoredMessage(prefix+"-file", conversationKey, now.Add(2*time.Second))
 	fileMessage.MessageType = model.MessageTypeFile

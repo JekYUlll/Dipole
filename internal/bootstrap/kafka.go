@@ -323,6 +323,7 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 			notifier.Enqueue(payload.TargetUUID, wsTransport.GroupMessageNotifyData{
 				GroupUUID:          payload.TargetUUID,
 				LatestMessageID:    payload.MessageID,
+				LatestMessageSeq:   payload.MessageSeq,
 				MessageType:        payload.MessageType,
 				Preview:            messagePreview(payload),
 				RecentMessageCount: recentMessageCount,
@@ -367,6 +368,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			TargetType:          payload.TargetType,
 			ConversationKey:     payload.ConversationKey,
 			LastReadMessageUUID: payload.LastReadMessageUUID,
+			LastReadSeq:         payload.LastReadSeq,
 			ReadAt:              payload.ReadAt,
 		})
 

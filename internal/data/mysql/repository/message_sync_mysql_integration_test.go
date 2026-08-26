@@ -129,6 +129,61 @@ func TestSQLCConversationSequenceIsContinuousUnderConcurrency(t *testing.T) {
 	}
 }
 
+func TestSQLCDeviceSyncCheckpointIsMonotonicUnderConcurrency(t *testing.T) {
+	db, _ := openContractDatabase(t)
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("migrate contract database: %v", err)
+	}
+	repo, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	if err != nil {
+		t.Fatalf("create sync repository: %v", err)
+	}
+
+	const checkpointCount = 24
+	userUUID := "U-checkpoint"
+	for index := 1; index <= checkpointCount; index++ {
+		if _, err := db.Exec(`INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key)
+            VALUES (?, ?, 'direct:checkpoint')`, userUUID, fmt.Sprintf("M-checkpoint-%02d", index)); err != nil {
+			t.Fatalf("seed sync inbox: %v", err)
+		}
+	}
+
+	start := make(chan struct{})
+	errorsCh := make(chan error, checkpointCount)
+	var wg sync.WaitGroup
+	for sequence := 1; sequence <= checkpointCount; sequence++ {
+		wg.Add(1)
+		go func(sequence uint64) {
+			defer wg.Done()
+			<-start
+			errorsCh <- repo.AdvanceDeviceSyncCheckpoint(userUUID, "web-a", sequence)
+		}(uint64(sequence))
+	}
+	close(start)
+	wg.Wait()
+	close(errorsCh)
+	for err := range errorsCh {
+		if err != nil {
+			t.Fatalf("advance concurrent checkpoint: %v", err)
+		}
+	}
+	checkpoint, err := repo.GetDeviceCheckpoint(userUUID, "web-a")
+	if err != nil || checkpoint == nil || checkpoint.SyncSeq != checkpointCount {
+		t.Fatalf("final checkpoint: checkpoint=%+v err=%v", checkpoint, err)
+	}
+	if err := repo.AdvanceDeviceSyncCheckpoint(userUUID, "mobile-b", 7); err != nil {
+		t.Fatalf("advance second device: %v", err)
+	}
+	other, err := repo.GetDeviceCheckpoint(userUUID, "mobile-b")
+	if err != nil || other == nil || other.SyncSeq != 7 {
+		t.Fatalf("second device checkpoint: checkpoint=%+v err=%v", other, err)
+	}
+}
+
 type syncCommitControl struct {
 	firstInboxInserted chan struct{}
 	releaseFirst       chan struct{}

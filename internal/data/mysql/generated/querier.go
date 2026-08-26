@@ -13,7 +13,7 @@ type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
 	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
-	ClearConversationUnread(ctx context.Context, arg ClearConversationUnreadParams) (sql.Result, error)
+	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
 	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (sql.Result, error)
@@ -34,8 +34,10 @@ type Querier interface {
 	GetContactApplicationByID(ctx context.Context, id uint64) (ContactApplication, error)
 	GetContactApplicationByPair(ctx context.Context, arg GetContactApplicationByPairParams) (ContactApplication, error)
 	GetConversationByUserAndKey(ctx context.Context, arg GetConversationByUserAndKeyParams) (Conversation, error)
+	GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSyncCheckpointParams) (DeviceSyncCheckpoint, error)
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
+	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
@@ -61,6 +63,7 @@ type Querier interface {
 	LockUserSyncState(ctx context.Context, userUuid string) (string, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error
+	MarkConversationReadThrough(ctx context.Context, arg MarkConversationReadThroughParams) (sql.Result, error)
 	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)

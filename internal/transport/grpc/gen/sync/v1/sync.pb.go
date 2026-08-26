@@ -203,6 +203,154 @@ func (x *ListSyncMessagesResponse) GetHasMore() bool {
 	return false
 }
 
+type GetDeviceCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDeviceCheckpointRequest) Reset() {
+	*x = GetDeviceCheckpointRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDeviceCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDeviceCheckpointRequest) ProtoMessage() {}
+
+func (x *GetDeviceCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDeviceCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*GetDeviceCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetDeviceCheckpointRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+type AdvanceDeviceCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	SyncSeq       uint64                 `protobuf:"varint,2,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdvanceDeviceCheckpointRequest) Reset() {
+	*x = AdvanceDeviceCheckpointRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdvanceDeviceCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdvanceDeviceCheckpointRequest) ProtoMessage() {}
+
+func (x *AdvanceDeviceCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdvanceDeviceCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*AdvanceDeviceCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AdvanceDeviceCheckpointRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *AdvanceDeviceCheckpointRequest) GetSyncSeq() uint64 {
+	if x != nil {
+		return x.SyncSeq
+	}
+	return 0
+}
+
+type DeviceCheckpointResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	SyncSeq       uint64                 `protobuf:"varint,2,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeviceCheckpointResponse) Reset() {
+	*x = DeviceCheckpointResponse{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeviceCheckpointResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeviceCheckpointResponse) ProtoMessage() {}
+
+func (x *DeviceCheckpointResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeviceCheckpointResponse.ProtoReflect.Descriptor instead.
+func (*DeviceCheckpointResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DeviceCheckpointResponse) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *DeviceCheckpointResponse) GetSyncSeq() uint64 {
+	if x != nil {
+		return x.SyncSeq
+	}
+	return 0
+}
+
 var File_dipole_sync_v1_sync_proto protoreflect.FileDescriptor
 
 const file_dipole_sync_v1_sync_proto_rawDesc = "" +
@@ -219,9 +367,19 @@ const file_dipole_sync_v1_sync_proto_rawDesc = "" +
 	"\x18ListSyncMessagesResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.dipole.sync.v1.SyncMessageR\x05items\x12\x19\n" +
 	"\bnext_seq\x18\x02 \x01(\x04R\anextSeq\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore2y\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"X\n" +
+	"\x1aGetDeviceCheckpointRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\"w\n" +
+	"\x1eAdvanceDeviceCheckpointRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
+	"\bsync_seq\x18\x02 \x01(\x04R\asyncSeq\"R\n" +
+	"\x18DeviceCheckpointResponse\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x19\n" +
+	"\bsync_seq\x18\x02 \x01(\x04R\asyncSeq2\xdb\x02\n" +
 	"\x10SyncQueryService\x12e\n" +
-	"\x10ListSyncMessages\x12'.dipole.sync.v1.ListSyncMessagesRequest\x1a(.dipole.sync.v1.ListSyncMessagesResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1b\x06proto3"
+	"\x10ListSyncMessages\x12'.dipole.sync.v1.ListSyncMessagesRequest\x1a(.dipole.sync.v1.ListSyncMessagesResponse\x12k\n" +
+	"\x13GetDeviceCheckpoint\x12*.dipole.sync.v1.GetDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponse\x12s\n" +
+	"\x17AdvanceDeviceCheckpoint\x12..dipole.sync.v1.AdvanceDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1b\x06proto3"
 
 var (
 	file_dipole_sync_v1_sync_proto_rawDescOnce sync.Once
@@ -235,25 +393,34 @@ func file_dipole_sync_v1_sync_proto_rawDescGZIP() []byte {
 	return file_dipole_sync_v1_sync_proto_rawDescData
 }
 
-var file_dipole_sync_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dipole_sync_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dipole_sync_v1_sync_proto_goTypes = []any{
-	(*ListSyncMessagesRequest)(nil),  // 0: dipole.sync.v1.ListSyncMessagesRequest
-	(*SyncMessage)(nil),              // 1: dipole.sync.v1.SyncMessage
-	(*ListSyncMessagesResponse)(nil), // 2: dipole.sync.v1.ListSyncMessagesResponse
-	(*v1.RequestContext)(nil),        // 3: dipole.common.v1.RequestContext
-	(*v11.Message)(nil),              // 4: dipole.message.v1.Message
+	(*ListSyncMessagesRequest)(nil),        // 0: dipole.sync.v1.ListSyncMessagesRequest
+	(*SyncMessage)(nil),                    // 1: dipole.sync.v1.SyncMessage
+	(*ListSyncMessagesResponse)(nil),       // 2: dipole.sync.v1.ListSyncMessagesResponse
+	(*GetDeviceCheckpointRequest)(nil),     // 3: dipole.sync.v1.GetDeviceCheckpointRequest
+	(*AdvanceDeviceCheckpointRequest)(nil), // 4: dipole.sync.v1.AdvanceDeviceCheckpointRequest
+	(*DeviceCheckpointResponse)(nil),       // 5: dipole.sync.v1.DeviceCheckpointResponse
+	(*v1.RequestContext)(nil),              // 6: dipole.common.v1.RequestContext
+	(*v11.Message)(nil),                    // 7: dipole.message.v1.Message
 }
 var file_dipole_sync_v1_sync_proto_depIdxs = []int32{
-	3, // 0: dipole.sync.v1.ListSyncMessagesRequest.context:type_name -> dipole.common.v1.RequestContext
-	4, // 1: dipole.sync.v1.SyncMessage.message:type_name -> dipole.message.v1.Message
+	6, // 0: dipole.sync.v1.ListSyncMessagesRequest.context:type_name -> dipole.common.v1.RequestContext
+	7, // 1: dipole.sync.v1.SyncMessage.message:type_name -> dipole.message.v1.Message
 	1, // 2: dipole.sync.v1.ListSyncMessagesResponse.items:type_name -> dipole.sync.v1.SyncMessage
-	0, // 3: dipole.sync.v1.SyncQueryService.ListSyncMessages:input_type -> dipole.sync.v1.ListSyncMessagesRequest
-	2, // 4: dipole.sync.v1.SyncQueryService.ListSyncMessages:output_type -> dipole.sync.v1.ListSyncMessagesResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 3: dipole.sync.v1.GetDeviceCheckpointRequest.context:type_name -> dipole.common.v1.RequestContext
+	6, // 4: dipole.sync.v1.AdvanceDeviceCheckpointRequest.context:type_name -> dipole.common.v1.RequestContext
+	0, // 5: dipole.sync.v1.SyncQueryService.ListSyncMessages:input_type -> dipole.sync.v1.ListSyncMessagesRequest
+	3, // 6: dipole.sync.v1.SyncQueryService.GetDeviceCheckpoint:input_type -> dipole.sync.v1.GetDeviceCheckpointRequest
+	4, // 7: dipole.sync.v1.SyncQueryService.AdvanceDeviceCheckpoint:input_type -> dipole.sync.v1.AdvanceDeviceCheckpointRequest
+	2, // 8: dipole.sync.v1.SyncQueryService.ListSyncMessages:output_type -> dipole.sync.v1.ListSyncMessagesResponse
+	5, // 9: dipole.sync.v1.SyncQueryService.GetDeviceCheckpoint:output_type -> dipole.sync.v1.DeviceCheckpointResponse
+	5, // 10: dipole.sync.v1.SyncQueryService.AdvanceDeviceCheckpoint:output_type -> dipole.sync.v1.DeviceCheckpointResponse
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dipole_sync_v1_sync_proto_init() }
@@ -267,7 +434,7 @@ func file_dipole_sync_v1_sync_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_sync_v1_sync_proto_rawDesc), len(file_dipole_sync_v1_sync_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

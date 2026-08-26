@@ -35,6 +35,8 @@ type SyncPage struct {
 
 type SyncApplication interface {
 	List(userUUID string, afterSeq uint64, limit int) (*SyncPage, error)
+	GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
+	AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error)
 }
 
 type CoreCapability interface {
@@ -91,6 +93,9 @@ type MessageStore interface {
 
 type SyncStore interface {
 	ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error)
+	GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
+	GetLatestUserSyncSequence(userUUID string) (uint64, error)
+	AdvanceDeviceSyncCheckpoint(userUUID, deviceID string, syncSeq uint64) error
 }
 
 type UserStore interface {
@@ -138,7 +143,7 @@ type ConversationStore interface {
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
-	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error
 }
 
 type OutboxRelayStore interface {
