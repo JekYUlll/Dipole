@@ -95,6 +95,14 @@ message GetOwnedFileResponse {
   FileSnapshot file = 1;
 }
 
+message ListSearchConversationKeysRequest {
+  dipole.common.v1.RequestContext context = 1;
+}
+
+message ListSearchConversationKeysResponse {
+  repeated string conversation_keys = 1;
+}
+
 service CoreCapabilityService {
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
   rpc CanSendDirectMessage(CanSendDirectMessageRequest) returns (CanSendDirectMessageResponse);
@@ -102,4 +110,5 @@ service CoreCapabilityService {
   rpc GetGroupMember(GetGroupMemberRequest) returns (GetGroupMemberResponse);
   rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
   rpc GetOwnedFile(GetOwnedFileRequest) returns (GetOwnedFileResponse);
+  rpc ListSearchConversationKeys(ListSearchConversationKeysRequest) returns (ListSearchConversationKeysResponse);
 }

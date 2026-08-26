@@ -86,6 +86,7 @@
 - 增加默认关闭的独立 `cmd/search-indexer`、Elasticsearch 配置/认证、专属 Kafka consumer group 与八类 direct/group mutation Topic 投影。
 - 增加 Outbox 固定快照 Search Backfill、目标索引绑定的 owner lease/checkpoint、最终 mutation 状态折叠与独立 Reconcile JSON 报告。
 - 增加显式 Elasticsearch 物理构建目标；维护写入不绑定生产 Alias，在线 Indexer 继续强制 `require_alias=true`。
+- Core Capability v1 增加由认证 principal 派生的 Search 会话范围；调用方无法提交 user ID 或 conversation keys，陈旧群会话投影无法绕过成员关系校验。
 - 增加 `dipole-search-alias` 受控切换/回滚命令，要求维护窗口确认、新鲜快照三重检查、现场 Reconcile、Alias owner CAS 与切换后自动补偿。
 
 ### 变更
@@ -205,6 +206,7 @@
 - 已通过三节点 Kafka/Elasticsearch Search Indexer smoke：created r1、recalled r3 与迟到 edited r2 收敛为 revision 3 tombstone。
 - 已通过 MySQL 8.4/Elasticsearch 9.5.2 Search 恢复演练：created/edited 与 created/recalled 折叠为 3 个最终状态，固定高水位对账一致，目标 hash 篡改返回退出码 2。
 - 已通过 Elasticsearch Alias 正反切换演练：old→new 与 new→old 均保持双 Alias 原子所有权；新增 Outbox mutation 后陈旧快照被拒绝且 Alias 未漂移。
+- 已通过 MySQL 8.4 Search 授权范围合约与 Core gRPC 往返测试：私聊和有效群成员关系可见，无成员关系或无效群状态均不可见，缺失 principal 被拒绝。
 - 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
 - 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。

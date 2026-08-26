@@ -30,6 +30,31 @@ func TestConversationRepositoryContract(t *testing.T) {
 	}
 	t.Run("sqlc", func(t *testing.T) {
 		runConversationContract(t, sqlcRepo, "sqlc")
+		userUUID := "U-sqlc-conversation"
+		for _, group := range []struct {
+			uuid   string
+			status int8
+		}{
+			{uuid: "G-scope-normal", status: model.GroupStatusNormal},
+			{uuid: "G-scope-dismissed", status: model.GroupStatusDismissed},
+			{uuid: "G-scope-hidden", status: 2},
+		} {
+			if _, err := db.Exec("INSERT INTO `groups` (uuid, name, owner_uuid, member_count, status) VALUES (?, 'scope', ?, 1, ?)", group.uuid, userUUID, group.status); err != nil {
+				t.Fatalf("insert scope group %s: %v", group.uuid, err)
+			}
+			if _, err := db.Exec("INSERT INTO group_members (group_uuid, user_uuid, role, joined_at) VALUES (?, ?, 0, NOW(3))", group.uuid, userUUID); err != nil {
+				t.Fatalf("insert scope member %s: %v", group.uuid, err)
+			}
+		}
+		keys, err := sqlcRepo.ListSearchConversationKeys(userUUID)
+		want := []string{
+			model.DirectConversationKey(userUUID, "U-sqlc-target"),
+			model.GroupConversationKey("G-scope-dismissed"),
+			model.GroupConversationKey("G-scope-normal"),
+		}
+		if err != nil || strings.Join(keys, ",") != strings.Join(want, ",") {
+			t.Fatalf("Search membership scope: keys=%v want=%v err=%v", keys, want, err)
+		}
 	})
 }
 
@@ -172,6 +197,10 @@ func runConversationContract(t *testing.T, store application.ConversationStore, 
 	}
 	if err := store.MarkReadThroughByConversationKey(userUUID, "missing", 1); err != nil {
 		t.Fatalf("clear missing unread: %v", err)
+	}
+	searchScope, err := store.ListSearchConversationKeys(userUUID)
+	if err != nil || len(searchScope) != 1 || searchScope[0] != directKey {
+		t.Fatalf("direct-only Search scope without group membership: keys=%v err=%v", searchScope, err)
 	}
 }
 

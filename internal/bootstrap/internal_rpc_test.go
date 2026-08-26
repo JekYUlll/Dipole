@@ -25,6 +25,8 @@ import (
 
 type rpcCoreStub struct{}
 
+func (rpcCoreStub) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
+
 func (rpcCoreStub) GetUserByUUID(userUUID string) (*model.User, error) {
 	return &model.User{UUID: userUUID, Nickname: "RPC User"}, nil
 }

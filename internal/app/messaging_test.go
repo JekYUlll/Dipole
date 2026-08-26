@@ -16,6 +16,7 @@ func (stubCoreCapability) GetGroupByUUID(string) (*model.Group, error)          
 func (stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
 func (stubCoreCapability) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
+func (stubCoreCapability) ListSearchConversationKeys(string) ([]string, error)       { return nil, nil }
 
 func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 	workingDirectory, err := os.Getwd()

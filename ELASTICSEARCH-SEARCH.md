@@ -55,7 +55,9 @@ PUT /dipole-messages-write/_doc/{message_id}
 
 Search adapter 要求非空 `conversation_keys` 与检索文本。会话列表经去空、去重和排序后进入 Elasticsearch `terms` filter，文本进入 `match` query，结果按 `sent_at DESC, message_uuid DESC` 排序，单页限制为 100。
 
-调用方仍需先通过 Core 计算当前 principal 可访问的会话集合。Elasticsearch 不承担成员关系事实；空 scope 必须 fail closed，索引结果不能扩大授权范围。
+调用方必须先通过 Core `ListSearchConversationKeys` 计算当前 principal 可访问的会话集合。该 RPC 只接受受认证 `RequestContext.principal`，不接受独立 user ID 或调用方提供的 conversation keys。Core 返回私聊 Conversation 投影，以及 principal 仍具成员关系的 normal/dismissed 群；陈旧群会话投影不会授予访问权。
+
+Elasticsearch 不承担成员关系事实；空 scope 必须 fail closed，索引结果不能扩大授权范围。后续 Search Service 只接收检索文本和分页参数，并在每次查询时向 Core 获取 scope。
 
 ## Search Indexer Runtime
 
@@ -119,6 +121,7 @@ Reconcile 只接受已完成任务的原始高水位，刷新目标索引后逐�
 - 物理构建索引无生产 Alias、显式 direct write、refresh、lookup 与 count。
 - 固定 Outbox 最终状态快照、owner lease、失败恢复、目标绑定和缺失/hash/额外文档对账。
 - 维护窗口确认、新鲜快照三重检查、Alias owner CAS、切换后验收、自动反向补偿与 rollback receipt。
+- Core Search scope 只由认证 principal 派生，并排除无成员关系的陈旧群会话投影。
 
 真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。三节点 Kafka 端到端 smoke 进一步验证 created r1、recalled r3 与迟到 edited r2 最终保持 revision 3 tombstone。测试入口：
 
@@ -132,7 +135,7 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
+1. 使用 Core Capability scope 契约实现独立内部 Search RPC，再开放 Gateway API。
 2. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References

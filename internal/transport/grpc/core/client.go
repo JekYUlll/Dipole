@@ -115,6 +115,18 @@ func (c *Client) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFil
 	return fileFromProto(response.GetFile()), nil
 }
 
+func (c *Client) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListSearchConversationKeys(ctx, &corev1.ListSearchConversationKeysRequest{
+		Context: c.requestContext(userUUID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), response.GetConversationKeys()...), nil
+}
+
 func (c *Client) requestContext(principal string) *commonv1.RequestContext {
 	return grpccommon.RequestContext(principal, c.callerService)
 }

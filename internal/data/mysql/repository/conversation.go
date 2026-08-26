@@ -78,6 +78,17 @@ func (r *ConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*
 	return mapper.Conversations(rows), nil
 }
 
+func (r *ConversationRepository) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	keys, err := r.queries.ListSearchConversationKeysByUser(context.Background(), generated.ListSearchConversationKeysByUserParams{
+		UserUuid: userUUID, DirectTargetType: model.MessageTargetDirect,
+		GroupNormalStatus: model.GroupStatusNormal, GroupDismissedStatus: model.GroupStatusDismissed,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list Search conversation keys by user with sqlc: %w", err)
+	}
+	return keys, nil
+}
+
 func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
 	row, err := r.queries.GetConversationByUserAndKey(context.Background(), generated.GetConversationByUserAndKeyParams{
 		UserUuid:        userUUID,

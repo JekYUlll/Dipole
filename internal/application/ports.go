@@ -51,6 +51,7 @@ type CoreCapability interface {
 	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
 	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
 	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
+	ListSearchConversationKeys(userUUID string) ([]string, error)
 }
 
 type AICallLogStore interface {
@@ -155,6 +156,7 @@ type ConversationStore interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
 	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
+	ListSearchConversationKeys(userUUID string) ([]string, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error

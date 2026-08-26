@@ -52,6 +52,8 @@ type stubCoreCapability struct {
 	friendshipChecks   [][2]string
 }
 
+func (c *stubCoreCapability) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
+
 func (c *stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
 	file := c.ownedFiles[fileUUID]
 	if file == nil || file.UploaderUUID != uploaderUUID {
