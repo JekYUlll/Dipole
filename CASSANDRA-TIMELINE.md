@@ -164,6 +164,29 @@ message:
 
 `deploy/observability/cassandra-read-alerts.yml` 定义三项停止门禁：任意 payload mismatch 为 critical；核验 MySQL error 为 warning；5 分钟 fallback 比例持续 2 分钟超过 5% 为 warning。任一 mismatch 立即将主读比例回切为 0；其余 warning 暂停提升比例并先诊断依赖与延迟。生产 Prometheus 必须抓取每个 Message Service 的 metrics endpoint；cluster profile 加载规则用于语法一致性，但其 Kafka-only 演练本身不提供 Message 样本。执行 `scripts/check-cassandra-read-alerts.sh` 可运行规则静态检查和固定时序 firing 测试。
 
+## MySQL Body Retirement Gate
+
+会话历史进入 Cassandra cohort 只证明 Seq Timeline 的读取能力。MySQL 完整消息当前还承担以下职责：
+
+| 依赖 | 当前读取方式 | 退役前替代契约 |
+| --- | --- | --- |
+| Durable Inbox | `user_sync_inbox.message_uuid` 批量回查 `messages` | Inbox 固化 conversation/Seq/UUID，Sync Service 从 Message Store 补全并完成双跑比较 |
+| Legacy Offline | 按全局 MySQL ID 扫描完整消息 | 客户端迁移到 Sync cursor，保留一个明确兼容窗口 |
+| 幂等发送 | 按 sender/client ID 或 UUID 返回原完整消息 | 独立幂等结果快照或可按 UUID 定位的 Message Store 索引 |
+| 文件授权 | 按 `file_id` 查询可访问消息 | 独立、可审计的文件消息授权元数据 |
+| Search rebuild | MySQL 搜索投影或历史正文 | Elasticsearch 从 Cassandra 或归档事件全量重建 |
+| Backfill/Reconcile | MySQL 固定高水位提供正文和 hash 基准 | 经校验的不可变备份与事件归档承担恢复源 |
+
+因此 A4 保持 MySQL 完整消息写入。未来的 `message.mysql_write_mode=metadata_only` 只能在以下条件全部满足后实现并启用：
+
+1. Cassandra 主读经过约定兼容窗口，fallback、mismatch 和延迟满足门限。
+2. A5/A6 替代契约完成真实存储与端到端双跑，旧 Offline 使用率达到退出标准。
+3. 固定快照备份可校验，Kafka/归档事件能够从 checkpoint 回放，并完成一次灾难恢复演练。
+4. 切换记录包含 owner、开始时间、最后可回滚时间、数据 checkpoint 和逐步恢复命令。
+5. metadata-only 节点与 full 节点滚动兼容；回滚窗口内仍保留可恢复的完整正文副本。
+
+满足门禁后仍先灰度写模式，再观察新消息的 Sync、幂等、授权、搜索和恢复链路。历史 `messages` 表只会在回滚窗口与法定保留期结束后进入独立归档/删除决策。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：

@@ -232,8 +232,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 暴露 Cassandra/MySQL fallback 路由计数和延迟指标，并通过真实双存储缺行演练。
 - [x] 增加可配置主读抽样核验、match/mismatch/error 指标；Seq 连续但 payload 被篡改时整页回退 MySQL。
 - [x] 增加 fallback ratio、payload mismatch 与 verification dependency 告警，并用 promtool 固定时序验证停止门禁。
-- [ ] 稳定后停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
-- [ ] 在停止 MySQL 正文写入前完成备份、回放工具和明确回滚窗口。
+- [x] 审计 MySQL 正文依赖，确认 Sync 补全、旧 Offline、UUID/幂等回放、文件授权和迁移校验尚未具备完整替代契约（AD-019）。
+- [ ] 持续提升 Cassandra 读取比例并完成生产观测；A4 期间继续保存 MySQL 完整消息，保留对账与即时回切基准。
+- [ ] A5/A6 替代读契约双跑通过后，再停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
+- [ ] 在切换为 metadata-only 写入前完成固定快照备份、事件回放演练、责任人和明确回滚窗口。
 - [ ] 达到保留期后再归档或删除 MySQL 历史消息表。
 
 应用层禁止直接同步双写 MySQL 和 Cassandra；跨存储复制通过 Outbox/Kafka 投影完成，避免分布式事务。
@@ -246,6 +248,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 使用 index alias 支持重建、切换和回滚；索引映射纳入版本控制。
 - [ ] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
 - [ ] 支持从 Kafka/Message Store 全量重建索引，ES 故障不阻断消息发送。
+- [ ] 搜索全量重建源切到 Cassandra 或归档事件，解除对 MySQL 历史正文的恢复依赖。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
 
@@ -255,6 +258,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 通过 checkpoint、重放和回填保证消费者可恢复，修复事件进入同一幂等模型。
 - [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
+- [ ] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约，完整消息从 Message Store 补全，双跑期间对比 MySQL UUID hydration。
+- [ ] 为重复发送返回值和文件消息授权建立独立持久元数据契约，停止依赖 MySQL 完整正文。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 
 **验收：** 离线、多设备、热群、重放、Cursor 恢复和客户端升级测试通过；关闭 Redis 后仍可恢复持久同步状态。
@@ -356,6 +361,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | --- | --- | --- |
 | `message.transport` | `local / grpc` | Message Service 进程抽离回切 |
 | `message.read_store` | `mysql / shadow / cassandra` | Cassandra 读流量灰度 |
+| `message.mysql_write_mode` | `full / metadata_only` | A5/A6 门禁完成后的 MySQL 正文退役；初始固定为 `full` |
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
@@ -369,6 +375,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - 暂不让 Gateway 直接访问 MySQL、Cassandra 或 Elasticsearch。
 - 暂不使用 Redis 保存 Durable Inbox、设备 Cursor 或消息事实。
 - 暂不在应用事务中直接双写 MySQL 和 Cassandra。
+- 暂不在 AD-019 的 Sync、幂等、文件授权、备份和回放门禁完成前启用 MySQL `metadata_only` 写入。
 - 暂不在 Capability 契约与 Eino 基线评测完成前让 TypeScript Runtime 执行生产写操作。
 - 暂不因技术栈覆盖直接替换 Go Gateway；C++ 替换必须先通过独立基准和 shadow 对比。
 - 暂不移除 `/messages/offline`、`after_id` 和 `UnreadCount` 兼容层。
