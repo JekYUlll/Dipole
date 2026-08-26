@@ -33,4 +33,4 @@ scripts/sqlc.sh generate
 scripts/check-sqlc.sh
 ```
 
-迁移窗口可通过 `DIPOLE_DATA_MYSQL_ADAPTER=gorm|sqlc` 选择数据适配器。当前 `sqlc` 只接管已经通过双适配契约测试的 Repository，设置为 `gorm` 可整体回切已迁移仓储。
+迁移窗口可通过 `DIPOLE_DATA_MYSQL_ADAPTER=gorm|sqlc` 选择数据适配器，默认使用 `sqlc`。所有生产 Repository 已通过双适配契约测试；设置为 `gorm` 可在兼容窗口内整体回切。

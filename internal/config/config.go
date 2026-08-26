@@ -176,7 +176,7 @@ func Load() error {
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
 		v.SetDefault("mysql.auto_migrate", false)
-		v.SetDefault("data.mysql_adapter", "gorm")
+		v.SetDefault("data.mysql_adapter", "sqlc")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
