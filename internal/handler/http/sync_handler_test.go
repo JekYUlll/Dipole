@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -14,9 +15,41 @@ import (
 )
 
 type stubSyncService struct {
-	userUUID string
-	afterSeq uint64
-	limit    int
+	userUUID      string
+	afterSeq      uint64
+	limit         int
+	deviceID      string
+	checkpointSeq uint64
+}
+
+func (s *stubSyncService) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
+	s.userUUID = userUUID
+	s.deviceID = deviceID
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID}, nil
+}
+
+func (s *stubSyncService) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error) {
+	s.userUUID = userUUID
+	s.deviceID = deviceID
+	s.checkpointSeq = syncSeq
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}, nil
+}
+
+func TestSyncHandlerAdvancesDeviceCheckpoint(t *testing.T) {
+	stub := &stubSyncService{}
+	handler := NewSyncHandler(stub)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/sync/checkpoint", strings.NewReader(`{"sync_seq":8}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Request.Header.Set("X-Device-ID", "web-1")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U200"})
+
+	handler.AdvanceCheckpoint(context)
+
+	if recorder.Code != http.StatusOK || stub.userUUID != "U200" || stub.deviceID != "web-1" || stub.checkpointSeq != 8 {
+		t.Fatalf("unexpected checkpoint request: status=%d stub=%+v body=%s", recorder.Code, stub, recorder.Body.String())
+	}
 }
 
 func (s *stubSyncService) List(userUUID string, afterSeq uint64, limit int) (*applicationPort.SyncPage, error) {

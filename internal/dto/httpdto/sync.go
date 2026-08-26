@@ -2,12 +2,29 @@ package httpdto
 
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 type SyncMessageResponse struct {
 	SyncSeq         uint64           `json:"sync_seq"`
 	ConversationKey string           `json:"conversation_key"`
 	Message         *MessageResponse `json:"message"`
+}
+
+type AdvanceSyncCheckpointRequest struct {
+	SyncSeq uint64 `json:"sync_seq"`
+}
+
+type DeviceSyncCheckpointResponse struct {
+	DeviceID string `json:"device_id"`
+	SyncSeq  uint64 `json:"sync_seq"`
+}
+
+func ToDeviceSyncCheckpointResponse(checkpoint *model.DeviceSyncCheckpoint) *DeviceSyncCheckpointResponse {
+	if checkpoint == nil {
+		return &DeviceSyncCheckpointResponse{}
+	}
+	return &DeviceSyncCheckpointResponse{DeviceID: checkpoint.DeviceID, SyncSeq: checkpoint.SyncSeq}
 }
 
 type SyncPageResponse struct {

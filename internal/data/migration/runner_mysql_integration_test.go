@@ -33,33 +33,39 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 2)
+		assertCurrentVersion(t, runner, 3)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 14)
+		assertTableCount(t, db, 15)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 2)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (3, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 3)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (4, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 3"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 4"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
 
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back baseline: %v", err)
 		}
-		assertCurrentVersion(t, runner, 1)
+		assertCurrentVersion(t, runner, 2)
 		if err := runner.ValidateCurrent(ctx); err == nil {
 			t.Fatal("expected rolled-back database validation to fail")
 		}
+		assertTableCount(t, db, 14)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back baseline: %v", err)
+		}
+		assertCurrentVersion(t, runner, 1)
 		assertTableCount(t, db, 13)
 
 		if err := runner.Down(ctx, 1); err != nil {
@@ -106,6 +112,13 @@ func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
             VALUES (?, ?, ?, 'U1', 'U2', 'seed', NOW(3))`, seed.uuid, seed.clientID, seed.conversationKey); err != nil {
 			t.Fatalf("seed legacy message: %v", err)
 		}
+	}
+	if _, err := db.Exec(`INSERT INTO conversations
+        (user_uuid, target_uuid, conversation_key, last_message_uuid, last_message_at, unread_count)
+        VALUES
+        ('U2', 'U1', 'direct:U1:U2', 'MSEQ2', NOW(3), 1),
+        ('U3', 'G1', 'group:G1', '', NOW(3), 0)`); err != nil {
+		t.Fatalf("seed legacy conversations: %v", err)
 	}
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
@@ -154,6 +167,13 @@ func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
 		if lastSeq != expected {
 			t.Fatalf("allocator %s = %d, want %d", key, lastSeq, expected)
 		}
+	}
+	var lastMessageSeq, readSeq uint64
+	if err := db.QueryRow("SELECT last_message_seq, read_seq FROM conversations WHERE user_uuid = 'U2'").Scan(&lastMessageSeq, &readSeq); err != nil {
+		t.Fatalf("read conversation positions: %v", err)
+	}
+	if lastMessageSeq != 2 || readSeq != 1 {
+		t.Fatalf("conversation positions = last:%d read:%d, want last:2 read:1", lastMessageSeq, readSeq)
 	}
 }
 

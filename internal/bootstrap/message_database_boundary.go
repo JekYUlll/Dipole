@@ -26,6 +26,7 @@ var coreOwnedTables = []string{
 	"group_members",
 	"uploaded_files",
 	"conversations",
+	"device_sync_checkpoints",
 	"ai_call_logs",
 }
 

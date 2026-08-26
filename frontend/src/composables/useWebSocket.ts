@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import type { WsPacket } from '@/types'
+import { getDeviceID } from '@/device'
 
 interface UseWsOptions {
   onMessage?: (packet: WsPacket) => void
@@ -25,7 +26,8 @@ export function useWebSocket(options: UseWsOptions = {}) {
 
   const _open = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/api/v1/ws?token=${token}&device=web`
+    const deviceID = encodeURIComponent(getDeviceID())
+    const url = `${protocol}//${window.location.host}/api/v1/ws?token=${token}&device=web&device_id=${deviceID}`
     ws = new WebSocket(url)
 
     ws.onopen = () => {

@@ -1286,6 +1286,8 @@ const openDirectChatByUser = async (user: PublicUser) => {
       remark: contactOf(user.uuid)?.remark || '',
       last_message: { message_id: '', message_type: 0, preview: '', sent_at: '', sender_uuid: '' },
       unread_count: 0,
+		last_message_seq: 0,
+		read_seq: 0,
     })
   }
   chat.activeKey = key

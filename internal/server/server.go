@@ -169,6 +169,8 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
 			protected.GET("/sync", syncHandler.List)
+			protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+			protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)

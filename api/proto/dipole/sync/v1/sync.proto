@@ -25,6 +25,22 @@ message ListSyncMessagesResponse {
   bool has_more = 3;
 }
 
+message GetDeviceCheckpointRequest {
+  dipole.common.v1.RequestContext context = 1;
+}
+
+message AdvanceDeviceCheckpointRequest {
+  dipole.common.v1.RequestContext context = 1;
+  uint64 sync_seq = 2;
+}
+
+message DeviceCheckpointResponse {
+  string device_id = 1;
+  uint64 sync_seq = 2;
+}
+
 service SyncQueryService {
   rpc ListSyncMessages(ListSyncMessagesRequest) returns (ListSyncMessagesResponse);
+  rpc GetDeviceCheckpoint(GetDeviceCheckpointRequest) returns (DeviceCheckpointResponse);
+  rpc AdvanceDeviceCheckpoint(AdvanceDeviceCheckpointRequest) returns (DeviceCheckpointResponse);
 }

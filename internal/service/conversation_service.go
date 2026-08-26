@@ -23,7 +23,7 @@ type conversationRepository interface {
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
-	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
 }
 
@@ -61,6 +61,7 @@ type ConversationReadReceipt struct {
 	TargetType          int8      `json:"target_type"`
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	LastReadSeq         uint64    `json:"last_read_seq"`
 	ReadAt              time.Time `json:"read_at"`
 }
 
@@ -181,7 +182,11 @@ func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID st
 	if err != nil {
 		return nil, fmt.Errorf("get direct conversation before mark read: %w", err)
 	}
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, conversationKey); err != nil {
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return nil, fmt.Errorf("mark direct conversation read: %w", err)
 	}
 
@@ -217,7 +222,16 @@ func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID stri
 		return ErrConversationPermissionDenied
 	}
 
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, model.GroupConversationKey(groupUUID)); err != nil {
+	conversationKey := model.GroupConversationKey(groupUUID)
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return fmt.Errorf("get group conversation before mark read: %w", err)
+	}
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return fmt.Errorf("mark group conversation read: %w", err)
 	}
 
@@ -275,6 +289,7 @@ func buildConversationReadReceipt(readerUUID, targetUUID string, targetType int8
 		TargetType:          targetType,
 		ConversationKey:     conversation.ConversationKey,
 		LastReadMessageUUID: conversation.LastMessageUUID,
+		LastReadSeq:         conversation.LastMessageSeq,
 		ReadAt:              time.Now().UTC(),
 	}
 }

@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SyncQueryService_ListSyncMessages_FullMethodName = "/dipole.sync.v1.SyncQueryService/ListSyncMessages"
+	SyncQueryService_ListSyncMessages_FullMethodName        = "/dipole.sync.v1.SyncQueryService/ListSyncMessages"
+	SyncQueryService_GetDeviceCheckpoint_FullMethodName     = "/dipole.sync.v1.SyncQueryService/GetDeviceCheckpoint"
+	SyncQueryService_AdvanceDeviceCheckpoint_FullMethodName = "/dipole.sync.v1.SyncQueryService/AdvanceDeviceCheckpoint"
 )
 
 // SyncQueryServiceClient is the client API for SyncQueryService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SyncQueryServiceClient interface {
 	ListSyncMessages(ctx context.Context, in *ListSyncMessagesRequest, opts ...grpc.CallOption) (*ListSyncMessagesResponse, error)
+	GetDeviceCheckpoint(ctx context.Context, in *GetDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error)
+	AdvanceDeviceCheckpoint(ctx context.Context, in *AdvanceDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error)
 }
 
 type syncQueryServiceClient struct {
@@ -47,11 +51,33 @@ func (c *syncQueryServiceClient) ListSyncMessages(ctx context.Context, in *ListS
 	return out, nil
 }
 
+func (c *syncQueryServiceClient) GetDeviceCheckpoint(ctx context.Context, in *GetDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeviceCheckpointResponse)
+	err := c.cc.Invoke(ctx, SyncQueryService_GetDeviceCheckpoint_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *syncQueryServiceClient) AdvanceDeviceCheckpoint(ctx context.Context, in *AdvanceDeviceCheckpointRequest, opts ...grpc.CallOption) (*DeviceCheckpointResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeviceCheckpointResponse)
+	err := c.cc.Invoke(ctx, SyncQueryService_AdvanceDeviceCheckpoint_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SyncQueryServiceServer is the server API for SyncQueryService service.
 // All implementations must embed UnimplementedSyncQueryServiceServer
 // for forward compatibility.
 type SyncQueryServiceServer interface {
 	ListSyncMessages(context.Context, *ListSyncMessagesRequest) (*ListSyncMessagesResponse, error)
+	GetDeviceCheckpoint(context.Context, *GetDeviceCheckpointRequest) (*DeviceCheckpointResponse, error)
+	AdvanceDeviceCheckpoint(context.Context, *AdvanceDeviceCheckpointRequest) (*DeviceCheckpointResponse, error)
 	mustEmbedUnimplementedSyncQueryServiceServer()
 }
 
@@ -64,6 +90,12 @@ type UnimplementedSyncQueryServiceServer struct{}
 
 func (UnimplementedSyncQueryServiceServer) ListSyncMessages(context.Context, *ListSyncMessagesRequest) (*ListSyncMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSyncMessages not implemented")
+}
+func (UnimplementedSyncQueryServiceServer) GetDeviceCheckpoint(context.Context, *GetDeviceCheckpointRequest) (*DeviceCheckpointResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDeviceCheckpoint not implemented")
+}
+func (UnimplementedSyncQueryServiceServer) AdvanceDeviceCheckpoint(context.Context, *AdvanceDeviceCheckpointRequest) (*DeviceCheckpointResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdvanceDeviceCheckpoint not implemented")
 }
 func (UnimplementedSyncQueryServiceServer) mustEmbedUnimplementedSyncQueryServiceServer() {}
 func (UnimplementedSyncQueryServiceServer) testEmbeddedByValue()                          {}
@@ -104,6 +136,42 @@ func _SyncQueryService_ListSyncMessages_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SyncQueryService_GetDeviceCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeviceCheckpointRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncQueryServiceServer).GetDeviceCheckpoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncQueryService_GetDeviceCheckpoint_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncQueryServiceServer).GetDeviceCheckpoint(ctx, req.(*GetDeviceCheckpointRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SyncQueryService_AdvanceDeviceCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdvanceDeviceCheckpointRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncQueryServiceServer).AdvanceDeviceCheckpoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncQueryService_AdvanceDeviceCheckpoint_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncQueryServiceServer).AdvanceDeviceCheckpoint(ctx, req.(*AdvanceDeviceCheckpointRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SyncQueryService_ServiceDesc is the grpc.ServiceDesc for SyncQueryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +182,14 @@ var SyncQueryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSyncMessages",
 			Handler:    _SyncQueryService_ListSyncMessages_Handler,
+		},
+		{
+			MethodName: "GetDeviceCheckpoint",
+			Handler:    _SyncQueryService_GetDeviceCheckpoint_Handler,
+		},
+		{
+			MethodName: "AdvanceDeviceCheckpoint",
+			Handler:    _SyncQueryService_AdvanceDeviceCheckpoint_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

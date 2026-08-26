@@ -62,8 +62,9 @@ export interface FileInfo {
 }
 
 export interface Message {
-  id: number
-  message_id: string
+	id: number
+	message_id: string
+	message_seq?: number
   from_uuid: string
   target_uuid: string
   target_type: number   // 0=单聊, 1=群聊
@@ -97,7 +98,9 @@ export interface Conversation {
   target_group?: Group
   remark: string
   last_message: LastMessage
-  unread_count: number
+	unread_count: number
+	last_message_seq: number
+	read_seq: number
 }
 
 export interface Device {
@@ -116,7 +119,8 @@ export interface WsPacket {
 
 export interface GroupMessageNotify {
   group_uuid: string
-  latest_message_id: string
+	latest_message_id: string
+	latest_message_seq: number
   message_type: number
   preview: string
   recent_message_count: number

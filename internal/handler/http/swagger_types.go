@@ -73,6 +73,11 @@ type SyncPageResponseEnvelope struct {
 	Data *httpdto.SyncPageResponse `json:"data"`
 }
 
+type DeviceSyncCheckpointResponseEnvelope struct {
+	Code int                                   `json:"code"`
+	Data *httpdto.DeviceSyncCheckpointResponse `json:"data"`
+}
+
 type UploadedFileResponseEnvelope struct {
 	Code int                           `json:"code"`
 	Data *httpdto.UploadedFileResponse `json:"data"`

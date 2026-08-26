@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getDeviceID } from '@/device'
 
 const api = axios.create({
   baseURL: '/',
@@ -10,6 +11,9 @@ api.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
   }
+	if (config.headers) {
+		config.headers['X-Device-ID'] = getDeviceID()
+	}
   return config
 })
 

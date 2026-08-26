@@ -108,12 +108,14 @@ type ChatReadData struct {
 	TargetType          int8      `json:"target_type"`
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	LastReadSeq         uint64    `json:"last_read_seq"`
 	ReadAt              time.Time `json:"read_at"`
 }
 
 type GroupMessageNotifyData struct {
 	GroupUUID          string    `json:"group_uuid"`
 	LatestMessageID    string    `json:"latest_message_id"`
+	LatestMessageSeq   uint64    `json:"latest_message_seq"`
 	MessageType        int8      `json:"message_type"`
 	Preview            string    `json:"preview"`
 	RecentMessageCount int       `json:"recent_message_count"`
