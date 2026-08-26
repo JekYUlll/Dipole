@@ -12,8 +12,8 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/alicebob/miniredis/v2"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 type stubMessageRepository struct {
@@ -1258,7 +1258,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1310,7 +1310,7 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1350,7 +1350,7 @@ func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarge
 		Content:         "private",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID:     map[string]*model.Message{"M100": existing},
 	}
 	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
@@ -1383,7 +1383,7 @@ func TestMessageServicePersistLocalMessageRejectsConflictingIdempotencyTarget(t 
 		TargetType:      model.MessageTargetDirect,
 	}
 	repo := &stubMessageRepository{
-		createErr:      gorm.ErrDuplicatedKey,
+		createErr:      &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{"M100": existing},
 	}
 	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)

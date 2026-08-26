@@ -18,7 +18,6 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/singleflight"
-	"gorm.io/gorm"
 )
 
 var (
@@ -802,10 +801,6 @@ func isDuplicateMessageError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-
 	var mysqlErr *mysqlDriver.MySQLError
 	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 		return true
