@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package dipole.message.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1;messagev1";
+
+import "google/protobuf/timestamp.proto";
+import "dipole/common/v1/context.proto";
+
+enum ErrorReason {
+  ERROR_REASON_UNSPECIFIED = 0;
+  ERROR_REASON_TARGET_REQUIRED = 1;
+  ERROR_REASON_CONTENT_REQUIRED = 2;
+  ERROR_REASON_CONTENT_TOO_LONG = 3;
+  ERROR_REASON_TARGET_UNAVAILABLE = 4;
+  ERROR_REASON_TARGET_NOT_FOUND = 5;
+  ERROR_REASON_FRIEND_REQUIRED = 6;
+  ERROR_REASON_GROUP_FORBIDDEN = 7;
+  ERROR_REASON_FILE_REQUIRED = 8;
+  ERROR_REASON_FILE_UNAVAILABLE = 9;
+  ERROR_REASON_IDEMPOTENCY_CONFLICT = 10;
+}
+
+message ErrorDetail {
+  ErrorReason reason = 1;
+}
+
+message Message {
+  uint64 id = 1;
+  string server_message_id = 2;
+  string client_message_id = 3;
+  string conversation_key = 4;
+  string sender_id = 5;
+  int32 target_type = 6;
+  string target_id = 7;
+  int32 message_type = 8;
+  string content = 9;
+  string file_id = 10;
+  string file_name = 11;
+  int64 file_size = 12;
+  string file_url = 13;
+  string file_content_type = 14;
+  google.protobuf.Timestamp file_expires_at = 15;
+  google.protobuf.Timestamp sent_at = 16;
+}
+
+message SendDirectTextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string target_user_id = 2;
+  string content = 3;
+  string client_message_id = 4;
+}
+
+message SendGroupTextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  string content = 3;
+  string client_message_id = 4;
+}
+
+message SendDirectFileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string target_user_id = 2;
+  string file_id = 3;
+  string client_message_id = 4;
+}
+
+message SendGroupFileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  string file_id = 3;
+  string client_message_id = 4;
+}
+
+message SendMessageResponse {
+  Message message = 1;
+  repeated string recipient_user_ids = 2;
+}
+
+message ListDirectHistoryRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string target_user_id = 2;
+  uint64 before_id = 3;
+  int32 page_size = 4;
+}
+
+message ListGroupHistoryRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  oneof cursor {
+    uint64 before_id = 3;
+    uint64 after_id = 4;
+  }
+  int32 page_size = 5;
+}
+
+message ListOfflineMessagesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  uint64 after_id = 2;
+  int32 page_size = 3;
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1;
+  uint64 first_id = 2;
+  uint64 last_id = 3;
+}
+
+service MessageService {
+  rpc SendDirectText(SendDirectTextRequest) returns (SendMessageResponse);
+  rpc SendGroupText(SendGroupTextRequest) returns (SendMessageResponse);
+  rpc SendDirectFile(SendDirectFileRequest) returns (SendMessageResponse);
+  rpc SendGroupFile(SendGroupFileRequest) returns (SendMessageResponse);
+  rpc ListDirectHistory(ListDirectHistoryRequest) returns (ListMessagesResponse);
+  rpc ListGroupHistory(ListGroupHistoryRequest) returns (ListMessagesResponse);
+  rpc ListOfflineMessages(ListOfflineMessagesRequest) returns (ListMessagesResponse);
+}

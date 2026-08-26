@@ -4,16 +4,16 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/repository"
 )
 
 type stubAdminOverviewRepository struct {
-	counts *repository.AdminOverviewCounts
+	counts *application.AdminOverviewCounts
 	err    error
 }
 
-func (r *stubAdminOverviewRepository) OverviewCounts() (*repository.AdminOverviewCounts, error) {
+func (r *stubAdminOverviewRepository) OverviewCounts() (*application.AdminOverviewCounts, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -37,7 +37,7 @@ func TestAdminServiceOverviewSuccess(t *testing.T) {
 	t.Parallel()
 
 	service := newAdminService(&stubAdminOverviewRepository{
-		counts: &repository.AdminOverviewCounts{
+		counts: &application.AdminOverviewCounts{
 			UserTotal:                      10,
 			AdminUserTotal:                 1,
 			DisabledUserTotal:              2,

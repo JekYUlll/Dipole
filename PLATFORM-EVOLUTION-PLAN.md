@@ -82,9 +82,9 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 各阶段实施前先完成以下基线治理，当前仅列入计划：
 
-- [ ] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
-- [ ] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
-- [ ] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
+- [x] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
+- [x] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
+- [x] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
 - [ ] 为核心事件建立版本化契约和新旧版本兼容测试。
 - [ ] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout。
 - [ ] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
@@ -113,22 +113,23 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 目标是在一个进程内完成边界整理，不增加网络调用。
 
-- [ ] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复构造逻辑收口到 Composition Root。
-- [ ] 按领域定义应用端口：`MessageApplication`、`CoreCapability`、`SyncApplication`、`EventPublisher`。
-- [ ] 将 repository 接口移动到使用方领域，避免 handler/bootstrap 依赖具体 repository。
-- [ ] 禁止跨模块直接 `repository.NewXXXRepository()`，统一通过构造参数注入。
-- [ ] 建立架构约束测试，阻止 Gateway/Handler 直接导入数据库实现。
-- [ ] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
+- [x] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复 Repository 与消息域 Service 构造收口到 Composition Root。
+- [x] 定义 `MessageApplication`、`SyncApplication` 与 `EventPublisher`，并提供 Local adapter。
+- [x] 定义 `CoreCapability` 与 Local adapter，供 Message 与 Agent 复用受控的 User/Group/Contact 查询。
+- [x] 将 repository 接口保留在使用方 Service，避免 handler 和 transport 依赖具体 repository。
+- [x] 禁止跨模块直接 `repository.NewXXXRepository()`，统一由 Composition Root 创建并通过构造参数注入。
+- [x] 建立架构约束测试，阻止 Server、Handler 和 Transport 直接导入数据库实现。
+- [x] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
 
 **验收：** HTTP/WS 契约不变；`go test ./...`、race 定向测试和现有端到端测试通过；单体镜像仍可独立部署。
 
 ### M2：从 GORM 渐进迁移到 sqlc
 
-- [ ] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
-- [ ] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
-- [ ] 对同一 Repository Port 建立 GORM/sqlc contract test，按低风险到高风险逐仓储迁移。
-- [ ] 最后迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
-- [ ] 全部生产路径稳定后删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
+- [x] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
+- [x] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
+- [x] 对同一 Repository Port 建立迁移契约，按低风险到高风险逐仓储迁移。
+- [x] 迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
+- [x] 删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
 
 **验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
 
@@ -136,32 +137,36 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M3：定义远程契约但仍走本地实现
 
-- [ ] 使用 protobuf 定义 Message Command、History Query、Core Authorization 和 Sync Query 契约。
-- [ ] 明确错误码、超时、幂等键、分页游标和认证上下文传递规则。
-- [ ] 生成 gRPC server/client，并用 in-process adapter 跑同一组契约测试。
-- [ ] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
-- [ ] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`。
+- [x] 使用 protobuf 定义 Message Command 与 History Query v1 契约。
+- [x] 使用 protobuf 定义 Core Authorization 和 Sync Query 契约，并复用 `common.v1.RequestContext`。
+- [x] 明确 Message RPC 错误码、超时、幂等键、分页游标和认证上下文传递规则。
+- [x] 生成 Message gRPC server/client，并用 bufconn 验证 Local server 与 Remote client adapters。
+- [x] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。
+- [x] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
+- [x] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`；M3 的 grpc 模式先走 bufconn，M4 再替换为受认证网络 channel。
 
 **验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M2 一致。
 
 ### M4：抽离 Message Service
 
-- [ ] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
-- [ ] 当前单体先作为 Gateway/Core，通过 gRPC 调用 Message Service。
-- [ ] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取 Core 表。
-- [ ] 使用影子请求比对 Local 与 Remote 响应，影子链路禁止产生第二次业务写入。
-- [ ] 按节点逐步将 `message.transport` 切换为 `grpc`，保留快速回切能力。
-- [ ] 明确 Message Service 数据表所有权，其他进程停止直接写 `messages` 和 `outbox_events`。
+- [x] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
+- [x] 当前单体先作为 Gateway/Core，通过受认证 gRPC 调用 Message Service，并保留 `local` 回切。
+- [x] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取这些 Core 表。
+- [x] 使用异步影子请求比对 Local 与 Remote 查询响应；四类发送命令只执行 primary，影子链路禁止业务写入。
+- [x] 提供按节点逐步切换 `message.transport=grpc` 的 shadow/owner 运行模式、consumer group 交接手册和 Local 快速回切能力。
+- [x] 明确 Message Service 数据表所有权；远程模式下 Core 停止写 `messages` 和 `outbox_events`，独立进程只组合 Message 与 Outbox adapters。
+
+当前过渡限制：Message 与 Core 仍使用同一 MySQL schema 和数据库账号；代码侧文件所有权已迁入 Core Capability，数据库最小权限继续由 AD-015 跟踪。内部 RPC 已通过 AD-013 完成 TLS 1.3 mTLS 与 caller 身份绑定。
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 
 ### M5：抽离 IM Gateway
 
-- [ ] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
-- [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有 GORM repository。
-- [ ] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
-- [ ] 将静态 Web、Swagger 和管理入口的归属显式化，避免 Gateway 混入后台任务。
-- [ ] 保留现有单体入口作为回滚部署，直到 Gateway 完成全流量验证。
+- [x] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
+- [x] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
+- [x] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
+- [x] 将静态 Web、Swagger 和管理入口的归属显式化；M5 期间由 Gateway 代理到私网 Core。
+- [x] 保留 `gateway.mode=embedded` 单体入口作为无数据回滚部署。
 
 **验收：** 多节点 WS 路由、断线重连、踢下线、跨节点投递和滚动升级通过；Gateway 进程断开数据库后仍能正常处理其职责。
 
@@ -176,6 +181,13 @@ dipole-message    Message command / history / idempotency / outbox
 ```
 
 Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件和持久化游标后再独立。User、Group、Contact 和 File 继续留在 Core。
+
+- [x] 统一镜像打包 Core、Message、Gateway 与 migration 四个二进制，旧单体入口继续作为默认 entrypoint。
+- [x] 增加独立微服务 Compose，Core/Message/Gateway 使用 TLS 1.3 mTLS、独立 caller 与健康依赖启动。
+- [x] Gateway 不依赖 MySQL service，Core 与 Message 继续使用当前 MySQL schema，表级账号由 AD-015 跟踪。
+- [x] 增加可重复 smoke，覆盖 migration、冷启动、Gateway health、Core HTTP 代理和 remote WS 所有权。
+
+**验收：** 隔离 Compose project 全部长期服务 healthy；Gateway 只暴露公开端口；自动 smoke 完成后可无残留销毁拓扑。
 
 ## 7. 阶段二：存储与事件架构重构
 
@@ -245,7 +257,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G1：固化迁移基线与 Capability API
 
 - [ ] 将现有 Go/Eino Agent 固化为行为基线，建立事件、回复、Tool 轨迹和权限评测集。
-- [ ] 删除 Agent 对 GORM repository 的直接依赖，读取和动作统一进入版本化 Capability API。
+- [ ] 删除 Agent 对数据库 repository 的直接依赖，读取和动作统一进入版本化 Capability API。
 - [ ] 引入由认证系统生成的 `ExecutionContext`，模型不能设置 principal、tenant、权限和审计身份。
 - [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
 - [ ] 增加 `agent.mode=embedded|shadow|remote|off`，保留 Eino 回滚窗口。
@@ -326,7 +338,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | Migration | 回填、双轨比较、影子读、灰度切换、回滚和重放 |
 | Failure | 节点宕机、超时、重复事件、乱序、Kafka lag、存储不可用 |
 | Performance | 普通群/热群吞吐、P95/P99 延迟、成员级写放大、搜索和 Agent 延迟 |
-| Data access | SQL migration、sqlc 生成漂移、GORM/sqlc contract、真实 MySQL 事务 |
+| Data access | SQL migration、sqlc 生成漂移、Repository contract、真实 MySQL 事务 |
 | Frontend | Vue 类型检查、组件、Playwright E2E、视觉回归、响应式和可访问性 |
 
 每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
@@ -341,7 +353,6 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
-| `data.mysql_adapter` | `gorm / sqlc` | Repository 分批迁移期间回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
 

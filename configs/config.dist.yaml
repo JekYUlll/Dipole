@@ -12,6 +12,12 @@ server:
   host: 0.0.0.0
   port: 8080
 
+gateway:
+  # Gateway owns public HTTP/WS; non-WS HTTP is proxied to the Core HTTP process during M5.
+  # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/gateway.
+  mode: embedded
+  core_http_target: http://127.0.0.1:8081
+
 tls:
   enabled: false
 
@@ -45,6 +51,33 @@ kafka:
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3
   consume_retry_backoff_ms: 500
+
+message:
+  # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
+  transport: local
+  # cmd/message-service: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
+  runtime_mode: owner
+  # Query-only comparison; send commands always execute on the selected primary exactly once.
+  shadow_queries: false
+  # Require a table-scoped MySQL account before accepting Message RPC traffic.
+  enforce_db_permissions: false
+
+internal_rpc:
+  # Keep disabled until Core and Message are deployed as separate processes.
+  enabled: false
+  shared_secret: ""  # set with DIPOLE_INTERNAL_RPC_SHARED_SECRET
+  core_listen_address: 127.0.0.1:9091
+  core_target: 127.0.0.1:9091
+  message_listen_address: 127.0.0.1:9092
+  message_target: 127.0.0.1:9092
+  dial_timeout_seconds: 5
+  shutdown_timeout_seconds: 15
+  # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.
+  tls_enabled: false
+  tls_cert_file: ""
+  tls_key_file: ""
+  tls_ca_file: ""
+  tls_server_name: ""
 
 storage:
   enabled: true

@@ -12,6 +12,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -22,7 +24,6 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
@@ -34,12 +35,20 @@ type Server struct {
 	httpServer *http.Server
 }
 
-type serverEventPublisher interface {
-	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
-	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
+type Dependencies struct {
+	Messages  applicationPort.MessageApplication
+	Messaging *appComposition.MessagingServices
 }
 
-func New() *Server {
+func NewWithRepositories(repos *appComposition.Repositories) *Server {
+	return NewWithDependencies(repos, Dependencies{})
+}
+
+func NewWithDependencies(repos *appComposition.Repositories, dependencies Dependencies) *Server {
+	if repos == nil {
+		panic("server repositories are required")
+	}
+
 	engine := gin.New()
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
@@ -56,67 +65,72 @@ func New() *Server {
 	})
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	userRepo := repository.NewUserRepository()
-	messageRepo := repository.NewMessageRepository()
-	fileRepo := repository.NewFileRepository()
-	conversationRepo := repository.NewConversationRepository()
-	contactRepo := repository.NewContactRepository()
-	groupRepo := repository.NewGroupRepository()
-	adminRepo := repository.NewAdminRepository()
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
 	redisPresence := platformPresence.NewRedisPresence()
-	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(newWSPresenceTrackerAdapter(redisPresence)))
+	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
-	authService := service.NewAuthService(userRepo, tokenService)
+	authService := service.NewAuthService(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
-	userService := service.NewUserService(userRepo).WithAvatarStorage(
-		fileRepo,
+	userService := service.NewUserService(repos.Users).WithAvatarStorage(
+		repos.Files,
 		platformStorage.Client,
 		5*1024*1024,
 		10*time.Minute,
 	)
-	fileService := service.NewFileService(fileRepo, messageRepo, platformStorage.Client)
-	adminService := service.NewAdminService(adminRepo, wsHub)
-	var kafkaEvents serverEventPublisher
+	adminService := service.NewAdminService(repos.Admin, wsHub)
+	var kafkaEvents applicationPort.EventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
 	}
-	messageService := service.NewMessageService(messageRepo, userRepo, contactRepo, groupRepo, fileService, kafkaEvents, hotGroupDetector)
-	conversationService := service.NewConversationService(conversationRepo, userRepo, groupRepo, newConversationNotifier(wsHub), kafkaEvents)
-	contactService := service.NewContactService(contactRepo, userRepo).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messageService)
-	groupService := service.NewGroupService(groupRepo, userRepo, kafkaEvents, hotGroupDetector).WithAvatarStorage(
-		fileRepo,
+	messaging := dependencies.Messaging
+	if messaging == nil {
+		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+			Events:    kafkaEvents,
+			HotGroups: hotGroupDetector,
+			Storage:   platformStorage.Client,
+		})
+	}
+	messaging.Conversations.WithNotifier(newConversationNotifier(wsHub))
+	messageApplication := applicationPort.MessageApplication(messaging.Messages)
+	if dependencies.Messages != nil {
+		messageApplication = dependencies.Messages
+	}
+	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messaging.Messages)
+	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
+		repos.Files,
 		platformStorage.Client,
 		5*1024*1024,
 		10*time.Minute,
-	).WithSystemMessenger(messageService)
+	).WithSystemMessenger(messaging.Messages)
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
-	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, userRepo)
+	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
 	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.
 	// Passing nil here prevents the dispatcher from doing a redundant synchronous update.
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
-		conversationUpdater = conversationService
+		conversationUpdater = messaging.Conversations
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageService, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
 	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
-	conversationHandler := httpHandler.NewConversationHandler(conversationService)
+	conversationHandler := httpHandler.NewConversationHandler(messaging.Conversations)
 	contactHandler := httpHandler.NewContactHandler(contactService)
 	groupHandler := httpHandler.NewGroupHandler(groupService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
-	messageHandler := httpHandler.NewMessageHandler(messageService)
-	syncHandler := httpHandler.NewSyncHandler(service.NewSyncService(repository.NewSyncRepository()))
-	fileHandler := httpHandler.NewFileHandler(fileService).WithLimiter(requestLimiter)
+	messageHandler := httpHandler.NewMessageHandler(messageApplication)
+	syncHandler := httpHandler.NewSyncHandler(messaging.Sync)
+	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
-	authRequired := middleware.Auth(tokenService, userRepo)
+	authRequired := middleware.Auth(tokenService, repos.Users)
 
 	v1 := engine.Group("/api/v1")
 	{
-		v1.GET("/ws", wsHandler.Handle)
+		if config.GatewayConfig().Mode == "embedded" {
+			v1.GET("/ws", wsHandler.Handle)
+		}
 
 		authGroup := v1.Group("/auth")
 		{
