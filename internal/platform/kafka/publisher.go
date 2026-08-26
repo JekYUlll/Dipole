@@ -159,11 +159,10 @@ func (p *Publisher) PublishEvent(ctx context.Context, topic string, key string, 
 		return fmt.Errorf("create kafka event envelope for %s: %w", topic, err)
 	}
 
-	if headers == nil {
-		headers = map[string]string{}
-	}
+	headers = cloneHeaders(headers)
 	headers["event_type"] = envelope.EventType
 	headers["version"] = envelope.Version
+	headers["schema_version"] = envelope.Version
 	headers["source"] = envelope.Source
 	headers["event_id"] = envelope.EventID
 
@@ -190,11 +189,11 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 		return errors.New("kafka publisher is not initialized")
 	}
 
-	configs := make([]kafkago.TopicConfig, 0, len(topics)*2)
-	seen := make(map[string]struct{}, len(topics)*2)
+	configs := make([]kafkago.TopicConfig, 0, len(topics)*3)
+	seen := make(map[string]struct{}, len(topics)*3)
 	for _, topic := range topics {
 		fullTopic := p.topicName(topic)
-		for _, candidate := range []string{fullTopic, retryTopicName(fullTopic)} {
+		for _, candidate := range []string{fullTopic, retryTopicName(fullTopic), deadTopicName(fullTopic)} {
 			if strings.TrimSpace(candidate) == "" {
 				continue
 			}
