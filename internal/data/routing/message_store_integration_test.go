@@ -84,8 +84,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, message.UUID, message.ClientMessageID, k
 		_ = session.Query("DELETE FROM timeline_by_conversation_bucket WHERE conversation_key = ? AND bucket = 0", key).Exec()
 	})
 
-	observations := make(chan ReadObservation, 4)
-	router := NewMessageStore(primary, highWater, timeline, 100, func(observation ReadObservation) { observations <- observation })
+	observations := make(chan ReadObservation, 5)
+	router := NewMessageStoreWithVerification(primary, highWater, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
 	page, err := router.ListByConversationSeqAfter(key, 0, 2)
 	if err != nil || len(page) != 2 || page[0].ID != 0 || (<-observations).Route != "cassandra" {
 		t.Fatalf("Cassandra primary page=%+v err=%v", page, err)
@@ -94,11 +94,22 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, message.UUID, message.ClientMessageID, k
 	if err != nil || len(page) != 2 || page[0].ID != 0 || (<-observations).Route != "cassandra" {
 		t.Fatalf("Cassandra primary before page=%+v err=%v", page, err)
 	}
+	if err := session.Query("UPDATE timeline_by_conversation_bucket SET content = ? WHERE conversation_key = ? AND bucket = 0 AND message_seq = 2", "corrupted", key).Exec(); err != nil {
+		t.Fatalf("corrupt Cassandra payload: %v", err)
+	}
+	page, err = router.ListByConversationSeqBefore(key, 0, 2)
+	observation := <-observations
+	if err != nil || len(page) != 2 || page[0].ID == 0 || observation.Route != "mysql_fallback" || observation.FallbackReason != "payload_mismatch" {
+		t.Fatalf("payload mismatch fallback page=%+v observation=%+v err=%v", page, observation, err)
+	}
+	if err := session.Query("UPDATE timeline_by_conversation_bucket SET content = ? WHERE conversation_key = ? AND bucket = 0 AND message_seq = 2", "body-2", key).Exec(); err != nil {
+		t.Fatalf("restore Cassandra payload: %v", err)
+	}
 	if err := session.Query("DELETE FROM timeline_by_conversation_bucket WHERE conversation_key = ? AND bucket = 0 AND message_seq = 2", key).Exec(); err != nil {
 		t.Fatalf("delete Cassandra row: %v", err)
 	}
 	page, err = router.ListByConversationSeqAfter(key, 0, 2)
-	observation := <-observations
+	observation = <-observations
 	if err != nil || len(page) != 2 || page[0].ID == 0 || observation.Route != "mysql_fallback" || observation.FallbackReason != "incomplete_page" {
 		t.Fatalf("MySQL fallback page=%+v observation=%+v err=%v", page, observation, err)
 	}

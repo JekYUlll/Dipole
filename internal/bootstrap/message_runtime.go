@@ -99,9 +99,9 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.shadowStore = shadowData.NewMessageStore(repos.Messages, timeline, nil)
 			repos.Messages = runtime.shadowStore
 		} else {
-			runtime.readRouter = routingData.NewMessageStore(
+			runtime.readRouter = routingData.NewMessageStoreWithVerification(
 				repos.Messages, repos.ConversationSequence, timeline,
-				messageCfg.CassandraReadPercent, nil,
+				messageCfg.CassandraReadPercent, messageCfg.CassandraReadVerifyPercent, nil,
 			)
 			repos.Messages = runtime.readRouter
 		}
@@ -165,6 +165,12 @@ func messageOwnedKafkaTopics() []string {
 func validateCassandraShadowConfig(messageCfg config.Message, cassandraCfg config.Cassandra) error {
 	if messageCfg.CassandraReadPercent < 0 || messageCfg.CassandraReadPercent > 100 {
 		return fmt.Errorf("message.cassandra_read_percentage must be between 0 and 100")
+	}
+	if messageCfg.CassandraReadVerifyPercent < 0 || messageCfg.CassandraReadVerifyPercent > 100 {
+		return fmt.Errorf("message.cassandra_read_verify_percentage must be between 0 and 100")
+	}
+	if messageCfg.CassandraReadVerifyPercent > 0 && messageCfg.CassandraReadPercent == 0 {
+		return fmt.Errorf("Cassandra read verification requires a positive primary-read cohort")
 	}
 	if messageCfg.CassandraShadowReads && messageCfg.CassandraReadPercent > 0 {
 		return fmt.Errorf("Cassandra shadow reads and primary-read cohorts cannot be enabled together")

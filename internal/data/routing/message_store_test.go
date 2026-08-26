@@ -19,15 +19,19 @@ type primaryStore struct {
 	err         error
 	seqCalls    int
 	beforeCalls int
+	lastAfter   uint64
+	lastBefore  uint64
 }
 
-func (s *primaryStore) ListByConversationSeqAfter(string, uint64, int) ([]*model.Message, error) {
+func (s *primaryStore) ListByConversationSeqAfter(_ string, afterSeq uint64, _ int) ([]*model.Message, error) {
 	s.seqCalls++
+	s.lastAfter = afterSeq
 	return s.page, s.err
 }
 
-func (s *primaryStore) ListByConversationSeqBefore(string, uint64, int) ([]*model.Message, error) {
+func (s *primaryStore) ListByConversationSeqBefore(_ string, beforeSeq uint64, _ int) ([]*model.Message, error) {
 	s.beforeCalls++
+	s.lastBefore = beforeSeq
 	return s.page, s.err
 }
 
@@ -170,6 +174,77 @@ func TestCassandraReadRouterBeforeSequenceEmptyBoundariesAvoidTimelineRead(t *te
 	}
 }
 
+func TestCassandraReadRouterVerificationMatchesMySQLPayload(t *testing.T) {
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "same")}}
+	mysqlMessage := recordsToMessages(timeline.records)[0]
+	mysqlMessage.ID = 21
+	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
+	observations := make(chan ReadObservation, 1)
+	store := NewMessageStoreWithVerification(primary, &highWaterReader{sequence: 2}, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
+
+	page, err := store.ListByConversationSeqAfter("group:G1", 1, 20)
+	if err != nil || len(page) != 1 || page[0].ID != 0 || primary.seqCalls != 1 {
+		t.Fatalf("unexpected verified page=%+v err=%v mysql_calls=%d", page, err, primary.seqCalls)
+	}
+	observation := <-observations
+	if observation.Route != "cassandra" || observation.VerificationOutcome != "match" {
+		t.Fatalf("unexpected verification observation: %+v", observation)
+	}
+}
+
+func TestCassandraReadRouterVerificationFallsBackOnPayloadMismatch(t *testing.T) {
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "corrupt")}}
+	mysqlMessage := recordsToMessages(timeline.records)[0]
+	mysqlMessage.ID = 21
+	mysqlMessage.Content = "mysql"
+	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
+	observations := make(chan ReadObservation, 1)
+	store := NewMessageStoreWithVerification(primary, &highWaterReader{sequence: 2}, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
+
+	page, err := store.ListByConversationSeqAfter("group:G1", 1, 20)
+	if err != nil || len(page) != 1 || page[0].ID == 0 || page[0].Content != "mysql" {
+		t.Fatalf("unexpected mismatch fallback page=%+v err=%v", page, err)
+	}
+	observation := <-observations
+	if observation.Route != "mysql_fallback" || observation.FallbackReason != "payload_mismatch" || observation.VerificationOutcome != "mismatch" {
+		t.Fatalf("unexpected mismatch observation: %+v", observation)
+	}
+}
+
+func TestCassandraReadRouterVerificationErrorKeepsAvailableCassandraPage(t *testing.T) {
+	primary := &primaryStore{err: errors.New("mysql unavailable")}
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "available")}}
+	observations := make(chan ReadObservation, 1)
+	store := NewMessageStoreWithVerification(primary, &highWaterReader{sequence: 2}, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
+
+	page, err := store.ListByConversationSeqAfter("group:G1", 1, 20)
+	if err != nil || len(page) != 1 || page[0].Content != "available" {
+		t.Fatalf("verification dependency changed available response: page=%+v err=%v", page, err)
+	}
+	observation := <-observations
+	if observation.Route != "cassandra" || observation.VerificationOutcome != "mysql_error" {
+		t.Fatalf("unexpected verification error observation: %+v", observation)
+	}
+}
+
+func TestCassandraReadRouterVerifiesBeforeSequenceWithSameCursor(t *testing.T) {
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(4, "cassandra")}}
+	mysqlMessage := recordsToMessages(timeline.records)[0]
+	mysqlMessage.ID = 41
+	mysqlMessage.Content = "mysql"
+	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
+	observations := make(chan ReadObservation, 1)
+	store := NewMessageStoreWithVerification(primary, &highWaterReader{sequence: 5}, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
+
+	page, err := store.ListByConversationSeqBefore("group:G1", 5, 1)
+	if err != nil || len(page) != 1 || page[0].Content != "mysql" || primary.lastBefore != 5 {
+		t.Fatalf("unexpected before verification page=%+v err=%v cursor=%d", page, err, primary.lastBefore)
+	}
+	if observation := <-observations; observation.FallbackReason != "payload_mismatch" || observation.Operation != "before_seq" {
+		t.Fatalf("unexpected before observation: %+v", observation)
+	}
+}
+
 func TestCassandraReadRouterFallsBackForEveryUnsafeOutcome(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -243,6 +318,37 @@ func TestCassandraReadRouterExportsRouteMetrics(t *testing.T) {
 	}
 	if fallback != 1 {
 		t.Fatalf("expected one Cassandra fallback, got %v", fallback)
+	}
+}
+
+func TestCassandraReadRouterExportsVerificationMetrics(t *testing.T) {
+	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "same")}}
+	mysqlMessage := recordsToMessages(timeline.records)[0]
+	mysqlMessage.ID = 21
+	store := NewMessageStoreWithVerification(
+		&primaryStore{page: []*model.Message{mysqlMessage}}, &highWaterReader{sequence: 2},
+		timeline, 100, 100, func(ReadObservation) {},
+	)
+	_, _ = store.ListByConversationSeqAfter("group:G1", 1, 20)
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(store)
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatalf("gather verification metrics: %v", err)
+	}
+	var matched float64
+	for _, family := range families {
+		if family.GetName() != "dipole_message_read_verification_total" {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			if metricHasLabels(metric.GetLabel(), map[string]string{"operation": "after_seq", "outcome": "match"}) {
+				matched = metric.GetCounter().GetValue()
+			}
+		}
+	}
+	if matched != 1 {
+		t.Fatalf("expected one verified matching page, got %v", matched)
 	}
 }
 

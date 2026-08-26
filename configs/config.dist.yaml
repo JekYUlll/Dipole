@@ -89,6 +89,8 @@ message:
   cassandra_shadow_reads: false
   # Deterministic conversation cohort for Cassandra Seq-cursor reads; 0 is the emergency rollback.
   cassandra_read_percentage: 0
+  # Synchronously compare this percentage of conversation-operation cohorts with MySQL using the same Seq cursor.
+  cassandra_read_verify_percentage: 0
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
 

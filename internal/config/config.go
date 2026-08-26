@@ -99,12 +99,13 @@ type Kafka struct {
 }
 
 type Message struct {
-	Transport            string `mapstructure:"transport"`
-	RuntimeMode          string `mapstructure:"runtime_mode"`
-	ShadowQueries        bool   `mapstructure:"shadow_queries"`
-	CassandraShadowReads bool   `mapstructure:"cassandra_shadow_reads"`
-	CassandraReadPercent int    `mapstructure:"cassandra_read_percentage"`
-	EnforceDBPermissions bool   `mapstructure:"enforce_db_permissions"`
+	Transport                  string `mapstructure:"transport"`
+	RuntimeMode                string `mapstructure:"runtime_mode"`
+	ShadowQueries              bool   `mapstructure:"shadow_queries"`
+	CassandraShadowReads       bool   `mapstructure:"cassandra_shadow_reads"`
+	CassandraReadPercent       int    `mapstructure:"cassandra_read_percentage"`
+	CassandraReadVerifyPercent int    `mapstructure:"cassandra_read_verify_percentage"`
+	EnforceDBPermissions       bool   `mapstructure:"enforce_db_permissions"`
 }
 
 type InternalRPC struct {
@@ -258,6 +259,7 @@ func Load() error {
 		v.SetDefault("message.shadow_queries", false)
 		v.SetDefault("message.cassandra_shadow_reads", false)
 		v.SetDefault("message.cassandra_read_percentage", 0)
+		v.SetDefault("message.cassandra_read_verify_percentage", 0)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
@@ -369,6 +371,7 @@ func Load() error {
 			"message.shadow_queries",
 			"message.cassandra_shadow_reads",
 			"message.cassandra_read_percentage",
+			"message.cassandra_read_verify_percentage",
 			"message.enforce_db_permissions",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
@@ -589,12 +592,13 @@ func MessageConfig() Message {
 	MustLoad()
 
 	return Message{
-		Transport:            strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
-		RuntimeMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
-		ShadowQueries:        cfg.GetBool("message.shadow_queries"),
-		CassandraShadowReads: cfg.GetBool("message.cassandra_shadow_reads"),
-		CassandraReadPercent: cfg.GetInt("message.cassandra_read_percentage"),
-		EnforceDBPermissions: cfg.GetBool("message.enforce_db_permissions"),
+		Transport:                  strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
+		RuntimeMode:                strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
+		ShadowQueries:              cfg.GetBool("message.shadow_queries"),
+		CassandraShadowReads:       cfg.GetBool("message.cassandra_shadow_reads"),
+		CassandraReadPercent:       cfg.GetInt("message.cassandra_read_percentage"),
+		CassandraReadVerifyPercent: cfg.GetInt("message.cassandra_read_verify_percentage"),
+		EnforceDBPermissions:       cfg.GetBool("message.enforce_db_permissions"),
 	}
 }
 
