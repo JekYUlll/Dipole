@@ -44,6 +44,12 @@ type CoreCapability interface {
 	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
 }
 
+type AICallLogStore interface {
+	Begin(log *model.AICallLog) (bool, error)
+	MarkSucceeded(triggerMessageUUID, responseMessageUUID string, promptTokens, completionTokens, totalTokens int, latencyMS int64) error
+	MarkFailed(triggerMessageUUID, errorMessage string, latencyMS int64) error
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error

@@ -64,6 +64,8 @@ go run ./cmd/server
 - 为同一 Application Port 建立 GORM 与 sqlc contract test。
 - [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
 
+首个 AICallLog GORM/sqlc adapter 已通过同一套真实 MySQL contract test。GORM 会回填输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
+
 开发命令：
 
 ```bash
