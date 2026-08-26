@@ -80,6 +80,24 @@ export async function compareBrowserSyncMessages(userUUID: string, legacyMessage
   return result.report
 }
 
+export async function reportBrowserSyncFailure(error: unknown) {
+  const storageFull = isLocalSyncCapacityError(error)
+  try {
+    await api.post('/api/v1/sync/comparison', {
+      baseline: false,
+      match: 0,
+      pending: 0,
+      legacy_only: 0,
+      sync_only: 0,
+      overflow: 0,
+      storage_full: storageFull ? 1 : 0,
+      sync_error: storageFull ? 0 : 1,
+    })
+  } catch {
+    // Client telemetry cannot delay recovery or replace the original Sync error.
+  }
+}
+
 export async function clearBrowserMessages(userUUID: string) {
   if (!userUUID) return
   localStorage.removeItem(comparisonStorageKey(userUUID))

@@ -40,7 +40,7 @@ func TestSyncHandlerRecordsBoundedClientComparison(t *testing.T) {
 	handler := NewSyncHandler(&stubSyncService{}).WithComparisonObserver(observer)
 	recorder := httptest.NewRecorder()
 	context, _ := gin.CreateTestContext(recorder)
-	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/sync/comparison", strings.NewReader(`{"baseline":false,"match":3,"pending":2,"legacy_only":1,"sync_only":0,"overflow":0}`))
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/sync/comparison", strings.NewReader(`{"baseline":false,"match":3,"pending":2,"legacy_only":1,"sync_only":0,"overflow":0,"storage_full":1,"sync_error":2}`))
 	context.Request.Header.Set("Content-Type", "application/json")
 	context.Request.Header.Set("X-Device-ID", "web-1")
 	context.Set(middleware.ContextUserKey, &model.User{UUID: "U1"})
@@ -50,7 +50,7 @@ func TestSyncHandlerRecordsBoundedClientComparison(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	if observer.outcomes["match"] != 3 || observer.outcomes["pending"] != 2 || observer.outcomes["legacy_only"] != 1 {
+	if observer.outcomes["match"] != 3 || observer.outcomes["pending"] != 2 || observer.outcomes["legacy_only"] != 1 || observer.outcomes["storage_full"] != 1 || observer.outcomes["sync_error"] != 2 {
 		t.Fatalf("unexpected outcomes: %+v", observer.outcomes)
 	}
 }
@@ -61,9 +61,10 @@ func TestSyncHandlerRejectsInvalidClientComparison(t *testing.T) {
 		deviceID string
 		body     string
 	}{
-		"missing device":  {body: `{"match":1}`},
-		"negative count":  {deviceID: "web-1", body: `{"match":-1}`},
-		"excessive count": {deviceID: "web-1", body: `{"pending":10001}`},
+		"missing device":        {body: `{"match":1}`},
+		"negative count":        {deviceID: "web-1", body: `{"match":-1}`},
+		"excessive count":       {deviceID: "web-1", body: `{"pending":10001}`},
+		"excessive error count": {deviceID: "web-1", body: `{"storage_full":10001}`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
