@@ -47,3 +47,16 @@ func TestMergeMySQLConfigIgnoresEmptySyncOverride(t *testing.T) {
 		t.Fatalf("empty override changed config: %+v", got)
 	}
 }
+
+func TestConfigDistDeclaresSearchMaintenanceMySQLOverride(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"search.mysql.host", "search.mysql.port", "search.mysql.user", "search.mysql.password", "search.mysql.dbname"} {
+		if !v.IsSet(key) {
+			t.Fatalf("missing Search maintenance config key %s", key)
+		}
+	}
+}

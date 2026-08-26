@@ -57,6 +57,36 @@ go run ./cmd/search-reconcile \
 
 Reconcile 必须返回一致报告后才能执行 `search-alias`。Backfill Job 会绑定 source kind、snapshot ID 与 hash，后续换源或使用不同归档会失败。
 
-## 5. 回滚与清理边界
+## 5. 受控清理
 
-Alias 回滚继续使用原 Job 和原 receipt 恢复出的 manifest。归档发布与恢复成功只证明恢复源可用，当前版本尚未提供生产 Outbox 自动清理授权；不得手工批量删除业务库事件。清理能力上线前仍需保留 Outbox，并保存空索引重建、Reconcile 和 Alias 回滚演练报告。
+先使用与目标 Backfill Job 对应的 receipt 和一致 Reconcile 报告执行 dry-run：
+
+```bash
+go run ./cmd/search-outbox-cleanup \
+  --receipt /var/lib/dipole/search/search-v1-receipt.json \
+  --reconcile-report /var/lib/dipole/search/search-v1-reconcile.json \
+  --target-index dipole-messages-v1-build-20260827 \
+  --batch-size 500
+```
+
+确认 Message mutation 生产者已进入维护窗口，并核对 `eligible_count` 后执行清理。执行结果应重定向到只追加的审计存储：
+
+```bash
+go run ./cmd/search-outbox-cleanup \
+  --receipt /var/lib/dipole/search/search-v1-receipt.json \
+  --reconcile-report /var/lib/dipole/search/search-v1-reconcile.json \
+  --target-index dipole-messages-v1-build-20260827 \
+  --batch-size 500 \
+  --execute \
+  --confirm-maintenance-window \
+  --operator oncall@example.com \
+  > /var/log/dipole/search-cleanup-20260827.json
+```
+
+执行模式强制要求责任人和维护窗口确认，只删除 receipt 高水位以内、已发布且属于八类 Search mutation 的 Message Outbox。范围内存在未发布 mutation 时整次拒绝；批次中断后可使用同一组证据重新执行，命令只处理剩余 eligible 行。生产部署使用 `configs/mysql/search-maintenance-grants.dist.sql` 创建独立账号，并通过 `search.mysql.*` 注入，禁止复用 Core 或 root 凭据。
+
+## 6. 清理后恢复验收与回滚
+
+清理后必须创建新的空物理索引，仅使用 receipt 恢复出的 archive 运行 Backfill 和 Reconcile；保存 100% hash 匹配报告。随后完成 Alias 正向切换和回滚演练。任何步骤失败时停止后续 Outbox 清理，保留原 Alias owner，并从同一 object version receipt 恢复。
+
+不得手工批量删除 Outbox。审计记录至少保存 operator、snapshot ID、manifest/data version ID、Reconcile 时间、高水位、eligible 数和实际删除数。

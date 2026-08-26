@@ -68,7 +68,7 @@ func RunSearchBackfill(ctx context.Context, options SearchBackfillOptions) (sear
 }
 
 func openSearchMaintenanceMySQL(ctx context.Context, operation string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", mysqlconfig.DSN(config.MySQLConfig(), false))
+	db, err := sql.Open("mysql", mysqlconfig.DSN(config.SearchMySQLConfig(), false))
 	if err != nil {
 		return nil, fmt.Errorf("open Search %s MySQL source: %w", operation, err)
 	}

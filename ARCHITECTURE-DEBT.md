@@ -26,13 +26,12 @@
 ### AD-021：Search 重建依赖 Outbox 事件保留契约
 
 - **优先级：** P1
-- **状态：** 处理中
+- **状态：** 已解决
 - **发现日期：** 2026-08-27
 - **影响范围：** Elasticsearch 全量重建、事件归档、Outbox 清理、MySQL 消息正文退役
-- **现状：** `dipole-search-archive` 可按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 与 SHA-256 manifest，并发布到独立 MinIO object-lock bucket。receipt 固定 object key/version ID、ETag 与 Governance retain-until；restore 只读指定版本并重新验 hash。migration v13 将 source kind、snapshot ID 和 hash 绑定到 Backfill Job。真实演练删除本地归档与历史 Message Outbox 后完成恢复、3/3 hash 对账、正向切换与回滚，无 bypass 删除受保留版本被拒绝。
-- **风险：** 归档发布凭证尚未转化为受控 Outbox 清理凭证；缺少按高水位分段清理命令、双人/责任人审计和清理后自动空索引复验。生产环境仍不得手工批量删除 Outbox。
-- **建议方向：** 增加只接受已验证 receipt、Reconcile 报告和维护窗口确认的清理命令；记录删除高水位、对象版本、操作者与恢复演练结果，并保留 dry-run 和禁止越过归档水位的数据库约束。
-- **处理门槛：** 清理命令只能删除已发布且不高于凭证水位的 Search mutation Outbox，完成 dry-run、部分失败恢复、清理后空索引 hash 对账和 Alias 回滚演练。
+- **现状：** `dipole-search-archive` 可按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 与 SHA-256 manifest，并发布到独立 MinIO object-lock bucket。`dipole-search-outbox-cleanup` 只接受可按精确对象版本恢复的 receipt、已完成且一致的 Reconcile 报告和匹配的 Backfill Job；默认 dry-run，执行时强制维护窗口确认与 operator。sqlc 查询仅删除水位内、已发布的八类 Search mutation，遇到未发布事件时拒绝清理。
+- **解决记录：** 2026-08-27 完成专用 `search.mysql.*` 配置和最小授权模板；单测验证批次中断后可重入。真实 MySQL/MinIO/Elasticsearch 演练按 2/2/1 删除 5 条 eligible mutation，保留无关 Outbox，维护账号访问 Core 表被拒绝；随后仅凭保留对象版本从空索引恢复并完成 3/3 hash 对账、Alias 正向切换与回滚。
+- **长期约束：** 禁止手工批量删除 Outbox。每次执行必须保存 operator、snapshot/object version、Reconcile 时间、高水位和删除统计；对象保留期、清理窗口或 mutation 类型变化时重新评审本条契约。
 
 ### AD-022：前端开发工具链仍停留在 Vite 5
 

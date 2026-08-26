@@ -10,18 +10,21 @@ backfill_binary=$(mktemp /tmp/dipole-search-backfill.XXXXXX)
 archive_binary=$(mktemp /tmp/dipole-search-archive.XXXXXX)
 reconcile_binary=$(mktemp /tmp/dipole-search-reconcile.XXXXXX)
 alias_binary=$(mktemp /tmp/dipole-search-alias.XXXXXX)
+cleanup_binary=$(mktemp /tmp/dipole-search-outbox-cleanup.XXXXXX)
 reconcile_report=$(mktemp /tmp/dipole-search-reconcile.XXXXXX.json)
 alias_receipt=$(mktemp /tmp/dipole-search-alias.XXXXXX.json)
 archive_dir=$(mktemp -d /tmp/dipole-search-archive.XXXXXX)
 archive_manifest="$archive_dir/search-v1.json"
 restored_manifest="/archive/restored/search-v1.json"
+cleanup_reconcile_report="$archive_dir/search-v1-reconcile.json"
 target_index="dipole-smoke-messages-v1-build-a"
 old_index="dipole-smoke-messages-v1-old"
+recovery_index="dipole-smoke-messages-v1-recovery"
 
 cleanup() {
   local exit_code=$?
   docker rm -f "$mysql_container" >/dev/null 2>&1 || true
-  rm -f "$migrate_binary" "$backfill_binary" "$archive_binary" "$reconcile_binary" "$alias_binary" "$reconcile_report" "$alias_receipt"
+  rm -f "$migrate_binary" "$backfill_binary" "$archive_binary" "$reconcile_binary" "$alias_binary" "$cleanup_binary" "$reconcile_report" "$alias_receipt"
   docker run --rm -v "$archive_dir:/archive" alpine:3.22 sh -c 'find /archive -depth -mindepth 1 -delete' >/dev/null 2>&1 || true
   rmdir "$archive_dir" >/dev/null 2>&1 || true
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
@@ -67,6 +70,7 @@ done
   CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/search-archive
   CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/search-reconcile
   CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/search-alias
+  CGO_ENABLED=0 go build -o "$cleanup_binary" ./cmd/search-outbox-cleanup
 )
 
 runtime_args=(
@@ -77,6 +81,25 @@ runtime_args=(
 )
 docker run --rm "${runtime_args[@]}" -v "$migrate_binary:/app/dipole-migrate:ro" \
   alpine:3.22 /app/dipole-migrate -direction up >/dev/null
+
+docker exec -i "$mysql_container" mysql -uroot -pdipole-root <<'SQL'
+CREATE USER 'dipole_search_maintenance'@'%' IDENTIFIED BY 'search-maintenance';
+GRANT SELECT ON dipole.schema_migrations TO 'dipole_search_maintenance'@'%';
+GRANT SELECT, INSERT, UPDATE ON dipole.search_backfill_jobs TO 'dipole_search_maintenance'@'%';
+GRANT SELECT, DELETE ON dipole.outbox_events TO 'dipole_search_maintenance'@'%';
+FLUSH PRIVILEGES;
+SQL
+search_runtime_args=(
+  "${runtime_args[@]}"
+  -e DIPOLE_SEARCH_MYSQL_USER=dipole_search_maintenance
+  -e DIPOLE_SEARCH_MYSQL_PASSWORD=search-maintenance
+)
+set +e
+docker exec "$mysql_container" mysql -udipole_search_maintenance -psearch-maintenance dipole \
+  -e 'SELECT COUNT(*) FROM users;' >/dev/null 2>&1
+core_read_exit=$?
+set -e
+[[ "$core_read_exit" -ne 0 ]] || { printf 'Expected Search maintenance account to be denied Core table access\n' >&2; exit 1; }
 
 jq -n \
   --slurpfile mapping "$root_dir/internal/data/elasticsearch/schema/message_search_v1.json" \
@@ -101,15 +124,15 @@ INSERT INTO outbox_events (
 ('user','U1','user.updated','user.updated','U1','{}','published',0,NOW(3),NOW(3));
 SQL
 
-docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
   alpine:3.22 /app/dipole-search-backfill --job smoke-stale-v1 --target-index "$target_index" \
   --owner smoke-owner --batch-size 2 --lease-seconds 60 >/dev/null
 
-docker run --rm "${runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
   alpine:3.22 /app/dipole-search-archive --manifest /archive/search-v1.json \
   --snapshot-id smoke-search-v1 --batch-size 2 >/dev/null
 
-published_receipt=$(docker run --rm "${runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
+published_receipt=$(docker run --rm "${search_runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
   alpine:3.22 /app/dipole-search-archive --action publish --manifest /archive/search-v1.json \
   --receipt /archive/search-v1-receipt.json --object-prefix search)
 
@@ -127,18 +150,15 @@ set -e
 [[ "$retention_delete_exit" -ne 0 ]] || { printf 'Expected retained archive version deletion to fail\n' >&2; exit 1; }
 
 rm -f "$archive_manifest" "$archive_dir/search-v1.ndjson"
-docker run --rm "${runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$archive_binary:/app/dipole-search-archive:ro" \
   alpine:3.22 /app/dipole-search-archive --action restore --receipt /archive/search-v1-receipt.json \
   --destination /archive/restored >/dev/null
 
-docker exec "$mysql_container" mysql -uroot -pdipole-root dipole \
-  -e "DELETE FROM outbox_events WHERE aggregate_type = 'message';"
-
-docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
   alpine:3.22 /app/dipole-search-backfill --job smoke-v1 --target-index "$target_index" \
   --owner smoke-owner --batch-size 2 --lease-seconds 60 \
   --source archive --archive-manifest "$restored_manifest" >/dev/null
-docker run --rm "${runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
   alpine:3.22 /app/dipole-search-backfill --job smoke-old-v1 --target-index "$old_index" \
   --owner smoke-owner --batch-size 2 --lease-seconds 60 \
   --source archive --archive-manifest "$restored_manifest" >/dev/null
@@ -155,14 +175,41 @@ document() {
 [[ "$(document M1 | jq -r '._source.content')" == edited ]]
 [[ "$(document M3 | jq -r '._source.searchable|tostring')" == false ]]
 
-docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
   alpine:3.22 /app/dipole-search-reconcile --job smoke-v1 --target-index "$target_index" --batch-size 2 \
   --source archive --archive-manifest "$restored_manifest" \
-  >"$reconcile_report"
+  >"$cleanup_reconcile_report"
+jq -e '.consistent == true and .source_count == 3 and .target_count == 3 and .hash_matched_count == 3' \
+  "$cleanup_reconcile_report" >/dev/null
+
+cleanup_dry_run=$(docker run --rm "${search_runtime_args[@]}" -v "$cleanup_binary:/app/dipole-search-outbox-cleanup:ro" \
+  alpine:3.22 /app/dipole-search-outbox-cleanup --receipt /archive/search-v1-receipt.json \
+  --reconcile-report /archive/search-v1-reconcile.json --target-index "$target_index" --batch-size 2)
+jq -e '.dry_run == true and .eligible_count == 5 and .deleted_count == 0 and .high_watermark_id == 5' \
+  <<<"$cleanup_dry_run" >/dev/null
+cleanup_result=$(docker run --rm "${search_runtime_args[@]}" -v "$cleanup_binary:/app/dipole-search-outbox-cleanup:ro" \
+  alpine:3.22 /app/dipole-search-outbox-cleanup --receipt /archive/search-v1-receipt.json \
+  --reconcile-report /archive/search-v1-reconcile.json --target-index "$target_index" --batch-size 2 \
+  --execute --confirm-maintenance-window --operator smoke-operator)
+jq -e '.dry_run == false and .operator == "smoke-operator" and .snapshot_id == "smoke-search-v1" and .manifest_version_id != "" and .data_version_id != "" and .eligible_count == 5 and .deleted_count == 5 and .high_watermark_id == 5' \
+  <<<"$cleanup_result" >/dev/null
+remaining_search_events=$(docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
+  -e "SELECT COUNT(*) FROM outbox_events WHERE aggregate_type = 'message' AND id <= 5;")
+remaining_unrelated_events=$(docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
+  -e "SELECT COUNT(*) FROM outbox_events WHERE aggregate_type = 'user';")
+[[ "$remaining_search_events" == 0 && "$remaining_unrelated_events" == 1 ]]
+
+docker run --rm "${search_runtime_args[@]}" -v "$backfill_binary:/app/dipole-search-backfill:ro" \
+  alpine:3.22 /app/dipole-search-backfill --job smoke-recovery-v1 --target-index "$recovery_index" \
+  --owner smoke-owner --batch-size 2 --lease-seconds 60 \
+  --source archive --archive-manifest "$restored_manifest" >/dev/null
+docker run --rm "${search_runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
+  alpine:3.22 /app/dipole-search-reconcile --job smoke-recovery-v1 --target-index "$recovery_index" --batch-size 2 \
+  --source archive --archive-manifest "$restored_manifest" >"$reconcile_report"
 jq -e '.consistent == true and .source_count == 3 and .target_count == 3 and .hash_matched_count == 3' \
   "$reconcile_report" >/dev/null
 
-docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
   alpine:3.22 /app/dipole-search-alias --action switch --job smoke-v1 \
   --from-index "$old_index" --to-index "$target_index" --confirm-maintenance-window \
   --source archive --archive-manifest "$restored_manifest" \
@@ -174,7 +221,7 @@ compose exec -T elasticsearch curl -fsS \
   'http://127.0.0.1:9200/_alias/dipole-smoke-messages-read,dipole-smoke-messages-write' | \
   jq -e --arg target "$target_index" 'keys == [$target]' >/dev/null
 
-docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
   alpine:3.22 /app/dipole-search-alias --action rollback --job smoke-old-v1 \
   --from-index "$target_index" --to-index "$old_index" --confirm-maintenance-window \
   --source archive --archive-manifest "$restored_manifest" \
@@ -191,7 +238,7 @@ INSERT INTO outbox_events (
 '{"event_id":"E7","event_type":"message.direct.created","version":"v1","source":"smoke","occurred_at":"2026-08-27T00:00:06Z","payload":{"mutation_type":"created","revision":1,"actor_uuid":"U1","message_id":"M4","conversation_key":"direct:U1:U2","message_seq":4,"sender_uuid":"U1","target_uuid":"U2","target_type":0,"message_type":0,"content":"new after snapshot","sent_at":"2026-08-27T00:00:06Z"}}','published',0,NOW(3),NOW(3));
 SQL
 set +e
-docker run --rm "${runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$alias_binary:/app/dipole-search-alias:ro" \
   alpine:3.22 /app/dipole-search-alias --action switch --job smoke-stale-v1 \
   --from-index "$old_index" --to-index "$target_index" --confirm-maintenance-window \
   >"$alias_receipt" 2>&1
@@ -211,7 +258,7 @@ compose exec -T elasticsearch curl -fsS -X PUT \
   "http://127.0.0.1:9200/${target_index}/_doc/M2?version=2&version_type=external" \
   -H 'Content-Type: application/json' -d "$current" >/dev/null
 set +e
-docker run --rm "${runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
+docker run --rm "${search_runtime_args[@]}" -v "$reconcile_binary:/app/dipole-search-reconcile:ro" \
   alpine:3.22 /app/dipole-search-reconcile --job smoke-v1 --target-index "$target_index" --batch-size 2 \
   --source archive --archive-manifest "$restored_manifest" \
   >"$reconcile_report"
@@ -224,4 +271,4 @@ if [[ "$reconcile_exit" -ne 2 ]]; then
 fi
 jq -e '.consistent == false and .hash_mismatch_count == 1' "$reconcile_report" >/dev/null
 
-printf 'Search recovery/Alias smoke passed: fixed snapshot matched, forward and rollback switches succeeded, stale cutover was blocked, and corruption returned exit 2.\n'
+printf 'Search recovery/Alias smoke passed: retained archive versions enabled safe Outbox cleanup and empty-index recovery; Alias switching, stale-cutover blocking, and corruption detection also passed.\n'

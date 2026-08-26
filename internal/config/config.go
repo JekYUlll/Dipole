@@ -447,6 +447,11 @@ func Load() error {
 			"sync.mysql.user",
 			"sync.mysql.password",
 			"sync.mysql.dbname",
+			"search.mysql.host",
+			"search.mysql.port",
+			"search.mysql.user",
+			"search.mysql.password",
+			"search.mysql.dbname",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
 			"internal_rpc.core_listen_address",
@@ -695,6 +700,15 @@ func MessageConfig() Message {
 func SearchConfig() Search {
 	MustLoad()
 	return Search{Enabled: cfg.GetBool("search.enabled")}
+}
+
+func SearchMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("search.mysql.host"), Port: cfg.GetInt("search.mysql.port"),
+		User: cfg.GetString("search.mysql.user"), Password: cfg.GetString("search.mysql.password"),
+		DBName: cfg.GetString("search.mysql.dbname"),
+	})
 }
 
 func SyncConfig() Sync {
