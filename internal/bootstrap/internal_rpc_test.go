@@ -25,7 +25,18 @@ import (
 
 type rpcCoreStub struct{}
 
-func (rpcCoreStub) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
+func (rpcCoreStub) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	return []string{"direct:" + userUUID + ":U2"}, nil
+}
+
+type rpcSearchStub struct{}
+
+func (rpcSearchStub) Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error) {
+	return []*model.MessageSearchDocument{{
+		MessageUUID: "M1", ConversationKey: "direct:" + principal + ":U2", MessageSeq: 7,
+		Revision: 1, SenderUUID: "U2", MessageType: model.MessageTypeText, Content: text, SentAt: time.Unix(1, 0),
+	}}, nil
+}
 
 func (rpcCoreStub) GetUserByUUID(userUUID string) (*model.User, error) {
 	return &model.User{UUID: userUUID, Nickname: "RPC User"}, nil
@@ -109,6 +120,55 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 	user, err := client.GetUserByUUID("U-GATEWAY")
 	if err != nil || user == nil || user.UUID != "U-GATEWAY" {
 		t.Fatalf("gateway core query failed: user=%+v err=%v", user, err)
+	}
+}
+
+func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
+	cfg := config.InternalRPC{
+		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
+		SearchListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
+	}
+	coreServer, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	if err != nil {
+		t.Fatalf("start Core rpc server: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		coreServer.Close(ctx)
+	})
+	cfg.CoreTarget = coreServer.Address()
+	core, coreConnection, err := DialSearchCoreCapability(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("dial Core as Search service: %v", err)
+	}
+	t.Cleanup(func() { _ = coreConnection.Close() })
+	keys, err := core.ListSearchConversationKeys("U1")
+	if err != nil || len(keys) != 1 || keys[0] != "direct:U1:U2" {
+		t.Fatalf("Search Core scope: keys=%v err=%v", keys, err)
+	}
+	if _, err := core.GetUserByUUID("U1"); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected Search identity to be denied unrelated Core capability, got %v", err)
+	}
+
+	searchServer, err := NewSearchRPCServer(cfg, rpcSearchStub{})
+	if err != nil {
+		t.Fatalf("start Search rpc server: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		searchServer.Close(ctx)
+	})
+	cfg.SearchTarget = searchServer.Address()
+	search, searchConnection, err := DialSearchApplication(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("dial Search application: %v", err)
+	}
+	t.Cleanup(func() { _ = searchConnection.Close() })
+	documents, err := search.Search("U1", "migration", 10)
+	if err != nil || len(documents) != 1 || documents[0].Content != "migration" {
+		t.Fatalf("Search rpc result: documents=%+v err=%v", documents, err)
 	}
 }
 

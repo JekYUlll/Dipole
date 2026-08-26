@@ -18,18 +18,23 @@ import (
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
+	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	grpcCredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 )
 
 const (
 	gatewayServiceName = "dipole-gateway"
 	coreServiceName    = "dipole-core"
 	messageServiceName = "dipole-message"
+	searchServiceName  = "dipole-search"
 )
 
 type InternalRPCServer struct {
@@ -44,9 +49,13 @@ func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName}, func(server *grpc.Server) {
+	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName, searchServiceName}, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
-	})
+	}, restrictSearchCoreMethods)
+}
+
+func DialSearchCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	return dialCoreCapabilityAs(ctx, cfg, searchServiceName)
 }
 
 func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
@@ -107,7 +116,43 @@ func dialMessageApplicationAs(ctx context.Context, cfg config.InternalRPC, calle
 	return client, connection, nil
 }
 
-func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers []string, register func(*grpc.Server)) (*InternalRPCServer, error) {
+func NewSearchRPCServer(cfg config.InternalRPC, search application.SearchApplication) (*InternalRPCServer, error) {
+	adapter, err := searchgrpc.NewServer(search)
+	if err != nil {
+		return nil, fmt.Errorf("create Search rpc adapter: %w", err)
+	}
+	return newInternalRPCServer(cfg, cfg.SearchListenAddress, []string{gatewayServiceName}, func(server *grpc.Server) {
+		searchv1.RegisterSearchServiceServer(server, adapter)
+	})
+}
+
+func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
+	connection, err := dialInternalRPC(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
+		Service: gatewayServiceName,
+		Secret:  cfg.SharedSecret,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Search rpc: %w", err)
+	}
+	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), gatewayServiceName)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create Search application client: %w", err)
+	}
+	return client, connection, nil
+}
+
+func restrictSearchCoreMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	caller, _ := grpcauth.CallerService(ctx)
+	if caller == searchServiceName &&
+		info.FullMethod != corev1.CoreCapabilityService_ListSearchConversationKeys_FullMethodName &&
+		info.FullMethod != healthv1.Health_Check_FullMethodName {
+		return nil, status.Error(codes.PermissionDenied, "Search service is not allowed to call this Core capability")
+	}
+	return handler(ctx, request)
+}
+
+func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers []string, register func(*grpc.Server), additionalInterceptors ...grpc.UnaryServerInterceptor) (*InternalRPCServer, error) {
 	address = strings.TrimSpace(address)
 	if address == "" {
 		return nil, errors.New("internal rpc listen address is required")
@@ -120,7 +165,8 @@ func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers
 	if err != nil {
 		return nil, fmt.Errorf("listen on %s: %w", address, err)
 	}
-	options := []grpc.ServerOption{grpc.UnaryInterceptor(interceptor)}
+	interceptors := append([]grpc.UnaryServerInterceptor{interceptor}, additionalInterceptors...)
+	options := []grpc.ServerOption{grpc.ChainUnaryInterceptor(interceptors...)}
 	transportCredentials, err := internalRPCServerCredentials(cfg, address)
 	if err != nil {
 		_ = listener.Close()

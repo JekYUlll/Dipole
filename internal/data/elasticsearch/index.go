@@ -120,6 +120,14 @@ func (i *Index) Bootstrap(ctx context.Context) error {
 	})
 }
 
+func (i *Index) ValidateReadiness(ctx context.Context) error {
+	owner, err := i.currentAliasOwner(ctx)
+	if err != nil {
+		return err
+	}
+	return i.validateMapping(ctx, owner)
+}
+
 type PhysicalTarget struct {
 	index *Index
 	name  string
@@ -486,13 +494,24 @@ func (i *Index) validateAliases(ctx context.Context, physicalIndex string) error
 }
 
 func (i *Index) validateExclusiveAliasOwner(ctx context.Context, physicalIndex string) error {
-	path := fmt.Sprintf("/_alias/%s,%s", i.readAlias, i.writeAlias)
-	status, response, err := i.request(ctx, http.MethodGet, path, nil)
+	owner, err := i.currentAliasOwner(ctx)
 	if err != nil {
 		return err
 	}
+	if owner != physicalIndex {
+		return fmt.Errorf("Elasticsearch production aliases are not owned by %s", physicalIndex)
+	}
+	return nil
+}
+
+func (i *Index) currentAliasOwner(ctx context.Context) (string, error) {
+	path := fmt.Sprintf("/_alias/%s,%s", i.readAlias, i.writeAlias)
+	status, response, err := i.request(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return "", err
+	}
 	if status != http.StatusOK {
-		return responseError("validate Elasticsearch exclusive aliases", status, response)
+		return "", responseError("validate Elasticsearch exclusive aliases", status, response)
 	}
 	var aliases map[string]struct {
 		Aliases map[string]struct {
@@ -500,23 +519,27 @@ func (i *Index) validateExclusiveAliasOwner(ctx context.Context, physicalIndex s
 		} `json:"aliases"`
 	}
 	if err := json.Unmarshal(response, &aliases); err != nil {
-		return fmt.Errorf("decode Elasticsearch exclusive aliases: %w", err)
+		return "", fmt.Errorf("decode Elasticsearch exclusive aliases: %w", err)
 	}
 	if len(aliases) != 1 {
-		return fmt.Errorf("Elasticsearch production aliases must have one physical owner, got %d", len(aliases))
+		return "", fmt.Errorf("Elasticsearch production aliases must have one physical owner, got %d", len(aliases))
 	}
-	owner, ok := aliases[physicalIndex]
-	if !ok {
-		return fmt.Errorf("Elasticsearch production aliases are not owned by %s", physicalIndex)
+	var ownerName string
+	var owner struct {
+		Aliases map[string]struct {
+			IsWriteIndex bool `json:"is_write_index"`
+		} `json:"aliases"`
+	}
+	for ownerName, owner = range aliases {
 	}
 	if _, ok := owner.Aliases[i.readAlias]; !ok {
-		return fmt.Errorf("Elasticsearch read alias %s is missing", i.readAlias)
+		return "", fmt.Errorf("Elasticsearch read alias %s is missing", i.readAlias)
 	}
 	write, ok := owner.Aliases[i.writeAlias]
 	if !ok || !write.IsWriteIndex {
-		return fmt.Errorf("Elasticsearch write alias %s is not active", i.writeAlias)
+		return "", fmt.Errorf("Elasticsearch write alias %s is not active", i.writeAlias)
 	}
-	return nil
+	return ownerName, nil
 }
 
 func (i *Index) request(ctx context.Context, method, path string, body []byte) (int, []byte, error) {

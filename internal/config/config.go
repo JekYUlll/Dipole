@@ -127,6 +127,8 @@ type InternalRPC struct {
 	CoreTarget             string `mapstructure:"core_target"`
 	MessageListenAddress   string `mapstructure:"message_listen_address"`
 	MessageTarget          string `mapstructure:"message_target"`
+	SearchListenAddress    string `mapstructure:"search_listen_address"`
+	SearchTarget           string `mapstructure:"search_target"`
 	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
 	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
 	TLSEnabled             bool   `mapstructure:"tls_enabled"`
@@ -288,6 +290,8 @@ func Load() error {
 		v.SetDefault("internal_rpc.core_target", "127.0.0.1:9091")
 		v.SetDefault("internal_rpc.message_listen_address", "127.0.0.1:9092")
 		v.SetDefault("internal_rpc.message_target", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.search_listen_address", "127.0.0.1:9093")
+		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)
@@ -409,6 +413,8 @@ func Load() error {
 			"internal_rpc.core_target",
 			"internal_rpc.message_listen_address",
 			"internal_rpc.message_target",
+			"internal_rpc.search_listen_address",
+			"internal_rpc.search_target",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -654,6 +660,8 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.CoreTarget = strings.TrimSpace(cfg.GetString("internal_rpc.core_target"))
 	internalRPC.MessageListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.message_listen_address"))
 	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
+	internalRPC.SearchListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.search_listen_address"))
+	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
 	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
 	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
 	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")

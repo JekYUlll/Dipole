@@ -14,6 +14,7 @@ x-internal-rpc: &internal-rpc
   DIPOLE_INTERNAL_RPC_TLS_SERVER_NAME: dipole-internal
   DIPOLE_INTERNAL_RPC_CORE_TARGET: core:9091
   DIPOLE_INTERNAL_RPC_MESSAGE_TARGET: message:9092
+  DIPOLE_INTERNAL_RPC_SEARCH_TARGET: search:9093
 
 services:
   mysql:
@@ -95,6 +96,23 @@ services:
       /bin/sh -c "mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
       mc mb --ignore-existing local/dipole-files"
 
+  elasticsearch:
+    profiles: ["search"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_microservices_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+
   migrate:
     <<: *dipole-service
     restart: "no"
@@ -173,6 +191,52 @@ services:
       timeout: 3s
       retries: 30
 
+  search-indexer:
+    profiles: ["search"]
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-search-indexer"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      DIPOLE_ELASTICSEARCH_ENABLED: "true"
+      DIPOLE_ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
+      DIPOLE_KAFKA_CLIENT_ID: dipole-search-indexer
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  search:
+    profiles: ["search"]
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-search"]
+    volumes:
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ./certs/internal/search.pem:/run/dipole/certs/search.pem:ro
+      - ./certs/internal/search-key.pem:/run/dipole/certs/search-key.pem:ro
+    depends_on:
+      core:
+        condition: service_healthy
+      search-indexer:
+        condition: service_healthy
+    environment:
+      <<: *internal-rpc
+      DIPOLE_INTERNAL_RPC_SEARCH_LISTEN_ADDRESS: 0.0.0.0:9093
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/search.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/search-key.pem
+      DIPOLE_ELASTICSEARCH_ENABLED: "true"
+      DIPOLE_ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   gateway:
     <<: *dipole-service
     entrypoint: ["/app/dipole-gateway"]
@@ -211,3 +275,4 @@ volumes:
   redis_microservices_data:
   kafka_microservices_data:
   minio_microservices_data:
+  elasticsearch_microservices_data:
