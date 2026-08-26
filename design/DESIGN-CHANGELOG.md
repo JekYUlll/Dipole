@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 Sync Status 可复用组件，以及同步 Restoring、Current、Offline、Error 状态矩阵。
+- 增加消息恢复 desktop/mobile 页面和 `exports/sync-v1/` 批准预览，展示安全游标、本地落库、设备 ACK 与断网可读状态。
 - 建立 `design/dipole-ui.pen`，定义浅色画布、深色导航数据面、绿色强调色、Manrope/Noto Sans SC 字体和基础间距圆角 token。
 - 增加 Search Field、Search Result、Search Skeleton 与 Search State 四个可复用组件。
 - 增加消息搜索 desktop/mobile 的 Results、Loading、Empty、Error 四态设计。
@@ -13,6 +15,8 @@
 
 ### 设计决策
 
+- 同步恢复固定采用“读取安全游标 → 写入本地消息 → 提交设备游标”的可见顺序，避免界面暗示尚未持久化的消息已经安全同步。
+- 同步故障局部降级；本地消息继续可读，错误状态提供重试入口，显式退出时清理当前账号本地数据。
 - Search v1 仅展示 principal 有权访问的会话范围，并持续显示权限提示。
 - Search 故障采用局部降级，不遮挡或禁用聊天主链路。
 - 结果同时展示会话身份和 `message_seq`，为后续精确定位消息保留稳定交互语义。

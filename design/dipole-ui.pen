@@ -5780,6 +5780,2148 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "rWdJf",
+      "x": 6140,
+      "y": 0,
+      "name": "Component/Sync Status",
+      "reusable": true,
+      "width": 760,
+      "height": 112,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "gap": 16,
+      "padding": 18,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "jM6LK",
+          "name": "Sync Status Icon Surface",
+          "width": 48,
+          "height": 48,
+          "fill": "$accent-soft",
+          "cornerRadius": 14,
+          "layout": "vertical",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "jf6tQ",
+              "name": "Sync Status Icon",
+              "width": 22,
+              "height": 22,
+              "icon": "refresh-cw",
+              "library": "lucide",
+              "fill": "$accent-strong"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "oLzEP",
+          "name": "Sync Status Copy",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "x3xxvF",
+              "name": "Sync Status Title",
+              "fill": "$ink",
+              "content": "正在恢复消息",
+              "fontFamily": "$font-display",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "Y2nPer",
+              "name": "Sync Status Description",
+              "fill": "$ink-soft",
+              "content": "新消息先写入此设备，再安全推进同步游标。",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "kAh2P",
+          "name": "Sync Status Metadata",
+          "layout": "vertical",
+          "gap": 7,
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "PBChJ",
+              "name": "Sync Progress Badge",
+              "fill": "$accent-soft",
+              "cornerRadius": 10,
+              "padding": [
+                6,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kMA0H",
+                  "name": "Sync Progress Label",
+                  "fill": "$accent-strong",
+                  "content": "64 / 128",
+                  "fontFamily": "$font-display",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "NZbQ7",
+              "name": "Sync Last Update",
+              "fill": "$ink-faint",
+              "content": "刚刚更新",
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "oBcdF",
+      "x": 6140,
+      "y": 192,
+      "name": "Sync/State Matrix",
+      "width": 760,
+      "height": 650,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "qiS0w",
+          "name": "Sync State Matrix Eyebrow",
+          "fill": "$accent-strong",
+          "content": "SYNC ENGINE · COMPONENT STATES",
+          "fontFamily": "$font-display",
+          "fontSize": 11,
+          "fontWeight": "700",
+          "letterSpacing": 1.4
+        },
+        {
+          "type": "text",
+          "id": "OHkVU",
+          "name": "Sync State Matrix Title",
+          "fill": "$ink",
+          "content": "本地优先，多端连续",
+          "fontFamily": "$font-display",
+          "fontSize": 28,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "HEwMy",
+          "name": "Sync State Matrix Description",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "客户端只在消息落入 IndexedDB 后推进 sync_seq；断网与依赖故障保留最后一次安全游标。",
+          "lineHeight": 1.5,
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "jezFS",
+          "name": "Sync State Examples",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "id": "VkZB6",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Sync State Restoring",
+              "width": "fill_container"
+            },
+            {
+              "id": "FRTgt",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Sync State Current",
+              "width": "fill_container",
+              "descendants": {
+                "jf6tQ": {
+                  "icon": "check",
+                  "fill": "$accent-strong"
+                },
+                "x3xxvF": {
+                  "content": "消息已同步"
+                },
+                "Y2nPer": {
+                  "content": "此设备已保存全部可用消息，游标处于最新位置。"
+                },
+                "kMA0H": {
+                  "content": "已是最新"
+                }
+              }
+            },
+            {
+              "id": "l4iB6m",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Sync State Offline",
+              "width": "fill_container",
+              "descendants": {
+                "jM6LK": {
+                  "fill": "$warning-soft"
+                },
+                "jf6tQ": {
+                  "icon": "cloud-off",
+                  "fill": "$warning"
+                },
+                "x3xxvF": {
+                  "content": "离线浏览"
+                },
+                "Y2nPer": {
+                  "content": "当前展示本地消息；网络恢复后从安全游标继续同步。"
+                },
+                "PBChJ": {
+                  "fill": "$warning-soft"
+                },
+                "kMA0H": {
+                  "content": "等待网络",
+                  "fill": "$warning"
+                }
+              }
+            },
+            {
+              "id": "T5O7G",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Sync State Error",
+              "width": "fill_container",
+              "descendants": {
+                "jM6LK": {
+                  "fill": "$danger-soft"
+                },
+                "jf6tQ": {
+                  "icon": "triangle-alert",
+                  "fill": "$danger"
+                },
+                "x3xxvF": {
+                  "content": "同步暂时中断"
+                },
+                "Y2nPer": {
+                  "content": "本地消息保持可用；重试不会跳过尚未持久化的消息。"
+                },
+                "PBChJ": {
+                  "fill": "$danger-soft"
+                },
+                "kMA0H": {
+                  "content": "重新尝试",
+                  "fill": "$danger"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "J1NT6",
+      "x": 0,
+      "y": 2960,
+      "name": "Sync/Desktop/Restoring",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "SN8Tz",
+          "name": "Desktop Navigation Rail",
+          "width": 72,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "padding": [
+            24,
+            0
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "niIAX",
+              "name": "Rail Primary Actions",
+              "layout": "vertical",
+              "gap": 22,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gMlfD",
+                  "name": "Current User Avatar",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 12,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y21aI",
+                      "name": "Current User Initials",
+                      "fill": "#FFFFFF",
+                      "content": "YU",
+                      "fontFamily": "$font-display",
+                      "fontSize": 12,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Waobs",
+                  "name": "Messages Navigation",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "$rail-soft",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "lB2OZ",
+                      "name": "Messages Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "message-circle",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qlMC8",
+                  "name": "Contacts Navigation",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#172126",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "K7HA3Q",
+                      "name": "Contacts Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "users",
+                      "library": "lucide",
+                      "fill": "#91A09B"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zXHm6",
+                  "name": "Groups Navigation",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#172126",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "WPbxq",
+                      "name": "Groups Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "contact-round",
+                      "library": "lucide",
+                      "fill": "#91A09B"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bFAKb",
+              "name": "Rail Secondary Actions",
+              "layout": "vertical",
+              "gap": 18,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "QWGvq",
+                  "name": "Settings Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "settings",
+                  "library": "lucide",
+                  "fill": "#91A09B"
+                },
+                {
+                  "type": "icon",
+                  "id": "je9IL",
+                  "name": "Sign Out Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "log-out",
+                  "library": "lucide",
+                  "fill": "#91A09B"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FRrTD",
+          "name": "Conversation Sidebar",
+          "width": 304,
+          "height": "fill_container",
+          "fill": "$surface-muted",
+          "stroke": "$line",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Yux09",
+              "name": "Conversation Sidebar Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                24,
+                20,
+                16,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LUeBf",
+                  "name": "Messages Heading",
+                  "fill": "$ink",
+                  "content": "消息",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "rEXg3",
+                  "name": "Search Entry",
+                  "width": "fill_container",
+                  "height": 40,
+                  "fill": "#E7E9E5",
+                  "cornerRadius": 10,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "C01rzV",
+                      "name": "Search Entry Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "search",
+                      "library": "lucide",
+                      "fill": "$ink-soft"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tdqOX",
+                      "name": "Search Entry Label",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "搜索消息",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gKdgC",
+                      "name": "Search Entry Key",
+                      "fill": "$ink-faint",
+                      "content": "⌘K",
+                      "fontFamily": "$font-display",
+                      "fontSize": 10,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OWjxs",
+              "name": "Conversation List",
+              "width": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g1B3Ii",
+                  "name": "Conversation 1",
+                  "width": "fill_container",
+                  "height": 76,
+                  "fill": "#DDE2DC",
+                  "gap": 11,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "AJpMe",
+                      "name": "Conversation 1 Avatar",
+                      "width": 38,
+                      "height": 38,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 11,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "kBMaS",
+                          "name": "Conversation 1 Initial",
+                          "fill": "$accent-strong",
+                          "content": "D",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "m1mGWr",
+                      "name": "Conversation 1 Body",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CgzIf",
+                          "name": "Conversation 1 Meta",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SZf4O",
+                              "name": "Conversation 1 Name",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Dipole 开发群",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Xo0jo",
+                              "name": "Conversation 1 Time",
+                              "fill": "$ink-faint",
+                              "content": "14:32",
+                              "fontFamily": "$font-body",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "H1DQgY",
+                          "name": "Conversation 1 Preview",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "数据库迁移风险需要验证",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vyESD",
+                  "name": "Conversation 2",
+                  "width": "fill_container",
+                  "height": 76,
+                  "fill": "$surface-muted",
+                  "gap": 11,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "cE9pL",
+                      "name": "Conversation 2 Avatar",
+                      "width": 38,
+                      "height": 38,
+                      "fill": "#D9DEDA",
+                      "cornerRadius": 11,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "q1dCVP",
+                          "name": "Conversation 2 Initial",
+                          "fill": "$ink-soft",
+                          "content": "架",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hIuC2",
+                      "name": "Conversation 2 Body",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "nfTkj",
+                          "name": "Conversation 2 Meta",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "JQQ9q",
+                              "name": "Conversation 2 Name",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "架构评审",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jBbvV",
+                              "name": "Conversation 2 Time",
+                              "fill": "$ink-faint",
+                              "content": "13:18",
+                              "fontFamily": "$font-body",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "aqJTE",
+                          "name": "Conversation 2 Preview",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Search Service 已进入灰度",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E2DaWb",
+                  "name": "Conversation 3",
+                  "width": "fill_container",
+                  "height": 76,
+                  "fill": "$surface-muted",
+                  "gap": 11,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CbL4z",
+                      "name": "Conversation 3 Avatar",
+                      "width": 38,
+                      "height": 38,
+                      "fill": "#D9DEDA",
+                      "cornerRadius": 11,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N7hSgG",
+                          "name": "Conversation 3 Initial",
+                          "fill": "$ink-soft",
+                          "content": "林",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DHAXo",
+                      "name": "Conversation 3 Body",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "qU4OD",
+                          "name": "Conversation 3 Meta",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "H03a5",
+                              "name": "Conversation 3 Name",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "林舟",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "pX7vu",
+                              "name": "Conversation 3 Time",
+                              "fill": "$ink-faint",
+                              "content": "昨天",
+                              "fontFamily": "$font-body",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Y14LA",
+                          "name": "Conversation 3 Preview",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "收到，今晚完成对账",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aBzUC",
+                  "name": "Conversation 4",
+                  "width": "fill_container",
+                  "height": 76,
+                  "fill": "$surface-muted",
+                  "gap": 11,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "a8jMk",
+                      "name": "Conversation 4 Avatar",
+                      "width": 38,
+                      "height": 38,
+                      "fill": "#D9DEDA",
+                      "cornerRadius": 11,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "yRahg",
+                          "name": "Conversation 4 Initial",
+                          "fill": "$ink-soft",
+                          "content": "A",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gFBFM",
+                      "name": "Conversation 4 Body",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Vnhqg",
+                          "name": "Conversation 4 Meta",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "X1sCy",
+                              "name": "Conversation 4 Name",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Agent Runtime",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "U5qOC",
+                              "name": "Conversation 4 Time",
+                              "fill": "$ink-faint",
+                              "content": "周一",
+                              "fontFamily": "$font-body",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "IgQ8A",
+                          "name": "Conversation 4 Preview",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Temporal 工作流方案",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "znZlY",
+                  "name": "Conversation 5",
+                  "width": "fill_container",
+                  "height": 76,
+                  "fill": "$surface-muted",
+                  "gap": 11,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "vZxhQ",
+                      "name": "Conversation 5 Avatar",
+                      "width": 38,
+                      "height": 38,
+                      "fill": "#D9DEDA",
+                      "cornerRadius": 11,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "j2EeMo",
+                          "name": "Conversation 5 Initial",
+                          "fill": "$ink-soft",
+                          "content": "设",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fk7YH",
+                      "name": "Conversation 5 Body",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "m1HOcg",
+                          "name": "Conversation 5 Meta",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "X3wVCN",
+                              "name": "Conversation 5 Name",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "设计协作",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "CqKtU",
+                              "name": "Conversation 5 Time",
+                              "fill": "$ink-faint",
+                              "content": "周日",
+                              "fontFamily": "$font-body",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "k8S18r",
+                          "name": "Conversation 5 Preview",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Pencil 状态稿待评审",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ci2Cj",
+          "name": "Desktop Sync Workspace",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$canvas",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "K91p6",
+              "name": "Desktop Sync Header",
+              "width": "fill_container",
+              "height": 82,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                34
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WFGAQ",
+                  "name": "Desktop Sync Header Copy",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W8KUpf",
+                      "name": "Desktop Sync Header Title",
+                      "fill": "$ink",
+                      "content": "消息同步",
+                      "fontFamily": "$font-display",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KSXzj",
+                      "name": "Desktop Sync Header Subtitle",
+                      "fill": "$ink-soft",
+                      "content": "本地消息库 · 多端游标",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Hrc0F",
+                  "name": "Current Device Badge",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 10,
+                  "gap": 8,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "NVGTw",
+                      "name": "Current Device Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "monitor-smartphone",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "U28Mz2",
+                      "name": "Current Device Label",
+                      "fill": "$ink",
+                      "content": "Chrome · 当前设备",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AZwym",
+              "name": "Desktop Sync Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "padding": [
+                30,
+                64,
+                32,
+                64
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Lx5Cg",
+                  "name": "Desktop Sync Intro",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n8z0kt",
+                      "name": "Desktop Sync Intro Copy",
+                      "width": 620,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "T316z5",
+                          "name": "Desktop Sync Eyebrow",
+                          "fill": "$accent-strong",
+                          "content": "RECOVERY TIMELINE",
+                          "fontFamily": "$font-display",
+                          "fontSize": 11,
+                          "fontWeight": "700",
+                          "letterSpacing": 1.3
+                        },
+                        {
+                          "type": "text",
+                          "id": "n5YvX",
+                          "name": "Desktop Sync Title",
+                          "fill": "$ink",
+                          "content": "从最后一次安全写入继续",
+                          "fontFamily": "$font-display",
+                          "fontSize": 30,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "IVV2O",
+                          "name": "Desktop Sync Description",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "128 条消息已从服务器发现。只有写入此设备后，新的同步位置才会提交。",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WnBij",
+                      "name": "Safe Cursor Card",
+                      "fill": "$rail",
+                      "cornerRadius": 14,
+                      "layout": "vertical",
+                      "gap": 3,
+                      "padding": [
+                        12,
+                        16
+                      ],
+                      "alignItems": "end",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "agcjr",
+                          "name": "Safe Cursor Label",
+                          "fill": "#91A09B",
+                          "content": "SAFE SYNC SEQ",
+                          "fontFamily": "$font-display",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 1.1
+                        },
+                        {
+                          "type": "text",
+                          "id": "EEPg1",
+                          "name": "Safe Cursor Value",
+                          "fill": "#FFFFFF",
+                          "content": "12,480",
+                          "fontFamily": "$font-display",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "OX7Cn",
+                  "type": "ref",
+                  "ref": "rWdJf",
+                  "name": "Desktop Sync Progress",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "J4sl3",
+                  "name": "Desktop Sync Details",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "gap": 20,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YjyuT",
+                      "name": "Sync Commit Timeline",
+                      "width": 580,
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": "$radius-md",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 18,
+                      "padding": 22,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zhhlQ",
+                          "name": "Sync Commit Timeline Header",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Dm1Yl",
+                              "name": "Sync Commit Timeline Title",
+                              "fill": "$ink",
+                              "content": "恢复步骤",
+                              "fontFamily": "$font-display",
+                              "fontSize": 17,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "NVjts",
+                              "name": "Sync Commit Timeline Count",
+                              "fill": "$ink-faint",
+                              "content": "第 2 / 3 步",
+                              "fontFamily": "$font-body",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ZEIMv",
+                          "name": "Sync Step 读取安全游标",
+                          "width": "fill_container",
+                          "gap": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Q2ZhW",
+                              "name": "读取安全游标 Icon Surface",
+                              "width": 38,
+                              "height": 38,
+                              "fill": "$accent-soft",
+                              "cornerRadius": 11,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "T6htmB",
+                                  "name": "读取安全游标 Icon",
+                                  "width": 18,
+                                  "height": 18,
+                                  "icon": "check",
+                                  "library": "lucide",
+                                  "fill": "$accent-strong"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "msdMN",
+                              "name": "读取安全游标 Copy",
+                              "layout": "vertical",
+                              "gap": 3,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "sFbRS",
+                                  "name": "读取安全游标 Title",
+                                  "fill": "$ink",
+                                  "content": "读取安全游标",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "FqE7D",
+                                  "name": "读取安全游标 Description",
+                                  "fill": "$ink-soft",
+                                  "content": "设备从 sync_seq 12,480 继续",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eAAMl",
+                          "name": "Sync Step 写入本地消息库",
+                          "width": "fill_container",
+                          "gap": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "voLM8",
+                              "name": "写入本地消息库 Icon Surface",
+                              "width": 38,
+                              "height": 38,
+                              "fill": "$accent-soft",
+                              "cornerRadius": 11,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "n8Daje",
+                                  "name": "写入本地消息库 Icon",
+                                  "width": 18,
+                                  "height": 18,
+                                  "icon": "database",
+                                  "library": "lucide",
+                                  "fill": "$accent-strong"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "CQUUn",
+                              "name": "写入本地消息库 Copy",
+                              "layout": "vertical",
+                              "gap": 3,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "j65lD",
+                                  "name": "写入本地消息库 Title",
+                                  "fill": "$ink",
+                                  "content": "写入本地消息库",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "PgB37",
+                                  "name": "写入本地消息库 Description",
+                                  "fill": "$ink-soft",
+                                  "content": "正在持久化 64 条消息",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rkzok",
+                          "name": "Sync Step 提交设备游标",
+                          "width": "fill_container",
+                          "gap": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "VcJBu",
+                              "name": "提交设备游标 Icon Surface",
+                              "width": 38,
+                              "height": 38,
+                              "fill": "$surface-muted",
+                              "cornerRadius": 11,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "f0lqek",
+                                  "name": "提交设备游标 Icon",
+                                  "width": 18,
+                                  "height": 18,
+                                  "icon": "cloud-upload",
+                                  "library": "lucide",
+                                  "fill": "$ink-faint"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "GxArN",
+                              "name": "提交设备游标 Copy",
+                              "layout": "vertical",
+                              "gap": 3,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "jgBUS",
+                                  "name": "提交设备游标 Title",
+                                  "fill": "$ink",
+                                  "content": "提交设备游标",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "YQDBp",
+                                  "name": "提交设备游标 Description",
+                                  "fill": "$ink-soft",
+                                  "content": "等待本地事务完成",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ryqKV",
+                      "name": "Device Continuity Panel",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": "$radius-md",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 16,
+                      "padding": 22,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "YmRmr",
+                          "name": "Device Continuity Title",
+                          "fill": "$ink",
+                          "content": "设备连续性",
+                          "fontFamily": "$font-display",
+                          "fontSize": 17,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "eRfQp",
+                          "name": "Device Continuity Description",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "每台设备独立保存游标，已读位置可继续同步。",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ZeFVw",
+                          "name": "Device Chrome · Linux",
+                          "width": "fill_container",
+                          "gap": 11,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "pkkZI",
+                              "name": "Chrome · Linux Icon Surface",
+                              "width": 36,
+                              "height": 36,
+                              "fill": "$accent-soft",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "AYuCT",
+                                  "name": "Chrome · Linux Icon",
+                                  "width": 17,
+                                  "height": 17,
+                                  "icon": "monitor",
+                                  "library": "lucide",
+                                  "fill": "$accent-strong"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ieLQL",
+                              "name": "Chrome · Linux Copy",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "sH9Os",
+                                  "name": "Chrome · Linux Name",
+                                  "fill": "$ink",
+                                  "content": "Chrome · Linux",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "R7YQM",
+                                  "name": "Chrome · Linux State",
+                                  "fill": "$accent-strong",
+                                  "content": "正在同步",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wbPgq",
+                          "name": "Device iPhone",
+                          "width": "fill_container",
+                          "gap": 11,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "YoQ6o",
+                              "name": "iPhone Icon Surface",
+                              "width": 36,
+                              "height": 36,
+                              "fill": "$surface-muted",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "tvIyq",
+                                  "name": "iPhone Icon",
+                                  "width": 17,
+                                  "height": 17,
+                                  "icon": "smartphone",
+                                  "library": "lucide",
+                                  "fill": "$ink-soft"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "twWbA",
+                              "name": "iPhone Copy",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "C6nKB",
+                                  "name": "iPhone Name",
+                                  "fill": "$ink",
+                                  "content": "iPhone",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "sRvl6",
+                                  "name": "iPhone State",
+                                  "fill": "$ink-soft",
+                                  "content": "2 分钟前",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qpMA7",
+                          "name": "Device iPad",
+                          "width": "fill_container",
+                          "gap": 11,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "H0Iv4",
+                              "name": "iPad Icon Surface",
+                              "width": 36,
+                              "height": 36,
+                              "fill": "$surface-muted",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "NCWJT",
+                                  "name": "iPad Icon",
+                                  "width": 17,
+                                  "height": 17,
+                                  "icon": "tablet",
+                                  "library": "lucide",
+                                  "fill": "$ink-soft"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bGqeX",
+                              "name": "iPad Copy",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "LMY1w",
+                                  "name": "iPad Name",
+                                  "fill": "$ink",
+                                  "content": "iPad",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ff7u6",
+                                  "name": "iPad State",
+                                  "fill": "$ink-soft",
+                                  "content": "昨天",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "P1vlH",
+                          "name": "Local Storage Note",
+                          "width": "fill_container",
+                          "fill": "$surface-muted",
+                          "cornerRadius": 10,
+                          "gap": 8,
+                          "padding": 11,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "O6e2Z",
+                              "name": "Local Storage Note Icon",
+                              "width": 16,
+                              "height": 16,
+                              "icon": "shield-check",
+                              "library": "lucide",
+                              "fill": "$accent-strong"
+                            },
+                            {
+                              "type": "text",
+                              "id": "czAZA",
+                              "name": "Local Storage Note Text",
+                              "fill": "$ink-soft",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "退出账号时清除此用户的本地消息",
+                              "fontFamily": "$font-body",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Ziy5I",
+      "x": 1520,
+      "y": 2960,
+      "name": "Sync/Mobile/Restoring",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "kkDaQ",
+          "name": "Mobile Sync Header",
+          "width": "fill_container",
+          "height": 64,
+          "fill": "$surface",
+          "stroke": "$line",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 12,
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "z9rBf",
+              "name": "Mobile Sync Back",
+              "width": 36,
+              "height": 36,
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "zzhiE",
+                  "name": "Mobile Sync Back Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$ink"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HAR2V",
+              "name": "Mobile Sync Header Copy",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "minQz",
+                  "name": "Mobile Sync Header Title",
+                  "fill": "$ink",
+                  "content": "消息同步",
+                  "fontFamily": "$font-display",
+                  "fontSize": 17,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "lqMh1",
+                  "name": "Mobile Sync Header Device",
+                  "fill": "$ink-soft",
+                  "content": "Chrome · 当前设备",
+                  "fontFamily": "$font-body",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "c7Mwc",
+          "name": "Mobile Sync Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            18,
+            16,
+            20,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "lzEJI",
+              "name": "Mobile Sync Eyebrow",
+              "fill": "$accent-strong",
+              "content": "RECOVERY TIMELINE",
+              "fontFamily": "$font-display",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "F5H0qu",
+              "name": "Mobile Sync Title",
+              "fill": "$ink",
+              "content": "从安全位置继续",
+              "fontFamily": "$font-display",
+              "fontSize": 26,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "GApyB",
+              "name": "Mobile Sync Description",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "消息先保存到此设备，再推进同步游标。",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "B7MK5",
+              "name": "Mobile Safe Cursor",
+              "width": "fill_container",
+              "fill": "$rail",
+              "cornerRadius": 12,
+              "padding": [
+                10,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h9s6PV",
+                  "name": "Mobile Safe Cursor Label",
+                  "fill": "#91A09B",
+                  "content": "SAFE SYNC SEQ",
+                  "fontFamily": "$font-display",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "text",
+                  "id": "ZAfiS",
+                  "name": "Mobile Safe Cursor Value",
+                  "fill": "#FFFFFF",
+                  "content": "12,480",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "id": "E9f7yC",
+              "type": "ref",
+              "ref": "rWdJf",
+              "name": "Mobile Sync Progress",
+              "width": "fill_container",
+              "descendants": {
+                "Y2nPer": {
+                  "content": "正在将 64 条消息写入 IndexedDB。"
+                },
+                "NZbQ7": {
+                  "enabled": false
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "qZHwb",
+              "name": "Mobile Sync Steps",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MRXvV",
+                  "name": "Mobile Sync Steps Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "objxN",
+                      "name": "Mobile Sync Steps Title",
+                      "fill": "$ink",
+                      "content": "恢复步骤",
+                      "fontFamily": "$font-display",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XfNuN",
+                      "name": "Mobile Sync Steps Count",
+                      "fill": "$ink-faint",
+                      "content": "2 / 3",
+                      "fontFamily": "$font-body",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cQX9Z",
+                  "name": "Mobile Step 读取安全游标",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "FmivM",
+                      "name": "Mobile 读取安全游标 Icon Surface",
+                      "width": 32,
+                      "height": 32,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 9,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "QDwVW",
+                          "name": "Mobile 读取安全游标 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "BypVr",
+                      "name": "Mobile 读取安全游标 Label",
+                      "fill": "$ink",
+                      "content": "读取安全游标",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hCkaL",
+                      "name": "Mobile 读取安全游标 State",
+                      "fill": "$accent-strong",
+                      "content": "完成",
+                      "fontFamily": "$font-body",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "l744ap",
+                  "name": "Mobile Step 写入本地消息",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "z4Itj9",
+                      "name": "Mobile 写入本地消息 Icon Surface",
+                      "width": 32,
+                      "height": 32,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 9,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "N3amM",
+                          "name": "Mobile 写入本地消息 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "database",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "IAt70",
+                      "name": "Mobile 写入本地消息 Label",
+                      "fill": "$ink",
+                      "content": "写入本地消息",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "s6qmlR",
+                      "name": "Mobile 写入本地消息 State",
+                      "fill": "$accent-strong",
+                      "content": "进行中",
+                      "fontFamily": "$font-body",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hgxuz",
+                  "name": "Mobile Step 提交设备游标",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ItePA",
+                      "name": "Mobile 提交设备游标 Icon Surface",
+                      "width": 32,
+                      "height": 32,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 9,
+                      "layout": "vertical",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Ecqzh",
+                          "name": "Mobile 提交设备游标 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "cloud-upload",
+                          "library": "lucide",
+                          "fill": "$ink-faint"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "hEaPH",
+                      "name": "Mobile 提交设备游标 Label",
+                      "fill": "$ink",
+                      "content": "提交设备游标",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "OdAeG",
+                      "name": "Mobile 提交设备游标 State",
+                      "fill": "$ink-faint",
+                      "content": "等待",
+                      "fontFamily": "$font-body",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ej6z4",
+              "name": "Mobile Offline Note",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 10,
+              "gap": 8,
+              "padding": 11,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "v6A8Zs",
+                  "name": "Mobile Offline Note Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "cloud-off",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "YQhvx",
+                  "name": "Mobile Offline Note Text",
+                  "fill": "$warning",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "断网时继续浏览已保存消息",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

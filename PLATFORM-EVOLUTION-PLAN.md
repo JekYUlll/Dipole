@@ -269,7 +269,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 审计 created Outbox 历史覆盖，为缺少 created Outbox 的 Inbox 建立固定高水位、SHA-256 不可变 baseline、精确 Reconcile 与保序 Restore，解决 `AD-024`。
 - [x] 验证 earliest consumer 与固定 Outbox Replay 拼接后的在线追平窗口，并以 lag=0、retry/DLQ 无增量和 Reconcile 一致作为停止门槛。
 - [x] 迁移 Message 的 Inbox 写责任和数据库权限：Sync/Message 使用操作级最小账号，`projector` 停止 Message Inbox 写入，`atomic` 保留一键恢复窗口，并通过真实 MySQL 演练解决 `AD-023`。
-- [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
+- [x] 前端增加默认关闭的 IndexedDB Sync Engine，以同一事务提交消息和本地游标，恢复/重连后再显式 ACK 服务端设备 Cursor。
+- [ ] 灰度双跑 `/messages/offline` 与 `/sync`，归档按稳定 Message UUID 比较的结果并完成旧 Offline 兼容窗口。
+- [ ] 默认启用前统一显式退出、401、WS kick 与账号切换的本地清理，并建立容量水位和安全淘汰策略，解决 `AD-025`。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
@@ -348,7 +350,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ## 10. 持续轨道：Pencil 前端设计
 
 - [ ] F1：已建立 `design/dipole-ui.pen`、首组 design tokens 与 Search 核心组件；Login/Chat desktop/mobile 待完成。
-- [ ] F2：Search desktop/mobile 四态及 Vue 工作区已完成；Contact、Group、File、Sync、Device 与 Settings 待完成。
+- [ ] F2：Search 四态及 Vue 工作区已完成；Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成，Contact、Group、File、Device 与 Settings 待完成。
 - [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
 - [ ] F4：已建立 Pencil 增量更新、设计日志和 Vitest 组件测试基线；Vue token 映射、Playwright E2E 与视觉回归待完成。
 

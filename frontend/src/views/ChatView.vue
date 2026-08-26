@@ -169,6 +169,18 @@
             <span class="status-chip-icon">!</span>
             已删好友
           </span>
+          <button
+            v-if="chat.syncStatus !== 'idle'"
+            class="sync-status"
+            :class="`sync-status-${chat.syncStatus}`"
+            :title="chat.syncStatus === 'error' ? '点击重试消息同步' : `安全同步游标 ${chat.safeSyncSeq}`"
+            @click="chat.syncStatus === 'error' && chat.syncMessages().catch(() => {})"
+          >
+            <span class="sync-status-dot" aria-hidden="true"></span>
+            <span v-if="chat.syncStatus === 'restoring'">正在恢复</span>
+            <span v-else-if="chat.syncStatus === 'error'">同步中断</span>
+            <span v-else>已同步</span>
+          </button>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
         </div>
 
@@ -1619,6 +1631,7 @@ const handleWsPacket = async (packet: WsPacket) => {
   switch (type) {
     case 'connected':
 	  await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
+	  await chat.syncMessages().catch(() => {})
 	  await chat.recoverGroupMessages().catch(() => {})
       break
     case 'chat.message':
@@ -1721,6 +1734,7 @@ onMounted(async () => {
   if (!auth.token) return
   await auth.fetchMe()
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
+	await chat.syncMessages().catch(() => {})
 	await chat.recoverGroupMessages().catch(() => {})
   ws.connect(auth.token)
   setupMediaObserver()
@@ -2347,6 +2361,43 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8f7ee;
+  color: #087a4d;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sync-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sync-status-restoring .sync-status-dot {
+  animation: sync-pulse 1s ease-in-out infinite;
+}
+
+.sync-status-error {
+  background: #fdeaea;
+  color: #c53b3b;
+  cursor: pointer;
+}
+
+@keyframes sync-pulse {
+  50% { opacity: 0.3; }
+}
+
 .detail-toggle {
   background: none;
   border: none;
@@ -2921,6 +2972,10 @@ onBeforeUnmount(() => {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .sync-status {
+    padding: 5px 7px;
+  }
+
   .left-panel {
     position: absolute;
     left: 0;

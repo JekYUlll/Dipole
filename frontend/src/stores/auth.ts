@@ -34,6 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     try { await api.post('/api/v1/auth/logout') } catch { /* ignore */ }
+    try { await useChatStore().clearLocalMessages(currentUser.value?.uuid || '') } catch { /* best effort */ }
     _clearSession()
   }
 

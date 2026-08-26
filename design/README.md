@@ -27,6 +27,23 @@
 
 Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器位于 `frontend/src/composables/useMessageSearch.ts`。入口由 `VITE_SEARCH_ENABLED=true` 控制，并要求 Gateway 同时启用 `search.enabled`。
 
+### Sync v1
+
+- `Sync/State Matrix`：Restoring、Current、Offline、Error 四态。
+- `Sync/Desktop/Restoring`
+- `Sync/Mobile/Restoring`
+- `Component/Sync Status`：页面和标题栏共享的同步状态语义。
+
+批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_ENABLED=true` 控制。
+
+## Sync 交互契约
+
+- 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
+- 每页消息与本地游标在同一 IndexedDB 事务中提交；只有事务成功后才能更新内存并 ACK 服务端设备 Cursor。
+- 网络中断时保留本地可读消息；同步失败采用局部状态和显式重试，不遮挡聊天主链路。
+- 本地数据按认证用户隔离，显式退出账号时清除此账号的消息与游标。
+- `message_uuid` 负责稳定身份，`message_seq` 负责会话排序，`sync_seq` 负责设备增量恢复；页面不依赖 MySQL 内部自增 ID。
+
 ## Search 交互契约
 
 - 用户从会话侧栏搜索入口或键盘快捷键进入全局消息搜索。
