@@ -61,19 +61,23 @@ type Auth struct {
 }
 
 type Kafka struct {
-	Enabled                 bool     `mapstructure:"enabled"`
-	Brokers                 []string `mapstructure:"brokers"`
-	ClientID                string   `mapstructure:"client_id"`
-	TopicPrefix             string   `mapstructure:"topic_prefix"`
-	TopicPartitions         int      `mapstructure:"topic_partitions"`
-	TopicReplicationFactor  int      `mapstructure:"topic_replication_factor"`
-	TopicMinInSyncReplicas  int      `mapstructure:"topic_min_insync_replicas"`
-	TopicRetentionHours     int      `mapstructure:"topic_retention_hours"`
-	RequiredAcks            string   `mapstructure:"required_acks"`
-	DialTimeoutSeconds      int      `mapstructure:"dial_timeout_seconds"`
-	WriteTimeoutSeconds     int      `mapstructure:"write_timeout_seconds"`
-	ConsumeRetryMaxAttempts int      `mapstructure:"consume_retry_max_attempts"`
-	ConsumeRetryBackoffMS   int      `mapstructure:"consume_retry_backoff_ms"`
+	Enabled                         bool     `mapstructure:"enabled"`
+	Brokers                         []string `mapstructure:"brokers"`
+	ClientID                        string   `mapstructure:"client_id"`
+	TopicPrefix                     string   `mapstructure:"topic_prefix"`
+	TopicPartitions                 int      `mapstructure:"topic_partitions"`
+	TopicReplicationFactor          int      `mapstructure:"topic_replication_factor"`
+	TopicMinInSyncReplicas          int      `mapstructure:"topic_min_insync_replicas"`
+	TopicRetentionHours             int      `mapstructure:"topic_retention_hours"`
+	RequiredAcks                    string   `mapstructure:"required_acks"`
+	DialTimeoutSeconds              int      `mapstructure:"dial_timeout_seconds"`
+	WriteTimeoutSeconds             int      `mapstructure:"write_timeout_seconds"`
+	ConsumeRetryMaxAttempts         int      `mapstructure:"consume_retry_max_attempts"`
+	ConsumeRetryBackoffMS           int      `mapstructure:"consume_retry_backoff_ms"`
+	ConsumerGroupBalancer           string   `mapstructure:"consumer_group_balancer"`
+	ConsumerHeartbeatSeconds        int      `mapstructure:"consumer_heartbeat_seconds"`
+	ConsumerSessionTimeoutSeconds   int      `mapstructure:"consumer_session_timeout_seconds"`
+	ConsumerRebalanceTimeoutSeconds int      `mapstructure:"consumer_rebalance_timeout_seconds"`
 }
 
 type Message struct {
@@ -216,6 +220,10 @@ func Load() error {
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
+		v.SetDefault("kafka.consumer_group_balancer", "roundrobin")
+		v.SetDefault("kafka.consumer_heartbeat_seconds", 3)
+		v.SetDefault("kafka.consumer_session_timeout_seconds", 30)
+		v.SetDefault("kafka.consumer_rebalance_timeout_seconds", 30)
 		v.SetDefault("message.transport", "local")
 		v.SetDefault("message.runtime_mode", "owner")
 		v.SetDefault("message.shadow_queries", false)
@@ -505,6 +513,10 @@ func KafkaConfig() Kafka {
 	kafkaConfig.WriteTimeoutSeconds = cfg.GetInt("kafka.write_timeout_seconds")
 	kafkaConfig.ConsumeRetryMaxAttempts = cfg.GetInt("kafka.consume_retry_max_attempts")
 	kafkaConfig.ConsumeRetryBackoffMS = cfg.GetInt("kafka.consume_retry_backoff_ms")
+	kafkaConfig.ConsumerGroupBalancer = strings.ToLower(strings.TrimSpace(cfg.GetString("kafka.consumer_group_balancer")))
+	kafkaConfig.ConsumerHeartbeatSeconds = cfg.GetInt("kafka.consumer_heartbeat_seconds")
+	kafkaConfig.ConsumerSessionTimeoutSeconds = cfg.GetInt("kafka.consumer_session_timeout_seconds")
+	kafkaConfig.ConsumerRebalanceTimeoutSeconds = cfg.GetInt("kafka.consumer_rebalance_timeout_seconds")
 
 	return kafkaConfig
 }

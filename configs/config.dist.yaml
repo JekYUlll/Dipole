@@ -54,6 +54,10 @@ kafka:
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3
   consume_retry_backoff_ms: 500
+  consumer_group_balancer: roundrobin
+  consumer_heartbeat_seconds: 3
+  consumer_session_timeout_seconds: 30
+  consumer_rebalance_timeout_seconds: 30
 
 message:
   # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.

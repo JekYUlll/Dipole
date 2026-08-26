@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
@@ -34,16 +36,52 @@ type Event struct {
 type Handler func(context.Context, Event) error
 
 type Consumer struct {
-	clientID    string
-	groupID     string
-	topicPrefix string
-	brokers     []string
-	maxAttempts int
-	backoff     time.Duration
+	clientID          string
+	groupID           string
+	topicPrefix       string
+	brokers           []string
+	dialTimeout       time.Duration
+	maxAttempts       int
+	backoff           time.Duration
+	groupBalancer     kafkago.GroupBalancer
+	heartbeatInterval time.Duration
+	sessionTimeout    time.Duration
+	rebalanceTimeout  time.Duration
+
+	fetched        atomic.Uint64
+	handled        atomic.Uint64
+	committed      atomic.Uint64
+	fetchErrors    atomic.Uint64
+	commitErrors   atomic.Uint64
+	retryPublished atomic.Uint64
+	deadPublished  atomic.Uint64
 
 	mu       sync.RWMutex
 	handlers map[string][]Handler
 	readers  map[string]*kafkago.Reader
+}
+
+type ConsumerStats struct {
+	ClientID       string
+	GroupID        string
+	Fetched        uint64
+	Handled        uint64
+	Committed      uint64
+	FetchErrors    uint64
+	CommitErrors   uint64
+	RetryPublished uint64
+	DeadPublished  uint64
+	Readers        []ConsumerReaderStats
+}
+
+type ConsumerReaderStats struct {
+	Topic       string
+	Messages    int64
+	Bytes       int64
+	Rebalances  int64
+	Timeouts    int64
+	Errors      int64
+	QueueLength int64
 }
 
 func InitConsumer() error {
@@ -91,6 +129,15 @@ func newConsumer(cfg config.Kafka) (*Consumer, error) {
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka brokers are empty")
 	}
+	groupBalancer, heartbeat, session, rebalance, err := normalizeConsumerGroupPolicy(
+		cfg.ConsumerGroupBalancer,
+		cfg.ConsumerHeartbeatSeconds,
+		cfg.ConsumerSessionTimeoutSeconds,
+		cfg.ConsumerRebalanceTimeoutSeconds,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	timeout := time.Duration(cfg.DialTimeoutSeconds) * time.Second
 	if timeout <= 0 {
@@ -106,14 +153,19 @@ func newConsumer(cfg config.Kafka) (*Consumer, error) {
 	}
 
 	return &Consumer{
-		clientID:    clientID,
-		groupID:     clientID + "-consumer",
-		topicPrefix: strings.TrimSpace(cfg.TopicPrefix),
-		brokers:     brokers,
-		maxAttempts: normalizeRetryMaxAttempts(cfg.ConsumeRetryMaxAttempts),
-		backoff:     normalizeRetryBackoff(cfg.ConsumeRetryBackoffMS),
-		handlers:    make(map[string][]Handler),
-		readers:     make(map[string]*kafkago.Reader),
+		clientID:          clientID,
+		groupID:           clientID + "-consumer",
+		topicPrefix:       strings.TrimSpace(cfg.TopicPrefix),
+		brokers:           brokers,
+		dialTimeout:       timeout,
+		maxAttempts:       normalizeRetryMaxAttempts(cfg.ConsumeRetryMaxAttempts),
+		backoff:           normalizeRetryBackoff(cfg.ConsumeRetryBackoffMS),
+		groupBalancer:     groupBalancer,
+		heartbeatInterval: heartbeat,
+		sessionTimeout:    session,
+		rebalanceTimeout:  rebalance,
+		handlers:          make(map[string][]Handler),
+		readers:           make(map[string]*kafkago.Reader),
 	}, nil
 }
 
@@ -181,9 +233,11 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 			if ctx.Err() != nil || errors.Is(err, context.Canceled) {
 				return
 			}
+			c.fetchErrors.Add(1)
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
+		c.fetched.Add(1)
 
 		event := Event{
 			Topic:     topic,
@@ -202,7 +256,12 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 		}
 
 		if c.handleWithRetry(ctx, event, handlers) {
-			_ = reader.CommitMessages(ctx, message)
+			c.handled.Add(1)
+			if err := reader.CommitMessages(ctx, message); err != nil {
+				c.commitErrors.Add(1)
+				continue
+			}
+			c.committed.Add(1)
 		}
 	}
 }
@@ -256,15 +315,60 @@ func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {
 		return reader
 	}
 
-	reader := kafkago.NewReader(kafkago.ReaderConfig{
-		Brokers:     c.brokers,
-		GroupID:     c.groupID,
-		Topic:       topic,
-		StartOffset: kafkago.LastOffset,
-		MaxWait:     kafkaReaderMaxWait,
-	})
+	reader := kafkago.NewReader(c.readerConfig(topic))
 	c.readers[topic] = reader
 	return reader
+}
+
+func (c *Consumer) readerConfig(topic string) kafkago.ReaderConfig {
+	return kafkago.ReaderConfig{
+		Brokers:               c.brokers,
+		GroupID:               c.groupID,
+		Topic:                 topic,
+		StartOffset:           kafkago.LastOffset,
+		MaxWait:               kafkaReaderMaxWait,
+		GroupBalancers:        []kafkago.GroupBalancer{c.groupBalancer},
+		HeartbeatInterval:     c.heartbeatInterval,
+		SessionTimeout:        c.sessionTimeout,
+		RebalanceTimeout:      c.rebalanceTimeout,
+		WatchPartitionChanges: true,
+		Dialer:                &kafkago.Dialer{Timeout: c.dialTimeout, ClientID: c.clientID},
+	}
+}
+
+// CollectStats returns cumulative delivery outcomes and per-reader deltas
+// since the previous collection, matching kafka-go Reader.Stats semantics.
+func (c *Consumer) CollectStats() ConsumerStats {
+	if c == nil {
+		return ConsumerStats{}
+	}
+	result := ConsumerStats{
+		ClientID:       c.clientID,
+		GroupID:        c.groupID,
+		Fetched:        c.fetched.Load(),
+		Handled:        c.handled.Load(),
+		Committed:      c.committed.Load(),
+		FetchErrors:    c.fetchErrors.Load(),
+		CommitErrors:   c.commitErrors.Load(),
+		RetryPublished: c.retryPublished.Load(),
+		DeadPublished:  c.deadPublished.Load(),
+	}
+	c.mu.RLock()
+	readers := make(map[string]*kafkago.Reader, len(c.readers))
+	for topic, reader := range c.readers {
+		readers[topic] = reader
+	}
+	c.mu.RUnlock()
+	for topic, reader := range readers {
+		stats := reader.Stats()
+		result.Readers = append(result.Readers, ConsumerReaderStats{
+			Topic: topic, Messages: stats.Messages, Bytes: stats.Bytes,
+			Rebalances: stats.Rebalances, Timeouts: stats.Timeouts,
+			Errors: stats.Errors, QueueLength: stats.QueueLength,
+		})
+	}
+	sort.Slice(result.Readers, func(i, j int) bool { return result.Readers[i].Topic < result.Readers[j].Topic })
+	return result
 }
 
 func (c *Consumer) topicName(topic string) string {
@@ -317,11 +421,15 @@ func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, la
 	if attempt+1 < c.maxAttempts {
 		headers["retry_attempt"] = strconv.Itoa(attempt + 1)
 		retryTopic := retryTopicName(baseTopic)
-		return Client.Publish(ctx, retryTopic, Message{
+		published := Client.Publish(ctx, retryTopic, Message{
 			Key:     event.Key,
 			Value:   event.Value,
 			Headers: headers,
 		}) == nil
+		if published {
+			c.retryPublished.Add(1)
+		}
+		return published
 	}
 
 	return c.publishDeadLetter(ctx, event, lastErr, "handler_failed")
@@ -333,11 +441,15 @@ func (c *Consumer) publishDeadLetter(ctx context.Context, event Event, lastErr e
 	}
 	headers := c.deadLetterHeaders(event, lastErr, reason)
 	deadTopic := deadTopicName(c.baseTopicName(event.Topic))
-	return Client.Publish(ctx, deadTopic, Message{
+	published := Client.Publish(ctx, deadTopic, Message{
 		Key:     event.Key,
 		Value:   event.Value,
 		Headers: headers,
 	}) == nil
+	if published {
+		c.deadPublished.Add(1)
+	}
+	return published
 }
 
 func (c *Consumer) deadLetterHeaders(event Event, lastErr error, reason string) map[string]string {
@@ -412,4 +524,35 @@ func normalizeRetryBackoff(backoffMS int) time.Duration {
 		backoffMS = 500
 	}
 	return time.Duration(backoffMS) * time.Millisecond
+}
+
+func normalizeConsumerGroupPolicy(balancerName string, heartbeatSeconds, sessionSeconds, rebalanceSeconds int) (kafkago.GroupBalancer, time.Duration, time.Duration, time.Duration, error) {
+	var balancer kafkago.GroupBalancer
+	switch strings.ToLower(strings.TrimSpace(balancerName)) {
+	case "", "roundrobin", "round-robin":
+		balancer = kafkago.RoundRobinGroupBalancer{}
+	case "range":
+		balancer = kafkago.RangeGroupBalancer{}
+	default:
+		return nil, 0, 0, 0, fmt.Errorf("unsupported kafka consumer group balancer %q", balancerName)
+	}
+	if heartbeatSeconds <= 0 {
+		heartbeatSeconds = 3
+	}
+	if sessionSeconds <= 0 {
+		sessionSeconds = 30
+	}
+	if rebalanceSeconds <= 0 {
+		rebalanceSeconds = 30
+	}
+	heartbeat := time.Duration(heartbeatSeconds) * time.Second
+	session := time.Duration(sessionSeconds) * time.Second
+	rebalance := time.Duration(rebalanceSeconds) * time.Second
+	if heartbeat >= session {
+		return nil, 0, 0, 0, fmt.Errorf("kafka consumer heartbeat %s must be shorter than session timeout %s", heartbeat, session)
+	}
+	if rebalance < session {
+		return nil, 0, 0, 0, fmt.Errorf("kafka consumer rebalance timeout %s must be at least session timeout %s", rebalance, session)
+	}
+	return balancer, heartbeat, session, rebalance, nil
 }
