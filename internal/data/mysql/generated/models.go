@@ -6,6 +6,7 @@ package generated
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Contact struct {
@@ -28,6 +29,30 @@ type ContactApplication struct {
 	HandledAt     sql.NullTime
 	CreatedAt     sql.NullTime
 	UpdatedAt     sql.NullTime
+}
+
+type Group struct {
+	ID             uint64
+	Uuid           string
+	Name           string
+	Notice         string
+	Avatar         string
+	AvatarFileUuid sql.NullString
+	OwnerUuid      string
+	MemberCount    int64
+	Status         int8
+	CreatedAt      sql.NullTime
+	UpdatedAt      sql.NullTime
+}
+
+type GroupMember struct {
+	ID        uint64
+	GroupUuid string
+	UserUuid  string
+	Role      int8
+	JoinedAt  time.Time
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
 }
 
 type UploadedFile struct {
