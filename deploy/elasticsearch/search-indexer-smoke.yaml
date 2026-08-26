@@ -1,0 +1,33 @@
+app:
+  name: dipole-search-indexer-smoke
+  env: test
+log:
+  level: info
+  format: console
+  development: false
+metrics:
+  enabled: false
+kafka:
+  enabled: true
+  brokers: [kafka-1:9092, kafka-2:9092, kafka-3:9092]
+  client_id: dipole-search-indexer-smoke
+  topic_prefix: dipole
+  topic_partitions: 6
+  topic_replication_factor: 3
+  topic_min_insync_replicas: 2
+  required_acks: all
+  dial_timeout_seconds: 5
+  write_timeout_seconds: 5
+  consume_retry_max_attempts: 3
+  consume_retry_backoff_ms: 200
+  consumer_group_balancer: roundrobin
+  consumer_heartbeat_seconds: 3
+  consumer_session_timeout_seconds: 30
+  consumer_rebalance_timeout_seconds: 30
+elasticsearch:
+  enabled: true
+  address: http://elasticsearch:9200
+  index_prefix: dipole-smoke
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 15

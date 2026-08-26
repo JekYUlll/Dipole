@@ -58,6 +58,18 @@ cassandra:
   timeline_bucket_size: 10000
   connect_timeout_seconds: 5
 
+elasticsearch:
+  # Search Indexer owns this connection; Core, Message and Gateway keep it disabled.
+  enabled: false
+  address: http://127.0.0.1:19200
+  index_prefix: dipole
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 10
+  username: ""
+  password: ""
+  api_key: ""
+
 kafka:
   enabled: true
   brokers:

@@ -72,6 +72,18 @@ type Cassandra struct {
 	ConnectTimeoutSeconds int      `mapstructure:"connect_timeout_seconds"`
 }
 
+type Elasticsearch struct {
+	Enabled               bool   `mapstructure:"enabled"`
+	Address               string `mapstructure:"address"`
+	IndexPrefix           string `mapstructure:"index_prefix"`
+	Shards                int    `mapstructure:"shards"`
+	Replicas              int    `mapstructure:"replicas"`
+	RequestTimeoutSeconds int    `mapstructure:"request_timeout_seconds"`
+	Username              string `mapstructure:"username"`
+	Password              string `mapstructure:"password"`
+	APIKey                string `mapstructure:"api_key"`
+}
+
 type Auth struct {
 	TokenTTLHours int    `mapstructure:"token_ttl_hours"`
 	JWTSecret     string `mapstructure:"jwt_secret"`
@@ -237,6 +249,15 @@ func Load() error {
 		v.SetDefault("cassandra.local_datacenter", "datacenter1")
 		v.SetDefault("cassandra.timeline_bucket_size", 10000)
 		v.SetDefault("cassandra.connect_timeout_seconds", 5)
+		v.SetDefault("elasticsearch.enabled", false)
+		v.SetDefault("elasticsearch.address", "http://127.0.0.1:19200")
+		v.SetDefault("elasticsearch.index_prefix", "dipole")
+		v.SetDefault("elasticsearch.shards", 1)
+		v.SetDefault("elasticsearch.replicas", 0)
+		v.SetDefault("elasticsearch.request_timeout_seconds", 10)
+		v.SetDefault("elasticsearch.username", "")
+		v.SetDefault("elasticsearch.password", "")
+		v.SetDefault("elasticsearch.api_key", "")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
@@ -356,6 +377,15 @@ func Load() error {
 			"cassandra.local_datacenter",
 			"cassandra.timeline_bucket_size",
 			"cassandra.connect_timeout_seconds",
+			"elasticsearch.enabled",
+			"elasticsearch.address",
+			"elasticsearch.index_prefix",
+			"elasticsearch.shards",
+			"elasticsearch.replicas",
+			"elasticsearch.request_timeout_seconds",
+			"elasticsearch.username",
+			"elasticsearch.password",
+			"elasticsearch.api_key",
 			"kafka.enabled",
 			"kafka.brokers",
 			"kafka.client_id",
@@ -544,6 +574,15 @@ func CassandraConfig() Cassandra {
 	}
 
 	return cassandra
+}
+
+func ElasticsearchConfig() Elasticsearch {
+	MustLoad()
+	var elasticsearch Elasticsearch
+	if err := cfg.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
+		panic(fmt.Errorf("unmarshal Elasticsearch config: %w", err))
+	}
+	return elasticsearch
 }
 
 func AuthConfig() Auth {

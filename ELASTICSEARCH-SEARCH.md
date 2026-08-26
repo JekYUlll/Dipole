@@ -1,6 +1,6 @@
 # Elasticsearch Message Search
 
-本文档记录 A5 Message Search Projection 的版本化索引、Alias、外部版本、作用域查询和渐进接线边界。当前交付只提供 Elasticsearch adapter 与真实存储 contract；生产 Kafka consumer、查询 API 和流量开关保持关闭。
+本文档记录 A5 Message Search Projection 的版本化索引、Alias、外部版本、作用域查询和渐进接线边界。独立 Search Indexer 已具备真实 Kafka/Elasticsearch 链路；查询 API 和生产流量开关保持关闭。
 
 ## Index Contract
 
@@ -57,6 +57,18 @@ Search adapter 要求非空 `conversation_keys` 与检索文本。会话列表�
 
 调用方仍需先通过 Core 计算当前 principal 可访问的会话集合。Elasticsearch 不承担成员关系事实；空 scope 必须 fail closed，索引结果不能扩大授权范围。
 
+## Search Indexer Runtime
+
+`cmd/search-indexer` 是独立部署单元，启动顺序固定为 Elasticsearch 配置校验、v1 mapping/Alias readiness、Kafka 初始化、八类 Topic 注册、consumer assignment 和 metrics listener。默认 `elasticsearch.enabled=false`，不会进入 Core、Message 或 Gateway Composition Root。
+
+订阅 Topic：
+
+```text
+message.{direct,group}.{created,edited,recalled,deleted}
+```
+
+created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombstone。consumer group 固定为 `dipole-search-indexer-consumer`；处理失败沿用平台 retry/DLQ 机制，确认 offset 前必须完成 Elasticsearch Apply。运行配置支持 Basic Auth 或 API Key，两种认证不能同时启用。
+
 ## Alias Migration
 
 新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。回滚使用同一原子操作反向切换。
@@ -73,19 +85,21 @@ Search adapter 要求非空 `conversation_keys` 与检索文本。会话列表�
 - 首次写入、相同 revision 重放、旧 revision no-op、同 revision payload 冲突和 tombstone 防复活。
 - conversation scope 去重、排序、fail closed 与 100 条上限。
 - ES 错误响应有界读取，避免诊断内容无限进入内存。
+- Search Projector 的八类 Topic 映射、legacy created 默认、channel/target 冲突与 adapter 失败传播。
 
-真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。测试入口：
+真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。三节点 Kafka 端到端 smoke 进一步验证 created r1、recalled r3 与迟到 edited r2 最终保持 revision 3 tombstone。测试入口：
 
 ```bash
 DIPOLE_TEST_ELASTICSEARCH_URL=http://127.0.0.1:9200 \
   go test -count=1 -run TestIndexContract -v ./internal/data/elasticsearch
+
+scripts/smoke-search-indexer.sh
 ```
 
 ## Next Milestones
 
-1. 新增默认关闭的独立 `dipole-search-indexer` Kafka consumer 与 metrics。
-2. 增加固定快照 Backfill、数量/hash Reconcile 和 Alias 切换命令。
-3. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
+1. 增加固定快照 Backfill、数量/hash Reconcile 和 Alias 切换命令。
+2. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
 
 ## References
 

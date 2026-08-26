@@ -33,6 +33,9 @@ type Config struct {
 	IndexPrefix string
 	Shards      int
 	Replicas    int
+	Username    string
+	Password    string
+	APIKey      string
 	HTTPClient  *http.Client
 }
 
@@ -44,6 +47,9 @@ type Index struct {
 	writeAlias    string
 	shards        int
 	replicas      int
+	username      string
+	password      string
+	apiKey        string
 }
 
 var _ application.SearchIndex = (*Index)(nil)
@@ -67,12 +73,22 @@ func NewIndex(config Config) (*Index, error) {
 	if config.Replicas < 0 {
 		return nil, errors.New("Elasticsearch replica count cannot be negative")
 	}
+	username := strings.TrimSpace(config.Username)
+	password := strings.TrimSpace(config.Password)
+	apiKey := strings.TrimSpace(config.APIKey)
+	if apiKey != "" && (username != "" || password != "") {
+		return nil, errors.New("Elasticsearch API key and basic authentication are mutually exclusive")
+	}
+	if (username == "") != (password == "") {
+		return nil, errors.New("Elasticsearch username and password must be configured together")
+	}
 	client := config.HTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}
 	return &Index{
 		baseURL: baseURL, client: client, shards: config.Shards, replicas: config.Replicas,
+		username: username, password: password, apiKey: apiKey,
 		physicalIndex: prefix + "-messages-" + mappingVersion,
 		readAlias:     prefix + "-messages-read", writeAlias: prefix + "-messages-write",
 	}, nil
@@ -341,6 +357,11 @@ func (i *Index) request(ctx context.Context, method, path string, body []byte) (
 	}
 	if len(body) > 0 {
 		request.Header.Set("Content-Type", "application/json")
+	}
+	if i.apiKey != "" {
+		request.Header.Set("Authorization", "ApiKey "+i.apiKey)
+	} else if i.username != "" {
+		request.SetBasicAuth(i.username, i.password)
 	}
 	response, err := i.client.Do(request)
 	if err != nil {
