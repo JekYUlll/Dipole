@@ -17,3 +17,13 @@ cassandra:
   local_datacenter: datacenter1
   timeline_bucket_size: 10000
   connect_timeout_seconds: 5
+
+storage:
+  enabled: true
+  provider: minio
+  endpoint: minio:9000
+  access_key: dipoleminio
+  secret_key: dipoleminiopass
+  use_ssl: false
+  message_archive_bucket: dipole-message-archives
+  message_archive_retention_days: 30

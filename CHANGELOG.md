@@ -17,6 +17,9 @@
 
 ### 新增
 
+- 增加 `dipole-cassandra-archive` 与不可变完整消息快照：按固定 MySQL Message 高水位导出完整字段 NDJSON、SHA-256 manifest，并支持 MinIO object-lock 发布、固定 Version ID 恢复。
+- Cassandra Backfill/Reconcile 增加 `mysql|archive` source selector；migration v15 将 Job 绑定到 source kind、snapshot ID 与 hash，同名 Job 续跑、完成后复核均拒绝换源或篡改。
+- Storage 配置增加 `message_archive_bucket` 与 `message_archive_retention_days`，Compose 初始化独立 `dipole-message-archives` bucket、版本控制和 30 天默认 Governance 保留。
 - 增加默认关闭的 `message.cassandra_duplicate_hydration`：重复发送先用 Metadata locator 从 Cassandra Timeline 恢复原响应，命中时不读取 MySQL 正文；缺行、查询错误、位置冲突或历史 Seq 缺失时回退 MySQL。
 - 增加 `dipole_message_duplicate_hydration_total{outcome}`，预注册 `hit|fallback|skipped_no_seq` 三种有界结果，用于评估幂等响应正文退役条件。
 - 增加 `dipole-search-outbox-cleanup` 受控清理命令：默认 dry-run，只接受已验证对象归档 receipt、一致 Reconcile 报告和匹配 Backfill Job；执行模式强制维护窗口确认与 operator，并输出对象版本、高水位和删除统计审计字段。
@@ -204,6 +207,7 @@
 
 ### 迁移说明
 
+- 发布 Cassandra 完整消息归档能力时先执行 migration v15；已有 Job 按固定高水位回填 `mysql-messages:<id>`。归档 Backfill/Reconcile 必须使用同一 manifest 和 Job 名；需要换源时创建新 Job，禁止覆盖归档或复用旧 checkpoint。
 - 发布归档重建能力时先执行 migration v13；已有 Search Job 会按其固定高水位回填 `mysql-outbox:<id>` 身份。归档模式要求三条命令使用同一 manifest 和新 Job 名，回滚可显式恢复 `--source=mysql`，不得覆盖已存在归档文件。
 - 发布 Message Metadata 时先执行 migration v12 并应用更新后的 Message atomic/projector GRANT，再滚动新 Message 节点；回滚先恢复旧节点，再执行 down migration。历史 `payload_sha256=''` 表示迁移前未记录指纹，不据此拒绝重复请求。
 - migration v14 为 `message_metadata` 回填 `legacy_message_id`；先执行 migration，再灰度开启 `message.cassandra_duplicate_hydration`。回滚开关后可继续使用 MySQL 正文，随后再执行 v14 down migration。
@@ -301,11 +305,12 @@
 - 已通过 Kafka/Cassandra projector 演练：独立 consumer group 获得 assignment 后消费两次相同 created event，最终只生成一条 Timeline 记录。
 - 已通过 MySQL 8.4 Backfill lease 合约，以及 MySQL/Cassandra 恢复演练：失败批次 checkpoint 不前移，恢复时安全重放 duplicate，最终固定高水位全部完成。
 - 已通过 Cassandra 对账演练：干净快照全量匹配；人工篡改后检测 hash 与样本差异并返回退出码 2，差异报告不包含消息正文。
+- 已通过 MySQL 8.4、MinIO Object Lock 与 Cassandra 5.0.9 联合演练：发布并按固定对象版本恢复完整消息归档，删除 MySQL `messages` 正文后仍重建 3 条 Timeline 并 3/3 对账；换源、内容篡改和保留期内删除均被拒绝。
 
 ### 已知问题
 
 - 前端完整开发依赖审计仍受 Vite 5/esbuild 链影响，主版本升级和兼容验证记录为 `AD-022`；生产依赖审计已通过。
-- Sync Inbox、旧 Offline、幂等结果、文件授权和 Cassandra 恢复工具仍依赖 MySQL 完整消息，正文退役条件记录为 AD-019。
+- Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。
 - Web 协议对照首批仅覆盖收到的私聊消息；群聊存在普通群 fanout 与热群 notify/pull 两套语义，需按群类型建立独立比较契约后再纳入。

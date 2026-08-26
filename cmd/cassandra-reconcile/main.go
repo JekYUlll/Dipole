@@ -18,6 +18,8 @@ func main() {
 	batchSize := flag.Int("batch-size", 500, "MySQL source rows read per page")
 	sampleModulus := flag.Uint64("sample-modulus", 100, "sample messages whose stable hash is divisible by this value")
 	maxExamples := flag.Int("max-examples", 100, "maximum mismatch examples included in the report")
+	source := flag.String("source", "mysql", "snapshot source: mysql or archive")
+	archiveManifest := flag.String("archive-manifest", "", "immutable message archive manifest path")
 	flag.Parse()
 
 	if err := config.Load(); err != nil {
@@ -28,6 +30,7 @@ func main() {
 	defer stop()
 	report, err := bootstrap.RunCassandraReconciliation(ctx, bootstrap.CassandraReconciliationOptions{
 		JobName: *jobName, BatchSize: *batchSize, SampleModulus: *sampleModulus, MaxExamples: *maxExamples,
+		Source: *source, ArchiveManifest: *archiveManifest,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

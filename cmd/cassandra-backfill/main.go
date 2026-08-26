@@ -18,6 +18,8 @@ func main() {
 	ownerID := flag.String("owner", defaultOwnerID(), "lease owner identity")
 	batchSize := flag.Int("batch-size", 500, "messages copied before checkpoint advance")
 	leaseSeconds := flag.Int("lease-seconds", 60, "owner lease duration renewed after each batch")
+	source := flag.String("source", "mysql", "snapshot source: mysql or archive")
+	archiveManifest := flag.String("archive-manifest", "", "immutable message archive manifest path")
 	flag.Parse()
 
 	if err := config.Load(); err != nil {
@@ -29,6 +31,7 @@ func main() {
 	result, err := bootstrap.RunCassandraBackfill(ctx, bootstrap.CassandraBackfillOptions{
 		JobName: *jobName, OwnerID: *ownerID, BatchSize: *batchSize,
 		LeaseDuration: time.Duration(*leaseSeconds) * time.Second,
+		Source:        *source, ArchiveManifest: *archiveManifest,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

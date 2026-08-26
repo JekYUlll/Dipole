@@ -9,8 +9,11 @@ ORDER BY id ASC
 LIMIT ?;
 
 -- name: EnsureCassandraBackfillJob :exec
-INSERT INTO cassandra_backfill_jobs (job_name, source_high_watermark_id, last_error)
-VALUES (?, ?, '')
+INSERT INTO cassandra_backfill_jobs (
+  job_name, source_kind, source_snapshot_id, source_sha256,
+  source_high_watermark_id, last_error
+)
+VALUES (?, ?, ?, ?, ?, '')
 ON DUPLICATE KEY UPDATE job_name = VALUES(job_name);
 
 -- name: LockCassandraBackfillJob :one

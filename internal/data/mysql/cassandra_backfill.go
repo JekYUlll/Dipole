@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	ErrCassandraBackfillLeaseHeld  = errors.New("Cassandra backfill lease is held by another owner")
-	ErrCassandraBackfillLeaseLost  = errors.New("Cassandra backfill lease was lost")
-	ErrCassandraBackfillIncomplete = errors.New("Cassandra backfill job is not complete")
+	ErrCassandraBackfillLeaseHeld      = errors.New("Cassandra backfill lease is held by another owner")
+	ErrCassandraBackfillLeaseLost      = errors.New("Cassandra backfill lease was lost")
+	ErrCassandraBackfillIncomplete     = errors.New("Cassandra backfill job is not complete")
+	ErrCassandraBackfillSourceMismatch = errors.New("Cassandra backfill source does not match job")
 )
 
 type CassandraBackfillSource struct{ queries *generated.Queries }
@@ -34,6 +35,12 @@ func (s *CassandraBackfillSource) HighWatermark(ctx context.Context) (uint64, er
 		return 0, nil
 	}
 	return highWatermark, err
+}
+
+func (s *CassandraBackfillSource) Descriptor(_ context.Context, highWatermark uint64) (cassandrabackfill.SourceDescriptor, error) {
+	return cassandrabackfill.SourceDescriptor{
+		Kind: cassandrabackfill.SourceKindMySQLMessages, SnapshotID: fmt.Sprintf("mysql-messages:%d", highWatermark),
+	}, nil
 }
 
 func (s *CassandraBackfillSource) ListAfter(ctx context.Context, afterID, throughID uint64, limit int) ([]cassandrabackfill.SourceMessage, error) {
@@ -61,15 +68,21 @@ func NewCassandraBackfillCheckpointStore(store *Store) (*CassandraBackfillCheckp
 	return &CassandraBackfillCheckpointStore{store: store}, nil
 }
 
-func (s *CassandraBackfillCheckpointStore) Acquire(ctx context.Context, jobName, ownerID string, highWatermark uint64, lease time.Duration) (cassandrabackfill.Checkpoint, error) {
+func (s *CassandraBackfillCheckpointStore) Acquire(ctx context.Context, jobName, ownerID string, source cassandrabackfill.SourceDescriptor, highWatermark uint64, lease time.Duration) (cassandrabackfill.Checkpoint, error) {
 	var checkpoint cassandrabackfill.Checkpoint
 	err := s.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
-		if err := q.EnsureCassandraBackfillJob(ctx, generated.EnsureCassandraBackfillJobParams{JobName: jobName, SourceHighWatermarkID: highWatermark}); err != nil {
+		if err := q.EnsureCassandraBackfillJob(ctx, generated.EnsureCassandraBackfillJobParams{
+			JobName: jobName, SourceKind: strings.TrimSpace(source.Kind), SourceSnapshotID: strings.TrimSpace(source.SnapshotID),
+			SourceSha256: strings.ToLower(strings.TrimSpace(source.SHA256)), SourceHighWatermarkID: highWatermark,
+		}); err != nil {
 			return fmt.Errorf("ensure Cassandra backfill job: %w", err)
 		}
 		job, err := q.LockCassandraBackfillJob(ctx, jobName)
 		if err != nil {
 			return fmt.Errorf("lock Cassandra backfill job: %w", err)
+		}
+		if job.SourceKind != strings.TrimSpace(source.Kind) || job.SourceSnapshotID != strings.TrimSpace(source.SnapshotID) || job.SourceSha256 != strings.ToLower(strings.TrimSpace(source.SHA256)) {
+			return fmt.Errorf("%w: job=%s", ErrCassandraBackfillSourceMismatch, jobName)
 		}
 		checkpoint = cassandrabackfill.Checkpoint{
 			HighWatermarkID: job.SourceHighWatermarkID,
@@ -120,9 +133,20 @@ func (s *CassandraBackfillCheckpointStore) Complete(ctx context.Context, jobName
 }
 
 func (s *CassandraBackfillCheckpointStore) CompletedHighWatermark(ctx context.Context, jobName string) (uint64, error) {
+	return s.completedHighWatermark(ctx, jobName, nil)
+}
+
+func (s *CassandraBackfillCheckpointStore) CompletedHighWatermarkForSource(ctx context.Context, jobName string, source cassandrabackfill.SourceDescriptor) (uint64, error) {
+	return s.completedHighWatermark(ctx, jobName, &source)
+}
+
+func (s *CassandraBackfillCheckpointStore) completedHighWatermark(ctx context.Context, jobName string, source *cassandrabackfill.SourceDescriptor) (uint64, error) {
 	job, err := s.store.Queries().GetCassandraBackfillJob(ctx, strings.TrimSpace(jobName))
 	if err != nil {
 		return 0, fmt.Errorf("read Cassandra backfill job: %w", err)
+	}
+	if source != nil && (job.SourceKind != strings.TrimSpace(source.Kind) || job.SourceSnapshotID != strings.TrimSpace(source.SnapshotID) || job.SourceSha256 != strings.ToLower(strings.TrimSpace(source.SHA256))) {
+		return 0, fmt.Errorf("%w: job=%s", ErrCassandraBackfillSourceMismatch, jobName)
 	}
 	if job.Status != cassandrabackfill.StatusCompleted || job.LastProcessedID != job.SourceHighWatermarkID {
 		return 0, fmt.Errorf("%w: job=%s status=%s checkpoint=%d high_watermark=%d",
