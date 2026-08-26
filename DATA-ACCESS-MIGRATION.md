@@ -64,11 +64,11 @@ go run ./cmd/server
 - 为同一 Application Port 建立 GORM 与 sqlc contract test。
 - [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
 
-首批 AICallLog、Admin、File、User、Contact、Group、Conversation 与 Outbox Relay GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新；Conversation adapter 使用显式赋值顺序保证消息幂等与未读计算；Outbox Relay adapter 在同一事务内执行 `FOR UPDATE SKIP LOCKED` 领取和租约写入。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
+首批 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新；Conversation adapter 使用显式赋值顺序保证消息幂等与未读计算；Outbox Relay adapter 在同一事务内执行 `FOR UPDATE SKIP LOCKED` 领取和租约写入。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
 
-`data.mysql_adapter=gorm|sqlc` 已接入 Composition Root。兼容窗口内，`sqlc` 只选择已经完成 contract test 的 AICallLog、Admin、File、User、Contact、Group、Conversation 与 Outbox Relay Repository，尚未迁移的 Repository 继续使用 GORM；设置未知值会阻止服务启动。可通过环境变量 `DIPOLE_DATA_MYSQL_ADAPTER=gorm` 立即回切。
+`data.mysql_adapter=gorm|sqlc` 已接入 Composition Root。兼容窗口内，`sqlc` 只选择已经完成 contract test 的 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox Repository，尚未迁移的 Repository 继续使用 GORM；设置未知值会阻止服务启动。可通过环境变量 `DIPOLE_DATA_MYSQL_ADAPTER=gorm` 立即回切。
 
-Outbox 当前按职责渐进迁移：Relay 消费侧已接入 sqlc，Message 持久化事务内的 Producer 继续通过 GORM 写入。Producer 与 Message、Sync Inbox 共享原子事务，将在 D3 的高风险写事务切片中整体迁移，避免中途形成跨连接提交。
+Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store，整个边界可通过配置整体回切 GORM。
 
 开发命令：
 

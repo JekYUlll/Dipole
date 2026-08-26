@@ -15,6 +15,14 @@ ORDER BY id ASC
 LIMIT ?
 FOR UPDATE SKIP LOCKED;
 
+-- name: CreateOutboxEvent :execresult
+INSERT INTO outbox_events (
+    aggregate_type, aggregate_id, event_type, topic, message_key, value,
+    headers_json, status, retry_count, last_error, next_retry_at, locked_at,
+    published_at, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+ON DUPLICATE KEY UPDATE id = id;
+
 -- name: MarkOutboxEventsProcessing :execresult
 UPDATE outbox_events
 SET status = ?,

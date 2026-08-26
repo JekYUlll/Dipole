@@ -6,16 +6,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-type MessageRepository struct{}
+var _ application.MessageStore = (*MessageRepository)(nil)
+
+type MessageRepository struct {
+	db *gorm.DB
+}
 
 func NewMessageRepository() *MessageRepository {
 	return &MessageRepository{}
+}
+
+func NewMessageRepositoryWithDB(db *gorm.DB) *MessageRepository {
+	return &MessageRepository{db: db}
 }
 
 // TODO: 为消息表接入自动分表策略，每 10 万条消息滚动到下一张物理表。
@@ -25,11 +34,11 @@ func (r *MessageRepository) Create(message *model.Message) error {
 }
 
 func (r *MessageRepository) CreateWithSync(message *model.Message, recipientUUIDs []string) error {
-	if store.DB == nil {
+	if r.database() == nil {
 		return fmt.Errorf("create message with sync: mysql not initialized")
 	}
 
-	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+	if err := r.database().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(message).Error; err != nil {
 			return fmt.Errorf("create message: %w", err)
 		}
@@ -49,12 +58,12 @@ func (r *MessageRepository) StoreWithOutbox(message *model.Message, event *model
 }
 
 func (r *MessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error {
-	if store.DB == nil {
+	if r.database() == nil {
 		return fmt.Errorf("store message with outbox: mysql not initialized")
 	}
 
 	outboxRepo := NewOutboxRepository()
-	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+	if err := r.database().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(message).Error; err != nil {
 			return fmt.Errorf("create message: %w", err)
 		}
@@ -73,10 +82,10 @@ func (r *MessageRepository) StoreWithOutboxAndSync(message *model.Message, event
 }
 
 func (r *MessageRepository) EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error {
-	if store.DB == nil {
+	if r.database() == nil {
 		return fmt.Errorf("ensure sync inbox: mysql not initialized")
 	}
-	if err := store.DB.Transaction(func(tx *gorm.DB) error {
+	if err := r.database().Transaction(func(tx *gorm.DB) error {
 		return createSyncInboxRows(tx, message, recipientUUIDs)
 	}); err != nil {
 		return fmt.Errorf("ensure sync inbox: %w", err)
@@ -89,7 +98,7 @@ func (r *MessageRepository) EnsureOutbox(event *model.OutboxEvent) error {
 		return nil
 	}
 
-	if err := NewOutboxRepository().Enqueue(nil, event); err != nil {
+	if err := NewOutboxRepositoryWithDB(r.database()).Enqueue(nil, event); err != nil {
 		return fmt.Errorf("ensure outbox event: %w", err)
 	}
 
@@ -98,7 +107,7 @@ func (r *MessageRepository) EnsureOutbox(event *model.OutboxEvent) error {
 
 func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	var message model.Message
-	if err := store.DB.Where("uuid = ?", uuid).First(&message).Error; err != nil {
+	if err := r.database().Where("uuid = ?", uuid).First(&message).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -110,7 +119,7 @@ func (r *MessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 
 func (r *MessageRepository) GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error) {
 	var message model.Message
-	if err := store.DB.Where("sender_uuid = ? AND client_message_id = ?", senderUUID, clientMessageID).First(&message).Error; err != nil {
+	if err := r.database().Where("sender_uuid = ? AND client_message_id = ?", senderUUID, clientMessageID).First(&message).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -122,7 +131,7 @@ func (r *MessageRepository) GetBySenderAndClientMessageID(senderUUID, clientMess
 
 func (r *MessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
 	var count int64
-	if err := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey).Count(&count).Error; err != nil {
+	if err := r.database().Model(&model.Message{}).Where("conversation_key = ?", conversationKey).Count(&count).Error; err != nil {
 		return false, fmt.Errorf("check messages by conversation key: %w", err)
 	}
 
@@ -130,7 +139,7 @@ func (r *MessageRepository) HasConversationMessages(conversationKey string) (boo
 }
 
 func (r *MessageRepository) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
-	query := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
+	query := r.database().Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
 	if beforeID > 0 {
 		query = query.Where("id < ?", beforeID)
 	}
@@ -145,7 +154,7 @@ func (r *MessageRepository) ListByConversationKey(conversationKey string, before
 }
 
 func (r *MessageRepository) ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error) {
-	query := store.DB.Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
+	query := r.database().Model(&model.Message{}).Where("conversation_key = ?", conversationKey)
 	if afterID > 0 {
 		query = query.Where("id > ?", afterID)
 	}
@@ -159,7 +168,7 @@ func (r *MessageRepository) ListByConversationKeyAfter(conversationKey string, a
 }
 
 func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
-	query := store.DB.Model(&model.Message{}).Where("messages.id > ?", afterID).Where(
+	query := r.database().Model(&model.Message{}).Where("messages.id > ?", afterID).Where(
 		"("+
 			"(messages.target_type = ? AND messages.target_uuid = ?)"+
 			" OR "+
@@ -190,7 +199,7 @@ func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint,
 
 func (r *MessageRepository) FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error) {
 	var message model.Message
-	if err := store.DB.Model(&model.Message{}).
+	if err := r.database().Model(&model.Message{}).
 		Where("file_id = ? AND message_type = ?", fileUUID, model.MessageTypeFile).
 		Where(
 			"("+
@@ -229,6 +238,13 @@ func FileMessageExpired(message *model.Message, now time.Time) bool {
 		return false
 	}
 	return !message.FileExpiresAt.After(now)
+}
+
+func (r *MessageRepository) database() *gorm.DB {
+	if r != nil && r.db != nil {
+		return r.db
+	}
+	return store.DB
 }
 
 func reverseMessages(messages []*model.Message) {

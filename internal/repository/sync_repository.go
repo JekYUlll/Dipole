@@ -4,22 +4,32 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"gorm.io/gorm"
 )
 
-type SyncRepository struct{}
+var _ application.SyncStore = (*SyncRepository)(nil)
+
+type SyncRepository struct {
+	db *gorm.DB
+}
 
 func NewSyncRepository() *SyncRepository {
 	return &SyncRepository{}
 }
 
+func NewSyncRepositoryWithDB(db *gorm.DB) *SyncRepository {
+	return &SyncRepository{db: db}
+}
+
 func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error) {
-	if store.DB == nil {
+	if r.database() == nil {
 		return nil, fmt.Errorf("list user sync inbox: mysql not initialized")
 	}
 	var inboxRows []*model.UserSyncInbox
-	if err := store.DB.Where("user_uuid = ? AND sync_seq > ?", strings.TrimSpace(userUUID), afterSeq).
+	if err := r.database().Where("user_uuid = ? AND sync_seq > ?", strings.TrimSpace(userUUID), afterSeq).
 		Order("sync_seq ASC").
 		Limit(limit).
 		Find(&inboxRows).Error; err != nil {
@@ -34,7 +44,7 @@ func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit
 		messageUUIDs = append(messageUUIDs, row.MessageUUID)
 	}
 	var messages []*model.Message
-	if err := store.DB.Where("uuid IN ?", messageUUIDs).Find(&messages).Error; err != nil {
+	if err := r.database().Where("uuid IN ?", messageUUIDs).Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("list messages for sync inbox: %w", err)
 	}
 	messageByUUID := make(map[string]*model.Message, len(messages))
@@ -55,4 +65,11 @@ func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit
 		})
 	}
 	return items, nil
+}
+
+func (r *SyncRepository) database() *gorm.DB {
+	if r != nil && r.db != nil {
+		return r.db
+	}
+	return store.DB
 }
