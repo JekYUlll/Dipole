@@ -71,3 +71,16 @@ func TestConfigDistDeclaresSearchMaintenanceMySQLOverride(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigDistDeclaresMessageServiceMySQLOverride(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"message.mysql.host", "message.mysql.port", "message.mysql.user", "message.mysql.password", "message.mysql.dbname"} {
+		if !v.IsSet(key) {
+			t.Fatalf("missing Message Service config key %s", key)
+		}
+	}
+}

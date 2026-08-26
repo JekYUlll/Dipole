@@ -14,7 +14,10 @@ import (
 var SQLDB *sql.DB
 
 func InitMySQL() error {
-	cfg := config.MySQLConfig()
+	return InitMySQLWithConfig(config.MySQLConfig())
+}
+
+func InitMySQLWithConfig(cfg config.MySQL) error {
 	driverConfig := mysqlDriver.NewConfig()
 	driverConfig.User = cfg.User
 	driverConfig.Passwd = cfg.Password

@@ -1,5 +1,6 @@
 -- Replace the example password before applying this file after migrations.
 CREATE USER IF NOT EXISTS 'dipole_sync'@'%' IDENTIFIED BY 'change-me';
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'dipole_sync'@'%';
 
 GRANT SELECT ON dipole.messages TO 'dipole_sync'@'%';
 GRANT SELECT ON dipole.outbox_events TO 'dipole_sync'@'%';
