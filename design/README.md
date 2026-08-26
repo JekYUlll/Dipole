@@ -36,6 +36,8 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_MODE=off|shadow|primary` 控制，默认关闭。
 
+`shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述四态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
