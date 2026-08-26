@@ -44,7 +44,11 @@ type Querier interface {
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error
+	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
+	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
+	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
+	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
 	UpdateContact(ctx context.Context, arg UpdateContactParams) (sql.Result, error)
 	UpdateContactApplication(ctx context.Context, arg UpdateContactApplicationParams) (sql.Result, error)
 	UpdateConversationRemark(ctx context.Context, arg UpdateConversationRemarkParams) (sql.Result, error)

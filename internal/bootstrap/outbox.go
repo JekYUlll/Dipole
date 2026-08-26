@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"go.uber.org/zap"
 )
 
@@ -21,11 +21,11 @@ const (
 // The worker owns retry timing in the database so a process restart can resume
 // from durable state without replay gaps.
 type outboxRelay struct {
-	repo   *repository.OutboxRepository
+	repo   application.OutboxRelayStore
 	stopCh chan struct{}
 }
 
-func newOutboxRelay(repo *repository.OutboxRepository) *outboxRelay {
+func newOutboxRelay(repo application.OutboxRelayStore) *outboxRelay {
 	if repo == nil || platformKafka.Client == nil {
 		return nil
 	}

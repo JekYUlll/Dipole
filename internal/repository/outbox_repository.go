@@ -6,16 +6,25 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-type OutboxRepository struct{}
+var _ application.OutboxRelayStore = (*OutboxRepository)(nil)
+
+type OutboxRepository struct {
+	db *gorm.DB
+}
 
 func NewOutboxRepository() *OutboxRepository {
 	return &OutboxRepository{}
+}
+
+func NewOutboxRepositoryWithDB(db *gorm.DB) *OutboxRepository {
+	return &OutboxRepository{db: db}
 }
 
 func (r *OutboxRepository) Enqueue(tx *gorm.DB, event *model.OutboxEvent) error {
@@ -25,7 +34,7 @@ func (r *OutboxRepository) Enqueue(tx *gorm.DB, event *model.OutboxEvent) error 
 
 	db := tx
 	if db == nil {
-		db = store.DB
+		db = r.database()
 	}
 	if db == nil {
 		return fmt.Errorf("enqueue outbox event: mysql not initialized")
@@ -43,7 +52,7 @@ func (r *OutboxRepository) Enqueue(tx *gorm.DB, event *model.OutboxEvent) error 
 }
 
 func (r *OutboxRepository) ClaimPendingBatch(limit int, now time.Time, lease time.Duration) ([]*model.OutboxEvent, error) {
-	if store.DB == nil {
+	if r.database() == nil {
 		return nil, fmt.Errorf("claim outbox batch: mysql not initialized")
 	}
 	if limit <= 0 {
@@ -53,7 +62,7 @@ func (r *OutboxRepository) ClaimPendingBatch(limit int, now time.Time, lease tim
 	var events []*model.OutboxEvent
 	claimBefore := now.UTC().Add(-lease)
 
-	err := store.DB.Transaction(func(tx *gorm.DB) error {
+	err := r.database().Transaction(func(tx *gorm.DB) error {
 		if err := tx.
 			Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
 			Where(
@@ -116,11 +125,11 @@ func (r *OutboxRepository) ClaimPendingBatch(limit int, now time.Time, lease tim
 }
 
 func (r *OutboxRepository) MarkPublished(id uint, publishedAt time.Time) error {
-	if store.DB == nil {
+	if r.database() == nil {
 		return fmt.Errorf("mark outbox published: mysql not initialized")
 	}
 
-	return store.DB.Model(&model.OutboxEvent{}).
+	return r.database().Model(&model.OutboxEvent{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
 			"status":       model.OutboxStatusPublished,
@@ -131,7 +140,7 @@ func (r *OutboxRepository) MarkPublished(id uint, publishedAt time.Time) error {
 }
 
 func (r *OutboxRepository) MarkRetry(id uint, retryCount int, nextRetryAt time.Time, lastErr error) error {
-	if store.DB == nil {
+	if r.database() == nil {
 		return fmt.Errorf("mark outbox retry: mysql not initialized")
 	}
 
@@ -143,7 +152,7 @@ func (r *OutboxRepository) MarkRetry(id uint, retryCount int, nextRetryAt time.T
 		}
 	}
 
-	return store.DB.Model(&model.OutboxEvent{}).
+	return r.database().Model(&model.OutboxEvent{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
 			"status":        model.OutboxStatusPending,
@@ -177,4 +186,11 @@ func IsDuplicateOutboxError(err error) bool {
 	}
 
 	return false
+}
+
+func (r *OutboxRepository) database() *gorm.DB {
+	if r != nil && r.db != nil {
+		return r.db
+	}
+	return store.DB
 }

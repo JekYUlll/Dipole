@@ -79,9 +79,5 @@ func contactNullableTime(value *time.Time) sql.NullTime {
 }
 
 func contactTimePointer(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	result := value.Time
-	return &result
+	return nullableTimePointer(value)
 }

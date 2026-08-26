@@ -120,6 +120,13 @@ type ConversationStore interface {
 	ClearUnreadByConversationKey(userUUID, conversationKey string) error
 }
 
+type OutboxRelayStore interface {
+	ClaimPendingBatch(limit int, now time.Time, lease time.Duration) ([]*model.OutboxEvent, error)
+	MarkPublished(id uint, publishedAt time.Time) error
+	MarkRetry(id uint, retryCount int, nextRetryAt time.Time, lastErr error) error
+	DecodeHeaders(event *model.OutboxEvent) (map[string]string, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error

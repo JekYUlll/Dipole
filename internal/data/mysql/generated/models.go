@@ -72,6 +72,25 @@ type GroupMember struct {
 	UpdatedAt sql.NullTime
 }
 
+type OutboxEvent struct {
+	ID            uint64
+	AggregateType string
+	AggregateID   string
+	EventType     string
+	Topic         string
+	MessageKey    string
+	Value         []byte
+	HeadersJson   sql.NullString
+	Status        string
+	RetryCount    int64
+	LastError     sql.NullString
+	NextRetryAt   sql.NullTime
+	LockedAt      sql.NullTime
+	PublishedAt   sql.NullTime
+	CreatedAt     sql.NullTime
+	UpdatedAt     sql.NullTime
+}
+
 type UploadedFile struct {
 	ID           uint64
 	Uuid         string
