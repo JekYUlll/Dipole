@@ -79,6 +79,7 @@
 - 增加 `message.cassandra_read_verify_percentage` 主读抽样核验；按同一 Seq cursor 比较 MySQL 公开字段，payload mismatch 自动整页回退。
 - 增加 `dipole_message_read_verification_total{operation,outcome}`，区分主读核验 match、mismatch 与 MySQL error。
 - 增加 Cassandra 主读 Prometheus 告警与 promtool 规则测试，覆盖 payload mismatch、核验依赖失败和持续高 fallback 比例。
+- 增加 MySQL 消息正文退役门禁，覆盖 Sync 补全、幂等回放、文件授权、搜索重建、备份与事件回放责任。
 
 ### 变更
 
@@ -96,6 +97,7 @@
 - Shadow comparison 只比较 Message v1 对外字段，忽略 `CreatedAt/UpdatedAt` 等内部字段，并按时间瞬时语义处理时区差异。
 - Cassandra 存储影子比较限制为 32 个并发任务；容量耗尽、空页、主查询失败或无效 Seq 仅记录跳过原因，不增加主查询等待时间。
 - Cassandra 主读首批仅覆盖 Seq cursor；MySQL `id` cursor、Offline Inbox 和写链路保持原存储职责，百分比设为 0 可立即回切。
+- MySQL 完整消息写入保留到 A5/A6 替代读契约双跑完成；`metadata_only` 写模式仅作为门禁后的未来开关，不在 A4 实现。
 - Web 历史首屏和加载更多统一使用 `before_seq`，热群在线补拉使用 `after_seq`；消息 UUID 负责去重，Seq 负责排序和分页。
 - Runtime 创建的同一套 Messaging Services 现在注入 Server 与 Kafka handlers，消除 grpc 模式下重复的 Local MessageService 和 singleflight 实例。
 - 增加 `gateway.mode=embedded|remote`；默认保持单体行为，`remote` 时 Core 停止注册 WS 路由和实时投递 handler，其余 HTTP/Swagger/静态 Web 由 Gateway 代理到私网 Core。
@@ -197,6 +199,7 @@
 
 ### 已知问题
 
+- Sync Inbox、旧 Offline、幂等结果、文件授权和 Cassandra 恢复工具仍依赖 MySQL 完整消息，正文退役条件记录为 AD-019。
 - Inbox 清理策略和 Web 本地消息数据库留待后续迭代；旧消息历史接口仍使用数据库 ID cursor。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
 - 独立 Message Service 已停止在代码中读取 Core Repository；当前仍与 Core 共用 MySQL schema 和数据库账号，最小数据库授权记录为 AD-015。
