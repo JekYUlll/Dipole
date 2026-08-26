@@ -162,6 +162,8 @@ message:
 
 `cassandra_read_percentage: 0` 是即时回滚开关，核验比例默认也为 0 且只能在主读比例大于 0 时启用。建议首次 1% 主读配合 100% 核验，确认稳定后逐步提高主读比例并降低核验比例。Prometheus 暴露 `dipole_message_read_route_total{route,fallback_reason}`、`dipole_message_read_route_duration_seconds{route}` 和 `dipole_message_read_verification_total{operation,outcome}`，其中 outcome 为 `match`、`mismatch` 或 `mysql_error`。
 
+`deploy/observability/cassandra-read-alerts.yml` 定义三项停止门禁：任意 payload mismatch 为 critical；核验 MySQL error 为 warning；5 分钟 fallback 比例持续 2 分钟超过 5% 为 warning。任一 mismatch 立即将主读比例回切为 0；其余 warning 暂停提升比例并先诊断依赖与延迟。生产 Prometheus 必须抓取每个 Message Service 的 metrics endpoint；cluster profile 加载规则用于语法一致性，但其 Kafka-only 演练本身不提供 Message 样本。执行 `scripts/check-cassandra-read-alerts.sh` 可运行规则静态检查和固定时序 firing 测试。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：
