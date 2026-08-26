@@ -59,6 +59,7 @@
 - Web 客户端生成持久稳定的设备 ID，同时用于 HTTP `X-Device-ID` 与 WebSocket Presence 身份。
 - 增加存储中立的会话 Seq 历史查询与 `SearchIndex` 契约，MySQL 搜索投影实现支持幂等更新、删除和限定会话范围检索。
 - 增加热群持久高水位、设备群 checkpoint 和 `after_seq` 补拉；Web 重连后可发现并追平离线期间跳过用户 Inbox 的热群消息。
+- 增加消息 mutation 事件契约；created Outbox 固化 `mutation_type/revision/actor_uuid`，并为未来 edited/recalled/deleted 预留单调 revision 语义。
 
 ### 变更
 
@@ -148,6 +149,7 @@
 - 已通过 MySQL 8.4 部分已读、并发新消息隔离、乱序投影保护、24 路设备 ACK 单调性和多设备隔离测试。
 - 已通过 MySQL 8.4 MessageStore/SyncStore/SearchIndex contract，覆盖会话 Seq cursor、索引幂等更新、范围隔离、排序和删除。
 - 已通过 MySQL 8.4 热群高水位回填、消息事务原子回滚、设备群 ACK 单调性，以及 Sync 权限和 Message/Sync gRPC 契约测试。
+- 已通过 created mutation 新旧 payload 归一化、event type 一致性、future mutation revision/actor 门禁和 direct/group 事件命名测试。
 
 ### 已知问题
 

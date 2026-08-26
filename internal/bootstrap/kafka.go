@@ -503,6 +503,9 @@ func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventP
 	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
 		return service.MessageEventPayload{}, fmt.Errorf("unmarshal message event payload: %w", err)
 	}
+	if err := service.NormalizeMessageMutation(envelope.EventType, &payload); err != nil {
+		return service.MessageEventPayload{}, fmt.Errorf("normalize message mutation payload: %w", err)
+	}
 
 	return payload, nil
 }

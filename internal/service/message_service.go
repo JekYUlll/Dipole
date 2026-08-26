@@ -85,24 +85,27 @@ type MessageService struct {
 }
 
 type MessageEventPayload struct {
-	MessageID       string     `json:"message_id"`
-	ClientMessageID string     `json:"client_message_id,omitempty"`
-	ConversationKey string     `json:"conversation_key"`
-	MessageSeq      uint64     `json:"message_seq,omitempty"`
-	SenderUUID      string     `json:"sender_uuid"`
-	TargetUUID      string     `json:"target_uuid"`
-	TargetType      int8       `json:"target_type"`
-	MessageType     int8       `json:"message_type"`
-	Content         string     `json:"content"`
-	FileID          string     `json:"file_id,omitempty"`
-	FileName        string     `json:"file_name,omitempty"`
-	FileSize        int64      `json:"file_size,omitempty"`
-	FileURL         string     `json:"file_url,omitempty"`
-	FileContentType string     `json:"file_content_type,omitempty"`
-	FileExpiresAt   *time.Time `json:"file_expires_at,omitempty"`
-	SentAt          time.Time  `json:"sent_at"`
-	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
-	SyncFanout      *bool      `json:"sync_fanout,omitempty"`
+	MutationType    MessageMutationType `json:"mutation_type,omitempty"`
+	Revision        uint64              `json:"revision,omitempty"`
+	ActorUUID       string              `json:"actor_uuid,omitempty"`
+	MessageID       string              `json:"message_id"`
+	ClientMessageID string              `json:"client_message_id,omitempty"`
+	ConversationKey string              `json:"conversation_key"`
+	MessageSeq      uint64              `json:"message_seq,omitempty"`
+	SenderUUID      string              `json:"sender_uuid"`
+	TargetUUID      string              `json:"target_uuid"`
+	TargetType      int8                `json:"target_type"`
+	MessageType     int8                `json:"message_type"`
+	Content         string              `json:"content"`
+	FileID          string              `json:"file_id,omitempty"`
+	FileName        string              `json:"file_name,omitempty"`
+	FileSize        int64               `json:"file_size,omitempty"`
+	FileURL         string              `json:"file_url,omitempty"`
+	FileContentType string              `json:"file_content_type,omitempty"`
+	FileExpiresAt   *time.Time          `json:"file_expires_at,omitempty"`
+	SentAt          time.Time           `json:"sent_at"`
+	RecipientUUIDs  []string            `json:"recipient_uuids,omitempty"`
+	SyncFanout      *bool               `json:"sync_fanout,omitempty"`
 }
 
 func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
@@ -728,6 +731,9 @@ func (s *MessageService) publishMessageCreated(topic string, message *model.Mess
 	}
 
 	payload := messageToEventPayload(message, recipientUUIDs, true)
+	payload.MutationType = MessageMutationCreated
+	payload.Revision = 1
+	payload.ActorUUID = message.SenderUUID
 	if err := s.events.PublishEvent(context.Background(), topic, kafkaMessageRoutingKey(message), topic, payload, nil); err != nil {
 		return fmt.Errorf("publish created message event: %w", err)
 	}
@@ -773,9 +779,19 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 		return nil, nil
 	}
 
-	topic := createdTopicForTargetType(message.TargetType)
+	topic, err := MessageMutationEventType(message.TargetType, MessageMutationCreated)
+	if err != nil {
+		return nil, err
+	}
 	eventType := topic
 	payload := messageToEventPayload(message, recipientUUIDs, syncFanout)
+	payload.MutationType = MessageMutationCreated
+	payload.Revision = 1
+	payload.ActorUUID = message.SenderUUID
+	aggregateID, err := MessageMutationAggregateID(message.UUID, payload.MutationType, payload.Revision)
+	if err != nil {
+		return nil, err
+	}
 	envelope, err := platformKafka.NewEnvelope(eventType, payload)
 	if err != nil {
 		return nil, fmt.Errorf("create message created envelope: %w", err)
@@ -800,7 +816,7 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 	now := time.Now().UTC()
 	return &model.OutboxEvent{
 		AggregateType: "message",
-		AggregateID:   message.UUID,
+		AggregateID:   aggregateID,
 		EventType:     eventType,
 		Topic:         topic,
 		MessageKey:    message.UUID,
@@ -830,14 +846,6 @@ func payloadToMessage(payload MessageEventPayload) *model.Message {
 		FileExpiresAt:   payload.FileExpiresAt,
 		SentAt:          payload.SentAt,
 	}
-}
-
-func createdTopicForTargetType(targetType int8) string {
-	if targetType == model.MessageTargetGroup {
-		return "message.group.created"
-	}
-
-	return "message.direct.created"
 }
 
 func isDuplicateMessageError(err error) bool {

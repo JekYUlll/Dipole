@@ -1249,6 +1249,9 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	if repo.outboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
 	}
+	if repo.outboxEvents[0].AggregateID != "M100" || repo.outboxEvents[0].MessageKey != "M100" {
+		t.Fatalf("created outbox identity changed: %+v", repo.outboxEvents[0])
+	}
 	var headers map[string]string
 	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
 		t.Fatalf("decode outbox headers: %v", err)
@@ -1264,6 +1267,9 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if envelope.Payload.MessageSeq != 1 {
 		t.Fatalf("created event sequence = %d, want 1", envelope.Payload.MessageSeq)
+	}
+	if envelope.Payload.MutationType != MessageMutationCreated || envelope.Payload.Revision != 1 || envelope.Payload.ActorUUID != "U100" {
+		t.Fatalf("unexpected created mutation metadata: %+v", envelope.Payload)
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)
