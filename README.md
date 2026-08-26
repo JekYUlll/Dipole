@@ -34,3 +34,10 @@ scripts/check-sqlc.sh
 ```
 
 生产数据访问统一使用 `database/sql + sqlc`，查询定义位于 `db/queries`，生成代码位于 `internal/data/mysql/generated`。
+
+Message gRPC 契约生成固定使用 `protoc-gen-go v1.36.11` 和 `protoc-gen-go-grpc 1.6.2`：
+
+```bash
+scripts/proto.sh api/proto/dipole/message/v1/message.proto
+scripts/check-proto.sh
+```
