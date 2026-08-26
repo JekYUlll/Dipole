@@ -18,7 +18,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** Message gRPC、Gateway、Core、审计身份
-- **现状：** Message v1 契约携带 `InvocationContext.principal_user_id`，进程内适配器会拒绝空 principal；当前尚未部署服务身份认证或拦截器，远程调用方提供的上下文还不能作为可信身份来源。
+- **现状：** Message、Core 与 Sync v1 契约共享 `RequestContext`；Message/Sync 拒绝空 principal，Core 拒绝空 caller service。当前尚未部署服务身份认证或拦截器，远程调用方提供的上下文还不能作为可信身份来源。
 - **风险：** 若在缺少 mTLS、服务凭证和入口隔离时暴露 RPC，调用方可能伪造 principal 并以其他用户身份执行消息命令或查询。
 - **建议方向：** 在 M4 前加入内部网络入口限制、服务身份认证与 unary interceptor；由 Gateway 的已认证用户上下文生成 principal，服务端拒绝外部直接传入的未认证身份，并记录 service/principal/device/request/trace 审计字段。
 - **处理门槛：** `message.transport=grpc` 获得任何非测试流量前完成。

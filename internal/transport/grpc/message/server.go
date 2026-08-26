@@ -3,14 +3,15 @@ package messagegrpc
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Server struct {
@@ -146,11 +147,8 @@ func (s *Server) ListOfflineMessages(_ context.Context, request *messagev1.ListO
 	return listResponse(messages), nil
 }
 
-func principalFrom(invocation *messagev1.InvocationContext) (string, error) {
-	if invocation == nil || strings.TrimSpace(invocation.GetPrincipalUserId()) == "" {
-		return "", status.Error(codes.Unauthenticated, "principal_user_id is required")
-	}
-	return strings.TrimSpace(invocation.GetPrincipalUserId()), nil
+func principalFrom(invocation *commonv1.RequestContext) (string, error) {
+	return grpccommon.Principal(invocation)
 }
 
 func uintCursor(value uint64) (uint, error) {
@@ -207,7 +205,7 @@ func statusWithReason(code codes.Code, err error, reason messagev1.ErrorReason) 
 
 func sendResponse(message *model.Message, recipients []string) *messagev1.SendMessageResponse {
 	return &messagev1.SendMessageResponse{
-		Message:          messageToProto(message),
+		Message:          grpcmapping.MessageToProto(message),
 		RecipientUserIds: recipients,
 	}
 }
@@ -218,38 +216,11 @@ func listResponse(messages []*model.Message) *messagev1.ListMessagesResponse {
 		if message == nil {
 			continue
 		}
-		response.Messages = append(response.Messages, messageToProto(message))
+		response.Messages = append(response.Messages, grpcmapping.MessageToProto(message))
 		if response.FirstId == 0 {
 			response.FirstId = uint64(message.ID)
 		}
 		response.LastId = uint64(message.ID)
 	}
 	return response
-}
-
-func messageToProto(message *model.Message) *messagev1.Message {
-	if message == nil {
-		return nil
-	}
-	result := &messagev1.Message{
-		Id:              uint64(message.ID),
-		ServerMessageId: message.UUID,
-		ClientMessageId: message.ClientMessageID,
-		ConversationKey: message.ConversationKey,
-		SenderId:        message.SenderUUID,
-		TargetType:      int32(message.TargetType),
-		TargetId:        message.TargetUUID,
-		MessageType:     int32(message.MessageType),
-		Content:         message.Content,
-		FileId:          message.FileID,
-		FileName:        message.FileName,
-		FileSize:        message.FileSize,
-		FileUrl:         message.FileURL,
-		FileContentType: message.FileContentType,
-		SentAt:          timestamppb.New(message.SentAt),
-	}
-	if message.FileExpiresAt != nil {
-		result.FileExpiresAt = timestamppb.New(*message.FileExpiresAt)
-	}
-	return result
 }

@@ -37,6 +37,7 @@
 - 增加 `OutboxRelayStore` application port 与事务型 sqlc adapter，覆盖有序批量领取、过期租约回收、重试退避、发布终态和 Header 解码。
 - 增加 `MessageStore`、`SyncStore` application port 与 sqlc adapters，完整覆盖 Message Store 查询、Inbox Timeline 读取和 Message/Inbox/Outbox 原子写入。
 - 增加 `dipole.message.v1.MessageService` protobuf/gRPC 契约、固定版本生成门禁、结构化领域错误详情，以及实现同一 `MessageApplication` 的本地 server 与远程 client adapters。
+- 增加共享 `dipole.common.v1.RequestContext`、Core Capability 与 Sync Query v1 契约，以及实现现有 application ports 的 Local server/Remote client adapters。
 
 ### 变更
 
@@ -89,13 +90,14 @@
 - 已通过全部 sqlc Repository 的真实 MySQL 功能契约，覆盖幂等、状态转换、排序、权限、事务回滚、租约和同步顺序。
 - 已通过 sqlc 同用户并发提交顺序测试，确认 Inbox `sync_seq` 与提交顺序一致。
 - 已通过 Message gRPC bufconn 契约、结构化错误往返、全量 Go、vet、race 和模块完整性测试。
+- 已通过 Core 五项能力与 Sync Timeline 页面的 bufconn 往返测试，覆盖调用身份、权限结果、成员快照和持久游标映射。
 
 ### 已知问题
 
 - HTTP handler 包全量 race 测试仍会触发现有并行测试对 `gin.SetMode` 的竞态；新增 Sync Handler 的定向 race 测试已通过。
 - 会话内 `message_seq`、`read_seq`、设备级 cursor 和 Inbox 清理策略留待后续迭代。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
-- Message RPC 尚未接入服务身份认证，`InvocationContext` 只允许在进程内契约测试使用；远程接流量前必须完成 AD-013。
+- 内部 RPC 尚未接入服务身份认证，`RequestContext` 只允许在进程内契约测试使用；远程接流量前必须完成 AD-013。
 
 ## 发布归档
 

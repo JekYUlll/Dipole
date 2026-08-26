@@ -9,6 +9,7 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -68,7 +69,7 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	client := newBufconnClient(t, application)
 
 	response, err := client.SendDirectText(context.Background(), &messagev1.SendDirectTextRequest{
-		Context:         &messagev1.InvocationContext{PrincipalUserId: " U100 ", DeviceId: "web", RequestId: "R1"},
+		Context:         grpccommon.RequestContext(" U100 ", "dipole-gateway"),
 		TargetUserId:    "U200",
 		Content:         "hello",
 		ClientMessageId: "C100",
@@ -113,7 +114,7 @@ func TestServerDispatchesAfterCursor(t *testing.T) {
 	client := newBufconnClient(t, application)
 
 	response, err := client.ListGroupHistory(context.Background(), &messagev1.ListGroupHistoryRequest{
-		Context:  &messagev1.InvocationContext{PrincipalUserId: "U100"},
+		Context:  grpccommon.RequestContext("U100", "dipole-gateway"),
 		GroupId:  "G1",
 		Cursor:   &messagev1.ListGroupHistoryRequest_AfterId{AfterId: 77},
 		PageSize: 25,
@@ -136,7 +137,7 @@ func TestServerMapsIdempotencyConflict(t *testing.T) {
 	client := newBufconnClient(t, application)
 
 	_, err := client.SendDirectText(context.Background(), &messagev1.SendDirectTextRequest{
-		Context: &messagev1.InvocationContext{PrincipalUserId: "U100"},
+		Context: grpccommon.RequestContext("U100", "dipole-gateway"),
 	})
 	if status.Code(err) != codes.AlreadyExists {
 		t.Fatalf("expected AlreadyExists, got %v", err)

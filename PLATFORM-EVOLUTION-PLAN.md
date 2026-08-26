@@ -138,7 +138,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 ### M3：定义远程契约但仍走本地实现
 
 - [x] 使用 protobuf 定义 Message Command 与 History Query v1 契约。
-- [ ] 使用 protobuf 定义 Core Authorization 和 Sync Query 契约。
+- [x] 使用 protobuf 定义 Core Authorization 和 Sync Query 契约，并复用 `common.v1.RequestContext`。
 - [x] 明确 Message RPC 错误码、超时、幂等键、分页游标和认证上下文传递规则。
 - [x] 生成 Message gRPC server/client，并用 bufconn 验证 Local server 与 Remote client adapters。
 - [ ] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。

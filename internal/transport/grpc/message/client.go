@@ -7,7 +7,10 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/status"
 )
 
@@ -41,7 +44,7 @@ func (c *Client) SendDirectMessage(senderUUID, targetUUID, content, clientMessag
 	if err != nil {
 		return nil, domainError(err)
 	}
-	return messageFromProto(response.GetMessage()), nil
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
 }
 
 func (c *Client) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
@@ -56,7 +59,7 @@ func (c *Client) SendGroupMessage(senderUUID, groupUUID, content, clientMessageI
 	if err != nil {
 		return nil, nil, domainError(err)
 	}
-	return messageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
+	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
 }
 
 func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
@@ -71,7 +74,7 @@ func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientM
 	if err != nil {
 		return nil, domainError(err)
 	}
-	return messageFromProto(response.GetMessage()), nil
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
 }
 
 func (c *Client) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
@@ -86,7 +89,7 @@ func (c *Client) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMes
 	if err != nil {
 		return nil, nil, domainError(err)
 	}
-	return messageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
+	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
 }
 
 func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -151,8 +154,8 @@ func (c *Client) ListOfflineMessages(currentUserUUID string, afterID uint, limit
 	return messagesFromProto(response.GetMessages()), nil
 }
 
-func invocation(principal string) *messagev1.InvocationContext {
-	return &messagev1.InvocationContext{PrincipalUserId: principal}
+func invocation(principal string) *commonv1.RequestContext {
+	return grpccommon.RequestContext(principal, "dipole-gateway")
 }
 
 func requestPageSize(limit int) int32 {
@@ -214,38 +217,8 @@ func messagesFromProto(messages []*messagev1.Message) []*model.Message {
 	result := make([]*model.Message, 0, len(messages))
 	for _, message := range messages {
 		if message != nil {
-			result = append(result, messageFromProto(message))
+			result = append(result, grpcmapping.MessageFromProto(message))
 		}
-	}
-	return result
-}
-
-func messageFromProto(message *messagev1.Message) *model.Message {
-	if message == nil {
-		return nil
-	}
-	result := &model.Message{
-		ID:              uint(message.GetId()),
-		UUID:            message.GetServerMessageId(),
-		ClientMessageID: message.GetClientMessageId(),
-		ConversationKey: message.GetConversationKey(),
-		SenderUUID:      message.GetSenderId(),
-		TargetType:      int8(message.GetTargetType()),
-		TargetUUID:      message.GetTargetId(),
-		MessageType:     int8(message.GetMessageType()),
-		Content:         message.GetContent(),
-		FileID:          message.GetFileId(),
-		FileName:        message.GetFileName(),
-		FileSize:        message.GetFileSize(),
-		FileURL:         message.GetFileUrl(),
-		FileContentType: message.GetFileContentType(),
-	}
-	if message.GetSentAt() != nil {
-		result.SentAt = message.GetSentAt().AsTime()
-	}
-	if message.GetFileExpiresAt() != nil {
-		expiresAt := message.GetFileExpiresAt().AsTime()
-		result.FileExpiresAt = &expiresAt
 	}
 	return result
 }

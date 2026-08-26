@@ -4,7 +4,7 @@
 
 ## Trust and deadlines
 
-- The service is internal. Only an authenticated Gateway or Core process may create `InvocationContext`.
+- The service is internal. Only an authenticated Gateway or Core process may create `dipole.common.v1.RequestContext`.
 - Production transport must use service authentication before accepting `principal_user_id`; the RPC server is not a public client endpoint.
 - Callers set a deadline on every request. The initial budget is 3 seconds for commands and 2 seconds for history queries.
 - A command deadline does not imply rollback after persistence starts. Retries use the same `client_message_id`.
