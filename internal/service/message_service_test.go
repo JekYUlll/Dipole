@@ -36,6 +36,7 @@ type stubMessageRepository struct {
 	hasConversation       bool
 	lastConversationKey   string
 	lastBeforeID          uint
+	lastBeforeSeq         uint64
 	lastAfterID           uint
 	lastLimit             int
 	lastUserUUID          string
@@ -231,6 +232,14 @@ func (r *stubMessageRepository) ListByConversationKeyAfter(conversationKey strin
 
 func (r *stubMessageRepository) ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error) {
 	return r.ListByConversationKeyAfter(conversationKey, uint(afterSeq), limit)
+}
+
+func (r *stubMessageRepository) ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
+	r.lastConversationKey, r.lastBeforeSeq, r.lastLimit = conversationKey, beforeSeq, limit
+	messages, err := r.listMessages, r.listErr
+	r.mu.Unlock()
+	return messages, err
 }
 
 func (r *stubMessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -555,6 +564,24 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceListDirectMessagesBeforeSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listMessages: []*model.Message{{Seq: 40, UUID: "M40"}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"U200": {UUID: "U200", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{friendships: map[string]map[string]bool{
+		"U100": {"U200": true},
+	}}, nil, nil, nil, nil)
+
+	messages, err := service.ListDirectMessagesBeforeSeq("U100", " U200 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 40 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.DirectConversationKey("U100", "U200") || repo.lastBeforeSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q before=%d limit=%d", repo.lastConversationKey, repo.lastBeforeSeq, repo.lastLimit)
+	}
+}
+
 func TestMessageServiceListDirectMessagesRejectsMissingTarget(t *testing.T) {
 	t.Parallel()
 
@@ -753,6 +780,25 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 	}
 	if repo.lastConversationKey != model.GroupConversationKey("G100") {
 		t.Fatalf("unexpected conversation key: %s", repo.lastConversationKey)
+	}
+}
+
+func TestMessageServiceListGroupMessagesBeforeSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listMessages: []*model.Message{{Seq: 40, UUID: "M40", TargetType: model.MessageTargetGroup}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{"G100": {UUID: "G100", Status: model.GroupStatusNormal}},
+		members: map[string]map[string]*model.GroupMember{"G100": {
+			"U100": {GroupUUID: "G100", UserUUID: "U100"},
+		}},
+	}, nil, nil, nil)
+
+	messages, err := service.ListGroupMessagesBeforeSeq("U100", " G100 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 40 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.GroupConversationKey("G100") || repo.lastBeforeSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q before=%d limit=%d", repo.lastConversationKey, repo.lastBeforeSeq, repo.lastLimit)
 	}
 }
 

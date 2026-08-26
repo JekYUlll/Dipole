@@ -38,8 +38,16 @@ func (stubMessageApplication) ListDirectMessages(userUUID, targetUUID string, be
 	return []*model.Message{{ID: beforeID, SenderUUID: userUUID, TargetUUID: targetUUID, Content: "direct"}}, nil
 }
 
+func (stubMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	return []*model.Message{{Seq: beforeSeq - 1, SenderUUID: userUUID, TargetUUID: targetUUID, Content: "direct-before-seq"}}, nil
+}
+
 func (stubMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	return []*model.Message{{ID: beforeID, SenderUUID: userUUID, TargetUUID: groupUUID, Content: "group-before"}}, nil
+}
+
+func (stubMessageApplication) ListGroupMessagesBeforeSeq(userUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	return []*model.Message{{Seq: beforeSeq - 1, SenderUUID: userUUID, TargetUUID: groupUUID, Content: "group-before-seq"}}, nil
 }
 
 func (stubMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -187,9 +195,17 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 	if err != nil || len(directHistory) != 1 || directHistory[0].ID != 40 || directHistory[0].Content != "direct" {
 		t.Fatalf("direct history mismatch: messages=%+v err=%v", directHistory, err)
 	}
+	directHistoryBySeq, err := messages.ListDirectMessagesBeforeSeq("U1", "U2", 40, 20)
+	if err != nil || len(directHistoryBySeq) != 1 || directHistoryBySeq[0].Seq != 39 || directHistoryBySeq[0].Content != "direct-before-seq" {
+		t.Fatalf("direct history by sequence mismatch: messages=%+v err=%v", directHistoryBySeq, err)
+	}
 	groupHistory, err := messages.ListGroupMessages("U1", "G1", 50, 20)
 	if err != nil || len(groupHistory) != 1 || groupHistory[0].ID != 50 || groupHistory[0].Content != "group-before" {
 		t.Fatalf("group history mismatch: messages=%+v err=%v", groupHistory, err)
+	}
+	groupHistoryBySeq, err := messages.ListGroupMessagesBeforeSeq("U1", "G1", 50, 20)
+	if err != nil || len(groupHistoryBySeq) != 1 || groupHistoryBySeq[0].Seq != 49 || groupHistoryBySeq[0].Content != "group-before-seq" {
+		t.Fatalf("group history by sequence mismatch: messages=%+v err=%v", groupHistoryBySeq, err)
 	}
 	groupAfter, err := messages.ListGroupMessagesAfter("U1", "G1", 60, 20)
 	if err != nil || len(groupAfter) != 1 || groupAfter[0].ID != 61 || groupAfter[0].Content != "group-after" {

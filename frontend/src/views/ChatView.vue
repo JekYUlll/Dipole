@@ -735,9 +735,9 @@ const wsDataToMessage = (data: Record<string, unknown>): Message => ({
 })
 
 
-const latestLoadedMessageID = (key: string) => {
+const latestLoadedMessageSeq = (key: string) => {
   const list = chat.messageMap.get(key) || []
-  return list.reduce((max, item) => Math.max(max, item.id || 0), 0)
+  return list.reduce((max, item) => Math.max(max, item.message_seq || 0), 0)
 }
 
 const hotGroupPullTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -752,12 +752,12 @@ const performHotGroupPull = async (groupUUID: string) => {
     return
   }
 
-  const afterID = latestLoadedMessageID(key)
-  if (afterID <= 0) {
+  const afterSeq = latestLoadedMessageSeq(key)
+  if (afterSeq <= 0) {
     await chat.fetchGroupMessages(groupUUID)
     return
   }
-  await chat.fetchGroupMessagesAfter(groupUUID, afterID)
+  await chat.fetchGroupMessagesAfterSeq(groupUUID, afterSeq)
 }
 
 const flushHotGroupPull = async (groupUUID: string) => {
@@ -1145,15 +1145,15 @@ const downloadFile = async (msg: Message) => {
 const loadMore = async () => {
   if (!activeConv.value) return
   const msgs = currentMessages.value
-  // WS-pushed messages have id=0; only use messages with real DB ids
-  const oldest = msgs.find(m => m.id > 0)
+  // WS echoes can precede persistence and carry sequence 0; they cannot be history cursors.
+  const oldest = msgs.find(m => (m.message_seq || 0) > 0)
   if (!oldest) return
-  const beforeID = oldest.id
+  const beforeSeq = oldest.message_seq!
   if (activeConv.value.target_type === 1) {
     const groupUUID = activeConv.value.target_group?.uuid ?? activeConv.value.conversation_key.replace('group:', '')
-    await chat.fetchGroupMessages(groupUUID, beforeID)
+    await chat.fetchGroupMessages(groupUUID, beforeSeq)
   } else {
-    await chat.fetchDirectMessages(activeConv.value.target_user!.uuid, beforeID)
+    await chat.fetchDirectMessages(activeConv.value.target_user!.uuid, beforeSeq)
   }
 }
 

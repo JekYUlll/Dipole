@@ -48,4 +48,4 @@ docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestCassandraReadRouterMySQLFallbackContract ./internal/data/routing
 )
 
-printf 'Cassandra read-routing smoke passed: complete Seq page used Cassandra and a missing row fell back to MySQL.\n'
+printf 'Cassandra read-routing smoke passed: complete before/after Seq pages used Cassandra and a missing row fell back to MySQL.\n'

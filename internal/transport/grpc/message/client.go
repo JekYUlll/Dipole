@@ -117,6 +117,19 @@ func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID
 	return messagesFromProto(response.GetMessages()), nil
 }
 
+func (c *Client) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListDirectHistory(ctx, &messagev1.ListDirectHistoryRequest{
+		Context: c.invocation(currentUserUUID), TargetUserId: targetUUID,
+		BeforeSequence: &beforeSeq, PageSize: requestPageSize(limit),
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return messagesFromProto(response.GetMessages()), nil
+}
+
 func (c *Client) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
@@ -129,6 +142,19 @@ func (c *Client) ListGroupMessages(currentUserUUID, groupUUID string, beforeID u
 		request.Cursor = &messagev1.ListGroupHistoryRequest_BeforeId{BeforeId: uint64(beforeID)}
 	}
 	response, err := c.rpc.ListGroupHistory(ctx, request)
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return messagesFromProto(response.GetMessages()), nil
+}
+
+func (c *Client) ListGroupMessagesBeforeSeq(currentUserUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListGroupHistory(ctx, &messagev1.ListGroupHistoryRequest{
+		Context: c.invocation(currentUserUUID), GroupId: groupUUID,
+		Cursor: &messagev1.ListGroupHistoryRequest_BeforeSequence{BeforeSequence: beforeSeq}, PageSize: requestPageSize(limit),
+	})
 	if err != nil {
 		return nil, domainError(err)
 	}

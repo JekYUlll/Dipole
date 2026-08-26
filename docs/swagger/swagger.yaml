@@ -2120,6 +2120,10 @@ paths:
         in: query
         name: before_id
         type: integer
+      - description: 会话序号向前翻页游标
+        in: query
+        name: before_seq
+        type: integer
       - description: 返回数量
         in: query
         name: limit
@@ -2167,6 +2171,10 @@ paths:
       - description: 向前翻页游标
         in: query
         name: before_id
+        type: integer
+      - description: 会话序号向前翻页游标
+        in: query
+        name: before_seq
         type: integer
       - description: 增量补拉游标
         in: query

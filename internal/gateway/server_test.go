@@ -28,7 +28,13 @@ func (gatewayMessageStub) SendGroupFileMessage(string, string, string, string) (
 func (gatewayMessageStub) ListDirectMessages(string, string, uint, int) ([]*model.Message, error) {
 	return nil, nil
 }
+func (gatewayMessageStub) ListDirectMessagesBeforeSeq(string, string, uint64, int) ([]*model.Message, error) {
+	return nil, nil
+}
 func (gatewayMessageStub) ListGroupMessages(string, string, uint, int) ([]*model.Message, error) {
+	return nil, nil
+}
+func (gatewayMessageStub) ListGroupMessagesBeforeSeq(string, string, uint64, int) ([]*model.Message, error) {
 	return nil, nil
 }
 func (gatewayMessageStub) ListGroupMessagesAfter(string, string, uint, int) ([]*model.Message, error) {

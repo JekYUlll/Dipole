@@ -637,13 +637,14 @@ func (x *SendMessageResponse) GetRecipientUserIds() []string {
 }
 
 type ListDirectHistoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	TargetUserId  string                 `protobuf:"bytes,2,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
-	BeforeId      uint64                 `protobuf:"varint,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`
-	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Context        *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TargetUserId   string                 `protobuf:"bytes,2,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
+	BeforeId       uint64                 `protobuf:"varint,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`
+	BeforeSequence *uint64                `protobuf:"varint,5,opt,name=before_sequence,json=beforeSequence,proto3,oneof" json:"before_sequence,omitempty"`
+	PageSize       int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListDirectHistoryRequest) Reset() {
@@ -697,6 +698,13 @@ func (x *ListDirectHistoryRequest) GetBeforeId() uint64 {
 	return 0
 }
 
+func (x *ListDirectHistoryRequest) GetBeforeSequence() uint64 {
+	if x != nil && x.BeforeSequence != nil {
+		return *x.BeforeSequence
+	}
+	return 0
+}
+
 func (x *ListDirectHistoryRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -713,6 +721,7 @@ type ListGroupHistoryRequest struct {
 	//	*ListGroupHistoryRequest_BeforeId
 	//	*ListGroupHistoryRequest_AfterId
 	//	*ListGroupHistoryRequest_AfterSequence
+	//	*ListGroupHistoryRequest_BeforeSequence
 	Cursor        isListGroupHistoryRequest_Cursor `protobuf_oneof:"cursor"`
 	PageSize      int32                            `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -797,6 +806,15 @@ func (x *ListGroupHistoryRequest) GetAfterSequence() uint64 {
 	return 0
 }
 
+func (x *ListGroupHistoryRequest) GetBeforeSequence() uint64 {
+	if x != nil {
+		if x, ok := x.Cursor.(*ListGroupHistoryRequest_BeforeSequence); ok {
+			return x.BeforeSequence
+		}
+	}
+	return 0
+}
+
 func (x *ListGroupHistoryRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -820,11 +838,17 @@ type ListGroupHistoryRequest_AfterSequence struct {
 	AfterSequence uint64 `protobuf:"varint,6,opt,name=after_sequence,json=afterSequence,proto3,oneof"`
 }
 
+type ListGroupHistoryRequest_BeforeSequence struct {
+	BeforeSequence uint64 `protobuf:"varint,7,opt,name=before_sequence,json=beforeSequence,proto3,oneof"`
+}
+
 func (*ListGroupHistoryRequest_BeforeId) isListGroupHistoryRequest_Cursor() {}
 
 func (*ListGroupHistoryRequest_AfterId) isListGroupHistoryRequest_Cursor() {}
 
 func (*ListGroupHistoryRequest_AfterSequence) isListGroupHistoryRequest_Cursor() {}
+
+func (*ListGroupHistoryRequest_BeforeSequence) isListGroupHistoryRequest_Cursor() {}
 
 type ListOfflineMessagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -995,18 +1019,21 @@ const file_dipole_message_v1_message_proto_rawDesc = "" +
 	"\x11client_message_id\x18\x04 \x01(\tR\x0fclientMessageId\"y\n" +
 	"\x13SendMessageResponse\x124\n" +
 	"\amessage\x18\x01 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\x12,\n" +
-	"\x12recipient_user_ids\x18\x02 \x03(\tR\x10recipientUserIds\"\xb6\x01\n" +
+	"\x12recipient_user_ids\x18\x02 \x03(\tR\x10recipientUserIds\"\xf8\x01\n" +
 	"\x18ListDirectHistoryRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12$\n" +
 	"\x0etarget_user_id\x18\x02 \x01(\tR\ftargetUserId\x12\x1b\n" +
-	"\tbefore_id\x18\x03 \x01(\x04R\bbeforeId\x12\x1b\n" +
-	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\"\xfc\x01\n" +
+	"\tbefore_id\x18\x03 \x01(\x04R\bbeforeId\x12,\n" +
+	"\x0fbefore_sequence\x18\x05 \x01(\x04H\x00R\x0ebeforeSequence\x88\x01\x01\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSizeB\x12\n" +
+	"\x10_before_sequence\"\xa7\x02\n" +
 	"\x17ListGroupHistoryRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\x12\x1d\n" +
 	"\tbefore_id\x18\x03 \x01(\x04H\x00R\bbeforeId\x12\x1b\n" +
 	"\bafter_id\x18\x04 \x01(\x04H\x00R\aafterId\x12'\n" +
-	"\x0eafter_sequence\x18\x06 \x01(\x04H\x00R\rafterSequence\x12\x1b\n" +
+	"\x0eafter_sequence\x18\x06 \x01(\x04H\x00R\rafterSequence\x12)\n" +
+	"\x0fbefore_sequence\x18\a \x01(\x04H\x00R\x0ebeforeSequence\x12\x1b\n" +
 	"\tpage_size\x18\x05 \x01(\x05R\bpageSizeB\b\n" +
 	"\x06cursor\"\x90\x01\n" +
 	"\x1aListOfflineMessagesRequest\x12:\n" +
@@ -1108,10 +1135,12 @@ func file_dipole_message_v1_message_proto_init() {
 	if File_dipole_message_v1_message_proto != nil {
 		return
 	}
+	file_dipole_message_v1_message_proto_msgTypes[7].OneofWrappers = []any{}
 	file_dipole_message_v1_message_proto_msgTypes[8].OneofWrappers = []any{
 		(*ListGroupHistoryRequest_BeforeId)(nil),
 		(*ListGroupHistoryRequest_AfterId)(nil),
 		(*ListGroupHistoryRequest_AfterSequence)(nil),
+		(*ListGroupHistoryRequest_BeforeSequence)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

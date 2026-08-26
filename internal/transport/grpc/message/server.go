@@ -79,15 +79,24 @@ func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListD
 	if err != nil {
 		return nil, err
 	}
-	beforeID, err := uintCursor(request.GetBeforeId())
-	if err != nil {
-		return nil, err
-	}
 	pageSize, err := pageSize(request.GetPageSize())
 	if err != nil {
 		return nil, err
 	}
-	messages, appErr := s.application.ListDirectMessages(principal, request.GetTargetUserId(), beforeID, pageSize)
+	var messages []*model.Message
+	var appErr error
+	if request.BeforeSequence != nil {
+		if request.GetBeforeId() != 0 {
+			return nil, status.Error(codes.InvalidArgument, "before_id and before_sequence cannot be used together")
+		}
+		messages, appErr = s.application.ListDirectMessagesBeforeSeq(principal, request.GetTargetUserId(), request.GetBeforeSequence(), pageSize)
+	} else {
+		beforeID, cursorErr := uintCursor(request.GetBeforeId())
+		if cursorErr != nil {
+			return nil, cursorErr
+		}
+		messages, appErr = s.application.ListDirectMessages(principal, request.GetTargetUserId(), beforeID, pageSize)
+	}
 	if appErr != nil {
 		return nil, rpcError(appErr)
 	}
@@ -106,6 +115,8 @@ func (s *Server) ListGroupHistory(ctx context.Context, request *messagev1.ListGr
 
 	var messages []*model.Message
 	switch cursor := request.GetCursor().(type) {
+	case *messagev1.ListGroupHistoryRequest_BeforeSequence:
+		messages, err = s.application.ListGroupMessagesBeforeSeq(principal, request.GetGroupId(), cursor.BeforeSequence, limit)
 	case *messagev1.ListGroupHistoryRequest_AfterSequence:
 		messages, err = s.application.ListGroupMessagesAfterSeq(principal, request.GetGroupId(), cursor.AfterSequence, limit)
 	case *messagev1.ListGroupHistoryRequest_AfterId:
