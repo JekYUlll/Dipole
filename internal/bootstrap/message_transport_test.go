@@ -94,6 +94,18 @@ func TestMessageTransportRejectsUnknownMode(t *testing.T) {
 	}
 }
 
+func TestMessageTransportRejectsShadowWithoutRPC(t *testing.T) {
+	_, err := newMessageApplicationTransport(
+		context.Background(),
+		config.Message{Transport: "local", ShadowQueries: true},
+		config.InternalRPC{},
+		stubMessageApplication{},
+	)
+	if err == nil {
+		t.Fatal("expected shadow queries without internal rpc to fail")
+	}
+}
+
 func runMessageApplicationContract(t *testing.T, messages application.MessageApplication) {
 	t.Helper()
 	direct, err := messages.SendDirectMessage("U1", "U2", "hello", "C1")

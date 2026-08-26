@@ -69,7 +69,8 @@ type Kafka struct {
 }
 
 type Message struct {
-	Transport string `mapstructure:"transport"`
+	Transport     string `mapstructure:"transport"`
+	ShadowQueries bool   `mapstructure:"shadow_queries"`
 }
 
 type InternalRPC struct {
@@ -196,6 +197,7 @@ func Load() error {
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
 		v.SetDefault("message.transport", "local")
+		v.SetDefault("message.shadow_queries", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
 		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
@@ -284,6 +286,7 @@ func Load() error {
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
 			"message.transport",
+			"message.shadow_queries",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
 			"internal_rpc.core_listen_address",
@@ -463,7 +466,10 @@ func KafkaConfig() Kafka {
 func MessageConfig() Message {
 	MustLoad()
 
-	return Message{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport")))}
+	return Message{
+		Transport:     strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
+		ShadowQueries: cfg.GetBool("message.shadow_queries"),
+	}
 }
 
 func InternalRPCConfig() InternalRPC {

@@ -49,6 +49,8 @@ kafka:
 message:
   # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
   transport: local
+  # Query-only comparison; send commands always execute on the selected primary exactly once.
+  shadow_queries: false
 
 internal_rpc:
   # Keep disabled until Core and Message are deployed as separate processes.
