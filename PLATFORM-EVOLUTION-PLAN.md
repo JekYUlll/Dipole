@@ -266,7 +266,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 通过 checkpoint、重放和回填保证消费者可恢复，修复事件进入同一幂等模型。
 - [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
 - [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
-- [ ] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约，完整消息从 Message Store 补全，双跑期间对比 MySQL UUID hydration。
+- [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露；完整消息仍由 MySQL UUID hydration 补全，Message Store 双跑留待后续切片。
 - [ ] 为重复发送返回值和文件消息授权建立独立持久元数据契约，停止依赖 MySQL 完整正文。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 

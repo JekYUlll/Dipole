@@ -21,6 +21,8 @@
 - Core 内部 RPC 为 Sync 身份增加方法级最小权限，`dipole-sync` 只能读取群成员关系；Core/Gateway 可通过绑定自身身份的客户端调用 Sync API。
 - 增加默认 `local` 的 `sync.transport=local|grpc` 切流开关；Core HTTP 可通过受认证 gRPC 使用独立 Sync Service，并保留进程内即时回滚路径。
 - 增加默认关闭的 `sync.shadow_queries`，异步比较 Inbox、设备 Cursor 和群 checkpoint 只读结果；两类 checkpoint advance 始终只调用选定主实现一次。
+- Sync Item 增加存储中立的 `conversation_key + message_uuid + message_seq` 定位契约，HTTP 与 Sync v1 gRPC 以追加字段暴露 locator，同时保留完整 Message 快照兼容旧客户端。
+- `user_sync_inbox` 增加会话 Seq 回填和 `(user_uuid, conversation_key, message_seq)` 唯一约束；相同消息或位置的冲突重放会失败，正确重放保持幂等。
 - 增加 Vue 消息搜索工作区，支持 desktop/mobile 的结果、加载、空态和局部故障态，以及会话入口、`Cmd/Ctrl+K`、300ms 防抖、乱序响应淘汰和重试。
 - 增加 Vitest、Vue Test Utils 与 jsdom 前端测试基线，首批覆盖 Search 状态控制器和工作区交互。
 - 增加 canonical Pencil 设计基线，包含消息搜索 desktop/mobile 的结果、加载、空态、错误态和可复用组件，并提供批准预览与持续维护说明。
@@ -160,6 +162,7 @@
 
 ### 迁移说明
 
+- migration v9 会从 `messages.seq` 回填现有 Inbox，并创建位置唯一索引；存在无法关联 Message 的孤立 Inbox 时迁移会失败，部署前应先完成一致性检查。表级 DDL 建议在维护窗口执行。
 - 切换 Sync 查询前先启动 `dipole-sync` 并验证 health/RPC；随后将 Core 的 `sync.transport` 改为 `grpc`。回滚只需恢复 `local` 并重启 Core，不涉及数据回滚。
 
 - 消息搜索入口默认关闭；部署时需要同时设置 Gateway `search.enabled=true` 与前端构建变量 `VITE_SEARCH_ENABLED=true`，任一侧关闭都会保持现有聊天行为。

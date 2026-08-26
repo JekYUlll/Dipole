@@ -7,9 +7,16 @@ ON DUPLICATE KEY UPDATE user_uuid = user_uuid;
 SELECT user_uuid FROM user_sync_states WHERE user_uuid = ? FOR UPDATE;
 
 -- name: CreateUserSyncInbox :execresult
-INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, created_at)
-VALUES (?, ?, ?, NOW(3))
-ON DUPLICATE KEY UPDATE sync_seq = sync_seq;
+INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, message_seq, created_at)
+VALUES (?, ?, ?, ?, NOW(3))
+ON DUPLICATE KEY UPDATE
+    message_uuid = IF(
+        message_uuid = VALUES(message_uuid)
+        AND conversation_key = VALUES(conversation_key)
+        AND message_seq = VALUES(message_seq),
+        message_uuid,
+        NULL
+    );
 
 -- name: ListUserSyncInboxAfter :many
 SELECT * FROM user_sync_inbox

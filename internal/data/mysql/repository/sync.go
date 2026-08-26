@@ -117,7 +117,7 @@ func (r *SyncRepository) ListByUserAfter(userUUID string, afterSeq uint64, limit
 		if message == nil {
 			return nil, fmt.Errorf("sync inbox message %s is missing", row.MessageUuid)
 		}
-		items = append(items, &model.SyncMessage{SyncSeq: row.SyncSeq, ConversationKey: row.ConversationKey, Message: message})
+		items = append(items, &model.SyncMessage{SyncSeq: row.SyncSeq, ConversationKey: row.ConversationKey, MessageUUID: row.MessageUuid, MessageSeq: row.MessageSeq, Message: message})
 	}
 	return items, nil
 }

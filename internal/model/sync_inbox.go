@@ -15,11 +15,14 @@ type UserSyncInbox struct {
 	UserUUID        string    `json:"user_uuid"`
 	MessageUUID     string    `json:"message_uuid"`
 	ConversationKey string    `json:"conversation_key"`
+	MessageSeq      uint64    `json:"message_seq"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
 type SyncMessage struct {
 	SyncSeq         uint64   `json:"sync_seq"`
 	ConversationKey string   `json:"conversation_key"`
+	MessageUUID     string   `json:"message_uuid"`
+	MessageSeq      uint64   `json:"message_seq"`
 	Message         *Message `json:"message"`
 }

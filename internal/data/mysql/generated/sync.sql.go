@@ -57,19 +57,32 @@ func (q *Queries) AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDe
 }
 
 const createUserSyncInbox = `-- name: CreateUserSyncInbox :execresult
-INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, created_at)
-VALUES (?, ?, ?, NOW(3))
-ON DUPLICATE KEY UPDATE sync_seq = sync_seq
+INSERT INTO user_sync_inbox (user_uuid, message_uuid, conversation_key, message_seq, created_at)
+VALUES (?, ?, ?, ?, NOW(3))
+ON DUPLICATE KEY UPDATE
+    message_uuid = IF(
+        message_uuid = VALUES(message_uuid)
+        AND conversation_key = VALUES(conversation_key)
+        AND message_seq = VALUES(message_seq),
+        message_uuid,
+        NULL
+    )
 `
 
 type CreateUserSyncInboxParams struct {
 	UserUuid        string
 	MessageUuid     string
 	ConversationKey string
+	MessageSeq      uint64
 }
 
 func (q *Queries) CreateUserSyncInbox(ctx context.Context, arg CreateUserSyncInboxParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createUserSyncInbox, arg.UserUuid, arg.MessageUuid, arg.ConversationKey)
+	return q.db.ExecContext(ctx, createUserSyncInbox,
+		arg.UserUuid,
+		arg.MessageUuid,
+		arg.ConversationKey,
+		arg.MessageSeq,
+	)
 }
 
 const ensureUserSyncState = `-- name: EnsureUserSyncState :execresult
@@ -210,7 +223,7 @@ func (q *Queries) ListGroupSyncCheckpoints(ctx context.Context, arg ListGroupSyn
 }
 
 const listUserSyncInboxAfter = `-- name: ListUserSyncInboxAfter :many
-SELECT sync_seq, user_uuid, message_uuid, conversation_key, created_at FROM user_sync_inbox
+SELECT sync_seq, user_uuid, message_uuid, conversation_key, created_at, message_seq FROM user_sync_inbox
 WHERE user_uuid = ? AND sync_seq > ?
 ORDER BY sync_seq ASC
 LIMIT ?
@@ -237,6 +250,7 @@ func (q *Queries) ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncIn
 			&i.MessageUuid,
 			&i.ConversationKey,
 			&i.CreatedAt,
+			&i.MessageSeq,
 		); err != nil {
 			return nil, err
 		}

@@ -88,6 +88,8 @@ type SyncMessage struct {
 	SyncSeq         uint64                 `protobuf:"varint,1,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
 	ConversationKey string                 `protobuf:"bytes,2,opt,name=conversation_key,json=conversationKey,proto3" json:"conversation_key,omitempty"`
 	Message         *v11.Message           `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	MessageUuid     string                 `protobuf:"bytes,4,opt,name=message_uuid,json=messageUuid,proto3" json:"message_uuid,omitempty"`
+	MessageSeq      uint64                 `protobuf:"varint,5,opt,name=message_seq,json=messageSeq,proto3" json:"message_seq,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -141,6 +143,20 @@ func (x *SyncMessage) GetMessage() *v11.Message {
 		return x.Message
 	}
 	return nil
+}
+
+func (x *SyncMessage) GetMessageUuid() string {
+	if x != nil {
+		return x.MessageUuid
+	}
+	return ""
+}
+
+func (x *SyncMessage) GetMessageSeq() uint64 {
+	if x != nil {
+		return x.MessageSeq
+	}
+	return 0
 }
 
 type ListSyncMessagesResponse struct {
@@ -583,11 +599,14 @@ const file_dipole_sync_v1_sync_proto_rawDesc = "" +
 	"\x17ListSyncMessagesRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
 	"\tafter_seq\x18\x02 \x01(\x04R\bafterSeq\x12\x1b\n" +
-	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"\x89\x01\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"\xcd\x01\n" +
 	"\vSyncMessage\x12\x19\n" +
 	"\bsync_seq\x18\x01 \x01(\x04R\asyncSeq\x12)\n" +
 	"\x10conversation_key\x18\x02 \x01(\tR\x0fconversationKey\x124\n" +
-	"\amessage\x18\x03 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\"\x83\x01\n" +
+	"\amessage\x18\x03 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\x12!\n" +
+	"\fmessage_uuid\x18\x04 \x01(\tR\vmessageUuid\x12\x1f\n" +
+	"\vmessage_seq\x18\x05 \x01(\x04R\n" +
+	"messageSeq\"\x83\x01\n" +
 	"\x18ListSyncMessagesResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.dipole.sync.v1.SyncMessageR\x05items\x12\x19\n" +
 	"\bnext_seq\x18\x02 \x01(\x04R\anextSeq\x12\x19\n" +

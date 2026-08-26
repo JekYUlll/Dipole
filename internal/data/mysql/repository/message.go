@@ -221,7 +221,7 @@ func createSQLCSyncInbox(ctx context.Context, q *generated.Queries, message *mod
 		if _, err := q.LockUserSyncState(ctx, userUUID); err != nil {
 			return fmt.Errorf("lock sync state with sqlc: %w", err)
 		}
-		if _, err := q.CreateUserSyncInbox(ctx, generated.CreateUserSyncInboxParams{UserUuid: userUUID, MessageUuid: message.UUID, ConversationKey: message.ConversationKey}); err != nil {
+		if _, err := q.CreateUserSyncInbox(ctx, generated.CreateUserSyncInboxParams{UserUuid: userUUID, MessageUuid: message.UUID, ConversationKey: message.ConversationKey, MessageSeq: message.Seq}); err != nil {
 			return fmt.Errorf("create sync inbox with sqlc: %w", err)
 		}
 	}

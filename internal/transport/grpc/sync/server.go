@@ -148,10 +148,21 @@ func (s *Server) ListSyncMessages(ctx context.Context, request *syncv1.ListSyncM
 		if item == nil {
 			continue
 		}
+		messageID, messageSequence := item.MessageUUID, item.MessageSeq
+		if item.Message != nil {
+			if messageID == "" {
+				messageID = item.Message.UUID
+			}
+			if messageSequence == 0 {
+				messageSequence = item.Message.Seq
+			}
+		}
 		response.Items = append(response.Items, &syncv1.SyncMessage{
 			SyncSeq:         item.SyncSeq,
 			ConversationKey: item.ConversationKey,
 			Message:         grpcmapping.MessageToProto(item.Message),
+			MessageUuid:     messageID,
+			MessageSeq:      messageSequence,
 		})
 	}
 	return response, nil
