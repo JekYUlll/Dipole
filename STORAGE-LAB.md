@@ -16,7 +16,7 @@ Dipole Runtime ── no connection ──► Storage Lab
 当前约束：
 
 - `internal/config` 和 `internal/bootstrap` 没有 Cassandra / Elasticsearch 配置或客户端。
-- `go.mod` 没有 Cassandra / Elasticsearch driver。
+- A3 已引入 Apache Cassandra GoCQL driver 和未接线的 Timeline schema primitive；Runtime 仍未创建 Cassandra session。
 - MySQL 继续承担 MessageStore 和 SearchIndex 的生产职责。
 - A2 不创建正式 Timeline 表、索引模板、Kafka projector 或 shadow-read。
 - Cassandra 与 Elasticsearch 数据卷仅属于独立 Compose project，不与默认开发环境共享。
@@ -31,7 +31,7 @@ Dipole Runtime ── no connection ──► Storage Lab
 
 脚本执行以下门禁：
 
-1. 扫描应用配置、Bootstrap 和 Go 依赖，拒绝提前接线。
+1. 扫描应用配置和 Bootstrap，拒绝提前接入生产流量。
 2. 启动 Cassandra 与 Elasticsearch 并等待服务级健康检查。
 3. 在 Cassandra 创建临时 keyspace 和按会话/Seq 排序的 probe 表，写入并读取一行后删除 keyspace。
 4. 在 Elasticsearch 创建 strict mapping 的临时索引，写入、刷新、搜索一份文档后删除索引。
