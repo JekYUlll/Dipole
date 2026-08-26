@@ -6,6 +6,7 @@
 - Resource-specific authorization requests carry the acting user in both request fields and audit context when the resource contract requires it.
 - Search scope requests carry the acting user only as the authenticated `RequestContext.principal`; callers cannot submit a user ID or conversation-key scope.
 - Search scope contains direct Conversation projections plus normal or dismissed groups where the principal still has a membership row. A stale group Conversation projection grants no access.
+- The `dipole-search` service identity may call only `ListSearchConversationKeys`; a method-level interceptor denies all unrelated Core capabilities.
 - A missing entity is represented by an empty snapshot so the existing `CoreCapability` semantics remain stable.
 - Database and infrastructure details are returned as `INTERNAL`; storage errors do not cross the service boundary.
 - Production traffic requires AD-013 service authentication and interceptor validation.

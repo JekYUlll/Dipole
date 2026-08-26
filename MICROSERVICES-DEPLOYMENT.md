@@ -13,6 +13,14 @@ Core    -> MySQL / Redis / Kafka / MinIO
 Gateway -> Redis / Kafka
 ```
 
+可选 `search` profile 追加：
+
+```text
+Gateway -> Search Service -> Core Capability
+                         -> Elasticsearch read Alias
+Kafka   -> Search Indexer -> Elasticsearch write Alias
+```
+
 该文件使用单节点基础设施和示例数据库凭据，适合本机验证；生产环境需要集群、Secret 管理、独立 Message 数据库账号、备份、监控和网络策略。
 
 ## 启动
@@ -34,6 +42,8 @@ docker compose -f docker-compose.microservices.yml up -d --wait
 公开入口为 `http://127.0.0.1:8080`。Core、Message、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。
 
 三个应用进程共用一个镜像，通过 entrypoint 选择二进制。migration 作为一次性服务先执行；Core 与 Message 就绪后，Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
+
+启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。Gateway 公共搜索路由将在后续里程碑开放，当前 profile 可独立验证内部查询链路。
 
 ## 自动验收
 

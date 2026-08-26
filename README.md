@@ -18,6 +18,8 @@ Dipole
 
 [最小微服务开发拓扑](MICROSERVICES-DEPLOYMENT.md)
 
+[Search Service 渐进部署手册](SEARCH-SERVICE-DEPLOYMENT.md)
+
 ## 数据库迁移
 
 启动服务前先执行版本化 migration：

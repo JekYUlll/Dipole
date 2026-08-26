@@ -35,10 +35,10 @@ if rg -i 'cassandra' \
 	exit 1
 fi
 if rg -i 'elasticsearch' \
-  "$root_dir/internal/config" \
-  "$root_dir/internal/bootstrap" \
-  "$root_dir/configs/config.dist.yaml"; then
-  printf 'Elasticsearch is wired into the application before its projection phase\n' >&2
+  "$root_dir/internal/bootstrap/runtime.go" \
+  "$root_dir/internal/bootstrap/message_runtime.go" \
+  "$root_dir/internal/bootstrap/gateway_runtime.go"; then
+  printf 'Elasticsearch must stay outside Core, Message, and Gateway composition roots\n' >&2
   exit 1
 fi
 

@@ -78,6 +78,27 @@ func TestBootstrapValidatesExistingAliasOwnership(t *testing.T) {
 	}
 }
 
+func TestValidateReadinessFollowsCurrentAliasOwnerWithoutCreatingIndex(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			t.Fatalf("readiness must be read-only, got %s", request.Method)
+		}
+		switch request.URL.Path {
+		case "/_alias/dipole-messages-read,dipole-messages-write":
+			_, _ = writer.Write([]byte(validAliasResponse("dipole-messages-v2")))
+		case "/dipole-messages-v2/_mapping":
+			_, _ = writer.Write([]byte(strings.Replace(validExistingMappingResponse(), "dipole-messages-v1", "dipole-messages-v2", 1)))
+		default:
+			t.Fatalf("unexpected readiness path %s", request.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	if err := testIndex(t, server.URL).ValidateReadiness(t.Context()); err != nil {
+		t.Fatalf("validate current Search owner: %v", err)
+	}
+}
+
 func TestBootstrapRejectsExistingMappingDrift(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodHead {

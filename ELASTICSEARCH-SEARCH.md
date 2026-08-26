@@ -71,6 +71,12 @@ message.{direct,group}.{created,edited,recalled,deleted}
 
 created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombstone。consumer group 固定为 `dipole-search-indexer-consumer`；处理失败沿用平台 retry/DLQ 机制，确认 offset 前必须完成 Elasticsearch Apply。运行配置支持 Basic Auth 或 API Key，两种认证不能同时启用。
 
+## Search Query Runtime
+
+`cmd/search-service` 是独立只读查询进程。内部 `dipole.search.v1.SearchService` 请求只包含认证上下文、查询文本和页大小；Search Application 每次向 Core 获取 principal scope，空 scope 不访问 Elasticsearch。启动通过 `ValidateReadiness` 动态发现当前双 Alias 的唯一物理 owner 并校验 strict mapping，不创建索引或修改 Alias。
+
+Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也不直接构造 Elasticsearch adapter。内部 RPC 首期只允许 Gateway 调用，公开 HTTP 接线保留为下一可回滚切片。
+
 ## Alias Migration
 
 新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收两个生产 Alias 全局只有一个 owner，并校验目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。remove action 使用 `must_exist=true`，并发运维或分裂 owner 会让整个请求失败。请求成功后的 owner 验收失败会触发反向原子补偿；回滚也使用同一受控路径。
@@ -135,7 +141,7 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 使用 Core Capability scope 契约实现独立内部 Search RPC，再开放 Gateway API。
+1. 将 Gateway 认证 HTTP API 接到内部 Search RPC，并补前端设计稿与交互状态。
 2. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References

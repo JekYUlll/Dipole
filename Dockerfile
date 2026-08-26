@@ -10,6 +10,7 @@ COPY dist/dipole-message /app/dipole-message
 COPY dist/dipole-migrate /app/dipole-migrate
 COPY dist/dipole-cassandra-projector /app/dipole-cassandra-projector
 COPY dist/dipole-search-indexer /app/dipole-search-indexer
+COPY dist/dipole-search /app/dipole-search
 COPY dist/dipole-search-backfill /app/dipole-search-backfill
 COPY dist/dipole-search-reconcile /app/dipole-search-reconcile
 COPY dist/dipole-search-alias /app/dipole-search-alias

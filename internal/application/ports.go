@@ -44,6 +44,10 @@ type SyncApplication interface {
 	AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error)
 }
 
+type SearchApplication interface {
+	Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error)
+}
+
 type CoreCapability interface {
 	GetUserByUUID(userUUID string) (*model.User, error)
 	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
