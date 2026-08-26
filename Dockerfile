@@ -18,6 +18,8 @@ COPY dist/dipole-sync-baseline /app/dipole-sync-baseline
 COPY dist/dipole-search-backfill /app/dipole-search-backfill
 COPY dist/dipole-search-reconcile /app/dipole-search-reconcile
 COPY dist/dipole-search-alias /app/dipole-search-alias
+COPY dist/dipole-search-archive /app/dipole-search-archive
+COPY dist/dipole-search-outbox-cleanup /app/dipole-search-outbox-cleanup
 COPY dist/dipole-cassandra-backfill /app/dipole-cassandra-backfill
 COPY dist/dipole-cassandra-reconcile /app/dipole-cassandra-reconcile
 

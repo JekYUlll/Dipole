@@ -130,6 +130,13 @@ sync:
 search:
   # Gateway registers the public Search route only after the independent Search RPC is deployed.
   enabled: false
+  # Empty values inherit global MySQL; production maintenance commands use a dedicated account.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
 
 internal_rpc:
   # Keep disabled until Core and Message are deployed as separate processes.

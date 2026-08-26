@@ -254,6 +254,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 完成 Pencil Search desktop/mobile 的 Results、Loading、Empty、Error 四态和可复用组件。
 - [x] 实现默认关闭的 Vue Search 工作区、Gateway/前端双开关、请求防抖、乱序响应淘汰和组件测试。
 - [x] 搜索全量重建支持 MinIO 不可变事件归档源；receipt 固定 object version ID 和 Governance retention，Backfill、Reconcile 与 Alias 共同校验 snapshot ID、高水位和 SHA-256，删除本地副本与历史 Message Outbox 后仍可恢复、重建和回滚。
+- [x] 解决 AD-021：以专用最小权限账号执行 receipt/Reconcile/Job 三重绑定的 Outbox dry-run 与分批清理，记录责任人和对象版本；清理后仅凭归档完成空索引重建、对账与 Alias 回滚。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
 
