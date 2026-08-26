@@ -82,6 +82,22 @@ type UserStore interface {
 	ListByUUIDs(uuids []string) ([]*model.User, error)
 }
 
+type ContactStore interface {
+	AreFriends(userUUID, friendUUID string) (bool, error)
+	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
+	CreateFriendship(userOneUUID, userTwoUUID string) error
+	DeleteFriendship(userOneUUID, userTwoUUID string) error
+	ListFriends(userUUID string) ([]*model.Contact, error)
+	GetContact(userUUID, friendUUID string) (*model.Contact, error)
+	UpdateContact(contact *model.Contact) error
+	CreateApplication(contactApplication *model.ContactApplication) error
+	GetApplicationByPair(applicantUUID, targetUUID string) (*model.ContactApplication, error)
+	GetApplicationByID(id uint) (*model.ContactApplication, error)
+	UpdateApplication(contactApplication *model.ContactApplication) error
+	ListIncomingApplications(userUUID string) ([]*model.ContactApplication, error)
+	ListOutgoingApplications(userUUID string) ([]*model.ContactApplication, error)
+}
+
 type EventPublisher interface {
 	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
 	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error

@@ -10,19 +10,30 @@ import (
 )
 
 type Querier interface {
+	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
+	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
 	CreateUploadedFile(ctx context.Context, arg CreateUploadedFileParams) (sql.Result, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error)
+	DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (sql.Result, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
+	GetContact(ctx context.Context, arg GetContactParams) (Contact, error)
+	GetContactApplicationByID(ctx context.Context, id uint64) (ContactApplication, error)
+	GetContactApplicationByPair(ctx context.Context, arg GetContactApplicationByPairParams) (ContactApplication, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
 	GetUserByTelephone(ctx context.Context, telephone string) (User, error)
 	GetUserByUUID(ctx context.Context, uuid string) (User, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
+	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
+	ListIncomingContactApplications(ctx context.Context, targetUuid string) ([]ContactApplication, error)
+	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
+	UpdateContact(ctx context.Context, arg UpdateContactParams) (sql.Result, error)
+	UpdateContactApplication(ctx context.Context, arg UpdateContactApplicationParams) (sql.Result, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error)
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 }
