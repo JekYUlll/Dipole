@@ -12,9 +12,12 @@ import (
 type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
+	AdvanceCassandraBackfillJob(ctx context.Context, arg AdvanceCassandraBackfillJobParams) (sql.Result, error)
 	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
 	AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error
 	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
+	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
+	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
 	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (sql.Result, error)
@@ -28,10 +31,13 @@ type Querier interface {
 	DeleteGroupMember(ctx context.Context, arg DeleteGroupMemberParams) (sql.Result, error)
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
 	DeleteMessageSearchDocument(ctx context.Context, messageUuid string) error
+	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
+	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
+	GetCassandraBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetContact(ctx context.Context, arg GetContactParams) (Contact, error)
 	GetContactApplicationByID(ctx context.Context, id uint64) (ContactApplication, error)
 	GetContactApplicationByPair(ctx context.Context, arg GetContactApplicationByPairParams) (ContactApplication, error)
@@ -59,12 +65,14 @@ type Querier interface {
 	ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error)
 	ListMessagesByConversationSeqBefore(ctx context.Context, arg ListMessagesByConversationSeqBeforeParams) ([]Message, error)
 	ListMessagesByUUIDs(ctx context.Context, uuids []string) ([]Message, error)
+	ListMessagesForCassandraBackfill(ctx context.Context, arg ListMessagesForCassandraBackfillParams) ([]Message, error)
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
 	ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncInboxAfterParams) ([]UserSyncInbox, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
+	LockCassandraBackfillJob(ctx context.Context, jobName string) (LockCassandraBackfillJobRow, error)
 	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	LockUserSyncState(ctx context.Context, userUuid string) (string, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error

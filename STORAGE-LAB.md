@@ -15,8 +15,8 @@ Core / Message / Gateway ── no connection ──► Storage Lab
 
 当前约束：
 
-- A3 已引入 Apache Cassandra GoCQL driver、Timeline schema primitive 和独立 projector Runtime。
-- Projector 默认关闭；Core、Message、Gateway 不创建 Cassandra session。
+- A3 已引入 Apache Cassandra GoCQL driver、Timeline schema primitive、独立 Projector Runtime 和一次性 Backfill 作业。
+- Projector 默认关闭；Backfill 仅由运维显式执行；Core、Message、Gateway 不创建 Cassandra session。
 - MySQL 继续承担 MessageStore 和 SearchIndex 的生产职责。
 - Elasticsearch 仍没有正式索引模板或 Runtime；Cassandra shadow-read 仍未启用。
 - Cassandra 与 Elasticsearch 数据卷仅属于独立 Compose project，不与默认开发环境共享。
@@ -47,13 +47,15 @@ Elasticsearch 镜像体积较大，首次拉取耗时明显；默认 Compose、�
 
 ## Next Gates
 
-A3 进入 Cassandra 影子投影前，需要单独评审并验证：
+A3 后续进入对账和影子读取前，需要单独评审并验证：
 
 - `conversation_id + bucket` 分区边界与 bucket rollover 规则。
 - `conversation_seq` 聚簇排序、重复事件幂等和乱序写入语义。
-- Outbox/Kafka projector checkpoint、回填、lag 与失败重试。
+- Outbox/Kafka projector lag 与失败重试。
 - MySQL/Cassandra 数量、Seq、哈希和抽样内容对账。
 - shadow-read 只记录差异，客户端仍读取 MySQL。
+
+历史 Backfill 已具备固定 MySQL 高水位、owner lease、批次 checkpoint 与失败重试，具体运行顺序见 [Cassandra Timeline 文档](CASSANDRA-TIMELINE.md)。
 
 A5 引入 Elasticsearch Search Projection 时再定义正式 analyzer、mapping、alias/version、重建和切换协议。
 

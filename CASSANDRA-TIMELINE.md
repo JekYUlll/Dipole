@@ -1,6 +1,6 @@
 # Cassandra Conversation Timeline
 
-本文档记录 A3 第一切片的 Cassandra Message Store schema 与幂等写入契约。当前实现只参与隔离 contract，MySQL 继续承担生产消息写入和读取。
+本文档记录 A3 Cassandra Message Store 的 schema、实时投影与历史回填契约。当前 Cassandra 仍是影子存储，MySQL 继续承担生产消息写入和客户端读取。
 
 ## Partition Model
 
@@ -41,7 +41,8 @@ bucket = (message_seq - 1) / 10000
 - 已引入 Apache Cassandra GoCQL Driver v2，并通过 Cassandra 5.0.9 真实 contract。
 - 独立 `cmd/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
 - Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core、Message 或 Gateway Composition Root。
-- Backfill、reconciliation 和 shadow-read 留在后续 A3 切片；新 consumer 从当前 Kafka 尾部开始，历史事实由 backfill 补齐。
+- 独立 `cmd/cassandra-backfill` 按固定 MySQL 高水位补齐历史数据，并使用持久 checkpoint 和 owner lease 支持失败恢复。
+- Reconciliation 和 shadow-read 留在后续 A3 切片；客户端与 Message Service 当前不读取 Cassandra。
 - 当前表只支持 Conversation Timeline；按 UUID 查询、搜索和用户 Inbox 继续由现有存储负责。
 - Schema 不由应用启动自动修改，后续 projector 接线前需要独立 migration owner。
 
@@ -68,6 +69,26 @@ cassandra:
 
 执行 `scripts/smoke-cassandra-projector.sh` 可验证三节点 Kafka 到 Cassandra 的完整链路。脚本等待 consumer group 获得 partition assignment 后发布两次相同事件，并确认最终只有一条 Timeline 记录。
 
+## History Backfill
+
+建议按以下顺序部署：
+
+1. 启动 Cassandra Projector，并确认专属 consumer group 已获得 partition assignment。
+2. 执行 MySQL migration `000006_cassandra_backfill_jobs`。
+3. 运行一次 Backfill；首次获取作业时固定 `messages.id` 高水位，后续消息由实时 Projector 处理。
+
+```bash
+/app/dipole-cassandra-backfill \
+  --job message-timeline-v1 \
+  --owner backfill-node-1 \
+  --batch-size 500 \
+  --lease-seconds 60
+```
+
+Backfill 按全局、不可变的 MySQL `messages.id` 扫描源数据，Cassandra 定位和排序仍使用会话内 `message_seq`。每批全部 Append 成功后才推进 `last_processed_id`；批内失败会安全重放已成功的 LWT 写入。`cassandra_backfill_jobs` 保存固定高水位、checkpoint、owner、lease、尝试次数和最近错误。
+
+同一作业只允许一个有效 owner。进程异常退出后，下一 owner 在 lease 过期后接管；显式失败会立即释放 lease。完成的作业再次运行会返回 no-op，不扩大原高水位。执行 `scripts/smoke-cassandra-backfill.sh` 可验证失败不推进 checkpoint、恢复时 duplicate 幂等和最终完成状态。
+
 ## Verified Contract
 
 真实 Cassandra 测试覆盖：
@@ -79,6 +100,8 @@ cassandra:
 - 相同 Seq 的冲突 payload 拒绝覆盖。
 - schema 文件按版本顺序加载。
 - 独立 Kafka consumer group 对重复 created event 的端到端投影。
+- MySQL 固定高水位、owner lease、失败释放、checkpoint 恢复和完成后 no-op。
+- 真实 MySQL/Cassandra 故障恢复：失败批次保持 checkpoint，修复后重放 duplicate 并补齐 Timeline。
 
 ## References
 
