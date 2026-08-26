@@ -18,9 +18,9 @@
 - **状态：** 暂缓
 - **发现日期：** 2026-08-27
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
-- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
+- **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline，并通过真实双存储测试识别 payload mismatch 与缺少投影；Cassandra 尚未承担 Sync 主读。Web 已增加默认关闭的 IndexedDB Sync Engine，可忽略 Cassandra 响应中的 MySQL internal ID，并在本地事务完成后 ACK `sync_seq`；`/messages/offline` 对照观测和旧客户端兼容窗口尚未完成。按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 继续读取 MySQL 完整消息。Message 最小账号暂时保留 `groups/group_members` 只读权限，专用于旧 Offline 群成员过滤。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
-- **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 在 shadow hydration 观察稳定后增加 Cassandra 受控主读与 MySQL fallback，并审计 Cassandra projection 不携带 MySQL internal ID 对旧 DTO/客户端的影响。另行建立幂等结果快照或 UUID locator、独立文件授权元数据；所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
+- **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 先灰度 Web IndexedDB Sync Engine 并归档 Offline/Sync UUID 对照结果，再为 Cassandra hydration 增加受控主读与 MySQL fallback。另行建立幂等结果快照或 UUID locator、独立文件授权元数据；所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 
 ### AD-021：Search 重建依赖 Outbox 事件保留契约
@@ -44,6 +44,17 @@
 - **风险：** 开发服务器在不受信任网络上运行时可能暴露响应读取风险；直接强制升级会同时改变构建、插件和测试运行时，缺少独立兼容验证。
 - **建议方向：** 在独立前端工具链分支升级 Vite/Vitest，验证 Node LTS、生产 bundle、代理 WebSocket、测试和静态资源基路径后再合并。
 - **处理门槛：** 前端开发服务器需要暴露到共享网络前完成；当前仅绑定可信本机开发环境。
+
+### AD-025：Web 本地消息库缺少统一会话清理与容量策略
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** IndexedDB Sync Engine、共享设备隐私、浏览器配额、401/强制下线
+- **现状：** 首版 Sync Engine 按用户隔离消息与游标，显式退出和 WS 强制下线会等待在途同步后尽力清除当前账号；Axios 收到 HTTP 401 时仍直接移除 Token 并跳转，尚未进入统一清理入口。本地消息当前没有容量上限或按会话淘汰策略，功能默认关闭。
+- **风险：** 被动会话失效或 IndexedDB 删除失败时，共享设备可能继续保留本地消息；长期运行会持续增长浏览器占用，最终触发配额错误并暂停同步。
+- **建议方向：** 建立统一 Session Termination 流程，覆盖显式退出、401、WS kick 和账号切换；增加按用户的缓存 manifest、容量水位、最近会话淘汰和 quota error 可观测状态，同时保证淘汰不推进安全 Sync Cursor。
+- **处理门槛：** `VITE_SYNC_ENGINE_ENABLED` 计划改为默认开启前完成清理故障测试、容量压测和共享设备验收。
 
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
@@ -151,7 +162,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
-- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志、Search desktop/mobile 四态预览和 Vue 工作区；Login/Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
+- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志、Search desktop/mobile 四态预览和 Vue 工作区；Sync 状态矩阵、desktop/mobile 恢复稿与 Vue 标题栏状态也已纳入同一基线。Login/完整 Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
 - **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
 - **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
@@ -195,7 +206,7 @@
 - **完成日期：** 2026-08-27
 - **解决方式：** Direct/Group HTTP 与 Message v1 RPC 增加互斥的 `before_seq`；Web 历史首屏固定从 `before_seq=0` 开始，向前分页使用最旧正 Seq，热群补拉改用 `after_seq`，同 UUID 合并优先保留带持久 Seq 的版本。Cassandra 路由只覆盖显式 Seq cursor，legacy ID cursor 始终留在 MySQL。
 - **验证：** Local/gRPC 应用契约、HTTP 游标互斥、Service 权限与 Seq 透传测试通过；真实 MySQL 8.4/Cassandra 5.0.9 演练确认 before/after 完整页由 Cassandra 返回，人工缺行后整页回退 MySQL。
-- **保留兼容：** Cassandra 响应的 `id` 继续为零；全局身份使用 `message_id`，会话排序和分页使用 `message_seq`。IndexedDB 持久同步仍由 A6 独立推进。
+- **保留兼容：** Cassandra 响应的 `id` 继续为零；全局身份使用 `message_id`，会话排序和分页使用 `message_seq`。A6 已增加默认关闭的 IndexedDB 持久同步，旧 Offline 双跑对照完成前不改变默认客户端路径。
 
 ### AD-004：热群消息缺少持久化同步补偿
 

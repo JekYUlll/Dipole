@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser, GroupSyncCheckpoint } from '@/types'
 import api from '@/api'
+import { browserSyncEnabled, clearBrowserMessages, recoverBrowserMessages } from '@/sync/browserSync'
+
+export type MessageSyncStatus = 'idle' | 'restoring' | 'current' | 'error'
 
 export const useChatStore = defineStore('chat', () => {
   const conversations = ref<Conversation[]>([])
@@ -12,7 +15,10 @@ export const useChatStore = defineStore('chat', () => {
   const devices = ref<Device[]>([])
   const messageMap = ref<Map<string, Message[]>>(new Map())
   const activeKey = ref('')
+  const syncStatus = ref<MessageSyncStatus>('idle')
+  const safeSyncSeq = ref(0)
   const lastOfflineID = ref(Number(localStorage.getItem('dipole.web.lastOfflineID') || '0'))
+  let activeSync: Promise<number> | undefined
   // current user UUID — set by auth store after login, needed for key derivation
   const myUUID = ref(localStorage.getItem('dipole.web.user')
     ? (() => { try { return JSON.parse(localStorage.getItem('dipole.web.user')!).uuid } catch { return '' } })()
@@ -103,6 +109,34 @@ export const useChatStore = defineStore('chat', () => {
     items.forEach(m => pushMessage(m))
     _updateLastOfflineID(items)
     return items.length
+  }
+
+  const syncMessages = () => {
+    if (!browserSyncEnabled || !myUUID.value) return Promise.resolve(0)
+    if (activeSync) return activeSync
+    syncStatus.value = 'restoring'
+    activeSync = recoverBrowserMessages(myUUID.value, messages => {
+      messages.forEach(message => pushMessage(message))
+    }).then(result => {
+      safeSyncSeq.value = result.syncSeq
+      syncStatus.value = 'current'
+      return result.synchronized
+    }).catch(error => {
+      syncStatus.value = 'error'
+      throw error
+    }).finally(() => {
+      activeSync = undefined
+    })
+    return activeSync
+  }
+
+  const clearLocalMessages = async (userUUID = myUUID.value) => {
+    if (activeSync) await activeSync.catch(() => {})
+    if (userUUID) await clearBrowserMessages(userUUID)
+    messageMap.value = new Map()
+    activeKey.value = ''
+    safeSyncSeq.value = 0
+    syncStatus.value = 'idle'
   }
 
   const pushMessage = (msg: Message) => {
@@ -209,8 +243,9 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
+    syncStatus, safeSyncSeq,
     fetchConversations, markRead,
-    fetchDirectMessages, fetchGroupMessages, syncOffline, pushMessage,
+    fetchDirectMessages, fetchGroupMessages, syncOffline, syncMessages, clearLocalMessages, pushMessage,
 	fetchGroupMessagesAfter,
 	fetchGroupMessagesAfterSeq, recoverGroupMessages,
     fetchContacts, fetchApplications,
