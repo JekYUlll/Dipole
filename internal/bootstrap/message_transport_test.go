@@ -106,6 +106,30 @@ func TestMessageTransportRejectsShadowWithoutRPC(t *testing.T) {
 	}
 }
 
+func TestMessageTransportRemoteFailureKeepsLocalRollbackAvailable(t *testing.T) {
+	rpcCfg := config.InternalRPC{
+		Enabled:            true,
+		SharedSecret:       "test-secret",
+		MessageTarget:      "127.0.0.1:1",
+		DialTimeoutSeconds: 1,
+	}
+	startedAt := time.Now()
+	if _, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "grpc"}, rpcCfg, stubMessageApplication{}); err == nil {
+		t.Fatal("expected unavailable remote transport to fail")
+	}
+	if elapsed := time.Since(startedAt); elapsed > 2*time.Second {
+		t.Fatalf("remote transport exceeded bounded startup failure: %v", elapsed)
+	}
+	local, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "local"}, rpcCfg, stubMessageApplication{})
+	if err != nil {
+		t.Fatalf("local rollback transport failed: %v", err)
+	}
+	defer local.Close()
+	if message, err := local.Application.SendDirectMessage("U1", "U2", "rollback", "C-rollback"); err != nil || message == nil {
+		t.Fatalf("local rollback command failed: message=%+v err=%v", message, err)
+	}
+}
+
 func runMessageApplicationContract(t *testing.T, messages application.MessageApplication) {
 	t.Helper()
 	direct, err := messages.SendDirectMessage("U1", "U2", "hello", "C1")
@@ -139,5 +163,47 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 	offline, err := messages.ListOfflineMessages("U1", 70, 20)
 	if err != nil || len(offline) != 1 || offline[0].ID != 71 || offline[0].Content != "offline" {
 		t.Fatalf("offline history mismatch: messages=%+v err=%v", offline, err)
+	}
+}
+
+func BenchmarkMessageTransportDirectHistory(b *testing.B) {
+	certFile, keyFile, caFile := writeRPCIdentity(b, gatewayServiceName)
+	rpcCfg := config.InternalRPC{
+		Enabled:              true,
+		SharedSecret:         "benchmark-secret",
+		MessageListenAddress: "127.0.0.1:0",
+		DialTimeoutSeconds:   2,
+		TLSEnabled:           true,
+		TLSCertFile:          certFile,
+		TLSKeyFile:           keyFile,
+		TLSCAFile:            caFile,
+		TLSServerName:        "localhost",
+	}
+	server, err := NewMessageRPCServer(rpcCfg, stubMessageApplication{})
+	if err != nil {
+		b.Fatalf("start benchmark message rpc: %v", err)
+	}
+	b.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		server.Close(ctx)
+	})
+	rpcCfg.MessageTarget = server.Address()
+
+	for _, mode := range []string{"local", "grpc"} {
+		b.Run(mode, func(b *testing.B) {
+			transport, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
+			if err != nil {
+				b.Fatalf("create %s benchmark transport: %v", mode, err)
+			}
+			b.Cleanup(transport.Close)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				if _, err := transport.Application.ListDirectMessages("U1", "U2", 40, 20); err != nil {
+					b.Fatalf("list direct messages: %v", err)
+				}
+			}
+		})
 	}
 }

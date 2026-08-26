@@ -153,7 +153,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 当前单体先作为 Gateway/Core，通过受认证 gRPC 调用 Message Service，并保留 `local` 回切。
 - [x] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取这些 Core 表。
 - [x] 使用异步影子请求比对 Local 与 Remote 查询响应；四类发送命令只执行 primary，影子链路禁止业务写入。
-- [ ] 按节点逐步将 `message.transport` 切换为 `grpc`，保留快速回切能力。
+- [x] 提供按节点逐步切换 `message.transport=grpc` 的 shadow/owner 运行模式、consumer group 交接手册和 Local 快速回切能力。
 - [x] 明确 Message Service 数据表所有权；远程模式下 Core 停止写 `messages` 和 `outbox_events`，独立进程只组合 Message 与 Outbox adapters。
 
 当前过渡限制：Message 与 Core 仍使用同一 MySQL schema 和数据库账号；代码侧文件所有权已迁入 Core Capability，数据库最小权限继续由 AD-015 跟踪。内部 RPC 仅允许 loopback/private network，mTLS 门禁继续由 AD-013 跟踪。

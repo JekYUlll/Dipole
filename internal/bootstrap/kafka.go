@@ -44,14 +44,14 @@ type groupHeatReader interface {
 }
 
 func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
-	return registerCoreKafkaHandlers(hub, repos, true)
+	return registerCoreKafkaHandlers(hub, repos, nil, true)
 }
 
 func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
-	return registerCoreKafkaHandlers(hub, repos, false)
+	return registerCoreKafkaHandlers(hub, repos, nil, false)
 }
 
-func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, includeMessagePersistence bool) error {
+func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
@@ -64,10 +64,12 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		events = platformKafka.Client
 	}
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
-	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
-		Events:    events,
-		HotGroups: hotGroupDetector,
-	})
+	if messaging == nil {
+		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+			Events:    events,
+			HotGroups: hotGroupDetector,
+		})
+	}
 	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
 	if aiService, err := newAIService(repos, messaging.Messages); err != nil {
 		return err

@@ -25,6 +25,7 @@ type MessageRuntime struct {
 
 func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
+	messageCfg := config.MessageConfig()
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("message service requires internal_rpc.enabled")
 	}
@@ -34,11 +35,16 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := store.InitRedis(); err != nil {
 		return nil, fmt.Errorf("message redis init failed: %w", err)
 	}
-	if err := platformKafka.Init(); err != nil {
-		return nil, fmt.Errorf("message kafka publisher init failed: %w", err)
+	if messageCfg.RuntimeMode != "owner" && messageCfg.RuntimeMode != "shadow" {
+		return nil, fmt.Errorf("unsupported message.runtime_mode %q", messageCfg.RuntimeMode)
 	}
-	if err := platformKafka.InitConsumer(); err != nil {
-		return nil, fmt.Errorf("message kafka consumer init failed: %w", err)
+	if messageCfg.RuntimeMode == "owner" {
+		if err := platformKafka.Init(); err != nil {
+			return nil, fmt.Errorf("message kafka publisher init failed: %w", err)
+		}
+		if err := platformKafka.InitConsumer(); err != nil {
+			return nil, fmt.Errorf("message kafka consumer init failed: %w", err)
+		}
 	}
 	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
 	if err != nil {
@@ -46,6 +52,11 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	}
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
+	}
+	if messageCfg.EnforceDBPermissions {
+		if err := verifyMessageDatabaseBoundary(ctx, store.SQLDB); err != nil {
+			return nil, fmt.Errorf("verify message database permissions: %w", err)
+		}
 	}
 	repos, err := appComposition.NewMessageProcessRepositories(store.SQLDB)
 	if err != nil {
@@ -65,26 +76,32 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		Events:    events,
 		HotGroups: platformHotGroup.NewRedisDetector(),
 	})
-	RegisterMessageKafkaHandlers(messages)
-	if platformKafka.Client != nil {
+	servedMessages := applicationPort.MessageApplication(messages)
+	if messageCfg.RuntimeMode == "shadow" {
+		servedMessages = newQueryOnlyMessageApplication(messages)
+	}
+	if messageCfg.RuntimeMode == "owner" {
+		RegisterMessageKafkaHandlers(messages)
+	}
+	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
 		if err := platformKafka.Client.EnsureTopics(messageOwnedKafkaTopics()); err != nil {
 			runtime.Close()
 			return nil, fmt.Errorf("ensure message kafka topics: %w", err)
 		}
 	}
-	if platformKafka.Subscriber != nil {
+	if messageCfg.RuntimeMode == "owner" && platformKafka.Subscriber != nil {
 		if err := platformKafka.Subscriber.Start(ctx); err != nil {
 			runtime.Close()
 			return nil, fmt.Errorf("start message kafka consumer: %w", err)
 		}
 	}
-	if platformKafka.Client != nil {
+	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
 		runtime.outboxFlow = newOutboxRelay(repos.Outbox)
 		if runtime.outboxFlow != nil {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.rpc, err = NewMessageRPCServer(rpcCfg, messages)
+	runtime.rpc, err = NewMessageRPCServer(rpcCfg, servedMessages)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)

@@ -8,7 +8,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -20,6 +22,13 @@ const (
 type Credentials struct {
 	Service string
 	Secret  string
+}
+
+type callerContextKey struct{}
+
+func CallerService(ctx context.Context) (string, bool) {
+	caller, ok := ctx.Value(callerContextKey{}).(string)
+	return caller, ok && caller != ""
 }
 
 func NewUnaryClientInterceptor(credentials Credentials) (grpc.UnaryClientInterceptor, error) {
@@ -66,8 +75,27 @@ func NewUnaryServerInterceptor(secret string, allowedCallers ...string) (grpc.Un
 		if _, ok := allowed[strings.TrimSpace(callers[0])]; !ok {
 			return nil, status.Error(codes.PermissionDenied, "caller service is not allowed")
 		}
-		return handler(ctx, request)
+		if err := verifyTLSCaller(ctx, strings.TrimSpace(callers[0])); err != nil {
+			return nil, err
+		}
+		return handler(context.WithValue(ctx, callerContextKey{}, strings.TrimSpace(callers[0])), request)
 	}, nil
+}
+
+func verifyTLSCaller(ctx context.Context, caller string) error {
+	connectionPeer, ok := peer.FromContext(ctx)
+	if !ok || connectionPeer.AuthInfo == nil {
+		return nil
+	}
+	tlsInfo, ok := connectionPeer.AuthInfo.(credentials.TLSInfo)
+	if !ok || len(tlsInfo.State.PeerCertificates) == 0 {
+		return status.Error(codes.Unauthenticated, "verified client certificate is required")
+	}
+	certificateName := strings.TrimSpace(tlsInfo.State.PeerCertificates[0].Subject.CommonName)
+	if certificateName == "" || certificateName != caller {
+		return status.Error(codes.PermissionDenied, "client certificate identity does not match caller service")
+	}
+	return nil
 }
 
 func matchesSecret(values []string, expected string) bool {

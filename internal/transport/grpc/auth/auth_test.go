@@ -2,14 +2,19 @@ package grpcauth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"net"
 	"testing"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -62,6 +67,18 @@ func TestNewUnaryInterceptorsRejectInvalidConfiguration(t *testing.T) {
 	}
 	if _, err := NewUnaryServerInterceptor("test-secret"); err == nil {
 		t.Fatal("expected empty caller allowlist to fail")
+	}
+}
+
+func TestVerifyTLSCallerBindsCertificateIdentity(t *testing.T) {
+	ctx := peer.NewContext(context.Background(), &peer.Peer{AuthInfo: credentials.TLSInfo{State: tls.ConnectionState{
+		PeerCertificates: []*x509.Certificate{{Subject: pkix.Name{CommonName: "dipole-message"}}},
+	}}})
+	if err := verifyTLSCaller(ctx, "dipole-message"); err != nil {
+		t.Fatalf("matching certificate identity failed: %v", err)
+	}
+	if err := verifyTLSCaller(ctx, "dipole-gateway"); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected certificate identity mismatch rejection, got %v", err)
 	}
 }
 

@@ -153,7 +153,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application})
+	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Messaging: localMessaging})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
@@ -172,12 +172,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			)
 		}
 	}
-	var registerErr error
-	if config.MessageConfig().Transport == "grpc" {
-		registerErr = RegisterCoreKafkaHandlersWithRepositories(wsEventSender, repos)
-	} else {
-		registerErr = RegisterKafkaHandlersWithRepositories(wsEventSender, repos)
-	}
+	registerErr := registerCoreKafkaHandlers(
+		wsEventSender,
+		repos,
+		localMessaging,
+		config.MessageConfig().Transport != "grpc",
+	)
 	if registerErr != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}

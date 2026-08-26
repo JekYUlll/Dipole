@@ -49,8 +49,12 @@ kafka:
 message:
   # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
   transport: local
+  # cmd/message-service: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
+  runtime_mode: owner
   # Query-only comparison; send commands always execute on the selected primary exactly once.
   shadow_queries: false
+  # Require a table-scoped MySQL account before accepting Message RPC traffic.
+  enforce_db_permissions: false
 
 internal_rpc:
   # Keep disabled until Core and Message are deployed as separate processes.
@@ -62,6 +66,12 @@ internal_rpc:
   message_target: 127.0.0.1:9092
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
+  # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.
+  tls_enabled: false
+  tls_cert_file: ""
+  tls_key_file: ""
+  tls_ca_file: ""
+  tls_server_name: ""
 
 storage:
   enabled: true

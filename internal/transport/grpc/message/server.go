@@ -26,8 +26,8 @@ func NewServer(application application.MessageApplication) (*Server, error) {
 	return &Server{application: application}, nil
 }
 
-func (s *Server) SendDirectText(_ context.Context, request *messagev1.SendDirectTextRequest) (*messagev1.SendMessageResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) SendDirectText(ctx context.Context, request *messagev1.SendDirectTextRequest) (*messagev1.SendMessageResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func (s *Server) SendDirectText(_ context.Context, request *messagev1.SendDirect
 	return sendResponse(message, nil), nil
 }
 
-func (s *Server) SendGroupText(_ context.Context, request *messagev1.SendGroupTextRequest) (*messagev1.SendMessageResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroupTextRequest) (*messagev1.SendMessageResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func (s *Server) SendGroupText(_ context.Context, request *messagev1.SendGroupTe
 	return sendResponse(message, recipients), nil
 }
 
-func (s *Server) SendDirectFile(_ context.Context, request *messagev1.SendDirectFileRequest) (*messagev1.SendMessageResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDirectFileRequest) (*messagev1.SendMessageResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +62,8 @@ func (s *Server) SendDirectFile(_ context.Context, request *messagev1.SendDirect
 	return sendResponse(message, nil), nil
 }
 
-func (s *Server) SendGroupFile(_ context.Context, request *messagev1.SendGroupFileRequest) (*messagev1.SendMessageResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroupFileRequest) (*messagev1.SendMessageResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +74,8 @@ func (s *Server) SendGroupFile(_ context.Context, request *messagev1.SendGroupFi
 	return sendResponse(message, recipients), nil
 }
 
-func (s *Server) ListDirectHistory(_ context.Context, request *messagev1.ListDirectHistoryRequest) (*messagev1.ListMessagesResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListDirectHistoryRequest) (*messagev1.ListMessagesResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func (s *Server) ListDirectHistory(_ context.Context, request *messagev1.ListDir
 	return listResponse(messages), nil
 }
 
-func (s *Server) ListGroupHistory(_ context.Context, request *messagev1.ListGroupHistoryRequest) (*messagev1.ListMessagesResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) ListGroupHistory(ctx context.Context, request *messagev1.ListGroupHistoryRequest) (*messagev1.ListMessagesResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +127,8 @@ func (s *Server) ListGroupHistory(_ context.Context, request *messagev1.ListGrou
 	return listResponse(messages), nil
 }
 
-func (s *Server) ListOfflineMessages(_ context.Context, request *messagev1.ListOfflineMessagesRequest) (*messagev1.ListMessagesResponse, error) {
-	principal, err := principalFrom(request.GetContext())
+func (s *Server) ListOfflineMessages(ctx context.Context, request *messagev1.ListOfflineMessagesRequest) (*messagev1.ListMessagesResponse, error) {
+	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,10 @@ func (s *Server) ListOfflineMessages(_ context.Context, request *messagev1.ListO
 	return listResponse(messages), nil
 }
 
-func principalFrom(invocation *commonv1.RequestContext) (string, error) {
+func principalFrom(ctx context.Context, invocation *commonv1.RequestContext) (string, error) {
+	if _, err := grpccommon.Caller(ctx, invocation); err != nil {
+		return "", err
+	}
 	return grpccommon.Principal(invocation)
 }
 
