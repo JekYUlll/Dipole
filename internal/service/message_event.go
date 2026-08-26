@@ -96,6 +96,46 @@ func MessageMutationAggregateID(messageID string, mutation MessageMutationType, 
 	}
 }
 
+func MessageSearchMutation(eventType string, payload MessageEventPayload) (*model.MessageSearchMutation, error) {
+	if err := NormalizeMessageMutation(eventType, &payload); err != nil {
+		return nil, fmt.Errorf("normalize Search mutation: %w", err)
+	}
+	parts := strings.Split(strings.TrimSpace(eventType), ".")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("unsupported Search event type %q", eventType)
+	}
+	expectedTarget := int8(-1)
+	switch parts[1] {
+	case "direct":
+		expectedTarget = model.MessageTargetDirect
+	case "group":
+		expectedTarget = model.MessageTargetGroup
+	default:
+		return nil, fmt.Errorf("unsupported Search event channel %q", parts[1])
+	}
+	if payload.TargetType != expectedTarget {
+		return nil, fmt.Errorf("Search event channel %s conflicts with target type %d", parts[1], payload.TargetType)
+	}
+	mutation := &model.MessageSearchMutation{MessageUUID: payload.MessageID, Revision: payload.Revision}
+	switch payload.MutationType {
+	case MessageMutationCreated, MessageMutationEdited:
+		mutation.Type = model.MessageSearchMutationUpsert
+		mutation.Document = &model.MessageSearchDocument{
+			MessageUUID: payload.MessageID, ConversationKey: payload.ConversationKey, MessageSeq: payload.MessageSeq,
+			Revision: payload.Revision, SenderUUID: payload.SenderUUID, MessageType: payload.MessageType,
+			Content: payload.Content, SentAt: payload.SentAt,
+		}
+	case MessageMutationRecalled, MessageMutationDeleted:
+		mutation.Type = model.MessageSearchMutationTombstone
+	default:
+		return nil, fmt.Errorf("unsupported Search mutation %q", payload.MutationType)
+	}
+	if _, err := mutation.State(); err != nil {
+		return nil, fmt.Errorf("validate Search mutation: %w", err)
+	}
+	return mutation, nil
+}
+
 func messageMutationTypeFromEvent(eventType string) (MessageMutationType, bool) {
 	parts := strings.Split(strings.TrimSpace(eventType), ".")
 	if len(parts) != 3 || parts[0] != "message" || (parts[1] != "direct" && parts[1] != "group") {

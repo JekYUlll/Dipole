@@ -20,8 +20,19 @@
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
 - **现状：** 会话 Seq 历史已支持 Cassandra 主读，但 `user_sync_inbox` 仍只保存 Message UUID，Sync Service 通过 MySQL `messages` 批量补全正文；旧 Offline API、按 UUID 查询、幂等冲突回放、文件消息访问授权、Cassandra Backfill/Reconciler 也继续读取 MySQL 完整消息。
 - **风险：** 提前停止正文写入会让多端同步返回缺失消息，削弱重复发送的确定性响应和文件权限判断，并丢失 Cassandra 修复与回滚基准。仅观察会话历史主读稳定无法覆盖这些链路。
-- **建议方向：** A5 提供可从 Cassandra/Kafka 重建的搜索投影；A6 让 Sync Item 携带 `conversation_key + message_seq + message_uuid` 并由 Message Store 补全，另行建立幂等结果快照或 UUID locator、独立文件授权元数据。所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
+- **建议方向：** A5 已提供基于不可变 Outbox mutation 快照的搜索重建与对账；A6 让 Sync Item 携带 `conversation_key + message_seq + message_uuid` 并由 Message Store 补全，另行建立幂等结果快照或 UUID locator、独立文件授权元数据。所有替代契约双跑通过后再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人。
+
+### AD-021：Search 重建依赖 Outbox 事件保留契约
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** Elasticsearch 全量重建、事件归档、Outbox 清理、MySQL 消息正文退役
+- **现状：** Search Backfill 在固定 Outbox ID 高水位内选取每个 Message UUID 的最终 mutation，可完整恢复 edited 与 recalled/deleted tombstone。当前 `outbox_events` 没有自动删除逻辑，也没有正式的不可变归档、保留期和清理门禁。
+- **风险：** 后续若直接清理已发布 Outbox，会让新索引无法恢复历史最终状态；长期在业务 MySQL 保存完整事件正文也会阻碍 AD-019 的正文退役目标。
+- **建议方向：** 建立按事件 ID 校验的对象存储归档或独立 Event Store，记录分段 hash、覆盖水位和恢复演练；仅允许删除已被归档且通过 Reconcile 的 Outbox 分段。
+- **处理门槛：** 归档源能够提供与现有 `SearchBackfillSource` 等价的固定高水位和单调分页契约，完成一次从空索引重建、hash 对账和回滚演练。
 
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 

@@ -30,7 +30,7 @@ func TestDecodeEnvelopeAcceptsLegacyAndCurrentMajorVersions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			raw := []byte(`{"event_type":"message.created"` + test.versionJSON + `,"payload":{}}`)
-			envelope, err := decodeEnvelope(raw)
+			envelope, err := DecodeEnvelope(raw)
 			if err != nil {
 				t.Fatalf("decode envelope: %v", err)
 			}
@@ -43,7 +43,7 @@ func TestDecodeEnvelopeAcceptsLegacyAndCurrentMajorVersions(t *testing.T) {
 
 func TestDecodeEnvelopeRejectsFutureMajorVersion(t *testing.T) {
 	t.Parallel()
-	_, err := decodeEnvelope([]byte(`{"event_type":"message.created","version":"v2","payload":{}}`))
+	_, err := DecodeEnvelope([]byte(`{"event_type":"message.created","version":"v2","payload":{}}`))
 	if !errors.Is(err, ErrUnsupportedEventVersion) {
 		t.Fatalf("expected unsupported version, got %v", err)
 	}
@@ -52,7 +52,7 @@ func TestDecodeEnvelopeRejectsFutureMajorVersion(t *testing.T) {
 func TestDecodeEnvelopeRejectsMalformedVersion(t *testing.T) {
 	t.Parallel()
 	for _, version := range []string{"banana", "v1.beta", "v1."} {
-		_, err := decodeEnvelope([]byte(`{"event_type":"message.created","version":"` + version + `","payload":{}}`))
+		_, err := DecodeEnvelope([]byte(`{"event_type":"message.created","version":"` + version + `","payload":{}}`))
 		if !errors.Is(err, ErrUnsupportedEventVersion) {
 			t.Fatalf("version %q: expected unsupported version, got %v", version, err)
 		}

@@ -248,7 +248,7 @@ func (c *Consumer) consumeLoop(ctx context.Context, reader *kafkago.Reader, topi
 			Offset:    message.Offset,
 			Time:      message.Time,
 		}
-		envelope, decodeErr := decodeEnvelope(message.Value)
+		envelope, decodeErr := DecodeEnvelope(message.Value)
 		if decodeErr == nil {
 			event.Envelope = envelope
 		} else {
@@ -396,7 +396,7 @@ func decodeHeaders(headers []kafkago.Header) map[string]string {
 	return decoded
 }
 
-func decodeEnvelope(value []byte) (*Envelope, error) {
+func DecodeEnvelope(value []byte) (*Envelope, error) {
 	var envelope Envelope
 	if err := json.Unmarshal(value, &envelope); err != nil {
 		return nil, fmt.Errorf("decode kafka event envelope: %w", err)

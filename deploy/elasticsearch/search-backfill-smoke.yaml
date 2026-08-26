@@ -1,0 +1,20 @@
+app:
+  name: dipole-search-backfill-smoke
+  env: test
+log:
+  level: info
+  format: console
+  development: false
+mysql:
+  host: mysql
+  port: 3306
+  user: root
+  password: dipole-root
+  dbname: dipole
+elasticsearch:
+  enabled: true
+  address: http://elasticsearch:9200
+  index_prefix: dipole-smoke
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 15
