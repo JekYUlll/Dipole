@@ -109,24 +109,28 @@ func TestCassandraReadRouterKeepsZeroPercentOnMySQL(t *testing.T) {
 }
 
 func TestCassandraReadRouterServesCompleteContinuousPage(t *testing.T) {
-	primary := &primaryStore{page: []*model.Message{{Seq: 2, Content: "mysql"}}}
-	highWater := &highWaterReader{sequence: 4}
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{
-		timelineRecord(2, "two"), timelineRecord(3, "three"), timelineRecord(4, "four"),
-	}}
-	observations := make(chan ReadObservation, 1)
-	store := NewMessageStore(primary, highWater, timeline, 100, func(observation ReadObservation) { observations <- observation })
+	for _, conversationKey := range []string{"group:G1", "direct:U1:U2"} {
+		t.Run(conversationKey, func(t *testing.T) {
+			primary := &primaryStore{page: []*model.Message{{Seq: 2, Content: "mysql"}}}
+			highWater := &highWaterReader{sequence: 4}
+			timeline := &timelineReader{records: []cassandraData.TimelineRecord{
+				timelineRecord(2, "two"), timelineRecord(3, "three"), timelineRecord(4, "four"),
+			}}
+			observations := make(chan ReadObservation, 1)
+			store := NewMessageStore(primary, highWater, timeline, 100, func(observation ReadObservation) { observations <- observation })
 
-	page, err := store.ListByConversationSeqAfter("group:G1", 1, 3)
-	if err != nil || len(page) != 3 || page[0].Content != "two" || page[2].Seq != 4 {
-		t.Fatalf("unexpected Cassandra page=%+v err=%v", page, err)
-	}
-	if primary.seqCalls != 0 || highWater.calls != 1 || timeline.calls != 1 || timeline.first != 2 || timeline.last != 4 {
-		t.Fatalf("unexpected calls primary=%d head=%d timeline=%d range=%d..%d", primary.seqCalls, highWater.calls, timeline.calls, timeline.first, timeline.last)
-	}
-	observation := <-observations
-	if observation.Route != "cassandra" || observation.FallbackReason != "" {
-		t.Fatalf("unexpected observation: %+v", observation)
+			page, err := store.ListByConversationSeqAfter(conversationKey, 1, 3)
+			if err != nil || len(page) != 3 || page[0].Content != "two" || page[2].Seq != 4 {
+				t.Fatalf("unexpected Cassandra page=%+v err=%v", page, err)
+			}
+			if primary.seqCalls != 0 || highWater.calls != 1 || timeline.calls != 1 || timeline.first != 2 || timeline.last != 4 {
+				t.Fatalf("unexpected calls primary=%d head=%d timeline=%d range=%d..%d", primary.seqCalls, highWater.calls, timeline.calls, timeline.first, timeline.last)
+			}
+			observation := <-observations
+			if observation.Route != "cassandra" || observation.ConversationKey != conversationKey || observation.FallbackReason != "" {
+				t.Fatalf("unexpected observation: %+v", observation)
+			}
+		})
 	}
 }
 

@@ -85,7 +85,15 @@ func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListD
 	}
 	var messages []*model.Message
 	var appErr error
-	if request.BeforeSequence != nil {
+	if request.BeforeSequence != nil && request.AfterSequence != nil {
+		return nil, status.Error(codes.InvalidArgument, "before_sequence and after_sequence cannot be used together")
+	}
+	if request.AfterSequence != nil {
+		if request.GetBeforeId() != 0 {
+			return nil, status.Error(codes.InvalidArgument, "before_id and after_sequence cannot be used together")
+		}
+		messages, appErr = s.application.ListDirectMessagesAfterSeq(principal, request.GetTargetUserId(), request.GetAfterSequence(), pageSize)
+	} else if request.BeforeSequence != nil {
 		if request.GetBeforeId() != 0 {
 			return nil, status.Error(codes.InvalidArgument, "before_id and before_sequence cannot be used together")
 		}

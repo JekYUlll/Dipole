@@ -42,6 +42,10 @@ func (stubMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUID s
 	return []*model.Message{{Seq: beforeSeq - 1, SenderUUID: userUUID, TargetUUID: targetUUID, Content: "direct-before-seq"}}, nil
 }
 
+func (stubMessageApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return []*model.Message{{Seq: afterSeq + 1, SenderUUID: userUUID, TargetUUID: targetUUID, Content: "direct-after-seq"}}, nil
+}
+
 func (stubMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	return []*model.Message{{ID: beforeID, SenderUUID: userUUID, TargetUUID: groupUUID, Content: "group-before"}}, nil
 }
@@ -198,6 +202,10 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 	directHistoryBySeq, err := messages.ListDirectMessagesBeforeSeq("U1", "U2", 40, 20)
 	if err != nil || len(directHistoryBySeq) != 1 || directHistoryBySeq[0].Seq != 39 || directHistoryBySeq[0].Content != "direct-before-seq" {
 		t.Fatalf("direct history by sequence mismatch: messages=%+v err=%v", directHistoryBySeq, err)
+	}
+	directAfterSeq, err := messages.ListDirectMessagesAfterSeq("U1", "U2", 40, 20)
+	if err != nil || len(directAfterSeq) != 1 || directAfterSeq[0].Seq != 41 || directAfterSeq[0].Content != "direct-after-seq" {
+		t.Fatalf("direct after sequence mismatch: messages=%+v err=%v", directAfterSeq, err)
 	}
 	groupHistory, err := messages.ListGroupMessages("U1", "G1", 50, 20)
 	if err != nil || len(groupHistory) != 1 || groupHistory[0].ID != 50 || groupHistory[0].Content != "group-before" {

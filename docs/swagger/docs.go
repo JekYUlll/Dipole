@@ -2161,7 +2161,7 @@ const docTemplate = `{
                 "tags": [
                     "Message"
                 ],
-                "summary": "获取单聊历史消息",
+                "summary": "获取单聊历史或增量消息",
                 "parameters": [
                     {
                         "type": "string",
@@ -2180,6 +2180,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "会话序号向前翻页游标",
                         "name": "before_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话序号增量补拉游标",
+                        "name": "after_seq",
                         "in": "query"
                     },
                     {

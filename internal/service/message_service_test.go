@@ -38,6 +38,7 @@ type stubMessageRepository struct {
 	lastBeforeID          uint
 	lastBeforeSeq         uint64
 	lastAfterID           uint
+	lastAfterSeq          uint64
 	lastLimit             int
 	lastUserUUID          string
 	listAfterCallCount    int
@@ -249,7 +250,15 @@ func (r *stubMessageRepository) ListByConversationKeyAfter(conversationKey strin
 }
 
 func (r *stubMessageRepository) ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error) {
-	return r.ListByConversationKeyAfter(conversationKey, uint(afterSeq), limit)
+	r.mu.Lock()
+	r.lastConversationKey = conversationKey
+	r.lastAfterSeq = afterSeq
+	r.lastLimit = limit
+	r.listAfterCallCount++
+	err := r.listErr
+	messages := r.listAfterMessages
+	r.mu.Unlock()
+	return messages, err
 }
 
 func (r *stubMessageRepository) ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error) {
@@ -597,6 +606,24 @@ func TestMessageServiceListDirectMessagesBeforeSeqUsesSequenceCursor(t *testing.
 	}
 	if repo.lastConversationKey != model.DirectConversationKey("U100", "U200") || repo.lastBeforeSeq != 41 || repo.lastLimit != 10 {
 		t.Fatalf("unexpected repository query: key=%q before=%d limit=%d", repo.lastConversationKey, repo.lastBeforeSeq, repo.lastLimit)
+	}
+}
+
+func TestMessageServiceListDirectMessagesAfterSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listAfterMessages: []*model.Message{{Seq: 42, UUID: "M42"}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"U200": {UUID: "U200", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{friendships: map[string]map[string]bool{
+		"U100": {"U200": true},
+	}}, nil, nil, nil, nil)
+
+	messages, err := service.ListDirectMessagesAfterSeq("U100", " U200 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 42 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.DirectConversationKey("U100", "U200") || repo.lastAfterSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q after=%d limit=%d", repo.lastConversationKey, repo.lastAfterSeq, repo.lastLimit)
 	}
 }
 

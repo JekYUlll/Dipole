@@ -24,13 +24,14 @@ func NewMessageHandler(service applicationPort.MessageQuery) *MessageHandler {
 }
 
 // ListDirect godoc
-// @Summary 获取单聊历史消息
+// @Summary 获取单聊历史或增量消息
 // @Tags Message
 // @Security BearerAuth
 // @Produce json
 // @Param target_uuid path string true "目标用户 UUID"
 // @Param before_id query int false "向前翻页游标"
 // @Param before_seq query int false "会话序号向前翻页游标"
+// @Param after_seq query int false "会话序号增量补拉游标"
 // @Param limit query int false "返回数量"
 // @Success 200 {object} MessageListResponseEnvelope
 // @Failure 400 {object} ErrorEnvelope
@@ -58,13 +59,21 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_seq is invalid")
 		return
 	}
-	if hasBeforeID && hasBeforeSeq {
-		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id and before_seq cannot be used together")
+	_, hasAfterSeq := c.GetQuery("after_seq")
+	afterSeq, err := queryOptionalUint64(c, "after_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_seq is invalid")
+		return
+	}
+	if boolCount(hasBeforeID, hasBeforeSeq, hasAfterSeq) > 1 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, before_seq and after_seq cannot be used together")
 		return
 	}
 
 	var messages []*model.Message
-	if hasBeforeSeq {
+	if hasAfterSeq {
+		messages, err = h.service.ListDirectMessagesAfterSeq(currentUser.UUID, c.Param("target_uuid"), afterSeq, queryInt(c, "limit"))
+	} else if hasBeforeSeq {
 		messages, err = h.service.ListDirectMessagesBeforeSeq(currentUser.UUID, c.Param("target_uuid"), beforeSeq, queryInt(c, "limit"))
 	} else {
 		messages, err = h.service.ListDirectMessages(currentUser.UUID, c.Param("target_uuid"), beforeID, queryInt(c, "limit"))

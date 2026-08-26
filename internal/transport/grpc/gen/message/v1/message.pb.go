@@ -642,6 +642,7 @@ type ListDirectHistoryRequest struct {
 	TargetUserId   string                 `protobuf:"bytes,2,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
 	BeforeId       uint64                 `protobuf:"varint,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`
 	BeforeSequence *uint64                `protobuf:"varint,5,opt,name=before_sequence,json=beforeSequence,proto3,oneof" json:"before_sequence,omitempty"`
+	AfterSequence  *uint64                `protobuf:"varint,6,opt,name=after_sequence,json=afterSequence,proto3,oneof" json:"after_sequence,omitempty"`
 	PageSize       int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -701,6 +702,13 @@ func (x *ListDirectHistoryRequest) GetBeforeId() uint64 {
 func (x *ListDirectHistoryRequest) GetBeforeSequence() uint64 {
 	if x != nil && x.BeforeSequence != nil {
 		return *x.BeforeSequence
+	}
+	return 0
+}
+
+func (x *ListDirectHistoryRequest) GetAfterSequence() uint64 {
+	if x != nil && x.AfterSequence != nil {
+		return *x.AfterSequence
 	}
 	return 0
 }
@@ -1019,14 +1027,16 @@ const file_dipole_message_v1_message_proto_rawDesc = "" +
 	"\x11client_message_id\x18\x04 \x01(\tR\x0fclientMessageId\"y\n" +
 	"\x13SendMessageResponse\x124\n" +
 	"\amessage\x18\x01 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\x12,\n" +
-	"\x12recipient_user_ids\x18\x02 \x03(\tR\x10recipientUserIds\"\xf8\x01\n" +
+	"\x12recipient_user_ids\x18\x02 \x03(\tR\x10recipientUserIds\"\xb7\x02\n" +
 	"\x18ListDirectHistoryRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12$\n" +
 	"\x0etarget_user_id\x18\x02 \x01(\tR\ftargetUserId\x12\x1b\n" +
 	"\tbefore_id\x18\x03 \x01(\x04R\bbeforeId\x12,\n" +
-	"\x0fbefore_sequence\x18\x05 \x01(\x04H\x00R\x0ebeforeSequence\x88\x01\x01\x12\x1b\n" +
+	"\x0fbefore_sequence\x18\x05 \x01(\x04H\x00R\x0ebeforeSequence\x88\x01\x01\x12*\n" +
+	"\x0eafter_sequence\x18\x06 \x01(\x04H\x01R\rafterSequence\x88\x01\x01\x12\x1b\n" +
 	"\tpage_size\x18\x04 \x01(\x05R\bpageSizeB\x12\n" +
-	"\x10_before_sequence\"\xa7\x02\n" +
+	"\x10_before_sequenceB\x11\n" +
+	"\x0f_after_sequence\"\xa7\x02\n" +
 	"\x17ListGroupHistoryRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\x12\x1d\n" +

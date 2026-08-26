@@ -50,6 +50,11 @@ func (p *shadowProbeApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUI
 	return p.stubMessageApplication.ListDirectMessagesBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
 }
 
+func (p *shadowProbeApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	p.recordQuery()
+	return p.stubMessageApplication.ListDirectMessagesAfterSeq(userUUID, targetUUID, afterSeq, limit)
+}
+
 func (p *shadowProbeApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	p.recordQuery()
 	return p.stubMessageApplication.ListGroupMessages(userUUID, groupUUID, beforeID, limit)
@@ -96,7 +101,7 @@ func (p *shadowProbeApplication) counts() (int, int) {
 func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 	primary := &shadowProbeApplication{}
 	shadow := &shadowProbeApplication{}
-	comparisons := make(chan messageShadowComparison, 7)
+	comparisons := make(chan messageShadowComparison, 8)
 	application := newMessageShadowApplication(primary, shadow, func(comparison messageShadowComparison) {
 		comparisons <- comparison
 	})
@@ -107,10 +112,10 @@ func TestMessageShadowApplicationNeverDuplicatesCommands(t *testing.T) {
 
 	primaryCommands, primaryQueries := primary.counts()
 	shadowCommands, shadowQueries := shadow.counts()
-	if primaryCommands != 4 || primaryQueries != 7 {
+	if primaryCommands != 4 || primaryQueries != 8 {
 		t.Fatalf("unexpected primary calls: commands=%d queries=%d", primaryCommands, primaryQueries)
 	}
-	if shadowCommands != 0 || shadowQueries != 7 {
+	if shadowCommands != 0 || shadowQueries != 8 {
 		t.Fatalf("shadow must remain query-only: commands=%d queries=%d", shadowCommands, shadowQueries)
 	}
 	for comparison := range comparisons {
