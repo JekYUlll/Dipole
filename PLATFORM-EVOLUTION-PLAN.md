@@ -182,6 +182,13 @@ dipole-message    Message command / history / idempotency / outbox
 
 Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件和持久化游标后再独立。User、Group、Contact 和 File 继续留在 Core。
 
+- [x] 统一镜像打包 Core、Message、Gateway 与 migration 四个二进制，旧单体入口继续作为默认 entrypoint。
+- [x] 增加独立微服务 Compose，Core/Message/Gateway 使用 TLS 1.3 mTLS、独立 caller 与健康依赖启动。
+- [x] Gateway 不依赖 MySQL service，Core 与 Message 继续使用当前 MySQL schema，表级账号由 AD-015 跟踪。
+- [x] 增加可重复 smoke，覆盖 migration、冷启动、Gateway health、Core HTTP 代理和 remote WS 所有权。
+
+**验收：** 隔离 Compose project 全部长期服务 healthy；Gateway 只暴露公开端口；自动 smoke 完成后可无残留销毁拓扑。
+
 ## 7. 阶段二：存储与事件架构重构
 
 ### A1：稳定 Timeline 与 Store 抽象
