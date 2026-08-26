@@ -24,6 +24,7 @@ v1 mapping 位于 `internal/data/elasticsearch/schema/message_search_v1.json`，
 | `message_type` | byte | 消息类型 |
 | `content` | text | 全文检索正文 |
 | `sent_at` | date | 结果排序 |
+| `searchable` | boolean | 正文与 tombstone 过滤 |
 | `payload_hash` | keyword, index=false | 重放与冲突分类 |
 
 `Bootstrap` 首次创建物理索引并同时绑定 read/write Alias；重复启动会校验 strict mapping、全部字段类型、`payload_hash` 的非索引属性和 write Alias 所有权。Schema 漂移会使 readiness 失败，应用不会自动修改已有 mapping。
@@ -48,7 +49,7 @@ PUT /dipole-messages-write/_doc/{message_id}
 | revision 相同但 hash 不同 | 返回 `ErrProjectionConflict` |
 | 当前 revision 更低 | 返回异常状态错误，不确认事件 |
 
-当前 `SearchIndex.Delete(messageUUID)` 只保留旧接口兼容。recall/delete projector 接线前必须完成 AD-020：将 mutation revision 传入投影层，并写入可长期阻挡旧事件复活的版本化 tombstone。
+`SearchIndex.Apply(MessageSearchMutation)` 是统一写契约。created/edited 生成 `searchable=true` 的完整状态；recalled/deleted 生成 `searchable=false` 的最小 tombstone，并通过相同 external revision 规则长期阻挡旧正文事件复活。MySQL 逻辑索引使用 `000007_versioned_search_mutations` 提供相同状态机。
 
 ## Scoped Search
 
@@ -69,11 +70,11 @@ Search adapter 要求非空 `conversation_keys` 与检索文本。会话列表�
 - v1 strict mapping 与 read/write Alias 创建。
 - 已有 mapping/alias readiness 校验和 drift 拒绝。
 - 四动作原子 Alias 切换请求。
-- 首次写入、相同 revision 重放、旧 revision no-op 和同 revision payload 冲突。
+- 首次写入、相同 revision 重放、旧 revision no-op、同 revision payload 冲突和 tombstone 防复活。
 - conversation scope 去重、排序、fail closed 与 100 条上限。
 - ES 错误响应有界读取，避免诊断内容无限进入内存。
 
-真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、刷新后检索和隐藏会话无结果。测试入口：
+真实 Elasticsearch 9.5.2 contract 覆盖重复 Bootstrap、external revision 更新与重放、旧事件 no-op、tombstone 防复活、刷新后检索和隐藏会话无结果。测试入口：
 
 ```bash
 DIPOLE_TEST_ELASTICSEARCH_URL=http://127.0.0.1:9200 \
@@ -82,10 +83,9 @@ DIPOLE_TEST_ELASTICSEARCH_URL=http://127.0.0.1:9200 \
 
 ## Next Milestones
 
-1. 定义 created/edited/recalled/deleted 的统一版本化 Search mutation，并解决 AD-020。
-2. 新增默认关闭的独立 `dipole-search-indexer` Kafka consumer 与 metrics。
-3. 增加固定快照 Backfill、数量/hash Reconcile 和 Alias 切换命令。
-4. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
+1. 新增默认关闭的独立 `dipole-search-indexer` Kafka consumer 与 metrics。
+2. 增加固定快照 Backfill、数量/hash Reconcile 和 Alias 切换命令。
+3. 通过 Core Capability 计算搜索 scope，再开放内部 Search RPC 与 Gateway API。
 
 ## References
 

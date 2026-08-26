@@ -122,15 +122,15 @@ func TestSwitchAliasesUsesOneAtomicActionRequest(t *testing.T) {
 	}
 }
 
-func TestUpsertClassifiesReplayStaleAndDivergentRevision(t *testing.T) {
-	var current searchDocument
+func TestApplyClassifiesReplayStaleAndDivergentRevision(t *testing.T) {
+	var current model.MessageSearchState
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.Method {
 		case http.MethodPut:
 			if request.URL.Query().Get("require_alias") != "true" || request.URL.Query().Get("version_type") != "external" {
 				t.Fatalf("missing external alias guards: %s", request.URL.RawQuery)
 			}
-			var candidate searchDocument
+			var candidate model.MessageSearchState
 			if err := json.NewDecoder(request.Body).Decode(&candidate); err != nil {
 				t.Fatalf("decode candidate: %v", err)
 			}
@@ -151,35 +151,35 @@ func TestUpsertClassifiesReplayStaleAndDivergentRevision(t *testing.T) {
 	index := testIndex(t, server.URL)
 	document := validSearchDocument()
 	document.Revision = 2
-	if err := index.Upsert(document); err != nil {
+	if err := index.Apply(upsertMutation(document)); err != nil {
 		t.Fatalf("initial upsert: %v", err)
 	}
-	if err := index.Upsert(document); err != nil {
+	if err := index.Apply(upsertMutation(document)); err != nil {
 		t.Fatalf("identical replay: %v", err)
 	}
 	stale := *document
 	stale.Revision = 1
 	stale.Content = "stale"
-	if err := index.Upsert(&stale); err != nil {
+	if err := index.Apply(upsertMutation(&stale)); err != nil {
 		t.Fatalf("stale revision should be a no-op: %v", err)
 	}
 	conflict := *document
 	conflict.Content = "divergent"
-	if err := index.Upsert(&conflict); !errors.Is(err, ErrProjectionConflict) {
+	if err := index.Apply(upsertMutation(&conflict)); !errors.Is(err, ErrProjectionConflict) {
 		t.Fatalf("expected divergent equal revision conflict, got %v", err)
 	}
 }
 
-func TestUpsertRejectsValuesOutsideElasticsearchLong(t *testing.T) {
+func TestApplyRejectsValuesOutsideElasticsearchLong(t *testing.T) {
 	index := &Index{}
 	document := validSearchDocument()
 	document.Revision = uint64(math.MaxInt64) + 1
-	if err := index.Upsert(document); err == nil || !strings.Contains(err.Error(), "must fit Elasticsearch long") {
+	if err := index.Apply(upsertMutation(document)); err == nil || !strings.Contains(err.Error(), "must fit storage long") {
 		t.Fatalf("expected oversized revision to fail before IO, got %v", err)
 	}
 	document.Revision = 1
 	document.MessageSeq = uint64(math.MaxInt64) + 1
-	if err := index.Upsert(document); err == nil || !strings.Contains(err.Error(), "must fit Elasticsearch long") {
+	if err := index.Apply(upsertMutation(document)); err == nil || !strings.Contains(err.Error(), "sequence must fit storage long") {
 		t.Fatalf("expected oversized sequence to fail before IO, got %v", err)
 	}
 }
@@ -193,7 +193,7 @@ func TestSearchRequiresAndTransmitsConversationScope(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&queryBody); err != nil {
 			t.Fatalf("decode search query: %v", err)
 		}
-		_, _ = writer.Write([]byte(`{"hits":{"hits":[{"_source":{"message_uuid":"M1","conversation_key":"direct:U1:U2","message_seq":7,"revision":2,"sender_uuid":"U1","message_type":0,"content":"migration approved","sent_at":"2026-08-27T08:00:00.000Z","payload_hash":"abc"}}]}}`))
+		_, _ = writer.Write([]byte(`{"hits":{"hits":[{"_source":{"message_uuid":"M1","conversation_key":"direct:U1:U2","message_seq":7,"revision":2,"sender_uuid":"U1","message_type":0,"content":"migration approved","sent_at":"2026-08-27T08:00:00.000Z","searchable":true,"payload_hash":"abc"}}]}}`))
 	}))
 	defer server.Close()
 
@@ -242,6 +242,13 @@ func validSearchDocument() *model.MessageSearchDocument {
 	}
 }
 
+func upsertMutation(document *model.MessageSearchDocument) *model.MessageSearchMutation {
+	return &model.MessageSearchMutation{
+		Type: model.MessageSearchMutationUpsert, MessageUUID: document.MessageUUID,
+		Revision: document.Revision, Document: document,
+	}
+}
+
 func validExistingMappingResponse() string {
-	return `{"dipole-messages-v1":{"mappings":{"dynamic":"strict","properties":{"message_uuid":{"type":"keyword"},"conversation_key":{"type":"keyword"},"message_seq":{"type":"long"},"revision":{"type":"long"},"sender_uuid":{"type":"keyword"},"message_type":{"type":"byte"},"content":{"type":"text"},"sent_at":{"type":"date"},"payload_hash":{"type":"keyword","index":false}}}}}`
+	return `{"dipole-messages-v1":{"mappings":{"dynamic":"strict","properties":{"message_uuid":{"type":"keyword"},"conversation_key":{"type":"keyword"},"message_seq":{"type":"long"},"revision":{"type":"long"},"sender_uuid":{"type":"keyword"},"message_type":{"type":"byte"},"content":{"type":"text"},"sent_at":{"type":"date"},"searchable":{"type":"boolean"},"payload_hash":{"type":"keyword","index":false}}}}}`
 }

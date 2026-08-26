@@ -33,49 +33,61 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 6)
+		assertCurrentVersion(t, runner, 7)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 18)
+		assertTableCount(t, db, 19)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 5)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (6, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 7)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (8, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 6"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 8"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
 
 		if err := runner.Down(ctx, 1); err != nil {
-			t.Fatalf("roll back baseline: %v", err)
+			t.Fatalf("roll back versioned search mutation migration: %v", err)
 		}
-		assertCurrentVersion(t, runner, 4)
+		assertCurrentVersion(t, runner, 6)
 		if err := runner.ValidateCurrent(ctx); err == nil {
 			t.Fatal("expected rolled-back database validation to fail")
 		}
+		assertTableCount(t, db, 19)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Cassandra backfill migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 5)
+		assertTableCount(t, db, 18)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back hot group migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 4)
 		assertTableCount(t, db, 16)
 
 		if err := runner.Down(ctx, 1); err != nil {
-			t.Fatalf("roll back baseline: %v", err)
+			t.Fatalf("roll back search index migration: %v", err)
 		}
 		assertCurrentVersion(t, runner, 3)
 		assertTableCount(t, db, 15)
 
 		if err := runner.Down(ctx, 1); err != nil {
-			t.Fatalf("roll back baseline: %v", err)
+			t.Fatalf("roll back read checkpoint migration: %v", err)
 		}
 		assertCurrentVersion(t, runner, 2)
 		assertTableCount(t, db, 14)
 
 		if err := runner.Down(ctx, 1); err != nil {
-			t.Fatalf("roll back baseline: %v", err)
+			t.Fatalf("roll back conversation sequence migration: %v", err)
 		}
 		assertCurrentVersion(t, runner, 1)
 		assertTableCount(t, db, 13)
@@ -123,7 +135,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 5)
+	assertMigrationCount(t, db, 7)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
