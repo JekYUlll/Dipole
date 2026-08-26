@@ -86,6 +86,7 @@ type FilePayload struct {
 
 type ChatMessageData struct {
 	MessageID   string       `json:"message_id"`
+	MessageSeq  uint64       `json:"message_seq,omitempty"`
 	FromUUID    string       `json:"from_uuid"`
 	TargetUUID  string       `json:"target_uuid"`
 	TargetType  int8         `json:"target_type"`

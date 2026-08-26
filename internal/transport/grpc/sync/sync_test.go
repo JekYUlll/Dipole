@@ -25,7 +25,7 @@ func (s stubSyncApplication) List(userUUID string, afterSeq uint64, limit int) (
 	}
 	return &application.SyncPage{
 		Items: []*model.SyncMessage{
-			{SyncSeq: 101, ConversationKey: "direct:U1:U2", Message: &model.Message{ID: 7, UUID: "M7", SenderUUID: "U2"}},
+			{SyncSeq: 101, ConversationKey: "direct:U1:U2", Message: &model.Message{ID: 7, UUID: "M7", Seq: 8, SenderUUID: "U2"}},
 			nil,
 		},
 		NextSeq: 101,
@@ -46,7 +46,7 @@ func TestRemoteClientImplementsSyncApplication(t *testing.T) {
 	if page.NextSeq != 101 || !page.HasMore || len(page.Items) != 1 {
 		t.Fatalf("unexpected page: %+v", page)
 	}
-	if page.Items[0].Message == nil || page.Items[0].Message.UUID != "M7" {
+	if page.Items[0].Message == nil || page.Items[0].Message.UUID != "M7" || page.Items[0].Message.Seq != 8 {
 		t.Fatalf("unexpected message mapping: %+v", page.Items[0])
 	}
 }

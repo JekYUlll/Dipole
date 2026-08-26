@@ -12,6 +12,7 @@ import (
 type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
+	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
 	ClearConversationUnread(ctx context.Context, arg ClearConversationUnreadParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
 	CreateFriendship(ctx context.Context, arg CreateFriendshipParams) (sql.Result, error)
@@ -25,6 +26,7 @@ type Querier interface {
 	DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (sql.Result, error)
 	DeleteGroupMember(ctx context.Context, arg DeleteGroupMemberParams) (sql.Result, error)
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
+	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
@@ -55,6 +57,7 @@ type Querier interface {
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
+	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	LockUserSyncState(ctx context.Context, userUuid string) (string, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error

@@ -53,6 +53,8 @@
 - 增加 IM Gateway 渐进部署手册，覆盖三进程边界、mTLS 身份、灰度验收和 `embedded` 无数据回滚。
 - 增加最小微服务开发拓扑：统一镜像打包 Core、Message、Gateway 与 migration，Compose 默认启用内部 mTLS 和依赖健康门禁。
 - 增加内部开发 CA/三服务证书生成脚本及可自动清理的微服务 cold-start smoke。
+- 增加会话内单调 `message_seq` 与 `conversation_sequences` allocator；消息唯一 ID 继续承担全局身份，Seq 专门承担会话内排序。
+- Message v1 protobuf、Kafka created event 和 WS chat payload 以追加字段暴露会话 Seq，旧 producer/client 缺字段时保持兼容。
 
 ### 变更
 
@@ -72,6 +74,7 @@
 - Kafka 实时投递 handler 与 Core 领域投影拆分，独立 Gateway 固定使用 `dipole-gateway-consumer`，避免与 Core 和 Message 的消费职责竞争。
 - Core 与 Gateway 调用 Message RPC 时分别声明 `dipole-core`、`dipole-gateway`，内部证书和审计主体保持独立。
 - 服务启动只读校验 migration 版本，已移除运行时 schema mutation 和 `AutoMigrate` 配置。
+- Message、Sync Inbox、Conversation Seq allocator 与 Transactional Outbox 在同一 MySQL 事务中提交；Outbox payload 在 Seq 分配后构造，保证事件与消息事实一致。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -100,7 +103,8 @@
 - Message、Inbox 与 Outbox Producer 已作为同一 sqlc 事务边界运行，避免跨连接提交。
 - MySQL 运行时连接池由 `database/sql` 直接初始化，migration、sqlc repositories 与 Bloom Registry 共享同一连接池。
 - Bloom Registry 改用 `database/sql` 读取用户和群 UUID，停止依赖全局 GORM 查询。
-- 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
+- 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`；`000001_baseline` 创建或接管基础业务表，`000002_conversation_sequence` 回填历史会话序号并建立 allocator。
+- `000002` 按 `conversation_key + id` 为历史消息回填 `1..N`；先完成 migration，再滚动发布新 Message 节点。旧 `before_id`/`after_id` 接口在客户端迁移期间继续保留。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
 - Inbox 只覆盖升级后新产生的消息；升级前历史消息继续通过现有历史/离线消息接口读取。
 - 现有 `/messages/offline` 接口继续保留，客户端可以渐进迁移到 `/sync`。
@@ -131,10 +135,12 @@
 - 已通过 Gateway 本地 health、真实 HTTP 反向代理、依赖门禁、Gateway/Core 独立 RPC 身份和 WS Gin 全局状态 race 测试。
 - 已通过本地 Core、Message、Gateway 三进程 smoke：Gateway 注入不可达 MySQL 仍正常启动，health 返回成功，Core HTTP 代理返回预期认证响应，Core remote WS 路由关闭。
 - 已通过隔离 Compose 容器验收：migration 成功退出，Core/Message/Gateway 经 mTLS 冷启动并达到 healthy，公开代理与 WS 所有权检查通过。
+- 已通过 MySQL 8.4 会话 Seq migration 回填/回滚、同会话事务锁顺序和 24 路并发连续性测试，并验证失败事务不消耗序号。
+- 已通过 Kafka legacy payload、Message protobuf 往返、Sync RPC、WS 映射和 shadow comparison 的 Seq 兼容测试。
 
 ### 已知问题
 
-- 会话内 `message_seq`、`read_seq`、设备级 cursor 和 Inbox 清理策略留待后续迭代。
+- `read_seq`、设备级 cursor 和 Inbox 清理策略留待后续迭代；旧消息历史接口仍使用数据库 ID cursor。
 - `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
 - 独立 Message Service 已停止在代码中读取 Core Repository；当前仍与 Core 共用 MySQL schema 和数据库账号，最小数据库授权记录为 AD-015。
 - M5 的非 WS HTTP、Swagger 与静态 Web 仍由私网 Core 提供，Gateway 通过反向代理暴露；后续服务拆分前必须保持 Core 不直接暴露公网。

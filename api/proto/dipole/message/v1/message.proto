@@ -42,6 +42,7 @@ message Message {
   string file_content_type = 14;
   google.protobuf.Timestamp file_expires_at = 15;
   google.protobuf.Timestamp sent_at = 16;
+  uint64 sequence = 17;
 }
 
 message SendDirectTextRequest {

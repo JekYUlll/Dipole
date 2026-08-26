@@ -16,6 +16,7 @@
 - `page_size=0` uses the existing application default, and the application caps oversized pages. Negative values return `INVALID_ARGUMENT`.
 - Direct history uses `before_id`. Group history uses the `before_id`/`after_id` oneof so both directions cannot be supplied together.
 - Offline history keeps the legacy `after_id` cursor until Sync Query becomes the primary device protocol.
+- `Message.sequence` is the conversation-local ordering position. Legacy producers and clients may omit it during rolling deployment; the server message ID remains the global identity.
 
 ## Error mapping
 

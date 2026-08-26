@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/store"
@@ -136,15 +137,22 @@ func (r *stubMessageRepository) HasConversationMessages(conversationKey string) 
 }
 
 func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
-	return r.StoreWithOutboxAndSync(message, event, nil)
+	return r.StoreWithOutboxAndSync(message, func(*model.Message) (*model.OutboxEvent, error) { return event, nil }, nil)
 }
 
-func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error {
+func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.storeWithOutboxErr != nil {
 		return r.storeWithOutboxErr
+	}
+	if message.Seq == 0 {
+		message.Seq = 1
+	}
+	event, err := buildOutbox(message)
+	if err != nil {
+		return err
 	}
 
 	r.createdMessages = append(r.createdMessages, message)
@@ -1225,7 +1233,7 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if message == nil || message.UUID != "M100" {
+	if message == nil || message.UUID != "M100" || message.Seq != 1 {
 		t.Fatalf("expected persisted message M100, got %+v", message)
 	}
 	if len(repo.createdMessages) != 1 {
@@ -1243,6 +1251,15 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if headers["version"] != "v1" || headers["schema_version"] != "v1" {
 		t.Fatalf("expected versioned outbox headers, got %+v", headers)
+	}
+	var envelope struct {
+		Payload MessageEventPayload `json:"payload"`
+	}
+	if err := json.Unmarshal(repo.outboxEvents[0].Value, &envelope); err != nil {
+		t.Fatalf("decode outbox envelope: %v", err)
+	}
+	if envelope.Payload.MessageSeq != 1 {
+		t.Fatalf("created event sequence = %d, want 1", envelope.Payload.MessageSeq)
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)

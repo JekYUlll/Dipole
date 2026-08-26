@@ -55,7 +55,7 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err := stores.message.CreateWithSync(first, []string{" U-" + prefix + "-target ", "U-" + prefix + "-target", ""}); err != nil {
 		t.Fatalf("create message with sync: %v", err)
 	}
-	if first.ID == 0 || first.CreatedAt.IsZero() || first.UpdatedAt.IsZero() {
+	if first.ID == 0 || first.Seq != 1 || first.CreatedAt.IsZero() || first.UpdatedAt.IsZero() {
 		t.Fatalf("message fields were not hydrated: %+v", first)
 	}
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", first.UUID); got != 1 {
@@ -70,8 +70,11 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 
 	second := contractStoredMessage(prefix+"-2", conversationKey, now.Add(time.Second))
 	event := contractOutboxEvent(second.UUID)
-	if err := stores.message.StoreWithOutboxAndSync(second, event, []string{"U-" + prefix + "-target"}); err != nil {
+	if err := stores.message.StoreWithOutboxAndSync(second, staticOutboxBuilder(event), []string{"U-" + prefix + "-target"}); err != nil {
 		t.Fatalf("store message, inbox, and outbox: %v", err)
+	}
+	if second.Seq != 2 {
+		t.Fatalf("second conversation sequence = %d, want 2", second.Seq)
 	}
 	if got := countContractRows(t, db, "outbox_events", "aggregate_id = ?", second.UUID); got != 1 {
 		t.Fatalf("expected one outbox event, got %d", got)
@@ -125,6 +128,9 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err := stores.message.CreateWithSync(groupMessage, nil); err != nil {
 		t.Fatalf("create group message: %v", err)
 	}
+	if groupMessage.Seq != 1 {
+		t.Fatalf("group conversation sequence = %d, want 1", groupMessage.Seq)
+	}
 	offline, err := stores.message.ListOfflineByUserUUID("U-"+prefix+"-target", 0, 10)
 	if err != nil || len(offline) != 3 || offline[2].UUID != groupMessage.UUID {
 		t.Fatalf("offline direct messages: messages=%+v err=%v", offline, err)
@@ -153,7 +159,7 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	rollback := contractStoredMessage(prefix+"-rollback", conversationKey, now.Add(3*time.Second))
 	badEvent := contractOutboxEvent(rollback.UUID)
 	badEvent.Topic = strings.Repeat("x", 200)
-	if err := stores.message.StoreWithOutboxAndSync(rollback, badEvent, []string{"U-" + prefix + "-target"}); err == nil {
+	if err := stores.message.StoreWithOutboxAndSync(rollback, staticOutboxBuilder(badEvent), []string{"U-" + prefix + "-target"}); err == nil {
 		t.Fatal("expected invalid outbox event to roll back transaction")
 	}
 	if got := countContractRows(t, db, "messages", "uuid = ?", rollback.UUID); got != 0 {
@@ -161,6 +167,16 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	}
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", rollback.UUID); got != 0 {
 		t.Fatalf("inbox survived outbox rollback: %d", got)
+	}
+	if rollback.ID != 0 || rollback.Seq != 0 || !rollback.CreatedAt.IsZero() || !rollback.UpdatedAt.IsZero() {
+		t.Fatalf("rolled-back message retained persisted fields: %+v", rollback)
+	}
+	afterRollback := contractStoredMessage(prefix+"-after-rollback", conversationKey, now.Add(4*time.Second))
+	if err := stores.message.CreateWithSync(afterRollback, nil); err != nil {
+		t.Fatalf("create message after rollback: %v", err)
+	}
+	if afterRollback.Seq != 4 {
+		t.Fatalf("sequence after rollback = %d, want 4", afterRollback.Seq)
 	}
 }
 
@@ -175,6 +191,10 @@ func contractStoredMessage(suffix, conversationKey string, sentAt time.Time) *mo
 
 func contractOutboxEvent(messageUUID string) *model.OutboxEvent {
 	return &model.OutboxEvent{AggregateType: "message", AggregateID: messageUUID, EventType: "message.created", Topic: "message.created", MessageKey: messageUUID, Value: []byte(`{"message_id":"` + messageUUID + `"}`), Status: model.OutboxStatusPending}
+}
+
+func staticOutboxBuilder(event *model.OutboxEvent) application.MessageOutboxBuilder {
+	return func(*model.Message) (*model.OutboxEvent, error) { return event, nil }
 }
 
 func countContractRows(t *testing.T, db *sql.DB, table, where string, arg any) int {

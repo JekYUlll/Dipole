@@ -136,4 +136,9 @@ func TestEqualMessagePagesIgnoresInternalTimestampsAndTimeLocation(t *testing.T)
 	if equalMessagePages(primary, shadow) {
 		t.Fatal("expected public content mismatch")
 	}
+	shadow[0].Content = "same"
+	shadow[0].Seq = 2
+	if equalMessagePages(primary, shadow) {
+		t.Fatal("expected public conversation sequence mismatch")
+	}
 }

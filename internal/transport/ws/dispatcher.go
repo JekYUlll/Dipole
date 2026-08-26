@@ -248,6 +248,7 @@ func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableM
 func newChatMessageData(message *model.Message) ChatMessageData {
 	data := ChatMessageData{
 		MessageID:   message.UUID,
+		MessageSeq:  message.Seq,
 		FromUUID:    message.SenderUUID,
 		TargetUUID:  message.TargetUUID,
 		TargetType:  message.TargetType,

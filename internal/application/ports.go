@@ -73,9 +73,11 @@ type FileMetadataStore interface {
 	GetByUUID(uuid string) (*model.UploadedFile, error)
 }
 
+type MessageOutboxBuilder func(message *model.Message) (*model.OutboxEvent, error)
+
 type MessageStore interface {
 	CreateWithSync(message *model.Message, recipientUUIDs []string) error
-	StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error
+	StoreWithOutboxAndSync(message *model.Message, buildOutbox MessageOutboxBuilder, recipientUUIDs []string) error
 	EnsureOutbox(event *model.OutboxEvent) error
 	EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error
 	GetByUUID(uuid string) (*model.Message, error)
