@@ -66,6 +66,7 @@
 - 增加 MySQL 8.4 三成员 InnoDB Cluster、MySQL Router writer endpoint、AdminAPI 初始化/恢复脚本与连接池主切换故障 smoke。
 - 增加 Redis Sentinel 连接模式、三节点 Redis/三 Sentinel 隔离拓扑与自动故障 smoke。
 - 增加 Cassandra 5.0.9 与 Elasticsearch 9.5.2 零接线 Storage Lab、资源基线与自动 CRUD smoke。
+- 增加 Cassandra Conversation Timeline 版本化 CQL、10,000 Seq bucket 规则和 LWT 幂等投影 primitive。
 
 ### 变更
 
@@ -166,6 +167,7 @@
 - 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
 - 已通过 Redis Sentinel 演练：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、热点和限流状态可用，旧 master 重新加入为 replica。
 - 已通过隔离 Storage Lab 演练：Cassandra 与 Elasticsearch 健康启动并完成临时 CRUD，应用配置、Bootstrap 和 Go 依赖保持零接线。
+- 已通过 Cassandra 5.0.9 Timeline contract：bucket 边界与 Seq 倒序正确，重复 payload 安全重放，冲突 payload 拒绝覆盖。
 
 ### 已知问题
 

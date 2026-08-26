@@ -44,6 +44,7 @@ Kafka 三节点开发基线与故障验收见 [Kafka Cluster 文档](KAFKA-CLUST
 MySQL InnoDB Cluster、Router writer 路由与主切换验收见 [MySQL Cluster 文档](MYSQL-CLUSTER.md)。
 Redis Sentinel、实时状态语义与故障验收见 [Redis Cluster 文档](REDIS-CLUSTER.md)。
 Cassandra 与 Elasticsearch 零接线实验环境见 [Storage Lab 文档](STORAGE-LAB.md)。
+Cassandra 会话 Timeline 分区与影子写入契约见 [Cassandra Timeline 文档](CASSANDRA-TIMELINE.md)。
 
 `message.transport` 默认为 `local`；设为 `grpc` 后通过受认证网络 channel 调用独立 Message Service，关闭开关即可回切本地实现。
 
