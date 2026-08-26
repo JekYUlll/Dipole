@@ -1,7 +1,7 @@
 package httpdto
 
 import (
-	"github.com/JekYUlll/Dipole/internal/service"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 )
 
 type SyncMessageResponse struct {
@@ -16,7 +16,7 @@ type SyncPageResponse struct {
 	HasMore bool                   `json:"has_more"`
 }
 
-func ToSyncPageResponse(page *service.SyncPage) *SyncPageResponse {
+func ToSyncPageResponse(page *applicationPort.SyncPage) *SyncPageResponse {
 	if page == nil {
 		return &SyncPageResponse{}
 	}

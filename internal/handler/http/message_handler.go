@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
@@ -14,18 +15,11 @@ import (
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
-type messageService interface {
-	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
-	ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
-}
-
 type MessageHandler struct {
-	service messageService
+	service applicationPort.MessageQuery
 }
 
-func NewMessageHandler(service messageService) *MessageHandler {
+func NewMessageHandler(service applicationPort.MessageQuery) *MessageHandler {
 	return &MessageHandler{service: service}
 }
 

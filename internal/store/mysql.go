@@ -2,49 +2,45 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 
 	"github.com/JekYUlll/Dipole/internal/config"
 )
 
-var DB *gorm.DB
+var SQLDB *sql.DB
 
 func InitMySQL() error {
 	cfg := config.MySQLConfig()
-	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		cfg.User,
-		cfg.Password,
-		cfg.Host,
-		cfg.Port,
-		cfg.DBName,
-	)
+	driverConfig := mysqlDriver.NewConfig()
+	driverConfig.User = cfg.User
+	driverConfig.Passwd = cfg.Password
+	driverConfig.Net = "tcp"
+	driverConfig.Addr = fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	driverConfig.DBName = cfg.DBName
+	driverConfig.ParseTime = true
+	driverConfig.Loc = time.Local
+	driverConfig.Params = map[string]string{"charset": "utf8mb4"}
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := sql.Open("mysql", driverConfig.FormatDSN())
 	if err != nil {
 		return fmt.Errorf("open mysql: %w", err)
 	}
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		return fmt.Errorf("get sql db: %w", err)
-	}
-
-	sqlDB.SetMaxIdleConns(5)
-	sqlDB.SetMaxOpenConns(20)
-	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(20)
+	db.SetConnMaxLifetime(30 * time.Minute)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := sqlDB.PingContext(ctx); err != nil {
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
 		return fmt.Errorf("ping mysql: %w", err)
 	}
 
-	DB = db
+	SQLDB = db
 	return nil
 }

@@ -2,11 +2,12 @@ package bootstrap
 
 import (
 	"context"
+	"sync"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"go.uber.org/zap"
 )
 
@@ -21,11 +22,13 @@ const (
 // The worker owns retry timing in the database so a process restart can resume
 // from durable state without replay gaps.
 type outboxRelay struct {
-	repo   *repository.OutboxRepository
+	repo   application.OutboxRelayStore
 	stopCh chan struct{}
+	stop   sync.Once
+	work   sync.WaitGroup
 }
 
-func newOutboxRelay(repo *repository.OutboxRepository) *outboxRelay {
+func newOutboxRelay(repo application.OutboxRelayStore) *outboxRelay {
 	if repo == nil || platformKafka.Client == nil {
 		return nil
 	}
@@ -41,7 +44,11 @@ func (r *outboxRelay) Start() {
 		return
 	}
 
-	go r.loop()
+	r.work.Add(1)
+	go func() {
+		defer r.work.Done()
+		r.loop()
+	}()
 }
 
 func (r *outboxRelay) Stop() {
@@ -49,11 +56,8 @@ func (r *outboxRelay) Stop() {
 		return
 	}
 
-	select {
-	case <-r.stopCh:
-	default:
-		close(r.stopCh)
-	}
+	r.stop.Do(func() { close(r.stopCh) })
+	r.work.Wait()
 }
 
 func (r *outboxRelay) loop() {

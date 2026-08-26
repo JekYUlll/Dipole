@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -34,11 +35,6 @@ type kafkaWSEventSender interface {
 	DisconnectAllConnections(userUUID string, reason string) int
 }
 
-type kafkaEventPublisher interface {
-	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
-	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
-}
-
 type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
 }
@@ -47,104 +43,109 @@ type groupHeatReader interface {
 	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 }
 
-func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
+func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
+	return registerCoreKafkaHandlers(hub, repos, nil, true)
+}
+
+func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
+	return registerCoreKafkaHandlers(hub, repos, nil, false)
+}
+
+func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
+	if repos == nil {
+		return fmt.Errorf("kafka handler repositories are required")
+	}
 
-	var events kafkaEventPublisher
+	var events applicationPort.EventPublisher
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
 	hotGroupDetector := platformHotGroup.NewRedisDetector()
-	messageService := service.NewMessageService(
-		repository.NewMessageRepository(),
-		repository.NewUserRepository(),
-		repository.NewContactRepository(),
-		repository.NewGroupRepository(),
-		service.NewFileService(repository.NewFileRepository(), repository.NewMessageRepository(), nil),
-		events,
-		hotGroupDetector,
-	)
-	conversationService := service.NewConversationService(
-		repository.NewConversationRepository(),
-		repository.NewUserRepository(),
-		repository.NewGroupRepository(),
-		nil,
-		events,
-	)
-	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(conversationService))
-	if aiService, err := newAIService(messageService); err != nil {
+	if messaging == nil {
+		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+			Events:    events,
+			HotGroups: hotGroupDetector,
+		})
+	}
+	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
+	if aiService, err := newAIService(repos, messaging.Messages); err != nil {
 		return err
 	} else if aiService != nil {
 		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
 	}
-	hotGroupNotifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
-
-	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(messageService, "direct"))
-	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(messageService, "group"))
-	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(conversationService, false))
-	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(conversationService, true))
+	if includeMessagePersistence {
+		RegisterMessageKafkaHandlers(messaging.Messages)
+	}
+	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
+	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
 	if hub != nil {
-		platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
-			return wsTransport.GroupCreatedEventData{
-				GroupUUID:    p.GroupUUID,
-				Name:         p.Name,
-				Notice:       p.Notice,
-				Avatar:       p.Avatar,
-				MemberUUIDs:  p.MemberUUIDs,
-				OperatorUUID: p.OperatorUUID,
-				OccurredAt:   p.OccurredAt,
-			}
-		}))
-		platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
-		platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroupDetector, hotGroupNotifier))
-		platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
-		platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
-			return wsTransport.GroupUpdatedEventData{
-				GroupUUID:    p.GroupUUID,
-				Name:         p.Name,
-				Notice:       p.Notice,
-				Avatar:       p.Avatar,
-				OperatorUUID: p.OperatorUUID,
-				UpdatedAt:    p.OccurredAt,
-			}
-		}))
-		platformKafka.Subscriber.Register("group.members.added", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
-			return wsTransport.GroupMembersChangedEventData{
-				GroupUUID:    p.GroupUUID,
-				MemberUUIDs:  p.MemberUUIDs,
-				OperatorUUID: p.OperatorUUID,
-				OccurredAt:   p.OccurredAt,
-			}
-		}))
-		platformKafka.Subscriber.Register("group.members.removed", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
-			return wsTransport.GroupMembersChangedEventData{
-				GroupUUID:    p.GroupUUID,
-				MemberUUIDs:  p.MemberUUIDs,
-				OperatorUUID: p.OperatorUUID,
-				OccurredAt:   p.OccurredAt,
-			}
-		}))
-		platformKafka.Subscriber.Register("group.dismissed", deliverGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
-			return wsTransport.GroupDismissedEventData{
-				GroupUUID:    p.GroupUUID,
-				GroupName:    p.GroupName,
-				OperatorUUID: p.OperatorUUID,
-				OccurredAt:   p.OccurredAt,
-			}
-		}))
-		platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
+		registerGatewayKafkaHandlers(hub)
 	}
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
 	}
-	if hub != nil {
-		platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
-	}
 	platformKafka.Subscriber.Register("contact.friend.deleted", logKafkaEventHandler("contact.friend.deleted"))
 
 	return nil
+}
+
+func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender) error {
+	if platformKafka.Subscriber == nil {
+		return nil
+	}
+	if hub == nil {
+		return fmt.Errorf("gateway kafka event sender is required")
+	}
+	registerGatewayKafkaHandlers(hub)
+	return nil
+}
+
+func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
+	hotGroups := platformHotGroup.NewRedisDetector()
+	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
+	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
+		return wsTransport.GroupCreatedEventData{
+			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
+			MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
+		}
+	}))
+	platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
+	platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroups, notifier))
+	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
+	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
+		return wsTransport.GroupUpdatedEventData{
+			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
+			OperatorUUID: p.OperatorUUID, UpdatedAt: p.OccurredAt,
+		}
+	}))
+	platformKafka.Subscriber.Register("group.members.added", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+		return wsTransport.GroupMembersChangedEventData{
+			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
+		}
+	}))
+	platformKafka.Subscriber.Register("group.members.removed", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+		return wsTransport.GroupMembersChangedEventData{
+			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
+		}
+	}))
+	platformKafka.Subscriber.Register("group.dismissed", deliverGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
+		return wsTransport.GroupDismissedEventData{
+			GroupUUID: p.GroupUUID, GroupName: p.GroupName, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
+		}
+	}))
+	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
+	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
+}
+
+func RegisterMessageKafkaHandlers(persister kafkaMessagePersister) {
+	if platformKafka.Subscriber == nil || persister == nil {
+		return
+	}
+	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(persister, "direct"))
+	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(persister, "group"))
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {
@@ -371,22 +372,20 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(messageService *service.MessageService) (*aiModule.Service, error) {
+func newAIService(repos *appComposition.Repositories, messageService *appComposition.LocalMessageApplication) (*aiModule.Service, error) {
 	aiConfig := config.AIConfig()
 	if !aiConfig.Enabled {
 		return nil, nil
 	}
 
-	userRepo := repository.NewUserRepository()
-	messageRepo := repository.NewMessageRepository()
 	contextBuilder := aiModule.NewContextBuilder(
-		messageRepo,
-		userRepo,
+		repos.Messages,
+		repos.Users,
 		aiConfig.MaxContextMessages,
 	)
 	agent, err := aiModule.NewConfiguredAgent(
 		context.Background(),
-		aiModule.NewTools(userRepo, messageRepo, repository.NewConversationRepository(), messageService, aiConfig.AssistantUUID)...,
+		aiModule.NewTools(repos.Users, repos.Messages, repos.Conversations, messageService, aiConfig.AssistantUUID)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("init ai agent: %w", err)
@@ -394,7 +393,7 @@ func newAIService(messageService *service.MessageService) (*aiModule.Service, er
 
 	return aiModule.NewService(
 		contextBuilder,
-		repository.NewAICallLogRepository(),
+		repos.AICallLogs,
 		messageService,
 		agent,
 	), nil

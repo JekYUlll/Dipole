@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
@@ -17,19 +18,19 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/singleflight"
-	"gorm.io/gorm"
 )
 
 var (
-	ErrMessageTargetRequired    = errors.New("message target is required")
-	ErrMessageContentRequired   = errors.New("message content is required")
-	ErrMessageContentTooLong    = errors.New("message content is too long")
-	ErrMessageTargetUnavailable = errors.New("message target is unavailable")
-	ErrMessageTargetNotFound    = errors.New("message target not found")
-	ErrMessageFriendRequired    = errors.New("direct message requires friendship")
-	ErrMessageGroupForbidden    = errors.New("group message requires membership")
-	ErrMessageFileRequired      = errors.New("message file is required")
-	ErrMessageFileUnavailable   = errors.New("message file is unavailable")
+	ErrMessageTargetRequired      = applicationPort.ErrMessageTargetRequired
+	ErrMessageContentRequired     = applicationPort.ErrMessageContentRequired
+	ErrMessageContentTooLong      = applicationPort.ErrMessageContentTooLong
+	ErrMessageTargetUnavailable   = applicationPort.ErrMessageTargetUnavailable
+	ErrMessageTargetNotFound      = applicationPort.ErrMessageTargetNotFound
+	ErrMessageFriendRequired      = applicationPort.ErrMessageFriendRequired
+	ErrMessageGroupForbidden      = applicationPort.ErrMessageGroupForbidden
+	ErrMessageFileRequired        = applicationPort.ErrMessageFileRequired
+	ErrMessageFileUnavailable     = applicationPort.ErrMessageFileUnavailable
+	ErrMessageIdempotencyConflict = applicationPort.ErrMessageIdempotencyConflict
 )
 
 type messageRepository interface {
@@ -99,7 +100,7 @@ type MessageEventPayload struct {
 	FileExpiresAt   *time.Time `json:"file_expires_at,omitempty"`
 	SentAt          time.Time  `json:"sent_at"`
 	RecipientUUIDs  []string   `json:"recipient_uuids,omitempty"`
-	SyncFanout      bool       `json:"sync_fanout"`
+	SyncFanout      *bool      `json:"sync_fanout,omitempty"`
 }
 
 func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
@@ -112,6 +113,49 @@ func NewMessageService(repo messageRepository, userFinder messageUserFinder, fri
 		fileFinder:    fileFinder,
 		hotGroups:     hotGroups,
 	}
+}
+
+func NewMessageServiceWithCore(repo messageRepository, core applicationPort.CoreCapability, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
+	if core == nil {
+		return NewMessageService(repo, nil, nil, nil, fileFinder, events, hotGroups)
+	}
+	if fileFinder == nil {
+		fileFinder = core
+	}
+
+	return NewMessageService(
+		repo,
+		coreUserFinder{core: core},
+		core,
+		coreGroupChecker{core: core},
+		fileFinder,
+		events,
+		hotGroups,
+	)
+}
+
+type coreUserFinder struct {
+	core applicationPort.CoreCapability
+}
+
+func (f coreUserFinder) GetByUUID(userUUID string) (*model.User, error) {
+	return f.core.GetUserByUUID(userUUID)
+}
+
+type coreGroupChecker struct {
+	core applicationPort.CoreCapability
+}
+
+func (c coreGroupChecker) GetByUUID(groupUUID string) (*model.Group, error) {
+	return c.core.GetGroupByUUID(groupUUID)
+}
+
+func (c coreGroupChecker) GetMember(groupUUID, userUUID string) (*model.GroupMember, error) {
+	return c.core.GetGroupMember(groupUUID, userUUID)
+}
+
+func (c coreGroupChecker) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
+	return c.core.ListGroupMembers(groupUUID)
 }
 
 func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -541,7 +585,8 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		return nil, fmt.Errorf("message payload is nil")
 	}
 
-	outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, payload.SyncFanout)
+	syncFanout := syncFanoutEnabled(payload.SyncFanout)
+	outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
 	if err != nil {
 		return nil, fmt.Errorf("build message created outbox event: %w", err)
 	}
@@ -559,8 +604,12 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		if existing == nil {
 			return nil, fmt.Errorf("duplicate message %s/%s not found after conflict", message.UUID, message.ClientMessageID)
 		}
+		if err := validateDuplicateMessageIdentity(existing, message); err != nil {
+			return nil, err
+		}
 		message = existing
-		outboxEvent, err = buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, payload.SyncFanout)
+		recipients = syncRecipientsForPayload(message, payload)
+		outboxEvent, err = buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
 		if err != nil {
 			return nil, fmt.Errorf("rebuild message created outbox event: %w", err)
 		}
@@ -590,7 +639,14 @@ func (s *MessageService) persistLocalMessage(message *model.Message, action stri
 		if existing == nil {
 			return nil, fmt.Errorf("%s: duplicate message %s/%s not found after conflict", action, message.UUID, message.ClientMessageID)
 		}
-		if err := s.repo.EnsureSyncInbox(existing, recipientUUIDs); err != nil {
+		if err := validateDuplicateMessageIdentity(existing, message); err != nil {
+			return nil, fmt.Errorf("%s: %w", action, err)
+		}
+		trustedRecipients := recipientUUIDs
+		if existing.TargetType == model.MessageTargetDirect {
+			trustedRecipients = directSyncRecipients(existing)
+		}
+		if err := s.repo.EnsureSyncInbox(existing, trustedRecipients); err != nil {
 			return nil, fmt.Errorf("%s: ensure sync inbox: %w", action, err)
 		}
 		return existing, nil
@@ -670,7 +726,7 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string, sync
 		FileExpiresAt:   message.FileExpiresAt,
 		SentAt:          message.SentAt,
 		RecipientUUIDs:  recipientUUIDs,
-		SyncFanout:      syncFanout,
+		SyncFanout:      boolFlag(syncFanout),
 	}
 }
 
@@ -693,10 +749,11 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 	}
 
 	headers, err := json.Marshal(map[string]string{
-		"event_type": envelope.EventType,
-		"version":    envelope.Version,
-		"source":     envelope.Source,
-		"event_id":   envelope.EventID,
+		"event_type":     envelope.EventType,
+		"version":        envelope.Version,
+		"schema_version": envelope.Version,
+		"source":         envelope.Source,
+		"event_id":       envelope.EventID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshal outbox headers: %w", err)
@@ -748,10 +805,6 @@ func isDuplicateMessageError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-
 	var mysqlErr *mysqlDriver.MySQLError
 	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 		return true
@@ -792,10 +845,32 @@ func syncRecipientsForPayload(message *model.Message, payload MessageEventPayloa
 	if message.TargetType == model.MessageTargetDirect {
 		return directSyncRecipients(message)
 	}
-	if !payload.SyncFanout {
+	if !syncFanoutEnabled(payload.SyncFanout) {
 		return nil
 	}
 	return syncRecipients(payload.RecipientUUIDs, true)
+}
+
+func syncFanoutEnabled(flag *bool) bool {
+	// Events produced before sync_fanout was introduced represent normal fanout.
+	return flag == nil || *flag
+}
+
+func boolFlag(value bool) *bool {
+	return &value
+}
+
+func validateDuplicateMessageIdentity(existing, requested *model.Message) error {
+	if existing == nil || requested == nil {
+		return nil
+	}
+	if strings.TrimSpace(existing.SenderUUID) != strings.TrimSpace(requested.SenderUUID) ||
+		existing.TargetType != requested.TargetType ||
+		strings.TrimSpace(existing.TargetUUID) != strings.TrimSpace(requested.TargetUUID) ||
+		strings.TrimSpace(existing.ConversationKey) != strings.TrimSpace(requested.ConversationKey) {
+		return fmt.Errorf("%w: client_message_id=%s", ErrMessageIdempotencyConflict, requested.ClientMessageID)
+	}
+	return nil
 }
 
 func directSyncRecipients(message *model.Message) []string {
@@ -841,6 +916,9 @@ func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetTyp
 		default:
 			return nil, fmt.Errorf("get uploaded file in message service: %w", err)
 		}
+	}
+	if uploadedFile == nil {
+		return nil, ErrMessageFileUnavailable
 	}
 
 	conversationKey := model.DirectConversationKey(senderUUID, targetUUID)
