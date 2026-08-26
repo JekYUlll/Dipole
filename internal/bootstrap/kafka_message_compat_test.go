@@ -39,6 +39,31 @@ func TestDecodeMessageEventPayloadPreservesSyncFanoutPresence(t *testing.T) {
 	}
 }
 
+func TestDecodeMessageEventPayloadPreservesOptionalConversationSequence(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+		want    uint64
+	}{
+		{name: "legacy field omitted", payload: `{"message_id":"M1"}`},
+		{name: "sequence present", payload: `{"message_id":"M2","message_seq":42}`, want: 42},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decoded, err := decodeMessageEventPayload(platformKafka.Event{Envelope: &platformKafka.Envelope{
+				Payload: json.RawMessage(tt.payload),
+			}})
+			if err != nil {
+				t.Fatalf("decode message event payload: %v", err)
+			}
+			if decoded.MessageSeq != tt.want {
+				t.Fatalf("message sequence = %d, want %d", decoded.MessageSeq, tt.want)
+			}
+		})
+	}
+}
+
 func boolPointer(value bool) *bool {
 	return &value
 }

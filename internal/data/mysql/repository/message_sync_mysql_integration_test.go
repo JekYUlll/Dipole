@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -10,8 +11,10 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
@@ -24,9 +27,8 @@ func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
 		t.Fatalf("migrate contract database: %v", err)
 	}
 	control := &syncCommitControl{
-		firstInboxInserted:    make(chan struct{}),
-		secondMessageInserted: make(chan struct{}),
-		releaseFirst:          make(chan struct{}),
+		firstInboxInserted: make(chan struct{}),
+		releaseFirst:       make(chan struct{}),
 	}
 	repo, err := sqlcRepository.NewMessageRepository(&pausingTransactionStore{db: db, control: control})
 	if err != nil {
@@ -41,10 +43,9 @@ func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
 	go func() { firstDone <- repo.CreateWithSync(first, []string{"U-sync-b"}) }()
 	waitForContractSignal(t, control.firstInboxInserted, "first inbox insert")
 	go func() { secondDone <- repo.CreateWithSync(second, []string{"U-sync-b"}) }()
-	waitForContractSignal(t, control.secondMessageInserted, "second message insert")
 	select {
 	case err := <-secondDone:
-		t.Fatalf("second transaction bypassed user sync lock: %v", err)
+		t.Fatalf("second transaction bypassed conversation sequence lock: %v", err)
 	case <-time.After(200 * time.Millisecond):
 	}
 	close(control.releaseFirst)
@@ -61,14 +62,77 @@ func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
 	if len(rows) != 2 || rows[0].MessageUuid != first.UUID || rows[1].MessageUuid != second.UUID {
 		t.Fatalf("unexpected commit-ordered inbox: %+v", rows)
 	}
+	if first.Seq != 1 || second.Seq != 2 {
+		t.Fatalf("unexpected conversation sequences: first=%d second=%d", first.Seq, second.Seq)
+	}
+}
+
+func TestSQLCConversationSequenceIsContinuousUnderConcurrency(t *testing.T) {
+	db, _ := openContractDatabase(t)
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("migrate contract database: %v", err)
+	}
+	store, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatalf("create MySQL store: %v", err)
+	}
+	repo, err := sqlcRepository.NewMessageRepository(store)
+	if err != nil {
+		t.Fatalf("create message repository: %v", err)
+	}
+
+	const messageCount = 24
+	conversationKey := "direct:U-seq-a:U-seq-b"
+	start := make(chan struct{})
+	errorsCh := make(chan error, messageCount)
+	var wg sync.WaitGroup
+	for index := 0; index < messageCount; index++ {
+		message := contractStoredMessage(fmt.Sprintf("seq-%02d", index), conversationKey, time.Now().UTC().Add(time.Duration(index)*time.Millisecond))
+		wg.Add(1)
+		go func(message *model.Message) {
+			defer wg.Done()
+			<-start
+			errorsCh <- repo.CreateWithSync(message, nil)
+		}(message)
+	}
+	close(start)
+	wg.Wait()
+	close(errorsCh)
+	for err := range errorsCh {
+		if err != nil {
+			t.Fatalf("concurrent message create: %v", err)
+		}
+	}
+
+	rows, err := db.Query("SELECT seq FROM messages WHERE conversation_key = ? ORDER BY seq", conversationKey)
+	if err != nil {
+		t.Fatalf("query conversation sequences: %v", err)
+	}
+	defer rows.Close()
+	var index uint64 = 1
+	for rows.Next() {
+		var sequence uint64
+		if err := rows.Scan(&sequence); err != nil {
+			t.Fatalf("scan conversation sequence: %v", err)
+		}
+		if sequence != index {
+			t.Fatalf("sequence at position %d = %d", index, sequence)
+		}
+		index++
+	}
+	if index != messageCount+1 {
+		t.Fatalf("sequence row count = %d, want %d", index-1, messageCount)
+	}
 }
 
 type syncCommitControl struct {
-	firstInboxInserted    chan struct{}
-	secondMessageInserted chan struct{}
-	releaseFirst          chan struct{}
-	firstOnce             sync.Once
-	secondOnce            sync.Once
+	firstInboxInserted chan struct{}
+	releaseFirst       chan struct{}
+	firstOnce          sync.Once
 }
 
 type pausingTransactionStore struct {
@@ -99,9 +163,6 @@ func (db *pausingDBTX) ExecContext(ctx context.Context, query string, args ...an
 	result, err := db.Tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return result, err
-	}
-	if strings.Contains(query, "INSERT INTO messages") && len(args) > 0 && args[0] == "M-sqlc-commit-2" {
-		db.control.secondOnce.Do(func() { close(db.control.secondMessageInserted) })
 	}
 	if strings.Contains(query, "INSERT INTO user_sync_inbox") && len(args) > 1 && args[1] == "M-sqlc-commit-1" {
 		db.control.firstOnce.Do(func() { close(db.control.firstInboxInserted) })

@@ -158,6 +158,7 @@ type Message struct {
 	FileContentType string                 `protobuf:"bytes,14,opt,name=file_content_type,json=fileContentType,proto3" json:"file_content_type,omitempty"`
 	FileExpiresAt   *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=file_expires_at,json=fileExpiresAt,proto3" json:"file_expires_at,omitempty"`
 	SentAt          *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
+	Sequence        uint64                 `protobuf:"varint,17,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -302,6 +303,13 @@ func (x *Message) GetSentAt() *timestamppb.Timestamp {
 		return x.SentAt
 	}
 	return nil
+}
+
+func (x *Message) GetSequence() uint64 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
 }
 
 type SendDirectTextRequest struct {
@@ -928,7 +936,7 @@ const file_dipole_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1fdipole/message/v1/message.proto\x12\x11dipole.message.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1edipole/common/v1/context.proto\"E\n" +
 	"\vErrorDetail\x126\n" +
-	"\x06reason\x18\x01 \x01(\x0e2\x1e.dipole.message.v1.ErrorReasonR\x06reason\"\xc7\x04\n" +
+	"\x06reason\x18\x01 \x01(\x0e2\x1e.dipole.message.v1.ErrorReasonR\x06reason\"\xe3\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12*\n" +
 	"\x11server_message_id\x18\x02 \x01(\tR\x0fserverMessageId\x12*\n" +
@@ -947,7 +955,8 @@ const file_dipole_message_v1_message_proto_rawDesc = "" +
 	"\bfile_url\x18\r \x01(\tR\afileUrl\x12*\n" +
 	"\x11file_content_type\x18\x0e \x01(\tR\x0ffileContentType\x12B\n" +
 	"\x0ffile_expires_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\rfileExpiresAt\x123\n" +
-	"\asent_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x06sentAt\"\xbf\x01\n" +
+	"\asent_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x06sentAt\x12\x1a\n" +
+	"\bsequence\x18\x11 \x01(\x04R\bsequence\"\xbf\x01\n" +
 	"\x15SendDirectTextRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12$\n" +
 	"\x0etarget_user_id\x18\x02 \x01(\tR\ftargetUserId\x12\x18\n" +

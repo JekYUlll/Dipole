@@ -111,6 +111,7 @@ func equalMessagePages(primary, shadow []*model.Message) bool {
 			continue
 		}
 		if left.ID != right.ID || left.UUID != right.UUID || left.ClientMessageID != right.ClientMessageID ||
+			left.Seq != right.Seq ||
 			left.ConversationKey != right.ConversationKey || left.SenderUUID != right.SenderUUID ||
 			left.TargetType != right.TargetType || left.TargetUUID != right.TargetUUID ||
 			left.MessageType != right.MessageType || left.Content != right.Content || left.FileID != right.FileID ||

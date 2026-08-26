@@ -29,16 +29,22 @@ func (r *MessageRepository) CreateWithSync(message *model.Message, recipients []
 	return r.storeWithSync(message, nil, recipients)
 }
 
-func (r *MessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipients []string) error {
-	return r.storeWithSync(message, event, recipients)
+func (r *MessageRepository) StoreWithOutboxAndSync(message *model.Message, buildOutbox application.MessageOutboxBuilder, recipients []string) error {
+	return r.storeWithSync(message, buildOutbox, recipients)
 }
 
-func (r *MessageRepository) storeWithSync(message *model.Message, event *model.OutboxEvent, recipients []string) error {
+func (r *MessageRepository) storeWithSync(message *model.Message, buildOutbox application.MessageOutboxBuilder, recipients []string) error {
 	if message == nil {
 		return errors.New("store message with sqlc: message is required")
 	}
+	originalMessage := *message
 	ctx := context.Background()
-	return r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+	err := r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+		sequence, err := allocateConversationSequence(ctx, q, message.ConversationKey)
+		if err != nil {
+			return err
+		}
+		message.Seq = sequence
 		if _, err := q.CreateMessage(ctx, mapper.MessageCreateParams(message)); err != nil {
 			return fmt.Errorf("create message with sqlc: %w", err)
 		}
@@ -50,7 +56,14 @@ func (r *MessageRepository) storeWithSync(message *model.Message, event *model.O
 		if err := createSQLCSyncInbox(ctx, q, message, recipients); err != nil {
 			return err
 		}
-		if event != nil {
+		if buildOutbox != nil {
+			event, err := buildOutbox(message)
+			if err != nil {
+				return fmt.Errorf("build outbox event after sequence allocation: %w", err)
+			}
+			if event == nil {
+				return errors.New("build outbox event after sequence allocation: event is required")
+			}
 			if event.Status == "" {
 				event.Status = model.OutboxStatusPending
 			}
@@ -60,6 +73,32 @@ func (r *MessageRepository) storeWithSync(message *model.Message, event *model.O
 		}
 		return nil
 	})
+	if err != nil {
+		*message = originalMessage
+	}
+	return err
+}
+
+func allocateConversationSequence(ctx context.Context, q *generated.Queries, conversationKey string) (uint64, error) {
+	conversationKey = strings.TrimSpace(conversationKey)
+	if conversationKey == "" {
+		return 0, errors.New("allocate conversation sequence: conversation key is required")
+	}
+	if _, err := q.EnsureConversationSequence(ctx, conversationKey); err != nil {
+		return 0, fmt.Errorf("ensure conversation sequence with sqlc: %w", err)
+	}
+	lastSeq, err := q.LockConversationSequence(ctx, conversationKey)
+	if err != nil {
+		return 0, fmt.Errorf("lock conversation sequence with sqlc: %w", err)
+	}
+	if lastSeq == ^uint64(0) {
+		return 0, fmt.Errorf("allocate conversation sequence: sequence exhausted for %s", conversationKey)
+	}
+	nextSeq := lastSeq + 1
+	if err := q.AdvanceConversationSequence(ctx, generated.AdvanceConversationSequenceParams{LastSeq: nextSeq, ConversationKey: conversationKey}); err != nil {
+		return 0, fmt.Errorf("advance conversation sequence with sqlc: %w", err)
+	}
+	return nextSeq, nil
 }
 
 func (r *MessageRepository) EnsureSyncInbox(message *model.Message, recipients []string) error {

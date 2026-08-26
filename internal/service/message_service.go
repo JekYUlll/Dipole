@@ -35,7 +35,7 @@ var (
 
 type messageRepository interface {
 	CreateWithSync(message *model.Message, recipientUUIDs []string) error
-	StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error
+	StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error
 	EnsureOutbox(event *model.OutboxEvent) error
 	EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error
 	GetByUUID(uuid string) (*model.Message, error)
@@ -87,6 +87,7 @@ type MessageEventPayload struct {
 	MessageID       string     `json:"message_id"`
 	ClientMessageID string     `json:"client_message_id,omitempty"`
 	ConversationKey string     `json:"conversation_key"`
+	MessageSeq      uint64     `json:"message_seq,omitempty"`
 	SenderUUID      string     `json:"sender_uuid"`
 	TargetUUID      string     `json:"target_uuid"`
 	TargetType      int8       `json:"target_type"`
@@ -586,13 +587,11 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 	}
 
 	syncFanout := syncFanoutEnabled(payload.SyncFanout)
-	outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
-	if err != nil {
-		return nil, fmt.Errorf("build message created outbox event: %w", err)
-	}
-
 	recipients := syncRecipientsForPayload(message, payload)
-	if err := s.repo.StoreWithOutboxAndSync(message, outboxEvent, recipients); err != nil {
+	buildOutbox := func(stored *model.Message) (*model.OutboxEvent, error) {
+		return buildMessageCreatedOutboxEvent(stored, payload.RecipientUUIDs, syncFanout)
+	}
+	if err := s.repo.StoreWithOutboxAndSync(message, buildOutbox, recipients); err != nil {
 		if !isDuplicateMessageError(err) {
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
@@ -609,7 +608,7 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		}
 		message = existing
 		recipients = syncRecipientsForPayload(message, payload)
-		outboxEvent, err = buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
+		outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
 		if err != nil {
 			return nil, fmt.Errorf("rebuild message created outbox event: %w", err)
 		}
@@ -713,6 +712,7 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string, sync
 		MessageID:       message.UUID,
 		ClientMessageID: message.ClientMessageID,
 		ConversationKey: message.ConversationKey,
+		MessageSeq:      message.Seq,
 		SenderUUID:      message.SenderUUID,
 		TargetUUID:      message.TargetUUID,
 		TargetType:      message.TargetType,
@@ -778,6 +778,7 @@ func payloadToMessage(payload MessageEventPayload) *model.Message {
 		UUID:            strings.TrimSpace(payload.MessageID),
 		ClientMessageID: normalizeClientMessageID(payload.ClientMessageID),
 		ConversationKey: strings.TrimSpace(payload.ConversationKey),
+		Seq:             payload.MessageSeq,
 		SenderUUID:      strings.TrimSpace(payload.SenderUUID),
 		TargetUUID:      strings.TrimSpace(payload.TargetUUID),
 		TargetType:      payload.TargetType,

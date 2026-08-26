@@ -1,9 +1,24 @@
 -- name: CreateMessage :execresult
 INSERT INTO messages (
-    uuid, client_message_id, conversation_key, sender_uuid, target_type,
+    uuid, client_message_id, conversation_key, seq, sender_uuid, target_type,
     target_uuid, message_type, content, file_id, file_name, file_size,
     file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
+
+-- name: EnsureConversationSequence :execresult
+INSERT INTO conversation_sequences (conversation_key, last_seq)
+VALUES (?, 0)
+ON DUPLICATE KEY UPDATE conversation_key = VALUES(conversation_key);
+
+-- name: LockConversationSequence :one
+SELECT last_seq FROM conversation_sequences
+WHERE conversation_key = ?
+FOR UPDATE;
+
+-- name: AdvanceConversationSequence :exec
+UPDATE conversation_sequences
+SET last_seq = ?, updated_at = NOW(3)
+WHERE conversation_key = ?;
 
 -- name: GetMessageByUUID :one
 SELECT * FROM messages WHERE uuid = ? LIMIT 1;

@@ -91,6 +91,7 @@ type Message struct {
 	SentAt          time.Time
 	CreatedAt       sql.NullTime
 	UpdatedAt       sql.NullTime
+	Seq             uint64
 }
 
 type OutboxEvent struct {

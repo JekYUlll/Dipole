@@ -65,9 +65,9 @@ INSERT INTO users (uuid, nickname, telephone, password_hash, is_admin, status) V
 INSERT INTO ` + "`groups`" + ` (uuid, name, owner_uuid, status) VALUES
 ('G-admin-1', 'active', 'U-admin-1', 0),
 ('G-admin-2', 'dismissed', 'U-admin-1', 1);
-INSERT INTO messages (uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, sent_at) VALUES
-('M-admin-1', 'C-admin-1', 'direct:1', 'U-admin-1', 0, 'U-user-3', 0, 'one', NOW(3)),
-('M-admin-2', 'C-admin-2', 'direct:1', 'U-user-3', 0, 'U-admin-1', 0, 'two', NOW(3));
+INSERT INTO messages (uuid, client_message_id, conversation_key, seq, sender_uuid, target_type, target_uuid, message_type, content, sent_at) VALUES
+('M-admin-1', 'C-admin-1', 'direct:1', 1, 'U-admin-1', 0, 'U-user-3', 0, 'one', NOW(3)),
+('M-admin-2', 'C-admin-2', 'direct:1', 2, 'U-user-3', 0, 'U-admin-1', 0, 'two', NOW(3));
 INSERT INTO conversations (user_uuid, target_type, target_uuid, conversation_key, last_message_uuid, last_message_at) VALUES
 ('U-admin-1', 0, 'U-user-3', 'direct:1', 'M-admin-2', NOW(3));
 INSERT INTO contacts (user_uuid, friend_uuid, status) VALUES

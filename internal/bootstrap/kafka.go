@@ -246,6 +246,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 
 		hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeChatMessage, wsTransport.ChatMessageData{
 			MessageID:   payload.MessageID,
+			MessageSeq:  payload.MessageSeq,
 			FromUUID:    payload.SenderUUID,
 			TargetUUID:  payload.TargetUUID,
 			TargetType:  payload.TargetType,
@@ -289,6 +290,7 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 
 		eventData := wsTransport.ChatMessageData{
 			MessageID:   payload.MessageID,
+			MessageSeq:  payload.MessageSeq,
 			FromUUID:    payload.SenderUUID,
 			TargetUUID:  payload.TargetUUID,
 			TargetType:  payload.TargetType,
@@ -543,6 +545,7 @@ func servicePayloadToMessage(payload service.MessageEventPayload) *model.Message
 	return &model.Message{
 		UUID:            payload.MessageID,
 		ConversationKey: payload.ConversationKey,
+		Seq:             payload.MessageSeq,
 		SenderUUID:      payload.SenderUUID,
 		TargetType:      payload.TargetType,
 		TargetUUID:      payload.TargetUUID,
