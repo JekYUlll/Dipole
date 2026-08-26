@@ -134,3 +134,14 @@ export interface GroupSyncCheckpoint {
 	latest_message_id: string
 	pulled_message_seq: number
 }
+
+export interface SearchMessageResult {
+  message_id: string
+  conversation_key: string
+  message_seq: number
+  revision: number
+  from_uuid: string
+  message_type: number
+  content: string
+  sent_at: string
+}

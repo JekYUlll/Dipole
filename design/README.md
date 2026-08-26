@@ -25,6 +25,8 @@
 
 批准的 1x 预览位于 `exports/search-v1/`。文件名采用 Pencil node ID，frame 名称以本清单和 `.pen` 图层为准。
 
+Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器位于 `frontend/src/composables/useMessageSearch.ts`。入口由 `VITE_SEARCH_ENABLED=true` 控制，并要求 Gateway 同时启用 `search.enabled`。
+
 ## Search 交互契约
 
 - 用户从会话侧栏搜索入口或键盘快捷键进入全局消息搜索。

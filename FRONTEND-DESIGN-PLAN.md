@@ -7,7 +7,8 @@
 - Vue 3 + TypeScript + Pinia + Vue Router + Vite。
 - 当前路由包含 Login 与 Chat，复杂交互主要集中在 `ChatView.vue`。
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
-- Search 已完成 desktop/mobile 的 Results、Loading、Empty、Error 四态，以及四个可复用组件；Login、Chat 和其他现代 IM 页面仍待补齐。
+- Search 已完成 desktop/mobile 的 Results、Loading、Empty、Error 四态、四个可复用设计组件和 Vue 工作区；Login、Chat 和其他现代 IM 页面仍待补齐。
+- 已建立 Vitest + Vue Test Utils + jsdom 基线，Search 首批状态和交互测试通过；Playwright 与视觉回归仍待建立。
 - Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
 ## 2. 设计资产
@@ -67,7 +68,7 @@ design/
 
 ### F2：现代 IM 完整流程
 
-- Search desktop/mobile 四态设计已完成；继续设计并实现 Contact、Group、File、Search Vue、Sync、Device 和 Settings 流程。
+- Search desktop/mobile 四态设计和 Vue 工作区已完成；继续设计并实现 Contact、Group、File、Sync、Device 和 Settings 流程。
 - 将大型 ChatView 渐进拆成可测试组件。
 - 建立 Playwright 路由、交互和视觉回归。
 

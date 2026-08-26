@@ -77,6 +77,13 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 
 Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也不直接构造 Elasticsearch adapter。内部 RPC 只允许 Gateway 调用。Gateway 在 `search.enabled=true` 时注册认证 `GET /api/v1/messages/search`，从 JWT 会话取得 principal 并转发 1..256 字符的查询文本与 1..100 的 limit；依赖故障返回有界 502。
 
+Web 搜索入口通过构建变量 `VITE_SEARCH_ENABLED=true` 启用。该变量必须与 Gateway `search.enabled=true` 同步发布；默认关闭时继续保留原会话筛选和聊天链路。前端工作区对请求执行 300ms 防抖并丢弃过期响应，Search 故障只显示局部错误态。
+
+```bash
+VITE_SEARCH_ENABLED=true scripts/docker-build.sh frontend
+DIPOLE_SEARCH_ENABLED=true docker compose -f docker-compose.microservices.yml --profile search up -d
+```
+
 ## Alias Migration
 
 新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收两个生产 Alias 全局只有一个 owner，并校验目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。remove action 使用 `must_exist=true`，并发运维或分裂 owner 会让整个请求失败。请求成功后的 owner 验收失败会触发反向原子补偿；回滚也使用同一受控路径。
@@ -141,8 +148,8 @@ scripts/smoke-search-backfill.sh
 
 ## Next Milestones
 
-1. 按 `design/dipole-ui.pen` 已批准的 desktop/mobile 四态实现 Vue 搜索页面、组件测试和可访问性检查。
-2. 增加围绕指定 `conversation_seq` 拉取上下文的历史接口，使搜索结果可以精确定位消息。
+1. 增加围绕指定 `conversation_seq` 拉取上下文的历史接口，使搜索结果可以精确定位消息。
+2. 建立 Playwright 键盘、响应式和视觉回归门禁，对比 `design/exports/search-v1`。
 3. 在有零停写需求时增加双写 build target 与可证明的 source event watermark。
 
 ## References
