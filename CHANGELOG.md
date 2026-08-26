@@ -76,6 +76,8 @@
 - 增加 Cassandra 读路由 Prometheus 请求计数与延迟直方图，以及真实 MySQL/Cassandra 缺行回退 smoke。
 - Direct/Group 历史增加 `before_seq` HTTP 与 Message v1 RPC 游标，支持按会话 Seq 获取最新页和向前分页。
 - Cassandra cohort 主读扩展到 Direct/Group `before_seq`，连续性校验失败时按同一游标整页回退 MySQL。
+- 增加 `message.cassandra_read_verify_percentage` 主读抽样核验；按同一 Seq cursor 比较 MySQL 公开字段，payload mismatch 自动整页回退。
+- 增加 `dipole_message_read_verification_total{operation,outcome}`，区分主读核验 match、mismatch 与 MySQL error。
 
 ### 变更
 
@@ -162,6 +164,7 @@
 - 已通过 Core 五项能力与 Sync Timeline 页面的 bufconn 往返测试，覆盖调用身份、权限结果、成员快照和持久游标映射。
 - 已通过 Cassandra MessageStore 影子读单元/race 测试和 Cassandra 5.0.9 跨 bucket Seq 范围真实 contract；差异、跳过与 Cassandra 错误均不改变 MySQL 响应。
 - 已通过 MySQL 8.4 与 Cassandra 5.0.9 真实读路由 contract：before/after Seq 完整页由 Cassandra 返回，人工删除一行后按同一 Seq cursor 整页回退 MySQL。
+- 已通过 Cassandra 主读 payload 篡改演练：Seq 保持连续时内容差异仍被抽样核验识别并返回 MySQL 完整页。
 - 已通过 Kafka legacy/v1 minor/v2 兼容、永久 schema 错误隔离、DLQ 诊断 header 和 Outbox schema header 测试。
 - 已对 Local 与 gRPC transport 运行同一套八项 MessageApplication 行为契约，覆盖文本/文件命令、历史、热群增量和离线查询。
 - 已通过内部 gRPC 服务认证集成测试，覆盖合法凭据、缺失凭据、错误密钥、未授权调用方与无效启动配置。

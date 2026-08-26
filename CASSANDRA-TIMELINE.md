@@ -151,13 +151,16 @@ cassandra:
 message:
   cassandra_shadow_reads: false
   cassandra_read_percentage: 10
+  cassandra_read_verify_percentage: 100
 ```
 
 会话键经过稳定 FNV-1a 哈希后进入 `0..99` cohort，同一会话在所有 Message 节点保持一致路由。`after_seq` 页必须完整覆盖 `(after_seq, min(high_watermark, after_seq+limit)]`；`before_seq` 的零值表示最新页，正值表示不包含上界，并读取最后 `limit` 个 Seq。两种方向都要求逐项连续；高水位读取失败、Cassandra 错误或缺行会使用原 Seq cursor 整页回退 MySQL。
 
 新版 Web 历史首屏显式请求 `before_seq=0`，后续使用当前最旧正 `message_seq`，热群增量使用当前最大 `message_seq` 调用 `after_seq`。Cassandra 不保存 MySQL 内部自增 ID，客户端以 `message_id` 去重、以 `message_seq` 排序和分页；legacy ID cursor 不进入 Cassandra cohort。
 
-`cassandra_read_percentage: 0` 是即时回滚开关。Prometheus 暴露 `dipole_message_read_route_total{route,fallback_reason}` 和 `dipole_message_read_route_duration_seconds{route}`，可按 1%、5%、10% 逐步提升并观察回退率和延迟。
+`cassandra_read_verify_percentage` 对稳定的“会话 + before/after 操作”cohort 抽样。命中时，Cassandra 完整页会使用原 Seq cursor 同步读取 MySQL 并比较全部公开消息字段；match 继续返回 Cassandra，mismatch 记录 `payload_mismatch` 并整页返回 MySQL。核验侧 MySQL 暂时失败时记录 `mysql_error` 并返回已经通过 Seq 连续性校验的 Cassandra 页，避免核验依赖降低读取可用性。
+
+`cassandra_read_percentage: 0` 是即时回滚开关，核验比例默认也为 0 且只能在主读比例大于 0 时启用。建议首次 1% 主读配合 100% 核验，确认稳定后逐步提高主读比例并降低核验比例。Prometheus 暴露 `dipole_message_read_route_total{route,fallback_reason}`、`dipole_message_read_route_duration_seconds{route}` 和 `dipole_message_read_verification_total{operation,outcome}`，其中 outcome 为 `match`、`mismatch` 或 `mysql_error`。
 
 ## Verified Contract
 
@@ -177,6 +180,7 @@ message:
 - Query-only MessageStore 装饰器保持 MySQL 响应，异步比较 Cassandra 公开字段，并在容量耗尽时主动跳过。
 - Cassandra 真实 contract 覆盖跨 bucket Seq 范围读取与升序合并。
 - 真实 MySQL/Cassandra 路由同时覆盖 before/after Seq 完整页；人工删除 Timeline 行后，两种方向均整页回退 MySQL。
+- 主读抽样核验覆盖公开字段 match、payload mismatch 和核验 MySQL 错误；真实篡改内容在 Seq 连续时仍会回退 MySQL。
 
 ## References
 
