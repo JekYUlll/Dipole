@@ -12,13 +12,10 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
-	gormRepository "github.com/JekYUlll/Dipole/internal/repository"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestAdminRepositoryContract(t *testing.T) {
-	db, dsn := openContractDatabase(t)
+	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -28,10 +25,6 @@ func TestAdminRepositoryContract(t *testing.T) {
 	}
 	seedAdminOverview(t, db)
 
-	gormDB, err := gorm.Open(gormMySQL.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open GORM contract database: %v", err)
-	}
 	sqlcRepo, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create sqlc admin repository: %v", err)
@@ -48,21 +41,15 @@ func TestAdminRepositoryContract(t *testing.T) {
 		ContactTotal:                   2,
 		PendingContactApplicationTotal: 1,
 	}
-	stores := map[string]application.AdminOverviewStore{
-		"gorm": gormRepository.NewAdminRepositoryWithDB(gormDB),
-		"sqlc": sqlcRepo,
-	}
-	for name, store := range stores {
-		t.Run(name, func(t *testing.T) {
-			got, err := store.OverviewCounts()
-			if err != nil {
-				t.Fatalf("overview counts: %v", err)
-			}
-			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("unexpected counts: got %+v want %+v", got, want)
-			}
-		})
-	}
+	t.Run("sqlc", func(t *testing.T) {
+		got, err := sqlcRepo.OverviewCounts()
+		if err != nil {
+			t.Fatalf("overview counts: %v", err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("unexpected counts: got %+v want %+v", got, want)
+		}
+	})
 }
 
 func seedAdminOverview(t *testing.T, db *sql.DB) {

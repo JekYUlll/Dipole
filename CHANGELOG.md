@@ -41,9 +41,9 @@
 
 - 普通群消息按成员写入 Inbox；热群沿用 notify + pull，跳过成员级 Inbox 写扩散。
 - HTTP、Kafka 与 Agent 启动路径通过统一 Composition Root 创建 Repository 与消息域 Service，消除进程内重复实例和分散的具体依赖构造。
-- Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 Repository 集合，保留独立兼容构造入口供测试和渐进迁移使用。
-- 服务启动默认只读校验 migration 版本，停止执行 GORM `AutoMigrate`；兼容窗口可通过 `mysql.auto_migrate=true` 临时回退。
-- Composition Root 支持 `data.mysql_adapter=gorm|sqlc`；当前 `sqlc` 灰度范围包含已通过双适配契约的 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox Repository。
+- Runtime 在 HTTP、Kafka、Outbox 和 AI 助手初始化之间复用同一 sqlc Repository 集合，所有构造入口必须显式提供 `*sql.DB`。
+- 服务启动只读校验 migration 版本，已移除运行时 schema mutation 和 `AutoMigrate` 配置。
+- Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
 - Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -61,12 +61,15 @@
 - 修复 MySQL 8.4 下同一批次重复追加新成员可能触发 `Error 1869` 的问题，追加入口先按群和用户去重。
 - 固定 Conversation upsert 的 SQL 赋值顺序，先基于旧 `last_message_uuid` 计算未读，再更新最新消息字段，避免依赖 GORM map 排序。
 
+### 移除
+
+- 移除 legacy GORM repositories、model persistence tags、运行时 `AutoMigrate`、SQLite 方言测试以及 `gorm.io/*` 依赖。
+- 移除 `data.mysql_adapter`、`mysql.auto_migrate` 和无依赖 Repository/Server/Kafka 便捷构造入口。
+
 ### 迁移说明
 
-- 可设置 `DIPOLE_DATA_MYSQL_ADAPTER=sqlc` 启用已迁移仓储，发生异常时设置为 `gorm` 并重启节点即可回切；未知配置会直接拒绝启动。
-- Message、Inbox 与 Outbox Producer 已作为同一事务边界迁移到 sqlc；切换 `DIPOLE_DATA_MYSQL_ADAPTER` 时三者整体切换，避免跨连接提交。
-- 默认 `data.mysql_adapter` 从 `gorm` 调整为 `sqlc`；GORM adapters 在兼容窗口内仅作为显式回滚路径和契约测试基线保留。
-- MySQL 默认运行时连接池改由 `database/sql` 直接初始化，migration、sqlc repositories 与 Bloom Registry 共享同一连接池；仅显式 GORM 回滚或 `AutoMigrate` 时按需创建 legacy wrapper。
+- Message、Inbox 与 Outbox Producer 已作为同一 sqlc 事务边界运行，避免跨连接提交。
+- MySQL 运行时连接池由 `database/sql` 直接初始化，migration、sqlc repositories 与 Bloom Registry 共享同一连接池。
 - Bloom Registry 改用 `database/sql` 读取用户和群 UUID，停止依赖全局 GORM 查询。
 - 部署或本地启动服务前执行 `go run ./cmd/migrate -direction up`，由 `000001_baseline` 创建或接管当前 12 张业务表。
 - baseline migration 会创建 `user_sync_inbox` 与 `user_sync_states`；所有消息持久化节点完成升级后，并发提交顺序保证正式生效。
@@ -80,18 +83,10 @@
 - 已通过新增同步 repository、service、handler 及消息 service 的定向 race 测试。
 - 已通过 Kafka `sync_fanout` 新旧字段契约测试和幂等目标隔离测试。
 - 已通过 MySQL 8.4 双事务提交顺序集成测试、`FOR UPDATE` 方言测试和 Sync 锁行回滚测试。
-- 已通过 MySQL 8.4 空库升级、现有 GORM schema 接管、重复执行、baseline 回滚和 schema drift 对照测试。
+- 已通过 MySQL 8.4 空库升级、重复执行、未来 migration 兼容和 baseline 回滚测试。
 - 已通过 sqlc Store 的 MySQL 8.4 提交、回滚与幂等插入集成测试。
-- 已通过 AICallLog GORM/sqlc 双适配的幂等、成功更新与失败更新契约测试。
-- 已通过 Admin GORM/sqlc 双适配的九项统计结果契约测试。
-- 已通过 File GORM/sqlc 双适配的创建回填、查询与缺失结果契约测试。
-- 已通过 User GORM/sqlc 双适配的创建、更新、筛选、批量顺序与助手 upsert 契约测试。
-- 已通过 Contact GORM/sqlc 双适配的双向建交、状态保留、权限、删除与申请生命周期契约测试。
-- 已通过 Group GORM/sqlc 双适配的建群回滚、成员排序、幂等追加、实际计数、更新与移除契约测试。
-- 已通过 Conversation GORM/sqlc 双适配的消息幂等、未读增量/清零、初始化保护、预览、备注与排序契约测试。
-- 已通过 Outbox Relay GORM/sqlc 双适配的领取顺序、租约回收、退避重试、发布状态和 Header 解码契约测试。
-- 已通过 Message/Sync GORM/sqlc 双适配的事务回滚、重放幂等、历史游标、离线过滤、文件权限和同步顺序契约测试，以及 sqlc 同用户并发提交顺序测试。
-- 已通过真实 MySQL 共享连接池测试，确认 legacy GORM wrapper 复用 sqlc 的 `*sql.DB`，并通过初始化策略单元测试验证默认 sqlc 路径不创建 GORM wrapper。
+- 已通过全部 sqlc Repository 的真实 MySQL 功能契约，覆盖幂等、状态转换、排序、权限、事务回滚、租约和同步顺序。
+- 已通过 sqlc 同用户并发提交顺序测试，确认 Inbox `sync_seq` 与提交顺序一致。
 
 ### 已知问题
 

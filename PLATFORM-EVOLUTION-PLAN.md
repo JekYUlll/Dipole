@@ -127,9 +127,9 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 - [x] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
 - [x] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
-- [ ] 对同一 Repository Port 建立 GORM/sqlc contract test，按低风险到高风险逐仓储迁移。
-- [ ] 最后迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
-- [ ] 全部生产路径稳定后删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
+- [x] 对同一 Repository Port 建立迁移契约，按低风险到高风险逐仓储迁移。
+- [x] 迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
+- [x] 删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
 
 **验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
 
@@ -159,7 +159,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 ### M5：抽离 IM Gateway
 
 - [ ] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
-- [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有 GORM repository。
+- [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
 - [ ] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
 - [ ] 将静态 Web、Swagger 和管理入口的归属显式化，避免 Gateway 混入后台任务。
 - [ ] 保留现有单体入口作为回滚部署，直到 Gateway 完成全流量验证。
@@ -246,7 +246,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G1：固化迁移基线与 Capability API
 
 - [ ] 将现有 Go/Eino Agent 固化为行为基线，建立事件、回复、Tool 轨迹和权限评测集。
-- [ ] 删除 Agent 对 GORM repository 的直接依赖，读取和动作统一进入版本化 Capability API。
+- [ ] 删除 Agent 对数据库 repository 的直接依赖，读取和动作统一进入版本化 Capability API。
 - [ ] 引入由认证系统生成的 `ExecutionContext`，模型不能设置 principal、tenant、权限和审计身份。
 - [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
 - [ ] 增加 `agent.mode=embedded|shadow|remote|off`，保留 Eino 回滚窗口。
@@ -327,7 +327,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | Migration | 回填、双轨比较、影子读、灰度切换、回滚和重放 |
 | Failure | 节点宕机、超时、重复事件、乱序、Kafka lag、存储不可用 |
 | Performance | 普通群/热群吞吐、P95/P99 延迟、成员级写放大、搜索和 Agent 延迟 |
-| Data access | SQL migration、sqlc 生成漂移、GORM/sqlc contract、真实 MySQL 事务 |
+| Data access | SQL migration、sqlc 生成漂移、Repository contract、真实 MySQL 事务 |
 | Frontend | Vue 类型检查、组件、Playwright E2E、视觉回归、响应式和可访问性 |
 
 每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
@@ -342,7 +342,6 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
-| `data.mysql_adapter` | `gorm / sqlc` | Repository 分批迁移期间回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
 

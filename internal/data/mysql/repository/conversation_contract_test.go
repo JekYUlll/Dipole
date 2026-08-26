@@ -13,13 +13,10 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
-	gormRepository "github.com/JekYUlll/Dipole/internal/repository"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestConversationRepositoryContract(t *testing.T) {
-	db, dsn := openContractDatabase(t)
+	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -27,23 +24,13 @@ func TestConversationRepositoryContract(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("migrate contract database: %v", err)
 	}
-	gormDB, err := gorm.Open(gormMySQL.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open GORM contract database: %v", err)
-	}
 	sqlcRepo, err := sqlcRepository.NewConversationRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create sqlc conversation repository: %v", err)
 	}
-	stores := map[string]application.ConversationStore{
-		"gorm": gormRepository.NewConversationRepositoryWithDB(gormDB),
-		"sqlc": sqlcRepo,
-	}
-	for name, store := range stores {
-		t.Run(name, func(t *testing.T) {
-			runConversationContract(t, store, name)
-		})
-	}
+	t.Run("sqlc", func(t *testing.T) {
+		runConversationContract(t, sqlcRepo, "sqlc")
+	})
 }
 
 func runConversationContract(t *testing.T, store application.ConversationStore, prefix string) {

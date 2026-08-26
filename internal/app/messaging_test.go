@@ -20,7 +20,7 @@ func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 		}
 	})
 
-	services := NewMessagingServices(NewRepositories(), MessagingDependencies{})
+	services := NewMessagingServices(&Repositories{}, MessagingDependencies{})
 
 	if services == nil {
 		t.Fatal("NewMessagingServices() returned nil")

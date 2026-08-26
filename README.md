@@ -23,7 +23,7 @@ go run ./cmd/migrate -direction up
 go run ./cmd/server
 ```
 
-`mysql.auto_migrate` 默认关闭，仅在 GORM 到 sqlc 的兼容窗口内用于紧急回退。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
+服务启动只校验 migration 版本，不修改 schema。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
 
 sqlc 生成固定使用 `v1.31.1`：
 
@@ -33,4 +33,4 @@ scripts/sqlc.sh generate
 scripts/check-sqlc.sh
 ```
 
-迁移窗口可通过 `DIPOLE_DATA_MYSQL_ADAPTER=gorm|sqlc` 选择数据适配器，默认使用 `sqlc`。所有生产 Repository 已通过双适配契约测试；设置为 `gorm` 可在兼容窗口内整体回切。
+生产数据访问统一使用 `database/sql + sqlc`，查询定义位于 `db/queries`，生成代码位于 `internal/data/mysql/generated`。

@@ -37,7 +37,7 @@ func TestTransportPackagesDoNotImportDataImplementations(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				if strings.HasSuffix(importPath, "/internal/repository") || strings.HasSuffix(importPath, "/internal/store") {
+				if strings.Contains(importPath, "/internal/data/") || strings.HasSuffix(importPath, "/internal/store") {
 					relativePath, _ := filepath.Rel(repositoryRoot, path)
 					t.Errorf("%s imports data implementation %s", relativePath, importPath)
 				}

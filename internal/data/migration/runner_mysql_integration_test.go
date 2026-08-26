@@ -5,16 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
-	"github.com/JekYUlll/Dipole/internal/model"
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestMySQLBaselineMigration(t *testing.T) {
@@ -67,68 +63,6 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		assertTableCount(t, db, 1)
 	})
 
-	t.Run("existing GORM schema", func(t *testing.T) {
-		db, dsn := openTemporaryDatabaseWithDSN(t, adminDSN, "existing")
-		gormDB, err := gorm.Open(gormMySQL.Open(dsn), &gorm.Config{})
-		if err != nil {
-			t.Fatalf("open GORM database: %v", err)
-		}
-		if err := gormDB.AutoMigrate(currentModels()...); err != nil {
-			t.Fatalf("create existing GORM schema: %v", err)
-		}
-		if err := gormDB.Create(&model.User{
-			UUID:         "U-migration-existing",
-			Nickname:     "existing",
-			Telephone:    "18800000000",
-			PasswordHash: "hash",
-		}).Error; err != nil {
-			t.Fatalf("seed existing schema: %v", err)
-		}
-
-		runner, err := migration.NewRunner(db, migrations.Files)
-		if err != nil {
-			t.Fatalf("create migration runner: %v", err)
-		}
-		if err := runner.Up(context.Background()); err != nil {
-			t.Fatalf("adopt existing GORM schema: %v", err)
-		}
-		assertCurrentVersion(t, runner, 1)
-		assertTableCount(t, db, 13)
-
-		var users int
-		if err := db.QueryRow("SELECT COUNT(*) FROM users WHERE uuid = ?", "U-migration-existing").Scan(&users); err != nil {
-			t.Fatalf("query retained user: %v", err)
-		}
-		if users != 1 {
-			t.Fatalf("expected existing row to remain, got %d", users)
-		}
-	})
-
-	t.Run("matches current GORM schema", func(t *testing.T) {
-		migrationDB := openTemporaryDatabase(t, adminDSN, "migration_schema")
-		runner, err := migration.NewRunner(migrationDB, migrations.Files)
-		if err != nil {
-			t.Fatalf("create migration runner: %v", err)
-		}
-		if err := runner.Up(context.Background()); err != nil {
-			t.Fatalf("create migration schema: %v", err)
-		}
-
-		gormSQLDB, gormDSN := openTemporaryDatabaseWithDSN(t, adminDSN, "gorm_schema")
-		gormDB, err := gorm.Open(gormMySQL.Open(gormDSN), &gorm.Config{})
-		if err != nil {
-			t.Fatalf("open GORM schema database: %v", err)
-		}
-		if err := gormDB.AutoMigrate(currentModels()...); err != nil {
-			t.Fatalf("create GORM comparison schema: %v", err)
-		}
-
-		migrationSignature := schemaSignature(t, migrationDB)
-		gormSignature := schemaSignature(t, gormSQLDB)
-		if !reflect.DeepEqual(migrationSignature, gormSignature) {
-			t.Fatalf("migration schema differs from GORM schema\nmigration:\n%v\ngorm:\n%v", migrationSignature, gormSignature)
-		}
-	})
 }
 
 func openTemporaryDatabase(t *testing.T, adminDSN, suffix string) *sql.DB {
@@ -174,23 +108,6 @@ func openTemporaryDatabaseWithDSN(t *testing.T, adminDSN, suffix string) (*sql.D
 	return db, dsn
 }
 
-func currentModels() []any {
-	return []any{
-		&model.User{},
-		&model.Message{},
-		&model.UserSyncState{},
-		&model.UserSyncInbox{},
-		&model.UploadedFile{},
-		&model.Conversation{},
-		&model.Contact{},
-		&model.ContactApplication{},
-		&model.Group{},
-		&model.GroupMember{},
-		&model.AICallLog{},
-		&model.OutboxEvent{},
-	}
-}
-
 func assertCurrentVersion(t *testing.T, runner *migration.Runner, expected int64) {
 	t.Helper()
 	version, err := runner.CurrentVersion(context.Background())
@@ -222,65 +139,4 @@ func assertMigrationCount(t *testing.T, db *sql.DB, expected int) {
 	if count != expected {
 		t.Fatalf("expected %d migration rows, got %d", expected, count)
 	}
-}
-
-func schemaSignature(t *testing.T, db *sql.DB) []string {
-	t.Helper()
-
-	rows, err := db.Query(`SELECT
-    table_name,
-    column_name,
-    column_type,
-    is_nullable,
-    COALESCE(column_default, '<NULL>'),
-    COALESCE(character_set_name, ''),
-    COALESCE(collation_name, ''),
-    extra
-FROM information_schema.columns
-WHERE table_schema = DATABASE()
-  AND table_name <> 'schema_migrations'
-ORDER BY table_name, column_name`)
-	if err != nil {
-		t.Fatalf("query schema columns: %v", err)
-	}
-	defer rows.Close()
-
-	var signature []string
-	for rows.Next() {
-		var table, column, columnType, nullable, defaultValue, charset, collation, extra string
-		if err := rows.Scan(&table, &column, &columnType, &nullable, &defaultValue, &charset, &collation, &extra); err != nil {
-			t.Fatalf("scan schema column: %v", err)
-		}
-		signature = append(signature, fmt.Sprintf("column|%s|%s|%s|%s|%s|%s|%s|%s", table, column, columnType, nullable, defaultValue, charset, collation, extra))
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("iterate schema columns: %v", err)
-	}
-
-	indexRows, err := db.Query(`SELECT
-    table_name,
-    index_name,
-    non_unique,
-    seq_in_index,
-    column_name
-FROM information_schema.statistics
-WHERE table_schema = DATABASE()
-  AND table_name <> 'schema_migrations'
-ORDER BY table_name, index_name, seq_in_index`)
-	if err != nil {
-		t.Fatalf("query schema indexes: %v", err)
-	}
-	defer indexRows.Close()
-	for indexRows.Next() {
-		var table, index, column string
-		var nonUnique, sequence int
-		if err := indexRows.Scan(&table, &index, &nonUnique, &sequence, &column); err != nil {
-			t.Fatalf("scan schema index: %v", err)
-		}
-		signature = append(signature, fmt.Sprintf("index|%s|%s|%d|%d|%s", table, index, nonUnique, sequence, column))
-	}
-	if err := indexRows.Err(); err != nil {
-		t.Fatalf("iterate schema indexes: %v", err)
-	}
-	return signature
 }

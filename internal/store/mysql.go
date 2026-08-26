@@ -7,16 +7,11 @@ import (
 	"time"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	gormMySQL "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 
 	"github.com/JekYUlll/Dipole/internal/config"
 )
 
-var (
-	SQLDB *sql.DB
-	DB    *gorm.DB // Legacy rollback and AutoMigrate only.
-)
+var SQLDB *sql.DB
 
 func InitMySQL() error {
 	cfg := config.MySQLConfig()
@@ -47,18 +42,5 @@ func InitMySQL() error {
 	}
 
 	SQLDB = db
-	DB = nil
-	return nil
-}
-
-func InitLegacyGORM() error {
-	if SQLDB == nil {
-		return fmt.Errorf("mysql not initialized")
-	}
-	db, err := gorm.Open(gormMySQL.New(gormMySQL.Config{Conn: SQLDB}), &gorm.Config{})
-	if err != nil {
-		return fmt.Errorf("open legacy gorm adapter: %w", err)
-	}
-	DB = db
 	return nil
 }

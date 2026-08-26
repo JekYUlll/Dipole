@@ -35,13 +35,9 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func New() *Server {
-	return NewWithRepositories(appComposition.NewRepositories())
-}
-
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
 	if repos == nil {
-		repos = appComposition.NewRepositories()
+		panic("server repositories are required")
 	}
 
 	engine := gin.New()

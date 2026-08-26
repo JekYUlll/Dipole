@@ -43,16 +43,12 @@ type groupHeatReader interface {
 	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 }
 
-func RegisterKafkaHandlers(hub kafkaWSEventSender) error {
-	return RegisterKafkaHandlersWithRepositories(hub, appComposition.NewRepositories())
-}
-
 func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
 	if repos == nil {
-		repos = appComposition.NewRepositories()
+		return fmt.Errorf("kafka handler repositories are required")
 	}
 
 	var events applicationPort.EventPublisher
