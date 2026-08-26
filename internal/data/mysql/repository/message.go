@@ -15,6 +15,7 @@ import (
 )
 
 var _ application.MessageStore = (*MessageRepository)(nil)
+var _ application.MessageMetadataStore = (*MessageRepository)(nil)
 
 type MessageRepository struct {
 	store          transactionStore
@@ -60,6 +61,9 @@ func (r *MessageRepository) storeWithSync(message *model.Message, buildOutbox ap
 			return fmt.Errorf("reload message with sqlc: %w", err)
 		}
 		*message = *mapper.Message(row)
+		if err := q.CreateMessageMetadata(ctx, mapper.MessageMetadataCreateParams(message)); err != nil {
+			return fmt.Errorf("create message metadata with sqlc: %w", err)
+		}
 		if message.TargetType == model.MessageTargetGroup {
 			if err := q.UpsertGroupSyncState(ctx, generated.UpsertGroupSyncStateParams{GroupUuid: message.TargetUUID, LatestMessageSeq: message.Seq, LatestMessageUuid: message.UUID}); err != nil {
 				return fmt.Errorf("advance group sync state with sqlc: %w", err)
@@ -158,6 +162,34 @@ func (r *MessageRepository) GetBySenderAndClientMessageID(senderUUID, clientID s
 	return mapper.Message(row), nil
 }
 
+func (r *MessageRepository) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
+	row, err := r.store.Queries().GetMessageMetadataByUUID(context.Background(), strings.TrimSpace(uuid))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MessageMetadata(row), nil
+}
+
+func (r *MessageRepository) GetMetadataBySenderAndClientMessageID(senderUUID, clientID string) (*model.MessageMetadata, error) {
+	row, err := r.store.Queries().GetMessageMetadataBySenderAndClientID(
+		context.Background(),
+		generated.GetMessageMetadataBySenderAndClientIDParams{
+			SenderUuid:      strings.TrimSpace(senderUUID),
+			ClientMessageID: strings.TrimSpace(clientID),
+		},
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return mapper.MessageMetadata(row), nil
+}
+
 func (r *MessageRepository) HasConversationMessages(key string) (bool, error) {
 	return r.store.Queries().HasConversationMessages(context.Background(), key)
 }
@@ -212,14 +244,21 @@ func (r *MessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint,
 }
 
 func (r *MessageRepository) FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error) {
-	row, err := r.store.Queries().FindLatestAccessibleFileMessage(context.Background(), generated.FindLatestAccessibleFileMessageParams{FileUuid: fileUUID, FileMessageType: model.MessageTypeFile, DirectType: model.MessageTargetDirect, UserUuid: userUUID, GroupType: model.MessageTargetGroup, GroupNormalStatus: model.GroupStatusNormal, GroupDismissedStatus: model.GroupStatusDismissed})
+	row, err := r.store.Queries().FindLatestAccessibleFileMetadata(context.Background(), generated.FindLatestAccessibleFileMetadataParams{FileUuid: fileUUID, FileMessageType: model.MessageTypeFile, DirectType: model.MessageTargetDirect, UserUuid: userUUID, GroupType: model.MessageTargetGroup, GroupNormalStatus: model.GroupStatusNormal, GroupDismissedStatus: model.GroupStatusDismissed})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return mapper.Message(row), nil
+	metadata := mapper.MessageMetadata(row)
+	return &model.Message{
+		UUID: metadata.MessageUUID, Seq: metadata.MessageSeq,
+		ConversationKey: metadata.ConversationKey, SenderUUID: metadata.SenderUUID,
+		TargetType: metadata.TargetType, TargetUUID: metadata.TargetUUID,
+		MessageType: metadata.MessageType, FileID: metadata.FileID,
+		FileExpiresAt: metadata.FileExpiresAt, SentAt: metadata.SentAt,
+	}, nil
 }
 
 func createSQLCSyncInbox(ctx context.Context, q *generated.Queries, message *model.Message, recipients []string) error {

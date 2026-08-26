@@ -36,10 +36,11 @@ docker run --rm --network "$network" \
   -v "$migrate_binary:/app/dipole-migrate:ro" -w /app alpine:3.22 \
   /app/dipole-migrate -direction up >/dev/null
 mapfile -t migration_checks < <(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole \
-  -e "SELECT COUNT(*) FROM schema_migrations WHERE version = 11; SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='dipole' AND table_name='messages';")
-test "${#migration_checks[@]}" -eq 2
+  -e "SELECT COUNT(*) FROM schema_migrations WHERE version = 12; SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='dipole' AND table_name='messages'; SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='dipole' AND table_name='message_metadata';")
+test "${#migration_checks[@]}" -eq 3
 test "${migration_checks[0]}" = "1"
 test "${migration_checks[1]}" = "1"
+test "${migration_checks[2]}" = "1"
 docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql/sync-service-grants.dist.sql"
 docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql/message-service-projector-grants.dist.sql"
 
@@ -56,6 +57,7 @@ docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql
 )
 
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM messages WHERE uuid='M-projector-smoke';")" = "1"
+test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM message_metadata WHERE message_uuid='M-projector-smoke' AND CHAR_LENGTH(payload_sha256)=64;")" = "1"
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id='M-projector-smoke';")" = "1"
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM user_sync_inbox WHERE message_uuid='M-projector-smoke';")" = "0"
 

@@ -128,6 +128,20 @@ func (r *stubMessageRepository) GetBySenderAndClientMessageID(senderUUID, client
 	return nil, nil
 }
 
+func (r *stubMessageRepository) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
+	message, err := r.GetByUUID(uuid)
+	return stubMessageMetadata(message), err
+}
+
+func (r *stubMessageRepository) GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error) {
+	message, err := r.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+	return stubMessageMetadata(message), err
+}
+
+func stubMessageMetadata(message *model.Message) *model.MessageMetadata {
+	return model.MetadataFromMessage(message)
+}
+
 func (r *stubMessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -1490,6 +1504,33 @@ func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarge
 	}
 	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
 		t.Fatalf("expected no duplicate repair for conflicting target, outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
+	}
+}
+
+func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyPayload(t *testing.T) {
+	existing := &model.Message{
+		UUID: "M100", ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "original",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID:     map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	_, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "changed",
+	})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected payload conflict, got %v", err)
+	}
+	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("payload conflict repaired duplicate state: outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
 	}
 }
 

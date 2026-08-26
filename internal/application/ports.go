@@ -107,6 +107,11 @@ type MessageStore interface {
 	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
 }
 
+type MessageMetadataStore interface {
+	GetMetadataByUUID(uuid string) (*model.MessageMetadata, error)
+	GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error)
+}
+
 type SearchIndex interface {
 	Apply(mutation *model.MessageSearchMutation) error
 	Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error)

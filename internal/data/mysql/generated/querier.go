@@ -30,6 +30,7 @@ type Querier interface {
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (sql.Result, error)
 	CreateGroupMember(ctx context.Context, arg CreateGroupMemberParams) (sql.Result, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (sql.Result, error)
+	CreateMessageMetadata(ctx context.Context, arg CreateMessageMetadataParams) error
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (sql.Result, error)
 	CreateSyncInboxBaselineEntry(ctx context.Context, arg CreateSyncInboxBaselineEntryParams) error
 	CreateSyncInboxBaselineJob(ctx context.Context, arg CreateSyncInboxBaselineJobParams) error
@@ -47,7 +48,7 @@ type Querier interface {
 	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
-	FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error)
+	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetCassandraBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetCassandraBackfillJob(ctx context.Context, jobName string) (CassandraBackfillJob, error)
@@ -63,6 +64,8 @@ type Querier interface {
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
+	GetMessageMetadataBySenderAndClientID(ctx context.Context, arg GetMessageMetadataBySenderAndClientIDParams) (MessageMetadatum, error)
+	GetMessageMetadataByUUID(ctx context.Context, messageUuid string) (MessageMetadatum, error)
 	GetMessageSearchState(ctx context.Context, messageUuid string) (GetMessageSearchStateRow, error)
 	GetSearchBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetSearchBackfillJob(ctx context.Context, jobName string) (SearchBackfillJob, error)

@@ -35,6 +35,35 @@ func (s *primaryStore) ListByConversationSeqBefore(_ string, beforeSeq uint64, _
 	return s.page, s.err
 }
 
+func (s *primaryStore) GetByUUID(string) (*model.Message, error) {
+	if len(s.page) == 0 {
+		return nil, s.err
+	}
+	return s.page[0], s.err
+}
+
+func (s *primaryStore) GetBySenderAndClientMessageID(string, string) (*model.Message, error) {
+	return s.GetByUUID("")
+}
+
+func TestCassandraReadRouterPreservesMetadataContract(t *testing.T) {
+	message := &model.Message{
+		UUID: "M8", ClientMessageID: "C8", ConversationKey: "group:G1", Seq: 8,
+		SenderUUID: "U1", TargetType: model.MessageTargetGroup, TargetUUID: "G1",
+		MessageType: model.MessageTypeText, Content: "payload",
+	}
+	store := NewMessageStore(&primaryStore{page: []*model.Message{message}}, &highWaterReader{}, &timelineReader{}, 100, nil)
+
+	byUUID, err := store.GetMetadataByUUID("M8")
+	if err != nil || byUUID == nil || byUUID.MessageSeq != 8 {
+		t.Fatalf("metadata by UUID: metadata=%+v err=%v", byUUID, err)
+	}
+	byClient, err := store.GetMetadataBySenderAndClientMessageID("U1", "C8")
+	if err != nil || byClient == nil || byClient.PayloadSHA256 != byUUID.PayloadSHA256 {
+		t.Fatalf("metadata by client ID: metadata=%+v err=%v", byClient, err)
+	}
+}
+
 type highWaterReader struct {
 	sequence uint64
 	err      error

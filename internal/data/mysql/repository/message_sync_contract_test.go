@@ -18,7 +18,11 @@ import (
 )
 
 type messageSyncStores struct {
-	message    application.MessageStore
+	message  application.MessageStore
+	metadata interface {
+		GetMetadataByUUID(string) (*model.MessageMetadata, error)
+		GetMetadataBySenderAndClientMessageID(string, string) (*model.MessageMetadata, error)
+	}
 	sync       application.SyncStore
 	projection application.SyncProjectionStore
 }
@@ -80,7 +84,7 @@ func TestMessageSyncRepositoryContract(t *testing.T) {
 		t.Fatalf("create sqlc Sync projection repository: %v", err)
 	}
 	t.Run("sqlc", func(t *testing.T) {
-		runMessageSyncContract(t, db, messageSyncStores{message: sqlcMessage, sync: sqlcSync, projection: sqlcProjection}, "sqlc")
+		runMessageSyncContract(t, db, messageSyncStores{message: sqlcMessage, metadata: sqlcMessage, sync: sqlcSync, projection: sqlcProjection}, "sqlc")
 	})
 }
 
@@ -228,6 +232,14 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err != nil || byClient == nil || byClient.UUID != first.UUID {
 		t.Fatalf("get by client ID: message=%+v err=%v", byClient, err)
 	}
+	metadataByUUID, err := stores.metadata.GetMetadataByUUID(first.UUID)
+	if err != nil || metadataByUUID == nil || metadataByUUID.MessageSeq != first.Seq || len(metadataByUUID.PayloadSHA256) != 64 {
+		t.Fatalf("get metadata by UUID: metadata=%+v err=%v", metadataByUUID, err)
+	}
+	metadataByClient, err := stores.metadata.GetMetadataBySenderAndClientMessageID(first.SenderUUID, first.ClientMessageID)
+	if err != nil || metadataByClient == nil || metadataByClient.MessageUUID != first.UUID || metadataByClient.PayloadSHA256 != metadataByUUID.PayloadSHA256 {
+		t.Fatalf("get metadata by client ID: metadata=%+v err=%v", metadataByClient, err)
+	}
 	missing, err := stores.message.GetByUUID("missing")
 	if err != nil || missing != nil {
 		t.Fatalf("missing message: message=%+v err=%v", missing, err)
@@ -337,6 +349,13 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	if err != nil || denied != nil {
 		t.Fatalf("deny inaccessible file: message=%+v err=%v", denied, err)
 	}
+	if _, err := db.Exec("DELETE FROM messages WHERE uuid = ?", fileMessage.UUID); err != nil {
+		t.Fatalf("remove full file message body: %v", err)
+	}
+	accessible, err = stores.message.FindLatestAccessibleFileMessage(fileMessage.FileID, fileMessage.TargetUUID)
+	if err != nil || accessible == nil || accessible.UUID != fileMessage.UUID || accessible.FileID != fileMessage.FileID {
+		t.Fatalf("metadata-only file authorization: message=%+v err=%v", accessible, err)
+	}
 
 	rollback := contractStoredMessage(prefix+"-rollback", conversationKey, now.Add(3*time.Second))
 	badEvent := contractOutboxEvent(rollback.UUID)
@@ -346,6 +365,9 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	}
 	if got := countContractRows(t, db, "messages", "uuid = ?", rollback.UUID); got != 0 {
 		t.Fatalf("message survived outbox rollback: %d", got)
+	}
+	if got := countContractRows(t, db, "message_metadata", "message_uuid = ?", rollback.UUID); got != 0 {
+		t.Fatalf("metadata survived outbox rollback: %d", got)
 	}
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", rollback.UUID); got != 0 {
 		t.Fatalf("inbox survived outbox rollback: %d", got)

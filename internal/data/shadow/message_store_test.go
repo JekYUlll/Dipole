@@ -46,6 +46,17 @@ func (s *primaryMessageStore) CreateWithSync(*model.Message, []string) error {
 	return nil
 }
 
+func (s *primaryMessageStore) GetByUUID(string) (*model.Message, error) {
+	if len(s.page) == 0 {
+		return nil, s.err
+	}
+	return s.page[0], s.err
+}
+
+func (s *primaryMessageStore) GetBySenderAndClientMessageID(string, string) (*model.Message, error) {
+	return s.GetByUUID("")
+}
+
 type timelineRangeReader struct {
 	mu       sync.Mutex
 	records  []cassandraData.TimelineRecord
@@ -221,6 +232,20 @@ func TestMessageStoreKeepsOfflineAndWritesOnMySQLOnly(t *testing.T) {
 	}
 	if calls, _, _, _ := timeline.snapshot(); calls != 0 {
 		t.Fatalf("timeline should not receive writes or Inbox queries, calls=%d", calls)
+	}
+}
+
+func TestMessageStorePreservesMetadataContractThroughShadowDecorator(t *testing.T) {
+	message := message(1, 7, "M7", "payload")
+	store := NewMessageStore(&primaryMessageStore{page: []*model.Message{message}}, &timelineRangeReader{}, nil)
+
+	byUUID, err := store.GetMetadataByUUID("M7")
+	if err != nil || byUUID == nil || byUUID.MessageUUID != "M7" || byUUID.MessageSeq != 7 {
+		t.Fatalf("metadata by UUID: metadata=%+v err=%v", byUUID, err)
+	}
+	byClient, err := store.GetMetadataBySenderAndClientMessageID(message.SenderUUID, message.ClientMessageID)
+	if err != nil || byClient == nil || byClient.PayloadSHA256 != byUUID.PayloadSHA256 {
+		t.Fatalf("metadata by client ID: metadata=%+v err=%v", byClient, err)
 	}
 }
 

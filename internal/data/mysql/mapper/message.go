@@ -20,6 +20,28 @@ func MessageCreateParams(message *model.Message) generated.CreateMessageParams {
 	}
 }
 
+func MessageMetadataCreateParams(message *model.Message) generated.CreateMessageMetadataParams {
+	return generated.CreateMessageMetadataParams{
+		MessageUuid: message.UUID, ClientMessageID: message.ClientMessageID,
+		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
+		SenderUuid: message.SenderUUID, TargetType: message.TargetType,
+		TargetUuid: message.TargetUUID, MessageType: message.MessageType,
+		FileID: message.FileID, FileExpiresAt: nullableTime(message.FileExpiresAt),
+		PayloadSha256: model.MessagePayloadSHA256(message), SentAt: message.SentAt,
+	}
+}
+
+func MessageMetadata(row generated.MessageMetadatum) *model.MessageMetadata {
+	return &model.MessageMetadata{
+		MessageUUID: row.MessageUuid, ClientMessageID: row.ClientMessageID,
+		ConversationKey: row.ConversationKey, MessageSeq: row.MessageSeq,
+		SenderUUID: row.SenderUuid, TargetType: row.TargetType,
+		TargetUUID: row.TargetUuid, MessageType: row.MessageType,
+		FileID: row.FileID, FileExpiresAt: nullableTimePointer(row.FileExpiresAt),
+		PayloadSHA256: row.PayloadSha256, SentAt: row.SentAt,
+	}
+}
+
 func Message(row generated.Message) *model.Message {
 	return &model.Message{
 		ID: uint(row.ID), UUID: row.Uuid, ClientMessageID: row.ClientMessageID, Seq: row.Seq,

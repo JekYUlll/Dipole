@@ -47,6 +47,23 @@ type MessageStore struct {
 }
 
 var _ application.MessageStore = (*MessageStore)(nil)
+var _ application.MessageMetadataStore = (*MessageStore)(nil)
+
+func (s *MessageStore) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
+	if store, ok := s.MessageStore.(application.MessageMetadataStore); ok {
+		return store.GetMetadataByUUID(uuid)
+	}
+	message, err := s.MessageStore.GetByUUID(uuid)
+	return model.MetadataFromMessage(message), err
+}
+
+func (s *MessageStore) GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error) {
+	if store, ok := s.MessageStore.(application.MessageMetadataStore); ok {
+		return store.GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID)
+	}
+	message, err := s.MessageStore.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+	return model.MetadataFromMessage(message), err
+}
 
 func NewMessageStore(primary application.MessageStore, highWatermark HighWatermarkReader, timeline TimelineRangeReader, percentage int, observe func(ReadObservation)) *MessageStore {
 	return NewMessageStoreWithVerification(primary, highWatermark, timeline, percentage, 0, observe)

@@ -743,6 +743,16 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 	if message == nil {
 		return nil, nil
 	}
+	if metadataRepo, ok := s.repo.(applicationPort.MessageMetadataStore); ok {
+		metadata, err := findExistingMetadataForDuplicate(metadataRepo, message)
+		if err != nil || metadata == nil {
+			return nil, err
+		}
+		if err := validateDuplicateMessageMetadata(metadata, message); err != nil {
+			return nil, err
+		}
+		return s.repo.GetByUUID(metadata.MessageUUID)
+	}
 	if message.ClientMessageID != "" {
 		existing, err := s.repo.GetBySenderAndClientMessageID(message.SenderUUID, message.ClientMessageID)
 		if err != nil {
@@ -754,6 +764,16 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 	}
 
 	return s.repo.GetByUUID(message.UUID)
+}
+
+func findExistingMetadataForDuplicate(repo applicationPort.MessageMetadataStore, message *model.Message) (*model.MessageMetadata, error) {
+	if message.ClientMessageID != "" {
+		metadata, err := repo.GetMetadataBySenderAndClientMessageID(message.SenderUUID, message.ClientMessageID)
+		if err != nil || metadata != nil {
+			return metadata, err
+		}
+	}
+	return repo.GetMetadataByUUID(message.UUID)
 }
 
 func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string, syncFanout bool) error {
@@ -959,6 +979,20 @@ func validateDuplicateMessageIdentity(existing, requested *model.Message) error 
 		existing.TargetType != requested.TargetType ||
 		strings.TrimSpace(existing.TargetUUID) != strings.TrimSpace(requested.TargetUUID) ||
 		strings.TrimSpace(existing.ConversationKey) != strings.TrimSpace(requested.ConversationKey) {
+		return fmt.Errorf("%w: client_message_id=%s", ErrMessageIdempotencyConflict, requested.ClientMessageID)
+	}
+	return nil
+}
+
+func validateDuplicateMessageMetadata(existing *model.MessageMetadata, requested *model.Message) error {
+	if existing == nil || requested == nil {
+		return nil
+	}
+	if strings.TrimSpace(existing.SenderUUID) != strings.TrimSpace(requested.SenderUUID) ||
+		existing.TargetType != requested.TargetType ||
+		strings.TrimSpace(existing.TargetUUID) != strings.TrimSpace(requested.TargetUUID) ||
+		strings.TrimSpace(existing.ConversationKey) != strings.TrimSpace(requested.ConversationKey) ||
+		(existing.PayloadSHA256 != "" && existing.PayloadSHA256 != model.MessagePayloadSHA256(requested)) {
 		return fmt.Errorf("%w: client_message_id=%s", ErrMessageIdempotencyConflict, requested.ClientMessageID)
 	}
 	return nil
