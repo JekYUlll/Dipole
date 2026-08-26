@@ -154,19 +154,21 @@ type InternalRPC struct {
 }
 
 type Storage struct {
-	Enabled                bool   `mapstructure:"enabled"`
-	Provider               string `mapstructure:"provider"`
-	Endpoint               string `mapstructure:"endpoint"`
-	PresignEndpoint        string `mapstructure:"presign_endpoint"`
-	AccessKey              string `mapstructure:"access_key"`
-	SecretKey              string `mapstructure:"secret_key"`
-	UseSSL                 bool   `mapstructure:"use_ssl"`
-	Bucket                 string `mapstructure:"bucket"`
-	PublicBaseURL          string `mapstructure:"public_base_url"`
-	FileMaxSizeMB          int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB   int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin int    `mapstructure:"multipart_session_ttl_minutes"`
-	DownloadURLTTLMinutes  int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                    bool   `mapstructure:"enabled"`
+	Provider                   string `mapstructure:"provider"`
+	Endpoint                   string `mapstructure:"endpoint"`
+	PresignEndpoint            string `mapstructure:"presign_endpoint"`
+	AccessKey                  string `mapstructure:"access_key"`
+	SecretKey                  string `mapstructure:"secret_key"`
+	UseSSL                     bool   `mapstructure:"use_ssl"`
+	Bucket                     string `mapstructure:"bucket"`
+	SearchArchiveBucket        string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays int    `mapstructure:"search_archive_retention_days"`
+	PublicBaseURL              string `mapstructure:"public_base_url"`
+	FileMaxSizeMB              int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB       int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin     int    `mapstructure:"multipart_session_ttl_minutes"`
+	DownloadURLTTLMinutes      int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -331,6 +333,8 @@ func Load() error {
 		v.SetDefault("storage.secret_key", "dipoleminiopass")
 		v.SetDefault("storage.use_ssl", false)
 		v.SetDefault("storage.bucket", "dipole-files")
+		v.SetDefault("storage.search_archive_bucket", "dipole-search-archives")
+		v.SetDefault("storage.search_archive_retention_days", 30)
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -468,6 +472,8 @@ func Load() error {
 			"storage.secret_key",
 			"storage.use_ssl",
 			"storage.bucket",
+			"storage.search_archive_bucket",
+			"storage.search_archive_retention_days",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -771,6 +777,8 @@ func StorageConfig() Storage {
 	storageConfig.SecretKey = cfg.GetString("storage.secret_key")
 	storageConfig.UseSSL = cfg.GetBool("storage.use_ssl")
 	storageConfig.Bucket = cfg.GetString("storage.bucket")
+	storageConfig.SearchArchiveBucket = cfg.GetString("storage.search_archive_bucket")
+	storageConfig.SearchArchiveRetentionDays = cfg.GetInt("storage.search_archive_retention_days")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")

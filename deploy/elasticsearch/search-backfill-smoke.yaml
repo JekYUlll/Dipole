@@ -18,3 +18,13 @@ elasticsearch:
   shards: 1
   replicas: 0
   request_timeout_seconds: 15
+storage:
+  enabled: true
+  provider: minio
+  endpoint: minio:9000
+  access_key: dipoleminio
+  secret_key: dipoleminiopass
+  use_ssl: false
+  bucket: dipole-files
+  search_archive_bucket: dipole-search-archives
+  search_archive_retention_days: 30
