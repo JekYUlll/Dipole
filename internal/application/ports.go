@@ -3,6 +3,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 )
@@ -107,6 +108,16 @@ type GroupStore interface {
 	Update(group *model.Group) error
 	RemoveMembers(groupUUID string, memberUUIDs []string) error
 	RemoveMember(groupUUID, userUUID string) error
+}
+
+type ConversationStore interface {
+	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
+	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
+	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
+	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
+	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
+	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
+	ClearUnreadByConversationKey(userUUID, conversationKey string) error
 }
 
 type EventPublisher interface {

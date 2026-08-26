@@ -28,7 +28,7 @@ type Repositories struct {
 	Users         application.UserStore
 	Messages      *repository.MessageRepository
 	Files         application.FileMetadataStore
-	Conversations *repository.ConversationRepository
+	Conversations application.ConversationStore
 	Contacts      application.ContactStore
 	Groups        application.GroupStore
 	Admin         application.AdminOverviewStore
@@ -99,6 +99,11 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc group repository: %w", err)
 		}
 		repos.Groups = NewCachedGroupStore(groupAdapter)
+		conversationAdapter, err := sqlcRepository.NewConversationRepository(generated.New(options.SQLDB))
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
+		}
+		repos.Conversations = conversationAdapter
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}
