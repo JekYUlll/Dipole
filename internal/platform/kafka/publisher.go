@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,12 +24,15 @@ const (
 )
 
 type Publisher struct {
-	clientID    string
-	topicPrefix string
-	brokers     []string
-	timeout     time.Duration
-	partitions  int
-	replicas    int
+	clientID     string
+	topicPrefix  string
+	brokers      []string
+	timeout      time.Duration
+	partitions   int
+	replicas     int
+	minISR       int
+	retention    time.Duration
+	requiredAcks kafkago.RequiredAcks
 
 	mu      sync.Mutex
 	writers map[string]*kafkago.Writer
@@ -71,6 +75,15 @@ func newPublisher(cfg config.Kafka) (*Publisher, error) {
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka brokers are empty")
 	}
+	requiredAcks, err := normalizeRequiredAcks(cfg.RequiredAcks)
+	if err != nil {
+		return nil, err
+	}
+	minISR := normalizeTopicMinISR(cfg.TopicMinInSyncReplicas)
+	replicas := normalizeTopicReplicationFactor(cfg.TopicReplicationFactor)
+	if minISR > replicas {
+		return nil, fmt.Errorf("kafka topic min ISR %d exceeds replication factor %d", minISR, replicas)
+	}
 
 	timeout := time.Duration(cfg.DialTimeoutSeconds) * time.Second
 	if timeout <= 0 {
@@ -87,13 +100,16 @@ func newPublisher(cfg config.Kafka) (*Publisher, error) {
 	}
 
 	return &Publisher{
-		clientID:    strings.TrimSpace(cfg.ClientID),
-		topicPrefix: strings.TrimSpace(cfg.TopicPrefix),
-		brokers:     brokers,
-		timeout:     writeTimeout,
-		partitions:  normalizeTopicPartitions(cfg.TopicPartitions),
-		replicas:    normalizeTopicReplicationFactor(cfg.TopicReplicationFactor),
-		writers:     make(map[string]*kafkago.Writer),
+		clientID:     strings.TrimSpace(cfg.ClientID),
+		topicPrefix:  strings.TrimSpace(cfg.TopicPrefix),
+		brokers:      brokers,
+		timeout:      writeTimeout,
+		partitions:   normalizeTopicPartitions(cfg.TopicPartitions),
+		replicas:     replicas,
+		minISR:       minISR,
+		retention:    normalizeTopicRetention(cfg.TopicRetentionHours),
+		requiredAcks: requiredAcks,
+		writers:      make(map[string]*kafkago.Writer),
 	}, nil
 }
 
@@ -205,6 +221,7 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 				Topic:             candidate,
 				NumPartitions:     p.partitions,
 				ReplicationFactor: p.replicas,
+				ConfigEntries:     topicConfigEntries(p.minISR, p.retention),
 			})
 		}
 	}
@@ -307,7 +324,7 @@ func (p *Publisher) writerForTopic(topic string) *kafkago.Writer {
 		Addr:         kafkago.TCP(p.brokers...),
 		Topic:        topic,
 		Balancer:     &kafkago.Hash{},
-		RequiredAcks: kafkago.RequireOne,
+		RequiredAcks: p.requiredAcks,
 		Async:        false,
 		BatchSize:    kafkaWriterBatchSize,
 		BatchTimeout: kafkaWriterBatchTimeout,
@@ -364,6 +381,41 @@ func normalizeTopicReplicationFactor(replicas int) int {
 		return 1
 	}
 	return replicas
+}
+
+func normalizeTopicMinISR(minISR int) int {
+	if minISR <= 0 {
+		return 1
+	}
+	return minISR
+}
+
+func normalizeTopicRetention(hours int) time.Duration {
+	if hours <= 0 {
+		hours = 168
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+func normalizeRequiredAcks(value string) (kafkago.RequiredAcks, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "one", "1":
+		return kafkago.RequireOne, nil
+	case "all", "-1":
+		return kafkago.RequireAll, nil
+	default:
+		return 0, fmt.Errorf("kafka required_acks must be one or all, got %q", value)
+	}
+}
+
+func topicConfigEntries(minISR int, retention time.Duration) []kafkago.ConfigEntry {
+	if retention <= 0 {
+		retention = normalizeTopicRetention(0)
+	}
+	return []kafkago.ConfigEntry{
+		{ConfigName: "min.insync.replicas", ConfigValue: strconv.Itoa(normalizeTopicMinISR(minISR))},
+		{ConfigName: "retention.ms", ConfigValue: strconv.FormatInt(retention.Milliseconds(), 10)},
+	}
 }
 
 func isTopicAlreadyExistsError(err error) bool {
