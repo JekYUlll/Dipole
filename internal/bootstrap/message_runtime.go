@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"google.golang.org/grpc"
 )
@@ -21,6 +22,7 @@ type MessageRuntime struct {
 	coreConn    *grpc.ClientConn
 	outboxFlow  *outboxRelay
 	shutdownSec int
+	metrics     *platformObservability.MetricsServer
 }
 
 func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
@@ -101,6 +103,11 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	if err != nil {
+		runtime.Close()
+		return nil, fmt.Errorf("start message metrics: %w", err)
+	}
 	runtime.rpc, err = NewMessageRPCServer(rpcCfg, servedMessages)
 	if err != nil {
 		runtime.Close()
@@ -129,6 +136,7 @@ func (r *MessageRuntime) Close() {
 	if r == nil {
 		return
 	}
+	_ = closeRuntimeMetrics(r.metrics)
 	shutdownSec := r.shutdownSec
 	if shutdownSec <= 0 {
 		shutdownSec = 15

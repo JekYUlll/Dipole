@@ -9,6 +9,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	"github.com/JekYUlll/Dipole/internal/store"
@@ -24,6 +25,7 @@ type GatewayRuntime struct {
 	messageConn *grpc.ClientConn
 	coreConn    *grpc.ClientConn
 	redis       *redis.Client
+	metrics     *platformObservability.MetricsServer
 }
 
 func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
@@ -97,6 +99,11 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("start gateway kafka consumer: %w", err)
 		}
 	}
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	if err != nil {
+		cleanup()
+		return nil, fmt.Errorf("start gateway metrics: %w", err)
+	}
 	logger.Info("gateway runtime initialized",
 		zap.String("core_http_target", gatewayCfg.CoreHTTPTarget),
 		zap.Bool("kafka_enabled", kafkaCfg.Enabled),
@@ -115,6 +122,9 @@ func (r *GatewayRuntime) Server() *gateway.Server {
 func (r *GatewayRuntime) Close() {
 	if r == nil {
 		return
+	}
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("gateway metrics close failed", zap.Error(err))
 	}
 	if err := platformKafka.CloseConsumer(); err != nil {
 		logger.Warn("gateway kafka consumer close failed", zap.Error(err))

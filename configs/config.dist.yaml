@@ -21,6 +21,11 @@ gateway:
 tls:
   enabled: false
 
+metrics:
+  # Bind to loopback by default. Container deployments may bind the private service network.
+  enabled: false
+  address: 127.0.0.1:9100
+
 auth:
   token_ttl_hours: 168
   jwt_secret: dipole-dev-jwt-secret-change-me

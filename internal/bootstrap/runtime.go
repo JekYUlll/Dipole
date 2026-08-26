@@ -16,6 +16,7 @@ import (
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
@@ -31,6 +32,7 @@ type Runtime struct {
 	outboxFlow  *outboxRelay
 	messageFlow *messageApplicationTransport
 	coreRPC     *InternalRPCServer
+	metrics     *platformObservability.MetricsServer
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -213,6 +215,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
+	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	if err != nil {
+		rt.Close()
+		return nil, fmt.Errorf("start runtime metrics: %w", err)
+	}
 
 	return rt, nil
 }
@@ -243,6 +250,9 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("metrics server close failed", zap.Error(err))
+	}
 	if r.coreRPC != nil {
 		shutdownSeconds := config.InternalRPCConfig().ShutdownTimeoutSeconds
 		if shutdownSeconds <= 0 {
