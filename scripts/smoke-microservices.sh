@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+COMPOSE_FILE="${ROOT_DIR}/docker-compose.microservices.yml"
+PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
+GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
+
+if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
+  IMAGE_NAME="${IMAGE_NAME:-dipole-server}"
+  IMAGE_TAG="${IMAGE_TAG:-microservices-smoke}"
+  IMAGE_NAME="${IMAGE_NAME}" IMAGE_TAG="${IMAGE_TAG}" "${SCRIPT_DIR}/docker-build.sh" build
+  export DIPOLE_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+fi
+
+: "${DIPOLE_IMAGE:=dipole-server:latest}"
+: "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
+export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
+
+compose() {
+  docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" "$@"
+}
+
+cleanup() {
+  if [[ "${KEEP_STACK:-0}" != "1" ]]; then
+    compose down -v --remove-orphans >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+"${SCRIPT_DIR}/generate-internal-certs.sh"
+compose config --quiet
+compose up -d --wait
+
+health="$(curl -fsS "${GATEWAY_URL}/health")"
+[[ "${health}" == *'"component":"gateway"'* ]]
+
+proxy_status="$(curl -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts")"
+[[ "${proxy_status}" == "401" ]]
+
+core_ws_status="$(compose exec -T core sh -c \
+  'wget -S -O /dev/null http://127.0.0.1:8081/api/v1/ws 2>&1 || true' \
+  | sed -n 's/.*HTTP\/1.1 \([0-9][0-9][0-9]\).*/\1/p' \
+  | head -n 1)"
+[[ "${core_ws_status}" == "404" ]]
+
+echo "Microservices smoke passed: gateway health, Core proxy, mTLS startup, remote WS ownership"

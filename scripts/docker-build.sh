@@ -24,7 +24,7 @@ usage() {
   echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend]"
   echo ""
   echo "  frontend  Build frontend only (outputs to internal/server/webapp/)"
-  echo "  build     Build frontend and Go binary locally, then package Docker image"
+  echo "  build     Build frontend and Go service binaries locally, then package Docker image"
   echo "  up        Build image and start all services"
   echo "  deploy    Rebuild image and force-recreate dipole nodes (zero-downtime redeploy)"
   echo "  down      Stop and remove all containers"
@@ -65,13 +65,16 @@ cmd_backend() {
     echo "go not found; set GO_BIN or install go" >&2
     exit 1
   fi
-  echo "==> Building backend binary..."
+  echo "==> Building backend service binaries..."
   mkdir -p "${ROOT_DIR}/dist"
   (
     cd "${ROOT_DIR}"
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-server" ./cmd/server
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-gateway" ./cmd/gateway
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-message" ./cmd/message-service
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-migrate" ./cmd/migrate
   )
-  echo "==> Backend built → dist/dipole-server"
+  echo "==> Backend built → dist/dipole-{server,gateway,message,migrate}"
 }
 
 cmd_build() {
