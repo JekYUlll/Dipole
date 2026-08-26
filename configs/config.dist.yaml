@@ -161,6 +161,8 @@ storage:
   secret_key: dipoleminiopass
   use_ssl: false
   bucket: dipole-files
+  search_archive_bucket: dipole-search-archives
+  search_archive_retention_days: 30
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
   multipart_chunk_size_mb: 5

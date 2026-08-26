@@ -17,6 +17,8 @@
 
 ### 新增
 
+- `dipole-search-archive` 增加 `publish|restore`：归档发布到启用 versioning/object lock 的独立 MinIO bucket，receipt 固定 object version ID、ETag 和 Governance 保留截止时间；恢复只读取指定版本并重新校验 hash。
+- Storage 配置增加 `search_archive_bucket` 与 `search_archive_retention_days`，Compose 初始化独立 `dipole-search-archives` bucket、版本控制和 30 天默认保留。
 - 增加 `dipole-search-archive` 与不可变 Search snapshot：按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 和 SHA-256 manifest；Backfill、Reconcile、Alias 可统一选择 `mysql|archive` 源。
 - 增加 migration v13，将 Search Backfill Job 绑定到 source kind、snapshot ID 与 hash；恢复、对账和 Alias 操作拒绝换源、篡改归档或高水位不一致。
 - 增加 migration v12 `message_metadata`：在 Message、Inbox 与 Outbox 同一事务保存幂等 locator、会话 Seq、发送目标、文件绑定、过期时间和版本化 payload SHA-256；历史消息回填 locator，旧 payload hash 明确为空。
@@ -226,6 +228,7 @@
 
 ### 验证
 
+- 已通过 MinIO/MySQL 8.4/Elasticsearch 9.5.2 三存储恢复演练：对象发布返回固定版本，保留期内无 bypass 删除失败；删除本地归档后按 receipt 恢复，再删除历史 Message Outbox，最终重建、3/3 hash 对账、Alias 正反切换均通过。
 - 已通过 MySQL 8.4/Elasticsearch 9.5.2 归档恢复演练：导出固定 mutation snapshot 后删除历史 Message Outbox，仍完成两个物理索引重建、3/3 hash 对账、Alias 正向切换和回滚；陈旧 MySQL snapshot 被阻断，目标篡改返回退出码 2。
 - 已通过 MySQL 8.4 migration v12 空库、v11 历史回填、重复执行和回滚测试；Repository 合约覆盖 Metadata 双键定位、hash、Outbox 失败原子回滚，以及删除 Message 正文后的文件授权。最小权限 write-owner smoke 覆盖 projector/atomic 模式与 Metadata 表启动探针。
 - 已通过 43 个前端测试；新增群同步引擎、IndexedDB v2→v3 升级、群位点单调性、逐账号清理和浏览器重开补交 ACK 契约。

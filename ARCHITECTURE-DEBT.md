@@ -29,10 +29,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Elasticsearch 全量重建、事件归档、Outbox 清理、MySQL 消息正文退役
-- **现状：** `dipole-search-archive` 可按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 与 SHA-256 manifest；migration v13 将 source kind、snapshot ID 和 hash 绑定到 Backfill Job。Backfill、Reconcile、Alias 均可显式使用归档，并拒绝换源、篡改或高水位不一致。隔离演练删除历史 Message Outbox 后完成索引重建、3/3 hash 对账、正向切换与回滚。
-- **风险：** 当前归档由运维路径写入文件系统，尚未固化 MinIO versioning/object lock、保留期、分段上传和自动清理门禁；生产环境仍不得依据单一本地副本清理 Outbox。
-- **建议方向：** 将 manifest/NDJSON 上传到启用版本控制和保留策略的对象存储，记录对象版本与责任人；增加“归档校验 + 空索引 Reconcile”清理凭证后，再允许按高水位删除已发布 Outbox 分段。
-- **处理门槛：** 对象存储归档具备版本、保留与恢复演练证据；清理命令只接受已验证凭证，并证明删除后仍可从空索引完成 hash 对账和回滚。
+- **现状：** `dipole-search-archive` 可按固定 Outbox mutation 高水位流式导出最终状态 NDJSON 与 SHA-256 manifest，并发布到独立 MinIO object-lock bucket。receipt 固定 object key/version ID、ETag 与 Governance retain-until；restore 只读指定版本并重新验 hash。migration v13 将 source kind、snapshot ID 和 hash 绑定到 Backfill Job。真实演练删除本地归档与历史 Message Outbox 后完成恢复、3/3 hash 对账、正向切换与回滚，无 bypass 删除受保留版本被拒绝。
+- **风险：** 归档发布凭证尚未转化为受控 Outbox 清理凭证；缺少按高水位分段清理命令、双人/责任人审计和清理后自动空索引复验。生产环境仍不得手工批量删除 Outbox。
+- **建议方向：** 增加只接受已验证 receipt、Reconcile 报告和维护窗口确认的清理命令；记录删除高水位、对象版本、操作者与恢复演练结果，并保留 dry-run 和禁止越过归档水位的数据库约束。
+- **处理门槛：** 清理命令只能删除已发布且不高于凭证水位的 Search mutation Outbox，完成 dry-run、部分失败恢复、清理后空索引 hash 对账和 Alias 回滚演练。
 
 ### AD-022：前端开发工具链仍停留在 Vite 5
 
