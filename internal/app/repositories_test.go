@@ -30,6 +30,9 @@ func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
 	if _, ok := repos.Sync.(*sqlcRepository.SyncRepository); !ok {
 		t.Fatalf("expected sqlc sync repository, got %T", repos.Sync)
 	}
+	if _, ok := repos.Projection.(*sqlcRepository.SyncProjectionRepository); !ok {
+		t.Fatalf("expected sqlc Sync projection repository, got %T", repos.Projection)
+	}
 }
 
 func TestNewMessageProcessRepositoriesBuildsOnlyOwnedAdapters(t *testing.T) {

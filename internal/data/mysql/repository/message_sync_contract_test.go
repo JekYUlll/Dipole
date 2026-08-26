@@ -17,8 +17,9 @@ import (
 )
 
 type messageSyncStores struct {
-	message application.MessageStore
-	sync    application.SyncStore
+	message    application.MessageStore
+	sync       application.SyncStore
+	projection application.SyncProjectionStore
 }
 
 func TestMessageSyncRepositoryContract(t *testing.T) {
@@ -42,8 +43,12 @@ func TestMessageSyncRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sqlc sync repository: %v", err)
 	}
+	sqlcProjection, err := sqlcRepository.NewSyncProjectionRepository(mysqlStore)
+	if err != nil {
+		t.Fatalf("create sqlc Sync projection repository: %v", err)
+	}
 	t.Run("sqlc", func(t *testing.T) {
-		runMessageSyncContract(t, db, messageSyncStores{message: sqlcMessage, sync: sqlcSync}, "sqlc")
+		runMessageSyncContract(t, db, messageSyncStores{message: sqlcMessage, sync: sqlcSync, projection: sqlcProjection}, "sqlc")
 	})
 }
 
@@ -60,6 +65,15 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	}
 	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", first.UUID); got != 1 {
 		t.Fatalf("expected one deduplicated inbox row, got %d", got)
+	}
+	if err := stores.projection.Apply(&model.SyncProjection{
+		EventID: "E-replay", MessageUUID: first.UUID, ConversationKey: first.ConversationKey,
+		MessageSeq: first.Seq, RecipientUUIDs: []string{"U-" + prefix + "-target", "U-" + prefix + "-target"},
+	}); err != nil {
+		t.Fatalf("replay Sync projector event: %v", err)
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "message_uuid = ?", first.UUID); got != 1 {
+		t.Fatalf("projector replay created duplicates: %d", got)
 	}
 	var storedConversation string
 	var storedSequence uint64
@@ -79,6 +93,16 @@ func runMessageSyncContract(t *testing.T, db *sql.DB, stores messageSyncStores, 
 	conflict.Seq++
 	if err := stores.message.EnsureSyncInbox(&conflict, []string{"U-" + prefix + "-target"}); err == nil {
 		t.Fatal("expected conflicting Sync locator replay to fail")
+	}
+	rollbackRecipient := "U-a-" + prefix
+	if err := stores.projection.Apply(&model.SyncProjection{
+		EventID: "E-conflict", MessageUUID: first.UUID, ConversationKey: first.ConversationKey,
+		MessageSeq: first.Seq + 1, RecipientUUIDs: []string{rollbackRecipient, "U-" + prefix + "-target"},
+	}); err == nil {
+		t.Fatal("expected conflicting Sync projector event to fail")
+	}
+	if got := countContractRows(t, db, "user_sync_inbox", "user_uuid = ?", rollbackRecipient); got != 0 {
+		t.Fatalf("failed projection left partial recipient rows: %d", got)
 	}
 
 	second := contractStoredMessage(prefix+"-2", conversationKey, now.Add(time.Second))

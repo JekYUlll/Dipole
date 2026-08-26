@@ -53,13 +53,18 @@ func Init() error {
 		return nil
 	}
 
-	publisher, err := newPublisher(cfg)
+	publisher, err := NewPublisher(cfg)
 	if err != nil {
 		return err
 	}
 
 	Client = publisher
 	return nil
+}
+
+// NewPublisher builds an isolated publisher for service runtimes and integration tests.
+func NewPublisher(cfg config.Kafka) (*Publisher, error) {
+	return newPublisher(cfg)
 }
 
 func Close() error {

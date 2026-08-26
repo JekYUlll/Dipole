@@ -111,6 +111,8 @@ sync:
   transport: local
   # Compare read-only Sync calls; checkpoint advances always execute on the selected primary once.
   shadow_queries: false
+  # Consume message.created into the durable Inbox; keep disabled until dual-run verification passes.
+  projector_enabled: false
 
 search:
   # Gateway registers the public Search route only after the independent Search RPC is deployed.

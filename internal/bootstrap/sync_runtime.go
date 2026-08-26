@@ -12,7 +12,9 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	syncprojector "github.com/JekYUlll/Dipole/internal/projector/sync"
 	_ "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -23,16 +25,20 @@ type SyncRuntime struct {
 	coreConn    *grpc.ClientConn
 	db          *sql.DB
 	metrics     *platformobservability.MetricsServer
+	projector   bool
 	shutdownSec int
 }
 
 func InitializeSyncService(ctx context.Context) (*SyncRuntime, error) {
-	return initializeSyncService(ctx, config.InternalRPCConfig(), config.MySQLConfig(), config.MetricsConfig())
+	return initializeSyncService(ctx, config.InternalRPCConfig(), config.MySQLConfig(), config.MetricsConfig(), config.SyncConfig(), config.KafkaConfig())
 }
 
-func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysqlCfg config.MySQL, metricsCfg config.Metrics) (*SyncRuntime, error) {
+func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysqlCfg config.MySQL, metricsCfg config.Metrics, syncCfg config.Sync, kafkaCfg config.Kafka) (*SyncRuntime, error) {
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("Sync Service requires internal_rpc.enabled")
+	}
+	if err := validateSyncProjectorConfig(syncCfg, kafkaCfg); err != nil {
+		return nil, err
 	}
 	runtime := &SyncRuntime{shutdownSec: rpcCfg.ShutdownTimeoutSeconds}
 	db, err := sql.Open("mysql", mysqlconfig.DSN(mysqlCfg, false))
@@ -65,7 +71,37 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 	}
 	runtime.coreConn = coreConnection
 	syncApplication := appcomposition.NewSyncApplication(repositories.Sync, core)
-	runtime.metrics, err = startRuntimeMetrics(metricsCfg, nil)
+	var subscriber *platformkafka.Consumer
+	if syncCfg.ProjectorEnabled {
+		projector, projectorErr := syncprojector.New(repositories.Projection)
+		if projectorErr != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("compose Sync projector: %w", projectorErr)
+		}
+		if projectorErr = platformkafka.Init(); projectorErr != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("initialize Sync projector Kafka publisher: %w", projectorErr)
+		}
+		runtime.projector = true
+		if projectorErr = platformkafka.InitConsumerForService(syncServiceName); projectorErr != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("initialize Sync projector Kafka consumer: %w", projectorErr)
+		}
+		subscriber = platformkafka.Subscriber
+		topics := syncprojector.Topics()
+		for _, topic := range topics {
+			platformkafka.Subscriber.Register(topic, projector.Handler())
+		}
+		if projectorErr = platformkafka.Client.EnsureTopics(topics); projectorErr != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("ensure Sync projector topics: %w", projectorErr)
+		}
+		if projectorErr = platformkafka.Subscriber.Start(ctx); projectorErr != nil {
+			runtime.Close()
+			return nil, fmt.Errorf("start Sync projector consumer: %w", projectorErr)
+		}
+	}
+	runtime.metrics, err = startRuntimeMetrics(metricsCfg, subscriber)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
@@ -75,8 +111,15 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync rpc server: %w", err)
 	}
-	logger.Info("Sync Service runtime initialized")
+	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled))
 	return runtime, nil
+}
+
+func validateSyncProjectorConfig(syncCfg config.Sync, kafkaCfg config.Kafka) error {
+	if syncCfg.ProjectorEnabled && !kafkaCfg.Enabled {
+		return fmt.Errorf("Sync projector requires kafka.enabled")
+	}
+	return nil
 }
 
 func (r *SyncRuntime) Address() string {
@@ -108,6 +151,15 @@ func (r *SyncRuntime) Close() {
 		logger.Warn("Sync Service metrics close failed", zap.Error(err))
 	}
 	r.metrics = nil
+	if r.projector {
+		if err := platformkafka.CloseConsumer(); err != nil {
+			logger.Warn("Sync projector Kafka consumer close failed", zap.Error(err))
+		}
+		if err := platformkafka.Close(); err != nil {
+			logger.Warn("Sync projector Kafka publisher close failed", zap.Error(err))
+		}
+		r.projector = false
+	}
 	if r.db != nil {
 		_ = r.db.Close()
 		r.db = nil

@@ -118,6 +118,10 @@ type SyncStore interface {
 	AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error
 }
 
+type SyncProjectionStore interface {
+	Apply(projection *model.SyncProjection) error
+}
+
 type UserStore interface {
 	Create(user *model.User) error
 	UpsertAssistant(user *model.User) error
