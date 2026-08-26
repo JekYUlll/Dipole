@@ -1,0 +1,36 @@
+rule_files:
+  - sync-projector-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'kafka_consumergroup_lag{consumergroup="dipole-sync-consumer",topic="dipole.message.direct.created",partition="0"}'
+        values: '3 3 3'
+      - series: 'kafka_topic_partition_current_offset{topic="dipole.message.direct.created.retry",partition="0"}'
+        values: '0 0 1'
+      - series: 'kafka_topic_partition_current_offset{topic="dipole.message.group.created.dead",partition="0"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleSyncProjectorLag
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Sync Projector consumer lag remains above zero
+      - eval_time: 2m
+        alertname: DipoleSyncProjectorRetry
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Sync Projector emitted retry traffic
+      - eval_time: 2m
+        alertname: DipoleSyncProjectorDeadLetter
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Sync Projector emitted dead-letter traffic

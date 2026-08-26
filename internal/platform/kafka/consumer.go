@@ -47,6 +47,8 @@ type Consumer struct {
 	heartbeatInterval time.Duration
 	sessionTimeout    time.Duration
 	rebalanceTimeout  time.Duration
+	startOffset       int64
+	failurePublisher  *Publisher
 
 	fetched        atomic.Uint64
 	handled        atomic.Uint64
@@ -103,6 +105,20 @@ func InitConsumerForService(serviceName string) error {
 	return nil
 }
 
+func InitReplayableConsumerForService(serviceName string) error {
+	cfg := config.KafkaConfig()
+	if !cfg.Enabled {
+		Subscriber = nil
+		return nil
+	}
+	consumer, err := NewReplayableConsumerForService(cfg, serviceName)
+	if err != nil {
+		return err
+	}
+	Subscriber = consumer
+	return nil
+}
+
 // NewConsumerForService builds an isolated consumer with a service-owned group.
 func NewConsumerForService(cfg config.Kafka, serviceName string) (*Consumer, error) {
 	serviceName = strings.TrimSpace(serviceName)
@@ -114,6 +130,17 @@ func NewConsumerForService(cfg config.Kafka, serviceName string) (*Consumer, err
 	}
 	cfg.ClientID = serviceName
 	return newConsumer(cfg)
+}
+
+// NewReplayableConsumerForService starts a new group at the earliest retained
+// offset. Kafka still resumes an existing group from its committed offsets.
+func NewReplayableConsumerForService(cfg config.Kafka, serviceName string) (*Consumer, error) {
+	consumer, err := NewConsumerForService(cfg, serviceName)
+	if err != nil {
+		return nil, err
+	}
+	consumer.startOffset = kafkago.FirstOffset
+	return consumer, nil
 }
 
 func initConsumer(cfg config.Kafka) error {
@@ -198,6 +225,14 @@ func (c *Consumer) Register(topic string, handler Handler) {
 	c.handlers[topic] = append(c.handlers[topic], handler)
 	retryTopic := retryTopicName(topic)
 	c.handlers[retryTopic] = append(c.handlers[retryTopic], handler)
+}
+
+// UseFailurePublisher injects the publisher used for retry and dead-letter
+// transfer. Call it before Start; runtime consumers otherwise use Client.
+func (c *Consumer) UseFailurePublisher(publisher *Publisher) {
+	if c != nil {
+		c.failurePublisher = publisher
+	}
 }
 
 func (c *Consumer) Start(ctx context.Context) error {
@@ -338,11 +373,15 @@ func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {
 }
 
 func (c *Consumer) readerConfig(topic string) kafkago.ReaderConfig {
+	startOffset := c.startOffset
+	if startOffset != kafkago.FirstOffset && startOffset != kafkago.LastOffset {
+		startOffset = kafkago.LastOffset
+	}
 	return kafkago.ReaderConfig{
 		Brokers:               c.brokers,
 		GroupID:               c.groupID,
 		Topic:                 topic,
-		StartOffset:           kafkago.LastOffset,
+		StartOffset:           startOffset,
 		MaxWait:               kafkaReaderMaxWait,
 		GroupBalancers:        []kafkago.GroupBalancer{c.groupBalancer},
 		HeartbeatInterval:     c.heartbeatInterval,
@@ -426,7 +465,8 @@ func DecodeEnvelope(value []byte) (*Envelope, error) {
 }
 
 func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, lastErr error) bool {
-	if Client == nil {
+	publisher := c.retryPublisher()
+	if publisher == nil {
 		return false
 	}
 
@@ -438,7 +478,7 @@ func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, la
 	if attempt+1 < c.maxAttempts {
 		headers["retry_attempt"] = strconv.Itoa(attempt + 1)
 		retryTopic := retryTopicName(baseTopic)
-		published := Client.Publish(ctx, retryTopic, Message{
+		published := publisher.Publish(ctx, retryTopic, Message{
 			Key:     event.Key,
 			Value:   event.Value,
 			Headers: headers,
@@ -453,12 +493,13 @@ func (c *Consumer) publishRetryOrDeadLetter(ctx context.Context, event Event, la
 }
 
 func (c *Consumer) publishDeadLetter(ctx context.Context, event Event, lastErr error, reason string) bool {
-	if Client == nil {
+	publisher := c.retryPublisher()
+	if publisher == nil {
 		return false
 	}
 	headers := c.deadLetterHeaders(event, lastErr, reason)
 	deadTopic := deadTopicName(c.baseTopicName(event.Topic))
-	published := Client.Publish(ctx, deadTopic, Message{
+	published := publisher.Publish(ctx, deadTopic, Message{
 		Key:     event.Key,
 		Value:   event.Value,
 		Headers: headers,
@@ -467,6 +508,13 @@ func (c *Consumer) publishDeadLetter(ctx context.Context, event Event, lastErr e
 		c.deadPublished.Add(1)
 	}
 	return published
+}
+
+func (c *Consumer) retryPublisher() *Publisher {
+	if c != nil && c.failurePublisher != nil {
+		return c.failurePublisher
+	}
+	return Client
 }
 
 func (c *Consumer) deadLetterHeaders(event Event, lastErr error, reason string) map[string]string {

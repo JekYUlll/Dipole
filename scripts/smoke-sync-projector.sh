@@ -52,4 +52,4 @@ docker run --rm --network "${project}_default" \
   -w /app alpine:3.22 \
   /app/sync-projector-test -test.run '^TestKafkaMySQLDualRunIntegration$' -test.v
 
-printf 'Sync Projector smoke passed: Message-owned rows and duplicate Kafka events converged, while hot-group fanout stayed disabled.\n'
+printf 'Sync Projector smoke passed: earliest backlog and live events converged; retry/DLQ were observable and hot-group fanout stayed disabled.\n'

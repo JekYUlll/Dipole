@@ -74,16 +74,28 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 	if err := publisher.EnsureTopics(Topics()); err != nil {
 		t.Fatalf("ensure Kafka topics: %v", err)
 	}
-	consumer, err := platformkafka.NewConsumerForService(kafkaCfg, prefix+"-consumer")
+	catchupFanout := true
+	catchupPayload := service.MessageEventPayload{
+		MessageID: "M-SYNC-CATCHUP", ConversationKey: "direct:U300:U400", MessageSeq: 1,
+		SenderUUID: "U300", TargetUUID: "U400", TargetType: model.MessageTargetDirect,
+		RecipientUUIDs: []string{"U300", "U400"}, SyncFanout: &catchupFanout, SentAt: time.Now().UTC(),
+	}
+	publishEventEventually(t, ctx, publisher, topics[0], catchupPayload.MessageID, catchupPayload)
+	consumer, err := platformkafka.NewReplayableConsumerForService(kafkaCfg, prefix+"-consumer")
 	if err != nil {
 		t.Fatalf("create Kafka consumer: %v", err)
 	}
 	defer consumer.Close()
+	consumer.UseFailurePublisher(publisher)
 	for _, topic := range Topics() {
 		consumer.Register(topic, projector.Handler())
 	}
 	if err := consumer.Start(ctx); err != nil {
 		t.Fatalf("start Kafka consumer: %v", err)
+	}
+	waitForConsumerStats(t, ctx, consumer, func(stats platformkafka.ConsumerStats) bool { return stats.Committed >= 1 })
+	if got := countProjectionRows(t, db, catchupPayload.MessageID); got != 2 {
+		t.Fatalf("new Sync group projected %d pre-existing recipient rows, want 2", got)
 	}
 
 	direct := &model.SyncProjection{
@@ -100,8 +112,8 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
 		RecipientUUIDs: direct.RecipientUUIDs, SyncFanout: &fanout, SentAt: time.Now().UTC(),
 	}
-	publishUntilCommitted(t, ctx, publisher, consumer, topics[0], direct.MessageUUID, directPayload, 1)
 	publishUntilCommitted(t, ctx, publisher, consumer, topics[0], direct.MessageUUID, directPayload, 2)
+	publishUntilCommitted(t, ctx, publisher, consumer, topics[0], direct.MessageUUID, directPayload, 3)
 	if got := countProjectionRows(t, db, direct.MessageUUID); got != 2 {
 		t.Fatalf("dual-run replay should retain one row per recipient, got %d", got)
 	}
@@ -122,9 +134,23 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 		SenderUUID: "U100", TargetUUID: "G-HOT", TargetType: model.MessageTargetGroup,
 		RecipientUUIDs: []string{"U100", "U200"}, SyncFanout: &noFanout, SentAt: time.Now().UTC(),
 	}
-	publishUntilCommitted(t, ctx, publisher, consumer, topics[1], hotPayload.MessageID, hotPayload, 3)
+	publishUntilCommitted(t, ctx, publisher, consumer, topics[1], hotPayload.MessageID, hotPayload, 4)
 	if got := countProjectionRows(t, db, hotPayload.MessageID); got != 0 {
 		t.Fatalf("hot-group event created %d Inbox rows", got)
+	}
+	poisonPayload := service.MessageEventPayload{
+		MessageID: "M-SYNC-POISON", ConversationKey: "group:G-POISON", MessageSeq: 22,
+		SenderUUID: "U100", TargetUUID: "G-POISON", TargetType: model.MessageTargetGroup,
+		SyncFanout: &catchupFanout, SentAt: time.Now().UTC(),
+	}
+	if err := publisher.PublishEvent(ctx, topics[1], poisonPayload.MessageID, topics[1], poisonPayload, nil); err != nil {
+		t.Fatalf("publish poison Sync event: %v", err)
+	}
+	waitForConsumerStats(t, ctx, consumer, func(stats platformkafka.ConsumerStats) bool {
+		return stats.RetryPublished >= 1 && stats.DeadPublished >= 1 && stats.Committed >= 6
+	})
+	if got := countProjectionRows(t, db, poisonPayload.MessageID); got != 0 {
+		t.Fatalf("poison event created %d Inbox rows", got)
 	}
 }
 
@@ -143,6 +169,39 @@ func publishUntilCommitted(t *testing.T, ctx context.Context, publisher *platfor
 			if consumer.CollectStats().Committed >= minimum {
 				return
 			}
+		}
+	}
+}
+
+func publishEventEventually(t *testing.T, ctx context.Context, publisher *platformkafka.Publisher, topic, key string, payload service.MessageEventPayload) {
+	t.Helper()
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if err := publisher.PublishEvent(ctx, topic, key, topic, payload, nil); err == nil {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("publish pre-group Sync event: %v", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func waitForConsumerStats(t *testing.T, ctx context.Context, consumer *platformkafka.Consumer, ready func(platformkafka.ConsumerStats) bool) {
+	t.Helper()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		stats := consumer.CollectStats()
+		if ready(stats) {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("wait for Sync consumer outcome: stats=%+v err=%v", stats, ctx.Err())
+		case <-ticker.C:
 		}
 	}
 }

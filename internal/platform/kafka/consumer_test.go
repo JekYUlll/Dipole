@@ -111,6 +111,19 @@ func TestConsumerReaderConfigUsesExplicitRebalancePolicy(t *testing.T) {
 	if config.Dialer == nil || config.Dialer.ClientID != "dipole-message" || config.Dialer.Timeout != 5*time.Second {
 		t.Fatalf("unexpected consumer dialer: %+v", config.Dialer)
 	}
+	if config.StartOffset != kafkago.LastOffset {
+		t.Fatalf("default consumer must start new groups at latest offset, got %d", config.StartOffset)
+	}
+}
+
+func TestReplayableConsumerReaderStartsNewGroupFromBeginning(t *testing.T) {
+	t.Parallel()
+
+	consumer := &Consumer{startOffset: kafkago.FirstOffset}
+	config := consumer.readerConfig("dipole.message.direct.created")
+	if config.StartOffset != kafkago.FirstOffset {
+		t.Fatalf("replayable consumer must start new groups at earliest retained offset, got %d", config.StartOffset)
+	}
 }
 
 func TestNormalizeConsumerGroupPolicy(t *testing.T) {
