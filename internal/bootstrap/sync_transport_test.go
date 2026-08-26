@@ -43,6 +43,13 @@ func TestSyncTransportRejectsUnknownMode(t *testing.T) {
 	}
 }
 
+func TestSyncTransportShadowQueriesRequireRPC(t *testing.T) {
+	_, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: "local", ShadowQueries: true}, config.InternalRPC{}, rpcSyncStub{})
+	if err == nil {
+		t.Fatal("expected Sync shadow queries without internal RPC to fail")
+	}
+}
+
 func TestSyncTransportRemoteFailureKeepsLocalRollbackAvailable(t *testing.T) {
 	rpcCfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", SyncTarget: "127.0.0.1:1", DialTimeoutSeconds: 1}
 	local := rpcSyncStub{}

@@ -109,6 +109,8 @@ message:
 sync:
   # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.
   transport: local
+  # Compare read-only Sync calls; checkpoint advances always execute on the selected primary once.
+  shadow_queries: false
 
 search:
   # Gateway registers the public Search route only after the independent Search RPC is deployed.

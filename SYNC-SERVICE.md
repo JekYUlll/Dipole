@@ -43,4 +43,4 @@ go run ./cmd/sync-service
 
 公开 HTTP 路由继续由 Core 提供，Inbox 写入路径保持不变。部署 `dipole-sync` 并验证 RPC 后，可将 Core 的 `sync.transport` 从默认 `local` 改为 `grpc`。独立服务异常时恢复 `local` 并重启 Core，进程内 SyncApplication 会立即接管现有 `/sync` 行为，无需回滚数据。
 
-Checkpoint advance 属于写操作，当前不会执行影子双写。后续影子比较只覆盖 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 等只读调用。
+切流前可开启 `sync.shadow_queries=true`，异步比较 `List`、`GetCheckpoint` 和 `ListGroupCheckpoints` 的 Local/Remote 结果。Checkpoint advance 属于写操作，只会在 `sync.transport` 选定的主实现执行一次，不参与影子调用。关闭影子开关不会改变主链路响应。
