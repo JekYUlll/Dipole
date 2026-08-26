@@ -118,6 +118,10 @@ type SyncStore interface {
 	AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error
 }
 
+type SyncMessageHydrator interface {
+	Hydrate(ctx context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error)
+}
+
 type SyncProjectionStore interface {
 	Apply(projection *model.SyncProjection) error
 }

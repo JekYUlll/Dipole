@@ -117,6 +117,8 @@ sync:
   projector_enabled: false
   # Fail startup when the Sync account can modify Message-owned state or read Core-owned data.
   enforce_db_permissions: false
+  # Compare MySQL-hydrated Sync payloads with Cassandra asynchronously; MySQL remains primary.
+  cassandra_shadow_hydration: false
   # Empty values inherit the global mysql block for backward-compatible local development.
   mysql:
     host: ""

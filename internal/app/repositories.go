@@ -38,10 +38,21 @@ type SyncProcessRepositories struct {
 }
 
 func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
+	return NewSyncProcessRepositoriesWithHydrator(db, nil)
+}
+
+func NewSyncProcessRepositoriesWithHydrator(db *sql.DB, hydrator application.SyncMessageHydrator) (*SyncProcessRepositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("sync repository composition requires database/sql connection")
 	}
-	syncStore, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	queries := generated.New(db)
+	var syncStore *sqlcRepository.SyncRepository
+	var err error
+	if hydrator == nil {
+		syncStore, err = sqlcRepository.NewSyncRepository(queries)
+	} else {
+		syncStore, err = sqlcRepository.NewSyncRepositoryWithHydrator(queries, hydrator)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create sync repository: %w", err)
 	}
