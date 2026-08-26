@@ -103,6 +103,8 @@ message:
   cassandra_read_percentage: 0
   # Synchronously compare this percentage of conversation-operation cohorts with MySQL using the same Seq cursor.
   cassandra_read_verify_percentage: 0
+  # Hydrate duplicate-send responses by Metadata locator from Cassandra, with MySQL fallback.
+  cassandra_duplicate_hydration: false
   # Require a table-scoped MySQL account before accepting Message RPC traffic.
   enforce_db_permissions: false
   # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.

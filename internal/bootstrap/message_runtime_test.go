@@ -40,4 +40,10 @@ func TestValidateCassandraShadowConfigRequiresExplicitCassandraEnablement(t *tes
 	if err := validateCassandraShadowConfig(config.Message{CassandraReadPercent: 10, CassandraReadVerifyPercent: 100}, config.Cassandra{Enabled: true}); err != nil {
 		t.Fatalf("expected Cassandra primary verification to pass: %v", err)
 	}
+	if err := validateCassandraShadowConfig(config.Message{CassandraDuplicateHydration: true}, config.Cassandra{}); err == nil {
+		t.Fatal("expected duplicate hydration without Cassandra to fail")
+	}
+	if err := validateCassandraShadowConfig(config.Message{CassandraDuplicateHydration: true}, config.Cassandra{Enabled: true}); err != nil {
+		t.Fatalf("expected Cassandra duplicate hydration to pass: %v", err)
+	}
 }

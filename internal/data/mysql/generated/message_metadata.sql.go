@@ -13,14 +13,15 @@ import (
 
 const createMessageMetadata = `-- name: CreateMessageMetadata :exec
 INSERT INTO message_metadata (
-    message_uuid, client_message_id, conversation_key, message_seq, sender_uuid,
+    message_uuid, legacy_message_id, client_message_id, conversation_key, message_seq, sender_uuid,
     target_type, target_uuid, message_type, file_id, file_expires_at,
     payload_sha256, sent_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMessageMetadataParams struct {
 	MessageUuid     string
+	LegacyMessageID uint64
 	ClientMessageID string
 	ConversationKey string
 	MessageSeq      uint64
@@ -37,6 +38,7 @@ type CreateMessageMetadataParams struct {
 func (q *Queries) CreateMessageMetadata(ctx context.Context, arg CreateMessageMetadataParams) error {
 	_, err := q.db.ExecContext(ctx, createMessageMetadata,
 		arg.MessageUuid,
+		arg.LegacyMessageID,
 		arg.ClientMessageID,
 		arg.ConversationKey,
 		arg.MessageSeq,
@@ -53,7 +55,7 @@ func (q *Queries) CreateMessageMetadata(ctx context.Context, arg CreateMessageMe
 }
 
 const findLatestAccessibleFileMetadata = `-- name: FindLatestAccessibleFileMetadata :one
-SELECT metadata.message_uuid, metadata.client_message_id, metadata.conversation_key, metadata.message_seq, metadata.sender_uuid, metadata.target_type, metadata.target_uuid, metadata.message_type, metadata.file_id, metadata.file_expires_at, metadata.payload_sha256, metadata.sent_at, metadata.created_at, metadata.updated_at FROM message_metadata AS metadata
+SELECT metadata.message_uuid, metadata.client_message_id, metadata.conversation_key, metadata.message_seq, metadata.sender_uuid, metadata.target_type, metadata.target_uuid, metadata.message_type, metadata.file_id, metadata.file_expires_at, metadata.payload_sha256, metadata.sent_at, metadata.created_at, metadata.updated_at, metadata.legacy_message_id FROM message_metadata AS metadata
 WHERE metadata.file_id = ?
   AND metadata.message_type = ?
   AND (
@@ -111,12 +113,13 @@ func (q *Queries) FindLatestAccessibleFileMetadata(ctx context.Context, arg Find
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LegacyMessageID,
 	)
 	return i, err
 }
 
 const getMessageMetadataBySenderAndClientID = `-- name: GetMessageMetadataBySenderAndClientID :one
-SELECT message_uuid, client_message_id, conversation_key, message_seq, sender_uuid, target_type, target_uuid, message_type, file_id, file_expires_at, payload_sha256, sent_at, created_at, updated_at FROM message_metadata
+SELECT message_uuid, client_message_id, conversation_key, message_seq, sender_uuid, target_type, target_uuid, message_type, file_id, file_expires_at, payload_sha256, sent_at, created_at, updated_at, legacy_message_id FROM message_metadata
 WHERE sender_uuid = ? AND client_message_id = ?
 LIMIT 1
 `
@@ -144,12 +147,13 @@ func (q *Queries) GetMessageMetadataBySenderAndClientID(ctx context.Context, arg
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LegacyMessageID,
 	)
 	return i, err
 }
 
 const getMessageMetadataByUUID = `-- name: GetMessageMetadataByUUID :one
-SELECT message_uuid, client_message_id, conversation_key, message_seq, sender_uuid, target_type, target_uuid, message_type, file_id, file_expires_at, payload_sha256, sent_at, created_at, updated_at FROM message_metadata WHERE message_uuid = ? LIMIT 1
+SELECT message_uuid, client_message_id, conversation_key, message_seq, sender_uuid, target_type, target_uuid, message_type, file_id, file_expires_at, payload_sha256, sent_at, created_at, updated_at, legacy_message_id FROM message_metadata WHERE message_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetMessageMetadataByUUID(ctx context.Context, messageUuid string) (MessageMetadatum, error) {
@@ -170,6 +174,7 @@ func (q *Queries) GetMessageMetadataByUUID(ctx context.Context, messageUuid stri
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LegacyMessageID,
 	)
 	return i, err
 }

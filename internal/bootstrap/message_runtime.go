@@ -22,14 +22,15 @@ import (
 )
 
 type MessageRuntime struct {
-	rpc         *InternalRPCServer
-	coreConn    *grpc.ClientConn
-	outboxFlow  *outboxRelay
-	shutdownSec int
-	metrics     *platformObservability.MetricsServer
-	shadowStore *shadowData.MessageStore
-	readRouter  *routingData.MessageStore
-	cassandra   *gocql.Session
+	rpc                *InternalRPCServer
+	coreConn           *grpc.ClientConn
+	outboxFlow         *outboxRelay
+	shutdownSec        int
+	metrics            *platformObservability.MetricsServer
+	shadowStore        *shadowData.MessageStore
+	readRouter         *routingData.MessageStore
+	duplicateHydration *platformObservability.DuplicateHydrationCollector
+	cassandra          *gocql.Session
 }
 
 func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
@@ -84,7 +85,8 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, err
 	}
 	runtime := &MessageRuntime{coreConn: coreConn, shutdownSec: rpcCfg.ShutdownTimeoutSeconds}
-	if messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0 {
+	var duplicateHydrator applicationPort.SyncMessageHydrator
+	if messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0 || messageCfg.CassandraDuplicateHydration {
 		runtime.cassandra, err = cassandraData.OpenSession(cassandraCfg)
 		if err != nil {
 			runtime.Close()
@@ -99,10 +101,18 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.Close()
 			return nil, fmt.Errorf("create Cassandra shadow timeline reader: %w", err)
 		}
+		if messageCfg.CassandraDuplicateHydration {
+			runtime.duplicateHydration = platformObservability.NewDuplicateHydrationCollector()
+			duplicateHydrator, err = cassandraData.NewSyncMessageHydrator(timeline)
+			if err != nil {
+				runtime.Close()
+				return nil, fmt.Errorf("create Cassandra duplicate-message hydrator: %w", err)
+			}
+		}
 		if messageCfg.CassandraShadowReads {
 			runtime.shadowStore = shadowData.NewMessageStore(repos.Messages, timeline, nil)
 			repos.Messages = runtime.shadowStore
-		} else {
+		} else if messageCfg.CassandraReadPercent > 0 {
 			runtime.readRouter = routingData.NewMessageStoreWithVerification(
 				repos.Messages, repos.ConversationSequence, timeline,
 				messageCfg.CassandraReadPercent, messageCfg.CassandraReadVerifyPercent, nil,
@@ -115,9 +125,13 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
+	var duplicateObserver func(string)
+	if runtime.duplicateHydration != nil {
+		duplicateObserver = runtime.duplicateHydration.Observe
+	}
 	messages := appComposition.NewMessageApplication(repos.Messages, core, appComposition.MessagingDependencies{
-		Events:    events,
-		HotGroups: platformHotGroup.NewRedisDetector(),
+		Events: events, HotGroups: platformHotGroup.NewRedisDetector(), DuplicateHydrator: duplicateHydrator,
+		DuplicateHydrationObserver: duplicateObserver,
 	})
 	servedMessages := applicationPort.MessageApplication(messages)
 	if messageCfg.RuntimeMode == "shadow" {
@@ -144,7 +158,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, runtime.readRouter)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, runtime.readRouter, runtime.duplicateHydration)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message metrics: %w", err)
@@ -192,7 +206,7 @@ func validateCassandraShadowConfig(messageCfg config.Message, cassandraCfg confi
 	if messageCfg.CassandraShadowReads && messageCfg.CassandraReadPercent > 0 {
 		return fmt.Errorf("Cassandra shadow reads and primary-read cohorts cannot be enabled together")
 	}
-	if (messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0) && !cassandraCfg.Enabled {
+	if (messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0 || messageCfg.CassandraDuplicateHydration) && !cassandraCfg.Enabled {
 		return fmt.Errorf("Cassandra Message reads require cassandra.enabled")
 	}
 	return nil

@@ -133,6 +133,7 @@ type MessageMetadatum struct {
 	SentAt          time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	LegacyMessageID uint64
 }
 
 type OutboxEvent struct {

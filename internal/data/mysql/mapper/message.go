@@ -22,7 +22,7 @@ func MessageCreateParams(message *model.Message) generated.CreateMessageParams {
 
 func MessageMetadataCreateParams(message *model.Message) generated.CreateMessageMetadataParams {
 	return generated.CreateMessageMetadataParams{
-		MessageUuid: message.UUID, ClientMessageID: message.ClientMessageID,
+		MessageUuid: message.UUID, LegacyMessageID: uint64(message.ID), ClientMessageID: message.ClientMessageID,
 		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
 		SenderUuid: message.SenderUUID, TargetType: message.TargetType,
 		TargetUuid: message.TargetUUID, MessageType: message.MessageType,
@@ -33,7 +33,7 @@ func MessageMetadataCreateParams(message *model.Message) generated.CreateMessage
 
 func MessageMetadata(row generated.MessageMetadatum) *model.MessageMetadata {
 	return &model.MessageMetadata{
-		MessageUUID: row.MessageUuid, ClientMessageID: row.ClientMessageID,
+		MessageUUID: row.MessageUuid, LegacyMessageID: uint(row.LegacyMessageID), ClientMessageID: row.ClientMessageID,
 		ConversationKey: row.ConversationKey, MessageSeq: row.MessageSeq,
 		SenderUUID: row.SenderUuid, TargetType: row.TargetType,
 		TargetUUID: row.TargetUuid, MessageType: row.MessageType,

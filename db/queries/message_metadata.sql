@@ -1,9 +1,9 @@
 -- name: CreateMessageMetadata :exec
 INSERT INTO message_metadata (
-    message_uuid, client_message_id, conversation_key, message_seq, sender_uuid,
+    message_uuid, legacy_message_id, client_message_id, conversation_key, message_seq, sender_uuid,
     target_type, target_uuid, message_type, file_id, file_expires_at,
     payload_sha256, sent_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMessageMetadataByUUID :one
 SELECT * FROM message_metadata WHERE message_uuid = ? LIMIT 1;
