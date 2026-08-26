@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.37.0
+	github.com/apache/cassandra-gocql-driver/v2 v2.1.2
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/cloudwego/eino v0.9.15
 	github.com/cloudwego/eino-ext/components/model/ollama v0.1.9
@@ -109,6 +110,7 @@ require (
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

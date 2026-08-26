@@ -9,6 +9,8 @@ services:
       CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
       MAX_HEAP_SIZE: 512M
       HEAP_NEWSIZE: 100M
+    ports:
+      - "127.0.0.1:19042:9042"
     volumes:
       - cassandra_lab_data:/var/lib/cassandra
     healthcheck:

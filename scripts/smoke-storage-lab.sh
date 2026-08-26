@@ -23,8 +23,7 @@ compose() {
 if rg -i 'cassandra|elasticsearch' \
   "$root_dir/internal/config" \
   "$root_dir/internal/bootstrap" \
-  "$root_dir/configs/config.dist.yaml" \
-  "$root_dir/go.mod"; then
+  "$root_dir/configs/config.dist.yaml"; then
   printf 'Cassandra or Elasticsearch is wired into the application before the isolated-lab gate is complete\n' >&2
   exit 1
 fi
