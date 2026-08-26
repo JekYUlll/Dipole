@@ -167,6 +167,9 @@ type SearchBackfillJob struct {
 	CompletedAt           sql.NullTime
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	SourceKind            string
+	SourceSnapshotID      string
+	SourceSha256          string
 }
 
 type SyncInboxBaselineJob struct {

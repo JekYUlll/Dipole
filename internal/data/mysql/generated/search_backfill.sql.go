@@ -87,19 +87,32 @@ func (q *Queries) CompleteSearchBackfillJob(ctx context.Context, arg CompleteSea
 }
 
 const ensureSearchBackfillJob = `-- name: EnsureSearchBackfillJob :exec
-INSERT INTO search_backfill_jobs (job_name, target_index, source_high_watermark_id, last_error)
-VALUES (?, ?, ?, '')
+INSERT INTO search_backfill_jobs (
+  job_name, target_index, source_kind, source_snapshot_id, source_sha256,
+  source_high_watermark_id, last_error
+)
+VALUES (?, ?, ?, ?, ?, ?, '')
 ON DUPLICATE KEY UPDATE job_name = VALUES(job_name)
 `
 
 type EnsureSearchBackfillJobParams struct {
 	JobName               string
 	TargetIndex           string
+	SourceKind            string
+	SourceSnapshotID      string
+	SourceSha256          string
 	SourceHighWatermarkID uint64
 }
 
 func (q *Queries) EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error {
-	_, err := q.db.ExecContext(ctx, ensureSearchBackfillJob, arg.JobName, arg.TargetIndex, arg.SourceHighWatermarkID)
+	_, err := q.db.ExecContext(ctx, ensureSearchBackfillJob,
+		arg.JobName,
+		arg.TargetIndex,
+		arg.SourceKind,
+		arg.SourceSnapshotID,
+		arg.SourceSha256,
+		arg.SourceHighWatermarkID,
+	)
 	return err
 }
 
@@ -142,7 +155,7 @@ func (q *Queries) GetSearchBackfillHighWatermark(ctx context.Context) (uint64, e
 }
 
 const getSearchBackfillJob = `-- name: GetSearchBackfillJob :one
-SELECT job_name, target_index, status, source_high_watermark_id, last_processed_id, owner_id, lease_expires_at, attempt_count, last_error, completed_at, created_at, updated_at FROM search_backfill_jobs WHERE job_name = ?
+SELECT job_name, target_index, status, source_high_watermark_id, last_processed_id, owner_id, lease_expires_at, attempt_count, last_error, completed_at, created_at, updated_at, source_kind, source_snapshot_id, source_sha256 FROM search_backfill_jobs WHERE job_name = ?
 `
 
 func (q *Queries) GetSearchBackfillJob(ctx context.Context, jobName string) (SearchBackfillJob, error) {
@@ -161,6 +174,9 @@ func (q *Queries) GetSearchBackfillJob(ctx context.Context, jobName string) (Sea
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SourceKind,
+		&i.SourceSnapshotID,
+		&i.SourceSha256,
 	)
 	return i, err
 }
@@ -237,7 +253,7 @@ func (q *Queries) ListLatestSearchMutationsForBackfill(ctx context.Context, arg 
 }
 
 const lockSearchBackfillJob = `-- name: LockSearchBackfillJob :one
-SELECT search_backfill_jobs.job_name, search_backfill_jobs.target_index, search_backfill_jobs.status, search_backfill_jobs.source_high_watermark_id, search_backfill_jobs.last_processed_id, search_backfill_jobs.owner_id, search_backfill_jobs.lease_expires_at, search_backfill_jobs.attempt_count, search_backfill_jobs.last_error, search_backfill_jobs.completed_at, search_backfill_jobs.created_at, search_backfill_jobs.updated_at, NOW(3) AS database_now FROM search_backfill_jobs
+SELECT search_backfill_jobs.job_name, search_backfill_jobs.target_index, search_backfill_jobs.status, search_backfill_jobs.source_high_watermark_id, search_backfill_jobs.last_processed_id, search_backfill_jobs.owner_id, search_backfill_jobs.lease_expires_at, search_backfill_jobs.attempt_count, search_backfill_jobs.last_error, search_backfill_jobs.completed_at, search_backfill_jobs.created_at, search_backfill_jobs.updated_at, search_backfill_jobs.source_kind, search_backfill_jobs.source_snapshot_id, search_backfill_jobs.source_sha256, NOW(3) AS database_now FROM search_backfill_jobs
 WHERE job_name = ?
 FOR UPDATE
 `
@@ -255,6 +271,9 @@ type LockSearchBackfillJobRow struct {
 	CompletedAt           sql.NullTime
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	SourceKind            string
+	SourceSnapshotID      string
+	SourceSha256          string
 	DatabaseNow           time.Time
 }
 
@@ -274,6 +293,9 @@ func (q *Queries) LockSearchBackfillJob(ctx context.Context, jobName string) (Lo
 		&i.CompletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SourceKind,
+		&i.SourceSnapshotID,
+		&i.SourceSha256,
 		&i.DatabaseNow,
 	)
 	return i, err

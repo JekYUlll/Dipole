@@ -18,11 +18,13 @@ import (
 )
 
 type SearchBackfillOptions struct {
-	JobName       string
-	OwnerID       string
-	TargetIndex   string
-	BatchSize     int
-	LeaseDuration time.Duration
+	JobName         string
+	OwnerID         string
+	TargetIndex     string
+	BatchSize       int
+	LeaseDuration   time.Duration
+	Source          string
+	ArchiveManifest string
 }
 
 func RunSearchBackfill(ctx context.Context, options SearchBackfillOptions) (searchbackfill.Result, error) {
@@ -39,7 +41,7 @@ func RunSearchBackfill(ctx context.Context, options SearchBackfillOptions) (sear
 	if err != nil {
 		return searchbackfill.Result{}, err
 	}
-	source, err := mysqldata.NewSearchBackfillSource(store)
+	source, err := openSearchSnapshotSource(options.Source, options.ArchiveManifest, store)
 	if err != nil {
 		return searchbackfill.Result{}, err
 	}

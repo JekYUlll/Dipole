@@ -11,12 +11,20 @@ import (
 )
 
 const (
-	StatusRunning   = "running"
-	StatusFailed    = "failed"
-	StatusCompleted = "completed"
-	MaxBatchSize    = 10_000
-	maxLeaseSeconds = int64(^uint32(0) >> 1)
+	StatusRunning          = "running"
+	StatusFailed           = "failed"
+	StatusCompleted        = "completed"
+	MaxBatchSize           = 10_000
+	maxLeaseSeconds        = int64(^uint32(0) >> 1)
+	SourceKindMySQLOutbox  = "mysql_outbox"
+	SourceKindEventArchive = "event_archive"
 )
+
+type SourceDescriptor struct {
+	Kind       string
+	SnapshotID string
+	SHA256     string
+}
 
 type SourceMutation struct {
 	SourceID uint64
@@ -25,6 +33,7 @@ type SourceMutation struct {
 
 type Source interface {
 	HighWatermark(context.Context) (uint64, error)
+	Descriptor(context.Context, uint64) (SourceDescriptor, error)
 	ListAfter(context.Context, uint64, uint64, int) ([]SourceMutation, error)
 }
 
@@ -35,7 +44,7 @@ type Checkpoint struct {
 }
 
 type CheckpointStore interface {
-	Acquire(context.Context, string, string, uint64, time.Duration) (Checkpoint, error)
+	Acquire(context.Context, string, string, SourceDescriptor, uint64, time.Duration) (Checkpoint, error)
 	Advance(context.Context, string, string, uint64, time.Duration) error
 	Fail(context.Context, string, string, error) error
 	Complete(context.Context, string, string) error
@@ -94,7 +103,14 @@ func (r *Runner) Run(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("read Search backfill high watermark: %w", err)
 	}
-	checkpoint, err := r.checkpoints.Acquire(ctx, r.config.JobName, r.config.OwnerID, highWatermark, r.config.LeaseDuration)
+	descriptor, err := r.source.Descriptor(ctx, highWatermark)
+	if err != nil {
+		return Result{}, fmt.Errorf("describe Search backfill source: %w", err)
+	}
+	if strings.TrimSpace(descriptor.Kind) == "" || strings.TrimSpace(descriptor.SnapshotID) == "" {
+		return Result{}, errors.New("Search backfill source descriptor is incomplete")
+	}
+	checkpoint, err := r.checkpoints.Acquire(ctx, r.config.JobName, r.config.OwnerID, descriptor, highWatermark, r.config.LeaseDuration)
 	if err != nil {
 		return Result{}, fmt.Errorf("acquire Search backfill checkpoint: %w", err)
 	}

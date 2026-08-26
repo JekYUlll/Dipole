@@ -253,7 +253,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 使用固定 Outbox mutation 高水位全量重建索引，ES 故障不阻断消息发送。
 - [x] 完成 Pencil Search desktop/mobile 的 Results、Loading、Empty、Error 四态和可复用组件。
 - [x] 实现默认关闭的 Vue Search 工作区、Gateway/前端双开关、请求防抖、乱序响应淘汰和组件测试。
-- [ ] 搜索全量重建源切到 Cassandra 或归档事件，解除对 MySQL 历史正文的恢复依赖。
+- [x] 搜索全量重建支持不可变事件归档源；Backfill、Reconcile 与 Alias 共同校验 snapshot ID、高水位和 SHA-256，删除历史 Message Outbox 后仍可完成重建与回滚。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
 

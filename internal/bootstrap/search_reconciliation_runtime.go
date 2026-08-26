@@ -10,10 +10,12 @@ import (
 )
 
 type SearchReconciliationOptions struct {
-	JobName     string
-	TargetIndex string
-	BatchSize   int
-	MaxExamples int
+	JobName         string
+	TargetIndex     string
+	BatchSize       int
+	MaxExamples     int
+	Source          string
+	ArchiveManifest string
 }
 
 func RunSearchReconciliation(ctx context.Context, options SearchReconciliationOptions) (searchreconcile.Report, error) {
@@ -30,7 +32,7 @@ func RunSearchReconciliation(ctx context.Context, options SearchReconciliationOp
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}
-	source, err := mysqldata.NewSearchBackfillSource(store)
+	source, err := openSearchSnapshotSource(options.Source, options.ArchiveManifest, store)
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}
@@ -39,6 +41,14 @@ func RunSearchReconciliation(ctx context.Context, options SearchReconciliationOp
 		return searchreconcile.Report{}, err
 	}
 	highWatermark, err := checkpoints.CompletedHighWatermark(ctx, options.JobName)
+	if err != nil {
+		return searchreconcile.Report{}, err
+	}
+	descriptor, descriptorErr := source.Descriptor(ctx, highWatermark)
+	if descriptorErr != nil {
+		return searchreconcile.Report{}, descriptorErr
+	}
+	highWatermark, err = checkpoints.CompletedHighWatermarkForSource(ctx, options.JobName, descriptor)
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}

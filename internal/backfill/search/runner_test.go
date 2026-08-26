@@ -3,6 +3,7 @@ package searchbackfill
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -39,6 +40,9 @@ func TestRunnerUsesFixedSnapshotAndAdvancesAfterCompleteBatch(t *testing.T) {
 	}
 	if source.highWatermarkCalls != 1 {
 		t.Fatalf("expected one fixed high-watermark read, got %d", source.highWatermarkCalls)
+	}
+	if checkpoints.source.Kind != SourceKindMySQLOutbox || checkpoints.source.SnapshotID != "mysql-outbox:3" {
+		t.Fatalf("checkpoint did not bind source identity: %+v", checkpoints.source)
 	}
 }
 
@@ -80,6 +84,10 @@ type sourceStub struct {
 	items              []SourceMutation
 }
 
+func (s *sourceStub) Descriptor(_ context.Context, highWatermark uint64) (SourceDescriptor, error) {
+	return SourceDescriptor{Kind: SourceKindMySQLOutbox, SnapshotID: fmt.Sprintf("mysql-outbox:%d", highWatermark)}, nil
+}
+
 func (s *sourceStub) HighWatermark(context.Context) (uint64, error) {
 	s.highWatermarkCalls++
 	return s.highWatermark, nil
@@ -104,9 +112,11 @@ type checkpointStub struct {
 	status        string
 	advances      []uint64
 	completed     bool
+	source        SourceDescriptor
 }
 
-func (s *checkpointStub) Acquire(_ context.Context, _, _ string, highWatermark uint64, _ time.Duration) (Checkpoint, error) {
+func (s *checkpointStub) Acquire(_ context.Context, _, _ string, source SourceDescriptor, highWatermark uint64, _ time.Duration) (Checkpoint, error) {
+	s.source = source
 	if s.highWatermark == 0 {
 		s.highWatermark = highWatermark
 	}

@@ -19,6 +19,8 @@ func main() {
 	targetIndex := flag.String("target-index", "", "explicit Elasticsearch physical build index")
 	batchSize := flag.Int("batch-size", 500, "final mutation states read per page")
 	maxExamples := flag.Int("max-examples", 100, "maximum mismatch examples included in the report")
+	source := flag.String("source", bootstrap.SearchSourceMySQL, "snapshot source: mysql or archive")
+	archiveManifest := flag.String("archive-manifest", "", "verified archive manifest when source=archive")
 	flag.Parse()
 	if strings.TrimSpace(*targetIndex) == "" {
 		fmt.Fprintln(os.Stderr, "-target-index is required")
@@ -32,6 +34,7 @@ func main() {
 	defer stop()
 	report, err := bootstrap.RunSearchReconciliation(ctx, bootstrap.SearchReconciliationOptions{
 		JobName: *jobName, TargetIndex: *targetIndex, BatchSize: *batchSize, MaxExamples: *maxExamples,
+		Source: *source, ArchiveManifest: *archiveManifest,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -60,11 +60,15 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Search checkpoints: %v", err)
 	}
-	checkpoint, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-a", highWatermark, time.Minute)
+	descriptor, err := source.Descriptor(context.Background(), highWatermark)
+	if err != nil {
+		t.Fatalf("describe Search source: %v", err)
+	}
+	checkpoint, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-a", descriptor, highWatermark, time.Minute)
 	if err != nil || checkpoint.HighWatermarkID != 3 || checkpoint.Status != searchbackfill.StatusRunning {
 		t.Fatalf("initial checkpoint=%+v err=%v", checkpoint, err)
 	}
-	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", 99, time.Minute); !errors.Is(err, mysqlStore.ErrSearchBackfillLeaseHeld) {
+	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", descriptor, 99, time.Minute); !errors.Is(err, mysqlStore.ErrSearchBackfillLeaseHeld) {
 		t.Fatalf("second owner error=%v", err)
 	}
 	if err := checkpoints.Advance(context.Background(), "search-v1-build-a", "owner-a", 2, time.Minute); err != nil {
@@ -73,9 +77,14 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err := checkpoints.Fail(context.Background(), "search-v1-build-a", "owner-a", errors.New("planned retry")); err != nil {
 		t.Fatalf("fail checkpoint: %v", err)
 	}
-	checkpoint, err = checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", 99, time.Minute)
+	checkpoint, err = checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", descriptor, 99, time.Minute)
 	if err != nil || checkpoint.HighWatermarkID != 3 || checkpoint.LastProcessedID != 2 {
 		t.Fatalf("resumed checkpoint=%+v err=%v", checkpoint, err)
+	}
+	wrongSource := descriptor
+	wrongSource.SnapshotID = "archive:other"
+	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", wrongSource, highWatermark, time.Minute); !errors.Is(err, mysqlStore.ErrSearchBackfillSourceMismatch) {
+		t.Fatalf("source mismatch error=%v", err)
 	}
 	if err := checkpoints.Advance(context.Background(), "search-v1-build-a", "owner-b", 3, time.Minute); err != nil {
 		t.Fatalf("finish checkpoint: %v", err)
@@ -86,6 +95,9 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	completed, err := checkpoints.CompletedHighWatermark(context.Background(), "search-v1-build-a")
 	if err != nil || completed != 3 {
 		t.Fatalf("completed watermark=%d err=%v", completed, err)
+	}
+	if _, err := checkpoints.CompletedHighWatermarkForSource(context.Background(), "search-v1-build-a", wrongSource); !errors.Is(err, mysqlStore.ErrSearchBackfillSourceMismatch) {
+		t.Fatalf("completed source mismatch error=%v", err)
 	}
 	wrongTarget, _ := mysqlStore.NewSearchBackfillCheckpointStore(store, "dipole-messages-v1-build-b")
 	if _, err := wrongTarget.CompletedHighWatermark(context.Background(), "search-v1-build-a"); !errors.Is(err, mysqlStore.ErrSearchBackfillTargetMismatch) {
