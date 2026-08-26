@@ -10,9 +10,18 @@ import (
 )
 
 func TestMessageProjectorDatabaseBoundaryWithMySQLAccount(t *testing.T) {
-	dsn := os.Getenv("DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN")
+	verifyMessageDatabaseAccount(t, "DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN", false)
+}
+
+func TestMessageAtomicDatabaseBoundaryWithMySQLAccount(t *testing.T) {
+	verifyMessageDatabaseAccount(t, "DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN", true)
+}
+
+func verifyMessageDatabaseAccount(t *testing.T, environment string, inboxWrites bool) {
+	t.Helper()
+	dsn := os.Getenv(environment)
 	if dsn == "" {
-		t.Skip("DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN is required for Message permission integration tests")
+		t.Skip(environment + " is required for Message permission integration tests")
 	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -22,7 +31,7 @@ func TestMessageProjectorDatabaseBoundaryWithMySQLAccount(t *testing.T) {
 	if err := db.PingContext(context.Background()); err != nil {
 		t.Fatalf("ping Message projector MySQL account: %v", err)
 	}
-	if err := verifyMessageDatabaseBoundary(context.Background(), db, false); err != nil {
-		t.Fatalf("verify real Message projector MySQL boundary: %v", err)
+	if err := verifyMessageDatabaseBoundary(context.Background(), db, inboxWrites); err != nil {
+		t.Fatalf("verify real Message MySQL boundary: %v", err)
 	}
 }

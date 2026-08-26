@@ -44,7 +44,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := validateCassandraShadowConfig(messageCfg, cassandraCfg); err != nil {
 		return nil, err
 	}
-	if err := store.InitMySQL(); err != nil {
+	if err := store.InitMySQLWithConfig(config.MessageMySQLConfig()); err != nil {
 		return nil, fmt.Errorf("message mysql init failed: %w", err)
 	}
 	if err := store.InitRedis(); err != nil {

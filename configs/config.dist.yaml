@@ -109,6 +109,13 @@ message:
   enforce_db_permissions: false
   # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.
   inbox_write_mode: atomic
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
 
 sync:
   # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.

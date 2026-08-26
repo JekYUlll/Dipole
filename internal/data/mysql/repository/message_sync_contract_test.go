@@ -58,6 +58,33 @@ func TestMessageProjectorAccountWritesMessageAndOutbox(t *testing.T) {
 	}
 }
 
+func TestMessageAtomicAccountWritesMessageOutboxAndInbox(t *testing.T) {
+	dsn := os.Getenv("DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN")
+	if dsn == "" {
+		t.Skip("DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN is required for Message permission integration tests")
+	}
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		t.Fatalf("open Message atomic database: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatalf("create Message atomic store: %v", err)
+	}
+	repository, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, true)
+	if err != nil {
+		t.Fatalf("create Message atomic repository: %v", err)
+	}
+	message := contractStoredMessage("atomic-smoke", model.DirectConversationKey("U-atomic-sender", "U-atomic-target"), time.Now().UTC())
+	if err := repository.StoreWithOutboxAndSync(message, staticOutboxBuilder(contractOutboxEvent(message.UUID)), []string{"U-atomic-target"}); err != nil {
+		t.Fatalf("store Message, Outbox, and Inbox with atomic account: %v", err)
+	}
+	if message.Seq != 1 {
+		t.Fatalf("message seq = %d, want 1", message.Seq)
+	}
+}
+
 func TestMessageSyncRepositoryContract(t *testing.T) {
 	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)

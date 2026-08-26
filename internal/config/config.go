@@ -306,6 +306,11 @@ func Load() error {
 		v.SetDefault("message.cassandra_duplicate_hydration", false)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("message.inbox_write_mode", "atomic")
+		v.SetDefault("message.mysql.host", "")
+		v.SetDefault("message.mysql.port", 0)
+		v.SetDefault("message.mysql.user", "")
+		v.SetDefault("message.mysql.password", "")
+		v.SetDefault("message.mysql.dbname", "")
 		v.SetDefault("search.enabled", false)
 		v.SetDefault("sync.transport", "local")
 		v.SetDefault("sync.shadow_queries", false)
@@ -443,6 +448,11 @@ func Load() error {
 			"message.cassandra_duplicate_hydration",
 			"message.enforce_db_permissions",
 			"message.inbox_write_mode",
+			"message.mysql.host",
+			"message.mysql.port",
+			"message.mysql.user",
+			"message.mysql.password",
+			"message.mysql.dbname",
 			"search.enabled",
 			"sync.transport",
 			"sync.shadow_queries",
@@ -705,6 +715,15 @@ func MessageConfig() Message {
 		EnforceDBPermissions:        cfg.GetBool("message.enforce_db_permissions"),
 		InboxWriteMode:              strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
 	}
+}
+
+func MessageMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("message.mysql.host"), Port: cfg.GetInt("message.mysql.port"),
+		User: cfg.GetString("message.mysql.user"), Password: cfg.GetString("message.mysql.password"),
+		DBName: cfg.GetString("message.mysql.dbname"),
+	})
 }
 
 func SearchConfig() Search {

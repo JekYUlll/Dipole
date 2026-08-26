@@ -156,7 +156,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 提供按节点逐步切换 `message.transport=grpc` 的 shadow/owner 运行模式、consumer group 交接手册和 Local 快速回切能力。
 - [x] 明确 Message Service 数据表所有权；远程模式下 Core 停止写 `messages` 和 `outbox_events`，独立进程只组合 Message 与 Outbox adapters。
 
-当前过渡限制：Message 与 Core 仍使用同一 MySQL schema 和数据库账号；代码侧文件所有权已迁入 Core Capability，数据库最小权限继续由 AD-015 跟踪。内部 RPC 已通过 AD-013 完成 TLS 1.3 mTLS 与 caller 身份绑定。
+当前部署仍共享 MySQL schema，凭据与表操作已通过 AD-015 分离：Message 使用 `message.mysql.*` 和 atomic/projector 最小账号，文件所有权通过 Core Capability，内部 RPC 通过 AD-013 完成 TLS 1.3 mTLS 与 caller 身份绑定。
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 

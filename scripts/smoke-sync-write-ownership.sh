@@ -42,6 +42,7 @@ test "${migration_checks[0]}" = "1"
 test "${migration_checks[1]}" = "1"
 test "${migration_checks[2]}" = "1"
 docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql/sync-service-grants.dist.sql"
+docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql/message-service-atomic-grants.dist.sql"
 docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql/message-service-projector-grants.dist.sql"
 
 (
@@ -50,8 +51,12 @@ docker exec -i "$container" mysql -uroot -pdipole-root <"$root_dir/configs/mysql
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestSyncDatabaseBoundaryWithMySQLAccount$' -count=1
   DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN="dipole_message_projector:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestMessageProjectorDatabaseBoundaryWithMySQLAccount$' -count=1
+  DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN="dipole_message:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestMessageAtomicDatabaseBoundaryWithMySQLAccount$' -count=1
   DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN="dipole_message_projector:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/data/mysql/repository -run '^TestMessageProjectorAccountWritesMessageAndOutbox$' -count=1
+  DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN="dipole_message:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/data/mysql/repository -run '^TestMessageAtomicAccountWritesMessageOutboxAndInbox$' -count=1
   DIPOLE_TEST_MYSQL_ADMIN_DSN="$admin_dsn" LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     go test ./internal/data/mysql/repository -run '^TestMessageInboxWriteOwnershipCanMoveToProjectorAndRollBack$' -count=1
 )
@@ -60,5 +65,6 @@ test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SEL
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM message_metadata WHERE message_uuid='M-projector-smoke' AND CHAR_LENGTH(payload_sha256)=64;")" = "1"
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id='M-projector-smoke';")" = "1"
 test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM user_sync_inbox WHERE message_uuid='M-projector-smoke';")" = "0"
+test "$(docker exec "$container" mysql -N -B -uroot -pdipole-root dipole -e "SELECT COUNT(*) FROM user_sync_inbox WHERE message_uuid='M-atomic-smoke';")" = "1"
 
-printf 'Sync least-privilege and Inbox write-ownership rollback smoke passed.\n'
+printf 'Sync and Message atomic/projector least-privilege ownership smoke passed.\n'
