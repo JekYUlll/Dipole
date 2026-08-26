@@ -16,6 +16,7 @@ type Querier interface {
 	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
 	AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error
 	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
+	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
@@ -30,7 +31,6 @@ type Querier interface {
 	DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (sql.Result, error)
 	DeleteGroupMember(ctx context.Context, arg DeleteGroupMemberParams) (sql.Result, error)
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
-	DeleteMessageSearchDocument(ctx context.Context, messageUuid string) error
 	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
@@ -51,6 +51,7 @@ type Querier interface {
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
+	GetMessageSearchState(ctx context.Context, messageUuid string) (GetMessageSearchStateRow, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
 	GetUserByTelephone(ctx context.Context, telephone string) (User, error)
 	GetUserByUUID(ctx context.Context, uuid string) (User, error)
@@ -94,7 +95,6 @@ type Querier interface {
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 	UpsertConversationMessage(ctx context.Context, arg UpsertConversationMessageParams) (sql.Result, error)
 	UpsertGroupSyncState(ctx context.Context, arg UpsertGroupSyncStateParams) error
-	UpsertMessageSearchDocument(ctx context.Context, arg UpsertMessageSearchDocumentParams) error
 }
 
 var _ Querier = (*Queries)(nil)

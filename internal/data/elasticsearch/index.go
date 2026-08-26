@@ -3,20 +3,16 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -28,7 +24,7 @@ var (
 	//go:embed schema/message_search_v1.json
 	messageSearchMapping json.RawMessage
 
-	ErrProjectionConflict = errors.New("Elasticsearch search projection conflict")
+	ErrProjectionConflict = model.ErrMessageSearchMutationConflict
 	indexPrefixPattern    = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
 )
 
@@ -51,18 +47,6 @@ type Index struct {
 }
 
 var _ application.SearchIndex = (*Index)(nil)
-
-type searchDocument struct {
-	MessageUUID     string `json:"message_uuid"`
-	ConversationKey string `json:"conversation_key"`
-	MessageSeq      uint64 `json:"message_seq"`
-	Revision        uint64 `json:"revision"`
-	SenderUUID      string `json:"sender_uuid"`
-	MessageType     int8   `json:"message_type"`
-	Content         string `json:"content"`
-	SentAt          string `json:"sent_at"`
-	PayloadHash     string `json:"payload_hash"`
-}
 
 func NewIndex(config Config) (*Index, error) {
 	baseURL, err := url.Parse(strings.TrimSpace(config.Address))
@@ -159,7 +143,7 @@ func (i *Index) validateMapping(ctx context.Context, physicalIndex string) error
 	}
 	expectedTypes := map[string]string{
 		"message_uuid": "keyword", "conversation_key": "keyword", "message_seq": "long", "revision": "long",
-		"sender_uuid": "keyword", "message_type": "byte", "content": "text", "sent_at": "date", "payload_hash": "keyword",
+		"sender_uuid": "keyword", "message_type": "byte", "content": "text", "sent_at": "date", "searchable": "boolean", "payload_hash": "keyword",
 	}
 	if len(mapping.Mappings.Properties) != len(expectedTypes) {
 		return fmt.Errorf("Elasticsearch index %s has unexpected v1 mapping fields", physicalIndex)
@@ -203,8 +187,8 @@ func (i *Index) SwitchAliases(ctx context.Context, fromIndex, toIndex string) er
 	return nil
 }
 
-func (i *Index) Upsert(document *model.MessageSearchDocument) error {
-	source, revision, err := normalizeDocument(document)
+func (i *Index) Apply(mutation *model.MessageSearchMutation) error {
+	source, err := mutation.State()
 	if err != nil {
 		return err
 	}
@@ -212,7 +196,7 @@ func (i *Index) Upsert(document *model.MessageSearchDocument) error {
 	if err != nil {
 		return fmt.Errorf("encode Elasticsearch search document: %w", err)
 	}
-	path := fmt.Sprintf("/%s/_doc/%s?require_alias=true&version=%d&version_type=external", i.writeAlias, url.PathEscape(source.MessageUUID), revision)
+	path := fmt.Sprintf("/%s/_doc/%s?require_alias=true&version=%d&version_type=external", i.writeAlias, url.PathEscape(source.MessageUUID), source.Revision)
 	status, response, err := i.request(context.Background(), http.MethodPut, path, body)
 	if err != nil {
 		return err
@@ -224,22 +208,6 @@ func (i *Index) Upsert(document *model.MessageSearchDocument) error {
 		return i.classifyVersionConflict(context.Background(), source)
 	}
 	return responseError("upsert Elasticsearch search document", status, response)
-}
-
-func (i *Index) Delete(messageUUID string) error {
-	messageUUID = strings.TrimSpace(messageUUID)
-	if messageUUID == "" {
-		return errors.New("message uuid is required")
-	}
-	path := fmt.Sprintf("/%s/_doc/%s?require_alias=true", i.writeAlias, url.PathEscape(messageUUID))
-	status, response, err := i.request(context.Background(), http.MethodDelete, path, nil)
-	if err != nil {
-		return err
-	}
-	if status == http.StatusOK || status == http.StatusNotFound {
-		return nil
-	}
-	return responseError("delete Elasticsearch search document", status, response)
 }
 
 func (i *Index) Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error) {
@@ -262,8 +230,11 @@ func (i *Index) Search(query model.MessageSearchQuery) ([]*model.MessageSearchDo
 		"size": limit,
 		"sort": []any{map[string]any{"sent_at": "desc"}, map[string]any{"message_uuid": "desc"}},
 		"query": map[string]any{"bool": map[string]any{
-			"must":   []any{map[string]any{"match": map[string]any{"content": map[string]any{"query": text}}}},
-			"filter": []any{map[string]any{"terms": map[string]any{"conversation_key": keys}}},
+			"must": []any{map[string]any{"match": map[string]any{"content": map[string]any{"query": text}}}},
+			"filter": []any{
+				map[string]any{"terms": map[string]any{"conversation_key": keys}},
+				map[string]any{"term": map[string]any{"searchable": true}},
+			},
 		}},
 	})
 	if err != nil {
@@ -279,7 +250,7 @@ func (i *Index) Search(query model.MessageSearchQuery) ([]*model.MessageSearchDo
 	var result struct {
 		Hits struct {
 			Hits []struct {
-				Source searchDocument `json:"_source"`
+				Source model.MessageSearchState `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
 	}
@@ -288,16 +259,19 @@ func (i *Index) Search(query model.MessageSearchQuery) ([]*model.MessageSearchDo
 	}
 	documents := make([]*model.MessageSearchDocument, 0, len(result.Hits.Hits))
 	for _, hit := range result.Hits.Hits {
-		document, err := modelDocument(hit.Source)
-		if err != nil {
-			return nil, err
+		if hit.Source.SentAt == nil {
+			return nil, fmt.Errorf("Elasticsearch searchable document %s is missing sent_at", hit.Source.MessageUUID)
 		}
-		documents = append(documents, document)
+		documents = append(documents, &model.MessageSearchDocument{
+			MessageUUID: hit.Source.MessageUUID, ConversationKey: hit.Source.ConversationKey, MessageSeq: hit.Source.MessageSeq,
+			Revision: hit.Source.Revision, SenderUUID: hit.Source.SenderUUID, MessageType: hit.Source.MessageType,
+			Content: hit.Source.Content, SentAt: *hit.Source.SentAt,
+		})
 	}
 	return documents, nil
 }
 
-func (i *Index) classifyVersionConflict(ctx context.Context, candidate searchDocument) error {
+func (i *Index) classifyVersionConflict(ctx context.Context, candidate model.MessageSearchState) error {
 	path := fmt.Sprintf("/%s/_doc/%s", i.writeAlias, url.PathEscape(candidate.MessageUUID))
 	status, response, err := i.request(ctx, http.MethodGet, path, nil)
 	if err != nil {
@@ -307,7 +281,7 @@ func (i *Index) classifyVersionConflict(ctx context.Context, candidate searchDoc
 		return responseError("read Elasticsearch version conflict", status, response)
 	}
 	var current struct {
-		Source searchDocument `json:"_source"`
+		Source model.MessageSearchState `json:"_source"`
 	}
 	if err := json.Unmarshal(response, &current); err != nil {
 		return fmt.Errorf("decode Elasticsearch version conflict: %w", err)
@@ -378,46 +352,6 @@ func (i *Index) request(ctx context.Context, method, path string, body []byte) (
 		return 0, nil, fmt.Errorf("read Elasticsearch response: %w", err)
 	}
 	return response.StatusCode, responseBody, nil
-}
-
-func normalizeDocument(document *model.MessageSearchDocument) (searchDocument, uint64, error) {
-	if document == nil {
-		return searchDocument{}, 0, errors.New("search document is required")
-	}
-	revision := document.Revision
-	if revision == 0 {
-		revision = 1
-	}
-	source := searchDocument{
-		MessageUUID: strings.TrimSpace(document.MessageUUID), ConversationKey: strings.TrimSpace(document.ConversationKey),
-		MessageSeq: document.MessageSeq, Revision: revision, SenderUUID: strings.TrimSpace(document.SenderUUID),
-		MessageType: document.MessageType, Content: document.Content, SentAt: document.SentAt.UTC().Format("2006-01-02T15:04:05.000Z07:00"),
-	}
-	if source.MessageUUID == "" || source.ConversationKey == "" || source.MessageSeq == 0 || source.SenderUUID == "" || document.SentAt.IsZero() {
-		return searchDocument{}, 0, errors.New("search document identity is required")
-	}
-	if source.MessageSeq > math.MaxInt64 || revision > math.MaxInt64 {
-		return searchDocument{}, 0, errors.New("search document sequence and revision must fit Elasticsearch long")
-	}
-	payload, err := json.Marshal(source)
-	if err != nil {
-		return searchDocument{}, 0, fmt.Errorf("hash Elasticsearch search document: %w", err)
-	}
-	sum := sha256.Sum256(payload)
-	source.PayloadHash = hex.EncodeToString(sum[:])
-	return source, revision, nil
-}
-
-func modelDocument(source searchDocument) (*model.MessageSearchDocument, error) {
-	sentAt, err := time.Parse(time.RFC3339Nano, source.SentAt)
-	if err != nil {
-		return nil, fmt.Errorf("decode Elasticsearch message %s sent_at: %w", source.MessageUUID, err)
-	}
-	return &model.MessageSearchDocument{
-		MessageUUID: source.MessageUUID, ConversationKey: source.ConversationKey, MessageSeq: source.MessageSeq,
-		Revision: source.Revision, SenderUUID: source.SenderUUID, MessageType: source.MessageType, Content: source.Content,
-		SentAt: sentAt,
-	}, nil
 }
 
 func uniqueSorted(values []string) []string {

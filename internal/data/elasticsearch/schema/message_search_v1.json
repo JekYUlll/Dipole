@@ -9,6 +9,7 @@
     "message_type": { "type": "byte" },
     "content": { "type": "text" },
     "sent_at": { "type": "date" },
+    "searchable": { "type": "boolean" },
     "payload_hash": { "type": "keyword", "index": false }
   }
 }

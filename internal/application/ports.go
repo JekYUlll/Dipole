@@ -99,8 +99,7 @@ type MessageStore interface {
 }
 
 type SearchIndex interface {
-	Upsert(document *model.MessageSearchDocument) error
-	Delete(messageUUID string) error
+	Apply(mutation *model.MessageSearchMutation) error
 	Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error)
 }
 

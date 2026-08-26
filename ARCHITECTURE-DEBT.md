@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-020：Search 删除接口缺少 mutation revision
-
-- **优先级：** P1
-- **状态：** 处理中
-- **发现日期：** 2026-08-27
-- **影响范围：** `SearchIndex.Delete`、Elasticsearch recall/delete、Kafka 乱序重放
-- **现状：** Elasticsearch Upsert 已使用外部 revision 和 payload hash 分类重放、旧事件与冲突；现有存储中立接口仍是 `Delete(messageUUID)`，无法表达 recall/delete 的单调 revision。Elasticsearch 的物理删除标记有保留期，较晚到达的旧 created/edited 事件可能重新创建文档。
-- **风险：** mutation projector 若直接复用当前 Delete，会失去跨事件顺序保护，搜索结果可能短暂或长期恢复已撤回内容。
-- **建议方向：** 定义版本化 Search mutation 契约；recall/delete 写入无正文、不可搜索的 tombstone 文档并保留 revision/hash，edited 使用同一 external version 规则。MySQL 逻辑索引同步增加 revision 条件，保证两种实现共享行为 contract。
-- **处理门槛：** 独立 Search Indexer 订阅 edited/recalled/deleted Topic 前完成，并通过乱序、重复和同 revision 冲突测试。
-
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
 - **优先级：** P1
@@ -146,6 +135,15 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-020：Search 删除接口缺少 mutation revision
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **完成日期：** 2026-08-27
+- **解决方式：** `SearchIndex` 收敛为版本化 `Apply(MessageSearchMutation)`；created/edited 生成 searchable 文档，recalled/deleted 生成只含身份、revision、`searchable=false` 与 payload hash 的持久 tombstone。MySQL 与 Elasticsearch 统一接受更高 revision、忽略旧 revision、接受相同重放并拒绝同 revision 不同 payload。
+- **验证：** 共享模型单元测试、两种 adapter contract、MySQL 8.4 `000001..000007` Up/Down 与 Elasticsearch 9.5.2 真实 tombstone 演练通过；tombstone 后旧正文事件无法恢复搜索结果。
 
 ### AD-018：Cassandra Seq 响应不携带 MySQL 内部 ID
 

@@ -43,21 +43,21 @@ func TestIndexContract(t *testing.T) {
 		MessageUUID: "M-CONTRACT", ConversationKey: "direct:U1:U2", MessageSeq: 1, Revision: 1,
 		SenderUUID: "U1", Content: "database migration planned", SentAt: now,
 	}
-	if err := index.Upsert(document); err != nil {
+	if err := index.Apply(upsertMutation(document)); err != nil {
 		t.Fatalf("upsert first revision: %v", err)
 	}
-	if err := index.Upsert(document); err != nil {
+	if err := index.Apply(upsertMutation(document)); err != nil {
 		t.Fatalf("replay first revision: %v", err)
 	}
 	document.Revision = 2
 	document.Content = "database migration approved"
-	if err := index.Upsert(document); err != nil {
+	if err := index.Apply(upsertMutation(document)); err != nil {
 		t.Fatalf("upsert second revision: %v", err)
 	}
 	stale := *document
 	stale.Revision = 1
 	stale.Content = "database migration stale"
-	if err := index.Upsert(&stale); err != nil {
+	if err := index.Apply(upsertMutation(&stale)); err != nil {
 		t.Fatalf("ignore stale revision: %v", err)
 	}
 	status, response, err := index.request(ctx, http.MethodPost, "/"+index.PhysicalIndex()+"/_refresh", nil)
@@ -79,5 +79,19 @@ func TestIndexContract(t *testing.T) {
 	})
 	if err != nil || len(hidden) != 0 {
 		t.Fatalf("conversation scope leaked: results=%+v err=%v", hidden, err)
+	}
+	tombstone := &model.MessageSearchMutation{
+		Type: model.MessageSearchMutationTombstone, MessageUUID: document.MessageUUID, Revision: 3,
+	}
+	if err := index.Apply(tombstone); err != nil {
+		t.Fatalf("apply tombstone: %v", err)
+	}
+	_, _, _ = index.request(ctx, http.MethodPost, "/"+index.PhysicalIndex()+"/_refresh", nil)
+	results, err = index.Search(model.MessageSearchQuery{ConversationKeys: []string{"direct:U1:U2"}, Text: "migration", Limit: 10})
+	if err != nil || len(results) != 0 {
+		t.Fatalf("tombstone remained searchable: results=%+v err=%v", results, err)
+	}
+	if err := index.Apply(upsertMutation(document)); err != nil {
+		t.Fatalf("stale upsert after tombstone: %v", err)
 	}
 }
