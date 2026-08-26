@@ -20,7 +20,7 @@
 - **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
 - **现状：** 用户、好友、群和文件所有权校验均通过 Core Capability gRPC 完成；独立 Runtime 只组合 Message 与 Outbox adapters。部署仍复用 Core 的 MySQL schema 与数据库账号。
 - **风险：** 代码依赖已经收敛，数据库凭据仍具备访问 Core 表的能力，误用或注入风险下的 blast radius 大于 Message Service 实际职责。
-- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
+- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`conversation_sequences`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
 - **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
 
 ### AD-004：热群消息缺少持久化同步补偿

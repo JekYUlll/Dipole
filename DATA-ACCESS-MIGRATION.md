@@ -70,6 +70,8 @@ Composition Root 现在只接受 `*sql.DB` 并创建 sqlc adapters；迁移期�
 
 Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store。
 
+`000002_conversation_sequence` 为历史消息按 `conversation_key + id` 回填连续序号，并创建 `conversation_sequences` 高水位表。新消息在 Message、Inbox 与 Outbox 的同一事务内锁定会话行并分配 `seq`；事务回滚会同时回滚高水位，旧 `before_id`/`after_id` 查询在兼容期继续保留。
+
 开发命令：
 
 ```bash

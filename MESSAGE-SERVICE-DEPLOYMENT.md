@@ -33,11 +33,11 @@ Message 进程使用独立 MySQL 账号。以 [message-service-grants.dist.sql](
 DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS=true
 ```
 
-启动验收要求账号可读取 Message/Sync/Outbox/migration 表，同时无法读取任何 Core 表。
+启动验收要求账号可读写 Message、Conversation Sequence allocator、Sync、Outbox 所需表，可读取 migration ledger，同时无法读取任何 Core 表。
 
 ## 渐进切换
 
-1. 执行 `go run ./cmd/migrate -direction up`，确认全部节点 schema 版本一致。
+1. 执行 `go run ./cmd/migrate -direction up`，确认全部节点 schema 版本一致；`000002` 完成后再滚动发布会分配 `message_seq` 的 Message 节点。
 2. 保持 Core `message.transport=local`，启用 Core RPC listener 并先启动 Core。
 3. 以 `message.runtime_mode=shadow` 启动 `go run ./cmd/message-service`。
 4. 在 Core 开启 `message.shadow_queries=true`，检查 `message shadow query mismatch` 日志和查询错误率；shadow 进程不会执行命令或后台写入。
