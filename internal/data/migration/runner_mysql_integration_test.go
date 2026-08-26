@@ -150,29 +150,34 @@ func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	if err := runner.Down(ctx, 1); err != nil {
-		t.Fatalf("roll back metadata migration: %v", err)
+	if err := runner.Down(ctx, 3); err != nil {
+		t.Fatalf("roll back Metadata legacy ID, Search source, and Metadata migrations: %v", err)
 	}
-	if _, err := db.Exec(`INSERT INTO messages (
+	inserted, err := db.Exec(`INSERT INTO messages (
 		uuid, client_message_id, conversation_key, seq, sender_uuid, target_type,
 		target_uuid, message_type, content, file_id, file_expires_at, sent_at
 	) VALUES ('M-meta-legacy', 'CM-meta-legacy', 'direct:U1:U2', 7, 'U1', 0,
-		'U2', 1, '', 'F-meta-legacy', '2026-08-28 12:00:00.000', '2026-08-27 12:00:00.000')`); err != nil {
+		'U2', 1, '', 'F-meta-legacy', '2026-08-28 12:00:00.000', '2026-08-27 12:00:00.000')`)
+	if err != nil {
 		t.Fatalf("seed legacy message: %v", err)
+	}
+	legacyID, err := inserted.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
 	}
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("apply metadata migration: %v", err)
 	}
 
 	var messageUUID, clientMessageID, fileID, payloadSHA string
-	var messageSeq uint64
+	var messageSeq, metadataLegacyID uint64
 	var expiresAt time.Time
-	if err := db.QueryRow(`SELECT message_uuid, client_message_id, message_seq, file_id,
+	if err := db.QueryRow(`SELECT message_uuid, legacy_message_id, client_message_id, message_seq, file_id,
 		file_expires_at, payload_sha256 FROM message_metadata WHERE message_uuid = 'M-meta-legacy'`).
-		Scan(&messageUUID, &clientMessageID, &messageSeq, &fileID, &expiresAt, &payloadSHA); err != nil {
+		Scan(&messageUUID, &metadataLegacyID, &clientMessageID, &messageSeq, &fileID, &expiresAt, &payloadSHA); err != nil {
 		t.Fatalf("read backfilled metadata: %v", err)
 	}
-	if messageUUID != "M-meta-legacy" || clientMessageID != "CM-meta-legacy" || messageSeq != 7 ||
+	if messageUUID != "M-meta-legacy" || metadataLegacyID != uint64(legacyID) || clientMessageID != "CM-meta-legacy" || messageSeq != 7 ||
 		fileID != "F-meta-legacy" || expiresAt.IsZero() || payloadSHA != "" {
 		t.Fatalf("unexpected backfilled metadata: uuid=%s client=%s seq=%d file=%s expires=%s hash=%q",
 			messageUUID, clientMessageID, messageSeq, fileID, expiresAt, payloadSHA)

@@ -72,17 +72,28 @@ type hotGroupObserver interface {
 }
 
 type MessageService struct {
-	repo          messageRepository
-	userFinder    messageUserFinder
-	friendChecker friendshipChecker
-	groupChecker  groupMessageChecker
-	events        eventPublisher
-	fileFinder    messageFileFinder
-	hotGroups     hotGroupObserver
+	repo             messageRepository
+	userFinder       messageUserFinder
+	friendChecker    friendshipChecker
+	groupChecker     groupMessageChecker
+	events           eventPublisher
+	fileFinder       messageFileFinder
+	hotGroups        hotGroupObserver
+	duplicateBody    applicationPort.SyncMessageHydrator
+	duplicateObserve func(string)
 	// 热群改成 notify + pull 后，同一台节点上会出现很多相同的
 	// group_uuid/after_id/limit 增量拉取请求。singleflight 在 service 层
 	// 合并这些回源，避免瞬时把同一页消息重复打到 MySQL。
 	groupPulls singleflight.Group
+}
+
+func (s *MessageService) SetDuplicateMessageHydrator(hydrator applicationPort.SyncMessageHydrator, observers ...func(string)) {
+	if s != nil {
+		s.duplicateBody = hydrator
+		if len(observers) > 0 {
+			s.duplicateObserve = observers[0]
+		}
+	}
 }
 
 type MessageEventPayload struct {
@@ -751,6 +762,9 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 		if err := validateDuplicateMessageMetadata(metadata, message); err != nil {
 			return nil, err
 		}
+		if existing := s.hydrateDuplicateMessage(metadata); existing != nil {
+			return existing, nil
+		}
 		return s.repo.GetByUUID(metadata.MessageUUID)
 	}
 	if message.ClientMessageID != "" {
@@ -764,6 +778,38 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 	}
 
 	return s.repo.GetByUUID(message.UUID)
+}
+
+func (s *MessageService) hydrateDuplicateMessage(metadata *model.MessageMetadata) *model.Message {
+	if s == nil || s.duplicateBody == nil || metadata == nil {
+		return nil
+	}
+	if metadata.MessageSeq == 0 {
+		s.observeDuplicateHydration("skipped_no_seq")
+		return nil
+	}
+	locator := model.SyncMessageLocator{
+		MessageUUID: metadata.MessageUUID, ConversationKey: metadata.ConversationKey, MessageSeq: metadata.MessageSeq,
+	}
+	messages, err := s.duplicateBody.Hydrate(context.Background(), []model.SyncMessageLocator{locator})
+	if err != nil {
+		s.observeDuplicateHydration("fallback")
+		return nil
+	}
+	message := messages[metadata.MessageUUID]
+	if message == nil || message.UUID != metadata.MessageUUID || message.ConversationKey != metadata.ConversationKey || message.Seq != metadata.MessageSeq {
+		s.observeDuplicateHydration("fallback")
+		return nil
+	}
+	message.ID = metadata.LegacyMessageID
+	s.observeDuplicateHydration("hit")
+	return message
+}
+
+func (s *MessageService) observeDuplicateHydration(outcome string) {
+	if s.duplicateObserve != nil {
+		s.duplicateObserve(outcome)
+	}
 }
 
 func findExistingMetadataForDuplicate(repo applicationPort.MessageMetadataStore, message *model.Message) (*model.MessageMetadata, error) {

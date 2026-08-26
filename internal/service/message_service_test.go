@@ -41,6 +41,7 @@ type stubMessageRepository struct {
 	lastLimit             int
 	lastUserUUID          string
 	listAfterCallCount    int
+	getByUUIDCalls        int
 	listAfterDelay        time.Duration
 }
 
@@ -103,6 +104,7 @@ func (r *stubMessageRepository) Create(message *model.Message) error {
 func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.getByUUIDCalls++
 
 	if r.messagesByUUID == nil {
 		return nil, nil
@@ -1470,6 +1472,91 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 	if len(repo.ensuredOutboxEvents) != 1 {
 		t.Fatalf("expected ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
 	}
+}
+
+func TestMessageServiceDuplicateHydrationUsesCassandraAndFallsBackToMySQL(t *testing.T) {
+	existing := &model.Message{
+		ID: 42, UUID: "M100", ClientMessageID: "cmid-duplicate", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		Seq: 7, SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello",
+	}
+	request := MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate", ConversationKey: existing.ConversationKey,
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello",
+	}
+	cassandraMessage := *existing
+	cassandraMessage.ID = 0
+	for _, test := range []struct {
+		name           string
+		hydrator       *stubDuplicateHydrator
+		wantMySQLReads int
+		wantOutcome    string
+	}{
+		{name: "Cassandra hit", hydrator: &stubDuplicateHydrator{message: &cassandraMessage}, wantOutcome: "hit"},
+		{name: "Cassandra miss", hydrator: &stubDuplicateHydrator{err: errors.New("missing")}, wantMySQLReads: 1, wantOutcome: "fallback"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repo := &stubMessageRepository{storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062}, messagesByUUID: map[string]*model.Message{"M100": existing}}
+			messageService := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+			var outcome string
+			messageService.SetDuplicateMessageHydrator(test.hydrator, func(value string) { outcome = value })
+			message, err := messageService.PersistRequestedMessage(request)
+			if err != nil || message == nil || message.UUID != existing.UUID || message.ID != existing.ID {
+				t.Fatalf("duplicate hydration: message=%+v err=%v", message, err)
+			}
+			if test.hydrator.locator.MessageUUID != "M100" || test.hydrator.locator.ConversationKey != existing.ConversationKey || test.hydrator.locator.MessageSeq != 7 {
+				t.Fatalf("unexpected Cassandra locator: %+v", test.hydrator.locator)
+			}
+			if repo.getByUUIDCalls != test.wantMySQLReads {
+				t.Fatalf("MySQL body reads=%d want=%d", repo.getByUUIDCalls, test.wantMySQLReads)
+			}
+			if outcome != test.wantOutcome {
+				t.Fatalf("hydration outcome=%q want=%q", outcome, test.wantOutcome)
+			}
+		})
+	}
+}
+
+func TestMessageServiceDuplicateHydrationSkipsHistoricalMetadataWithoutSequence(t *testing.T) {
+	existing := &model.Message{
+		UUID: "M100", ClientMessageID: "cmid-duplicate", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeText, Content: "hello",
+	}
+	repo := &stubMessageRepository{storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062}, messagesByUUID: map[string]*model.Message{"M100": existing}}
+	hydrator := &stubDuplicateHydrator{message: existing}
+	messageService := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+	var outcome string
+	messageService.SetDuplicateMessageHydrator(hydrator, func(value string) { outcome = value })
+	message, err := messageService.PersistRequestedMessage(MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate", ConversationKey: existing.ConversationKey,
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeText, Content: "hello",
+	})
+	if err != nil || message != existing || repo.getByUUIDCalls != 1 {
+		t.Fatalf("historical duplicate fallback: message=%+v reads=%d err=%v", message, repo.getByUUIDCalls, err)
+	}
+	if hydrator.locator.MessageUUID != "" {
+		t.Fatalf("historical metadata reached Cassandra: %+v", hydrator.locator)
+	}
+	if outcome != "skipped_no_seq" {
+		t.Fatalf("historical hydration outcome=%q", outcome)
+	}
+}
+
+type stubDuplicateHydrator struct {
+	message *model.Message
+	err     error
+	locator model.SyncMessageLocator
+}
+
+func (h *stubDuplicateHydrator) Hydrate(_ context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error) {
+	if len(locators) == 1 {
+		h.locator = locators[0]
+	}
+	if h.err != nil {
+		return nil, h.err
+	}
+	return map[string]*model.Message{h.message.UUID: h.message}, nil
 }
 
 func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarget(t *testing.T) {

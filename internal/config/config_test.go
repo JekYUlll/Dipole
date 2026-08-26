@@ -32,6 +32,17 @@ func TestConfigDistPlacesCassandraShadowHydrationUnderSync(t *testing.T) {
 	}
 }
 
+func TestConfigDistDeclaresCassandraDuplicateHydrationUnderMessage(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if !v.IsSet("message.cassandra_duplicate_hydration") {
+		t.Fatal("message.cassandra_duplicate_hydration is missing from config.dist.yaml")
+	}
+}
+
 func TestMergeMySQLConfigKeepsGlobalDefaultsAndAppliesSyncCredentials(t *testing.T) {
 	global := MySQL{Host: "mysql", Port: 3306, User: "dipole", Password: "global", DBName: "dipole"}
 	got := mergeMySQLConfig(global, MySQL{User: "dipole_sync", Password: "sync"})

@@ -34,6 +34,11 @@ docker run --rm --network "${project}_default" -v "$root_dir/deploy/cassandra/ba
   DIPOLE_TEST_MYSQL_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/dipole?parseTime=true&loc=UTC" \
     DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:19042 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     go test -count=1 -run '^TestSyncCassandraHydrationShadowContract$' ./internal/data/shadow
+  DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:19042 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
+    go test -count=1 -run '^TestMessageDuplicateHydrationWithRealCassandra$' ./internal/service
+  DIPOLE_TEST_MYSQL_ADMIN_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/?parseTime=true&loc=UTC" \
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
+    go test -count=1 -run '^TestMessageMetadataMigrationBackfillsExistingMessages$' ./internal/data/migration
 )
 
-printf 'Sync Cassandra hydration shadow smoke passed: match, payload mismatch, missing projection, and MySQL-primary isolation verified.\n'
+printf 'Sync Cassandra hydration smoke passed: shadow comparison, duplicate response recovery, legacy ID restoration, and Metadata migration backfill verified.\n'

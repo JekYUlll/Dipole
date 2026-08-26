@@ -111,14 +111,15 @@ type Kafka struct {
 }
 
 type Message struct {
-	Transport                  string `mapstructure:"transport"`
-	RuntimeMode                string `mapstructure:"runtime_mode"`
-	ShadowQueries              bool   `mapstructure:"shadow_queries"`
-	CassandraShadowReads       bool   `mapstructure:"cassandra_shadow_reads"`
-	CassandraReadPercent       int    `mapstructure:"cassandra_read_percentage"`
-	CassandraReadVerifyPercent int    `mapstructure:"cassandra_read_verify_percentage"`
-	EnforceDBPermissions       bool   `mapstructure:"enforce_db_permissions"`
-	InboxWriteMode             string `mapstructure:"inbox_write_mode"`
+	Transport                   string `mapstructure:"transport"`
+	RuntimeMode                 string `mapstructure:"runtime_mode"`
+	ShadowQueries               bool   `mapstructure:"shadow_queries"`
+	CassandraShadowReads        bool   `mapstructure:"cassandra_shadow_reads"`
+	CassandraReadPercent        int    `mapstructure:"cassandra_read_percentage"`
+	CassandraReadVerifyPercent  int    `mapstructure:"cassandra_read_verify_percentage"`
+	CassandraDuplicateHydration bool   `mapstructure:"cassandra_duplicate_hydration"`
+	EnforceDBPermissions        bool   `mapstructure:"enforce_db_permissions"`
+	InboxWriteMode              string `mapstructure:"inbox_write_mode"`
 }
 
 type Search struct {
@@ -300,6 +301,7 @@ func Load() error {
 		v.SetDefault("message.cassandra_shadow_reads", false)
 		v.SetDefault("message.cassandra_read_percentage", 0)
 		v.SetDefault("message.cassandra_read_verify_percentage", 0)
+		v.SetDefault("message.cassandra_duplicate_hydration", false)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("message.inbox_write_mode", "atomic")
 		v.SetDefault("search.enabled", false)
@@ -434,6 +436,7 @@ func Load() error {
 			"message.cassandra_shadow_reads",
 			"message.cassandra_read_percentage",
 			"message.cassandra_read_verify_percentage",
+			"message.cassandra_duplicate_hydration",
 			"message.enforce_db_permissions",
 			"message.inbox_write_mode",
 			"search.enabled",
@@ -686,14 +689,15 @@ func MessageConfig() Message {
 	MustLoad()
 
 	return Message{
-		Transport:                  strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
-		RuntimeMode:                strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
-		ShadowQueries:              cfg.GetBool("message.shadow_queries"),
-		CassandraShadowReads:       cfg.GetBool("message.cassandra_shadow_reads"),
-		CassandraReadPercent:       cfg.GetInt("message.cassandra_read_percentage"),
-		CassandraReadVerifyPercent: cfg.GetInt("message.cassandra_read_verify_percentage"),
-		EnforceDBPermissions:       cfg.GetBool("message.enforce_db_permissions"),
-		InboxWriteMode:             strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
+		Transport:                   strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
+		RuntimeMode:                 strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
+		ShadowQueries:               cfg.GetBool("message.shadow_queries"),
+		CassandraShadowReads:        cfg.GetBool("message.cassandra_shadow_reads"),
+		CassandraReadPercent:        cfg.GetInt("message.cassandra_read_percentage"),
+		CassandraReadVerifyPercent:  cfg.GetInt("message.cassandra_read_verify_percentage"),
+		CassandraDuplicateHydration: cfg.GetBool("message.cassandra_duplicate_hydration"),
+		EnforceDBPermissions:        cfg.GetBool("message.enforce_db_permissions"),
+		InboxWriteMode:              strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 // independently from the full message body storage.
 type MessageMetadata struct {
 	MessageUUID     string
+	LegacyMessageID uint
 	ClientMessageID string
 	ConversationKey string
 	MessageSeq      uint64
@@ -30,7 +31,7 @@ func MetadataFromMessage(message *Message) *MessageMetadata {
 		return nil
 	}
 	return &MessageMetadata{
-		MessageUUID: message.UUID, ClientMessageID: message.ClientMessageID,
+		MessageUUID: message.UUID, LegacyMessageID: message.ID, ClientMessageID: message.ClientMessageID,
 		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
 		SenderUUID: message.SenderUUID, TargetType: message.TargetType,
 		TargetUUID: message.TargetUUID, MessageType: message.MessageType,
