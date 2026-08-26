@@ -44,9 +44,18 @@ type stubMessageRepository struct {
 
 type stubCoreCapability struct {
 	users              map[string]*model.User
+	ownedFiles         map[string]*model.UploadedFile
 	directMessageAllow bool
 	userLookups        []string
 	friendshipChecks   [][2]string
+}
+
+func (c *stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	file := c.ownedFiles[fileUUID]
+	if file == nil || file.UploaderUUID != uploaderUUID {
+		return nil, nil
+	}
+	return file, nil
 }
 
 func (c *stubCoreCapability) GetUserByUUID(userUUID string) (*model.User, error) {
@@ -1031,6 +1040,34 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 	}
 	if message.FileID != "F100" || message.FileName != "hello.txt" {
 		t.Fatalf("unexpected file message payload: %+v", message)
+	}
+}
+
+func TestMessageServiceWithCoreLoadsOwnedFileThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		ownedFiles: map[string]*model.UploadedFile{
+			"F100": {UUID: "F100", UploaderUUID: "U100", FileName: "remote.txt", FileSize: 64, ContentType: "text/plain", URL: "https://files.test/remote.txt"},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(&stubMessageRepository{}, core, nil, nil, nil)
+
+	message, err := service.SendDirectFileMessage("U100", "U200", "F100", "cmid-core-file")
+	if err != nil {
+		t.Fatalf("send file through core capability: %v", err)
+	}
+	if message == nil || message.FileID != "F100" || message.FileName != "remote.txt" {
+		t.Fatalf("unexpected file message: %+v", message)
+	}
+
+	_, err = service.SendDirectFileMessage("U999", "U200", "F100", "cmid-unowned-file")
+	if !errors.Is(err, ErrMessageFileUnavailable) {
+		t.Fatalf("expected unavailable unowned file, got %v", err)
 	}
 }
 

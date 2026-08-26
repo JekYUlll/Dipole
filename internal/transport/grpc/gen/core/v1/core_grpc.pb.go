@@ -24,6 +24,7 @@ const (
 	CoreCapabilityService_GetGroup_FullMethodName             = "/dipole.core.v1.CoreCapabilityService/GetGroup"
 	CoreCapabilityService_GetGroupMember_FullMethodName       = "/dipole.core.v1.CoreCapabilityService/GetGroupMember"
 	CoreCapabilityService_ListGroupMembers_FullMethodName     = "/dipole.core.v1.CoreCapabilityService/ListGroupMembers"
+	CoreCapabilityService_GetOwnedFile_FullMethodName         = "/dipole.core.v1.CoreCapabilityService/GetOwnedFile"
 )
 
 // CoreCapabilityServiceClient is the client API for CoreCapabilityService service.
@@ -35,6 +36,7 @@ type CoreCapabilityServiceClient interface {
 	GetGroup(ctx context.Context, in *GetGroupRequest, opts ...grpc.CallOption) (*GetGroupResponse, error)
 	GetGroupMember(ctx context.Context, in *GetGroupMemberRequest, opts ...grpc.CallOption) (*GetGroupMemberResponse, error)
 	ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error)
+	GetOwnedFile(ctx context.Context, in *GetOwnedFileRequest, opts ...grpc.CallOption) (*GetOwnedFileResponse, error)
 }
 
 type coreCapabilityServiceClient struct {
@@ -95,6 +97,16 @@ func (c *coreCapabilityServiceClient) ListGroupMembers(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *coreCapabilityServiceClient) GetOwnedFile(ctx context.Context, in *GetOwnedFileRequest, opts ...grpc.CallOption) (*GetOwnedFileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOwnedFileResponse)
+	err := c.cc.Invoke(ctx, CoreCapabilityService_GetOwnedFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCapabilityServiceServer is the server API for CoreCapabilityService service.
 // All implementations must embed UnimplementedCoreCapabilityServiceServer
 // for forward compatibility.
@@ -104,6 +116,7 @@ type CoreCapabilityServiceServer interface {
 	GetGroup(context.Context, *GetGroupRequest) (*GetGroupResponse, error)
 	GetGroupMember(context.Context, *GetGroupMemberRequest) (*GetGroupMemberResponse, error)
 	ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error)
+	GetOwnedFile(context.Context, *GetOwnedFileRequest) (*GetOwnedFileResponse, error)
 	mustEmbedUnimplementedCoreCapabilityServiceServer()
 }
 
@@ -128,6 +141,9 @@ func (UnimplementedCoreCapabilityServiceServer) GetGroupMember(context.Context, 
 }
 func (UnimplementedCoreCapabilityServiceServer) ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListGroupMembers not implemented")
+}
+func (UnimplementedCoreCapabilityServiceServer) GetOwnedFile(context.Context, *GetOwnedFileRequest) (*GetOwnedFileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOwnedFile not implemented")
 }
 func (UnimplementedCoreCapabilityServiceServer) mustEmbedUnimplementedCoreCapabilityServiceServer() {}
 func (UnimplementedCoreCapabilityServiceServer) testEmbeddedByValue()                               {}
@@ -240,6 +256,24 @@ func _CoreCapabilityService_ListGroupMembers_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCapabilityService_GetOwnedFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOwnedFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCapabilityServiceServer).GetOwnedFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCapabilityService_GetOwnedFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCapabilityServiceServer).GetOwnedFile(ctx, req.(*GetOwnedFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCapabilityService_ServiceDesc is the grpc.ServiceDesc for CoreCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -266,6 +300,10 @@ var CoreCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListGroupMembers",
 			Handler:    _CoreCapabilityService_ListGroupMembers_Handler,
+		},
+		{
+			MethodName: "GetOwnedFile",
+			Handler:    _CoreCapabilityService_GetOwnedFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

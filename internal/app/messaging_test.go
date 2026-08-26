@@ -15,6 +15,7 @@ func (stubCoreCapability) CanSendDirectMessage(string, string) (bool, error)    
 func (stubCoreCapability) GetGroupByUUID(string) (*model.Group, error)               { return nil, nil }
 func (stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
+func (stubCoreCapability) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
 
 func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 	workingDirectory, err := os.Getwd()

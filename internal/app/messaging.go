@@ -51,7 +51,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		Messages: &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
 			repos.Messages,
 			core,
-			files,
+			nil,
 			dependencies.Events,
 			dependencies.HotGroups,
 		)},
@@ -64,4 +64,14 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		),
 		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync)},
 	}
+}
+
+func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *LocalMessageApplication {
+	return &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
+		messages,
+		core,
+		nil,
+		dependencies.Events,
+		dependencies.HotGroups,
+	)}
 }

@@ -85,6 +85,17 @@ func (s *Server) ListGroupMembers(_ context.Context, request *corev1.ListGroupMe
 	return response, nil
 }
 
+func (s *Server) GetOwnedFile(_ context.Context, request *corev1.GetOwnedFileRequest) (*corev1.GetOwnedFileResponse, error) {
+	if _, err := grpccommon.Caller(request.GetContext()); err != nil {
+		return nil, err
+	}
+	file, err := s.capability.GetOwnedFile(request.GetUploaderUserId(), request.GetFileId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "core file lookup failed")
+	}
+	return &corev1.GetOwnedFileResponse{File: fileToProto(file)}, nil
+}
+
 func userToProto(user *model.User) *corev1.UserSnapshot {
 	if user == nil {
 		return nil
@@ -117,4 +128,18 @@ func memberToProto(member *model.GroupMember) *corev1.GroupMemberSnapshot {
 		return nil
 	}
 	return &corev1.GroupMemberSnapshot{GroupId: member.GroupUUID, UserId: member.UserUUID, Role: int32(member.Role)}
+}
+
+func fileToProto(file *model.UploadedFile) *corev1.FileSnapshot {
+	if file == nil {
+		return nil
+	}
+	return &corev1.FileSnapshot{
+		FileId:         file.UUID,
+		UploaderUserId: file.UploaderUUID,
+		FileName:       file.FileName,
+		FileSize:       file.FileSize,
+		ContentType:    file.ContentType,
+		Url:            file.URL,
+	}
 }

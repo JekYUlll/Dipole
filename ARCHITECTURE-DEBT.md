@@ -12,15 +12,15 @@
 
 ## 待处理
 
-### AD-015：Message Service 暂时共享 File metadata 与完整 Repository composition
+### AD-015：Message Service 数据库账号尚未收敛表级权限
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `cmd/message-service`、File metadata、数据表所有权、最小权限
-- **现状：** 独立 Message Runtime 的用户、好友和群校验已通过 Core Capability gRPC 完成；文件消息仍从共享 MySQL 读取 File metadata，并复用当前完整 `Repositories` composition。
-- **风险：** Message 数据库凭据仍可访问 Core 表，文件所有权校验跨越计划中的服务边界，多语言或独立数据库部署时会形成不兼容。
-- **建议方向：** 将文件所有权与消息所需快照加入受认证 Core Capability，增加只组合 Message/Inbox/Outbox 的 Repository factory，并为 Message 数据库账号收敛表权限。
+- **现状：** 用户、好友、群和文件所有权校验均通过 Core Capability gRPC 完成；独立 Runtime 只组合 Message 与 Outbox adapters。部署仍复用 Core 的 MySQL schema 与数据库账号。
+- **风险：** 代码依赖已经收敛，数据库凭据仍具备访问 Core 表的能力，误用或注入风险下的 blast radius 大于 Message Service 实际职责。
+- **建议方向：** 增加独立 `dipole_message` 数据库账号，仅授权 `messages`、`user_sync_inbox`、`user_sync_states`、`outbox_events` 及 migration ledger 的必要读写权限，并加入启动时权限验收。
 - **处理门槛：** Message Service 使用独立数据库凭据或 M4 进入正式流量前完成。
 
 ### AD-014：M3 grpc 模式存在重复 Local MessageService 实例

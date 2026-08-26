@@ -36,6 +36,13 @@ func (stubCoreCapability) ListGroupMembers(groupUUID string) ([]*model.GroupMemb
 	return []*model.GroupMember{{GroupUUID: groupUUID, UserUUID: "U1"}, nil, {GroupUUID: groupUUID, UserUUID: "U2"}}, nil
 }
 
+func (stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	if uploaderUUID != "U1" {
+		return nil, nil
+	}
+	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "design.pen", FileSize: 42, ContentType: "application/octet-stream", URL: "https://files.test/design.pen"}, nil
+}
+
 func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	rpc := newBufconnRPCClient(t, stubCoreCapability{})
 	client, err := NewClient(rpc)
@@ -62,6 +69,14 @@ func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	members, err := client.ListGroupMembers("G1")
 	if err != nil || len(members) != 2 || members[1].UserUUID != "U2" {
 		t.Fatalf("unexpected members: %+v err=%v", members, err)
+	}
+	file, err := client.GetOwnedFile("U1", "F1")
+	if err != nil || file == nil || file.UUID != "F1" || file.FileName != "design.pen" || file.FileSize != 42 {
+		t.Fatalf("unexpected file: %+v err=%v", file, err)
+	}
+	file, err = client.GetOwnedFile("U2", "F1")
+	if err != nil || file != nil {
+		t.Fatalf("expected hidden unowned file, got %+v err=%v", file, err)
 	}
 }
 

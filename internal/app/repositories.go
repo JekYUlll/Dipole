@@ -25,6 +25,30 @@ type Repositories struct {
 	Outbox        application.OutboxRelayStore
 }
 
+type MessageProcessRepositories struct {
+	Messages application.MessageStore
+	Outbox   application.OutboxRelayStore
+}
+
+func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
+	if db == nil {
+		return nil, fmt.Errorf("message repository composition requires database/sql connection")
+	}
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("create message transaction store: %w", err)
+	}
+	messages, err := sqlcRepository.NewMessageRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create message repository: %w", err)
+	}
+	outbox, err := sqlcRepository.NewOutboxRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create message outbox repository: %w", err)
+	}
+	return &MessageProcessRepositories{Messages: messages, Outbox: outbox}, nil
+}
+
 func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("repository composition requires database/sql connection")

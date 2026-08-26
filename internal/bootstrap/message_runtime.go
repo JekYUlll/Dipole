@@ -12,7 +12,6 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"google.golang.org/grpc"
 )
@@ -41,10 +40,6 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := platformKafka.InitConsumer(); err != nil {
 		return nil, fmt.Errorf("message kafka consumer init failed: %w", err)
 	}
-	if err := platformStorage.Init(); err != nil {
-		return nil, fmt.Errorf("message storage init failed: %w", err)
-	}
-
 	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
 	if err != nil {
 		return nil, fmt.Errorf("initialize message migration validation: %w", err)
@@ -52,7 +47,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
-	repos, err := appComposition.NewRepositories(store.SQLDB)
+	repos, err := appComposition.NewMessageProcessRepositories(store.SQLDB)
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
@@ -66,13 +61,11 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
-	messaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
-		Core:      core,
+	messages := appComposition.NewMessageApplication(repos.Messages, core, appComposition.MessagingDependencies{
 		Events:    events,
 		HotGroups: platformHotGroup.NewRedisDetector(),
-		Storage:   platformStorage.Client,
 	})
-	RegisterMessageKafkaHandlers(messaging.Messages)
+	RegisterMessageKafkaHandlers(messages)
 	if platformKafka.Client != nil {
 		if err := platformKafka.Client.EnsureTopics(messageOwnedKafkaTopics()); err != nil {
 			runtime.Close()
@@ -91,7 +84,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.rpc, err = NewMessageRPCServer(rpcCfg, messaging.Messages)
+	runtime.rpc, err = NewMessageRPCServer(rpcCfg, messages)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)

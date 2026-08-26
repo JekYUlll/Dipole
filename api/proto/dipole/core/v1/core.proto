@@ -29,6 +29,15 @@ message GroupMemberSnapshot {
   int32 role = 3;
 }
 
+message FileSnapshot {
+  string file_id = 1;
+  string uploader_user_id = 2;
+  string file_name = 3;
+  int64 file_size = 4;
+  string content_type = 5;
+  string url = 6;
+}
+
 message GetUserRequest {
   dipole.common.v1.RequestContext context = 1;
   string user_id = 2;
@@ -76,10 +85,21 @@ message ListGroupMembersResponse {
   repeated GroupMemberSnapshot members = 1;
 }
 
+message GetOwnedFileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string uploader_user_id = 2;
+  string file_id = 3;
+}
+
+message GetOwnedFileResponse {
+  FileSnapshot file = 1;
+}
+
 service CoreCapabilityService {
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
   rpc CanSendDirectMessage(CanSendDirectMessageRequest) returns (CanSendDirectMessageResponse);
   rpc GetGroup(GetGroupRequest) returns (GetGroupResponse);
   rpc GetGroupMember(GetGroupMemberRequest) returns (GetGroupMemberResponse);
   rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
+  rpc GetOwnedFile(GetOwnedFileRequest) returns (GetOwnedFileResponse);
 }

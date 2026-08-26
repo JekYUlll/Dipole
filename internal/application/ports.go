@@ -43,6 +43,7 @@ type CoreCapability interface {
 	GetGroupByUUID(groupUUID string) (*model.Group, error)
 	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
 	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
+	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
 }
 
 type AICallLogStore interface {

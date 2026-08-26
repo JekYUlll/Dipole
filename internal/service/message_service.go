@@ -119,6 +119,9 @@ func NewMessageServiceWithCore(repo messageRepository, core applicationPort.Core
 	if core == nil {
 		return NewMessageService(repo, nil, nil, nil, fileFinder, events, hotGroups)
 	}
+	if fileFinder == nil {
+		fileFinder = core
+	}
 
 	return NewMessageService(
 		repo,
@@ -913,6 +916,9 @@ func (s *MessageService) newFileMessage(senderUUID, targetUUID string, targetTyp
 		default:
 			return nil, fmt.Errorf("get uploaded file in message service: %w", err)
 		}
+	}
+	if uploadedFile == nil {
+		return nil, ErrMessageFileUnavailable
 	}
 
 	conversationKey := model.DirectConversationKey(senderUUID, targetUUID)
