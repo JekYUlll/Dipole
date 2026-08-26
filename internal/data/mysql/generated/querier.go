@@ -11,11 +11,20 @@ import (
 
 type Querier interface {
 	CreateUploadedFile(ctx context.Context, arg CreateUploadedFileParams) (sql.Result, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetUploadedFileByUUID(ctx context.Context, uuid string) (UploadedFile, error)
+	GetUserByTelephone(ctx context.Context, telephone string) (User, error)
+	GetUserByUUID(ctx context.Context, uuid string) (User, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
+	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error
+	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error)
+	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 }
 
 var _ Querier = (*Queries)(nil)

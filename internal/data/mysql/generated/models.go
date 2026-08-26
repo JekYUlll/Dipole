@@ -21,3 +21,20 @@ type UploadedFile struct {
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 }
+
+type User struct {
+	ID             uint64
+	Uuid           string
+	Nickname       string
+	Telephone      string
+	Email          sql.NullString
+	Avatar         string
+	AvatarFileUuid sql.NullString
+	Signature      string
+	PasswordHash   string
+	IsAdmin        bool
+	UserType       int8
+	Status         int8
+	CreatedAt      sql.NullTime
+	UpdatedAt      sql.NullTime
+}

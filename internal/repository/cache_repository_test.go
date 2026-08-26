@@ -15,61 +15,6 @@ import (
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
-func TestUserRepositoryGetByUUIDUsesCacheAndUpdateRefreshes(t *testing.T) {
-	cleanup := setupRepositoryCacheTest(t)
-	defer cleanup()
-
-	repo := NewUserRepository()
-	user := &model.User{
-		UUID:         "U100",
-		Nickname:     "Alice",
-		Telephone:    "13800000000",
-		Avatar:       "avatar-a",
-		PasswordHash: "hash",
-		Status:       model.UserStatusNormal,
-	}
-	if err := store.DB.Create(user).Error; err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-
-	got, err := repo.GetByUUID("U100")
-	if err != nil {
-		t.Fatalf("get user first time: %v", err)
-	}
-	if got == nil || got.Nickname != "Alice" {
-		t.Fatalf("unexpected user on first read: %+v", got)
-	}
-
-	if err := store.DB.Model(&model.User{}).Where("uuid = ?", "U100").Update("nickname", "Bob").Error; err != nil {
-		t.Fatalf("update user directly in db: %v", err)
-	}
-
-	got, err = repo.GetByUUID("U100")
-	if err != nil {
-		t.Fatalf("get user second time: %v", err)
-	}
-	if got == nil || got.Nickname != "Alice" {
-		t.Fatalf("expected cached nickname Alice, got %+v", got)
-	}
-
-	var refreshed model.User
-	if err := store.DB.Where("uuid = ?", "U100").First(&refreshed).Error; err != nil {
-		t.Fatalf("load updated user: %v", err)
-	}
-	refreshed.Nickname = "Carol"
-	if err := repo.Update(&refreshed); err != nil {
-		t.Fatalf("refresh cached user via repo update: %v", err)
-	}
-
-	got, err = repo.GetByUUID("U100")
-	if err != nil {
-		t.Fatalf("get user after repo update: %v", err)
-	}
-	if got == nil || got.Nickname != "Carol" {
-		t.Fatalf("expected refreshed nickname Carol, got %+v", got)
-	}
-}
-
 func TestGroupRepositoryGetByUUIDUsesCacheAndUpdateRefreshes(t *testing.T) {
 	cleanup := setupRepositoryCacheTest(t)
 	defer cleanup()
@@ -300,33 +245,6 @@ func TestContactRepositoryCanSendDirectMessageUsesCacheAndDeleteInvalidates(t *t
 	}
 	if allowed {
 		t.Fatalf("expected direct message permission to be denied after delete")
-	}
-}
-
-func TestUserRepositoryGetByUUIDSkipsDBWhenBloomRejects(t *testing.T) {
-	cleanup := setupRepositoryCacheTest(t)
-	defer cleanup()
-
-	repo := NewUserRepository()
-	platformBloom.Load([]string{"U100"}, nil)
-
-	if err := store.DB.Create(&model.User{
-		UUID:         "U100",
-		Nickname:     "Alice",
-		Telephone:    "13800000000",
-		Avatar:       "avatar-a",
-		PasswordHash: "hash",
-		Status:       model.UserStatusNormal,
-	}).Error; err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-
-	got, err := repo.GetByUUID("U404")
-	if err != nil {
-		t.Fatalf("get missing user with bloom reject: %v", err)
-	}
-	if got != nil {
-		t.Fatalf("expected nil user when bloom rejects, got %+v", got)
 	}
 }
 

@@ -24,7 +24,7 @@ type RepositoryOptions struct {
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
-	Users         *repository.UserRepository
+	Users         application.UserStore
 	Messages      *repository.MessageRepository
 	Files         application.FileMetadataStore
 	Conversations *repository.ConversationRepository
@@ -46,7 +46,7 @@ func NewRepositories() *Repositories {
 
 func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error) {
 	repos := &Repositories{
-		Users:         repository.NewUserRepository(),
+		Users:         NewCachedUserStore(repository.NewUserRepository()),
 		Messages:      repository.NewMessageRepository(),
 		Files:         repository.NewFileRepository(),
 		Conversations: repository.NewConversationRepository(),
@@ -79,6 +79,11 @@ func NewRepositoriesWithOptions(options RepositoryOptions) (*Repositories, error
 			return nil, fmt.Errorf("create sqlc file repository: %w", err)
 		}
 		repos.Files = fileAdapter
+		userAdapter, err := sqlcRepository.NewUserRepository(generated.New(options.SQLDB))
+		if err != nil {
+			return nil, fmt.Errorf("create sqlc user repository: %w", err)
+		}
+		repos.Users = NewCachedUserStore(userAdapter)
 	default:
 		return nil, fmt.Errorf("unsupported data.mysql_adapter %q", options.MySQLAdapter)
 	}
