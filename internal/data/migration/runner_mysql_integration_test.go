@@ -89,6 +89,43 @@ func TestMySQLBaselineMigration(t *testing.T) {
 
 }
 
+func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db, dsn := openTemporaryDatabaseWithDSN(t, adminDSN, "concurrent_owner")
+	secondDB, err := sql.Open("mysql", dsn)
+	if err != nil {
+		t.Fatalf("open second migration connection: %v", err)
+	}
+	t.Cleanup(func() { _ = secondDB.Close() })
+
+	runners := make([]*migration.Runner, 2)
+	for index, connection := range []*sql.DB{db, secondDB} {
+		runners[index], err = migration.NewRunner(connection, migrations.Files)
+		if err != nil {
+			t.Fatalf("create migration runner %d: %v", index, err)
+		}
+	}
+
+	start := make(chan struct{})
+	errors := make(chan error, len(runners))
+	for _, runner := range runners {
+		go func() {
+			<-start
+			errors <- runner.Up(context.Background())
+		}()
+	}
+	close(start)
+	for range runners {
+		if err := <-errors; err != nil {
+			t.Fatalf("concurrent migration failed: %v", err)
+		}
+	}
+	assertMigrationCount(t, db, 5)
+}
+
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {

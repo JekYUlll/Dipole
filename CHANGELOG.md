@@ -63,6 +63,7 @@
 - 增加三节点 Kafka KRaft cluster profile、显式 Topic min ISR/retention、可配置 producer ACK 策略与自动清理的 quorum 故障 smoke。
 - 增加显式 Kafka consumer rebalance policy、处理/提交/retry/DLQ snapshot，以及双 member 到单 member 的 partition 接管故障 smoke。
 - 增加进程级 Kafka Prometheus Collector、独立 metrics listener、Kafka exporter、Prometheus 告警规则与自动故障 smoke，覆盖 lag、ISR、retry 和 DLQ。
+- 增加 MySQL 8.4 三成员 InnoDB Cluster、MySQL Router writer endpoint、AdminAPI 初始化/恢复脚本与连接池主切换故障 smoke。
 
 ### 变更
 
@@ -84,6 +85,7 @@
 - Core 与 Gateway 调用 Message RPC 时分别声明 `dipole-core`、`dipole-gateway`，内部证书和审计主体保持独立。
 - 服务启动只读校验 migration 版本，已移除运行时 schema mutation 和 `AutoMigrate` 配置。
 - Message、Sync Inbox、Conversation Seq allocator 与 Transactional Outbox 在同一 MySQL 事务中提交；Outbox payload 在 Seq 分配后构造，保证事件与消息事实一致。
+- Migration Up/Down 使用 schema-scoped MySQL advisory lock，多个 migration owner 并发启动时按锁串行执行并重新读取 ledger。
 - Conversation 投影按 Seq 拒绝重复和过期消息回退；`unread_count` 继续作为兼容投影，由 `last_message_seq - read_seq` 语义维护。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
 - User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
@@ -157,6 +159,8 @@
 - 已通过三节点 Kafka 故障演练：单 broker 停止后继续确认写入，低于 min ISR 时拒绝 ACK，恢复 quorum 后消息完整可消费。
 - 已通过 Kafka consumer group 演练：两个 member 各持有 3 个 partition，单 member 退出后剩余 member 接管 6 个 partition并将 lag 恢复为 0。
 - 已通过 Kafka 可观测性演练：Prometheus 规则有效，consumer lag、retry/DLQ 增量和单 broker 故障造成的 ISR 缺口均可查询，broker 恢复后缺口归零。
+- 已通过 MySQL Router writer 演练：停止 PRIMARY 后同一 `database/sql` 池约 4.1 秒内连接新 writer，切换前后已提交记录均可见，旧节点通过 AdminAPI 成功 rejoin。
+- 已通过两个 migration runner 对空库并发执行测试，双方均成功且 migration ledger 保持唯一完整。
 
 ### 已知问题
 
