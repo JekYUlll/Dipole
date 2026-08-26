@@ -33,7 +33,8 @@ type MessageProcessRepositories struct {
 }
 
 type SyncProcessRepositories struct {
-	Sync application.SyncStore
+	Sync       application.SyncStore
+	Projection application.SyncProjectionStore
 }
 
 func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
@@ -44,7 +45,15 @@ func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sync repository: %w", err)
 	}
-	return &SyncProcessRepositories{Sync: syncStore}, nil
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("create sync transaction store: %w", err)
+	}
+	projection, err := sqlcRepository.NewSyncProjectionRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sync projection repository: %w", err)
+	}
+	return &SyncProcessRepositories{Sync: syncStore, Projection: projection}, nil
 }
 
 func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {

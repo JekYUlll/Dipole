@@ -125,8 +125,9 @@ type Search struct {
 }
 
 type Sync struct {
-	Transport     string `mapstructure:"transport"`
-	ShadowQueries bool   `mapstructure:"shadow_queries"`
+	Transport        string `mapstructure:"transport"`
+	ShadowQueries    bool   `mapstructure:"shadow_queries"`
+	ProjectorEnabled bool   `mapstructure:"projector_enabled"`
 }
 
 type InternalRPC struct {
@@ -298,6 +299,7 @@ func Load() error {
 		v.SetDefault("search.enabled", false)
 		v.SetDefault("sync.transport", "local")
 		v.SetDefault("sync.shadow_queries", false)
+		v.SetDefault("sync.projector_enabled", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
 		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
@@ -426,6 +428,7 @@ func Load() error {
 			"search.enabled",
 			"sync.transport",
 			"sync.shadow_queries",
+			"sync.projector_enabled",
 			"internal_rpc.enabled",
 			"internal_rpc.shared_secret",
 			"internal_rpc.core_listen_address",
@@ -673,7 +676,11 @@ func SearchConfig() Search {
 
 func SyncConfig() Sync {
 	MustLoad()
-	return Sync{Transport: strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))), ShadowQueries: cfg.GetBool("sync.shadow_queries")}
+	return Sync{
+		Transport:        strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
+		ShadowQueries:    cfg.GetBool("sync.shadow_queries"),
+		ProjectorEnabled: cfg.GetBool("sync.projector_enabled"),
+	}
 }
 
 func InternalRPCConfig() InternalRPC {

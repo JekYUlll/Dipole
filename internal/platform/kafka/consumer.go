@@ -91,12 +91,29 @@ func InitConsumer() error {
 
 func InitConsumerForService(serviceName string) error {
 	cfg := config.KafkaConfig()
+	if !cfg.Enabled {
+		Subscriber = nil
+		return nil
+	}
+	consumer, err := NewConsumerForService(cfg, serviceName)
+	if err != nil {
+		return err
+	}
+	Subscriber = consumer
+	return nil
+}
+
+// NewConsumerForService builds an isolated consumer with a service-owned group.
+func NewConsumerForService(cfg config.Kafka, serviceName string) (*Consumer, error) {
 	serviceName = strings.TrimSpace(serviceName)
 	if serviceName == "" {
-		return errors.New("kafka consumer service name is required")
+		return nil, errors.New("kafka consumer service name is required")
+	}
+	if !cfg.Enabled {
+		return nil, errors.New("kafka consumer requires kafka.enabled")
 	}
 	cfg.ClientID = serviceName
-	return initConsumer(cfg)
+	return newConsumer(cfg)
 }
 
 func initConsumer(cfg config.Kafka) error {
