@@ -40,6 +40,7 @@ scripts/check-sqlc.sh
 生产数据访问统一使用 `database/sql + sqlc`，查询定义位于 `db/queries`，生成代码位于 `internal/data/mysql/generated`。
 
 Kafka Envelope、schema version、重试和死信规则见 [Kafka 事件契约](KAFKA-EVENT-CONTRACT.md)。
+Kafka 三节点开发基线与故障验收见 [Kafka Cluster 文档](KAFKA-CLUSTER.md)。
 
 `message.transport` 默认为 `local`；设为 `grpc` 后通过受认证网络 channel 调用独立 Message Service，关闭开关即可回切本地实现。
 

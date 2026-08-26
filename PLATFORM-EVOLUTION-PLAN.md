@@ -204,10 +204,11 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### A2：基础设施集群化
 
 - [ ] MySQL Cluster 承载用户、群、联系人、文件元数据、幂等记录、Outbox、Conversation 和迁移控制表。
-- [ ] Kafka Cluster 设置明确的 partition key、复制因子、最小 ISR、保留期和 DLQ 监控。
+- [x] Kafka Cluster 设置明确的 partition key、复制因子、最小 ISR、保留期和 `acks=all`，并验证单 broker 故障与 quorum 恢复。
+- [ ] 增加 Kafka consumer rebalance、lag、under-replicated partitions、retry 和 DLQ 监控门禁。
 - [ ] Redis 使用可故障转移拓扑，并验证 Presence、PubSub、热点检测和限流语义。
 - [ ] Cassandra 与 Elasticsearch 先进入隔离环境，不接生产读流量。
-- [ ] Local Compose 保持单节点开发模式，新增 cluster profile 用于集成和故障演练。
+- [x] Local Compose 保持单节点开发模式，新增 cluster profile 用于集成和故障演练。
 
 **验收：** 单节点故障演练、Kafka 重平衡、MySQL 主节点切换和 Redis 故障转移期间不丢已确认消息。
 
