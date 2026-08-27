@@ -1,6 +1,6 @@
 # Realtime Delivery
 
-本文档定义 Go Gateway 与后续 C++ Realtime Delivery 共享的 v1 投递边界。当前生产流量继续经过 Go Kafka consumer、Redis Presence/PubSub 和 WebSocket Hub；本里程碑只冻结协议与兼容适配层。
+本文档定义 Go Gateway 与 C++ Realtime Delivery 共享的 v1 投递边界。当前生产流量继续经过 Go Kafka consumer、Redis Presence/PubSub 和 WebSocket Hub；C++ 只运行默认关闭的 observation shadow，不拥有客户端写入权限。
 
 ## 当前链路
 
@@ -83,11 +83,13 @@ Sentinel 恢复证据位于 `benchmarks/c2-cpp-presence-2026-08-28/`。隔离的
 
 节点 transport shadow 使用 canonical gRPC `NodeDeliveryService.ObserveNodeBatch`。返回的 `NodeDeliveryObservation` 只证明 Gateway 节点验证并接纳了观察任务，可表达 `OBSERVED`、`REJECTED`、`BACKPRESSURED` 和稳定 batch 去重；它不声明 WebSocket queue 已入队。真实客户端投递继续使用独立 `DeliveryAck` 语义，后续 promotion 前再增加对应 RPC。
 
-Gateway 已提供默认关闭的 observation receiver。启用时，它在独立 loopback listener 上只接受共享密钥或 mTLS 认证后的 `dipole-realtime`，要求批次目标与本机 Redis Presence node ID 一致，并将 protobuf clone 放入有界内存队列。receiver 的 sink 只累计批次、条目和 connection 数，不持有 Hub/Client 引用；重复 batch 返回 `duplicate=true`，队列满返回容量、深度和重试提示。关闭流程先停止 RPC 接入，再排空观察队列。该接收端尚未进入生产 Compose。
+Gateway 已提供默认关闭的 observation receiver。启用时，它在独立 listener 上只接受共享密钥或 mTLS 认证后的 `dipole-realtime`，要求批次目标与本机 Redis Presence node ID 一致，并将 protobuf clone 放入有界内存队列。receiver 的 sink 只累计批次、条目和 connection 数，不持有 Hub/Client 引用；重复 batch 返回 `duplicate=true`，队列满返回容量、深度和重试提示。关闭流程先停止 RPC 接入，再排空观察队列。微服务 Compose 已提供默认 `false` 的显式开关和 Realtime 证书身份，生产流量仍不启用。
 
 C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用，并要求 Presence shadow 同时开启。`DIPOLE_REALTIME_NODE_TARGETS` 使用逗号分隔的 `node_id=host:port` 精确映射；共享服务密钥由 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 注入，每次调用传播 batch 中已有 request/trace ID 并使用有界 deadline。明文只允许 loopback；跨容器或跨主机必须配置 CA、Realtime 客户端证书、私钥和 server name 形成 mTLS。
 
-证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，只增加 requested/observed/duplicate/rejected/backpressured 聚合计数。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。transport 尚未完成 Go Gateway 跨进程真实回放和故障演练。
+证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，只增加 requested/observed/duplicate/rejected/backpressured 聚合计数。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
+
+真实跨进程证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。该归档绑定的旧候选仍需重启恢复，后续同进程重试修复使用独立提交和门禁。真实 queue saturation/backpressure 与同 workload Go/C++ 对照仍待完成。
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 

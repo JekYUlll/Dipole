@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include "event_projection.hpp"
@@ -91,6 +92,7 @@ class ShadowRunner {
   int poll_timeout_ms_;
   PresenceReader* presence_reader_;
   NodeBatchTransport* node_transport_;
+  std::optional<KafkaRecord> pending_record_;
   std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;
 };

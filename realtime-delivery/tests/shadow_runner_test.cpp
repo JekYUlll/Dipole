@@ -278,6 +278,41 @@ void TestNodeTransportFailureWritesDeferredEvidenceWithoutCommit() {
         "transport failure keeps offset and removes readiness");
 }
 
+void TestNodeTransportFailureRetriesPendingRecordWithoutPoll() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_result.by_user["U2"] = {
+      {.connection_id = "C1", .user_id = "U2", .node_id = "node-a", .last_seen_unix_ms = 9'900}};
+  FakeNodeTransport transport;
+  transport.response = {.requested = 1, .observed = 0, .duplicate = 0, .rejected = 0,
+                        .backpressured = 1};
+  transport.error = "backpressured";
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence, &transport);
+  const dipole::realtime::PresenceProjectionPolicy policy{
+      .now_unix_ms = 10'000, .ttl_ms = 1'000};
+
+  Check(runner.RunOnce({}, policy).has_value(), "first transport attempt is deferred");
+  transport.response = {.requested = 1, .observed = 1, .duplicate = 0, .rejected = 0,
+                        .backpressured = 0};
+  transport.error = std::nullopt;
+  const auto retry_error = runner.RunOnce({}, policy);
+
+  Check(!retry_error, "pending record succeeds without another Kafka poll result");
+  Check(consumer.results.empty() && consumer.commit_attempts == std::vector<std::int64_t>{99},
+        "pending retry commits the original record once");
+  Check(sink.entries.size() == 2 &&
+            sink.entries[0].outcome == dipole::realtime::ShadowOutcome::kDeferred &&
+            sink.entries[1].outcome == dipole::realtime::ShadowOutcome::kProjected &&
+            sink.entries[1].transport_observed == 1,
+        "pending retry preserves deferred and recovery evidence");
+  Check(runner.Stats().polled == 1 && runner.Stats().projected == 1 &&
+            runner.Stats().transport_errors == 1 && runner.Stats().committed == 1 &&
+            runner.Ready(),
+        "pending retry counts one projected record and restores readiness");
+}
+
 void TestInvalidPresenceWritesEvidenceAndCommits() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -363,6 +398,7 @@ int main() {
     TestPresenceReadFailureKeepsOffsetUncommitted();
     TestNodeTransportPrecedesEvidenceAndCommit();
     TestNodeTransportFailureWritesDeferredEvidenceWithoutCommit();
+    TestNodeTransportFailureRetriesPendingRecordWithoutPoll();
     TestInvalidPresenceWritesEvidenceAndCommits();
     TestEvidenceFailureKeepsOffsetUncommitted();
     TestCommitFailureReachesCaller();
