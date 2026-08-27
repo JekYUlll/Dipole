@@ -2,6 +2,20 @@
 
 本文档滚动记录可重复的性能基线。微基准用于比较协议与实现开销，端到端基准用于固定消息接受、持久化、投递、Kafka lag 与 Inbox 写放大行为。
 
+## 2026-08-28：C1 Go Realtime Resource Collector
+
+`scripts/bench/process_metrics.py` 为端到端基准增加版本化 `/proc` 资源证据。`run_bench.sh` 在 workload 前、每次 Kafka lag 采样时以及 workload 后记录 Go 服务进程，并由 operations/baseline v4 输出 CPU core%、采样 RSS 峰值、线程峰值及 voluntary/involuntary context-switch 增量。进程 PID 或启动时刻变化、服务集合漂移、计数回退和少于两个样本都会使报告生成失败；v1-v3 历史报告继续可读，并明确显示资源证据不可用。
+
+默认分布式单体拓扑采样三个 Go 节点。独立微服务拓扑可显式指定职责边界：
+
+```bash
+PROCESS_METRICS_SERVICES="gateway core message" \
+COMPOSE_FILE=docker-compose.microservices.yml \
+./scripts/bench/run_bench.sh
+```
+
+RSS 峰值是按 `LAG_SAMPLE_SECONDS` 周期观察到的 sampled peak，context switch 来自采样时 `/proc/<pid>/task/*/status` 中仍存在的线程集合。该证据适合同一机器、拓扑、采样周期和 workload 下的 Go/C++ 对照；它不替代 `perf`、eBPF 或持续 profiler。C1 仍需在固定连接梯度和故障场景中归档真实 v4 报告。
+
 ## 2026-08-27：AD-005 Conversation Projection Timing
 
 候选提交 `4343684011a02112eb3e9233e7c4279bf64a4ee9` 在 Service-to-Repository 窄边界记录 `projection × success|error` Histogram。operations/baseline v3 逐节点保存前后快照，先检测 Counter 回退，再聚合成功次数、累计耗时、平均耗时和 P95 桶上界；v1/v2 报告继续可读并明确标记 timing unavailable。
