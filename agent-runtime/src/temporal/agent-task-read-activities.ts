@@ -7,9 +7,14 @@ import {
   type ShadowPlanExecutionDependencies
 } from "../events/shadow-processor.js";
 import type { AgentTaskActivities } from "./agent-task-activities.js";
+import type { AgentArtifactCreateInput, AgentArtifactRecord } from "../capabilities/agent-capability-rpc.js";
+
+interface AgentArtifactWriter {
+  createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord>;
+}
 
 export function createTemporalReadStepActivities(
-  dependencies: ShadowPlanExecutionDependencies
+  dependencies: ShadowPlanExecutionDependencies & { readonly artifacts?: AgentArtifactWriter }
 ): AgentTaskActivities {
   return {
     async executeAgentTaskStep(input) {
@@ -44,9 +49,26 @@ export function createTemporalReadStepActivities(
         ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
       });
       const plan = await executeShadowPlan(event, context, dependencies);
+	  const artifact = dependencies.artifacts === undefined ? undefined : await dependencies.artifacts.createArtifact({
+	    tenantId: context.tenantId,
+	    taskId: context.taskId,
+	    runId: context.runId,
+	    artifactType: "conversation_digest",
+	    version: 1,
+	    title: "Conversation digest",
+	    mediaType: "text/markdown",
+	    content: Buffer.from(`# Conversation digest\n\n${plan.summary.trim()}\n`, "utf8"),
+	    metadata: { event_id: event.eventId, event_type: event.eventType, step_count: plan.steps.length },
+	    ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
+	    ...(context.traceId === undefined ? {} : { traceId: context.traceId })
+	  });
       return {
         kind: "complete",
-        output: { summary: plan.summary, stepCount: plan.steps.length }
+		output: {
+		  summary: plan.summary,
+		  stepCount: plan.steps.length,
+		  ...(artifact === undefined ? {} : { artifactId: artifact.artifactId, artifactVersion: artifact.version })
+		}
       };
     }
   };

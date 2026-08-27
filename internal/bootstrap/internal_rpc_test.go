@@ -48,6 +48,25 @@ type rpcAgentApprovalStub struct{}
 type rpcAgentTaskControlStub struct{}
 type rpcAgentWorkflowProjectionStub struct{}
 type rpcAgentWorkflowRepairStub struct{ operator string }
+type rpcAgentArtifactStub struct {
+	artifact *application.AgentArtifactV1
+	body     []byte
+}
+
+func (s *rpcAgentArtifactStub) Create(_ context.Context, input application.AgentArtifactCreateV1) (*application.AgentArtifactV1, error) {
+	if input.TaskUUID != "TASK-1" || input.RunUUID != "RUN-1" {
+		return nil, application.ErrAgentArtifactDenied
+	}
+	s.artifact = &application.AgentArtifactV1{ArtifactUUID: strings.Repeat("a", 64), SchemaVersion: application.AgentArtifactSchemaVersionV1, TaskUUID: input.TaskUUID, RunUUID: input.RunUUID, ArtifactType: input.ArtifactType, Version: input.Version, Title: input.Title, MediaType: input.MediaType, ContentSHA256: strings.Repeat("b", 64), SizeBytes: uint64(len(input.Content)), Metadata: input.Metadata, CreatedAt: time.Unix(1, 0)}
+	s.body = append([]byte(nil), input.Content...)
+	return s.artifact, nil
+}
+func (s *rpcAgentArtifactStub) GetForPrincipal(_ context.Context, principal, artifactUUID string) (*application.AgentArtifactV1, []byte, error) {
+	if principal != "U100" || s.artifact == nil || artifactUUID != s.artifact.ArtifactUUID {
+		return nil, nil, application.ErrAgentArtifactDenied
+	}
+	return s.artifact, append([]byte(nil), s.body...), nil
+}
 
 func (s *rpcAgentWorkflowRepairStub) Propose(_ context.Context, operator string, request application.AgentWorkflowRepairProposalRequestV1) (*application.AgentWorkflowRepairProposalV1, error) {
 	s.operator = operator
@@ -346,6 +365,48 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 	_, err = agentv1.NewAgentCapabilityServiceClient(agentConnection).GetWorkflowRepair(context.Background(), &agentv1.GetWorkflowRepairRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName, PrincipalUserId: "U-OPS"}, ProposalId: response.GetProposalId()})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent repair code=%s", status.Code(err))
+	}
+}
+
+func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	artifacts := &rpcAgentArtifactStub{}
+	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, artifacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+
+	agentInterceptor, _ := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	agentConnection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(agentInterceptor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = agentConnection.Close() })
+	agentClient := agentv1.NewAgentCapabilityServiceClient(agentConnection)
+	created, err := agentClient.CreateArtifact(context.Background(), &agentv1.CreateArtifactRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TenantId: "dipole", TaskId: "TASK-1", RunId: "RUN-1",
+		ArtifactType: "conversation_digest", Version: 1, Title: "Digest", MediaType: "text/markdown", Content: []byte("digest"), MetadataJson: []byte(`{}`),
+	})
+	if err != nil || created.GetArtifact().GetArtifactId() != strings.Repeat("a", 64) {
+		t.Fatalf("Agent Artifact create=%+v err=%v", created, err)
+	}
+	if _, err := agentClient.GetArtifact(context.Background(), &agentv1.GetArtifactRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName, PrincipalUserId: "U100"}, ArtifactId: created.GetArtifact().GetArtifactId()}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent Artifact read code=%s", status.Code(err))
+	}
+
+	cfg.CoreTarget = server.Address()
+	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = gatewayConnection.Close() })
+	read, err := gatewayClient.GetArtifact(context.Background(), &agentv1.GetArtifactRequest{Context: &commonv1.RequestContext{CallerService: gatewayServiceName, PrincipalUserId: "U100"}, ArtifactId: created.GetArtifact().GetArtifactId()})
+	if err != nil || string(read.GetContent()) != "digest" {
+		t.Fatalf("Gateway Artifact read=%+v err=%v", read, err)
+	}
+	if _, err := gatewayClient.GetArtifact(context.Background(), &agentv1.GetArtifactRequest{Context: &commonv1.RequestContext{CallerService: gatewayServiceName, PrincipalUserId: "U999"}, ArtifactId: created.GetArtifact().GetArtifactId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("cross-principal Artifact read code=%s", status.Code(err))
 	}
 }
 

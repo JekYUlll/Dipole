@@ -139,6 +139,8 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 
+G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。当前没有更新、删除、公开 URL、消息转换和 active 模式写入，Pencil 恢复后再交付用户界面。
+
 ## 7. 数据模型
 
 首期包含：
@@ -154,7 +156,7 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 
 敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
 
-当前 `dipole.agent.policy.persistence.v1`、migration v16-v21 和 sqlc Store 已落地 Definition/Task/Approval/Run 的持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。TS Runtime 使用同一 Task ID，经受认证 admission 创建独立 Shadow Run；已完成 Run 的 admission 与 completion 均幂等收敛。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
+当前 `dipole.agent.policy.persistence.v1`、migration v16-v26 和 sqlc Store 已落地 Definition/Task/Approval/Run/Artifact 的持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。TS Runtime 使用同一 Task ID，经受认证 admission 创建独立 Shadow Run；已完成 Run 的 admission 与 completion 均幂等收敛。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
 
 ## 8. 可观测性与评测
 

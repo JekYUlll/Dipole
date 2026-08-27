@@ -187,8 +187,19 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
-		coreRPC, err = NewCoreRPCServerWithAgentControlAndProjection(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
+		var artifactService applicationPort.AgentArtifactServiceV1
+		if platformStorage.Client != nil {
+			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStore(platformStorage.Client)
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
+			}
+			artifactService, artifactErr = appComposition.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
+			}
+		}
+		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, artifactService,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

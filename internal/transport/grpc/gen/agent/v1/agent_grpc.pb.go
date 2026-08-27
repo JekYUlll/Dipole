@@ -31,6 +31,8 @@ const (
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
 	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
 	AgentCapabilityService_GetWorkflowRepair_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
+	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
+	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -49,6 +51,8 @@ type AgentCapabilityServiceClient interface {
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
+	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
 }
 
 type agentCapabilityServiceClient struct {
@@ -179,6 +183,26 @@ func (c *agentCapabilityServiceClient) GetWorkflowRepair(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateArtifactResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CreateArtifact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetArtifactResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_GetArtifact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentCapabilityServiceServer is the server API for AgentCapabilityService service.
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
@@ -195,6 +219,8 @@ type AgentCapabilityServiceServer interface {
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
+	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
 
@@ -240,6 +266,12 @@ func (UnimplementedAgentCapabilityServiceServer) DecideWorkflowRepair(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateArtifact not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetArtifact not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) mustEmbedUnimplementedAgentCapabilityServiceServer() {
 }
@@ -479,6 +511,42 @@ func _AgentCapabilityService_GetWorkflowRepair_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_CreateArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateArtifactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CreateArtifact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CreateArtifact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CreateArtifact(ctx, req.(*CreateArtifactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_GetArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetArtifactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).GetArtifact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_GetArtifact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).GetArtifact(ctx, req.(*GetArtifactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentCapabilityService_ServiceDesc is the grpc.ServiceDesc for AgentCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -533,6 +601,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkflowRepair",
 			Handler:    _AgentCapabilityService_GetWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "CreateArtifact",
+			Handler:    _AgentCapabilityService_CreateArtifact_Handler,
+		},
+		{
+			MethodName: "GetArtifact",
+			Handler:    _AgentCapabilityService_GetArtifact_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

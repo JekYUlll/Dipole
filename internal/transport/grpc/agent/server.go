@@ -25,6 +25,99 @@ type Server struct {
 	controls    application.AgentTaskControlAuthorizerV1
 	projections application.AgentTaskWorkflowProjectionServiceV1
 	repairs     application.AgentWorkflowRepairAuditServiceV1
+	artifacts   application.AgentArtifactServiceV1
+}
+
+func (s *Server) WithArtifacts(artifacts application.AgentArtifactServiceV1) (*Server, error) {
+	if s == nil || artifacts == nil {
+		return nil, errors.New("Agent Artifact service is required")
+	}
+	s.artifacts = artifacts
+	return s, nil
+}
+
+func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArtifactRequest) (*agentv1.CreateArtifactResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may create Artifacts")
+	}
+	if s.artifacts == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Artifact storage is unavailable")
+	}
+	artifact, err := s.artifacts.Create(grpccommon.Correlation(ctx, request.GetContext()), application.AgentArtifactCreateV1{
+		TenantID: request.GetTenantId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		ArtifactType: request.GetArtifactType(), Version: request.GetVersion(), Title: request.GetTitle(),
+		MediaType: request.GetMediaType(), Content: request.GetContent(), Metadata: request.GetMetadataJson(),
+	})
+	if err != nil {
+		return nil, mapAgentArtifactErrorV1(err)
+	}
+	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
+}
+
+func (s *Server) GetArtifact(ctx context.Context, request *agentv1.GetArtifactRequest) (*agentv1.GetArtifactResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-gateway" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Gateway may retrieve Artifacts")
+	}
+	principal, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.artifacts == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Artifact storage is unavailable")
+	}
+	artifact, body, err := s.artifacts.GetForPrincipal(grpccommon.Correlation(ctx, request.GetContext()), principal, request.GetArtifactId())
+	if err != nil {
+		return nil, mapAgentArtifactErrorV1(err)
+	}
+	return &agentv1.GetArtifactResponse{Artifact: agentArtifactResponseV1(artifact), Content: body}, nil
+}
+
+func authenticatedAgentArtifactCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok {
+		return "", status.Error(codes.Unauthenticated, "authenticated service identity is required")
+	}
+	claimed, err := grpccommon.Caller(ctx, requestContext)
+	if err != nil {
+		return "", err
+	}
+	if authenticated != claimed {
+		return "", status.Error(codes.PermissionDenied, "caller service does not match authenticated service")
+	}
+	return authenticated, nil
+}
+
+func agentArtifactResponseV1(value *application.AgentArtifactV1) *agentv1.AgentArtifact {
+	if value == nil {
+		return nil
+	}
+	return &agentv1.AgentArtifact{
+		SchemaVersion: value.SchemaVersion, ArtifactId: value.ArtifactUUID, TaskId: value.TaskUUID, RunId: value.RunUUID,
+		ArtifactType: value.ArtifactType, Version: value.Version, Title: value.Title, MediaType: value.MediaType,
+		ContentSha256: value.ContentSHA256, SizeBytes: value.SizeBytes, MetadataJson: value.Metadata,
+		CreatedAtUnixMs: value.CreatedAt.UnixMilli(),
+	}
+}
+
+func mapAgentArtifactErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentArtifactDenied) {
+		return status.Error(codes.NotFound, "Agent Artifact unavailable")
+	}
+	if errors.Is(err, application.ErrAgentArtifactConflict) {
+		return status.Error(codes.FailedPrecondition, "Agent Artifact evidence conflicts")
+	}
+	if errors.Is(err, application.ErrAgentArtifactInvalid) {
+		return status.Error(codes.InvalidArgument, "Agent Artifact request is invalid")
+	}
+	return status.Error(codes.Internal, "Agent Artifact operation failed")
 }
 
 func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*Server, error) {

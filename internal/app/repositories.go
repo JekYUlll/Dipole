@@ -13,19 +13,20 @@ import (
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
-	Users         application.UserStore
-	Messages      application.MessageStore
-	Files         application.FileMetadataStore
-	Conversations application.ConversationStore
-	Contacts      application.ContactStore
-	Groups        application.GroupStore
-	Admin         application.AdminOverviewStore
-	Sync          application.SyncStore
-	Search        application.SearchIndex
-	AICallLogs    application.AICallLogStore
-	AgentPolicy   application.AgentPolicyStoreV1
-	AgentRepairs  application.AgentWorkflowRepairAuditStoreV1
-	Outbox        application.OutboxRelayStore
+	Users          application.UserStore
+	Messages       application.MessageStore
+	Files          application.FileMetadataStore
+	Conversations  application.ConversationStore
+	Contacts       application.ContactStore
+	Groups         application.GroupStore
+	Admin          application.AdminOverviewStore
+	Sync           application.SyncStore
+	Search         application.SearchIndex
+	AICallLogs     application.AICallLogStore
+	AgentPolicy    application.AgentPolicyStoreV1
+	AgentRepairs   application.AgentWorkflowRepairAuditStoreV1
+	AgentArtifacts application.AgentArtifactStoreV1
+	Outbox         application.OutboxRelayStore
 }
 
 type MessageProcessRepositories struct {
@@ -111,6 +112,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	}
 	repos.AgentPolicy = agentPolicy
 	repos.AgentRepairs = agentPolicy
+	agentArtifacts, err := sqlcRepository.NewAgentArtifactRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
+	}
+	repos.AgentArtifacts = agentArtifacts
 	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)

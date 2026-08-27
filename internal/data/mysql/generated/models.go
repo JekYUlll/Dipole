@@ -28,6 +28,24 @@ type AgentApproval struct {
 	ApprovedByUuid    string
 }
 
+type AgentArtifact struct {
+	ID            uint64
+	ArtifactUuid  string
+	SchemaVersion string
+	TaskUuid      string
+	RunUuid       string
+	ArtifactType  string
+	Version       uint32
+	Title         string
+	MediaType     string
+	ObjectBucket  string
+	ObjectKey     string
+	ContentSha256 string
+	SizeBytes     uint64
+	MetadataJson  json.RawMessage
+	CreatedAt     time.Time
+}
+
 type AgentDefinitionVersion struct {
 	ID              uint64
 	DefinitionUuid  string

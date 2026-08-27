@@ -4,6 +4,7 @@ import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { createHash } from "node:crypto";
 
 const callerService = "dipole-agent";
 
@@ -65,6 +66,34 @@ export interface AgentTaskWorkflowProjection {
 export interface AgentTaskWorkflowProjectionSnapshotPage {
   readonly tasks: readonly { taskId: string; workflow?: Omit<AgentTaskWorkflowProjection, "taskId"> }[];
   readonly nextCursor: string;
+}
+
+export interface AgentArtifactRecord {
+  readonly schemaVersion: "dipole.agent.artifact.v1";
+  readonly artifactId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly artifactType: string;
+  readonly version: number;
+  readonly title: string;
+  readonly mediaType: string;
+  readonly contentSha256: string;
+  readonly sizeBytes: number;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface AgentArtifactCreateInput {
+  readonly tenantId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly artifactType: string;
+  readonly version: number;
+  readonly title: string;
+  readonly mediaType: string;
+  readonly content: Uint8Array;
+  readonly metadata: Readonly<Record<string, unknown>>;
+  readonly requestId?: string;
+  readonly traceId?: string;
 }
 
 export class AgentCapabilityRPCClient {
@@ -310,6 +339,63 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord> {
+    const metadataJSON = Buffer.from(JSON.stringify(input.metadata), "utf8");
+    if (input.content.byteLength < 1 || input.content.byteLength > 1_048_576 || metadataJSON.byteLength > 16_384 ||
+        input.version < 1 || !Number.isSafeInteger(input.version)) {
+      throw new Error("Agent Artifact input exceeds the v1 contract");
+    }
+    const contentSha256 = createHash("sha256").update(input.content).digest("hex");
+    const artifactId = createHash("sha256").update([
+      "dipole.agent.artifact.v1", input.taskId.trim(), input.runId.trim(), input.artifactType.trim(),
+      input.version.toString(), contentSha256
+    ].join("\n"), "utf8").digest("hex");
+    const rpcMetadata = this.metadata(input.requestId, input.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.createArtifact({
+        context: this.requestContext(input.requestId, input.traceId), tenantId: input.tenantId,
+        taskId: input.taskId, runId: input.runId, artifactType: input.artifactType,
+        version: input.version, title: input.title, mediaType: input.mediaType,
+        content: input.content, metadataJson: metadataJSON
+      }, rpcMetadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response?.artifact === undefined) {
+          reject(error ?? new Error("Agent Artifact creation returned no record"));
+          return;
+        }
+        const artifact = response.artifact;
+        const sizeBytes = Number(artifact.sizeBytes);
+        if (artifact.schemaVersion !== "dipole.agent.artifact.v1" || artifact.artifactId !== artifactId || artifact.taskId !== input.taskId ||
+            artifact.runId !== input.runId || artifact.artifactType !== input.artifactType || artifact.version !== input.version ||
+            artifact.title !== input.title.trim() || artifact.mediaType !== input.mediaType.trim() ||
+            artifact.contentSha256 !== contentSha256 || sizeBytes !== input.content.byteLength || !Number.isSafeInteger(sizeBytes)) {
+          reject(new Error("Agent Artifact creation returned conflicting evidence"));
+          return;
+        }
+        let parsedMetadata: unknown;
+        try {
+          parsedMetadata = JSON.parse(Buffer.from(artifact.metadataJson).toString("utf8"));
+        } catch {
+          reject(new Error("Agent Artifact creation returned invalid metadata"));
+          return;
+        }
+        if (parsedMetadata === null || typeof parsedMetadata !== "object" || Array.isArray(parsedMetadata)) {
+          reject(new Error("Agent Artifact creation returned non-object metadata"));
+          return;
+        }
+        if (canonicalJSON(parsedMetadata) !== canonicalJSON(input.metadata)) {
+          reject(new Error("Agent Artifact creation returned conflicting metadata"));
+          return;
+        }
+        resolve({
+          schemaVersion: artifact.schemaVersion, artifactId: artifact.artifactId, taskId: artifact.taskId,
+          runId: artifact.runId, artifactType: artifact.artifactType, version: artifact.version,
+          title: artifact.title, mediaType: artifact.mediaType, contentSha256: artifact.contentSha256,
+          sizeBytes, metadata: parsedMetadata as Record<string, unknown>
+        });
+      });
+    });
+  }
+
   private metadata(requestId?: string, traceId?: string): grpc.Metadata {
     const metadata = new grpc.Metadata();
     metadata.set("x-dipole-caller-service", callerService);
@@ -328,6 +414,14 @@ export class AgentCapabilityRPCClient {
       callerService
     };
   }
+}
+
+function canonicalJSON(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }
 
 function safeRevision(value: bigint): number {

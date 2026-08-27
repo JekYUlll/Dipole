@@ -5,6 +5,14 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { GetArtifactResponse } from "./agent.js";
+import type { GetArtifactRequest } from "./agent.js";
+import type { CreateArtifactResponse } from "./agent.js";
+import type { CreateArtifactRequest } from "./agent.js";
+import type { GetWorkflowRepairRequest } from "./agent.js";
+import type { DecideWorkflowRepairRequest } from "./agent.js";
+import type { WorkflowRepairProposalResponse } from "./agent.js";
+import type { ProposeWorkflowRepairRequest } from "./agent.js";
 import type { ListTaskWorkflowProjectionSnapshotsResponse } from "./agent.js";
 import type { ListTaskWorkflowProjectionSnapshotsRequest } from "./agent.js";
 import type { ProjectTaskWorkflowStateResponse } from "./agent.js";
@@ -90,6 +98,41 @@ export interface IAgentCapabilityServiceClient {
     listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
     listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
     listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ProposeWorkflowRepair
+     */
+    proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: DecideWorkflowRepair
+     */
+    decideWorkflowRepair(input: DecideWorkflowRepairRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    decideWorkflowRepair(input: DecideWorkflowRepairRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    decideWorkflowRepair(input: DecideWorkflowRepairRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    decideWorkflowRepair(input: DecideWorkflowRepairRequest, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: GetWorkflowRepair
+     */
+    getWorkflowRepair(input: GetWorkflowRepairRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    getWorkflowRepair(input: GetWorkflowRepairRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    getWorkflowRepair(input: GetWorkflowRepairRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    getWorkflowRepair(input: GetWorkflowRepairRequest, callback: (err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: CreateArtifact
+     */
+    createArtifact(input: CreateArtifactRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void): grpc.ClientUnaryCall;
+    createArtifact(input: CreateArtifactRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void): grpc.ClientUnaryCall;
+    createArtifact(input: CreateArtifactRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void): grpc.ClientUnaryCall;
+    createArtifact(input: CreateArtifactRequest, callback: (err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: GetArtifact
+     */
+    getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
+    getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
+    getArtifact(input: GetArtifactRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
+    getArtifact(input: GetArtifactRequest, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -162,5 +205,40 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[8];
         return this.makeUnaryRequest<ListTaskWorkflowProjectionSnapshotsRequest, ListTaskWorkflowProjectionSnapshotsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListTaskWorkflowProjectionSnapshotsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListTaskWorkflowProjectionSnapshotsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ProposeWorkflowRepair
+     */
+    proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[9];
+        return this.makeUnaryRequest<ProposeWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProposeWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: DecideWorkflowRepair
+     */
+    decideWorkflowRepair(input: DecideWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[10];
+        return this.makeUnaryRequest<DecideWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: DecideWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: GetWorkflowRepair
+     */
+    getWorkflowRepair(input: GetWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[11];
+        return this.makeUnaryRequest<GetWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: CreateArtifact
+     */
+    createArtifact(input: CreateArtifactRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[12];
+        return this.makeUnaryRequest<CreateArtifactRequest, CreateArtifactResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CreateArtifactRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): CreateArtifactResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: GetArtifact
+     */
+    getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[13];
+        return this.makeUnaryRequest<GetArtifactRequest, GetArtifactResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetArtifactRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetArtifactResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

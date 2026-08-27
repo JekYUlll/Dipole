@@ -203,6 +203,48 @@ message WorkflowRepairProposalResponse {
   int64 expires_at_unix_ms = 14;
 }
 
+message CreateArtifactRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string artifact_type = 5;
+  uint32 version = 6;
+  string title = 7;
+  string media_type = 8;
+  bytes content = 9;
+  bytes metadata_json = 10;
+}
+
+message GetArtifactRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string artifact_id = 2;
+}
+
+message AgentArtifact {
+  string schema_version = 1;
+  string artifact_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string artifact_type = 5;
+  uint32 version = 6;
+  string title = 7;
+  string media_type = 8;
+  string content_sha256 = 9;
+  uint64 size_bytes = 10;
+  bytes metadata_json = 11;
+  int64 created_at_unix_ms = 12;
+}
+
+message CreateArtifactResponse {
+  AgentArtifact artifact = 1;
+}
+
+message GetArtifactResponse {
+  AgentArtifact artifact = 1;
+  bytes content = 2;
+}
+
 service AgentCapabilityService {
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
@@ -216,4 +258,6 @@ service AgentCapabilityService {
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
+  rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
 }

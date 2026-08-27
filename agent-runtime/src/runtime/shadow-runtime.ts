@@ -289,7 +289,8 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   return {
     activities: createTemporalReadStepActivities({
       planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
-      busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 }
+      busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
+      artifacts: rpc.client
     }),
     client: rpc.client,
     start: async () => {
