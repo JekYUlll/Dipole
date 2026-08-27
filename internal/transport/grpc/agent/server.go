@@ -535,6 +535,9 @@ func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.Resolve
 	if invocation.RuntimeID != "dipole-agent" || (invocation.Mode != "shadow" && invocation.Mode != "active") {
 		return nil, status.Error(codes.NotFound, "Agent MCP context unavailable")
 	}
+	if err := application.ValidateAgentApprovedCapabilitiesV1(invocation.Mode, invocation.ApprovedCapabilities); err != nil {
+		return nil, status.Error(codes.NotFound, "Agent MCP context unavailable")
+	}
 	response := &agentv1.ResolveMcpContextResponse{
 		TenantId: invocation.TenantID, PrincipalUserId: invocation.PrincipalUUID, AgentId: invocation.AgentUUID,
 		DelegatedByUserId: invocation.DelegatedByUUID, Permissions: append([]string(nil), invocation.Permissions...),

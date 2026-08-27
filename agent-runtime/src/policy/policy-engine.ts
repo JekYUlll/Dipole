@@ -33,7 +33,7 @@ export class PolicyEngine {
     if (context.mode === "shadow" && descriptor.risk !== "read") {
       throw new AgentPolicyDeniedError("shadow mode cannot execute write capabilities");
     }
-    if ((descriptor.approvalRequired === true || descriptor.risk === "destructive") && !context.approvedCapabilities.includes(descriptor.id)) {
+    if ((descriptor.approvalRequired === true || descriptor.risk === "destructive") && !context.approvedCapabilities.some((id) => id === descriptor.id)) {
       throw new AgentPolicyDeniedError(`capability ${descriptor.id} requires approval`);
     }
     const allowed = context.resourceScopes.some((scope) =>

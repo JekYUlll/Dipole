@@ -112,6 +112,65 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	},
 }
 
+// This allowlist is intentionally explicit so adding a descriptor cannot expand active Runtime authority.
+var agentActiveApprovedCapabilityProjectionV1 = []struct {
+	CapabilityID, Permission, ResourceType, Action string
+}{
+	{AgentCapabilitySystemMessageSend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+}
+
+func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {
+	if err := definition.Validate(); err != nil || definition.Status != AgentDefinitionStatusActive || definition.RevokedAt != nil {
+		return nil, fmt.Errorf("%w: pinned Agent Definition is invalid", ErrAgentCapabilityDenied)
+	}
+	approved := make([]string, 0, len(agentActiveApprovedCapabilityProjectionV1))
+	for _, rule := range agentActiveApprovedCapabilityProjectionV1 {
+		if !containsAgentPolicyValue(definition.Permissions, rule.Permission) || !definitionAllowsAgentResourceActionV1(definition, rule.ResourceType, rule.Action) {
+			continue
+		}
+		approved = append(approved, rule.CapabilityID)
+	}
+	return approved, nil
+}
+
+func ValidateAgentApprovedCapabilitiesV1(mode string, capabilities []string) error {
+	mode = strings.TrimSpace(mode)
+	if mode != "shadow" && mode != "active" {
+		return fmt.Errorf("%w: approved Capability mode is invalid", ErrAgentCapabilityDenied)
+	}
+	if mode == "shadow" && len(capabilities) != 0 {
+		return fmt.Errorf("%w: shadow mode cannot carry approved Capabilities", ErrAgentCapabilityDenied)
+	}
+	seen := make(map[string]struct{}, len(capabilities))
+	for _, capabilityID := range capabilities {
+		capabilityID = strings.TrimSpace(capabilityID)
+		if _, duplicate := seen[capabilityID]; duplicate || !agentActiveApprovedCapabilityV1(capabilityID) {
+			return fmt.Errorf("%w: approved Capability projection is invalid", ErrAgentCapabilityDenied)
+		}
+		seen[capabilityID] = struct{}{}
+	}
+	return nil
+}
+
+func agentActiveApprovedCapabilityV1(capabilityID string) bool {
+	for _, rule := range agentActiveApprovedCapabilityProjectionV1 {
+		if capabilityID == rule.CapabilityID {
+			return true
+		}
+	}
+	return false
+}
+
+func definitionAllowsAgentResourceActionV1(definition AgentDefinitionVersionV1, resourceType, action string) bool {
+	for _, scope := range definition.Scopes {
+		if strings.TrimSpace(scope.ResourceType) == resourceType &&
+			(containsAgentPolicyValue(scope.Actions, action) || containsAgentPolicyValue(scope.Actions, AgentResourceWildcard)) {
+			return true
+		}
+	}
+	return false
+}
+
 func AgentCapabilityDescriptorByIDV1(id string) (AgentCapabilityDescriptorV1, bool) {
 	descriptor, ok := agentCapabilityDescriptorsV1[strings.TrimSpace(id)]
 	return descriptor, ok

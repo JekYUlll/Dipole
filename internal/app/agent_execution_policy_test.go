@@ -436,6 +436,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	definition := activeAgentDefinitionV1(7, now.Add(-time.Hour), []string{application.AgentPermissionMessageWrite})
+	definition.Scopes[0].Actions = []string{application.AgentResourceActionWrite}
 	store := policyStoreWithDefinitionV1(definition)
 	request := application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "runtime-v7",
@@ -468,6 +469,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 		t.Fatalf("admit promoted active Run: %v", err)
 	}
 	if execution.Invocation.RuntimeID != "dipole-agent" || execution.Invocation.Mode != "active" ||
+		len(execution.Invocation.ApprovedCapabilities) != 1 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend ||
 		authorizer.request.RuntimeID != "dipole-agent" || authorizer.request.CandidateVersion != "runtime-v7" || authorizer.request.Task.DefinitionVersion != 7 ||
 		authorizer.request.Definition.Version != 7 {
 		t.Fatalf("promotion binding drifted: execution=%+v request=%+v", execution, authorizer.request)
