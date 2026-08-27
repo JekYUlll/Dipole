@@ -6,8 +6,42 @@ package generated
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
+
+type AgentDefinitionVersion struct {
+	ID              uint64
+	DefinitionUuid  string
+	Version         uint64
+	TenantID        string
+	OwnerUuid       string
+	AgentUuid       string
+	Status          string
+	PermissionsJson json.RawMessage
+	ScopesJson      json.RawMessage
+	ValidFrom       time.Time
+	ExpiresAt       sql.NullTime
+	RevokedAt       sql.NullTime
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+type AgentTask struct {
+	ID                uint64
+	TaskUuid          string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	TenantID          string
+	PrincipalUuid     string
+	AgentUuid         string
+	Status            string
+	TriggerType       string
+	TriggerRef        string
+	Goal              string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
 
 type CassandraBackfillJob struct {
 	JobName               string

@@ -57,7 +57,7 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 		"users": repos.Users, "messages": repos.Messages, "files": repos.Files,
 		"conversations": repos.Conversations, "contacts": repos.Contacts,
 		"groups": repos.Groups, "admin": repos.Admin, "sync": repos.Sync,
-		"ai_call_logs": repos.AICallLogs, "outbox": repos.Outbox,
+		"ai_call_logs": repos.AICallLogs, "agent_policy": repos.AgentPolicy, "outbox": repos.Outbox,
 	}
 	for name, repository := range required {
 		if repository == nil {
@@ -66,6 +66,9 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	}
 	if _, ok := repos.AICallLogs.(*sqlcRepository.AICallLogRepository); !ok {
 		t.Fatalf("expected sqlc AI call log repository, got %T", repos.AICallLogs)
+	}
+	if _, ok := repos.AgentPolicy.(*sqlcRepository.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.AgentPolicy)
 	}
 	if _, ok := repos.Admin.(*sqlcRepository.AdminRepository); !ok {
 		t.Fatalf("expected sqlc admin repository, got %T", repos.Admin)

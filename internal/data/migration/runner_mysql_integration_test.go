@@ -33,25 +33,43 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 13)
+		assertCurrentVersion(t, runner, 16)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 24)
+		assertTableCount(t, db, 27)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 13)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (14, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 16)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (17, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 14"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 17"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Policy persistence migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 15)
+		assertTableCount(t, db, 24)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Cassandra source identity migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 14)
+		assertTableCount(t, db, 24)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Message Metadata legacy ID migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 13)
+		assertTableCount(t, db, 24)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Search source identity migration: %v", err)
 		}

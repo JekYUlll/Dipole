@@ -19,12 +19,14 @@ type Querier interface {
 	AdvanceSearchBackfillJob(ctx context.Context, arg AdvanceSearchBackfillJobParams) (sql.Result, error)
 	AdvanceSyncReplayJob(ctx context.Context, arg AdvanceSyncReplayJobParams) (sql.Result, error)
 	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
+	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
 	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CompleteSearchBackfillJob(ctx context.Context, arg CompleteSearchBackfillJobParams) (sql.Result, error)
 	CompleteSyncReplayJob(ctx context.Context, arg CompleteSyncReplayJobParams) (sql.Result, error)
+	ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentApprovalParams) (int64, error)
 	CountNonPublishedSearchOutboxThrough(ctx context.Context, throughID uint64) (int64, error)
 	CountPublishedSearchOutboxThrough(ctx context.Context, throughID uint64) (int64, error)
 	CreateContactApplication(ctx context.Context, arg CreateContactApplicationParams) (sql.Result, error)
@@ -53,6 +55,8 @@ type Querier interface {
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
+	GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDefinitionVersionParams) (AgentDefinitionVersion, error)
+	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
 	GetCassandraBackfillHighWatermark(ctx context.Context) (uint64, error)
 	GetCassandraBackfillJob(ctx context.Context, jobName string) (CassandraBackfillJob, error)
 	GetContact(ctx context.Context, arg GetContactParams) (Contact, error)
@@ -64,6 +68,7 @@ type Querier interface {
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
 	GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error)
+	GetLatestAgentDefinition(ctx context.Context, arg GetLatestAgentDefinitionParams) (AgentDefinitionVersion, error)
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
@@ -83,6 +88,9 @@ type Querier interface {
 	HasConversationMessages(ctx context.Context, conversationKey string) (bool, error)
 	InitGroupConversation(ctx context.Context, arg InitGroupConversationParams) (sql.Result, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
+	InsertAgentApproval(ctx context.Context, arg InsertAgentApprovalParams) error
+	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
+	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
 	ListGroupMembers(ctx context.Context, groupUuid string) ([]GroupMember, error)
@@ -119,9 +127,12 @@ type Querier interface {
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
+	RevokeAgentApproval(ctx context.Context, arg RevokeAgentApprovalParams) (int64, error)
+	RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
+	TransitionAgentTaskStatus(ctx context.Context, arg TransitionAgentTaskStatusParams) (int64, error)
 	UpdateContact(ctx context.Context, arg UpdateContactParams) (sql.Result, error)
 	UpdateContactApplication(ctx context.Context, arg UpdateContactApplicationParams) (sql.Result, error)
 	UpdateConversationRemark(ctx context.Context, arg UpdateConversationRemarkParams) (sql.Result, error)
