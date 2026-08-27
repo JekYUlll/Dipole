@@ -77,6 +77,7 @@ add_library(delivery_contract
   src/librdkafka_consumer.cpp
   src/node_delivery_transport.cpp
   src/presence_projection.cpp
+  src/primary_probe.cpp
   src/shadow_evidence.cpp
   src/shadow_runner.cpp
   src/shadow_runtime.cpp
@@ -149,6 +150,10 @@ if(BUILD_TESTING)
   target_link_libraries(delivery_node_transport_test PRIVATE delivery_contract)
   target_compile_options(delivery_node_transport_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME delivery_node_transport_test COMMAND delivery_node_transport_test)
+  add_executable(delivery_primary_probe_test tests/primary_probe_test.cpp)
+  target_link_libraries(delivery_primary_probe_test PRIVATE delivery_contract)
+  target_compile_options(delivery_primary_probe_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_primary_probe_test COMMAND delivery_primary_probe_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"

@@ -32,6 +32,12 @@ Node transport requires Presence shadow and remains opt-in. Plaintext targets mu
 
 The transport library also exposes `Deliver` for the additive `DeliverNodeBatch` RPC and validates every returned `DeliveryAck`. The executable and `ShadowRunner` do not call this method. Gateway primary delivery additionally requires `internal_rpc.delivery_primary_enabled=true`; the tracked default is false. This separation keeps cross-language ACK compatibility testable without granting the C++ process client-write authority.
 
+An explicit one-shot probe is available for isolated failure drills. It validates the golden contract and a strict protobuf JSON batch, sends exactly one `DeliverNodeBatch` request, prints the ACK as JSON, and exits. It reads the same `DIPOLE_REALTIME_NODE_*` mTLS variables and `DIPOLE_INTERNAL_RPC_SHARED_SECRET` as the shadow transport:
+
+```bash
+dipole-realtime-delivery deliver_probe api/proto/dipole/delivery/v1/testdata batch.json
+```
+
 `/livez`, `/readyz`, and `/health` return service identity after all golden contracts pass. Contract-only readiness is immediate. Shadow readiness requires a live Kafka partition assignment and a healthy latest poll/project/evidence/commit operation. The Web client persists stable delivery claims in its account-scoped IndexedDB store before invoking the packet handler; storage failures fail open and Sync Timeline remains the recovery path. Client-delivery `cpp` runtime mode remains unavailable pending cross-process failure-replay evidence.
 
 Requirements: CMake 3.21+, `/usr/bin/g++` with C++20, Ninja, clang-tidy, pkg-config, Protobuf compiler/C++ library 3.21+, gRPC C++ 1.51+, nlohmann/json 3.11+, hiredis 1.2+, and librdkafka 2.3+. `CXX`, `CLANG_TIDY_BIN`, `DIPOLE_CPP_COMPILER_PATH`, and `DIPOLE_CPP_BUILD_DIR` provide explicit toolchain overrides. Unpacked Debian package roots can be supplied through `DIPOLE_RDKAFKA_ROOT` and `DIPOLE_GRPC_ROOT` without installing host packages.
