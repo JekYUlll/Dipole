@@ -24,9 +24,15 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_MYSQL_DATABASE: "dipole"
     })).toMatchObject({ ledgerMode: "mysql", mysql: { host: "mysql", port: 3306, user: "agent", database: "dipole" } });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MODEL_MODE: "ai_sdk" })).toThrow(/model routes/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model"
+    })).toThrow(/persistent MySQL model audit/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
       DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini,anthropic/claude-sonnet-4.5",
+      DIPOLE_AGENT_LEDGER_MODE: "mysql",
+      DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
+      DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
       DIPOLE_AGENT_MODEL_MAX_CALLS: "2",
       DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "12000",
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "256"

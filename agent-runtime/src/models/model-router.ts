@@ -14,7 +14,11 @@ export interface StructuredModelRequest {
 }
 
 export interface StructuredModelClient {
-  generate(input: StructuredModelRequest): Promise<{ readonly output: unknown; readonly usage: ModelUsage }>;
+  generate(input: StructuredModelRequest): Promise<{
+    readonly output: unknown;
+    readonly usage: ModelUsage;
+    readonly finishReason?: string;
+  }>;
 }
 
 export interface ModelRunBudgetPolicy {
@@ -28,6 +32,22 @@ export interface ModelRoutingResult<T> {
   readonly route: string;
   readonly attempts: number;
   readonly usage: ModelUsage;
+}
+
+export interface ModelCallReservation {
+  readonly runId: string;
+  readonly callId: string;
+  readonly callNo: number;
+  readonly route: string;
+}
+
+export interface ModelAuditStore {
+  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined>;
+  completeCall(reservation: ModelCallReservation, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
+  failCall(reservation: ModelCallReservation, error: unknown, latencyMs: number): Promise<void>;
+  completeRun(runId: string): Promise<void>;
+  failRun(runId: string, error: unknown): Promise<void>;
+  failTask(taskId: string, error: unknown): Promise<void>;
 }
 
 export class ModelRoutingError extends Error {
@@ -49,46 +69,85 @@ export class ModelRouter {
     private readonly client: StructuredModelClient,
     routes: readonly string[],
     policy: ModelRunBudgetPolicy,
-    private readonly now: () => number = () => Date.now()
+    private readonly now: () => number = () => Date.now(),
+    private readonly audit?: ModelAuditStore
   ) {
     this.#routes = normalizeRoutes(routes);
     this.#policy = validatePolicy(policy);
   }
 
-  async generate<T>(input: { readonly prompt: string; readonly schema: z.ZodType<T> }): Promise<ModelRoutingResult<T>> {
+  async generate<T>(input: {
+    readonly prompt: string;
+    readonly schema: z.ZodType<T>;
+    readonly taskId?: string;
+  }): Promise<ModelRoutingResult<T>> {
+    if (this.audit !== undefined && !input.taskId?.trim()) {
+      throw new Error("persistent model routing requires a Task ID");
+    }
     const startedAt = this.now();
     const errors: unknown[] = [];
     let attempts = 0;
+    let runId: string | undefined;
 
     for (const route of this.#routes) {
       const remainingMs = this.#policy.totalTimeoutMs - (this.now() - startedAt);
       if (attempts >= this.#policy.maxCalls || remainingMs <= 0) {
         break;
       }
+      const reservation = this.audit === undefined
+        ? undefined
+        : await this.audit.reserve(input.taskId!, this.#policy, route);
+      if (this.audit !== undefined && reservation === undefined) {
+        break;
+      }
+      runId = reservation?.runId ?? runId;
       attempts += 1;
+      const callStartedAt = this.now();
+      let response: Awaited<ReturnType<StructuredModelClient["generate"]>>;
       try {
-        const response = await this.client.generate({
+        response = await this.client.generate({
           route,
           prompt: input.prompt,
           schema: input.schema,
           maxOutputTokens: this.#policy.maxOutputTokensPerCall,
           timeoutMs: Math.max(1, Math.floor(remainingMs))
         });
-        return {
-          output: input.schema.parse(response.output),
-          route,
-          attempts,
-          usage: response.usage
-        };
+        response = { ...response, output: input.schema.parse(response.output) };
       } catch (error) {
+        if (reservation !== undefined) {
+          await this.audit!.failCall(reservation, error, elapsed(this.now(), callStartedAt));
+        }
         errors.push(error);
+        continue;
       }
+      if (reservation !== undefined) {
+        await this.audit!.completeCall(
+          reservation, response.usage, response.finishReason ?? "unknown", elapsed(this.now(), callStartedAt)
+        );
+        await this.audit!.completeRun(reservation.runId);
+      }
+      return {
+        output: response.output as T,
+        route,
+        attempts,
+        usage: response.usage
+      };
     }
 
     const exhaustedBudget = attempts >= this.#policy.maxCalls
       || this.now() - startedAt >= this.#policy.totalTimeoutMs;
-    throw new ModelRoutingError(attempts, exhaustedBudget, errors);
+    const failure = new ModelRoutingError(attempts, exhaustedBudget || this.audit !== undefined, errors);
+    if (runId !== undefined) {
+      await this.audit!.failRun(runId, failure);
+    } else if (this.audit !== undefined) {
+      await this.audit.failTask(input.taskId!, failure);
+    }
+    throw failure;
   }
+}
+
+function elapsed(now: number, startedAt: number): number {
+  return Math.max(0, Math.min(4_294_967_295, Math.floor(now - startedAt)));
 }
 
 function normalizeRoutes(routes: readonly string[]): readonly string[] {

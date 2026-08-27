@@ -19,7 +19,8 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
       usage: {
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens
-      }
+      },
+      finishReason: result.finishReason
     };
   }
 }

@@ -11,6 +11,8 @@ import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, typ
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
+import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
+import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -49,6 +51,9 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.modelMode === "ai_sdk" && config.modelRoutes.length === 0) {
     refinement.addIssue({ code: "custom", message: "Agent model routes are required in AI SDK mode", path: ["modelRoutes"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.ledgerMode !== "mysql") {
+    refinement.addIssue({ code: "custom", message: "AI SDK mode requires the persistent MySQL model audit Store", path: ["ledgerMode"] });
   }
 });
 
@@ -151,7 +156,9 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
   const planner = config.modelMode === "ai_sdk"
-    ? new ModelShadowPlanner(new ModelRouter(new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget), ["conversation.read"])
+    ? new ModelShadowPlanner(new ModelRouter(
+      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
+    ), ["conversation.read"])
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(config, factory, planner, undefined, ledger, failureRouter);
   const mainTopic = physicalTopic(config);
@@ -159,6 +166,9 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
     start: async () => {
       if (pool !== undefined) {
         await pool.query(PROBE_AGENT_EVENT_LEDGER);
+        if (config.modelMode === "ai_sdk") {
+          await pool.query(PROBE_AGENT_MODEL_RUNS);
+        }
       }
       await factory.ensureTopics(
         [mainTopic, `${mainTopic}.retry`, `${mainTopic}.dead`],

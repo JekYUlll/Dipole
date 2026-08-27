@@ -56,6 +56,7 @@ type Querier interface {
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	FailAgentModelCall(ctx context.Context, arg FailAgentModelCallParams) (int64, error)
 	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)
+	FailAgentModelRunByTask(ctx context.Context, arg FailAgentModelRunByTaskParams) (int64, error)
 	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)

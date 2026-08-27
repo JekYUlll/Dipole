@@ -44,5 +44,10 @@ UPDATE agent_model_runs
 SET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?
 WHERE run_uuid = ? AND status = 'running';
 
+-- name: FailAgentModelRunByTask :execrows
+UPDATE agent_model_runs
+SET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?
+WHERE task_uuid = ? AND status = 'running';
+
 -- name: ProbeAgentModelRuns :many
 SELECT run_uuid FROM agent_model_runs LIMIT 1;

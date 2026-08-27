@@ -18,4 +18,6 @@ export const COMPLETE_AGENT_MODEL_RUN = "UPDATE agent_model_runs\nSET status = '
 
 export const FAIL_AGENT_MODEL_RUN = "UPDATE agent_model_runs\nSET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?\nWHERE run_uuid = ? AND status = 'running'";
 
+export const FAIL_AGENT_MODEL_RUN_BY_TASK = "UPDATE agent_model_runs\nSET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?\nWHERE task_uuid = ? AND status = 'running'";
+
 export const PROBE_AGENT_MODEL_RUNS = "SELECT run_uuid FROM agent_model_runs LIMIT 1";

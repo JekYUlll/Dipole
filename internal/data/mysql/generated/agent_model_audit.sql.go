@@ -122,6 +122,25 @@ func (q *Queries) FailAgentModelRun(ctx context.Context, arg FailAgentModelRunPa
 	return result.RowsAffected()
 }
 
+const failAgentModelRunByTask = `-- name: FailAgentModelRunByTask :execrows
+UPDATE agent_model_runs
+SET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?
+WHERE task_uuid = ? AND status = 'running'
+`
+
+type FailAgentModelRunByTaskParams struct {
+	LastError sql.NullString
+	TaskUuid  string
+}
+
+func (q *Queries) FailAgentModelRunByTask(ctx context.Context, arg FailAgentModelRunByTaskParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failAgentModelRunByTask, arg.LastError, arg.TaskUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const incrementAgentModelRunCalls = `-- name: IncrementAgentModelRunCalls :execrows
 UPDATE agent_model_runs
 SET calls_reserved = calls_reserved + 1
