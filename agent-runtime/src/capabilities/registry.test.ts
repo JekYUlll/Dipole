@@ -17,7 +17,7 @@ describe("CapabilityRegistry", () => {
     expect(() => registry.register(capability)).toThrow(/already registered/);
 
     const context = executionContextSchema.parse({
-      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", mode: "active",
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "active",
       permissions: ["conversation.read"],
       resourceScopes: [{ resourceType: "conversation", resourceId: "group:G1", actions: ["read"] }],
       approvedCapabilities: []

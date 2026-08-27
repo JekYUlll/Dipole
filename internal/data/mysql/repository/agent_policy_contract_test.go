@@ -82,6 +82,28 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if changed, err := store.TransitionTaskStatus(context.Background(), task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning); err != nil || !changed {
 		t.Fatalf("start task: changed=%v err=%v", changed, err)
 	}
+	runUUID, err := application.AgentRunUUIDV1(task.TaskUUID, "dipole-agent", "shadow")
+	if err != nil {
+		t.Fatalf("derive Agent Run UUID: %v", err)
+	}
+	run := application.AgentRunV1{RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}
+	if created, err := store.CreateRun(context.Background(), run); err != nil || !created {
+		t.Fatalf("create Agent Run: created=%v err=%v", created, err)
+	}
+	if created, err := store.CreateRun(context.Background(), run); err != nil || created {
+		t.Fatalf("replay Agent Run: created=%v err=%v", created, err)
+	}
+	conflictingRun := run
+	conflictingRun.RuntimeID = "other-runtime"
+	if _, err := store.CreateRun(context.Background(), conflictingRun); !errors.Is(err, sqlcRepository.ErrAgentPolicyConflict) {
+		t.Fatalf("expected Agent Run conflict, got %v", err)
+	}
+	if changed, err := store.TransitionRunStatus(context.Background(), runUUID, application.AgentRunStatusRunning, application.AgentRunStatusCompleted, ""); err != nil || !changed {
+		t.Fatalf("complete Agent Run: changed=%v err=%v", changed, err)
+	}
+	if changed, err := store.TransitionRunStatus(context.Background(), runUUID, application.AgentRunStatusRunning, application.AgentRunStatusFailed, "stale"); err != nil || changed {
+		t.Fatalf("stale Agent Run transition: changed=%v err=%v", changed, err)
+	}
 	if changed, err := store.TransitionTaskStatus(context.Background(), task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning); err != nil || changed {
 		t.Fatalf("stale task transition: changed=%v err=%v", changed, err)
 	}
@@ -187,12 +209,19 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if len(execution.TaskUUID) != 64 || len(execution.Invocation.Permissions) != len(permissions) || len(execution.Invocation.ResourceScopes) != len(scopes) {
 		t.Fatalf("unexpected persistent execution snapshot: %+v", execution)
 	}
+	if len(execution.RunUUID) != 64 {
+		t.Fatalf("persistent execution did not create a stable Run: %+v", execution)
+	}
 	if err := policy.Complete(context.Background(), *execution); err != nil {
 		t.Fatalf("complete persistent execution policy: %v", err)
 	}
 	persistedTask, err := store.GetTask(context.Background(), execution.TaskUUID)
 	if err != nil || persistedTask == nil || persistedTask.Status != application.AgentTaskStatusCompleted || persistedTask.DefinitionVersion != embeddedAgentDefinitionVersionForContract {
 		t.Fatalf("persistent execution Task: %+v err=%v", persistedTask, err)
+	}
+	persistedRun, err := store.GetRun(context.Background(), execution.RunUUID)
+	if err != nil || persistedRun == nil || persistedRun.Status != application.AgentRunStatusCompleted {
+		t.Fatalf("persistent execution Run: %+v err=%v", persistedRun, err)
 	}
 }
 

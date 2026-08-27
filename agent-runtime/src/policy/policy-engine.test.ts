@@ -9,6 +9,7 @@ const context = executionContextSchema.parse({
   agentUuid: "UAI",
   delegatedByUuid: "U100",
   taskId: "TASK-1",
+  runId: "RUN-1",
   mode: "active",
   permissions: ["conversation.read", "message.write"],
   resourceScopes: [

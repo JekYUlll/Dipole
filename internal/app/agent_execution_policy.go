@@ -12,6 +12,7 @@ import (
 )
 
 const embeddedAgentDefinitionVersionV1 uint64 = 1
+const embeddedAgentRuntimeIDV1 = "dipole-eino"
 
 type agentPolicyClockV1 func() time.Time
 
@@ -23,6 +24,195 @@ type StaticAgentExecutionPolicyV1 struct {
 type PersistentAgentExecutionPolicyV1 struct {
 	store application.AgentPolicyStoreV1
 	now   agentPolicyClockV1
+}
+
+type PersistentAgentInvocationResolverV1 struct {
+	store application.AgentPolicyStoreV1
+	now   agentPolicyClockV1
+}
+
+type PersistentAgentRunAdmissionV1 struct {
+	store application.AgentPolicyStoreV1
+	now   agentPolicyClockV1
+}
+
+var _ application.AgentInvocationResolverV1 = (*PersistentAgentInvocationResolverV1)(nil)
+
+func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1) (*PersistentAgentInvocationResolverV1, error) {
+	if store == nil {
+		return nil, fmt.Errorf("persistent Agent Invocation resolver requires store")
+	}
+	return &PersistentAgentInvocationResolverV1{store: store, now: time.Now}, nil
+}
+
+func (r *PersistentAgentInvocationResolverV1) Resolve(ctx context.Context, taskUUID, runUUID string) (application.AgentInvocationV1, error) {
+	taskUUID, runUUID = strings.TrimSpace(taskUUID), strings.TrimSpace(runUUID)
+	if taskUUID == "" || runUUID == "" {
+		return application.AgentInvocationV1{}, fmt.Errorf("%w: Agent Task UUID is required", application.ErrAgentExecutionPolicyDenied)
+	}
+	task, err := r.store.GetTask(ctx, taskUUID)
+	if err != nil {
+		return application.AgentInvocationV1{}, fmt.Errorf("get Agent Task Invocation: %w", err)
+	}
+	if task == nil || (task.Status != application.AgentTaskStatusRunning && task.Status != application.AgentTaskStatusCompleted) {
+		return application.AgentInvocationV1{}, fmt.Errorf("%w: Agent Task is missing or outside executable state", application.ErrAgentExecutionPolicyDenied)
+	}
+	run, err := r.store.GetRun(ctx, runUUID)
+	if err != nil {
+		return application.AgentInvocationV1{}, fmt.Errorf("get Agent Run Invocation: %w", err)
+	}
+	if run == nil || run.TaskUUID != taskUUID || run.Status != application.AgentRunStatusRunning {
+		return application.AgentInvocationV1{}, fmt.Errorf("%w: Agent Run is missing, mismatched, or not running", application.ErrAgentExecutionPolicyDenied)
+	}
+	definition, err := r.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
+	if err != nil {
+		return application.AgentInvocationV1{}, fmt.Errorf("get pinned Agent Invocation policy: %w", err)
+	}
+	request := application.AgentExecutionPolicyStartV1{
+		TenantID: task.TenantID, PrincipalUUID: task.PrincipalUUID, AgentUUID: task.AgentUUID,
+		DelegatedByUUID: task.PrincipalUUID, TriggerType: task.TriggerType, TriggerRef: task.TriggerRef,
+	}
+	if err := authorizeDefinitionAtV1(definition, request, r.now()); err != nil {
+		return application.AgentInvocationV1{}, err
+	}
+	return invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes), nil
+}
+
+var _ application.AgentRunAdmissionServiceV1 = (*PersistentAgentRunAdmissionV1)(nil)
+
+func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1) (*PersistentAgentRunAdmissionV1, error) {
+	if store == nil {
+		return nil, fmt.Errorf("persistent Agent Run admission requires store")
+	}
+	return &PersistentAgentRunAdmissionV1{store: store, now: time.Now}, nil
+}
+
+func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
+	request := admission.AgentExecutionPolicyStartV1
+	if err := validateAgentExecutionPolicyStartV1(request); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(admission.RuntimeID) == "" || (admission.Mode != "shadow" && admission.Mode != "active") {
+		return nil, fmt.Errorf("%w: Runtime identity and remote mode are required", application.ErrAgentExecutionPolicyDenied)
+	}
+	taskUUID := agentTaskUUIDV1(request)
+	existingTask, err := a.store.GetTask(ctx, taskUUID)
+	if err != nil {
+		return nil, fmt.Errorf("lookup Agent Task admission: %w", err)
+	}
+	var task application.AgentTaskV1
+	if existingTask == nil {
+		latest, lookupErr := a.store.GetLatestDefinition(ctx, request.TenantID, request.AgentUUID)
+		if lookupErr != nil || authorizeDefinitionAtV1(latest, request, a.now()) != nil {
+			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+		}
+		task = application.AgentTaskV1{
+			TaskUUID: taskUUID, DefinitionUUID: latest.DefinitionUUID, DefinitionVersion: latest.Version,
+			TenantID: request.TenantID, PrincipalUUID: request.PrincipalUUID, AgentUUID: request.AgentUUID,
+			Status: application.AgentTaskStatusCreated, TriggerType: request.TriggerType, TriggerRef: request.TriggerRef, Goal: "handle_agent_trigger",
+		}
+		created, createErr := a.store.CreateTask(ctx, task)
+		if createErr != nil {
+			return nil, fmt.Errorf("admit Agent Task: %w", createErr)
+		}
+		if !created {
+			existingTask, err = a.store.GetTask(ctx, taskUUID)
+			if err != nil || existingTask == nil {
+				return nil, fmt.Errorf("%w: concurrent Agent Task admission unavailable", application.ErrAgentExecutionPolicyDenied)
+			}
+			task = *existingTask
+		}
+	} else {
+		task = *existingTask
+	}
+	if !agentTaskMatchesStartV1(task, request) {
+		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
+	}
+	if task.Status == application.AgentTaskStatusCreated {
+		changed, transitionErr := a.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
+		if transitionErr != nil {
+			return nil, fmt.Errorf("Agent Task admission transition: %w", transitionErr)
+		}
+		if changed {
+			task.Status = application.AgentTaskStatusRunning
+		} else {
+			current, lookupErr := a.store.GetTask(ctx, task.TaskUUID)
+			if lookupErr != nil || current == nil {
+				return nil, fmt.Errorf("%w: concurrent Agent Task transition unavailable", application.ErrAgentExecutionPolicyDenied)
+			}
+			task = *current
+		}
+	}
+	if task.Status != application.AgentTaskStatusRunning && task.Status != application.AgentTaskStatusCompleted {
+		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
+	}
+	definition, err := a.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
+	if err != nil || authorizeDefinitionAtV1(definition, request, a.now()) != nil {
+		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	runUUID, err := application.AgentRunUUIDV1(task.TaskUUID, admission.RuntimeID, admission.Mode)
+	if err != nil {
+		return nil, err
+	}
+	createdRun, err := a.store.CreateRun(ctx, application.AgentRunV1{
+		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: admission.RuntimeID, Mode: admission.Mode, Status: application.AgentRunStatusRunning,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("admit Agent Run: %w", err)
+	}
+	runStatus := application.AgentRunStatusRunning
+	if !createdRun {
+		existingRun, lookupErr := a.store.GetRun(ctx, runUUID)
+		if lookupErr != nil || existingRun == nil ||
+			(existingRun.Status != application.AgentRunStatusRunning && existingRun.Status != application.AgentRunStatusCompleted) {
+			return nil, fmt.Errorf("%w: existing Agent Run is terminal", application.ErrAgentExecutionPolicyDenied)
+		}
+		runStatus = existingRun.Status
+	}
+	return &application.AgentRunAdmissionV1{
+		TaskUUID: task.TaskUUID, RunUUID: runUUID, RunStatus: runStatus,
+		Invocation: invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes),
+	}, nil
+}
+
+func (a *PersistentAgentRunAdmissionV1) Complete(ctx context.Context, taskUUID, runUUID, runtimeID, mode string) error {
+	taskUUID, runUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
+	if taskUUID == "" || runUUID == "" || runtimeID == "" || mode == "" {
+		return fmt.Errorf("%w: Agent Run completion identity is required", application.ErrAgentExecutionPolicyDenied)
+	}
+	run, err := a.store.GetRun(ctx, runUUID)
+	if err != nil {
+		return fmt.Errorf("get Agent Run completion: %w", err)
+	}
+	if run == nil || run.TaskUUID != taskUUID || run.RuntimeID != runtimeID || run.Mode != mode {
+		return fmt.Errorf("%w: Agent Run completion binding mismatch", application.ErrAgentExecutionPolicyDenied)
+	}
+	if run.Status == application.AgentRunStatusCompleted {
+		return nil
+	}
+	if run.Status != application.AgentRunStatusRunning {
+		return fmt.Errorf("%w: Agent Run cannot complete from terminal state", application.ErrAgentExecutionPolicyDenied)
+	}
+	changed, err := a.store.TransitionRunStatus(ctx, runUUID, application.AgentRunStatusRunning, application.AgentRunStatusCompleted, "")
+	if err != nil {
+		return fmt.Errorf("complete Agent Run: %w", err)
+	}
+	if !changed {
+		current, lookupErr := a.store.GetRun(ctx, runUUID)
+		if lookupErr == nil && current != nil && current.Status == application.AgentRunStatusCompleted {
+			return nil
+		}
+		return fmt.Errorf("%w: Agent Run completion lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+	}
+	return nil
+}
+
+func agentTaskMatchesStartV1(task application.AgentTaskV1, request application.AgentExecutionPolicyStartV1) bool {
+	return strings.TrimSpace(task.TenantID) == strings.TrimSpace(request.TenantID) &&
+		strings.TrimSpace(task.PrincipalUUID) == strings.TrimSpace(request.PrincipalUUID) &&
+		strings.TrimSpace(task.AgentUUID) == strings.TrimSpace(request.AgentUUID) &&
+		strings.TrimSpace(task.TriggerType) == strings.TrimSpace(request.TriggerType) &&
+		strings.TrimSpace(task.TriggerRef) == strings.TrimSpace(request.TriggerRef)
 }
 
 var _ application.AgentExecutionPolicyV1 = (*StaticAgentExecutionPolicyV1)(nil)
@@ -102,74 +292,122 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 	if err := validateAgentExecutionPolicyStartV1(request); err != nil {
 		return nil, err
 	}
-	latest, err := p.store.GetLatestDefinition(ctx, strings.TrimSpace(request.TenantID), strings.TrimSpace(request.AgentUUID))
+	taskUUID := agentTaskUUIDV1(request)
+	existingTask, err := p.store.GetTask(ctx, taskUUID)
 	if err != nil {
-		return nil, fmt.Errorf("get latest Agent policy: %w", err)
+		return nil, fmt.Errorf("lookup Embedded Agent Task: %w", err)
 	}
-	if err := authorizeDefinitionAtV1(latest, request, p.now()); err != nil {
-		return nil, err
+	var task application.AgentTaskV1
+	if existingTask == nil {
+		latest, lookupErr := p.store.GetLatestDefinition(ctx, strings.TrimSpace(request.TenantID), strings.TrimSpace(request.AgentUUID))
+		if lookupErr != nil {
+			return nil, fmt.Errorf("get latest Agent policy: %w", lookupErr)
+		}
+		if err := authorizeDefinitionAtV1(latest, request, p.now()); err != nil {
+			return nil, err
+		}
+		task = application.AgentTaskV1{
+			TaskUUID: taskUUID, DefinitionUUID: latest.DefinitionUUID, DefinitionVersion: latest.Version,
+			TenantID: strings.TrimSpace(request.TenantID), PrincipalUUID: strings.TrimSpace(request.PrincipalUUID),
+			AgentUUID: strings.TrimSpace(request.AgentUUID), Status: application.AgentTaskStatusCreated,
+			TriggerType: strings.TrimSpace(request.TriggerType), TriggerRef: strings.TrimSpace(request.TriggerRef), Goal: "handle_agent_trigger",
+		}
+		created, createErr := p.store.CreateTask(ctx, task)
+		if createErr != nil {
+			return nil, fmt.Errorf("create Agent policy Task: %w", createErr)
+		}
+		if !created {
+			current, currentErr := p.store.GetTask(ctx, taskUUID)
+			if currentErr != nil || current == nil {
+				return nil, fmt.Errorf("%w: concurrent Embedded Agent Task unavailable", application.ErrAgentExecutionPolicyDenied)
+			}
+			task = *current
+		}
+	} else {
+		task = *existingTask
 	}
-
-	task := application.AgentTaskV1{
-		TaskUUID:          agentTaskUUIDV1(request),
-		DefinitionUUID:    latest.DefinitionUUID,
-		DefinitionVersion: latest.Version,
-		TenantID:          strings.TrimSpace(request.TenantID),
-		PrincipalUUID:     strings.TrimSpace(request.PrincipalUUID),
-		AgentUUID:         strings.TrimSpace(request.AgentUUID),
-		Status:            application.AgentTaskStatusCreated,
-		TriggerType:       strings.TrimSpace(request.TriggerType),
-		TriggerRef:        strings.TrimSpace(request.TriggerRef),
-		Goal:              "handle_agent_trigger",
+	if !agentTaskMatchesStartV1(task, request) || (task.Status != application.AgentTaskStatusCreated && task.Status != application.AgentTaskStatusRunning) {
+		return nil, fmt.Errorf("%w: existing Agent Task cannot start Embedded Run", application.ErrAgentExecutionPolicyDenied)
 	}
-	created, err := p.store.CreateTask(ctx, task)
-	if err != nil {
-		return nil, fmt.Errorf("create Agent policy Task: %w", err)
-	}
-	if !created {
-		return nil, fmt.Errorf("%w: Agent Task already exists", application.ErrAgentExecutionPolicyDenied)
-	}
-
 	pinned, err := p.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
 	if err != nil {
 		return nil, fmt.Errorf("get pinned Agent policy: %w", err)
 	}
 	if err := authorizeDefinitionAtV1(pinned, request, p.now()); err != nil {
-		_, _ = p.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusCancelled)
 		return nil, err
 	}
-	changed, err := p.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
-	if err != nil {
-		return nil, fmt.Errorf("start Agent policy Task: %w", err)
+	if task.Status == application.AgentTaskStatusCreated {
+		changed, transitionErr := p.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
+		if transitionErr != nil {
+			return nil, fmt.Errorf("start Agent policy Task: %w", transitionErr)
+		}
+		if !changed {
+			current, lookupErr := p.store.GetTask(ctx, task.TaskUUID)
+			if lookupErr != nil || current == nil || current.Status != application.AgentTaskStatusRunning || !agentTaskMatchesStartV1(*current, request) {
+				return nil, fmt.Errorf("%w: Agent Task start lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+			}
+		}
 	}
-	if !changed {
-		return nil, fmt.Errorf("%w: Agent Task start lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+	runUUID, err := application.AgentRunUUIDV1(task.TaskUUID, embeddedAgentRuntimeIDV1, "embedded")
+	if err != nil {
+		return nil, fmt.Errorf("derive Embedded Agent Run: %w", err)
+	}
+	created, err := p.store.CreateRun(ctx, application.AgentRunV1{
+		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: embeddedAgentRuntimeIDV1, Mode: "embedded", Status: application.AgentRunStatusRunning,
+	})
+	if err != nil || !created {
+		if err == nil {
+			err = application.ErrAgentExecutionPolicyDenied
+		}
+		return nil, fmt.Errorf("create Embedded Agent Run: %w", err)
 	}
 	return &application.AgentPolicyExecutionV1{
 		TaskUUID:   task.TaskUUID,
+		RunUUID:    runUUID,
 		Invocation: invocationFromPolicyStartV1(request, pinned.Permissions, pinned.Scopes),
 	}, nil
 }
 
 func (p *PersistentAgentExecutionPolicyV1) Complete(ctx context.Context, execution application.AgentPolicyExecutionV1) error {
-	return p.transitionTerminalV1(ctx, execution.TaskUUID, application.AgentTaskStatusCompleted)
+	return p.transitionTerminalV1(ctx, execution, application.AgentRunStatusCompleted, application.AgentTaskStatusCompleted, "")
 }
 
 func (p *PersistentAgentExecutionPolicyV1) Fail(ctx context.Context, execution application.AgentPolicyExecutionV1) error {
-	return p.transitionTerminalV1(ctx, execution.TaskUUID, application.AgentTaskStatusFailed)
+	return p.transitionTerminalV1(ctx, execution, application.AgentRunStatusFailed, application.AgentTaskStatusFailed, "Agent execution failed")
 }
 
-func (p *PersistentAgentExecutionPolicyV1) transitionTerminalV1(ctx context.Context, taskUUID string, status application.AgentTaskStatusV1) error {
-	taskUUID = strings.TrimSpace(taskUUID)
-	if taskUUID == "" {
+func (p *PersistentAgentExecutionPolicyV1) transitionTerminalV1(ctx context.Context, execution application.AgentPolicyExecutionV1, runStatus application.AgentRunStatusV1, taskStatus application.AgentTaskStatusV1, lastError string) error {
+	taskUUID, runUUID := strings.TrimSpace(execution.TaskUUID), strings.TrimSpace(execution.RunUUID)
+	if taskUUID == "" || runUUID == "" {
 		return fmt.Errorf("%w: Agent Task UUID is required", application.ErrAgentExecutionPolicyDenied)
 	}
-	changed, err := p.store.TransitionTaskStatus(ctx, taskUUID, application.AgentTaskStatusRunning, status)
+	run, err := p.store.GetRun(ctx, runUUID)
+	if err != nil || run == nil || run.TaskUUID != taskUUID {
+		return fmt.Errorf("%w: Agent Run terminal binding unavailable: %v", application.ErrAgentExecutionPolicyDenied, err)
+	}
+	if run.Status == application.AgentRunStatusRunning {
+		changed, transitionErr := p.store.TransitionRunStatus(ctx, runUUID, application.AgentRunStatusRunning, runStatus, lastError)
+		if transitionErr != nil {
+			return fmt.Errorf("transition Agent Run terminal status: %w", transitionErr)
+		}
+		if !changed {
+			current, lookupErr := p.store.GetRun(ctx, runUUID)
+			if lookupErr != nil || current == nil || current.Status != runStatus {
+				return fmt.Errorf("%w: Agent Run terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+			}
+		}
+	} else if run.Status != runStatus {
+		return fmt.Errorf("%w: Agent Run has a conflicting terminal status", application.ErrAgentExecutionPolicyDenied)
+	}
+	changed, err := p.store.TransitionTaskStatus(ctx, taskUUID, application.AgentTaskStatusRunning, taskStatus)
 	if err != nil {
 		return fmt.Errorf("finish Agent policy Task: %w", err)
 	}
 	if !changed {
-		return fmt.Errorf("%w: Agent Task terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+		current, lookupErr := p.store.GetTask(ctx, taskUUID)
+		if lookupErr != nil || current == nil || current.Status != taskStatus {
+			return fmt.Errorf("%w: Agent Task terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+		}
 	}
 	return nil
 }

@@ -79,12 +79,17 @@ services:
       dockerfile: Dockerfile
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
+    volumes:
+      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ./certs/internal/agent.pem:/run/dipole/certs/agent.pem:ro
+      - ./certs/internal/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
       kafka:
         condition: service_healthy
       mysql-permissions:
         condition: service_completed_successfully
     environment:
+      <<: *internal-rpc
       DIPOLE_AGENT_HOST: 0.0.0.0
       DIPOLE_AGENT_PORT: "8091"
       DIPOLE_AGENT_KAFKA_ENABLED: "true"
@@ -100,6 +105,10 @@ services:
       DIPOLE_AGENT_UUID: UAI000000000000000001
       DIPOLE_AGENT_LEDGER_MODE: mysql
       DIPOLE_AGENT_LEDGER_LEASE_MS: "60000"
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true"
+      DIPOLE_AGENT_CAPABILITY_RPC_TARGET: core:9091
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/agent.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
       DIPOLE_AGENT_MODEL_MODE: metadata
       DIPOLE_AGENT_MYSQL_HOST: mysql
       DIPOLE_AGENT_MYSQL_PORT: "3306"

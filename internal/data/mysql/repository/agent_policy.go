@@ -11,6 +11,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
 var ErrAgentPolicyConflict = errors.New("agent policy persistence conflict")
@@ -158,6 +159,58 @@ func (r *AgentPolicyRepository) TransitionTaskStatus(ctx context.Context, taskUU
 	return rows > 0, nil
 }
 
+func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.AgentRunV1) (bool, error) {
+	if err := run.Validate(); err != nil {
+		return false, fmt.Errorf("validate Agent Run: %w", err)
+	}
+	_, err := r.queries.InsertAgentRun(ctx, generated.InsertAgentRunParams{
+		RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID, Mode: run.Mode,
+	})
+	if err == nil {
+		return true, nil
+	}
+	var duplicate *mysqlDriver.MySQLError
+	if !errors.As(err, &duplicate) || duplicate.Number != 1062 {
+		return false, fmt.Errorf("create Agent Run: %w", err)
+	}
+	existing, lookupErr := r.GetRun(ctx, run.RunUUID)
+	if lookupErr != nil {
+		return false, lookupErr
+	}
+	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.Mode != run.Mode {
+		return false, fmt.Errorf("%w: run_uuid=%s", ErrAgentPolicyConflict, run.RunUUID)
+	}
+	return false, nil
+}
+
+func (r *AgentPolicyRepository) GetRun(ctx context.Context, runUUID string) (*application.AgentRunV1, error) {
+	row, err := r.queries.GetAgentRun(ctx, runUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get Agent Run: %w", err)
+	}
+	return &application.AgentRunV1{
+		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, Mode: row.Mode,
+		Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
+		CompletedAt: timePointer(row.CompletedAt), LastError: row.LastError.String,
+	}, nil
+}
+
+func (r *AgentPolicyRepository) TransitionRunStatus(ctx context.Context, runUUID string, from, to application.AgentRunStatusV1, lastError string) (bool, error) {
+	if from != application.AgentRunStatusRunning || (to != application.AgentRunStatusCompleted && to != application.AgentRunStatusFailed && to != application.AgentRunStatusCancelled) {
+		return false, fmt.Errorf("validate Agent Run transition: %w", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.TransitionAgentRunStatus(ctx, generated.TransitionAgentRunStatusParams{
+		Status: string(to), LastError: sql.NullString{String: lastError, Valid: lastError != ""}, RunUuid: runUUID, Status_2: string(from),
+	})
+	if err != nil {
+		return false, fmt.Errorf("transition Agent Run status: %w", err)
+	}
+	return rows > 0, nil
+}
+
 func (r *AgentPolicyRepository) CreateApproval(ctx context.Context, approval application.AgentApprovalV1) error {
 	if err := approval.Validate(); err != nil {
 		return fmt.Errorf("validate Agent Approval: %w", err)
@@ -217,6 +270,7 @@ func (r *AgentPolicyRepository) RevokeApproval(ctx context.Context, approvalUUID
 }
 
 func sameAgentTask(left, right application.AgentTaskV1) bool {
+	left.Status, right.Status = "", ""
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)

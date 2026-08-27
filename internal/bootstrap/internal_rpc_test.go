@@ -18,13 +18,39 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
+	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
 type rpcCoreStub struct{}
+
+type rpcAgentCapabilityStub struct{ application.AgentCapabilityV1 }
+
+func (rpcAgentCapabilityStub) ListConversations(context.Context, application.AgentInvocationV1, int) ([]*model.Conversation, error) {
+	return []*model.Conversation{{ConversationKey: "direct:U100:UAI"}}, nil
+}
+
+type rpcAgentResolverStub struct{}
+
+func (rpcAgentResolverStub) Resolve(context.Context, string, string) (application.AgentInvocationV1, error) {
+	return application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}, nil
+}
+
+type rpcAgentAdmissionStub struct{}
+
+func (rpcAgentAdmissionStub) Admit(context.Context, application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
+	return &application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}, nil
+}
+
+func (rpcAgentAdmissionStub) Complete(context.Context, string, string, string, string) error {
+	return nil
+}
 
 func (rpcCoreStub) ListSearchConversationKeys(userUUID string) ([]string, error) {
 	return []string{"direct:" + userUUID + ":U2"}, nil
@@ -118,6 +144,38 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected authenticated caller mismatch rejection, got %v", err)
+	}
+}
+
+func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	server, err := NewCoreRPCServerWithAgent(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{})
+	if err != nil {
+		t.Fatalf("start Agent rpc server: %v", err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+	interceptor, err := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	if err != nil {
+		t.Fatalf("create Agent rpc credentials: %v", err)
+	}
+	connection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor))
+	if err != nil {
+		t.Fatalf("dial Agent rpc: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	agentClient := agentv1.NewAgentCapabilityServiceClient(connection)
+	response, err := agentClient.AdmitRun(context.Background(), &agentv1.AdmitRunRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TenantId: "dipole", PrincipalUserId: "U100",
+		AgentId: "UAI", TriggerType: "message.direct.created", TriggerRef: "M100", RuntimeId: agentServiceName, Mode: "shadow",
+	})
+	if err != nil || response.GetRunId() != "RUN-1" {
+		t.Fatalf("admit Agent Run through authenticated channel: response=%+v err=%v", response, err)
+	}
+	_, err = corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent Core method code = %s, want permission denied", status.Code(err))
 	}
 }
 

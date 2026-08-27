@@ -12,6 +12,7 @@ import (
 
 const AgentPolicyPersistenceVersionV1 = "dipole.agent.policy.persistence.v1"
 const AgentResourceScopeHashVersionV1 = "dipole.agent.scope.v1"
+const AgentRunIDVersionV1 = "dipole.agent.run.v1"
 
 var ErrAgentApprovalDenied = errors.New("agent approval denied")
 var ErrAgentPolicyInvalid = errors.New("agent policy record is invalid")
@@ -24,6 +25,15 @@ const (
 )
 
 type AgentTaskStatusV1 string
+
+type AgentRunStatusV1 string
+
+const (
+	AgentRunStatusRunning   AgentRunStatusV1 = "running"
+	AgentRunStatusCompleted AgentRunStatusV1 = "completed"
+	AgentRunStatusFailed    AgentRunStatusV1 = "failed"
+	AgentRunStatusCancelled AgentRunStatusV1 = "cancelled"
+)
 
 const (
 	AgentTaskStatusCreated         AgentTaskStatusV1 = "created"
@@ -78,6 +88,17 @@ type AgentTaskV1 struct {
 	Goal              string            `json:"goal"`
 	CreatedAt         time.Time         `json:"created_at,omitempty"`
 	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
+}
+
+type AgentRunV1 struct {
+	RunUUID     string           `json:"run_uuid"`
+	TaskUUID    string           `json:"task_uuid"`
+	RuntimeID   string           `json:"runtime_id"`
+	Mode        string           `json:"mode"`
+	Status      AgentRunStatusV1 `json:"status"`
+	StartedAt   time.Time        `json:"started_at,omitempty"`
+	CompletedAt *time.Time       `json:"completed_at,omitempty"`
+	LastError   string           `json:"last_error,omitempty"`
 }
 
 type AgentApprovalV1 struct {
@@ -139,6 +160,31 @@ func (t AgentTaskV1) Validate() error {
 	default:
 		return ErrAgentPolicyInvalid
 	}
+}
+
+func (r AgentRunV1) Validate() error {
+	if anyBlank(r.RunUUID, r.TaskUUID, r.RuntimeID, r.Mode) {
+		return ErrAgentPolicyInvalid
+	}
+	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
+		return ErrAgentPolicyInvalid
+	}
+	switch r.Status {
+	case AgentRunStatusRunning, AgentRunStatusCompleted, AgentRunStatusFailed, AgentRunStatusCancelled:
+		return nil
+	default:
+		return ErrAgentPolicyInvalid
+	}
+}
+
+func AgentRunUUIDV1(taskUUID, runtimeID, mode string) (string, error) {
+	taskUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
+	run := AgentRunV1{RunUUID: "pending", TaskUUID: taskUUID, RuntimeID: runtimeID, Mode: mode, Status: AgentRunStatusRunning}
+	if err := run.Validate(); err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(AgentRunIDVersionV1 + "\n" + taskUUID + "\n" + runtimeID + "\n" + mode))
+	return "run:" + hex.EncodeToString(digest[:])[:60], nil
 }
 
 func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
@@ -287,6 +333,9 @@ type AgentPolicyStoreV1 interface {
 	CreateTask(ctx context.Context, task AgentTaskV1) (bool, error)
 	GetTask(ctx context.Context, taskUUID string) (*AgentTaskV1, error)
 	TransitionTaskStatus(ctx context.Context, taskUUID string, from, to AgentTaskStatusV1) (bool, error)
+	CreateRun(ctx context.Context, run AgentRunV1) (bool, error)
+	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
+	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)
 	CreateApproval(ctx context.Context, approval AgentApprovalV1) error
 	ApproveApproval(ctx context.Context, approvalUUID, approvedByUUID string, approvedAt time.Time) (bool, error)
 	ConsumeApproval(ctx context.Context, approvalUUID string, claim AgentApprovalClaimV1, consumedAt time.Time) (bool, error)

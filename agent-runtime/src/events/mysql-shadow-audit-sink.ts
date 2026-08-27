@@ -1,10 +1,14 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 import type { ShadowAuditRecord, ShadowAuditSink } from "./shadow-processor.js";
 import {
+  CLAIM_AGENT_SHADOW_STEP,
+  COMPLETE_AGENT_SHADOW_STEP,
+  FAIL_AGENT_SHADOW_STEP,
   GET_AGENT_SHADOW_PLAN,
+  GET_AGENT_SHADOW_STEP,
   INSERT_AGENT_SHADOW_PLAN,
   INSERT_AGENT_SHADOW_STEP
 } from "./mysql-shadow-audit-queries.js";
@@ -15,6 +19,16 @@ interface ExistingPlanRow extends RowDataPacket {
   event_type: string;
   plan_sha256: string;
 }
+
+interface ExistingStepRow extends RowDataPacket {
+  status: "planned" | "running" | "completed" | "failed" | "denied";
+  claim_token: string | null;
+}
+
+export type ShadowStepClaim =
+  | { readonly outcome: "claimed"; readonly token: string }
+  | { readonly outcome: "completed" }
+  | { readonly outcome: "busy" };
 
 export class MySQLShadowAuditSink implements ShadowAuditSink {
   constructor(private readonly pool: Pool) {}
@@ -59,6 +73,42 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
       throw error;
     } finally {
       connection.release();
+    }
+  }
+
+  async claimStep(taskId: string, stepNo: number, leaseMs: number): Promise<ShadowStepClaim> {
+    if (!Number.isSafeInteger(stepNo) || stepNo < 1 || !Number.isSafeInteger(leaseMs) || leaseMs < 1_000) {
+      throw new Error("Agent shadow Step number and lease are invalid");
+    }
+    const token = randomUUID();
+    const [result] = await this.pool.execute<ResultSetHeader>(CLAIM_AGENT_SHADOW_STEP, [token, leaseMs * 1000, required(taskId, "Task ID"), stepNo]);
+    if (result.affectedRows === 1) {
+      return { outcome: "claimed", token };
+    }
+    const [rows] = await this.pool.execute<ExistingStepRow[]>(GET_AGENT_SHADOW_STEP, [taskId, stepNo]);
+    const row = rows[0];
+    if (row === undefined) {
+      throw new Error(`Agent shadow Step ${taskId}/${stepNo} is missing`);
+    }
+    return row.status === "completed" ? { outcome: "completed" } : { outcome: "busy" };
+  }
+
+  async completeStep(taskId: string, stepNo: number, token: string, output: unknown): Promise<void> {
+    const [result] = await this.pool.execute<ResultSetHeader>(COMPLETE_AGENT_SHADOW_STEP, [
+      canonicalJSON(output), required(taskId, "Task ID"), stepNo, required(token, "Step claim token")
+    ]);
+    if (result.affectedRows !== 1) {
+      throw new Error(`Agent shadow Step ${taskId}/${stepNo} completion is stale`);
+    }
+  }
+
+  async failStep(taskId: string, stepNo: number, token: string, error: unknown): Promise<void> {
+    const message = (error instanceof Error ? error.message : String(error)).slice(0, 65_535);
+    const [result] = await this.pool.execute<ResultSetHeader>(FAIL_AGENT_SHADOW_STEP, [
+      message, required(taskId, "Task ID"), stepNo, required(token, "Step claim token")
+    ]);
+    if (result.affectedRows !== 1) {
+      throw new Error(`Agent shadow Step ${taskId}/${stepNo} failure is stale`);
     }
   }
 }
