@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-039：Gateway Kafka assignment 未纳入 readiness
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-28
-- **影响范围：** Go Gateway 实时投递、空 Kafka 冷启动、基准门禁、后续 C++ Realtime Delivery 切流
-- **现状：** C2 同 workload 隔离演练中，空 Kafka 拓扑首次启动曾出现 Gateway HTTP readiness 为 200、`dipole-gateway-consumer` 无任何 assignment 的状态；该轮 40 条消息均已接受和持久化，Gateway reader 指标保持 0，客户端实时收件为 0，聚合 settled lag 仍可显示 0。重启 Gateway 后 direct-created 六个分区完成 assignment，相同 workload 恢复 40/40 收件。成功对照归档通过演练前显式 assignment 检查规避该窗口，生产实现未修改。
-- **风险：** 编排系统、基准或流量切换可能把仅 HTTP/gRPC 可用的 Gateway 当作实时数据面已就绪；缺少 consumer group 行时，单纯汇总 lag 也无法区分“无积压”和“尚未加入消费组”。
-- **建议方向：** 将必需 topic 的 partition assignment 和 reader 健康纳入 Gateway readiness，区分初始 metadata 收敛、运行期 rebalance 与持续失联；基准 preflight 同时要求指定 group/topic 的非空 assignment 与稳定窗口，并保存初始/final group evidence。
-- **处理门槛：** C++ primary 接管、Gateway 自动扩缩容或正式冷启动 SLA 发布前完成；当前 C++ shadow 与对照演练必须保留显式 assignment 前置检查。
-
 ### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
 
 - **优先级：** P1
@@ -247,6 +236,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-039：Gateway Kafka assignment 未纳入 readiness
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **解决日期：** 2026-08-28
+- **影响范围：** Go Gateway 实时投递、空 Kafka 冷启动、基准门禁、后续 C++ Realtime Delivery 切流
+- **解决方式：** Kafka Consumer 通过 coordinator `DescribeGroups` 聚合整个消费组的 assignment；Gateway 新增要求首次成功的 `kafka-assignment` 探针，只有 group 为 `Stable` 且每个已注册 base/retry topic 至少拥有一个分区时才通过。通用 readiness 状态机新增 opt-in 初始失败语义，其他探针继续沿用兼容默认值。微服务 smoke 同时要求 `/readyz` 和 assignment 指标通过，并使用可覆盖的临时证书目录保持演练隔离。
+- **验证：** clean revision `958d40c7910ca8a85c0dad6bf57698ae32f9d42f` 镜像来源为 dirty=false；独立栈停止 Gateway 后消费组为 `Empty 0`，重启首样本为 `/readyz=not-ready`、`service_ready=0`、assignment=0，32 个样本约 10.2 秒后达到 `Stable 20`、`/readyz=ready`、assignment=1。完整依赖 readiness smoke、聚焦测试和 canonical Go gate 通过，证据归档于 `benchmarks/c2-gateway-assignment-readiness-2026-08-28/`。
+- **保留边界：** 当前探针验证 group 级稳定状态和注册 topic 覆盖；运行期短暂 rebalance 继续由既有失败阈值吸收，长期 reader 无进展仍需结合 fetch/commit/lag 指标独立告警。
 
 ### AD-022：前端开发工具链仍停留在 Vite 5
 
