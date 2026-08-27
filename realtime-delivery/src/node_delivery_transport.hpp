@@ -2,6 +2,7 @@
 #define DIPOLE_REALTIME_DELIVERY_NODE_DELIVERY_TRANSPORT_HPP_
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -20,12 +21,29 @@ struct NodeTransportStats {
   std::size_t backpressured = 0;
 };
 
+enum class PrimaryOffsetDecision : std::uint8_t { kCommit, kRetain };
+
+struct PrimaryDeliveryStats {
+  std::size_t requested = 0;
+  std::size_t enqueued = 0;
+  std::size_t offline = 0;
+  std::size_t backpressured = 0;
+  std::size_t rejected = 0;
+  std::size_t failed = 0;
+  PrimaryOffsetDecision decision = PrimaryOffsetDecision::kRetain;
+};
+
+ValidationError ClassifyPrimaryAcknowledgements(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                                const std::vector<delivery::v1::DeliveryAck>& acknowledgements,
+                                                PrimaryDeliveryStats* stats);
+
 class NodeBatchTransport {
  public:
   virtual ~NodeBatchTransport() = default;
-  virtual ValidationError Observe(
-      const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
-      NodeTransportStats* stats) = 0;
+  virtual ValidationError Observe(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                  NodeTransportStats* stats) = 0;
+  virtual ValidationError Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                  PrimaryDeliveryStats* stats) = 0;
 };
 
 struct GrpcNodeTransportConfig {
@@ -39,8 +57,7 @@ struct GrpcNodeTransportConfig {
   std::string tls_server_name;
 };
 
-ValidationError ParseNodeTargets(const std::string& raw,
-                                 std::map<std::string, std::string>* targets);
+ValidationError ParseNodeTargets(const std::string& raw, std::map<std::string, std::string>* targets);
 ValidationError ValidateGrpcNodeTransportConfig(const GrpcNodeTransportConfig& config);
 
 class GrpcNodeBatchTransport final : public NodeBatchTransport {
@@ -50,6 +67,8 @@ class GrpcNodeBatchTransport final : public NodeBatchTransport {
 
   ValidationError Observe(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
                           NodeTransportStats* stats) override;
+  ValidationError Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                          PrimaryDeliveryStats* stats) override;
   ValidationError Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
                           std::vector<delivery::v1::DeliveryAck>* acknowledgements);
 

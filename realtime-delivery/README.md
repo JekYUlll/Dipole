@@ -38,6 +38,8 @@ An explicit one-shot probe is available for isolated failure drills. It validate
 dipole-realtime-delivery deliver_probe api/proto/dipole/delivery/v1/testdata batch.json
 ```
 
+Primary ACK classification is shared with the transport: only a complete set of terminal `ENQUEUED` or `OFFLINE` results permits a future Kafka commit. Partial/backpressured, rejected, failed, incomplete or identity-drifted responses retain the offset. No Kafka primary loop consumes this decision yet.
+
 `/livez`, `/readyz`, and `/health` return service identity after all golden contracts pass. Contract-only readiness is immediate. Shadow readiness requires a live Kafka partition assignment and a healthy latest poll/project/evidence/commit operation. The Web client persists stable delivery claims in its account-scoped IndexedDB store before invoking the packet handler; storage failures fail open and Sync Timeline remains the recovery path. Client-delivery `cpp` runtime mode remains unavailable pending cross-process failure-replay evidence.
 
 Requirements: CMake 3.21+, `/usr/bin/g++` with C++20, Ninja, clang-tidy, pkg-config, Protobuf compiler/C++ library 3.21+, gRPC C++ 1.51+, nlohmann/json 3.11+, hiredis 1.2+, and librdkafka 2.3+. `CXX`, `CLANG_TIDY_BIN`, `DIPOLE_CPP_COMPILER_PATH`, and `DIPOLE_CPP_BUILD_DIR` provide explicit toolchain overrides. Unpacked Debian package roots can be supplied through `DIPOLE_RDKAFKA_ROOT` and `DIPOLE_GRPC_ROOT` without installing host packages.

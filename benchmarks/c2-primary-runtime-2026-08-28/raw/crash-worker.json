@@ -1,0 +1,9 @@
+{
+  "name": "/dipole-c2-primary-runtime-crash-worker",
+  "image": "sha256:c5f626fa357cbc3dfb4d8d8be637f560def3e62efcf16a6df481269faf1478fd",
+  "state": {
+    "status": "exited",
+    "exit_code": 137
+  },
+  "network_mode": "dipole-c2-primary-runtime-703725b-v2_default"
+}

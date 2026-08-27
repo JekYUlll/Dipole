@@ -1,8 +1,7 @@
 #include "shadow_evidence.hpp"
 
-#include <string_view>
-
 #include <nlohmann/json.hpp>
+#include <string_view>
 
 namespace dipole::realtime {
 namespace {
@@ -21,7 +20,8 @@ std::string_view OutcomeName(ShadowOutcome outcome) {
 
 }  // namespace
 
-JsonLineEvidenceSink::JsonLineEvidenceSink(std::ostream* output) : output_(output) {}
+JsonLineEvidenceSink::JsonLineEvidenceSink(std::ostream* output) : output_(output) {
+}
 
 ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
   if (output_ == nullptr) {
@@ -31,7 +31,8 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
     return "shadow evidence Kafka coordinates are invalid";
   }
   nlohmann::json record = {
-      {"schema_version", "dipole.realtime.shadow-evidence.v3"},
+      {"schema_version",
+       evidence.transport_primary ? "dipole.realtime.primary-evidence.v1" : "dipole.realtime.shadow-evidence.v3"},
       {"topic", evidence.topic},
       {"partition", evidence.partition},
       {"offset", evidence.offset},
@@ -53,6 +54,13 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
       {"transport_rejected", evidence.transport_rejected},
       {"transport_backpressured", evidence.transport_backpressured},
   };
+  if (evidence.transport_primary) {
+    record["transport_mode"] = "primary";
+    record["transport_enqueued"] = evidence.transport_enqueued;
+    record["transport_offline"] = evidence.transport_offline;
+    record["transport_failed"] = evidence.transport_failed;
+    record["primary_offset_decision"] = evidence.primary_offset_commit ? "commit" : "retain";
+  }
   if (evidence.message_type >= 0) {
     record["message_type"] = evidence.message_type;
   }

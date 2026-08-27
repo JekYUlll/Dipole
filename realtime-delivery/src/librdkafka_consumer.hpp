@@ -2,6 +2,7 @@
 #define DIPOLE_REALTIME_DELIVERY_LIBRDKAFKA_CONSUMER_HPP_
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -11,8 +12,12 @@
 namespace dipole::realtime {
 
 inline constexpr char kShadowGroupPrefix[] = "dipole-realtime-shadow-";
+inline constexpr char kPrimaryGroupPrefix[] = "dipole-realtime-primary-";
+
+enum class KafkaConsumerAuthority : std::uint8_t { kShadow, kPrimary };
 
 struct LibrdkafkaConsumerConfig {
+  KafkaConsumerAuthority authority = KafkaConsumerAuthority::kShadow;
   std::vector<std::string> brokers;
   std::string client_id = "dipole-realtime-shadow";
   std::string group_id = "dipole-realtime-shadow-v1";
@@ -28,8 +33,7 @@ ValidationError ValidateLibrdkafkaConsumerConfig(const LibrdkafkaConsumerConfig&
 
 class LibrdkafkaConsumer final : public ShadowRecordConsumer {
  public:
-  static ValidationError Create(const LibrdkafkaConsumerConfig& config,
-                                std::unique_ptr<LibrdkafkaConsumer>* output);
+  static ValidationError Create(const LibrdkafkaConsumerConfig& config, std::unique_ptr<LibrdkafkaConsumer>* output);
 
   ~LibrdkafkaConsumer() override;
   LibrdkafkaConsumer(const LibrdkafkaConsumer&) = delete;

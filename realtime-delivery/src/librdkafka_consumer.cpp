@@ -1,5 +1,7 @@
 #include "librdkafka_consumer.hpp"
 
+#include <librdkafka/rdkafka.h>
+
 #include <atomic>
 #include <cstdint>
 #include <limits>
@@ -8,8 +10,6 @@
 #include <string_view>
 #include <unordered_set>
 #include <utility>
-
-#include <librdkafka/rdkafka.h>
 
 namespace dipole::realtime {
 namespace {
@@ -53,17 +53,16 @@ struct LibrdkafkaConsumer::Impl {
     }
   }
 
-  static void Rebalance(rd_kafka_t* consumer, rd_kafka_resp_err_t error,
-                        rd_kafka_topic_partition_list_t* partitions, void* opaque) {
+  static void Rebalance(rd_kafka_t* consumer, rd_kafka_resp_err_t error, rd_kafka_topic_partition_list_t* partitions,
+                        void* opaque) {
     auto* self = static_cast<Impl*>(opaque);
     if (self == nullptr) {
       return;
     }
     if (error == RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS) {
       const auto assign_error = rd_kafka_assign(consumer, partitions);
-      self->assignment_count.store(assign_error == RD_KAFKA_RESP_ERR_NO_ERROR
-                                        ? static_cast<std::size_t>(partitions->cnt)
-                                        : 0);
+      self->assignment_count.store(
+          assign_error == RD_KAFKA_RESP_ERR_NO_ERROR ? static_cast<std::size_t>(partitions->cnt) : 0);
       return;
     }
     self->assignment_count.store(0);
@@ -83,9 +82,10 @@ ValidationError ValidateLibrdkafkaConsumerConfig(const LibrdkafkaConsumerConfig&
   if (IsBlank(config.client_id)) {
     return "librdkafka client_id is required";
   }
-  if (!config.group_id.starts_with(kShadowGroupPrefix) ||
-      config.group_id.size() <= std::string_view(kShadowGroupPrefix).size()) {
-    return "librdkafka group_id must use the dedicated shadow prefix";
+  const std::string_view group_prefix =
+      config.authority == KafkaConsumerAuthority::kPrimary ? kPrimaryGroupPrefix : kShadowGroupPrefix;
+  if (!config.group_id.starts_with(group_prefix) || config.group_id.size() <= group_prefix.size()) {
+    return "librdkafka group_id must match its dedicated authority prefix";
   }
   const std::unordered_set<std::string> expected = {
       "dipole.message.direct.created",
@@ -95,18 +95,17 @@ ValidationError ValidateLibrdkafkaConsumerConfig(const LibrdkafkaConsumerConfig&
   if (actual != expected || config.topics.size() != expected.size()) {
     return "librdkafka topics must be the two canonical message-created topics";
   }
-  if (config.session_timeout_ms < kMinimumSessionTimeoutMs ||
-      config.session_timeout_ms > kMaximumSessionTimeoutMs) {
+  if (config.session_timeout_ms < kMinimumSessionTimeoutMs || config.session_timeout_ms > kMaximumSessionTimeoutMs) {
     return "librdkafka session_timeout_ms is out of range";
   }
-  if (config.heartbeat_interval_ms <= 0 ||
-      config.heartbeat_interval_ms * 3 > config.session_timeout_ms) {
+  if (config.heartbeat_interval_ms <= 0 || config.heartbeat_interval_ms * 3 > config.session_timeout_ms) {
     return "librdkafka heartbeat_interval_ms must fit the session timeout";
   }
   return std::nullopt;
 }
 
-LibrdkafkaConsumer::LibrdkafkaConsumer(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
+LibrdkafkaConsumer::LibrdkafkaConsumer(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {
+}
 
 LibrdkafkaConsumer::~LibrdkafkaConsumer() = default;
 
@@ -149,8 +148,7 @@ ValidationError LibrdkafkaConsumer::Create(const LibrdkafkaConsumerConfig& confi
   }
   rd_kafka_poll_set_consumer(impl->handle);
 
-  rd_kafka_topic_partition_list_t* topics =
-      rd_kafka_topic_partition_list_new(static_cast<int>(config.topics.size()));
+  rd_kafka_topic_partition_list_t* topics = rd_kafka_topic_partition_list_new(static_cast<int>(config.topics.size()));
   for (const auto& topic : config.topics) {
     rd_kafka_topic_partition_list_add(topics, topic.c_str(), RD_KAFKA_PARTITION_UA);
   }
@@ -182,9 +180,7 @@ PollResult LibrdkafkaConsumer::Poll(int timeout_ms) {
     if (error == RD_KAFKA_RESP_ERR__PARTITION_EOF) {
       return {};
     }
-    return {.status = PollStatus::kError,
-            .record = {},
-            .error = std::string(rd_kafka_err2str(error))};
+    return {.status = PollStatus::kError, .record = {}, .error = std::string(rd_kafka_err2str(error))};
   }
 
   KafkaRecord record;
@@ -207,8 +203,7 @@ ValidationError LibrdkafkaConsumer::Commit(const KafkaRecord& record) {
     return "commit Kafka coordinates are invalid";
   }
   rd_kafka_topic_partition_list_t* offsets = rd_kafka_topic_partition_list_new(1);
-  auto* partition =
-      rd_kafka_topic_partition_list_add(offsets, record.topic.c_str(), record.partition);
+  auto* partition = rd_kafka_topic_partition_list_add(offsets, record.topic.c_str(), record.partition);
   partition->offset = record.offset + 1;
   const auto commit_error = rd_kafka_commit(impl_->handle, offsets, 0);
   rd_kafka_topic_partition_list_destroy(offsets);
