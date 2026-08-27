@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-033：Artifact 仍复用通用文件存储凭据与 bucket
-
-- **优先级：** P1
-- **状态：** 暂缓
-- **发现日期：** 2026-08-27
-- **影响范围：** Agent Artifact、MinIO 权限隔离、跨域对象覆盖与生产切流
-- **现状：** Artifact v1 使用现有 Core MinIO client 和 bucket 下的 `agent-artifacts/v1/` 内容寻址前缀。应用层只开放 Put/Get，精确重试和读取均复核 SHA-256；当前 Agent `read_shadow` 默认关闭，Compose 固定 `foundation`。
-- **风险：** 底层通用文件凭据仍可越过应用接口覆盖或删除 Artifact 对象。哈希验证可以阻止错误内容被使用并留下冲突证据，但无法提供存储层最小权限和跨业务故障隔离。
-- **建议方向：** 为 Artifact 配置独立 bucket、专用 Core 身份和 prefix/bucket policy，仅允许 Put/Get/List 所需操作；删除权仅授予经过 dry-run、保留窗口和审计 receipt 的 maintenance 身份。通过真实 MinIO 越权测试证明文件上传身份和 Agent Runtime 身份均无法修改 Artifact。
-- **处理门槛：** `agent.mode=remote` 或 Artifact active 写流量评审前完成；Shadow 阶段保留哈希门禁并接受共享 bucket。
-
 ### AD-032：Artifact 对象写入后缺少孤儿清扫证据
 
 - **优先级：** P2
@@ -224,6 +213,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-033：Artifact 仍复用通用文件存储凭据与 bucket
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** Agent Artifact、MinIO 权限隔离、跨域对象覆盖与生产切流
+- **解决方式：** Artifact blob client 从全局文件 `MinIOUploader` 拆分为显式启用的独立配置、`dipole-agent-artifacts` bucket 和 `dipoleartifact` Core 身份；policy 仅允许 bucket 定位/列举与固定前缀 Get/Put，不含 Delete。通用存储同时降权为只覆盖文件及两个归档 bucket 的 `dipoleplatform` 身份，TS Agent Runtime 保持无对象存储凭据。
+- **验证：** 真实 tmpfs MinIO 正向验证两个身份各自允许路径，拒绝 Artifact 删除、Artifact 前缀逃逸、Artifact 到文件 bucket 及平台身份到 Artifact bucket；三份 Compose 渲染、连续两次初始化、配置/策略测试、Go test/vet/race、TS test/typecheck/build 和生成物漂移门禁通过。
+- **保留边界：** Runtime 与 Core 继续没有 Artifact 删除权限；孤儿对象审计和清扫由 AD-032 跟踪，未来使用单独 maintenance 身份与 dry-run receipt。
 
 ### AD-027：Agent 权限授予与审批状态尚未持久化
 

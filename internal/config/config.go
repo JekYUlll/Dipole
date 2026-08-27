@@ -170,6 +170,12 @@ type Storage struct {
 	SearchArchiveRetentionDays  int    `mapstructure:"search_archive_retention_days"`
 	MessageArchiveBucket        string `mapstructure:"message_archive_bucket"`
 	MessageArchiveRetentionDays int    `mapstructure:"message_archive_retention_days"`
+	ArtifactEnabled             bool   `mapstructure:"artifact_enabled"`
+	ArtifactEndpoint            string `mapstructure:"artifact_endpoint"`
+	ArtifactAccessKey           string `mapstructure:"artifact_access_key"`
+	ArtifactSecretKey           string `mapstructure:"artifact_secret_key"`
+	ArtifactUseSSL              bool   `mapstructure:"artifact_use_ssl"`
+	ArtifactBucket              string `mapstructure:"artifact_bucket"`
 	PublicBaseURL               string `mapstructure:"public_base_url"`
 	FileMaxSizeMB               int64  `mapstructure:"file_max_size_mb"`
 	MultipartChunkSizeMB        int64  `mapstructure:"multipart_chunk_size_mb"`
@@ -392,14 +398,20 @@ func Load() error {
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
-		v.SetDefault("storage.access_key", "dipoleminio")
-		v.SetDefault("storage.secret_key", "dipoleminiopass")
+		v.SetDefault("storage.access_key", "dipoleplatform")
+		v.SetDefault("storage.secret_key", "dipoleplatformpass")
 		v.SetDefault("storage.use_ssl", false)
 		v.SetDefault("storage.bucket", "dipole-files")
 		v.SetDefault("storage.search_archive_bucket", "dipole-search-archives")
 		v.SetDefault("storage.search_archive_retention_days", 30)
 		v.SetDefault("storage.message_archive_bucket", "dipole-message-archives")
 		v.SetDefault("storage.message_archive_retention_days", 30)
+		v.SetDefault("storage.artifact_enabled", false)
+		v.SetDefault("storage.artifact_endpoint", "127.0.0.1:9000")
+		v.SetDefault("storage.artifact_access_key", "")
+		v.SetDefault("storage.artifact_secret_key", "")
+		v.SetDefault("storage.artifact_use_ssl", false)
+		v.SetDefault("storage.artifact_bucket", "dipole-agent-artifacts")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -557,6 +569,12 @@ func Load() error {
 			"storage.search_archive_retention_days",
 			"storage.message_archive_bucket",
 			"storage.message_archive_retention_days",
+			"storage.artifact_enabled",
+			"storage.artifact_endpoint",
+			"storage.artifact_access_key",
+			"storage.artifact_secret_key",
+			"storage.artifact_use_ssl",
+			"storage.artifact_bucket",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -888,6 +906,12 @@ func StorageConfig() Storage {
 	storageConfig.SearchArchiveRetentionDays = cfg.GetInt("storage.search_archive_retention_days")
 	storageConfig.MessageArchiveBucket = cfg.GetString("storage.message_archive_bucket")
 	storageConfig.MessageArchiveRetentionDays = cfg.GetInt("storage.message_archive_retention_days")
+	storageConfig.ArtifactEnabled = cfg.GetBool("storage.artifact_enabled")
+	storageConfig.ArtifactEndpoint = cfg.GetString("storage.artifact_endpoint")
+	storageConfig.ArtifactAccessKey = cfg.GetString("storage.artifact_access_key")
+	storageConfig.ArtifactSecretKey = cfg.GetString("storage.artifact_secret_key")
+	storageConfig.ArtifactUseSSL = cfg.GetBool("storage.artifact_use_ssl")
+	storageConfig.ArtifactBucket = cfg.GetString("storage.artifact_bucket")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")

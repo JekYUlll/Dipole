@@ -9,10 +9,23 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+type AgentArtifactStorageConfigV1 struct {
+	Enabled          bool
+	Endpoint         string
+	AccessKey        string
+	SecretKey        string
+	UseSSL           bool
+	Bucket           string
+	GeneralAccessKey string
+	GeneralBucket    string
+}
 
 type agentArtifactObjectClient interface {
 	Get(context.Context, string, string) ([]byte, bool, error)
@@ -26,12 +39,32 @@ type AgentArtifactBlobStore struct {
 
 var _ application.AgentArtifactBlobStoreV1 = (*AgentArtifactBlobStore)(nil)
 
-func NewAgentArtifactBlobStore(storage ObjectStorage) (*AgentArtifactBlobStore, error) {
-	uploader, ok := storage.(*MinIOUploader)
-	if !ok || uploader == nil || uploader.client == nil || strings.TrimSpace(uploader.bucket) == "" {
-		return nil, errors.New("Agent Artifact storage requires initialized MinIO")
+func NewAgentArtifactBlobStoreFromConfig(ctx context.Context, cfg AgentArtifactStorageConfigV1) (*AgentArtifactBlobStore, error) {
+	endpoint := strings.TrimSpace(cfg.Endpoint)
+	accessKey := strings.TrimSpace(cfg.AccessKey)
+	secretKey := strings.TrimSpace(cfg.SecretKey)
+	bucket := strings.TrimSpace(cfg.Bucket)
+	if !cfg.Enabled || endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" ||
+		accessKey == strings.TrimSpace(cfg.GeneralAccessKey) || bucket == strings.TrimSpace(cfg.GeneralBucket) {
+		return nil, errors.New("isolated Agent Artifact storage configuration is incomplete")
 	}
-	return newAgentArtifactBlobStoreV1(&minioAgentArtifactClientV1{client: uploader.client}, uploader.bucket), nil
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure: cfg.UseSSL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Artifact MinIO client: %w", err)
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	exists, err := client.BucketExists(checkCtx, bucket)
+	if err != nil {
+		return nil, fmt.Errorf("check Agent Artifact MinIO bucket: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("Agent Artifact MinIO bucket %s does not exist", bucket)
+	}
+	return newAgentArtifactBlobStoreV1(&minioAgentArtifactClientV1{client: client}, bucket), nil
 }
 
 func newAgentArtifactBlobStoreV1(client agentArtifactObjectClient, bucket string) *AgentArtifactBlobStore {
