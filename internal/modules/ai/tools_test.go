@@ -14,10 +14,13 @@ import (
 )
 
 func toolTestContext(principalUserUUID string) context.Context {
-	return withExecutionContext(context.Background(), ExecutionContext{
+	execution := newExecutionContext(ExecutionContext{
+		TenantID:          defaultAgentTenantID,
 		PrincipalUserUUID: principalUserUUID,
 		AgentUUID:         "UAI",
-	})
+		DelegatedByUUID:   principalUserUUID,
+	}, embeddedAgentPermissionsV1(), nil)
+	return withExecutionContext(context.Background(), execution)
 }
 
 func TestUserProfileToolInvokableRun(t *testing.T) {
@@ -264,9 +267,39 @@ func TestSystemMessageToolRejectsMismatchedAgentIdentity(t *testing.T) {
 	t.Parallel()
 
 	tool := NewSystemMessageTool(&stubAgentCapability{}, "UAI")
-	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: "U100", AgentUUID: "UOTHER"})
+	execution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UOTHER", DelegatedByUUID: "U100",
+	}, embeddedAgentPermissionsV1(), nil)
+	ctx := withExecutionContext(context.Background(), execution)
 	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
 	if err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("expected agent identity mismatch, got %v", err)
+	}
+}
+
+func TestAgentToolsEnforceCapabilityPermissionsBeforeAdapters(t *testing.T) {
+	t.Parallel()
+
+	capability := &stubAgentCapability{read: &application.AgentConversationReadV1{Found: true}}
+	readExecution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+	}, []string{application.AgentPermissionUserProfileRead}, nil)
+	readCtx := withExecutionContext(context.Background(), readExecution)
+	if _, err := NewReadConversationTool(capability).(*readConversationTool).InvokableRun(readCtx, `{"target_uuid":"U200"}`); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected read permission denial, got %v", err)
+	}
+	if capability.conversationReads != 0 {
+		t.Fatalf("denied read reached Capability adapter %d times", capability.conversationReads)
+	}
+
+	writeExecution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+	}, []string{application.AgentPermissionConversationRead}, nil)
+	writeCtx := withExecutionContext(context.Background(), writeExecution)
+	if _, err := NewSystemMessageTool(capability, "UAI").(*systemMessageTool).InvokableRun(writeCtx, `{"content":"notice"}`); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected write permission denial, got %v", err)
+	}
+	if capability.targetUUID != "" {
+		t.Fatalf("denied write reached Capability adapter target %q", capability.targetUUID)
 	}
 }

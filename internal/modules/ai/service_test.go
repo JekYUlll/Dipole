@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
@@ -188,15 +189,18 @@ func TestServiceDerivesTrustedExecutionContextFromTrigger(t *testing.T) {
 	}
 
 	want := ExecutionContext{
+		TenantID:           defaultAgentTenantID,
 		PrincipalUserUUID:  "U100",
 		AgentUUID:          "UAI",
+		DelegatedByUUID:    "U100",
 		TriggerMessageUUID: "M-TRIGGER",
 		ConversationKey:    message.ConversationKey,
 		RequestID:          "REQ-1",
 		TraceID:            "TRACE-1",
 		EventID:            "EVENT-1",
 	}
-	if captured != want {
+	want = newExecutionContext(want, embeddedAgentPermissionsV1(), nil)
+	if !reflect.DeepEqual(captured, want) {
 		t.Fatalf("execution context = %+v, want %+v", captured, want)
 	}
 }

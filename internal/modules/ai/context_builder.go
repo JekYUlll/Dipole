@@ -36,7 +36,15 @@ func NewContextBuilder(capability application.AgentCapabilityV1, maxContextMessa
 func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error) {
 	userUUID = strings.TrimSpace(userUUID)
 	assistantUUID = strings.TrimSpace(assistantUUID)
-	endUser, err := b.capability.GetUserProfile(ctx, userUUID, assistantUUID, userUUID)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityUserProfileRead)
+	if err != nil {
+		return nil, fmt.Errorf("authorize ai context profile: %w", err)
+	}
+	if execution.PrincipalUserUUID != userUUID || execution.AgentUUID != assistantUUID {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	invocation := execution.invocationV1()
+	endUser, err := b.capability.GetUserProfile(ctx, invocation, userUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get ai conversation user: %w", err)
 	}
@@ -44,15 +52,18 @@ func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assis
 		return nil, ErrAIUserNotFound
 	}
 
-	assistant, err := b.capability.GetUserProfile(ctx, userUUID, assistantUUID, assistantUUID)
+	assistant, err := b.capability.GetUserProfile(ctx, invocation, assistantUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get ai assistant user: %w", err)
 	}
 	if assistant == nil || !assistant.IsAssistant() {
 		return nil, ErrAIAssistantNotFound
 	}
+	if err := authorizeExecutionCapability(execution, application.AgentCapabilityDirectMessagesRead); err != nil {
+		return nil, fmt.Errorf("authorize ai context messages: %w", err)
+	}
 
-	items, err := b.capability.ListDirectMessages(ctx, endUser.UUID, assistant.UUID, b.maxContextMessages)
+	items, err := b.capability.ListDirectMessages(ctx, invocation, b.maxContextMessages)
 	if err != nil {
 		return nil, fmt.Errorf("list ai conversation messages: %w", err)
 	}

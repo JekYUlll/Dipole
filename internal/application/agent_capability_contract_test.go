@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/JekYUlll/Dipole/internal/application"
 )
 
 func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
@@ -39,5 +41,47 @@ func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing Agent Capability operations: %#v", want)
+	}
+	descriptors, ok := schema["x-dipole-capabilities"].([]any)
+	if !ok || len(descriptors) != 5 {
+		t.Fatalf("Agent Capability contract must publish five descriptors, got %#v", schema["x-dipole-capabilities"])
+	}
+	wantDescriptors := map[string]application.AgentCapabilityDescriptorV1{}
+	for _, id := range []string{
+		application.AgentCapabilityUserProfileRead,
+		application.AgentCapabilityDirectMessagesRead,
+		application.AgentCapabilityConversationsList,
+		application.AgentCapabilityConversationRead,
+		application.AgentCapabilitySystemMessageSend,
+	} {
+		descriptor, ok := application.AgentCapabilityDescriptorByIDV1(id)
+		if !ok {
+			t.Fatalf("Go registry is missing descriptor %s", id)
+		}
+		wantDescriptors[id] = descriptor
+	}
+	for _, raw := range descriptors {
+		descriptor, ok := raw.(map[string]any)
+		if !ok || descriptor["id"] == "" || descriptor["required_permission"] == "" {
+			t.Fatalf("invalid Agent Capability descriptor %#v", raw)
+		}
+		risk, _ := descriptor["risk"].(string)
+		if risk != string(application.AgentCapabilityRiskRead) && risk != string(application.AgentCapabilityRiskWrite) && risk != string(application.AgentCapabilityRiskDestructive) {
+			t.Fatalf("invalid Agent Capability risk %#v", descriptor)
+		}
+		id, _ := descriptor["id"].(string)
+		want, ok := wantDescriptors[id]
+		if !ok {
+			t.Fatalf("schema has unknown Agent Capability descriptor %q", id)
+		}
+		permission, _ := descriptor["required_permission"].(string)
+		approval, _ := descriptor["approval_required"].(bool)
+		if risk != string(want.Risk) || permission != want.RequiredPermission || approval != want.ApprovalRequired {
+			t.Fatalf("schema descriptor drift for %s: schema=%#v Go=%+v", id, descriptor, want)
+		}
+		delete(wantDescriptors, id)
+	}
+	if len(wantDescriptors) != 0 {
+		t.Fatalf("schema is missing Agent Capability descriptors: %#v", wantDescriptors)
 	}
 }

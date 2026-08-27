@@ -105,21 +105,25 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return err
 	}
 
-	conversationContext, err := s.contextBuilder.BuildDirectContext(ctx, message.SenderUUID, assistantUUID)
-	if err != nil {
-		return markFailed(err)
-	}
-
 	ids := correlation.FromContext(ctx)
-	runCtx := withExecutionContext(ctx, ExecutionContext{
+	execution := newExecutionContext(ExecutionContext{
+		TenantID:           defaultAgentTenantID,
 		PrincipalUserUUID:  message.SenderUUID,
 		AgentUUID:          assistantUUID,
+		DelegatedByUUID:    message.SenderUUID,
 		TriggerMessageUUID: message.UUID,
 		ConversationKey:    message.ConversationKey,
 		RequestID:          ids.RequestID,
 		TraceID:            ids.TraceID,
 		EventID:            ids.EventID,
-	})
+	}, embeddedAgentPermissionsV1(), nil)
+	runCtx := withExecutionContext(ctx, execution)
+
+	conversationContext, err := s.contextBuilder.BuildDirectContext(runCtx, message.SenderUUID, assistantUUID)
+	if err != nil {
+		return markFailed(err)
+	}
+
 	runCtx = withToolExecutionState(runCtx, &toolExecutionState{})
 	reply, err := s.agent.Reply(runCtx, conversationContext.Messages)
 	if err != nil {

@@ -304,7 +304,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 将现有 Go/Eino Agent 固化为行为基线，以语言中立 v1 数据集覆盖事件、回复、Tool 轨迹和权限评测。
 - [x] 引入由认证触发链生成的 `ExecutionContext`，模型不能设置 principal、Agent 身份和关联审计 ID，所有 Embedded Tool 缺失上下文时 fail closed。
 - [x] 删除 Agent ContextBuilder/Tool 对数据库 repository-shaped port 的直接依赖，读取和动作统一进入 `dipole.agent.capability.v1`；本地 adapter 复用 Core、Conversation 与 Message application 边界。
-- [ ] 在 Capability API 中补充 tenant、委托身份、细粒度权限、风险级别与审批策略。
+- [x] 在 Capability API 中补充 `AgentPolicyV1`：tenant、委托身份、细粒度 permission、`read|write|destructive` 风险和 approval 语义，并在 Tool/adapter 双层授权。
+- [ ] 将 permission grant 与 approval 持久化到版本化 Agent Definition 和 AgentTask，支持 scope、过期、撤销及 arguments hash 重校验（`AD-027`）。
 - [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
 - [x] 增加 `ai.runtime_mode=off|embedded|shadow|remote`，兼容旧 `ai.enabled`；shadow 保留 Go 权威写入，remote 停止注册 Embedded consumer，为 Eino 回滚和 TS 切流建立开关。
 

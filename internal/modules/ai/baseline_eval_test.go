@@ -207,7 +207,7 @@ func runReadConversationEval(t *testing.T, evalCase baselineEvalCase) baselineEx
 	}
 	tool := NewReadConversationTool(capability)
 	arguments, _ := json.Marshal(map[string]any{"target_uuid": targetUUID})
-	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: userUUID, AgentUUID: "UAI"})
+	ctx := toolTestContext(userUUID)
 	result, err := tool.(*readConversationTool).InvokableRun(ctx, string(arguments))
 	if err != nil {
 		t.Fatalf("run read_conversation baseline: %v", err)
@@ -235,7 +235,7 @@ func runUserProfileEval(t *testing.T, evalCase baselineEvalCase) baselineExpecte
 	capability := &stubAgentCapability{users: map[string]*model.User{principal: {UUID: principal, Nickname: "baseline user"}}}
 	tool := NewUserProfileTool(capability, "UAI")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
-	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
+	ctx := toolTestContext(principal)
 	result, err := tool.(*userProfileTool).InvokableRun(ctx, `{"user_uuid":"`+argumentUser+`"}`)
 	if err != nil {
 		t.Fatalf("run get_user_profile baseline: %v", err)
@@ -256,7 +256,7 @@ func runSystemMessageEval(t *testing.T, evalCase baselineEvalCase) baselineExpec
 	tool := NewSystemMessageTool(capability, "UAI")
 	principal := evalString(t, evalCase.Input, "principal_uuid")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
-	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
+	ctx := toolTestContext(principal)
 	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"user_uuid":"`+argumentUser+`","content":"baseline"}`)
 	if err != nil {
 		t.Fatalf("run send_system_message baseline: %v", err)
