@@ -43,6 +43,25 @@ async function deleteDatabase(name: string) {
 let interruptedWritePending = false
 
 const acceptance = {
+  async prepareSharedDevice() {
+    const databaseName = 'dipole-web-sync-v1'
+    await deleteDatabase(databaseName)
+    const store = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName)
+    await store.commitPage('U1', page([{ id: 1, conversation: 'direct:U1:U3' }], 1))
+    await store.commitPage('U2', page([{ id: 2, conversation: 'direct:U2:U4' }], 2))
+    store.close()
+  },
+
+  async inspectSharedDevice() {
+    const databaseName = 'dipole-web-sync-v1'
+    const store = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName)
+    const current = await store.load('U1')
+    const other = await store.load('U2')
+    store.close()
+    await deleteDatabase(databaseName)
+    return { current, other }
+  },
+
   async lifecycle(databaseName: string) {
     const options = { highWaterMessages: 5, lowWaterMessages: 3, minimumMessagesPerConversation: 1 }
     const first = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName, options)
