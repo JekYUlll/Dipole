@@ -35,12 +35,14 @@ cmake --build "${build_dir}" --parallel
   "${root_dir}/realtime-delivery/src/health_server.cpp" \
   "${root_dir}/realtime-delivery/src/librdkafka_consumer.cpp" \
   "${root_dir}/realtime-delivery/src/main.cpp" \
+  "${root_dir}/realtime-delivery/src/presence_projection.cpp" \
   "${root_dir}/realtime-delivery/src/shadow_evidence.cpp" \
   "${root_dir}/realtime-delivery/src/shadow_runner.cpp" \
   "${root_dir}/realtime-delivery/src/shadow_runtime.cpp" \
   "${root_dir}/realtime-delivery/tests/contract_test.cpp" \
   "${root_dir}/realtime-delivery/tests/event_projection_test.cpp" \
   "${root_dir}/realtime-delivery/tests/librdkafka_consumer_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/presence_projection_test.cpp" \
   "${root_dir}/realtime-delivery/tests/shadow_evidence_test.cpp" \
   "${root_dir}/realtime-delivery/tests/shadow_runner_test.cpp"
 if [[ -n "${rdkafka_root}" ]]; then

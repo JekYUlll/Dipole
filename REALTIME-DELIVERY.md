@@ -69,6 +69,8 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 无 Redis 阶段使用 created event 中持久化的 `sync_fanout=false` 选择热群通知模式，避免历史回放误做完整 fanout；动态 `recent_message_count` 暂以 0 表达未知，后续 Redis adapter 独立补齐。该字段不参与当前低敏 evidence。
 
+Presence 路由先落为纯投影：输入已解析的用户连接快照与明确的 `now/ttl`，过滤过期连接后按 node 稳定排序生成 `NodeDeliveryBatch`，并统计 observed、eligible、stale 与 offline。用户身份漂移、空 node/connection 和重复 connection 所有权会 fail closed。该边界尚未读取 Redis；后续 adapter 会同时记录 Go 原始 Hash 视图与 TTL 过滤视图，以量化旧连接随用户 Hash 续期而残留的兼容差异。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。

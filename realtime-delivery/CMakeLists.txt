@@ -51,6 +51,7 @@ add_library(delivery_contract
   src/event_projection.cpp
   src/health_server.cpp
   src/librdkafka_consumer.cpp
+  src/presence_projection.cpp
   src/shadow_evidence.cpp
   src/shadow_runner.cpp
   src/shadow_runtime.cpp
@@ -100,6 +101,11 @@ if(BUILD_TESTING)
   target_link_libraries(delivery_shadow_evidence_test PRIVATE delivery_contract)
   target_compile_options(delivery_shadow_evidence_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME delivery_shadow_evidence_test COMMAND delivery_shadow_evidence_test)
+
+  add_executable(delivery_presence_projection_test tests/presence_projection_test.cpp)
+  target_link_libraries(delivery_presence_projection_test PRIVATE delivery_contract)
+  target_compile_options(delivery_presence_projection_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_presence_projection_test COMMAND delivery_presence_projection_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"
