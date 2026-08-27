@@ -21,6 +21,7 @@ export DIPOLE_NODE3_PORT="${C1_NODE3_PORT:-18083}"
 export DIPOLE_HTTP_PORT="${C1_HTTP_PORT:-18080}"
 export DIPOLE_HTTPS_PORT="${C1_HTTPS_PORT:-18443}"
 export DIPOLE_NETWORK_SUBNET="${C1_NETWORK_SUBNET:-10.201.0.0/24}"
+export DIPOLE_AI_RUNTIME_MODE=off
 
 usage() {
   echo "Usage: $0 up <image>|status|down"

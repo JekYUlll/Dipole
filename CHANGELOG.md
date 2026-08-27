@@ -17,7 +17,8 @@
 
 ### 新增
 
-- C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像并固定为 image SHA 后启动独立 project，`down` 保留候选卷。canonical Compose gate 同时验证默认和候选渲染。
+- C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖，fresh MySQL 先执行 one-shot migration；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA 并关闭 embedded Agent 后启动独立 project，`down` 保留候选卷。canonical Compose gate 同时验证默认和候选渲染。
+- C1 基准健康检查支持自定义节点 URL，operations/baseline v4 归档无凭据的 API 与 WebSocket 实际端点，避免隔离端口与报告环境描述漂移。
 - C1 为 Go 实时数据面基准增加运行镜像来源门禁：Docker 镜像写入 OCI revision/created 与 source dirty 标签，`run_bench.sh` 从运行容器解析不可变 container/image ID，并要求被测服务、采集器和干净源码树绑定同一完整 Git revision；operations/baseline v4 归档逐服务来源证据，缺标签、dirty 构建、提交偏差或重复容器绑定均在负载启动前 fail closed。
 - C1 增加 Go 实时数据面资源基准采集：`process_metrics.py` 从固定服务 PID 的 `/proc` 多点采样 CPU、RSS、线程与 context switch，`run_bench.sh` 将结果绑定到 operations/baseline v4；进程重启、服务集合漂移和计数异常 fail closed，v1-v3 历史报告继续可读并显式标记资源证据不可用。真实连接梯度与故障基线仍待独立归档。
 - Agent G4 增加 Event Subscription rollout evidence gate：CLI 同时读取 corpus、双评审 review 和 candidate evidence，重新执行 review/prefilter evaluator 后才产出低敏 `eligible|blocked` 决策，避免信任调用方预聚合报告。决策绑定 corpus、review、final-label、candidate evidence/configuration 哈希与 agreement、precision/recall、p95、成本指标；任一门槛失败返回 2，哈希/结构/逐 case 绑定无效返回 1。该门禁不修改 Trigger/Runtime mode 或 Capability authority。

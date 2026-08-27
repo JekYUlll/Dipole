@@ -11,6 +11,8 @@
 - 宿主端口：`18080/18443`、`18081..18083` 和独立基础设施端口
 - Docker 网段：`10.201.0.0/24`
 - Named volumes：归属于候选 Compose project
+- Fresh MySQL：one-shot `dipole-migrate` 完成后节点才启动
+- Agent：基准期间固定 `runtime_mode=off`，避免外部模型依赖污染实时数据面
 
 默认 `docker-compose.dist.yml` 仍使用 `dipole-*`、原宿主端口、`10.200.0.0/24` 和 `dipole-server:latest`。
 
@@ -40,12 +42,14 @@ COMPOSE_FILE=docker-compose.dist.yml \
 BASE_URL=http://127.0.0.1:18081 \
 NODE1_WS=ws://127.0.0.1:18081 \
 NODE2_WS=ws://127.0.0.1:18082 \
+NODE1_HEALTH_URL=http://127.0.0.1:18081/health \
+NODE2_HEALTH_URL=http://127.0.0.1:18082/health \
 RUN_ID=c1-direct-50 \
 SCENARIO=direct_msg \
 SCENARIO_FILTER=direct_msg \
 scripts/bench/run_bench.sh
 ```
 
-`run_bench.sh` 在 k6 前验证采集器工作树、每个服务的 container ID、image ID、revision、build time 和 dirty 状态。任一服务来源不一致都会停止采集。默认输出位于已忽略的 `scripts/bench/results/`，完成整组矩阵后再将选定原始证据归档到 `benchmarks/`。
+`run_bench.sh` 在 k6 前验证健康端点、采集器工作树、每个服务的 container ID、image ID、revision、build time 和 dirty 状态。任一服务来源不一致都会停止采集；operations v4 同时记录实际 API/WS 端点。默认输出位于已忽略的 `scripts/bench/results/`，完成整组矩阵后再将选定原始证据归档到 `benchmarks/`。
 
 连接梯度必须保持同一机器、Compose 文件、镜像、CPU/内存限制、采样周期和消息参数。每个报告至少保留 operations、baseline JSON/Markdown、k6 summary、Kafka lag、Conversation Prometheus 快照、process samples/resources 和 runtime provenance。

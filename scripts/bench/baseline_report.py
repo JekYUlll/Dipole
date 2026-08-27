@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 try:
     from scripts.bench.runtime_provenance import build_report as build_runtime_provenance
@@ -86,6 +87,36 @@ def _unavailable_runtime_provenance():
         "source_aligned": None,
         "services": None,
     }
+
+
+def _endpoint(value, schemes, field):
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"environment.{field} is required")
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme not in schemes
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(f"environment.{field} must be a credential-free endpoint")
+    return value
+
+
+def _environment_section(operations, source_schema_version):
+    values = operations.get("environment", {})
+    if source_schema_version != "dipole.performance.operations.v4":
+        return values
+    required = {"git_commit", "cpu", "topology", "api_base_url", "node1_ws", "node2_ws"}
+    if not isinstance(values, dict) or not required.issubset(values):
+        raise ValueError("operations v4 environment is missing endpoint evidence")
+    result = dict(values)
+    result["api_base_url"] = _endpoint(values["api_base_url"], {"http", "https"}, "api_base_url")
+    result["node1_ws"] = _endpoint(values["node1_ws"], {"ws", "wss"}, "node1_ws")
+    result["node2_ws"] = _endpoint(values["node2_ws"], {"ws", "wss"}, "node2_ws")
+    return result
 
 
 def _nonnegative_number(value, field, nullable=False):
@@ -345,7 +376,7 @@ def build_report(summary, operations):
         "run_id": operations.get("run_id", ""),
         "scenario": operations.get("scenario", ""),
         "captured_at": operations.get("captured_at"),
-        "environment": operations.get("environment", {}),
+        "environment": _environment_section(operations, source_schema_version),
         "parameters": operations.get("parameters", {}),
         "workload": {
             "attempted": attempted,
@@ -491,6 +522,9 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | Git commit | `{environment.get('git_commit', 'N/A')}` |
 | CPU | {environment.get('cpu', 'N/A')} |
 | Topology | `{environment.get('topology', 'N/A')}` |
+| API base URL | `{environment.get('api_base_url', 'N/A')}` |
+| Node 1 WebSocket | `{environment.get('node1_ws', 'N/A')}` |
+| Node 2 WebSocket | `{environment.get('node2_ws', 'N/A')}` |
 | Benchmark script | `{parameters.get('bench_script', 'N/A')}` |
 | Users | {parameters.get('user_count', 'N/A')} |
 | Group size | {parameters.get('group_size', 'N/A')} |

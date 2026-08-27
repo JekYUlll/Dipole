@@ -24,7 +24,14 @@ class BaselineReportTest(unittest.TestCase):
             "schema_version": "dipole.performance.operations.v4",
             "run_id": "g0-20260827",
             "scenario": "mixed",
-            "environment": {"git_commit": "a" * 40, "cpu": "test cpu", "topology": "dist"},
+            "environment": {
+                "git_commit": "a" * 40,
+                "cpu": "test cpu",
+                "topology": "dist",
+                "api_base_url": "http://127.0.0.1:18081",
+                "node1_ws": "ws://127.0.0.1:18081",
+                "node2_ws": "ws://127.0.0.1:18082",
+            },
             "parameters": {
                 "user_count": 20,
                 "group_size": 20,
@@ -244,6 +251,26 @@ class BaselineReportTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     build_report(self.summary, operations)
 
+    def test_v4_requires_credential_free_endpoint_evidence(self):
+        invalid_cases = []
+
+        missing = json.loads(json.dumps(self.operations))
+        missing["environment"].pop("node2_ws")
+        invalid_cases.append(missing)
+
+        credentials = json.loads(json.dumps(self.operations))
+        credentials["environment"]["api_base_url"] = "http://user:secret@127.0.0.1:18081"
+        invalid_cases.append(credentials)
+
+        wrong_scheme = json.loads(json.dumps(self.operations))
+        wrong_scheme["environment"]["node1_ws"] = "http://127.0.0.1:18081"
+        invalid_cases.append(wrong_scheme)
+
+        for operations in invalid_cases:
+            with self.subTest(operations=operations):
+                with self.assertRaises(ValueError):
+                    build_report(self.summary, operations)
+
     def test_v4_requires_consistent_process_resources(self):
         invalid_cases = []
 
@@ -303,6 +330,8 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("Hot-group thresholds | members=200, messages=50", markdown)
         self.assertIn("Gateway | 37.50% | 120.00 MiB | 18 | 240 | 12", markdown)
         self.assertIn("Gateway | `bbbbbbbbbbbb` | `aaaaaaaaaaaa` | clean", markdown)
+        self.assertIn("API base URL | `http://127.0.0.1:18081`", markdown)
+        self.assertIn("Node 2 WebSocket | `ws://127.0.0.1:18082`", markdown)
         self.assertIn("该报告只描述本次环境", markdown)
 
     def test_json_round_trip_is_stable(self):

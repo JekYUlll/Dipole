@@ -26,6 +26,7 @@ candidate_config="$({
   DIPOLE_HTTP_PORT=18080 \
   DIPOLE_HTTPS_PORT=18443 \
   DIPOLE_NETWORK_SUBNET=10.201.0.0/24 \
+  DIPOLE_AI_RUNTIME_MODE=off \
     docker compose -f docker-compose.dist.yml config --format json
 })"
 
@@ -36,6 +37,9 @@ jq -e '
   and .services["dipole-node1"].ports[0].published == "18081"
   and .services["dipole-node2"].ports[0].published == "18082"
   and .services["dipole-node3"].ports[0].published == "18083"
+  and .services.migrate.entrypoint == ["/app/dipole-migrate"]
+  and .services["dipole-node1"].depends_on.migrate.condition == "service_completed_successfully"
+  and .services["dipole-node1"].environment.DIPOLE_AI_RUNTIME_MODE == "off"
   and .services.nginx.ports[0].published == "18080"
   and .networks.default.ipam.config[0].subnet == "10.201.0.0/24"
 ' <<<"${candidate_config}" >/dev/null
