@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
@@ -165,4 +166,34 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if failures.Load() != 0 || successes.Load() != 1 {
 		t.Fatalf("concurrent approval consumption: successes=%d failures=%d", successes.Load(), failures.Load())
 	}
+
+	permissions, scopes := application.EmbeddedAgentPolicyGrantV1()
+	const persistentAgentUUID = "UAI000000000000000001"
+	const persistentPrincipalUUID = "USR000000000000000001"
+	if err := appComposition.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", persistentAgentUUID, permissions, scopes); err != nil {
+		t.Fatalf("ensure persistent Embedded Definition: %v", err)
+	}
+	policy, err := appComposition.NewPersistentAgentExecutionPolicyV1(store)
+	if err != nil {
+		t.Fatalf("create persistent execution policy: %v", err)
+	}
+	execution, err := policy.Start(context.Background(), application.AgentExecutionPolicyStartV1{
+		TenantID: "dipole", PrincipalUUID: persistentPrincipalUUID, AgentUUID: persistentAgentUUID, DelegatedByUUID: persistentPrincipalUUID,
+		TriggerType: "message.direct.created", TriggerRef: "M-PERSISTENT", RequestID: "R-PERSISTENT", TraceID: "T-PERSISTENT", EventID: "E-PERSISTENT",
+	})
+	if err != nil {
+		t.Fatalf("start persistent execution policy: %v", err)
+	}
+	if len(execution.TaskUUID) != 64 || len(execution.Invocation.Permissions) != len(permissions) || len(execution.Invocation.ResourceScopes) != len(scopes) {
+		t.Fatalf("unexpected persistent execution snapshot: %+v", execution)
+	}
+	if err := policy.Complete(context.Background(), *execution); err != nil {
+		t.Fatalf("complete persistent execution policy: %v", err)
+	}
+	persistedTask, err := store.GetTask(context.Background(), execution.TaskUUID)
+	if err != nil || persistedTask == nil || persistedTask.Status != application.AgentTaskStatusCompleted || persistedTask.DefinitionVersion != embeddedAgentDefinitionVersionForContract {
+		t.Fatalf("persistent execution Task: %+v err=%v", persistedTask, err)
+	}
 }
+
+const embeddedAgentDefinitionVersionForContract uint64 = 1

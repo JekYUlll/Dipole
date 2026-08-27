@@ -204,6 +204,7 @@ type HotGroup struct {
 type AI struct {
 	Enabled            bool   `mapstructure:"enabled"`
 	RuntimeMode        string `mapstructure:"runtime_mode"`
+	PolicyMode         string `mapstructure:"policy_mode"`
 	Provider           string `mapstructure:"provider"`
 	Model              string `mapstructure:"model"`
 	APIKey             string `mapstructure:"api_key"`
@@ -219,10 +220,12 @@ type AI struct {
 }
 
 const (
-	AIRuntimeOff      = "off"
-	AIRuntimeEmbedded = "embedded"
-	AIRuntimeShadow   = "shadow"
-	AIRuntimeRemote   = "remote"
+	AIRuntimeOff       = "off"
+	AIRuntimeEmbedded  = "embedded"
+	AIRuntimeShadow    = "shadow"
+	AIRuntimeRemote    = "remote"
+	AIPolicyStatic     = "static"
+	AIPolicyPersistent = "persistent"
 )
 
 func (a AI) ResolvedRuntimeMode() (string, error) {
@@ -238,6 +241,19 @@ func (a AI) ResolvedRuntimeMode() (string, error) {
 		return mode, nil
 	default:
 		return "", fmt.Errorf("invalid AI runtime mode %q: expected off, embedded, shadow, or remote", a.RuntimeMode)
+	}
+}
+
+func (a AI) ResolvedPolicyMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(a.PolicyMode))
+	if mode == "" {
+		return AIPolicyPersistent, nil
+	}
+	switch mode {
+	case AIPolicyStatic, AIPolicyPersistent:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("invalid AI policy mode %q: expected static or persistent", a.PolicyMode)
 	}
 }
 
@@ -404,6 +420,7 @@ func Load() error {
 		v.SetDefault("hot_group.cooling_seconds", 180)
 		v.SetDefault("ai.enabled", false)
 		v.SetDefault("ai.runtime_mode", "")
+		v.SetDefault("ai.policy_mode", AIPolicyPersistent)
 		v.SetDefault("ai.provider", "openai")
 		v.SetDefault("ai.model", "gpt-4o-mini")
 		v.SetDefault("ai.api_key", "")
@@ -556,6 +573,7 @@ func Load() error {
 			"hot_group.cooling_seconds",
 			"ai.enabled",
 			"ai.runtime_mode",
+			"ai.policy_mode",
 			"ai.provider",
 			"ai.model",
 			"ai.api_key",
@@ -928,6 +946,7 @@ func AIConfig() AI {
 	}
 	aiConfig.Enabled = cfg.GetBool("ai.enabled")
 	aiConfig.RuntimeMode = cfg.GetString("ai.runtime_mode")
+	aiConfig.PolicyMode = cfg.GetString("ai.policy_mode")
 	aiConfig.Provider = cfg.GetString("ai.provider")
 	aiConfig.Model = cfg.GetString("ai.model")
 	aiConfig.APIKey = cfg.GetString("ai.api_key")
@@ -943,6 +962,9 @@ func AIConfig() AI {
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode
 		aiConfig.Enabled = mode != AIRuntimeOff
+	}
+	if mode, err := aiConfig.ResolvedPolicyMode(); err == nil {
+		aiConfig.PolicyMode = mode
 	}
 
 	return aiConfig

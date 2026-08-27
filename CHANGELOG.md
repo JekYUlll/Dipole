@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Embedded Agent 增加持久执行策略：`ai.policy_mode=persistent` 默认从版本化 Definition 创建确定性 AgentTask、固定并重读精确 policy version，Invocation 携带 permission/resource scope；`static` 保留显式回滚，Task 以 compare-and-set 进入 completed/failed。
 - 增加 `dipole.agent.policy.persistence.v1`、migration v16 与 sqlc `AgentPolicyStoreV1`：版本化 Definition 保存 permission/scope/有效期/撤销状态，AgentTask 固定 Definition version 与 principal 并以 compare-and-set 迁移状态，Approval 支持 pending→approved、撤销及绑定 capability/canonical scope hash/arguments hash/nonce/有效期的一次性消费；真实 MySQL 8.4 并发测试要求 16 个竞争者仅一个成功。
 - 增加 `dipole.agent.command.v1` 跨语言消息写契约与本地 adapter：普通回复和系统 Tool 统一经过 AgentPolicy、Message Service、Kafka/Outbox；sender/target 取自可信 Invocation，Command ID 以固定 SHA-256 canonical form 映射到 64 字符 Message 幂等键，并以黄金向量约束未来 TypeScript 实现。
 - 增加 `AgentPolicyV1` 与跨语言 capability descriptors：可信 Invocation 携带 tenant、principal、Agent、delegator、permissions、approvals 和 correlation IDs；read/write 需要显式 permission，destructive/敏感能力需要审批，Embedded Tool 与本地 Capability adapter 双层 fail closed，并以 `AD-027` 跟踪持久授权和审批状态。
@@ -207,6 +208,7 @@
 
 ### 修复
 
+- migration v17 将 Agent Definition、Task 与 Approval 的身份列从 20 字符 expand-only 扩至 24 字符，修复默认 21 字符 `assistant_uuid` 无法初始化 persistent policy 的启动失败。
 - HTTP Handler 测试在包级 `TestMain` 统一初始化 Gin TestMode，移除并行测试中的重复全局写入，使整包 `go test -race ./internal/handler/http` 可作为稳定门禁。
 - 修正 MySQL migration 集成测试仍将已存在的 v10 当作未来版本的问题，并将真实上下迁移与并发 owner 门禁推进到 v11。
 
@@ -232,6 +234,7 @@
 
 ### 迁移说明
 
+- 启动前执行 migration v17。该变更仅扩宽 Agent policy 身份列；应用回滚时保留 24 字符宽度以兼容已有身份，因此 Down 为安全 no-op。需要临时回退策略来源时设置 `DIPOLE_AI_POLICY_MODE=static`。
 - 独立 Message Service 部署先应用 `message-service-atomic-grants.dist.sql` 或 `message-service-projector-grants.dist.sql`，再配置 `message.mysql.*` 并启用 `message.enforce_db_permissions`；atomic/projector 模式与账号必须匹配。微服务 Compose 已通过一次性 `mysql-permissions` 服务自动执行开发授权。
 - 发布 Cassandra 完整消息归档能力时先执行 migration v15；已有 Job 按固定高水位回填 `mysql-messages:<id>`。归档 Backfill/Reconcile 必须使用同一 manifest 和 Job 名；需要换源时创建新 Job，禁止覆盖归档或复用旧 checkpoint。
 - 发布归档重建能力时先执行 migration v13；已有 Search Job 会按其固定高水位回填 `mysql-outbox:<id>` 身份。归档模式要求三条命令使用同一 manifest 和新 Job 名，回滚可显式恢复 `--source=mysql`，不得覆盖已存在归档文件。
@@ -264,6 +267,7 @@
 
 ### 验证
 
+- 已通过真实 MySQL 8.4 Agent policy 合约：使用默认长度 Assistant/principal 初始化 Definition，持久 Task 固定版本并完成 `running→completed`；同时覆盖 Definition 撤销/过期、新版并发出现、重复触发和 resource scope 越权拒绝。
 - 已通过 Chromium、Firefox、WebKit 共 12 项真实 IndexedDB/Session Playwright 验收；实验性 Chromium quota override 未拒绝 IndexedDB 写入并被明确标记为 skip，未作为 AD-025 完成证据。
 - 已通过 MySQL 8.4/Cassandra 5.0.9 重复发送 hydration 演练：真实 Timeline 命中不读取 MySQL 正文，Metadata 恢复 legacy ID；缺失和历史无 Seq 回退，v14 历史回填成功；运行时要求显式启用 Cassandra，指标拒绝未定义标签。
 - 已通过 MySQL 8.4、MinIO object lock 与 Elasticsearch 9.5.2 联合演练：专用账号按 2/2/1 清理 5 条水位内 Search mutation，保留无关 Outbox 并拒绝 Core 表访问；删除本地副本后按精确对象版本恢复，从空索引重建并完成 3/3 hash 对账、Alias 正向切换和回滚。

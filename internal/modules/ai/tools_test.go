@@ -19,7 +19,7 @@ func toolTestContext(principalUserUUID string) context.Context {
 		PrincipalUserUUID: principalUserUUID,
 		AgentUUID:         "UAI",
 		DelegatedByUUID:   principalUserUUID,
-	}, embeddedAgentPermissionsV1(), nil)
+	}, embeddedAgentPermissionsV1(), nil, embeddedAgentResourceScopesV1())
 	return withExecutionContext(context.Background(), execution)
 }
 
@@ -269,7 +269,7 @@ func TestSystemMessageToolRejectsMismatchedAgentIdentity(t *testing.T) {
 	tool := NewSystemMessageTool(&stubAgentCapability{}, "UAI")
 	execution := newExecutionContext(ExecutionContext{
 		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UOTHER", DelegatedByUUID: "U100",
-	}, embeddedAgentPermissionsV1(), nil)
+	}, embeddedAgentPermissionsV1(), nil, embeddedAgentResourceScopesV1())
 	ctx := withExecutionContext(context.Background(), execution)
 	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
 	if err == nil || !strings.Contains(err.Error(), "does not match") {

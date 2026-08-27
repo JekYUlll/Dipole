@@ -15,8 +15,6 @@ type AgentDefinitionVersion struct {
 	DefinitionUuid  string
 	Version         uint64
 	TenantID        string
-	OwnerUuid       string
-	AgentUuid       string
 	Status          string
 	PermissionsJson json.RawMessage
 	ScopesJson      json.RawMessage
@@ -25,6 +23,8 @@ type AgentDefinitionVersion struct {
 	RevokedAt       sql.NullTime
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	OwnerUuid       string
+	AgentUuid       string
 }
 
 type AgentTask struct {
@@ -33,14 +33,14 @@ type AgentTask struct {
 	DefinitionUuid    string
 	DefinitionVersion uint64
 	TenantID          string
-	PrincipalUuid     string
-	AgentUuid         string
 	Status            string
 	TriggerType       string
 	TriggerRef        string
 	Goal              string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+	PrincipalUuid     string
+	AgentUuid         string
 }
 
 type CassandraBackfillJob struct {

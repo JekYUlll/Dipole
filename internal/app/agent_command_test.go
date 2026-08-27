@@ -127,6 +127,9 @@ func TestLocalAgentCommandV1FailsClosed(t *testing.T) {
 	denied := agentCapabilityTestInvocation()
 	denied.Permissions = nil
 	tests = append(tests, application.AgentMessageCommandV1{CommandID: "C5", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: denied, Content: "hello"})
+	outOfScope := agentCapabilityTestInvocation()
+	outOfScope.ResourceScopes = []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: "group:G1", Actions: []string{application.AgentResourceActionWrite}}}
+	tests = append(tests, application.AgentMessageCommandV1{CommandID: "C6", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: outOfScope, Content: "hello"})
 	for _, command := range tests {
 		if _, err := commands.SendMessage(context.Background(), command); !errors.Is(err, application.ErrAgentCommandDenied) {
 			t.Fatalf("command %+v should be denied, got %v", command, err)

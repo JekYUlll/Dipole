@@ -80,7 +80,7 @@ func (q *Queries) ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentAppr
 }
 
 const getAgentDefinitionVersion = `-- name: GetAgentDefinitionVersion :one
-SELECT id, definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_definition_versions
+SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
 WHERE definition_uuid = ? AND version = ?
 LIMIT 1
 `
@@ -98,8 +98,6 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 		&i.DefinitionUuid,
 		&i.Version,
 		&i.TenantID,
-		&i.OwnerUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.PermissionsJson,
 		&i.ScopesJson,
@@ -108,12 +106,14 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OwnerUuid,
+		&i.AgentUuid,
 	)
 	return i, err
 }
 
 const getAgentTask = `-- name: GetAgentTask :one
-SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal, created_at, updated_at FROM agent_tasks WHERE task_uuid = ? LIMIT 1
+SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid FROM agent_tasks WHERE task_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error) {
@@ -125,20 +125,20 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 		&i.DefinitionUuid,
 		&i.DefinitionVersion,
 		&i.TenantID,
-		&i.PrincipalUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.TriggerType,
 		&i.TriggerRef,
 		&i.Goal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
 	)
 	return i, err
 }
 
 const getLatestAgentDefinition = `-- name: GetLatestAgentDefinition :one
-SELECT id, definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_definition_versions
+SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
 WHERE tenant_id = ? AND agent_uuid = ?
 ORDER BY version DESC
 LIMIT 1
@@ -157,8 +157,6 @@ func (q *Queries) GetLatestAgentDefinition(ctx context.Context, arg GetLatestAge
 		&i.DefinitionUuid,
 		&i.Version,
 		&i.TenantID,
-		&i.OwnerUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.PermissionsJson,
 		&i.ScopesJson,
@@ -167,6 +165,8 @@ func (q *Queries) GetLatestAgentDefinition(ctx context.Context, arg GetLatestAge
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OwnerUuid,
+		&i.AgentUuid,
 	)
 	return i, err
 }

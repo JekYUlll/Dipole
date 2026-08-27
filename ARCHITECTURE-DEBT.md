@@ -12,17 +12,6 @@
 
 ## 待处理
 
-### AD-027：Agent 权限授予与审批状态尚未持久化
-
-- **优先级：** P1
-- **状态：** 处理中
-- **发现日期：** 2026-08-27
-- **影响范围：** `ExecutionContext`、Agent Definition、Capability Policy、Human-in-the-loop、远程 TS Runtime
-- **现状：** `AgentPolicyV1` 已固定 tenant、principal、Agent、delegator、permission、risk 与 approval 语义，并在 Embedded Tool 和本地 Capability adapter 双层执行。migration v16 与 `AgentPolicyStoreV1` 已建立版本化 Definition grant、固定 policy version 的 AgentTask，以及绑定 capability/scope/arguments/nonce/有效期的一次性 Approval；真实 MySQL 并发消费只有一个成功。Embedded Agent 仍使用代码内默认 permission 集，尚未从持久 Task snapshot 解析 Invocation。
-- **风险：** 多 Agent 或多租户上线后，静态授权无法表达按 Agent/资源的最小权限、撤销、审批有效期与审计证据；直接填充 approval 集可能绕过用户确认。
-- **建议方向：** 下一切片让 Embedded trigger 创建并固定 AgentTask policy snapshot，通过显式 static/persistent 模式灰度；G3 的 Temporal Signal 恢复任务时复用 Store 原子消费并重新校验 principal、capability、scope、arguments hash 与 policy version，审批 UI 只提交受认证的审批事实。
-- **处理门槛：** TS Runtime 获得生产写权限或启用 destructive capability 前，完成持久授权、审批 UI、审计、撤销和重放测试。
-
 ### AD-026：Readiness 尚未持续感知运行期依赖退化
 
 - **优先级：** P2
@@ -169,6 +158,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-027：Agent 权限授予与审批状态尚未持久化
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** `ExecutionContext`、Agent Definition、Capability Policy、Human-in-the-loop、远程 TS Runtime
+- **解决方式：** migration v16 与 sqlc Store 持久化版本化 Definition、固定版本 Task 和一次性 Approval；Embedded trigger 默认以 `ai.policy_mode=persistent` 创建确定性 Task，重新读取精确 Definition version 后恢复 permission/resource scope，并以 CAS 完成生命周期。`static` 保留显式回滚。migration v17 将身份列 expand-only 扩至 24 字符，兼容默认 21 字符 Assistant UUID。
+- **验证：** Tool、Capability、Command 均拒绝 permission 足够但 resource scope 越界的访问；撤销、过期、新版覆盖、重复 Task 和成功/失败生命周期测试通过；真实 MySQL 8.4 使用默认长度身份完成 Definition 初始化、Task 快照与 `running→completed`。G3 的审批 UI 与 Temporal Signal 恢复继续作为计划能力推进。
 
 ### AD-016：HTTP Handler 测试并行修改 Gin 全局模式
 

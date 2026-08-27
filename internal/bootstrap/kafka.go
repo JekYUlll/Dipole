@@ -106,7 +106,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return fmt.Errorf("compose Agent Capability v1: %w", err)
 		}
-		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability); err != nil {
+		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability, repos.AgentPolicy); err != nil {
 			return err
 		} else if aiService != nil {
 			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
@@ -435,7 +435,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
+func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1, policyStore applicationPort.AgentPolicyStoreV1) (*aiModule.Service, error) {
 	runsEmbeddedAgent, err := aiConfig.RunsEmbeddedAgent()
 	if err != nil {
 		return nil, fmt.Errorf("resolve AI runtime mode: %w", err)
@@ -452,6 +452,26 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, comma
 	if commands == nil {
 		return nil, fmt.Errorf("Agent Command v1 is required when AI is enabled")
 	}
+	policyMode, err := aiConfig.ResolvedPolicyMode()
+	if err != nil {
+		return nil, fmt.Errorf("resolve AI policy mode: %w", err)
+	}
+	permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+	var executionPolicy applicationPort.AgentExecutionPolicyV1
+	switch policyMode {
+	case config.AIPolicyStatic:
+		executionPolicy, err = appComposition.NewStaticAgentExecutionPolicyV1(permissions, scopes)
+	case config.AIPolicyPersistent:
+		if policyStore == nil {
+			return nil, fmt.Errorf("Agent Policy Store v1 is required in persistent policy mode")
+		}
+		if err = appComposition.EnsureEmbeddedAgentDefinitionV1(context.Background(), policyStore, "dipole", aiConfig.AssistantUUID, permissions, scopes); err == nil {
+			executionPolicy, err = appComposition.NewPersistentAgentExecutionPolicyV1(policyStore)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("compose Agent execution policy: %w", err)
+	}
 
 	contextBuilder := aiModule.NewContextBuilder(capability, aiConfig.MaxContextMessages)
 	agent, err := aiModule.NewConfiguredAgent(
@@ -466,6 +486,7 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, comma
 		contextBuilder,
 		logs,
 		commands,
+		executionPolicy,
 		agent,
 	), nil
 }

@@ -48,7 +48,8 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 	if !ok {
 		return nil, application.ErrAgentCommandDenied
 	}
-	if err := application.AuthorizeAgentCapabilityV1(command.Invocation, descriptor); err != nil {
+	conversationKey := model.DirectConversationKey(command.Invocation.PrincipalUUID, command.Invocation.AgentUUID)
+	if err := application.AuthorizeAgentCapabilityForResourceV1(command.Invocation, descriptor, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionWrite); err != nil {
 		return nil, fmt.Errorf("%w: %w", application.ErrAgentCommandDenied, err)
 	}
 

@@ -150,6 +150,7 @@ func runHandleDirectMessageEval(t *testing.T, evalCase baselineEvalCase) baselin
 		}},
 		logs:     logs,
 		commands: fallbackCommands,
+		policy:   &stubExecutionPolicy{},
 		agent:    agent,
 	}
 

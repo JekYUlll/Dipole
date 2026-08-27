@@ -71,6 +71,52 @@ func TestAuthorizeAgentCapabilityV1(t *testing.T) {
 	}
 }
 
+func TestAuthorizeAgentCapabilityForResourceV1(t *testing.T) {
+	t.Parallel()
+
+	descriptor := mustAgentDescriptor(t, AgentCapabilityConversationRead)
+	base := AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions: []string{AgentPermissionConversationRead},
+		ResourceScopes: []AgentResourceScopeV1{
+			{ResourceType: AgentResourceTypeConversation, ResourceID: "group:G1", Actions: []string{AgentResourceActionRead}},
+			{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionList}},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		invocation   AgentInvocationV1
+		resourceType string
+		resourceID   string
+		action       string
+		wantErr      bool
+	}{
+		{name: "exact scope", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: "group:G1", action: AgentResourceActionRead},
+		{name: "wildcard resource", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: AgentResourceWildcard, action: AgentResourceActionList},
+		{name: "wildcard applies to concrete resource", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: "direct:U100:U200", action: AgentResourceActionList},
+		{name: "different resource denied", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: "group:G2", action: AgentResourceActionRead, wantErr: true},
+		{name: "different action denied", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: "group:G1", action: AgentResourceActionWrite, wantErr: true},
+		{name: "different resource type denied", invocation: base, resourceType: AgentResourceTypeUser, resourceID: "group:G1", action: AgentResourceActionRead, wantErr: true},
+		{name: "empty scopes denied", invocation: mutateInvocation(base, func(v *AgentInvocationV1) { v.ResourceScopes = nil }), resourceType: AgentResourceTypeConversation, resourceID: "group:G1", action: AgentResourceActionRead, wantErr: true},
+		{name: "empty request denied", invocation: base, resourceType: AgentResourceTypeConversation, resourceID: "", action: AgentResourceActionRead, wantErr: true},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := AuthorizeAgentCapabilityForResourceV1(test.invocation, descriptor, test.resourceType, test.resourceID, test.action)
+			if test.wantErr && !errors.Is(err, ErrAgentCapabilityDenied) {
+				t.Fatalf("expected resource policy denial, got %v", err)
+			}
+			if !test.wantErr && err != nil {
+				t.Fatalf("expected resource authorization, got %v", err)
+			}
+		})
+	}
+}
+
 func mustAgentDescriptor(t *testing.T, id string) AgentCapabilityDescriptorV1 {
 	t.Helper()
 	descriptor, ok := AgentCapabilityDescriptorByIDV1(id)
@@ -84,6 +130,7 @@ func mutateInvocation(base AgentInvocationV1, mutate func(*AgentInvocationV1)) A
 	copy := base
 	copy.Permissions = append([]string(nil), base.Permissions...)
 	copy.ApprovedCapabilities = append([]string(nil), base.ApprovedCapabilities...)
+	copy.ResourceScopes = append([]AgentResourceScopeV1(nil), base.ResourceScopes...)
 	mutate(&copy)
 	return copy
 }

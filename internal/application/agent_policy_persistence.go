@@ -233,10 +233,16 @@ func validAgentResourceScopeV1(scope AgentResourceScopeV1) bool {
 	if anyBlank(scope.ResourceType, scope.ResourceID) || len(scope.Actions) == 0 {
 		return false
 	}
+	seen := make(map[string]struct{}, len(scope.Actions))
 	for _, action := range scope.Actions {
-		if strings.TrimSpace(action) == "" {
+		action = strings.TrimSpace(action)
+		if action == "" {
 			return false
 		}
+		if _, exists := seen[action]; exists {
+			return false
+		}
+		seen[action] = struct{}{}
 	}
 	return true
 }

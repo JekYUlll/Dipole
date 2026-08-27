@@ -19,7 +19,7 @@
     {"id": "conversation.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
     {"id": "message.system.send", "risk": "write", "required_permission": "message.write", "approval_required": false}
   ],
-  "required": ["operation", "tenant_id", "principal_uuid", "agent_uuid", "permissions", "input"],
+  "required": ["operation", "tenant_id", "principal_uuid", "agent_uuid", "permissions", "resource_scopes", "input"],
   "properties": {
     "operation": {
       "enum": [
@@ -40,6 +40,12 @@
       "uniqueItems": true,
       "readOnly": true
     },
+    "resource_scopes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/resource_scope"},
+      "minItems": 1,
+      "readOnly": true
+    },
     "approved_capabilities": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
@@ -53,6 +59,16 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "resource_scope": {
+      "type": "object",
+      "required": ["resource_type", "resource_id", "actions"],
+      "properties": {
+        "resource_type": {"type": "string", "minLength": 1},
+        "resource_id": {"type": "string", "minLength": 1},
+        "actions": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
     "capability_descriptor": {
       "type": "object",
       "required": ["id", "risk", "required_permission", "approval_required"],

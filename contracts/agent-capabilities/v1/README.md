@@ -4,4 +4,4 @@
 
 当前 Go port 为 `application.AgentCapabilityV1`，本地实现为 `app.LocalAgentCapabilityV1`。后续远程实现应复用相同 operation 语义，并通过 contract test 后再进入 shadow 流量。
 
-每次调用携带只读 `AgentInvocationV1`：tenant、principal、Agent、delegator、permissions、approved capabilities 和 correlation IDs。descriptor 固定 capability ID、`read|write|destructive` 风险、所需 permission 与审批要求；destructive 及显式敏感操作缺少审批时必须拒绝。
+每次调用携带只读 `AgentInvocationV1`：tenant、principal、Agent、delegator、permissions、resource scopes、approved capabilities 和 correlation IDs。resource scope 以 `resource_type/resource_id/actions` 限定实际访问范围，resource ID 与 action 仅在 grant 显式声明 `*` 时允许通配。descriptor 固定 capability ID、`read|write|destructive` 风险、所需 permission 与审批要求；destructive 及显式敏感操作缺少审批时必须拒绝。

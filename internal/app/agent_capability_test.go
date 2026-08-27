@@ -167,6 +167,30 @@ func TestLocalAgentCapabilityV1EnforcesInvocationPolicy(t *testing.T) {
 	}
 }
 
+func TestLocalAgentCapabilityV1EnforcesResourceScope(t *testing.T) {
+	t.Parallel()
+
+	messages := &agentCapabilityMessagesStub{}
+	conversations := &agentCapabilityConversationsStub{
+		found: &model.Conversation{TargetUUID: "G2", TargetType: model.MessageTargetGroup, ConversationKey: model.GroupConversationKey("G2")},
+	}
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, &agentCapabilityCommandsStub{})
+	if err != nil {
+		t.Fatalf("new Agent Capability: %v", err)
+	}
+	invocation := agentCapabilityTestInvocation()
+	invocation.ResourceScopes = []application.AgentResourceScopeV1{
+		{ResourceType: application.AgentResourceTypeConversation, ResourceID: model.GroupConversationKey("G1"), Actions: []string{application.AgentResourceActionRead}},
+	}
+
+	if _, err := capability.ReadConversation(context.Background(), invocation, "G2", 20); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected out-of-scope conversation denial, got %v", err)
+	}
+	if messages.groupTarget != "" {
+		t.Fatalf("out-of-scope read reached Message Application: %q", messages.groupTarget)
+	}
+}
+
 func agentCapabilityTestInvocation() application.AgentInvocationV1 {
 	return application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
@@ -175,6 +199,10 @@ func agentCapabilityTestInvocation() application.AgentInvocationV1 {
 			application.AgentPermissionConversationList,
 			application.AgentPermissionConversationRead,
 			application.AgentPermissionMessageWrite,
+		},
+		ResourceScopes: []application.AgentResourceScopeV1{
+			{ResourceType: application.AgentResourceTypeUser, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionList, application.AgentResourceActionWrite}},
 		},
 	}
 }

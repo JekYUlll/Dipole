@@ -198,8 +198,11 @@ func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON stri
 		return "", fmt.Errorf("decode get_user_profile input: %w", err)
 	}
 
-	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityUserProfileRead)
+	execution, err := requireExecutionContext(ctx)
 	if err != nil {
+		return "", err
+	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityUserProfileRead, application.AgentResourceTypeUser, execution.PrincipalUserUUID, application.AgentResourceActionRead); err != nil {
 		return "", err
 	}
 	if execution.AgentUUID != t.assistantUUID {
@@ -252,8 +255,11 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		return "", fmt.Errorf("decode search_recent_messages input: %w", err)
 	}
 
-	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityDirectMessagesRead)
+	execution, err := requireExecutionContext(ctx)
 	if err != nil {
+		return "", err
+	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityDirectMessagesRead, application.AgentResourceTypeConversation, model.DirectConversationKey(execution.PrincipalUserUUID, execution.AgentUUID), application.AgentResourceActionRead); err != nil {
 		return "", err
 	}
 	if execution.AgentUUID != t.assistantUUID {
@@ -337,8 +343,11 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		return "", fmt.Errorf("decode send_system_message input: %w", err)
 	}
 
-	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilitySystemMessageSend)
+	execution, err := requireExecutionContext(ctx)
 	if err != nil {
+		return "", err
+	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilitySystemMessageSend, application.AgentResourceTypeConversation, model.DirectConversationKey(execution.PrincipalUserUUID, execution.AgentUUID), application.AgentResourceActionWrite); err != nil {
 		return "", err
 	}
 	if execution.AgentUUID != t.assistantUUID {
@@ -391,7 +400,7 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		return "", fmt.Errorf("decode list_user_conversations input: %w", err)
 	}
 
-	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityConversationsList)
+	execution, err := requireAuthorizedExecutionForResource(ctx, application.AgentCapabilityConversationsList, application.AgentResourceTypeConversation, application.AgentResourceWildcard, application.AgentResourceActionList)
 	if err != nil {
 		return "", err
 	}
