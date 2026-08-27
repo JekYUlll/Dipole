@@ -98,6 +98,46 @@ sum by (outcome) (increase(dipole_web_sync_comparison_total{scope="incoming_dire
 sum by (outcome) (increase(dipole_web_sync_client_errors_total[24h]))
 ```
 
+### 7.1 可恢复观察会话与证据归档
+
+发布 shadow 候选前，将实际部署的 `frontend/dist` 制作为不可变发布归档。观察会话必须使用完整 40 位 Git commit 和该归档文件，不能用源码目录或任意占位文件代替：
+
+```bash
+python3 scripts/web_sync_observation.py start \
+  --candidate-version web-sync-shadow-20260828.1 \
+  --git-commit "$(git rev-parse HEAD)" \
+  --bundle /secure/releases/web-sync-shadow-20260828.1.tar \
+  --prometheus-url https://prometheus.example.internal \
+  --output /secure/evidence/web-sync-shadow-20260828.1.session.json
+```
+
+`start` 会先确认 incoming-direct comparison series 已存在、Sync Projector lag 为零且相关告警没有 firing。Session ID 覆盖候选版本、commit、bundle SHA-256、Prometheus 地址、开始时间和初始原始响应；输出文件使用不可覆盖写入。
+
+观察期间可读取状态，命令不会修改 Session：
+
+```bash
+python3 scripts/web_sync_observation.py status \
+  --session /secure/evidence/web-sync-shadow-20260828.1.session.json
+```
+
+满 24 小时后使用同一 commit 和发布归档完成证据。工具会重新计算 bundle SHA-256，候选漂移、窗口不足或 Session 篡改都会拒绝归档：
+
+```bash
+python3 scripts/web_sync_observation.py finalize \
+  --session /secure/evidence/web-sync-shadow-20260828.1.session.json \
+  --git-commit "$(git rev-parse HEAD)" \
+  --bundle /secure/releases/web-sync-shadow-20260828.1.tar \
+  --output /secure/evidence/web-sync-shadow-20260828.1.evidence.json
+```
+
+退出码 `0` 表示 `eligible`，退出码 `2` 表示已归档但门禁判定为 `blocked`，输入、网络、时间或完整性错误返回 `1`。Evidence 保存原始 Prometheus API 响应、Session/快照/完整证据 SHA-256 和具体阻塞原因；不得包含凭据、Message UUID 或正文。将 Session、Evidence 与候选发布归档一并保存到启用版本控制和保留策略的受控对象存储，并在晋级记录中固定 object version、ETag 和责任人。
+
+本地验证工具与契约：
+
+```bash
+./scripts/check-web-sync-observation.sh
+```
+
 ## 8. Timeline Notification Shadow
 
 该链路验证轻量在线通知能否可靠定位 Direct/普通群 Timeline，同时继续由现有 `chat.message` 正文驱动界面。热群不发送 `sync.item.notify.v1`，继续使用聚合 `group.message.notify` 后按 Seq 补拉。

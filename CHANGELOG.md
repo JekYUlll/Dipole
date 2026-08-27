@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加版本化 Web Sync 真实观察 Session/Evidence 与 `web_sync_observation.py`：`start/status/finalize` 将候选版本、完整 Git commit、实际发布 bundle SHA-256、初始/最终 Prometheus 原始响应和 24 小时门禁绑定为不可覆盖证据；窗口不足、候选漂移、告警、差异或溢出均 fail closed，blocked 窗口仍保留审计结果且不会自动切换客户端或 Cassandra 路由。
 - 增加 `dipole.agent.policy.persistence.v1`、migration v16 与 sqlc `AgentPolicyStoreV1`：版本化 Definition 保存 permission/scope/有效期/撤销状态，AgentTask 固定 Definition version 与 principal 并以 compare-and-set 迁移状态，Approval 支持 pending→approved、撤销及绑定 capability/canonical scope hash/arguments hash/nonce/有效期的一次性消费；真实 MySQL 8.4 并发测试要求 16 个竞争者仅一个成功。
 - 增加 `dipole.agent.command.v1` 跨语言消息写契约与本地 adapter：普通回复和系统 Tool 统一经过 AgentPolicy、Message Service、Kafka/Outbox；sender/target 取自可信 Invocation，Command ID 以固定 SHA-256 canonical form 映射到 64 字符 Message 幂等键，并以黄金向量约束未来 TypeScript 实现。
 - 增加 `AgentPolicyV1` 与跨语言 capability descriptors：可信 Invocation 携带 tenant、principal、Agent、delegator、permissions、approvals 和 correlation IDs；read/write 需要显式 permission，destructive/敏感能力需要审批，Embedded Tool 与本地 Capability adapter 双层 fail closed，并以 `AD-027` 跟踪持久授权和审批状态。
