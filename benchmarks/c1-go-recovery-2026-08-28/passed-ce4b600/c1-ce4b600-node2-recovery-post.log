@@ -1,0 +1,115 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: scripts/bench/bench.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 20 max VUs, 50s max duration (incl. graceful stop):
+              * concurrent: 1 iterations for each of 20 VUs (maxDuration: 20s, gracefulStop: 30s)
+
+time="2026-08-28T03:49:18+08:00" level=info msg="[setup] registering 20 users..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-28T03:49:20+08:00" level=info msg="[setup] logged in 20/20 users" source=console
+time="2026-08-28T03:49:20+08:00" level=info msg="[setup] creating friend pairs for concurrent..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-28T03:49:22+08:00" level=info msg="[setup] done." source=console
+
+running (05.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  00.4s/20s  00/20 iters, 1 per VU
+
+running (06.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  01.4s/20s  00/20 iters, 1 per VU
+
+running (07.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  02.4s/20s  00/20 iters, 1 per VU
+
+running (08.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  03.4s/20s  00/20 iters, 1 per VU
+
+running (09.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  04.4s/20s  00/20 iters, 1 per VU
+
+running (10.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  05.4s/20s  00/20 iters, 1 per VU
+
+running (11.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  06.4s/20s  00/20 iters, 1 per VU
+
+running (12.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  07.4s/20s  00/20 iters, 1 per VU
+
+running (13.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  08.4s/20s  00/20 iters, 1 per VU
+
+running (14.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  09.4s/20s  00/20 iters, 1 per VU
+
+running (15.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  10.4s/20s  00/20 iters, 1 per VU
+
+running (16.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 20 VUs  11.4s/20s  00/20 iters, 1 per VU
+
+
+  █ THRESHOLDS 
+
+    http_req_failed{name:login}
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    msg_accepted_total.............: 40      2.408505/s
+    msg_attempted_total............: 40      2.408505/s
+    msg_delivery_rate..............: 100.00% 40 out of 40
+    msg_e2e_latency_ms.............: avg=908.67ms min=187ms    med=993ms   max=1.42s    p(50)=993ms   p(90)=1.3s    p(95)=1.36s  p(99)=1.41s   
+    msg_expected_receipts_total....: 40      2.408505/s
+    msg_received_total.............: 40      2.408505/s
+    msg_sent_total.................: 40      2.408505/s
+
+    HTTP
+    http_req_duration..............: avg=45.85ms  min=746.14µs med=46.33ms max=145.63ms p(50)=46.33ms p(90)=84.79ms p(95)=86.7ms p(99)=144.56ms
+      { expected_response:true }...: avg=45.85ms  min=746.14µs med=46.33ms max=145.63ms p(50)=46.33ms p(90)=84.79ms p(95)=86.7ms p(99)=144.56ms
+    http_req_failed................: 0.00%   0 out of 100
+      { name:login }...............: 0.00%   0 out of 20
+    http_reqs......................: 100     6.021261/s
+
+    EXECUTION
+    iteration_duration.............: avg=12s      min=12s      med=12s     max=12s      p(50)=12s     p(90)=12s     p(95)=12s    p(99)=12s     
+    iterations.....................: 20      1.204252/s
+    vus............................: 20      min=0        max=20
+    vus_max........................: 20      min=20       max=20
+
+    NETWORK
+    data_received..................: 104 kB  6.2 kB/s
+    data_sent......................: 56 kB   3.3 kB/s
+
+    WEBSOCKET
+    ws_connecting..................: avg=4.09ms   min=1.85ms   med=3.99ms  max=5.92ms   p(50)=3.99ms  p(90)=5.72ms  p(95)=5.87ms p(99)=5.91ms  
+    ws_msgs_received...............: 106     6.382537/s
+    ws_msgs_sent...................: 40      2.408505/s
+    ws_session_duration............: avg=12s      min=12s      med=12s     max=12s      p(50)=12s     p(90)=12s     p(95)=12s    p(99)=12s     
+    ws_sessions....................: 20      1.204252/s
+
+
+
+
+running (16.6s), 00/20 VUs, 20 complete and 0 interrupted iterations
+concurrent ✓ [ 100% ] 20 VUs  12.0s/20s  20/20 iters, 1 per VU

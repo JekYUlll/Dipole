@@ -382,6 +382,7 @@
 
 ### 验证
 
+- C1 node2 恢复演练保留一组 fail-closed 与一组 passing 证据：首轮 `f657100` 在 HTTP 恢复后立即负载，40 条 accepted 消息均未持久化，暴露 consumer group 尚未稳定及旧 lag 零值误判；修复后 `ce4b600` 在 fresh project 中验证 PID `887973→898410`、72 members 前后稳定、完整 readiness 13.53s，恢复后 40/40 持久化与投递、峰值 lag 4、settled lag 0。原始证据和 SHA-256 清单归档于 `benchmarks/c1-go-recovery-2026-08-28/`。
 - Subscription rollout gate 测试覆盖源证据重算、同 corpus 绑定、review/candidate 独立阻断、hash 漂移、CLI 三态退出码和低敏输出。synthetic 三件套得到 `eligible`，绑定 candidate evidence SHA-256 `2809bbcc5318cb41af6b86f09625abf9ccf05b0f178507459c47ef2e2afbbae3`；完整 Agent Runtime 为 291 passed / 19 expected skipped，该结果只验证 Harness。
 - Subscription corpus review 测试覆盖双 reviewer 身份/Review ID 分离、完整 case 绑定、第三方精确裁决、最终标签漂移、review 顺序规范化、黄金哈希、CLI 退出码与正文/身份不回显。synthetic 示例达到 10000 bps agreement；完整 Agent Runtime 为 286 passed / 19 expected skipped，真实 Project Guardian review 仍待受控归档。
 - Subscription prefilter Eval 测试覆盖 TP/TN/FP/FN、保守 basis-point 舍入、p95/成本门槛、候选 score/threshold 一致性、case 完整/唯一绑定、corpus hash 漂移、生产规则 matcher 复用、CLI 参数/退出码与正文不回显。synthetic 示例规则基线达到 10000 bps precision/recall、零成本，完整 Agent Runtime 为 280 passed / 19 expected skipped。
