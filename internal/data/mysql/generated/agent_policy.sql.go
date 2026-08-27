@@ -36,6 +36,22 @@ func (q *Queries) ApproveAgentApproval(ctx context.Context, arg ApproveAgentAppr
 	return result.RowsAffected()
 }
 
+const approveAgentWorkflowRepairProposal = `-- name: ApproveAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'approved', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP()
+  AND (SELECT COUNT(*) FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'approved') >= p.required_approvals
+  AND NOT EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected')
+`
+
+func (q *Queries) ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, approveAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const consumeAgentApproval = `-- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)
@@ -79,6 +95,26 @@ func (q *Queries) ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentAppr
 	return result.RowsAffected()
 }
 
+const countAgentWorkflowRepairDecisions = `-- name: CountAgentWorkflowRepairDecisions :one
+SELECT
+    CAST(SUM(decision = 'approved') AS UNSIGNED) AS approved_count,
+    CAST(SUM(decision = 'rejected') AS UNSIGNED) AS rejected_count
+FROM agent_workflow_repair_decisions
+WHERE proposal_uuid = ?
+`
+
+type CountAgentWorkflowRepairDecisionsRow struct {
+	ApprovedCount int64
+	RejectedCount int64
+}
+
+func (q *Queries) CountAgentWorkflowRepairDecisions(ctx context.Context, proposalUuid string) (CountAgentWorkflowRepairDecisionsRow, error) {
+	row := q.db.QueryRowContext(ctx, countAgentWorkflowRepairDecisions, proposalUuid)
+	var i CountAgentWorkflowRepairDecisionsRow
+	err := row.Scan(&i.ApprovedCount, &i.RejectedCount)
+	return i, err
+}
+
 const denyAgentApproval = `-- name: DenyAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
@@ -92,6 +128,20 @@ type DenyAgentApprovalParams struct {
 
 func (q *Queries) DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, denyAgentApproval, arg.RevokedAt, arg.ApprovalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const expireAgentWorkflowRepairProposal = `-- name: ExpireAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals
+SET status = 'expired', decided_at = UTC_TIMESTAMP()
+WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP()
+`
+
+func (q *Queries) ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, expireAgentWorkflowRepairProposal, proposalUuid)
 	if err != nil {
 		return 0, err
 	}
@@ -207,6 +257,78 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 		&i.WorkflowStatus,
 		&i.WorkflowRevision,
 		&i.WorkflowUpdatedAt,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairDecision = `-- name: GetAgentWorkflowRepairDecision :one
+SELECT proposal_uuid, approver_uuid, decision, decided_at, created_at FROM agent_workflow_repair_decisions WHERE proposal_uuid = ? AND approver_uuid = ? LIMIT 1
+`
+
+type GetAgentWorkflowRepairDecisionParams struct {
+	ProposalUuid string
+	ApproverUuid string
+}
+
+func (q *Queries) GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAgentWorkflowRepairDecisionParams) (AgentWorkflowRepairDecision, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairDecision, arg.ProposalUuid, arg.ApproverUuid)
+	var i AgentWorkflowRepairDecision
+	err := row.Scan(
+		&i.ProposalUuid,
+		&i.ApproverUuid,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairOperatorGrant = `-- name: GetAgentWorkflowRepairOperatorGrant :one
+SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userUuid string) (AgentWorkflowRepairOperatorGrant, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairOperatorGrant, userUuid)
+	var i AgentWorkflowRepairOperatorGrant
+	err := row.Scan(
+		&i.UserUuid,
+		&i.CanPropose,
+		&i.CanApprove,
+		&i.GrantedByUuid,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairProposal = `-- name: GetAgentWorkflowRepairProposal :one
+SELECT proposal_uuid, task_uuid, outcome, action, proposer_uuid, ticket_ref, reason, projected_json, temporal_json, evidence_sha256, status, required_approvals, proposed_at, expires_at, decided_at, created_at, updated_at FROM agent_workflow_repair_proposals WHERE proposal_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (AgentWorkflowRepairProposal, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairProposal, proposalUuid)
+	var i AgentWorkflowRepairProposal
+	err := row.Scan(
+		&i.ProposalUuid,
+		&i.TaskUuid,
+		&i.Outcome,
+		&i.Action,
+		&i.ProposerUuid,
+		&i.TicketRef,
+		&i.Reason,
+		&i.ProjectedJson,
+		&i.TemporalJson,
+		&i.EvidenceSha256,
+		&i.Status,
+		&i.RequiredApprovals,
+		&i.ProposedAt,
+		&i.ExpiresAt,
+		&i.DecidedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -390,6 +512,78 @@ func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams
 	return result.RowsAffected()
 }
 
+const insertAgentWorkflowRepairDecision = `-- name: InsertAgentWorkflowRepairDecision :execrows
+INSERT IGNORE INTO agent_workflow_repair_decisions (
+    proposal_uuid, approver_uuid, decision, decided_at
+)
+SELECT ?, ?, ?, UTC_TIMESTAMP()
+FROM agent_workflow_repair_proposals AS p
+WHERE p.proposal_uuid = ? AND p.proposer_uuid <> ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP()
+`
+
+type InsertAgentWorkflowRepairDecisionParams struct {
+	ProposalUuid   string
+	ApproverUuid   string
+	Decision       string
+	ProposalUuid_2 string
+	ProposerUuid   string
+}
+
+func (q *Queries) InsertAgentWorkflowRepairDecision(ctx context.Context, arg InsertAgentWorkflowRepairDecisionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairDecision,
+		arg.ProposalUuid,
+		arg.ApproverUuid,
+		arg.Decision,
+		arg.ProposalUuid_2,
+		arg.ProposerUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentWorkflowRepairProposal = `-- name: InsertAgentWorkflowRepairProposal :execrows
+INSERT IGNORE INTO agent_workflow_repair_proposals (
+    proposal_uuid, task_uuid, outcome, action, proposer_uuid, ticket_ref, reason,
+    projected_json, temporal_json, evidence_sha256, status, required_approvals, proposed_at, expires_at
+) VALUES (?, ?, ?, 'reproject_from_temporal', ?, ?, ?, ?, ?, ?, 'proposed', 2, ?, ?)
+`
+
+type InsertAgentWorkflowRepairProposalParams struct {
+	ProposalUuid   string
+	TaskUuid       string
+	Outcome        string
+	ProposerUuid   string
+	TicketRef      string
+	Reason         string
+	ProjectedJson  json.RawMessage
+	TemporalJson   json.RawMessage
+	EvidenceSha256 string
+	ProposedAt     time.Time
+	ExpiresAt      time.Time
+}
+
+func (q *Queries) InsertAgentWorkflowRepairProposal(ctx context.Context, arg InsertAgentWorkflowRepairProposalParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairProposal,
+		arg.ProposalUuid,
+		arg.TaskUuid,
+		arg.Outcome,
+		arg.ProposerUuid,
+		arg.TicketRef,
+		arg.Reason,
+		arg.ProjectedJson,
+		arg.TemporalJson,
+		arg.EvidenceSha256,
+		arg.ProposedAt,
+		arg.ExpiresAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAgentTaskWorkflowProjectionSnapshots = `-- name: ListAgentTaskWorkflowProjectionSnapshots :many
 SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
        t.workflow_revision, t.workflow_updated_at
@@ -482,6 +676,21 @@ func (q *Queries) ProjectAgentTaskWorkflowState(ctx context.Context, arg Project
 		arg.WorkflowRunID_2,
 		arg.WorkflowRevision_2,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const rejectAgentWorkflowRepairProposal = `-- name: RejectAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'rejected', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed'
+  AND EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected')
+`
+
+func (q *Queries) RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, rejectAgentWorkflowRepairProposal, proposalUuid)
 	if err != nil {
 		return 0, err
 	}

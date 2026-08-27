@@ -10,6 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -309,4 +310,48 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
 	}
+}
+
+func TestWorkflowRepairRPCRejectsUnauthenticatedDirectAndAgentCalls(t *testing.T) {
+	repairs := &workflowRepairAuditServiceStub{proposal: &application.AgentWorkflowRepairProposalV1{
+		ProposalUUID: "repair:" + strings.Repeat("a", 64), TaskUUID: "TASK-1", Outcome: application.AgentWorkflowRepairOutcomeStale,
+		Action: application.AgentWorkflowRepairActionV1, ProposerUUID: "U-OPS", EvidenceSHA256: strings.Repeat("a", 64),
+		Status: application.AgentWorkflowRepairStatusProposed, RequiredApprovals: 2, ProposedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0),
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server.repairs = repairs
+	_, err := server.ProposeWorkflowRepair(context.Background(), &agentv1.ProposeWorkflowRepairRequest{
+		Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), TaskId: "TASK-1", Outcome: "stale", TicketRef: "INC-1", Reason: "verified",
+		Temporal:         &agentv1.WorkflowRepairEvidence{WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "WR-1", Status: "completed", Revision: 3},
+		ProposedAtUnixMs: 1000, ExpiresAtUnixMs: 2000,
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("direct Gateway claim code = %s", status.Code(err))
+	}
+	for _, requestContext := range []*commonv1.RequestContext{
+		grpccommon.RequestContext("", "dipole-gateway"), grpccommon.RequestContext("U-OPS", "dipole-agent"),
+	} {
+		_, err := server.GetWorkflowRepair(context.Background(), &agentv1.GetWorkflowRepairRequest{Context: requestContext, ProposalId: repairs.proposal.ProposalUUID})
+		if status.Code(err) != codes.Unauthenticated && status.Code(err) != codes.PermissionDenied {
+			t.Fatalf("repair auth code = %s", status.Code(err))
+		}
+	}
+}
+
+type workflowRepairAuditServiceStub struct {
+	proposal *application.AgentWorkflowRepairProposalV1
+	operator string
+}
+
+func (s *workflowRepairAuditServiceStub) Propose(_ context.Context, operator string, _ application.AgentWorkflowRepairProposalRequestV1) (*application.AgentWorkflowRepairProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
+}
+func (s *workflowRepairAuditServiceStub) Decide(_ context.Context, operator, _ string, _ application.AgentWorkflowRepairDecisionV1) (*application.AgentWorkflowRepairProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
+}
+func (s *workflowRepairAuditServiceStub) Get(_ context.Context, operator, _ string) (*application.AgentWorkflowRepairProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
 }

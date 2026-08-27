@@ -22,6 +22,7 @@ type AgentPolicyRepository struct {
 }
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentWorkflowRepairAuditStoreV1 = (*AgentPolicyRepository)(nil)
 
 func NewAgentPolicyRepository(queries generated.Querier) (*AgentPolicyRepository, error) {
 	if queries == nil {
@@ -376,11 +377,142 @@ func (r *AgentPolicyRepository) DenyApproval(ctx context.Context, approvalUUID s
 	return rows > 0, nil
 }
 
+func (r *AgentPolicyRepository) GetWorkflowRepairOperatorGrant(ctx context.Context, userUUID string) (*application.AgentWorkflowRepairOperatorGrantV1, error) {
+	row, err := r.queries.GetAgentWorkflowRepairOperatorGrant(ctx, strings.TrimSpace(userUUID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get Workflow repair operator grant: %w", err)
+	}
+	return &application.AgentWorkflowRepairOperatorGrantV1{UserUUID: row.UserUuid, CanPropose: row.CanPropose, CanApprove: row.CanApprove,
+		GrantedByUUID: row.GrantedByUuid, ValidFrom: row.ValidFrom, ExpiresAt: timePointer(row.ExpiresAt), RevokedAt: timePointer(row.RevokedAt)}, nil
+}
+
+func (r *AgentPolicyRepository) CreateWorkflowRepairProposal(ctx context.Context, proposal application.AgentWorkflowRepairProposalV1) (bool, error) {
+	projected, err := json.Marshal(proposal.Projected)
+	if err != nil {
+		return false, fmt.Errorf("marshal projected repair evidence: %w", err)
+	}
+	temporal, err := json.Marshal(proposal.Temporal)
+	if err != nil {
+		return false, fmt.Errorf("marshal Temporal repair evidence: %w", err)
+	}
+	rows, err := r.queries.InsertAgentWorkflowRepairProposal(ctx, generated.InsertAgentWorkflowRepairProposalParams{
+		ProposalUuid: proposal.ProposalUUID, TaskUuid: proposal.TaskUUID, Outcome: string(proposal.Outcome), ProposerUuid: proposal.ProposerUUID,
+		TicketRef: proposal.TicketRef, Reason: proposal.Reason, ProjectedJson: projected, TemporalJson: temporal,
+		EvidenceSha256: proposal.EvidenceSHA256, ProposedAt: proposal.ProposedAt, ExpiresAt: proposal.ExpiresAt,
+	})
+	if err != nil {
+		return false, fmt.Errorf("create Workflow repair proposal: %w", err)
+	}
+	if rows > 0 {
+		return true, nil
+	}
+	existing, err := r.GetWorkflowRepairProposal(ctx, proposal.ProposalUUID)
+	if err != nil {
+		return false, err
+	}
+	if existing == nil || !sameWorkflowRepairProposalV1(*existing, proposal) {
+		return false, fmt.Errorf("%w: proposal_uuid=%s", ErrAgentPolicyConflict, proposal.ProposalUUID)
+	}
+	return false, nil
+}
+
+func (r *AgentPolicyRepository) GetWorkflowRepairProposal(ctx context.Context, proposalUUID string) (*application.AgentWorkflowRepairProposalV1, error) {
+	row, err := r.queries.GetAgentWorkflowRepairProposal(ctx, strings.TrimSpace(proposalUUID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get Workflow repair proposal: %w", err)
+	}
+	var projected *application.AgentWorkflowEvidenceV1
+	if len(row.ProjectedJson) > 0 && string(row.ProjectedJson) != "null" {
+		projected = &application.AgentWorkflowEvidenceV1{}
+		if err := json.Unmarshal(row.ProjectedJson, projected); err != nil {
+			return nil, fmt.Errorf("decode projected repair evidence: %w", err)
+		}
+	}
+	var temporal application.AgentWorkflowEvidenceV1
+	if err := json.Unmarshal(row.TemporalJson, &temporal); err != nil {
+		return nil, fmt.Errorf("decode Temporal repair evidence: %w", err)
+	}
+	return &application.AgentWorkflowRepairProposalV1{ProposalUUID: row.ProposalUuid, TaskUUID: row.TaskUuid, Outcome: application.AgentWorkflowRepairOutcomeV1(row.Outcome),
+		Action: row.Action, ProposerUUID: row.ProposerUuid, TicketRef: row.TicketRef, Reason: row.Reason, Projected: projected, Temporal: temporal,
+		EvidenceSHA256: row.EvidenceSha256, Status: application.AgentWorkflowRepairStatusV1(row.Status), RequiredApprovals: row.RequiredApprovals,
+		ProposedAt: row.ProposedAt, ExpiresAt: row.ExpiresAt, DecidedAt: timePointer(row.DecidedAt)}, nil
+}
+
+func (r *AgentPolicyRepository) RecordWorkflowRepairDecision(ctx context.Context, decision application.AgentWorkflowRepairDecisionRecordV1) (bool, error) {
+	rows, err := r.queries.InsertAgentWorkflowRepairDecision(ctx, generated.InsertAgentWorkflowRepairDecisionParams{
+		ProposalUuid: decision.ProposalUUID, ApproverUuid: decision.ApproverUUID, Decision: string(decision.Decision),
+		ProposalUuid_2: decision.ProposalUUID, ProposerUuid: decision.ApproverUUID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("record Workflow repair decision: %w", err)
+	}
+	if rows > 0 {
+		return true, nil
+	}
+	existing, err := r.GetWorkflowRepairDecision(ctx, decision.ProposalUUID, decision.ApproverUUID)
+	if err != nil {
+		return false, err
+	}
+	if existing == nil {
+		return false, fmt.Errorf("%w: repair decision cannot be recorded", application.ErrAgentWorkflowRepairDenied)
+	}
+	if existing.Decision != decision.Decision {
+		return false, fmt.Errorf("%w: immutable repair decision differs", application.ErrAgentWorkflowRepairConflict)
+	}
+	return false, nil
+}
+
+func (r *AgentPolicyRepository) GetWorkflowRepairDecision(ctx context.Context, proposalUUID, approverUUID string) (*application.AgentWorkflowRepairDecisionRecordV1, error) {
+	row, err := r.queries.GetAgentWorkflowRepairDecision(ctx, generated.GetAgentWorkflowRepairDecisionParams{ProposalUuid: proposalUUID, ApproverUuid: approverUUID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get Workflow repair decision: %w", err)
+	}
+	return &application.AgentWorkflowRepairDecisionRecordV1{ProposalUUID: row.ProposalUuid, ApproverUUID: row.ApproverUuid, Decision: application.AgentWorkflowRepairDecisionV1(row.Decision), DecidedAt: row.DecidedAt}, nil
+}
+
+func (r *AgentPolicyRepository) CountWorkflowRepairDecisions(ctx context.Context, proposalUUID string) (application.AgentWorkflowRepairDecisionCountsV1, error) {
+	row, err := r.queries.CountAgentWorkflowRepairDecisions(ctx, proposalUUID)
+	if err != nil {
+		return application.AgentWorkflowRepairDecisionCountsV1{}, fmt.Errorf("count Workflow repair decisions: %w", err)
+	}
+	return application.AgentWorkflowRepairDecisionCountsV1{Approved: uint64(row.ApprovedCount), Rejected: uint64(row.RejectedCount)}, nil
+}
+
+func (r *AgentPolicyRepository) FinalizeWorkflowRepairProposal(ctx context.Context, proposalUUID string) error {
+	if _, err := r.queries.ExpireAgentWorkflowRepairProposal(ctx, proposalUUID); err != nil {
+		return fmt.Errorf("expire Workflow repair proposal: %w", err)
+	}
+	if _, err := r.queries.RejectAgentWorkflowRepairProposal(ctx, proposalUUID); err != nil {
+		return fmt.Errorf("reject Workflow repair proposal: %w", err)
+	}
+	if _, err := r.queries.ApproveAgentWorkflowRepairProposal(ctx, proposalUUID); err != nil {
+		return fmt.Errorf("approve Workflow repair proposal: %w", err)
+	}
+	return nil
+}
+
 func sameAgentTask(left, right application.AgentTaskV1) bool {
 	left.Status, right.Status = "", ""
 	left.Workflow, right.Workflow = nil, nil
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
+}
+
+func sameWorkflowRepairProposalV1(left, right application.AgentWorkflowRepairProposalV1) bool {
+	left.Status, right.Status = "", ""
+	left.DecidedAt, right.DecidedAt = nil, nil
+	left.ProposedAt, right.ProposedAt = left.ProposedAt.UTC().Truncate(time.Millisecond), right.ProposedAt.UTC().Truncate(time.Millisecond)
+	left.ExpiresAt, right.ExpiresAt = left.ExpiresAt.UTC().Truncate(time.Millisecond), right.ExpiresAt.UTC().Truncate(time.Millisecond)
 	return reflect.DeepEqual(left, right)
 }
 

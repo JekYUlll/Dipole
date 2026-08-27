@@ -47,6 +47,20 @@ type rpcAgentAdmissionStub struct{}
 type rpcAgentApprovalStub struct{}
 type rpcAgentTaskControlStub struct{}
 type rpcAgentWorkflowProjectionStub struct{}
+type rpcAgentWorkflowRepairStub struct{ operator string }
+
+func (s *rpcAgentWorkflowRepairStub) Propose(_ context.Context, operator string, request application.AgentWorkflowRepairProposalRequestV1) (*application.AgentWorkflowRepairProposalV1, error) {
+	s.operator = operator
+	return &application.AgentWorkflowRepairProposalV1{ProposalUUID: "repair:" + strings.Repeat("a", 64), TaskUUID: request.TaskUUID, ProposerUUID: operator,
+		Outcome: request.Outcome, Action: application.AgentWorkflowRepairActionV1, Temporal: request.Temporal, EvidenceSHA256: strings.Repeat("a", 64),
+		Status: application.AgentWorkflowRepairStatusProposed, RequiredApprovals: 2, ProposedAt: request.ProposedAt, ExpiresAt: request.ExpiresAt}, nil
+}
+func (s *rpcAgentWorkflowRepairStub) Decide(context.Context, string, string, application.AgentWorkflowRepairDecisionV1) (*application.AgentWorkflowRepairProposalV1, error) {
+	return nil, application.ErrAgentWorkflowRepairDenied
+}
+func (s *rpcAgentWorkflowRepairStub) Get(context.Context, string, string) (*application.AgentWorkflowRepairProposalV1, error) {
+	return nil, application.ErrAgentWorkflowRepairDenied
+}
 
 func (rpcAgentTaskControlStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
 	if taskUUID != "TASK-1" || principalUUID != "U100" {
@@ -302,6 +316,36 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 	user, err := client.GetUserByUUID("U-GATEWAY")
 	if err != nil || user == nil || user.UUID != "U-GATEWAY" {
 		t.Fatalf("gateway core query failed: user=%+v err=%v", user, err)
+	}
+}
+
+func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	repairs := &rpcAgentWorkflowRepairStub{}
+	server, err := NewCoreRPCServerWithAgentControlAndProjection(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, repairs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+	cfg.CoreTarget = server.Address()
+	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = gatewayConnection.Close() })
+	response, err := gatewayClient.ProposeWorkflowRepair(context.Background(), &agentv1.ProposeWorkflowRepairRequest{Context: &commonv1.RequestContext{CallerService: gatewayServiceName, PrincipalUserId: "U-OPS"}, TaskId: "TASK-1", Outcome: "stale", TicketRef: "INC-1", Reason: "verified", Temporal: &agentv1.WorkflowRepairEvidence{WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "WR-1", Status: "completed", Revision: 3}, ProposedAtUnixMs: 1000, ExpiresAtUnixMs: 2000})
+	if err != nil || response.GetProposerId() != "U-OPS" || repairs.operator != "U-OPS" {
+		t.Fatalf("Gateway repair response=%+v operator=%s err=%v", response, repairs.operator, err)
+	}
+	agentInterceptor, _ := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	agentConnection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(agentInterceptor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = agentConnection.Close() })
+	_, err = agentv1.NewAgentCapabilityServiceClient(agentConnection).GetWorkflowRepair(context.Background(), &agentv1.GetWorkflowRepairRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName, PrincipalUserId: "U-OPS"}, ProposalId: response.GetProposalId()})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent repair code=%s", status.Code(err))
 	}
 }
 

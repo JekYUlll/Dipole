@@ -4,4 +4,4 @@
 
 `eligible` 仅表示证据达到人工评审门槛，不会修改 `ai.runtime_mode`、Temporal Activity mode 或 Capability 写权限。候选版本、观察窗口、报告和 Eval 结果不能跨版本拼接。
 
-Workflow repair 当前只允许生成 `dipole.agent.workflow-repair-proposal.v1` Artifact。提案必须绑定 Task、操作员声明、工单、Temporal 证据、原因和不超过一小时的有效期，并用 canonical evidence SHA-256 形成稳定 ID。该 Artifact 尚未经过服务端身份签名或持久审批，不能执行修复；`unavailable` 只能先恢复 Worker/Temporal 后重新采证。
+Workflow repair CLI 只生成 `dipole.agent.workflow-repair-proposal.v1` Artifact。Core v25 审计入口随后从 Gateway 认证上下文绑定操作员身份，重新计算同一 canonical evidence SHA-256，并将提案和每位审批人的不可变决定持久化到 MySQL。授权表默认为空，提案人不能审批，批准需要两位不同的有效审批人；任一拒绝会终止提案。当前协议和服务均没有 apply/execute 方法，`approved` 只代表审计门槛满足，不能修改 Workflow projection；`unavailable` 只能先恢复 Worker/Temporal 后重新采证。
