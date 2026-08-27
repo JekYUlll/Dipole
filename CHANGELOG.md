@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G3 增加 migration v25 与 Workflow repair 审计控制面：Core 以 Gateway 认证 principal 和默认空授权表接收服务端重算 SHA-256 的一小时修复提案，MySQL 不可变保存工单、投影/Temporal 证据和操作员身份；提案人无权审批，每位审批人仅能提交一票，至少两位独立授权操作员批准后才进入 `approved`，任一拒绝进入 `rejected`。API 未提供 apply/execute 方法，`dipole-agent` 服务身份被方法级拒绝，批准结果仍不能改变 Workflow projection。
 - Agent G3 增加版本化 Shadow 晋级策略与修复提案 Artifact：候选版本需提供连续 24 小时、至少 24 个观察点、最大 90 分钟间隔、累计至少 100 个 Task 的零差异/零 unavailable 对账，并通过六项 projection Eval 与 outcome/trajectory/permission Eval；`promotion:check` 仅输出 eligible/blocked 证据。`repair:propose` 只生成绑定操作员声明、工单、Temporal 证据、一小时有效期和 SHA-256 的不可执行提案，不开放自动修复或 active 切换。
 - Agent G3 增加只读 Workflow projection 离线对账：Core/sqlc 通过服务身份限定的 keyset RPC 枚举 `dipole-agent/shadow` Task 与可空投影，TS Runtime 同时读取 Temporal Query 和 Describe 的实际 Workflow/Run 绑定，输出版本化 `match|missing|stale|ahead|conflict|unavailable` JSON 报告；不一致时命令返回退出码 2，不执行自动修复。版本化 Eval 数据集固定六类结果，真实 MySQL 与 Temporal Server 覆盖分页和完成态对账。
 - Agent G3 增加 migration v24 与 Temporal Workflow 状态投影：`agent_tasks` 以独立 nullable workflow binding/status/revision 保存 shadow 观察状态，保留原 Task `status` 权威语义；Core/sqlc 仅接受同一 Workflow/Run 的更高 revision，完全相同写入幂等，旧 revision、同 revision 漂移和身份漂移均 fail closed。Workflow 通过版本化 `patched` Activity 投影 running/waiting/terminal 状态，Gateway Task Query 返回 `match|missing|stale|ahead|conflict` 对账证据且不自动修复。

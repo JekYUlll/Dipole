@@ -1462,6 +1462,442 @@ func (x *ListTaskWorkflowProjectionSnapshotsResponse) GetNextCursor() string {
 	return ""
 }
 
+type WorkflowRepairEvidence struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkflowId    string                 `protobuf:"bytes,1,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	WorkflowRunId string                 `protobuf:"bytes,2,opt,name=workflow_run_id,json=workflowRunId,proto3" json:"workflow_run_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Revision      uint64                 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkflowRepairEvidence) Reset() {
+	*x = WorkflowRepairEvidence{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowRepairEvidence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowRepairEvidence) ProtoMessage() {}
+
+func (x *WorkflowRepairEvidence) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowRepairEvidence.ProtoReflect.Descriptor instead.
+func (*WorkflowRepairEvidence) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *WorkflowRepairEvidence) GetWorkflowId() string {
+	if x != nil {
+		return x.WorkflowId
+	}
+	return ""
+}
+
+func (x *WorkflowRepairEvidence) GetWorkflowRunId() string {
+	if x != nil {
+		return x.WorkflowRunId
+	}
+	return ""
+}
+
+func (x *WorkflowRepairEvidence) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *WorkflowRepairEvidence) GetRevision() uint64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+type ProposeWorkflowRepairRequest struct {
+	state            protoimpl.MessageState  `protogen:"open.v1"`
+	Context          *v1.RequestContext      `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TaskId           string                  `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Outcome          string                  `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	TicketRef        string                  `protobuf:"bytes,4,opt,name=ticket_ref,json=ticketRef,proto3" json:"ticket_ref,omitempty"`
+	Reason           string                  `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Projected        *WorkflowRepairEvidence `protobuf:"bytes,6,opt,name=projected,proto3" json:"projected,omitempty"`
+	Temporal         *WorkflowRepairEvidence `protobuf:"bytes,7,opt,name=temporal,proto3" json:"temporal,omitempty"`
+	ProposedAtUnixMs int64                   `protobuf:"varint,8,opt,name=proposed_at_unix_ms,json=proposedAtUnixMs,proto3" json:"proposed_at_unix_ms,omitempty"`
+	ExpiresAtUnixMs  int64                   `protobuf:"varint,9,opt,name=expires_at_unix_ms,json=expiresAtUnixMs,proto3" json:"expires_at_unix_ms,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProposeWorkflowRepairRequest) Reset() {
+	*x = ProposeWorkflowRepairRequest{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProposeWorkflowRepairRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProposeWorkflowRepairRequest) ProtoMessage() {}
+
+func (x *ProposeWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProposeWorkflowRepairRequest.ProtoReflect.Descriptor instead.
+func (*ProposeWorkflowRepairRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ProposeWorkflowRepairRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ProposeWorkflowRepairRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *ProposeWorkflowRepairRequest) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *ProposeWorkflowRepairRequest) GetTicketRef() string {
+	if x != nil {
+		return x.TicketRef
+	}
+	return ""
+}
+
+func (x *ProposeWorkflowRepairRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ProposeWorkflowRepairRequest) GetProjected() *WorkflowRepairEvidence {
+	if x != nil {
+		return x.Projected
+	}
+	return nil
+}
+
+func (x *ProposeWorkflowRepairRequest) GetTemporal() *WorkflowRepairEvidence {
+	if x != nil {
+		return x.Temporal
+	}
+	return nil
+}
+
+func (x *ProposeWorkflowRepairRequest) GetProposedAtUnixMs() int64 {
+	if x != nil {
+		return x.ProposedAtUnixMs
+	}
+	return 0
+}
+
+func (x *ProposeWorkflowRepairRequest) GetExpiresAtUnixMs() int64 {
+	if x != nil {
+		return x.ExpiresAtUnixMs
+	}
+	return 0
+}
+
+type DecideWorkflowRepairRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	ProposalId    string                 `protobuf:"bytes,2,opt,name=proposal_id,json=proposalId,proto3" json:"proposal_id,omitempty"`
+	Decision      string                 `protobuf:"bytes,3,opt,name=decision,proto3" json:"decision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecideWorkflowRepairRequest) Reset() {
+	*x = DecideWorkflowRepairRequest{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecideWorkflowRepairRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecideWorkflowRepairRequest) ProtoMessage() {}
+
+func (x *DecideWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecideWorkflowRepairRequest.ProtoReflect.Descriptor instead.
+func (*DecideWorkflowRepairRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *DecideWorkflowRepairRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *DecideWorkflowRepairRequest) GetProposalId() string {
+	if x != nil {
+		return x.ProposalId
+	}
+	return ""
+}
+
+func (x *DecideWorkflowRepairRequest) GetDecision() string {
+	if x != nil {
+		return x.Decision
+	}
+	return ""
+}
+
+type GetWorkflowRepairRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	ProposalId    string                 `protobuf:"bytes,2,opt,name=proposal_id,json=proposalId,proto3" json:"proposal_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowRepairRequest) Reset() {
+	*x = GetWorkflowRepairRequest{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowRepairRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowRepairRequest) ProtoMessage() {}
+
+func (x *GetWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowRepairRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkflowRepairRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetWorkflowRepairRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *GetWorkflowRepairRequest) GetProposalId() string {
+	if x != nil {
+		return x.ProposalId
+	}
+	return ""
+}
+
+type WorkflowRepairProposalResponse struct {
+	state             protoimpl.MessageState  `protogen:"open.v1"`
+	ProposalId        string                  `protobuf:"bytes,1,opt,name=proposal_id,json=proposalId,proto3" json:"proposal_id,omitempty"`
+	TaskId            string                  `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Outcome           string                  `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	Action            string                  `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	ProposerId        string                  `protobuf:"bytes,5,opt,name=proposer_id,json=proposerId,proto3" json:"proposer_id,omitempty"`
+	TicketRef         string                  `protobuf:"bytes,6,opt,name=ticket_ref,json=ticketRef,proto3" json:"ticket_ref,omitempty"`
+	Reason            string                  `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	Projected         *WorkflowRepairEvidence `protobuf:"bytes,8,opt,name=projected,proto3" json:"projected,omitempty"`
+	Temporal          *WorkflowRepairEvidence `protobuf:"bytes,9,opt,name=temporal,proto3" json:"temporal,omitempty"`
+	EvidenceSha256    string                  `protobuf:"bytes,10,opt,name=evidence_sha256,json=evidenceSha256,proto3" json:"evidence_sha256,omitempty"`
+	Status            string                  `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	RequiredApprovals uint32                  `protobuf:"varint,12,opt,name=required_approvals,json=requiredApprovals,proto3" json:"required_approvals,omitempty"`
+	ProposedAtUnixMs  int64                   `protobuf:"varint,13,opt,name=proposed_at_unix_ms,json=proposedAtUnixMs,proto3" json:"proposed_at_unix_ms,omitempty"`
+	ExpiresAtUnixMs   int64                   `protobuf:"varint,14,opt,name=expires_at_unix_ms,json=expiresAtUnixMs,proto3" json:"expires_at_unix_ms,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *WorkflowRepairProposalResponse) Reset() {
+	*x = WorkflowRepairProposalResponse{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowRepairProposalResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowRepairProposalResponse) ProtoMessage() {}
+
+func (x *WorkflowRepairProposalResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowRepairProposalResponse.ProtoReflect.Descriptor instead.
+func (*WorkflowRepairProposalResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *WorkflowRepairProposalResponse) GetProposalId() string {
+	if x != nil {
+		return x.ProposalId
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetProposerId() string {
+	if x != nil {
+		return x.ProposerId
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetTicketRef() string {
+	if x != nil {
+		return x.TicketRef
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetProjected() *WorkflowRepairEvidence {
+	if x != nil {
+		return x.Projected
+	}
+	return nil
+}
+
+func (x *WorkflowRepairProposalResponse) GetTemporal() *WorkflowRepairEvidence {
+	if x != nil {
+		return x.Temporal
+	}
+	return nil
+}
+
+func (x *WorkflowRepairProposalResponse) GetEvidenceSha256() string {
+	if x != nil {
+		return x.EvidenceSha256
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *WorkflowRepairProposalResponse) GetRequiredApprovals() uint32 {
+	if x != nil {
+		return x.RequiredApprovals
+	}
+	return 0
+}
+
+func (x *WorkflowRepairProposalResponse) GetProposedAtUnixMs() int64 {
+	if x != nil {
+		return x.ProposedAtUnixMs
+	}
+	return 0
+}
+
+func (x *WorkflowRepairProposalResponse) GetExpiresAtUnixMs() int64 {
+	if x != nil {
+		return x.ExpiresAtUnixMs
+	}
+	return 0
+}
+
 var File_dipole_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_dipole_agent_v1_agent_proto_rawDesc = "" +
@@ -1595,7 +2031,53 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"+ListTaskWorkflowProjectionSnapshotsResponse\x12E\n" +
 	"\x05tasks\x18\x01 \x03(\v2/.dipole.agent.v1.TaskWorkflowProjectionSnapshotR\x05tasks\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
-	"nextCursor2\xda\a\n" +
+	"nextCursor\"\x95\x01\n" +
+	"\x16WorkflowRepairEvidence\x12\x1f\n" +
+	"\vworkflow_id\x18\x01 \x01(\tR\n" +
+	"workflowId\x12&\n" +
+	"\x0fworkflow_run_id\x18\x02 \x01(\tR\rworkflowRunId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1a\n" +
+	"\brevision\x18\x04 \x01(\x04R\brevision\"\xac\x03\n" +
+	"\x1cProposeWorkflowRepairRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x18\n" +
+	"\aoutcome\x18\x03 \x01(\tR\aoutcome\x12\x1d\n" +
+	"\n" +
+	"ticket_ref\x18\x04 \x01(\tR\tticketRef\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12E\n" +
+	"\tprojected\x18\x06 \x01(\v2'.dipole.agent.v1.WorkflowRepairEvidenceR\tprojected\x12C\n" +
+	"\btemporal\x18\a \x01(\v2'.dipole.agent.v1.WorkflowRepairEvidenceR\btemporal\x12-\n" +
+	"\x13proposed_at_unix_ms\x18\b \x01(\x03R\x10proposedAtUnixMs\x12+\n" +
+	"\x12expires_at_unix_ms\x18\t \x01(\x03R\x0fexpiresAtUnixMs\"\x96\x01\n" +
+	"\x1bDecideWorkflowRepairRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1f\n" +
+	"\vproposal_id\x18\x02 \x01(\tR\n" +
+	"proposalId\x12\x1a\n" +
+	"\bdecision\x18\x03 \x01(\tR\bdecision\"w\n" +
+	"\x18GetWorkflowRepairRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1f\n" +
+	"\vproposal_id\x18\x02 \x01(\tR\n" +
+	"proposalId\"\xbc\x04\n" +
+	"\x1eWorkflowRepairProposalResponse\x12\x1f\n" +
+	"\vproposal_id\x18\x01 \x01(\tR\n" +
+	"proposalId\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x18\n" +
+	"\aoutcome\x18\x03 \x01(\tR\aoutcome\x12\x16\n" +
+	"\x06action\x18\x04 \x01(\tR\x06action\x12\x1f\n" +
+	"\vproposer_id\x18\x05 \x01(\tR\n" +
+	"proposerId\x12\x1d\n" +
+	"\n" +
+	"ticket_ref\x18\x06 \x01(\tR\tticketRef\x12\x16\n" +
+	"\x06reason\x18\a \x01(\tR\x06reason\x12E\n" +
+	"\tprojected\x18\b \x01(\v2'.dipole.agent.v1.WorkflowRepairEvidenceR\tprojected\x12C\n" +
+	"\btemporal\x18\t \x01(\v2'.dipole.agent.v1.WorkflowRepairEvidenceR\btemporal\x12'\n" +
+	"\x0fevidence_sha256\x18\n" +
+	" \x01(\tR\x0eevidenceSha256\x12\x16\n" +
+	"\x06status\x18\v \x01(\tR\x06status\x12-\n" +
+	"\x12required_approvals\x18\f \x01(\rR\x11requiredApprovals\x12-\n" +
+	"\x13proposed_at_unix_ms\x18\r \x01(\x03R\x10proposedAtUnixMs\x12+\n" +
+	"\x12expires_at_unix_ms\x18\x0e \x01(\x03R\x0fexpiresAtUnixMs2\xbb\n" +
+	"\n" +
 	"\x16AgentCapabilityService\x12O\n" +
 	"\bAdmitRun\x12 .dipole.agent.v1.AdmitRunRequest\x1a!.dipole.agent.v1.AdmitRunResponse\x12X\n" +
 	"\vCompleteRun\x12#.dipole.agent.v1.CompleteRunRequest\x1a$.dipole.agent.v1.CompleteRunResponse\x12R\n" +
@@ -1605,7 +2087,10 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x11ListConversations\x12).dipole.agent.v1.ListConversationsRequest\x1a*.dipole.agent.v1.ListConversationsResponse\x12s\n" +
 	"\x14AuthorizeTaskControl\x12,.dipole.agent.v1.AuthorizeTaskControlRequest\x1a-.dipole.agent.v1.AuthorizeTaskControlResponse\x12\x7f\n" +
 	"\x18ProjectTaskWorkflowState\x120.dipole.agent.v1.ProjectTaskWorkflowStateRequest\x1a1.dipole.agent.v1.ProjectTaskWorkflowStateResponse\x12\xa0\x01\n" +
-	"#ListTaskWorkflowProjectionSnapshots\x12;.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest\x1a<.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponseBIZGgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1b\x06proto3"
+	"#ListTaskWorkflowProjectionSnapshots\x12;.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest\x1a<.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse\x12w\n" +
+	"\x15ProposeWorkflowRepair\x12-.dipole.agent.v1.ProposeWorkflowRepairRequest\x1a/.dipole.agent.v1.WorkflowRepairProposalResponse\x12u\n" +
+	"\x14DecideWorkflowRepair\x12,.dipole.agent.v1.DecideWorkflowRepairRequest\x1a/.dipole.agent.v1.WorkflowRepairProposalResponse\x12o\n" +
+	"\x11GetWorkflowRepair\x12).dipole.agent.v1.GetWorkflowRepairRequest\x1a/.dipole.agent.v1.WorkflowRepairProposalResponseBIZGgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1b\x06proto3"
 
 var (
 	file_dipole_agent_v1_agent_proto_rawDescOnce sync.Once
@@ -1619,7 +2104,7 @@ func file_dipole_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_dipole_agent_v1_agent_proto_rawDescData
 }
 
-var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_dipole_agent_v1_agent_proto_goTypes = []any{
 	(*AdmitRunRequest)(nil),                             // 0: dipole.agent.v1.AdmitRunRequest
 	(*AdmitRunResponse)(nil),                            // 1: dipole.agent.v1.AdmitRunResponse
@@ -1641,44 +2126,62 @@ var file_dipole_agent_v1_agent_proto_goTypes = []any{
 	(*ListTaskWorkflowProjectionSnapshotsRequest)(nil),  // 17: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
 	(*TaskWorkflowProjectionSnapshot)(nil),              // 18: dipole.agent.v1.TaskWorkflowProjectionSnapshot
 	(*ListTaskWorkflowProjectionSnapshotsResponse)(nil), // 19: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
-	(*v1.RequestContext)(nil),                           // 20: dipole.common.v1.RequestContext
+	(*WorkflowRepairEvidence)(nil),                      // 20: dipole.agent.v1.WorkflowRepairEvidence
+	(*ProposeWorkflowRepairRequest)(nil),                // 21: dipole.agent.v1.ProposeWorkflowRepairRequest
+	(*DecideWorkflowRepairRequest)(nil),                 // 22: dipole.agent.v1.DecideWorkflowRepairRequest
+	(*GetWorkflowRepairRequest)(nil),                    // 23: dipole.agent.v1.GetWorkflowRepairRequest
+	(*WorkflowRepairProposalResponse)(nil),              // 24: dipole.agent.v1.WorkflowRepairProposalResponse
+	(*v1.RequestContext)(nil),                           // 25: dipole.common.v1.RequestContext
 }
 var file_dipole_agent_v1_agent_proto_depIdxs = []int32{
-	20, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 2: dipole.agent.v1.FinishRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 3: dipole.agent.v1.RequestApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 2: dipole.agent.v1.FinishRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 3: dipole.agent.v1.RequestApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
 	6,  // 4: dipole.agent.v1.RequestApprovalRequest.resource_scope:type_name -> dipole.agent.v1.AgentResourceScope
-	20, // 5: dipole.agent.v1.ResolveApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 6: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 5: dipole.agent.v1.ResolveApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 6: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
 	11, // 7: dipole.agent.v1.ListConversationsResponse.conversations:type_name -> dipole.agent.v1.ConversationSnapshot
-	20, // 8: dipole.agent.v1.AuthorizeTaskControlRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 9: dipole.agent.v1.ProjectTaskWorkflowStateRequest.context:type_name -> dipole.common.v1.RequestContext
-	20, // 10: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 8: dipole.agent.v1.AuthorizeTaskControlRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 9: dipole.agent.v1.ProjectTaskWorkflowStateRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 10: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest.context:type_name -> dipole.common.v1.RequestContext
 	18, // 11: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse.tasks:type_name -> dipole.agent.v1.TaskWorkflowProjectionSnapshot
-	0,  // 12: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
-	2,  // 13: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
-	4,  // 14: dipole.agent.v1.AgentCapabilityService.FinishRun:input_type -> dipole.agent.v1.FinishRunRequest
-	7,  // 15: dipole.agent.v1.AgentCapabilityService.RequestApproval:input_type -> dipole.agent.v1.RequestApprovalRequest
-	8,  // 16: dipole.agent.v1.AgentCapabilityService.ResolveApproval:input_type -> dipole.agent.v1.ResolveApprovalRequest
-	10, // 17: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
-	13, // 18: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
-	15, // 19: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
-	17, // 20: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
-	1,  // 21: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
-	3,  // 22: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
-	5,  // 23: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
-	9,  // 24: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	9,  // 25: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	12, // 26: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
-	14, // 27: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
-	16, // 28: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
-	19, // 29: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	25, // 12: dipole.agent.v1.ProposeWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 13: dipole.agent.v1.ProposeWorkflowRepairRequest.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	20, // 14: dipole.agent.v1.ProposeWorkflowRepairRequest.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	25, // 15: dipole.agent.v1.DecideWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	25, // 16: dipole.agent.v1.GetWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 17: dipole.agent.v1.WorkflowRepairProposalResponse.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	20, // 18: dipole.agent.v1.WorkflowRepairProposalResponse.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	0,  // 19: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
+	2,  // 20: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
+	4,  // 21: dipole.agent.v1.AgentCapabilityService.FinishRun:input_type -> dipole.agent.v1.FinishRunRequest
+	7,  // 22: dipole.agent.v1.AgentCapabilityService.RequestApproval:input_type -> dipole.agent.v1.RequestApprovalRequest
+	8,  // 23: dipole.agent.v1.AgentCapabilityService.ResolveApproval:input_type -> dipole.agent.v1.ResolveApprovalRequest
+	10, // 24: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
+	13, // 25: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
+	15, // 26: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
+	17, // 27: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+	21, // 28: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:input_type -> dipole.agent.v1.ProposeWorkflowRepairRequest
+	22, // 29: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:input_type -> dipole.agent.v1.DecideWorkflowRepairRequest
+	23, // 30: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:input_type -> dipole.agent.v1.GetWorkflowRepairRequest
+	1,  // 31: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
+	3,  // 32: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
+	5,  // 33: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
+	9,  // 34: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	9,  // 35: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	12, // 36: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
+	14, // 37: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
+	16, // 38: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
+	19, // 39: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+	24, // 40: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	24, // 41: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	24, // 42: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	31, // [31:43] is the sub-list for method output_type
+	19, // [19:31] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_dipole_agent_v1_agent_proto_init() }
@@ -1692,7 +2195,7 @@ func file_dipole_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_agent_v1_agent_proto_rawDesc), len(file_dipole_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

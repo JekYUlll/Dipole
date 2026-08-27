@@ -156,6 +156,53 @@ message ListTaskWorkflowProjectionSnapshotsResponse {
   string next_cursor = 2;
 }
 
+message WorkflowRepairEvidence {
+  string workflow_id = 1;
+  string workflow_run_id = 2;
+  string status = 3;
+  uint64 revision = 4;
+}
+
+message ProposeWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string outcome = 3;
+  string ticket_ref = 4;
+  string reason = 5;
+  WorkflowRepairEvidence projected = 6;
+  WorkflowRepairEvidence temporal = 7;
+  int64 proposed_at_unix_ms = 8;
+  int64 expires_at_unix_ms = 9;
+}
+
+message DecideWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+  string decision = 3;
+}
+
+message GetWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+}
+
+message WorkflowRepairProposalResponse {
+  string proposal_id = 1;
+  string task_id = 2;
+  string outcome = 3;
+  string action = 4;
+  string proposer_id = 5;
+  string ticket_ref = 6;
+  string reason = 7;
+  WorkflowRepairEvidence projected = 8;
+  WorkflowRepairEvidence temporal = 9;
+  string evidence_sha256 = 10;
+  string status = 11;
+  uint32 required_approvals = 12;
+  int64 proposed_at_unix_ms = 13;
+  int64 expires_at_unix_ms = 14;
+}
+
 service AgentCapabilityService {
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
@@ -166,4 +213,7 @@ service AgentCapabilityService {
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
   rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
+  rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
 }

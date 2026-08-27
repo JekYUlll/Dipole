@@ -33,25 +33,31 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 24)
+		assertCurrentVersion(t, runner, 25)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 33)
+		assertTableCount(t, db, 36)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 24)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (25, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 25)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (26, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 25"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 26"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Workflow repair audit migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 24)
+		assertTableCount(t, db, 33)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Task Workflow projection migration: %v", err)
 		}

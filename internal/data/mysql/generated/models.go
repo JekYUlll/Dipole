@@ -80,6 +80,46 @@ type AgentTask struct {
 	WorkflowUpdatedAt sql.NullTime
 }
 
+type AgentWorkflowRepairDecision struct {
+	ProposalUuid string
+	ApproverUuid string
+	Decision     string
+	DecidedAt    time.Time
+	CreatedAt    time.Time
+}
+
+type AgentWorkflowRepairOperatorGrant struct {
+	UserUuid      string
+	CanPropose    bool
+	CanApprove    bool
+	GrantedByUuid string
+	ValidFrom     time.Time
+	ExpiresAt     sql.NullTime
+	RevokedAt     sql.NullTime
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type AgentWorkflowRepairProposal struct {
+	ProposalUuid      string
+	TaskUuid          string
+	Outcome           string
+	Action            string
+	ProposerUuid      string
+	TicketRef         string
+	Reason            string
+	ProjectedJson     json.RawMessage
+	TemporalJson      json.RawMessage
+	EvidenceSha256    string
+	Status            string
+	RequiredApprovals uint8
+	ProposedAt        time.Time
+	ExpiresAt         time.Time
+	DecidedAt         sql.NullTime
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 type CassandraBackfillJob struct {
 	JobName               string
 	Status                string

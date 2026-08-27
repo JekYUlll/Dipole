@@ -28,6 +28,9 @@ const (
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
+	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
+	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
+	AgentCapabilityService_GetWorkflowRepair_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -43,6 +46,9 @@ type AgentCapabilityServiceClient interface {
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
+	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 }
 
 type agentCapabilityServiceClient struct {
@@ -143,6 +149,36 @@ func (c *agentCapabilityServiceClient) ListTaskWorkflowProjectionSnapshots(ctx c
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ProposeWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_DecideWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_GetWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentCapabilityServiceServer is the server API for AgentCapabilityService service.
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
@@ -156,6 +192,9 @@ type AgentCapabilityServiceServer interface {
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
+	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
 
@@ -192,6 +231,15 @@ func (UnimplementedAgentCapabilityServiceServer) ProjectTaskWorkflowState(contex
 }
 func (UnimplementedAgentCapabilityServiceServer) ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTaskWorkflowProjectionSnapshots not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProposeWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DecideWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRepair not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) mustEmbedUnimplementedAgentCapabilityServiceServer() {
 }
@@ -377,6 +425,60 @@ func _AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_Handler(srv int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ProposeWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProposeWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ProposeWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ProposeWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ProposeWorkflowRepair(ctx, req.(*ProposeWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_DecideWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecideWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).DecideWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_DecideWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).DecideWorkflowRepair(ctx, req.(*DecideWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_GetWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).GetWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_GetWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).GetWorkflowRepair(ctx, req.(*GetWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentCapabilityService_ServiceDesc is the grpc.ServiceDesc for AgentCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -419,6 +521,18 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTaskWorkflowProjectionSnapshots",
 			Handler:    _AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_Handler,
+		},
+		{
+			MethodName: "ProposeWorkflowRepair",
+			Handler:    _AgentCapabilityService_ProposeWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "DecideWorkflowRepair",
+			Handler:    _AgentCapabilityService_DecideWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "GetWorkflowRepair",
+			Handler:    _AgentCapabilityService_GetWorkflowRepair_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

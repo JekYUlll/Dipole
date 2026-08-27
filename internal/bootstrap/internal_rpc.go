@@ -70,8 +70,8 @@ func NewCoreRPCServerWithAgentControl(cfg config.InternalRPC, capability applica
 	return newCoreRPCServer(cfg, capability, agentAdapter)
 }
 
-func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1) (*InternalRPCServer, error) {
-	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections)
+func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs ...application.AgentWorkflowRepairAuditServiceV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs...)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
 	}
@@ -109,6 +109,14 @@ func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.
 
 func DialGatewayCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
 	return dialCoreCapabilityAs(ctx, cfg, gatewayServiceName)
+}
+
+func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (agentv1.AgentCapabilityServiceClient, *grpc.ClientConn, error) {
+	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: gatewayServiceName, Secret: cfg.SharedSecret})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Gateway Agent capability: %w", err)
+	}
+	return agentv1.NewAgentCapabilityServiceClient(connection), connection, nil
 }
 
 func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*coregrpc.Client, *grpc.ClientConn, error) {

@@ -8,8 +8,10 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,6 +24,7 @@ type Server struct {
 	approvals   application.AgentApprovalServiceV1
 	controls    application.AgentTaskControlAuthorizerV1
 	projections application.AgentTaskWorkflowProjectionServiceV1
+	repairs     application.AgentWorkflowRepairAuditServiceV1
 }
 
 func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*Server, error) {
@@ -47,7 +50,7 @@ func NewServerWithControl(capability application.AgentCapabilityV1, resolver app
 	return server, nil
 }
 
-func NewServerWithControlAndProjection(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1) (*Server, error) {
+func NewServerWithControlAndProjection(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs ...application.AgentWorkflowRepairAuditServiceV1) (*Server, error) {
 	server, err := NewServerWithControl(capability, resolver, admission, approvals, controls)
 	if err != nil {
 		return nil, err
@@ -56,7 +59,112 @@ func NewServerWithControlAndProjection(capability application.AgentCapabilityV1,
 		return nil, errors.New("Agent Task Workflow projection service is required")
 	}
 	server.projections = projections
+	if len(repairs) > 0 {
+		if repairs[0] == nil {
+			return nil, errors.New("Agent Workflow repair audit service is required")
+		}
+		server.repairs = repairs[0]
+	}
 	return server, nil
+}
+
+func (s *Server) ProposeWorkflowRepair(ctx context.Context, request *agentv1.ProposeWorkflowRepairRequest) (*agentv1.WorkflowRepairProposalResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairs == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair audit is unavailable")
+	}
+	proposal, err := s.repairs.Propose(ctx, principal, application.AgentWorkflowRepairProposalRequestV1{
+		TaskUUID: request.GetTaskId(), Outcome: application.AgentWorkflowRepairOutcomeV1(request.GetOutcome()), TicketRef: request.GetTicketRef(), Reason: request.GetReason(),
+		Projected: workflowRepairEvidenceFromRPCV1(request.GetProjected()), Temporal: workflowRepairEvidenceValueFromRPCV1(request.GetTemporal()),
+		ProposedAt: time.UnixMilli(request.GetProposedAtUnixMs()), ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()),
+	})
+	if err != nil {
+		return nil, workflowRepairErrorV1(err)
+	}
+	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func (s *Server) DecideWorkflowRepair(ctx context.Context, request *agentv1.DecideWorkflowRepairRequest) (*agentv1.WorkflowRepairProposalResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairs == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair audit is unavailable")
+	}
+	proposal, err := s.repairs.Decide(ctx, principal, request.GetProposalId(), application.AgentWorkflowRepairDecisionV1(request.GetDecision()))
+	if err != nil {
+		return nil, workflowRepairErrorV1(err)
+	}
+	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func (s *Server) GetWorkflowRepair(ctx context.Context, request *agentv1.GetWorkflowRepairRequest) (*agentv1.WorkflowRepairProposalResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairs == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair audit is unavailable")
+	}
+	proposal, err := s.repairs.Get(ctx, principal, request.GetProposalId())
+	if err != nil {
+		return nil, workflowRepairErrorV1(err)
+	}
+	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func workflowRepairOperatorV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return "", status.Error(codes.PermissionDenied, "only the authenticated Gateway may submit Workflow repair audit requests")
+	}
+	// Caller still verifies the mTLS/shared-secret identity against the claimed service.
+	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
+		return "", err
+	}
+	return grpccommon.Principal(requestContext)
+}
+
+func workflowRepairEvidenceFromRPCV1(value *agentv1.WorkflowRepairEvidence) *application.AgentWorkflowEvidenceV1 {
+	if value == nil {
+		return nil
+	}
+	result := workflowRepairEvidenceValueFromRPCV1(value)
+	return &result
+}
+func workflowRepairEvidenceValueFromRPCV1(value *agentv1.WorkflowRepairEvidence) application.AgentWorkflowEvidenceV1 {
+	if value == nil {
+		return application.AgentWorkflowEvidenceV1{}
+	}
+	return application.AgentWorkflowEvidenceV1{WorkflowID: value.GetWorkflowId(), WorkflowRunID: value.GetWorkflowRunId(), Status: value.GetStatus(), Revision: value.GetRevision()}
+}
+func workflowRepairEvidenceToRPCV1(value *application.AgentWorkflowEvidenceV1) *agentv1.WorkflowRepairEvidence {
+	if value == nil {
+		return nil
+	}
+	return &agentv1.WorkflowRepairEvidence{WorkflowId: value.WorkflowID, WorkflowRunId: value.WorkflowRunID, Status: value.Status, Revision: value.Revision}
+}
+func workflowRepairProposalResponseV1(value *application.AgentWorkflowRepairProposalV1) *agentv1.WorkflowRepairProposalResponse {
+	if value == nil {
+		return nil
+	}
+	temporal := value.Temporal
+	return &agentv1.WorkflowRepairProposalResponse{ProposalId: value.ProposalUUID, TaskId: value.TaskUUID, Outcome: string(value.Outcome), Action: value.Action,
+		ProposerId: value.ProposerUUID, TicketRef: value.TicketRef, Reason: value.Reason, Projected: workflowRepairEvidenceToRPCV1(value.Projected), Temporal: workflowRepairEvidenceToRPCV1(&temporal),
+		EvidenceSha256: value.EvidenceSHA256, Status: string(value.Status), RequiredApprovals: uint32(value.RequiredApprovals), ProposedAtUnixMs: value.ProposedAt.UnixMilli(), ExpiresAtUnixMs: value.ExpiresAt.UnixMilli()}
+}
+func workflowRepairErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentWorkflowRepairDenied) {
+		return status.Error(codes.PermissionDenied, "Agent Workflow repair access denied")
+	}
+	if errors.Is(err, application.ErrAgentWorkflowRepairConflict) {
+		return status.Error(codes.FailedPrecondition, "Agent Workflow repair evidence conflicts")
+	}
+	return status.Error(codes.Internal, "Agent Workflow repair audit failed")
 }
 
 func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.AuthorizeTaskControlRequest) (*agentv1.AuthorizeTaskControlResponse, error) {

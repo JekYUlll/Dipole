@@ -107,3 +107,51 @@ WHERE approval_uuid = ? AND consumed_at IS NULL AND revoked_at IS NULL;
 UPDATE agent_approvals
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
 WHERE approval_uuid = ? AND status = 'pending' AND consumed_at IS NULL AND revoked_at IS NULL;
+
+-- name: GetAgentWorkflowRepairOperatorGrant :one
+SELECT * FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1;
+
+-- name: InsertAgentWorkflowRepairProposal :execrows
+INSERT IGNORE INTO agent_workflow_repair_proposals (
+    proposal_uuid, task_uuid, outcome, action, proposer_uuid, ticket_ref, reason,
+    projected_json, temporal_json, evidence_sha256, status, required_approvals, proposed_at, expires_at
+) VALUES (?, ?, ?, 'reproject_from_temporal', ?, ?, ?, ?, ?, ?, 'proposed', 2, ?, ?);
+
+-- name: GetAgentWorkflowRepairProposal :one
+SELECT * FROM agent_workflow_repair_proposals WHERE proposal_uuid = ? LIMIT 1;
+
+-- name: InsertAgentWorkflowRepairDecision :execrows
+INSERT IGNORE INTO agent_workflow_repair_decisions (
+    proposal_uuid, approver_uuid, decision, decided_at
+)
+SELECT ?, ?, ?, UTC_TIMESTAMP()
+FROM agent_workflow_repair_proposals AS p
+WHERE p.proposal_uuid = ? AND p.proposer_uuid <> ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP();
+
+-- name: GetAgentWorkflowRepairDecision :one
+SELECT * FROM agent_workflow_repair_decisions WHERE proposal_uuid = ? AND approver_uuid = ? LIMIT 1;
+
+-- name: CountAgentWorkflowRepairDecisions :one
+SELECT
+    CAST(SUM(decision = 'approved') AS UNSIGNED) AS approved_count,
+    CAST(SUM(decision = 'rejected') AS UNSIGNED) AS rejected_count
+FROM agent_workflow_repair_decisions
+WHERE proposal_uuid = ?;
+
+-- name: ApproveAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'approved', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP()
+  AND (SELECT COUNT(*) FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'approved') >= p.required_approvals
+  AND NOT EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected');
+
+-- name: RejectAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'rejected', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed'
+  AND EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected');
+
+-- name: ExpireAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals
+SET status = 'expired', decided_at = UTC_TIMESTAMP()
+WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP();
