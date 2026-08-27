@@ -529,6 +529,14 @@ export interface ResolveMcpContextResponse {
      * @generated from protobuf field: repeated string approved_capabilities = 7
      */
     approvedCapabilities: string[];
+    /**
+     * @generated from protobuf field: string runtime_id = 8
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string mode = 9
+     */
+    mode: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
@@ -2820,7 +2828,9 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
             { no: 4, name: "delegated_by_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "permissions", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
             { no: 6, name: "resource_scopes", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentResourceScope },
-            { no: 7, name: "approved_capabilities", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+            { no: 7, name: "approved_capabilities", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ResolveMcpContextResponse>): ResolveMcpContextResponse {
@@ -2832,6 +2842,8 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
         message.permissions = [];
         message.resourceScopes = [];
         message.approvedCapabilities = [];
+        message.runtimeId = "";
+        message.mode = "";
         if (value !== undefined)
             reflectionMergePartial<ResolveMcpContextResponse>(this, message, value);
         return message;
@@ -2861,6 +2873,12 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
                     break;
                 case /* repeated string approved_capabilities */ 7:
                     message.approvedCapabilities.push(reader.string());
+                    break;
+                case /* string runtime_id */ 8:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string mode */ 9:
+                    message.mode = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -2895,6 +2913,12 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
         /* repeated string approved_capabilities = 7; */
         for (let i = 0; i < message.approvedCapabilities.length; i++)
             writer.tag(7, WireType.LengthDelimited).string(message.approvedCapabilities[i]);
+        /* string runtime_id = 8; */
+        if (message.runtimeId !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.runtimeId);
+        /* string mode = 9; */
+        if (message.mode !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.mode);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

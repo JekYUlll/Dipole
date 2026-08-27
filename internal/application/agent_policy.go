@@ -44,6 +44,8 @@ type AgentInvocationV1 struct {
 	PrincipalUUID        string                 `json:"principal_uuid"`
 	AgentUUID            string                 `json:"agent_uuid"`
 	DelegatedByUUID      string                 `json:"delegated_by_uuid,omitempty"`
+	RuntimeID            string                 `json:"runtime_id,omitempty"`
+	Mode                 string                 `json:"mode,omitempty"`
 	Permissions          []string               `json:"permissions"`
 	ResourceScopes       []AgentResourceScopeV1 `json:"resource_scopes"`
 	ApprovedCapabilities []string               `json:"approved_capabilities,omitempty"`

@@ -170,6 +170,8 @@ message ResolveMcpContextResponse {
   repeated string permissions = 5;
   repeated AgentResourceScope resource_scopes = 6;
   repeated string approved_capabilities = 7;
+  string runtime_id = 8;
+  string mode = 9;
 }
 
 message BeginMcpToolInvocationRequest {

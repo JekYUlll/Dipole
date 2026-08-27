@@ -32,8 +32,9 @@ type PersistentAgentInvocationResolverV1 struct {
 }
 
 type PersistentAgentRunAdmissionV1 struct {
-	store application.AgentPolicyStoreV1
-	now   agentPolicyClockV1
+	store            application.AgentPolicyStoreV1
+	now              agentPolicyClockV1
+	activeAuthorizer application.AgentActiveRunPromotionAuthorizerV1
 }
 
 type agentEventSubscriptionReaderV1 interface {
@@ -79,16 +80,25 @@ func (r *PersistentAgentInvocationResolverV1) Resolve(ctx context.Context, taskU
 	if err := authorizeDefinitionAtV1(definition, request, r.now()); err != nil {
 		return application.AgentInvocationV1{}, err
 	}
-	return invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes), nil
+	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
+	invocation.RuntimeID, invocation.Mode = run.RuntimeID, run.Mode
+	return invocation, nil
 }
 
 var _ application.AgentRunAdmissionServiceV1 = (*PersistentAgentRunAdmissionV1)(nil)
 
-func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1) (*PersistentAgentRunAdmissionV1, error) {
+func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
 	if store == nil {
 		return nil, fmt.Errorf("persistent Agent Run admission requires store")
 	}
-	return &PersistentAgentRunAdmissionV1{store: store, now: time.Now}, nil
+	if len(activeAuthorizers) > 1 {
+		return nil, fmt.Errorf("persistent Agent Run admission accepts at most one active promotion authorizer")
+	}
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: time.Now}
+	if len(activeAuthorizers) == 1 {
+		admission.activeAuthorizer = activeAuthorizers[0]
+	}
+	return admission, nil
 }
 
 func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
@@ -99,12 +109,19 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	if strings.TrimSpace(admission.RuntimeID) == "" || (admission.Mode != "shadow" && admission.Mode != "active") {
 		return nil, fmt.Errorf("%w: Runtime identity and remote mode are required", application.ErrAgentExecutionPolicyDenied)
 	}
+	if admission.Mode == "active" && a.activeAuthorizer == nil {
+		return nil, fmt.Errorf("%w: active Runtime promotion authorization is unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	if admission.Mode == "active" && strings.TrimSpace(admission.CandidateVersion) == "" {
+		return nil, fmt.Errorf("%w: active Runtime candidate version is required", application.ErrAgentExecutionPolicyDenied)
+	}
 	taskUUID := agentTaskUUIDV1(request)
 	existingTask, err := a.store.GetTask(ctx, taskUUID)
 	if err != nil {
 		return nil, fmt.Errorf("lookup Agent Task admission: %w", err)
 	}
 	var task application.AgentTaskV1
+	activeAuthorized := false
 	if existingTask == nil {
 		latest, lookupErr := a.store.GetLatestDefinition(ctx, request.TenantID, request.AgentUUID)
 		if lookupErr != nil || authorizeDefinitionAtV1(latest, request, a.now()) != nil {
@@ -119,11 +136,16 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			Status: application.AgentTaskStatusCreated, TriggerType: request.TriggerType, TriggerRef: request.TriggerRef, Goal: "handle_agent_trigger",
 			TriggerSubscriptionUUID: strings.TrimSpace(request.SubscriptionUUID),
 		}
+		if err := a.authorizeActiveRunV1(ctx, admission, task, *latest); err != nil {
+			return nil, err
+		}
+		activeAuthorized = admission.Mode == "active"
 		created, createErr := a.store.CreateTask(ctx, task)
 		if createErr != nil {
 			return nil, fmt.Errorf("admit Agent Task: %w", createErr)
 		}
 		if !created {
+			activeAuthorized = false
 			existingTask, err = a.store.GetTask(ctx, taskUUID)
 			if err != nil || existingTask == nil {
 				return nil, fmt.Errorf("%w: concurrent Agent Task admission unavailable", application.ErrAgentExecutionPolicyDenied)
@@ -135,6 +157,18 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	}
 	if !agentTaskMatchesStartV1(task, request) {
 		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
+	}
+	if task.Status != application.AgentTaskStatusCreated && task.Status != application.AgentTaskStatusRunning && task.Status != application.AgentTaskStatusCompleted {
+		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
+	}
+	definition, err := a.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
+	if err != nil || authorizeDefinitionAtV1(definition, request, a.now()) != nil {
+		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	if !activeAuthorized {
+		if err := a.authorizeActiveRunV1(ctx, admission, task, *definition); err != nil {
+			return nil, err
+		}
 	}
 	if task.Status == application.AgentTaskStatusCreated {
 		changed, transitionErr := a.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
@@ -150,13 +184,6 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			}
 			task = *current
 		}
-	}
-	if task.Status != application.AgentTaskStatusRunning && task.Status != application.AgentTaskStatusCompleted {
-		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
-	}
-	definition, err := a.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
-	if err != nil || authorizeDefinitionAtV1(definition, request, a.now()) != nil {
-		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
 	runUUID, err := application.AgentRunUUIDV1(task.TaskUUID, admission.RuntimeID, admission.Mode)
 	if err != nil {
@@ -177,10 +204,24 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		}
 		runStatus = existingRun.Status
 	}
+	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
+	invocation.RuntimeID, invocation.Mode = admission.RuntimeID, admission.Mode
 	return &application.AgentRunAdmissionV1{
 		TaskUUID: task.TaskUUID, RunUUID: runUUID, RunStatus: runStatus,
-		Invocation: invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes),
+		Invocation: invocation,
 	}, nil
+}
+
+func (a *PersistentAgentRunAdmissionV1) authorizeActiveRunV1(ctx context.Context, admission application.AgentRunAdmissionRequestV1, task application.AgentTaskV1, definition application.AgentDefinitionVersionV1) error {
+	if admission.Mode != "active" {
+		return nil
+	}
+	if err := a.activeAuthorizer.AuthorizeActiveRun(ctx, application.AgentActiveRunPromotionRequestV1{
+		RuntimeID: admission.RuntimeID, CandidateVersion: strings.TrimSpace(admission.CandidateVersion), Task: task, Definition: definition,
+	}); err != nil {
+		return fmt.Errorf("%w: active Runtime promotion denied", application.ErrAgentExecutionPolicyDenied)
+	}
+	return nil
 }
 
 func authorizeTriggerSubscriptionV1(ctx context.Context, store application.AgentPolicyStoreV1, request application.AgentExecutionPolicyStartV1, definition *application.AgentDefinitionVersionV1, at time.Time) error {
