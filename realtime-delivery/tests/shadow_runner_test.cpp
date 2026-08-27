@@ -124,6 +124,21 @@ class FakePresenceReader final : public dipole::realtime::PresenceReader {
   dipole::realtime::ValidationError read_error;
 };
 
+class FakeNodeTransport final : public dipole::realtime::NodeBatchTransport {
+ public:
+  dipole::realtime::ValidationError Observe(
+      const std::vector<dipole::delivery::v1::NodeDeliveryBatch>& batches,
+      dipole::realtime::NodeTransportStats* stats) override {
+    observed_batches = batches;
+    *stats = response;
+    return error;
+  }
+
+  std::vector<dipole::delivery::v1::NodeDeliveryBatch> observed_batches;
+  dipole::realtime::NodeTransportStats response;
+  dipole::realtime::ValidationError error;
+};
+
 void TestProjectedRecordCommitsAfterEvidence() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -214,6 +229,55 @@ void TestPresenceReadFailureKeepsOffsetUncommitted() {
         "Presence read failure removes readiness");
 }
 
+void TestNodeTransportPrecedesEvidenceAndCommit() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_result.by_user["U2"] = {
+      {.connection_id = "C1", .user_id = "U2", .node_id = "node-a", .last_seen_unix_ms = 9'900}};
+  FakeNodeTransport transport;
+  transport.response = {.requested = 1, .observed = 1, .duplicate = 0, .rejected = 0,
+                        .backpressured = 0};
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence, &transport);
+
+  const auto error = runner.RunOnce({}, dipole::realtime::PresenceProjectionPolicy{
+                                            .now_unix_ms = 10'000, .ttl_ms = 1'000});
+  Check(!error && transport.observed_batches.size() == 1,
+        "node transport observes projected batch");
+  Check(sink.entries.size() == 1 && sink.entries[0].transport_requested == 1 &&
+            sink.entries[0].transport_observed == 1 && sink.entries[0].error_code.empty(),
+        "node transport evidence is bounded");
+  Check(consumer.commit_attempts == std::vector<std::int64_t>{99},
+        "successful node observation precedes offset commit");
+}
+
+void TestNodeTransportFailureWritesDeferredEvidenceWithoutCommit() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_result.by_user["U2"] = {
+      {.connection_id = "C1", .user_id = "U2", .node_id = "node-a", .last_seen_unix_ms = 9'900}};
+  FakeNodeTransport transport;
+  transport.response = {.requested = 1, .observed = 0, .duplicate = 0, .rejected = 0,
+                        .backpressured = 1};
+  transport.error = "backpressured";
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence, &transport);
+
+  const auto error = runner.RunOnce({}, dipole::realtime::PresenceProjectionPolicy{
+                                            .now_unix_ms = 10'000, .ttl_ms = 1'000});
+  Check(error.has_value() && error->find("transport") != std::string::npos,
+        "node transport failure reaches caller");
+  Check(sink.entries.size() == 1 &&
+            sink.entries[0].outcome == dipole::realtime::ShadowOutcome::kDeferred &&
+            sink.entries[0].error_code == "node_transport" &&
+            sink.entries[0].transport_backpressured == 1,
+        "transport failure writes low-sensitive deferred evidence");
+  Check(consumer.commit_attempts.empty() && runner.Stats().transport_errors == 1 && !runner.Ready(),
+        "transport failure keeps offset and removes readiness");
+}
+
 void TestInvalidPresenceWritesEvidenceAndCommits() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -297,6 +361,8 @@ int main() {
     TestPoisonRecordWritesEvidenceAndCommits();
     TestPresenceProjectionAddsBoundedEvidence();
     TestPresenceReadFailureKeepsOffsetUncommitted();
+    TestNodeTransportPrecedesEvidenceAndCommit();
+    TestNodeTransportFailureWritesDeferredEvidenceWithoutCommit();
     TestInvalidPresenceWritesEvidenceAndCommits();
     TestEvidenceFailureKeepsOffsetUncommitted();
     TestCommitFailureReachesCaller();

@@ -83,7 +83,11 @@ Sentinel 恢复证据位于 `benchmarks/c2-cpp-presence-2026-08-28/`。隔离的
 
 节点 transport shadow 使用 canonical gRPC `NodeDeliveryService.ObserveNodeBatch`。返回的 `NodeDeliveryObservation` 只证明 Gateway 节点验证并接纳了观察任务，可表达 `OBSERVED`、`REJECTED`、`BACKPRESSURED` 和稳定 batch 去重；它不声明 WebSocket queue 已入队。真实客户端投递继续使用独立 `DeliveryAck` 语义，后续 promotion 前再增加对应 RPC。
 
-Gateway 已提供默认关闭的 observation receiver。启用时，它在独立 loopback listener 上只接受共享密钥或 mTLS 认证后的 `dipole-realtime`，要求批次目标与本机 Redis Presence node ID 一致，并将 protobuf clone 放入有界内存队列。receiver 的 sink 只累计批次、条目和 connection 数，不持有 Hub/Client 引用；重复 batch 返回 `duplicate=true`，队列满返回容量、深度和重试提示。关闭流程先停止 RPC 接入，再排空观察队列。该接收端尚未进入生产 Compose，C++ transport client 仍待连接。
+Gateway 已提供默认关闭的 observation receiver。启用时，它在独立 loopback listener 上只接受共享密钥或 mTLS 认证后的 `dipole-realtime`，要求批次目标与本机 Redis Presence node ID 一致，并将 protobuf clone 放入有界内存队列。receiver 的 sink 只累计批次、条目和 connection 数，不持有 Hub/Client 引用；重复 batch 返回 `duplicate=true`，队列满返回容量、深度和重试提示。关闭流程先停止 RPC 接入，再排空观察队列。该接收端尚未进入生产 Compose。
+
+C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用，并要求 Presence shadow 同时开启。`DIPOLE_REALTIME_NODE_TARGETS` 使用逗号分隔的 `node_id=host:port` 精确映射；共享服务密钥由 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 注入，每次调用传播 batch 中已有 request/trace ID 并使用有界 deadline。明文只允许 loopback；跨容器或跨主机必须配置 CA、Realtime 客户端证书、私钥和 server name 形成 mTLS。
+
+证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，只增加 requested/observed/duplicate/rejected/backpressured 聚合计数。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。transport 尚未完成 Go Gateway 跨进程真实回放和故障演练。
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 

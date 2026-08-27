@@ -7,6 +7,7 @@
 #include <string>
 
 #include "event_projection.hpp"
+#include "node_delivery_transport.hpp"
 #include "presence_projection.hpp"
 
 namespace dipole::realtime {
@@ -27,7 +28,7 @@ class ShadowRecordConsumer {
   [[nodiscard]] virtual std::size_t AssignmentCount() const = 0;
 };
 
-enum class ShadowOutcome : std::uint8_t { kProjected, kRejected };
+enum class ShadowOutcome : std::uint8_t { kProjected, kRejected, kDeferred };
 
 // ShadowEvidence deliberately excludes message payloads, recipient IDs and raw
 // errors. Detailed event bodies remain in Kafka and the authoritative Go path.
@@ -46,6 +47,11 @@ struct ShadowEvidence {
   std::size_t presence_stale = 0;
   std::size_t presence_malformed = 0;
   std::size_t offline_item_count = 0;
+  std::size_t transport_requested = 0;
+  std::size_t transport_observed = 0;
+  std::size_t transport_duplicate = 0;
+  std::size_t transport_rejected = 0;
+  std::size_t transport_backpressured = 0;
 };
 
 class ShadowEvidenceSink {
@@ -64,12 +70,14 @@ struct ShadowRunnerStats {
   std::uint64_t evidence_errors = 0;
   std::uint64_t commit_errors = 0;
   std::uint64_t presence_read_errors = 0;
+  std::uint64_t transport_errors = 0;
 };
 
 class ShadowRunner {
  public:
   ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
-               PresenceReader* presence_reader = nullptr);
+               PresenceReader* presence_reader = nullptr,
+               NodeBatchTransport* node_transport = nullptr);
 
   ValidationError RunOnce(
       const ProjectionPolicy& policy,
@@ -82,6 +90,7 @@ class ShadowRunner {
   ShadowEvidenceSink* evidence_sink_;
   int poll_timeout_ms_;
   PresenceReader* presence_reader_;
+  NodeBatchTransport* node_transport_;
   std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;
 };

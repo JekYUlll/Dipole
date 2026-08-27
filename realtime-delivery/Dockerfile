@@ -8,12 +8,14 @@ RUN apt-get update \
       curl \
       g++ \
       libhiredis-dev \
+      libgrpc++-dev \
       librdkafka-dev \
       libprotobuf-dev \
       ninja-build \
       nlohmann-json3-dev \
       pkg-config \
       protobuf-compiler \
+      protobuf-compiler-grpc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -45,6 +47,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
       ca-certificates \
       libhiredis1.1.0 \
+      libgrpc++1.51t64 \
       librdkafka1 \
       libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
