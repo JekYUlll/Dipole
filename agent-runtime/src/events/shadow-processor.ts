@@ -36,7 +36,8 @@ export interface ShadowPlan {
     readonly inputTokens: number | undefined;
     readonly outputTokens: number | undefined;
     readonly context?: {
-      readonly compilerVersion: "v1";
+      readonly compilerVersion: "v1" | "v2";
+      readonly estimatorId?: string;
       readonly estimatedTokens: number;
       readonly selected: readonly {
         readonly id: string;

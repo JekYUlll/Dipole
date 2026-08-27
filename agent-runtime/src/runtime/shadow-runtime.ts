@@ -6,6 +6,8 @@ import { createPool, type Pool } from "mysql2/promise";
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
+import { DeterministicContextCompiler } from "../context/context-compiler.js";
+import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
 import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js";
 import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
@@ -40,6 +42,8 @@ const shadowRuntimeConfigSchema = z.object({
   leaseMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
   modelRoutes: z.array(z.string().trim().min(1)),
+  contextCompilerVersion: z.enum(["v1", "v2"]),
+  modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
     totalTimeoutMs: z.number().int().min(100).max(300_000),
@@ -74,6 +78,30 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.modelMode === "ai_sdk" && config.modelRoutes.length === 0) {
     refinement.addIssue({ code: "custom", message: "Agent model routes are required in AI SDK mode", path: ["modelRoutes"] });
+  }
+  if (config.contextCompilerVersion === "v1" && config.modelContextProfiles.length > 0) {
+    refinement.addIssue({
+      code: "custom", message: "Model route context profiles require Context Compiler v2", path: ["modelContextProfiles"]
+    });
+  }
+  if (config.contextCompilerVersion === "v2" && config.modelRoutes.length > 0) {
+    try {
+      const estimator = createConservativeRouteEstimator(config.modelRoutes, config.modelContextProfiles);
+      const requiredWindow = 4_096 + config.modelBudget.maxOutputTokensPerCall;
+      if (config.modelMode === "ai_sdk" && estimator.contextWindowTokens < requiredWindow) {
+        refinement.addIssue({
+          code: "custom",
+          message: `Model route context window ${estimator.contextWindowTokens} is below required budget ${requiredWindow}`,
+          path: ["modelContextProfiles"]
+        });
+      }
+    } catch (error) {
+      refinement.addIssue({
+        code: "custom",
+        message: error instanceof Error ? error.message : "Model route context profiles are invalid",
+        path: ["modelContextProfiles"]
+      });
+    }
   }
   if (config.modelMode === "ai_sdk" && config.ledgerMode !== "mysql") {
     refinement.addIssue({ code: "custom", message: "AI SDK mode requires the persistent MySQL model audit Store", path: ["ledgerMode"] });
@@ -112,6 +140,8 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
+    contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
+    modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
       totalTimeoutMs: Number.parseInt(env.DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS ?? "15000", 10),
@@ -218,7 +248,7 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher
   const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
-    ), ["conversation.list"])
+    ), ["conversation.list"], routeContextCompiler(config))
     : new MetadataShadowPlanner();
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
   const rpcTransport = config.capabilityRpc.enabled && dispatcher === undefined ? createAgentCapabilityRPC(config) : undefined;
@@ -284,7 +314,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationListCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool)
-  ), ["conversation.list"]);
+  ), ["conversation.list"], routeContextCompiler(config));
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
@@ -334,4 +364,17 @@ function isLoopbackTarget(target: string): boolean {
 
 function physicalTopic(config: ShadowRuntimeConfig): string {
   return config.topicPrefix ? `${config.topicPrefix}.${config.topic}` : config.topic;
+}
+
+function routeContextCompiler(config: ShadowRuntimeConfig): DeterministicContextCompiler {
+  if (config.contextCompilerVersion === "v1") return new DeterministicContextCompiler();
+  const estimator = createConservativeRouteEstimator(config.modelRoutes, config.modelContextProfiles);
+  const requiredWindow = 4_096 + config.modelBudget.maxOutputTokensPerCall;
+  if (estimator.contextWindowTokens < requiredWindow) {
+    throw new Error(`Model route context window ${estimator.contextWindowTokens} is below required budget ${requiredWindow}`);
+  }
+  return new DeterministicContextCompiler(estimator.estimate, {
+    compilerVersion: "v2",
+    estimatorId: estimator.id
+  });
 }

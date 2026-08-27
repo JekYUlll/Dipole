@@ -49,7 +49,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
         context: {
-          compilerVersion: "v1",
+          compilerVersion: compiled.compilerVersion,
+          ...(compiled.compilerVersion === "v2" ? { estimatorId: compiled.estimatorId } : {}),
           estimatedTokens: compiled.estimatedTokens,
           selected: compiled.selected.map((item) => ({
             id: item.id,

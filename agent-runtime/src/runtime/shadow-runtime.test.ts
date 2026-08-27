@@ -9,7 +9,7 @@ describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
-      capabilityRpc: { enabled: false }
+      contextCompilerVersion: "v1", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(loadShadowRuntimeConfig({
@@ -39,12 +39,36 @@ describe("shadow runtime composition", () => {
       DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret",
       DIPOLE_AGENT_MODEL_MAX_CALLS: "2",
       DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "12000",
-      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "256"
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "256",
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
     })).toMatchObject({
       modelMode: "ai_sdk",
+      contextCompilerVersion: "v2",
       modelRoutes: ["openai/gpt-5-mini", "anthropic/claude-sonnet-4.5"],
-      modelBudget: { maxCalls: 2, totalTimeoutMs: 12000, maxOutputTokensPerCall: 256 }
+      modelBudget: { maxCalls: 2, totalTimeoutMs: 12000, maxOutputTokensPerCall: 256 },
+      modelContextProfiles: [{
+        route: "openai/gpt-5-mini", contextWindowTokens: 32_768, utf8BytesPerToken: 3, safetyMarginBps: 1_500
+      }]
     });
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: "not-json"
+    })).toThrow(/JSON/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"provider/model","contextWindowTokens":8192,"utf8BytesPerToken":3,"safetyMarginBps":1000}]'
+    })).toThrow(/require Context Compiler v2/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"other/model","contextWindowTokens":8192,"utf8BytesPerToken":3,"safetyMarginBps":1000}]'
+    })).toThrow(/unknown route/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+      DIPOLE_AGENT_LEDGER_MODE: "mysql", DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "5000"
+    })).toThrow(/context window/);
     expect(() => loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "core:9091",
