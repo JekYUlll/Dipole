@@ -123,6 +123,21 @@ type AgentTaskWorkflowProjectionRequestV1 struct {
 
 type AgentTaskWorkflowProjectionServiceV1 interface {
 	Project(ctx context.Context, request AgentTaskWorkflowProjectionRequestV1) (*AgentTaskWorkflowProjectionV1, error)
+	ListProjectionSnapshots(ctx context.Context, afterTaskUUID string, limit int) (*AgentTaskWorkflowProjectionPageV1, error)
+}
+
+type AgentTaskWorkflowProjectionSnapshotV1 struct {
+	TaskUUID string                         `json:"task_uuid"`
+	Workflow *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionReaderV1 interface {
+	ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]AgentTaskWorkflowProjectionSnapshotV1, error)
+}
+
+type AgentTaskWorkflowProjectionPageV1 struct {
+	Tasks      []AgentTaskWorkflowProjectionSnapshotV1 `json:"tasks"`
+	NextCursor string                                  `json:"next_cursor,omitempty"`
 }
 
 type AgentRunV1 struct {
@@ -427,6 +442,7 @@ type AgentPolicyStoreV1 interface {
 	GetTask(ctx context.Context, taskUUID string) (*AgentTaskV1, error)
 	TransitionTaskStatus(ctx context.Context, taskUUID string, from, to AgentTaskStatusV1) (bool, error)
 	ProjectTaskWorkflowState(ctx context.Context, projection AgentTaskWorkflowProjectionV1) (bool, error)
+	ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]AgentTaskWorkflowProjectionSnapshotV1, error)
 	CreateRun(ctx context.Context, run AgentRunV1) (bool, error)
 	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
 	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)

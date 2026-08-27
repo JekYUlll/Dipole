@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { agentTaskWorkflowId, TemporalShadowTaskDispatcher, TemporalTaskClient, TemporalTaskControlClient } from "./temporal-task-client.js";
+import { agentTaskWorkflowId, TemporalShadowTaskDispatcher, TemporalTaskClient, TemporalTaskControlClient, TemporalTaskWorkflowInspector } from "./temporal-task-client.js";
 
 describe("Temporal Task client", () => {
   it("derives one stable Workflow ID from the persistent Task ID", () => {
@@ -65,6 +65,20 @@ describe("TemporalTaskControlClient", () => {
     expect(signal).toHaveBeenCalledWith("cancelTask", { reason: "user_cancelled" });
     expect(signal).toHaveBeenCalledWith("resolveTaskApproval", {
       requestId: "REQ-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
+    });
+  });
+});
+
+describe("TemporalTaskWorkflowInspector", () => {
+  it("returns Query state with the actual Workflow Run binding", async () => {
+    const query = vi.fn(async () => ({ taskId: "TASK-1", status: "running" as const, revision: 2 }));
+    const describe = vi.fn(async () => ({ workflowId: "dipole-agent-task/TASK-1", runId: "WR-1" }));
+    const inspector = new TemporalTaskWorkflowInspector({
+      getHandle: vi.fn(() => ({ query, describe, signal: vi.fn() }))
+    });
+    await expect(inspector.inspect("TASK-1")).resolves.toEqual({
+      workflowId: "dipole-agent-task/TASK-1", workflowRunId: "WR-1",
+      state: { taskId: "TASK-1", status: "running", revision: 2 }
     });
   });
 });

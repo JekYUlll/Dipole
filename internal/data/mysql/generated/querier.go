@@ -115,6 +115,7 @@ type Querier interface {
 	InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error)
 	InsertAgentShadowStep(ctx context.Context, arg InsertAgentShadowStepParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
+	ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
 	ListGroupMembers(ctx context.Context, groupUuid string) ([]GroupMember, error)

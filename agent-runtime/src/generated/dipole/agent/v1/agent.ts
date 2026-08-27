@@ -414,6 +414,65 @@ export interface ProjectTaskWorkflowStateResponse {
      */
     workflowRevision: bigint;
 }
+/**
+ * @generated from protobuf message dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+ */
+export interface ListTaskWorkflowProjectionSnapshotsRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string after_task_id = 2
+     */
+    afterTaskId: string;
+    /**
+     * @generated from protobuf field: uint32 page_size = 3
+     */
+    pageSize: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.TaskWorkflowProjectionSnapshot
+ */
+export interface TaskWorkflowProjectionSnapshot {
+    /**
+     * @generated from protobuf field: string task_id = 1
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: bool has_workflow = 2
+     */
+    hasWorkflow: boolean;
+    /**
+     * @generated from protobuf field: string workflow_id = 3
+     */
+    workflowId: string;
+    /**
+     * @generated from protobuf field: string workflow_run_id = 4
+     */
+    workflowRunId: string;
+    /**
+     * @generated from protobuf field: string workflow_status = 5
+     */
+    workflowStatus: string;
+    /**
+     * @generated from protobuf field: uint64 workflow_revision = 6
+     */
+    workflowRevision: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+ */
+export interface ListTaskWorkflowProjectionSnapshotsResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.TaskWorkflowProjectionSnapshot tasks = 1
+     */
+    tasks: TaskWorkflowProjectionSnapshot[];
+    /**
+     * @generated from protobuf field: string next_cursor = 2
+     */
+    nextCursor: string;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
     constructor() {
@@ -1700,6 +1759,210 @@ class ProjectTaskWorkflowStateResponse$Type extends MessageType<ProjectTaskWorkf
  * @generated MessageType for protobuf message dipole.agent.v1.ProjectTaskWorkflowStateResponse
  */
 export const ProjectTaskWorkflowStateResponse = new ProjectTaskWorkflowStateResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListTaskWorkflowProjectionSnapshotsRequest$Type extends MessageType<ListTaskWorkflowProjectionSnapshotsRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "after_task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "page_size", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListTaskWorkflowProjectionSnapshotsRequest>): ListTaskWorkflowProjectionSnapshotsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.afterTaskId = "";
+        message.pageSize = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListTaskWorkflowProjectionSnapshotsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListTaskWorkflowProjectionSnapshotsRequest): ListTaskWorkflowProjectionSnapshotsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string after_task_id */ 2:
+                    message.afterTaskId = reader.string();
+                    break;
+                case /* uint32 page_size */ 3:
+                    message.pageSize = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListTaskWorkflowProjectionSnapshotsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string after_task_id = 2; */
+        if (message.afterTaskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.afterTaskId);
+        /* uint32 page_size = 3; */
+        if (message.pageSize !== 0)
+            writer.tag(3, WireType.Varint).uint32(message.pageSize);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+ */
+export const ListTaskWorkflowProjectionSnapshotsRequest = new ListTaskWorkflowProjectionSnapshotsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class TaskWorkflowProjectionSnapshot$Type extends MessageType<TaskWorkflowProjectionSnapshot> {
+    constructor() {
+        super("dipole.agent.v1.TaskWorkflowProjectionSnapshot", [
+            { no: 1, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "has_workflow", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 3, name: "workflow_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "workflow_run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "workflow_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "workflow_revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<TaskWorkflowProjectionSnapshot>): TaskWorkflowProjectionSnapshot {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.hasWorkflow = false;
+        message.workflowId = "";
+        message.workflowRunId = "";
+        message.workflowStatus = "";
+        message.workflowRevision = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<TaskWorkflowProjectionSnapshot>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: TaskWorkflowProjectionSnapshot): TaskWorkflowProjectionSnapshot {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string task_id */ 1:
+                    message.taskId = reader.string();
+                    break;
+                case /* bool has_workflow */ 2:
+                    message.hasWorkflow = reader.bool();
+                    break;
+                case /* string workflow_id */ 3:
+                    message.workflowId = reader.string();
+                    break;
+                case /* string workflow_run_id */ 4:
+                    message.workflowRunId = reader.string();
+                    break;
+                case /* string workflow_status */ 5:
+                    message.workflowStatus = reader.string();
+                    break;
+                case /* uint64 workflow_revision */ 6:
+                    message.workflowRevision = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: TaskWorkflowProjectionSnapshot, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string task_id = 1; */
+        if (message.taskId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.taskId);
+        /* bool has_workflow = 2; */
+        if (message.hasWorkflow !== false)
+            writer.tag(2, WireType.Varint).bool(message.hasWorkflow);
+        /* string workflow_id = 3; */
+        if (message.workflowId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.workflowId);
+        /* string workflow_run_id = 4; */
+        if (message.workflowRunId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.workflowRunId);
+        /* string workflow_status = 5; */
+        if (message.workflowStatus !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.workflowStatus);
+        /* uint64 workflow_revision = 6; */
+        if (message.workflowRevision !== 0n)
+            writer.tag(6, WireType.Varint).uint64(message.workflowRevision);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.TaskWorkflowProjectionSnapshot
+ */
+export const TaskWorkflowProjectionSnapshot = new TaskWorkflowProjectionSnapshot$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListTaskWorkflowProjectionSnapshotsResponse$Type extends MessageType<ListTaskWorkflowProjectionSnapshotsResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse", [
+            { no: 1, name: "tasks", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => TaskWorkflowProjectionSnapshot },
+            { no: 2, name: "next_cursor", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListTaskWorkflowProjectionSnapshotsResponse>): ListTaskWorkflowProjectionSnapshotsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tasks = [];
+        message.nextCursor = "";
+        if (value !== undefined)
+            reflectionMergePartial<ListTaskWorkflowProjectionSnapshotsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListTaskWorkflowProjectionSnapshotsResponse): ListTaskWorkflowProjectionSnapshotsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.TaskWorkflowProjectionSnapshot tasks */ 1:
+                    message.tasks.push(TaskWorkflowProjectionSnapshot.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* string next_cursor */ 2:
+                    message.nextCursor = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListTaskWorkflowProjectionSnapshotsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.TaskWorkflowProjectionSnapshot tasks = 1; */
+        for (let i = 0; i < message.tasks.length; i++)
+            TaskWorkflowProjectionSnapshot.internalBinaryWrite(message.tasks[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string next_cursor = 2; */
+        if (message.nextCursor !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.nextCursor);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+ */
+export const ListTaskWorkflowProjectionSnapshotsResponse = new ListTaskWorkflowProjectionSnapshotsResponse$Type();
 /**
  * @generated ServiceType for protobuf service dipole.agent.v1.AgentCapabilityService
  */
@@ -1711,5 +1974,6 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
-    { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse }
+    { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
+    { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse }
 ]);

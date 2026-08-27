@@ -63,6 +63,22 @@ func (s *PersistentAgentTaskWorkflowProjectionServiceV1) Project(ctx context.Con
 	return &result, nil
 }
 
+func (s *PersistentAgentTaskWorkflowProjectionServiceV1) ListProjectionSnapshots(ctx context.Context, afterTaskUUID string, limit int) (*application.AgentTaskWorkflowProjectionPageV1, error) {
+	afterTaskUUID = strings.TrimSpace(afterTaskUUID)
+	if limit < 1 || limit > 1000 {
+		return nil, fmt.Errorf("%w: Agent Task Workflow projection page size is invalid", application.ErrAgentExecutionPolicyDenied)
+	}
+	tasks, err := s.store.ListTaskWorkflowProjectionSnapshots(ctx, "dipole-agent", "shadow", afterTaskUUID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list Agent Task Workflow projection snapshots: %w", err)
+	}
+	page := &application.AgentTaskWorkflowProjectionPageV1{Tasks: tasks}
+	if len(tasks) == limit {
+		page.NextCursor = tasks[len(tasks)-1].TaskUUID
+	}
+	return page, nil
+}
+
 func workflowProjectionMatchesRunStatus(workflow application.AgentTaskWorkflowStatusV1, run application.AgentRunStatusV1) bool {
 	switch run {
 	case application.AgentRunStatusRunning:

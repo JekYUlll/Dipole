@@ -112,6 +112,35 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 	}, nil
 }
 
+func (s *Server) ListTaskWorkflowProjectionSnapshots(ctx context.Context, request *agentv1.ListTaskWorkflowProjectionSnapshotsRequest) (*agentv1.ListTaskWorkflowProjectionSnapshotsResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.projections == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Workflow projection page is invalid")
+	}
+	page, err := s.projections.ListProjectionSnapshots(ctx, request.GetAfterTaskId(), int(request.GetPageSize()))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.InvalidArgument, "Agent Task Workflow projection page is invalid")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task Workflow projection page failed")
+	}
+	response := &agentv1.ListTaskWorkflowProjectionSnapshotsResponse{NextCursor: page.NextCursor}
+	for _, task := range page.Tasks {
+		snapshot := &agentv1.TaskWorkflowProjectionSnapshot{TaskId: task.TaskUUID}
+		if task.Workflow != nil {
+			snapshot.HasWorkflow = true
+			snapshot.WorkflowId = task.Workflow.WorkflowID
+			snapshot.WorkflowRunId = task.Workflow.RunID
+			snapshot.WorkflowStatus = string(task.Workflow.Status)
+			snapshot.WorkflowRevision = task.Workflow.Revision
+		}
+		response.Tasks = append(response.Tasks, snapshot)
+	}
+	return response, nil
+}
+
 func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err

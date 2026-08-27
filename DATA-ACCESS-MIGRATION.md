@@ -76,6 +76,8 @@ TypeScript Agent Runtime 的 EventLedger、Model Audit 和 Shadow Trajectory 查
 
 `000024_agent_task_workflow_projection` 在 Core 所有的 `agent_tasks` 上追加整体 nullable 的 Workflow ID、Run ID、状态、单调 revision 与更新时间。TS Runtime 只能通过受认证 `ProjectTaskWorkflowState` RPC 提交状态；Go 服务验证 Task/Run/runtime/mode 与确定性 Workflow ID 后调用 sqlc CAS。原 `agent_tasks.status` 在 shadow 阶段保持独立，Gateway 查询仅比较 Temporal Query 与投影并返回对账结果，不直接修复数据库。
 
+离线对账同样不授予 TS 直接表权限。Core 使用 sqlc keyset 查询固定的 `dipole-agent/shadow` Run cohort，并通过 additive `ListTaskWorkflowProjectionSnapshots` 私有 RPC 返回 Task 与可空投影；TS 只负责 Temporal Query/Describe 比较和版本化报告。该读取接口不包含写入或修复语义。
+
 `000002_conversation_sequence` 为历史消息按 `conversation_key + id` 回填连续序号，并创建 `conversation_sequences` 高水位表。新消息在 Message、Inbox 与 Outbox 的同一事务内锁定会话行并分配 `seq`；事务回滚会同时回滚高水位，旧 `before_id`/`after_id` 查询在兼容期继续保留。
 
 `000003_read_and_device_checkpoints` 为 Conversation 投影回填 `last_message_seq/read_seq`，继续维护 `unread_count` 兼容字段，并增加独立 `device_sync_checkpoints`。已读操作只推进到调用方当时可见的 Seq；设备 checkpoint 通过显式 ACK 单调推进，超过当前用户 Inbox 最大 Seq 的请求会被拒绝。
