@@ -16,11 +16,12 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability application.AgentCapabilityV1
-	resolver   application.AgentInvocationResolverV1
-	admission  application.AgentRunAdmissionServiceV1
-	approvals  application.AgentApprovalServiceV1
-	controls   application.AgentTaskControlAuthorizerV1
+	capability  application.AgentCapabilityV1
+	resolver    application.AgentInvocationResolverV1
+	admission   application.AgentRunAdmissionServiceV1
+	approvals   application.AgentApprovalServiceV1
+	controls    application.AgentTaskControlAuthorizerV1
+	projections application.AgentTaskWorkflowProjectionServiceV1
 }
 
 func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*Server, error) {
@@ -46,6 +47,18 @@ func NewServerWithControl(capability application.AgentCapabilityV1, resolver app
 	return server, nil
 }
 
+func NewServerWithControlAndProjection(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1) (*Server, error) {
+	server, err := NewServerWithControl(capability, resolver, admission, approvals, controls)
+	if err != nil {
+		return nil, err
+	}
+	if projections == nil {
+		return nil, errors.New("Agent Task Workflow projection service is required")
+	}
+	server.projections = projections
+	return server, nil
+}
+
 func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.AuthorizeTaskControlRequest) (*agentv1.AuthorizeTaskControlResponse, error) {
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
@@ -60,7 +73,43 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 		}
 		return nil, status.Error(codes.Internal, "Agent Task control authorization failed")
 	}
-	return &agentv1.AuthorizeTaskControlResponse{TaskId: authorization.TaskUUID, TaskStatus: string(authorization.Status)}, nil
+	response := &agentv1.AuthorizeTaskControlResponse{TaskId: authorization.TaskUUID, TaskStatus: string(authorization.Status)}
+	if authorization.Workflow != nil {
+		response.WorkflowId = authorization.Workflow.WorkflowID
+		response.WorkflowRunId = authorization.Workflow.RunID
+		response.WorkflowStatus = string(authorization.Workflow.Status)
+		response.WorkflowRevision = authorization.Workflow.Revision
+	}
+	return response, nil
+}
+
+func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.ProjectTaskWorkflowStateRequest) (*agentv1.ProjectTaskWorkflowStateResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.projections == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Workflow projection is invalid")
+	}
+	projection, err := s.projections.Project(ctx, application.AgentTaskWorkflowProjectionRequestV1{
+		Projection: application.AgentTaskWorkflowProjectionV1{
+			TaskUUID: request.GetTaskId(), WorkflowID: request.GetWorkflowId(), RunID: request.GetWorkflowRunId(),
+			Status: application.AgentTaskWorkflowStatusV1(request.GetWorkflowStatus()), Revision: request.GetWorkflowRevision(),
+		},
+		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+	})
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task Workflow projection denied")
+		}
+		if errors.Is(err, application.ErrAgentWorkflowProjectionConflict) {
+			return nil, status.Error(codes.FailedPrecondition, "Agent Task Workflow projection conflicts")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task Workflow projection failed")
+	}
+	return &agentv1.ProjectTaskWorkflowStateResponse{
+		TaskId: projection.TaskUUID, WorkflowId: projection.WorkflowID, WorkflowRunId: projection.RunID,
+		WorkflowStatus: string(projection.Status), WorkflowRevision: projection.Revision,
+	}, nil
 }
 
 func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {

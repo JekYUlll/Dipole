@@ -4,14 +4,37 @@ import { AgentTaskControlError, AgentTaskControlService } from "./agent-task-con
 
 describe("AgentTaskControlService", () => {
   it("authorizes every query and returns the bound Workflow state", async () => {
-    const authorizeTaskControl = vi.fn(async () => ({ taskId: "TASK-1", taskStatus: "running" }));
+    const authorizeTaskControl = vi.fn(async () => ({
+      taskId: "TASK-1", taskStatus: "running",
+      workflow: {
+        taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
+        workflowStatus: "running", workflowRevision: 2
+      }
+    }));
     const query = vi.fn(async () => ({ taskId: "TASK-1", status: "running" as const, revision: 2 }));
     const service = new AgentTaskControlService({ authorizeTaskControl }, { query, cancel: vi.fn(), resolveApproval: vi.fn() });
 
     await expect(service.getTask({ taskId: "TASK-1", principalUserId: "U100", requestId: "R1", traceId: "T1" })).resolves.toEqual({
-      taskId: "TASK-1", status: "running", revision: 2, persistentStatus: "running"
+      taskId: "TASK-1", status: "running", revision: 2, persistentStatus: "running",
+      workflowProjection: { outcome: "match", status: "running", revision: 2 }
     });
     expect(authorizeTaskControl).toHaveBeenCalledWith("TASK-1", "U100", { requestId: "R1", traceId: "T1" });
+  });
+
+  it("reports stale Workflow projection evidence without repairing during a query", async () => {
+    const service = new AgentTaskControlService({ authorizeTaskControl: vi.fn(async () => ({
+      taskId: "TASK-1", taskStatus: "running",
+      workflow: {
+        taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
+        workflowStatus: "running", workflowRevision: 1
+      }
+    })) }, {
+      query: vi.fn(async () => ({ taskId: "TASK-1", status: "waiting_input" as const, revision: 2 })),
+      cancel: vi.fn(), resolveApproval: vi.fn()
+    });
+    await expect(service.getTask({ taskId: "TASK-1", principalUserId: "U100" })).resolves.toMatchObject({
+      workflowProjection: { outcome: "stale", status: "running", revision: 1 }
+    });
   });
 
   it("binds approval Signals to the current pending request", async () => {

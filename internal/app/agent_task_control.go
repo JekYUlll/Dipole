@@ -33,5 +33,10 @@ func (a *PersistentAgentTaskControlAuthorizerV1) AuthorizeTaskControl(ctx contex
 	if task == nil || strings.TrimSpace(task.PrincipalUUID) != principalUUID {
 		return nil, fmt.Errorf("%w: Agent Task control policy unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
-	return &application.AgentTaskControlAuthorizationV1{TaskUUID: task.TaskUUID, Status: task.Status}, nil
+	authorization := &application.AgentTaskControlAuthorizationV1{TaskUUID: task.TaskUUID, Status: task.Status}
+	if task.Workflow != nil {
+		workflow := *task.Workflow
+		authorization.Workflow = &workflow
+	}
+	return authorization, nil
 }

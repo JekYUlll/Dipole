@@ -36,9 +36,21 @@ export interface AgentTaskFinishInput {
   traceId?: string;
 }
 
+export interface AgentTaskProjectionInput {
+  taskId: string;
+  runId: string;
+  workflowId: string;
+  workflowRunId: string;
+  workflowStatus: string;
+  workflowRevision: number;
+  requestId?: string;
+  traceId?: string;
+}
+
 export interface AgentTaskLifecycleActivities {
   admitAgentTask(input: AgentTaskWorkflowInput): Promise<AgentTaskRunBinding>;
   finishAgentTask(input: AgentTaskFinishInput): Promise<void>;
+  projectAgentTaskState(input: AgentTaskProjectionInput): Promise<void>;
   requestAgentTaskApproval(input: { taskId: string; runId: string; approval: AgentApprovalBinding; requestId?: string; traceId?: string }): Promise<void>;
   resolveAgentTaskApproval(input: { taskId: string; runId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string; requestId?: string; traceId?: string }): Promise<void>;
 }
@@ -50,6 +62,7 @@ export const foundationAgentTaskActivities: AgentTaskWorkerActivities = {
     return { taskId: input.taskId, runId: `foundation:${input.taskId}`, runStatus: "running" };
   },
   async finishAgentTask(): Promise<void> {},
+  async projectAgentTaskState(): Promise<void> {},
   async requestAgentTaskApproval(): Promise<void> {},
   async resolveAgentTaskApproval(): Promise<void> {},
   async executeAgentTaskStep(): Promise<AgentTaskDirective> {

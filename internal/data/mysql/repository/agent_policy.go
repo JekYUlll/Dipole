@@ -139,12 +139,20 @@ func (r *AgentPolicyRepository) GetTask(ctx context.Context, taskUUID string) (*
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Task: %w", err)
 	}
-	return &application.AgentTaskV1{
+	task := &application.AgentTaskV1{
 		TaskUUID: row.TaskUuid, DefinitionUUID: row.DefinitionUuid, DefinitionVersion: row.DefinitionVersion,
 		TenantID: row.TenantID, PrincipalUUID: row.PrincipalUuid, AgentUUID: row.AgentUuid,
 		Status: application.AgentTaskStatusV1(row.Status), TriggerType: row.TriggerType, TriggerRef: row.TriggerRef,
 		Goal: row.Goal, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
-	}, nil
+	}
+	if row.WorkflowID.Valid && row.WorkflowRunID.Valid && row.WorkflowStatus.Valid && row.WorkflowRevision.Valid && row.WorkflowUpdatedAt.Valid {
+		task.Workflow = &application.AgentTaskWorkflowProjectionV1{
+			TaskUUID: row.TaskUuid, WorkflowID: row.WorkflowID.String, RunID: row.WorkflowRunID.String,
+			Status: application.AgentTaskWorkflowStatusV1(row.WorkflowStatus.String), Revision: uint64(row.WorkflowRevision.Int64),
+			UpdatedAt: row.WorkflowUpdatedAt.Time,
+		}
+	}
+	return task, nil
 }
 
 func (r *AgentPolicyRepository) TransitionTaskStatus(ctx context.Context, taskUUID string, from, to application.AgentTaskStatusV1) (bool, error) {
@@ -158,6 +166,34 @@ func (r *AgentPolicyRepository) TransitionTaskStatus(ctx context.Context, taskUU
 		return false, fmt.Errorf("transition Agent Task status: %w", err)
 	}
 	return rows > 0, nil
+}
+
+func (r *AgentPolicyRepository) ProjectTaskWorkflowState(ctx context.Context, projection application.AgentTaskWorkflowProjectionV1) (bool, error) {
+	if err := projection.Validate(); err != nil {
+		return false, fmt.Errorf("validate Agent Task Workflow projection: %w", err)
+	}
+	workflowID := sql.NullString{String: strings.TrimSpace(projection.WorkflowID), Valid: true}
+	workflowRunID := sql.NullString{String: strings.TrimSpace(projection.RunID), Valid: true}
+	revision := sql.NullInt64{Int64: int64(projection.Revision), Valid: true}
+	rows, err := r.queries.ProjectAgentTaskWorkflowState(ctx, generated.ProjectAgentTaskWorkflowStateParams{
+		WorkflowID: workflowID, WorkflowRunID: workflowRunID,
+		WorkflowStatus: sql.NullString{String: string(projection.Status), Valid: true}, WorkflowRevision: revision,
+		TaskUuid: projection.TaskUUID, WorkflowID_2: workflowID, WorkflowRunID_2: workflowRunID, WorkflowRevision_2: revision,
+	})
+	if err != nil {
+		return false, fmt.Errorf("project Agent Task Workflow state: %w", err)
+	}
+	if rows > 0 {
+		return true, nil
+	}
+	existing, err := r.GetTask(ctx, projection.TaskUUID)
+	if err != nil {
+		return false, err
+	}
+	if existing != nil && sameAgentTaskWorkflowProjection(existing.Workflow, &projection) {
+		return false, nil
+	}
+	return false, fmt.Errorf("%w: %w: task_uuid=%s", ErrAgentPolicyConflict, application.ErrAgentWorkflowProjectionConflict, projection.TaskUUID)
 }
 
 func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.AgentRunV1) (bool, error) {
@@ -318,9 +354,19 @@ func (r *AgentPolicyRepository) DenyApproval(ctx context.Context, approvalUUID s
 
 func sameAgentTask(left, right application.AgentTaskV1) bool {
 	left.Status, right.Status = "", ""
+	left.Workflow, right.Workflow = nil, nil
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
 	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
 	return reflect.DeepEqual(left, right)
+}
+
+func sameAgentTaskWorkflowProjection(left, right *application.AgentTaskWorkflowProjectionV1) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	leftCopy, rightCopy := *left, *right
+	leftCopy.UpdatedAt, rightCopy.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(leftCopy, rightCopy)
 }
 
 func nullableTime(value *time.Time) sql.NullTime {

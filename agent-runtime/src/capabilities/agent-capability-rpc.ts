@@ -51,6 +51,15 @@ export interface ConversationListItem {
 export interface AgentTaskControlAuthorization {
   readonly taskId: string;
   readonly taskStatus: string;
+  readonly workflow?: AgentTaskWorkflowProjection;
+}
+
+export interface AgentTaskWorkflowProjection {
+  readonly taskId: string;
+  readonly workflowId: string;
+  readonly workflowRunId: string;
+  readonly workflowStatus: string;
+  readonly workflowRevision: number;
 }
 
 export class AgentCapabilityRPCClient {
@@ -225,7 +234,47 @@ export class AgentCapabilityRPCClient {
           reject(new Error("Agent Task control authorization returned a conflicting binding"));
           return;
         }
-        resolve({ taskId: response.taskId, taskStatus: response.taskStatus });
+        const workflow = response.workflowId.trim().length === 0 ? undefined : {
+          taskId: response.taskId,
+          workflowId: response.workflowId,
+          workflowRunId: response.workflowRunId,
+          workflowStatus: response.workflowStatus,
+          workflowRevision: safeRevision(response.workflowRevision)
+        };
+        resolve({ taskId: response.taskId, taskStatus: response.taskStatus, ...(workflow === undefined ? {} : { workflow }) });
+      });
+    });
+  }
+
+  async projectTaskWorkflowState(input: AgentTaskWorkflowProjection & { runId: string }, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskWorkflowProjection> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.projectTaskWorkflowState({
+        context: this.requestContext(context?.requestId, context?.traceId),
+        taskId: input.taskId,
+        runId: input.runId,
+        workflowId: input.workflowId,
+        workflowRunId: input.workflowRunId,
+        workflowStatus: input.workflowStatus,
+        workflowRevision: BigInt(input.workflowRevision)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Task Workflow projection returned no response"));
+          return;
+        }
+        const projection = {
+          taskId: response.taskId,
+          workflowId: response.workflowId,
+          workflowRunId: response.workflowRunId,
+          workflowStatus: response.workflowStatus,
+          workflowRevision: safeRevision(response.workflowRevision)
+        };
+        if (projection.taskId !== input.taskId || projection.workflowId !== input.workflowId || projection.workflowRunId !== input.workflowRunId ||
+            projection.workflowStatus !== input.workflowStatus || projection.workflowRevision !== input.workflowRevision) {
+          reject(new Error("Agent Task Workflow projection returned a conflicting binding"));
+          return;
+        }
+        resolve(projection);
       });
     });
   }
@@ -248,4 +297,12 @@ export class AgentCapabilityRPCClient {
       callerService
     };
   }
+}
+
+function safeRevision(value: bigint): number {
+  const revision = Number(value);
+  if (!Number.isSafeInteger(revision) || revision < 0) {
+    throw new Error("Agent Task Workflow revision exceeds the safe integer range");
+  }
+  return revision;
 }

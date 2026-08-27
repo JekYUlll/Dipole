@@ -38,13 +38,20 @@ export class AgentTaskControlService {
     private readonly workflows: AgentTaskWorkflowControlPort
   ) {}
 
-  async getTask(input: AgentTaskControlIdentity): Promise<AgentTaskState & { persistentStatus: string }> {
+  async getTask(input: AgentTaskControlIdentity): Promise<AgentTaskState & {
+    persistentStatus: string;
+    workflowProjection: { outcome: "match" | "missing" | "stale" | "ahead" | "conflict"; status?: string; revision?: number };
+  }> {
     const authorization = await this.authorize(input);
     const state = await this.workflows.query(input.taskId);
     if (state.taskId !== input.taskId) {
       throw new AgentTaskControlError("conflict", "Agent Task Workflow returned a conflicting binding");
     }
-    return { ...state, persistentStatus: authorization.taskStatus };
+    return {
+      ...state,
+      persistentStatus: authorization.taskStatus,
+      workflowProjection: reconcileWorkflowProjection(authorization, state)
+    };
   }
 
   async cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void> {
@@ -89,4 +96,18 @@ export class AgentTaskControlService {
     }
     return authorization;
   }
+}
+
+function reconcileWorkflowProjection(authorization: AgentTaskControlAuthorization, state: AgentTaskState): {
+  outcome: "match" | "missing" | "stale" | "ahead" | "conflict";
+  status?: string;
+  revision?: number;
+} {
+  const projection = authorization.workflow;
+  if (projection === undefined) return { outcome: "missing" };
+  const evidence = { status: projection.workflowStatus, revision: projection.workflowRevision };
+  if (projection.workflowStatus === state.status && projection.workflowRevision === state.revision) return { outcome: "match", ...evidence };
+  if (projection.workflowRevision < state.revision) return { outcome: "stale", ...evidence };
+  if (projection.workflowRevision > state.revision) return { outcome: "ahead", ...evidence };
+  return { outcome: "conflict", ...evidence };
 }

@@ -46,12 +46,18 @@ func (rpcAgentResolverStub) Resolve(context.Context, string, string) (applicatio
 type rpcAgentAdmissionStub struct{}
 type rpcAgentApprovalStub struct{}
 type rpcAgentTaskControlStub struct{}
+type rpcAgentWorkflowProjectionStub struct{}
 
 func (rpcAgentTaskControlStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
 	if taskUUID != "TASK-1" || principalUUID != "U100" {
 		return nil, application.ErrAgentExecutionPolicyDenied
 	}
 	return &application.AgentTaskControlAuthorizationV1{TaskUUID: taskUUID, Status: application.AgentTaskStatusWaitingApproval}, nil
+}
+
+func (rpcAgentWorkflowProjectionStub) Project(_ context.Context, request application.AgentTaskWorkflowProjectionRequestV1) (*application.AgentTaskWorkflowProjectionV1, error) {
+	projection := request.Projection
+	return &projection, nil
 }
 
 func (rpcAgentApprovalStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
@@ -224,8 +230,8 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 
 func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgentControl(
-		cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{},
+	server, err := NewCoreRPCServerWithAgentControlAndProjection(
+		cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{},
 	)
 	if err != nil {
 		t.Fatalf("start Agent control rpc server: %v", err)
@@ -246,6 +252,13 @@ func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
 	})
 	if err != nil || response.GetTaskStatus() != "waiting_approval" {
 		t.Fatalf("authorize Agent Task control: response=%+v err=%v", response, err)
+	}
+	projected, err := client.ProjectTaskWorkflowState(context.Background(), &agentv1.ProjectTaskWorkflowStateRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1",
+		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "running", WorkflowRevision: 1,
+	})
+	if err != nil || projected.GetWorkflowRevision() != 1 || projected.GetWorkflowId() != "dipole-agent-task/TASK-1" {
+		t.Fatalf("project Agent Task Workflow state: response=%+v err=%v", projected, err)
 	}
 	if _, err := corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",

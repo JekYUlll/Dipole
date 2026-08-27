@@ -35,6 +35,14 @@ UPDATE agent_tasks
 SET status = ?, updated_at = NOW(3)
 WHERE task_uuid = ? AND status = ?;
 
+-- name: ProjectAgentTaskWorkflowState :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
+    workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND (workflow_id IS NULL OR (workflow_id = ? AND workflow_run_id = ?))
+  AND (workflow_revision IS NULL OR workflow_revision < ?);
+
 -- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
     run_uuid, task_uuid, runtime_id, mode, status, started_at

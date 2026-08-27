@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ const AgentRunIDVersionV1 = "dipole.agent.run.v1"
 
 var ErrAgentApprovalDenied = errors.New("agent approval denied")
 var ErrAgentPolicyInvalid = errors.New("agent policy record is invalid")
+var ErrAgentWorkflowProjectionConflict = errors.New("agent workflow projection conflict")
 
 type AgentDefinitionStatusV1 string
 
@@ -26,6 +28,8 @@ const (
 
 type AgentTaskStatusV1 string
 
+type AgentTaskWorkflowStatusV1 string
+
 type AgentRunStatusV1 string
 
 const (
@@ -33,6 +37,16 @@ const (
 	AgentRunStatusCompleted AgentRunStatusV1 = "completed"
 	AgentRunStatusFailed    AgentRunStatusV1 = "failed"
 	AgentRunStatusCancelled AgentRunStatusV1 = "cancelled"
+)
+
+const (
+	AgentTaskWorkflowStatusCreated         AgentTaskWorkflowStatusV1 = "created"
+	AgentTaskWorkflowStatusRunning         AgentTaskWorkflowStatusV1 = "running"
+	AgentTaskWorkflowStatusWaitingInput    AgentTaskWorkflowStatusV1 = "waiting_input"
+	AgentTaskWorkflowStatusWaitingApproval AgentTaskWorkflowStatusV1 = "waiting_approval"
+	AgentTaskWorkflowStatusCompleted       AgentTaskWorkflowStatusV1 = "completed"
+	AgentTaskWorkflowStatusFailed          AgentTaskWorkflowStatusV1 = "failed"
+	AgentTaskWorkflowStatusCancelled       AgentTaskWorkflowStatusV1 = "cancelled"
 )
 
 const (
@@ -76,18 +90,39 @@ type AgentDefinitionVersionV1 struct {
 }
 
 type AgentTaskV1 struct {
-	TaskUUID          string            `json:"task_uuid"`
-	DefinitionUUID    string            `json:"definition_uuid"`
-	DefinitionVersion uint64            `json:"definition_version"`
-	TenantID          string            `json:"tenant_id"`
-	PrincipalUUID     string            `json:"principal_uuid"`
-	AgentUUID         string            `json:"agent_uuid"`
-	Status            AgentTaskStatusV1 `json:"status"`
-	TriggerType       string            `json:"trigger_type"`
-	TriggerRef        string            `json:"trigger_ref"`
-	Goal              string            `json:"goal"`
-	CreatedAt         time.Time         `json:"created_at,omitempty"`
-	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
+	TaskUUID          string                         `json:"task_uuid"`
+	DefinitionUUID    string                         `json:"definition_uuid"`
+	DefinitionVersion uint64                         `json:"definition_version"`
+	TenantID          string                         `json:"tenant_id"`
+	PrincipalUUID     string                         `json:"principal_uuid"`
+	AgentUUID         string                         `json:"agent_uuid"`
+	Status            AgentTaskStatusV1              `json:"status"`
+	TriggerType       string                         `json:"trigger_type"`
+	TriggerRef        string                         `json:"trigger_ref"`
+	Goal              string                         `json:"goal"`
+	Workflow          *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
+	CreatedAt         time.Time                      `json:"created_at,omitempty"`
+	UpdatedAt         time.Time                      `json:"updated_at,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionV1 struct {
+	TaskUUID   string                    `json:"task_uuid"`
+	WorkflowID string                    `json:"workflow_id"`
+	RunID      string                    `json:"run_id"`
+	Status     AgentTaskWorkflowStatusV1 `json:"status"`
+	Revision   uint64                    `json:"revision"`
+	UpdatedAt  time.Time                 `json:"updated_at,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionRequestV1 struct {
+	Projection AgentTaskWorkflowProjectionV1
+	RunUUID    string
+	RuntimeID  string
+	Mode       string
+}
+
+type AgentTaskWorkflowProjectionServiceV1 interface {
+	Project(ctx context.Context, request AgentTaskWorkflowProjectionRequestV1) (*AgentTaskWorkflowProjectionV1, error)
 }
 
 type AgentRunV1 struct {
@@ -179,6 +214,20 @@ func (t AgentTaskV1) Validate() error {
 	}
 	switch t.Status {
 	case AgentTaskStatusCreated, AgentTaskStatusRunning, AgentTaskStatusWaitingApproval, AgentTaskStatusCompleted, AgentTaskStatusFailed, AgentTaskStatusCancelled:
+		return nil
+	default:
+		return ErrAgentPolicyInvalid
+	}
+}
+
+func (p AgentTaskWorkflowProjectionV1) Validate() error {
+	if anyBlank(p.TaskUUID, p.WorkflowID, p.RunID) || len(strings.TrimSpace(p.WorkflowID)) > 255 || len(strings.TrimSpace(p.RunID)) > 64 || p.Revision > math.MaxInt64 {
+		return ErrAgentPolicyInvalid
+	}
+	switch p.Status {
+	case AgentTaskWorkflowStatusCreated, AgentTaskWorkflowStatusRunning, AgentTaskWorkflowStatusWaitingInput,
+		AgentTaskWorkflowStatusWaitingApproval, AgentTaskWorkflowStatusCompleted, AgentTaskWorkflowStatusFailed,
+		AgentTaskWorkflowStatusCancelled:
 		return nil
 	default:
 		return ErrAgentPolicyInvalid
@@ -377,6 +426,7 @@ type AgentPolicyStoreV1 interface {
 	CreateTask(ctx context.Context, task AgentTaskV1) (bool, error)
 	GetTask(ctx context.Context, taskUUID string) (*AgentTaskV1, error)
 	TransitionTaskStatus(ctx context.Context, taskUUID string, from, to AgentTaskStatusV1) (bool, error)
+	ProjectTaskWorkflowState(ctx context.Context, projection AgentTaskWorkflowProjectionV1) (bool, error)
 	CreateRun(ctx context.Context, run AgentRunV1) (bool, error)
 	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
 	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)
