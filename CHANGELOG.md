@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 Embedded Agent `ExecutionContext`：由触发 Message 和 correlation context 注入 principal、Agent、会话及 request/trace/event ID；五个 Tool schema 移除模型可控 `user_uuid`，缺少可信上下文或发送 Agent 不匹配时拒绝执行，并以原 `AD-008` 越权输入持续回归。
 - 增加语言中立 `dipole.agent.eval.v1` 与 Go/Eino baseline adapter 测试，覆盖 Agent 事件过滤/幂等、普通与 Tool 回复轨迹、会话读取授权，并将模型身份覆盖行为显式绑定到 `AD-008`。
 - 增加 canonical 架构文档 manifest 与 Git 跟踪门禁，移除 `docs/*.md` 通配忽略；历史和本地参考资料改为显式单文件忽略，避免旧文档被误当作当前实现契约。
 - 增加 G0 可复现端到端性能门禁与版本化报告，覆盖 direct、concurrent、普通群和热群的接受/持久化/投递率、P50/P95/P99、Kafka lag 及 Inbox 写放大；Compose 热群阈值可在基准期间受控覆盖，默认仍为 `200/50`。

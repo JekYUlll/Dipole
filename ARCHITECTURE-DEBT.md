@@ -115,14 +115,13 @@
 ### AD-008：Agent Tool 允许模型提供用户身份参数
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 已解决
 - **发现日期：** 2026-08-26
+- **解决日期：** 2026-08-27
 - **影响范围：** `internal/modules/ai/tools.go`、会话读取、用户资料、系统消息发送
-- **现状：** 多个 Tool Schema 暴露 `user_uuid`，执行时直接使用模型生成的参数查询资源或确定消息目标。
-- **风险：** Tool 缺少由认证链注入的 principal 与统一 Capability Policy，模型参数可能造成越权读取、错误目标写入或审计身份不清。
-- **基线证据：** `dipole.agent.eval.v1` 中的 profile principal override 与 system-message target override 均稳定复现 `model_identity_accepted`，并绑定本债务编号；会话读取的 allow/deny 轨迹同时固定现有资源存在性检查。
-- **建议方向：** 引入不可由模型覆盖的 `ExecutionContext`，将 principal、委托身份、权限和 trace 注入 Tool；模型只提交资源参数，Capability API 执行服务端授权。
-- **处理门槛：** TypeScript Agent Runtime 获得任何生产读写流量前完成。
+- **解决方式：** Embedded Go/Eino Service 从已校验的触发 Message 与关联上下文生成 `ExecutionContext`，注入 principal、Agent、触发消息、会话和 request/trace/event ID。五个 Tool Schema 均移除 `user_uuid`，读取和系统消息目标只使用上下文 principal；上下文缺失或发送 Agent 不匹配时 fail closed。
+- **验证：** `dipole.agent.eval.v1` 保留两条恶意 `U999` 覆盖用例，结果改为 `identity.execution_context` 与 `principal_enforced`；单元测试覆盖全部 Tool 缺少上下文拒绝、schema 身份字段扫描、发送 Agent 不匹配和 Service 派生链。
+- **后续边界：** tenant、委托身份和细粒度权限继续由 G1 Capability API 承担，不能重新加入模型可控身份参数。
 
 ### AD-009：Agent 仅有调用级日志，缺少持久任务生命周期
 
