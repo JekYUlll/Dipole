@@ -4,11 +4,12 @@ import json
 from pathlib import Path
 
 
-SCHEMA_VERSION = "dipole.performance.baseline.v3"
+SCHEMA_VERSION = "dipole.performance.baseline.v4"
 OPERATIONS_SCHEMA_VERSIONS = {
     "dipole.performance.operations.v1",
     "dipole.performance.operations.v2",
     "dipole.performance.operations.v3",
+    "dipole.performance.operations.v4",
 }
 PROJECTION_NAMES = {"direct_message", "group_message", "group_init"}
 
@@ -60,6 +61,16 @@ def _unavailable_conversation_state():
         "timing_available": False,
         "duration_source": None,
         "timing": None,
+    }
+
+
+def _unavailable_process_resources():
+    return {
+        "available": False,
+        "sample_count": None,
+        "duration_seconds": None,
+        "services": None,
+        "counter_source": None,
     }
 
 
@@ -130,7 +141,10 @@ def _conversation_state_section(storage, source_schema_version):
         "projection_writes",
         "counter_source",
     }
-    if source_schema_version == "dipole.performance.operations.v3":
+    if source_schema_version in {
+        "dipole.performance.operations.v3",
+        "dipole.performance.operations.v4",
+    }:
         expected_fields |= {"duration_source", "timing"}
     if set(values) != expected_fields:
         raise ValueError("storage.conversation_state fields do not match operations schema")
@@ -162,7 +176,10 @@ def _conversation_state_section(storage, source_schema_version):
         "duration_source": None,
         "timing": None,
     }
-    if source_schema_version == "dipole.performance.operations.v3":
+    if source_schema_version in {
+        "dipole.performance.operations.v3",
+        "dipole.performance.operations.v4",
+    }:
         if values["duration_source"] != "dipole_conversation_projection_write_duration_seconds":
             raise ValueError("unsupported conversation duration_source")
         result.update({
@@ -171,6 +188,85 @@ def _conversation_state_section(storage, source_schema_version):
             "timing": _conversation_timing(values["timing"], projection_writes),
         })
     return result
+
+
+def _process_resources_section(operations, source_schema_version):
+    values = operations.get("process_resources")
+    if source_schema_version != "dipole.performance.operations.v4":
+        return _unavailable_process_resources()
+    if not isinstance(values, dict):
+        raise ValueError("operations v4 requires process_resources")
+    if set(values) != {"schema_version", "sample_count", "duration_seconds", "services"}:
+        raise ValueError("process_resources fields do not match process resources v1")
+    if values["schema_version"] != "dipole.performance.process-resources.v1":
+        raise ValueError("unsupported process_resources schema_version")
+
+    sample_count = _nonnegative_int(values["sample_count"], "process_resources.sample_count")
+    if sample_count < 2:
+        raise ValueError("process_resources.sample_count must be at least two")
+    duration_seconds = _nonnegative_number(
+        values["duration_seconds"], "process_resources.duration_seconds"
+    )
+    if duration_seconds == 0:
+        raise ValueError("process_resources.duration_seconds must be positive")
+    raw_services = values["services"]
+    if not isinstance(raw_services, dict) or not raw_services:
+        raise ValueError("process_resources.services must not be empty")
+
+    expected_fields = {
+        "pid",
+        "cpu_core_percent",
+        "rss_start_bytes",
+        "rss_end_bytes",
+        "rss_peak_bytes",
+        "thread_peak",
+        "voluntary_context_switches",
+        "involuntary_context_switches",
+    }
+    services = {}
+    for name in sorted(raw_services):
+        raw = raw_services[name]
+        if not isinstance(name, str) or not name or not isinstance(raw, dict) or set(raw) != expected_fields:
+            raise ValueError(f"process_resources.services.{name} fields do not match process resources v1")
+        service = {
+            "pid": _nonnegative_int(raw["pid"], f"process_resources.services.{name}.pid"),
+            "cpu_core_percent": _rounded(_nonnegative_number(
+                raw["cpu_core_percent"], f"process_resources.services.{name}.cpu_core_percent"
+            )),
+            "rss_start_bytes": _nonnegative_int(
+                raw["rss_start_bytes"], f"process_resources.services.{name}.rss_start_bytes"
+            ),
+            "rss_end_bytes": _nonnegative_int(
+                raw["rss_end_bytes"], f"process_resources.services.{name}.rss_end_bytes"
+            ),
+            "rss_peak_bytes": _nonnegative_int(
+                raw["rss_peak_bytes"], f"process_resources.services.{name}.rss_peak_bytes"
+            ),
+            "thread_peak": _nonnegative_int(
+                raw["thread_peak"], f"process_resources.services.{name}.thread_peak"
+            ),
+            "voluntary_context_switches": _nonnegative_int(
+                raw["voluntary_context_switches"],
+                f"process_resources.services.{name}.voluntary_context_switches",
+            ),
+            "involuntary_context_switches": _nonnegative_int(
+                raw["involuntary_context_switches"],
+                f"process_resources.services.{name}.involuntary_context_switches",
+            ),
+        }
+        if service["pid"] == 0:
+            raise ValueError(f"process_resources.services.{name}.pid must be positive")
+        if service["rss_peak_bytes"] < max(service["rss_start_bytes"], service["rss_end_bytes"]):
+            raise ValueError(f"process_resources.services.{name}.rss_peak_bytes is inconsistent")
+        services[name] = service
+
+    return {
+        "available": True,
+        "sample_count": sample_count,
+        "duration_seconds": _rounded(duration_seconds),
+        "services": services,
+        "counter_source": "/proc/<pid>/stat,status,task/*/status",
+    }
 
 
 def build_report(summary, operations):
@@ -242,6 +338,7 @@ def build_report(summary, operations):
             "peak_lag": max(lag_samples) if lag_samples else None,
             "settled_lag": lag_samples[-1] if lag_samples else None,
         },
+        "process_resources": _process_resources_section(operations, source_schema_version),
     }
 
 
@@ -299,6 +396,7 @@ def render_markdown(report):
     kafka = report["kafka"]
     delivery = report["delivery"]
     workload = report["workload"]
+    process_resources = report["process_resources"]
     timing = conversation_state["timing"]
     timing_rows = "Timing evidence unavailable for this source schema."
     if timing is not None:
@@ -313,6 +411,16 @@ def render_markdown(report):
             f"{_format_number(timing[projection]['average_success_ms'], ' ms')} | "
             f"{_format_number(timing[projection]['p95_success_upper_bound_ms'], ' ms')} |"
             for projection in ("direct_message", "group_message", "group_init")
+        )
+    process_rows = "| Evidence unavailable | N/A | N/A | N/A | N/A | N/A |"
+    if process_resources["services"] is not None:
+        process_rows = "\n".join(
+            f"| {name.replace('-', ' ').title()} | "
+            f"{_format_number(values['cpu_core_percent'], '%')} | "
+            f"{_format_number(values['rss_peak_bytes'] / (1024 * 1024), ' MiB')} | "
+            f"{values['thread_peak']} | {values['voluntary_context_switches']} | "
+            f"{values['involuntary_context_switches']} |"
+            for name, values in process_resources["services"].items()
         )
 
     return f"""# Dipole Performance Baseline
@@ -366,6 +474,18 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | P95 | {_format_number(latency['p95'], ' ms')} |
 | P99 | {_format_number(latency['p99'], ' ms')} |
 | Maximum | {_format_number(latency['maximum'], ' ms')} |
+
+## Process Resources
+
+Samples: {process_resources['sample_count'] if process_resources['sample_count'] is not None else 'N/A'}
+
+Duration: {_format_number(process_resources['duration_seconds'], ' s')}
+
+Counter source: `{process_resources['counter_source'] or 'N/A'}`
+
+| Service | CPU core | Peak RSS | Peak threads | Voluntary context switches | Involuntary context switches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+{process_rows}
 
 ## Durable Inbox
 

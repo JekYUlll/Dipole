@@ -21,7 +21,7 @@ class BaselineReportTest(unittest.TestCase):
             }
         }
         self.operations = {
-            "schema_version": "dipole.performance.operations.v3",
+            "schema_version": "dipole.performance.operations.v4",
             "run_id": "g0-20260827",
             "scenario": "mixed",
             "environment": {"git_commit": "abc123", "cpu": "test cpu", "topology": "dist"},
@@ -78,12 +78,29 @@ class BaselineReportTest(unittest.TestCase):
                 },
             },
             "kafka_lag_samples": [0, 7, 3, 0],
+            "process_resources": {
+                "schema_version": "dipole.performance.process-resources.v1",
+                "sample_count": 4,
+                "duration_seconds": 12.5,
+                "services": {
+                    "gateway": {
+                        "pid": 101,
+                        "cpu_core_percent": 37.5,
+                        "rss_start_bytes": 100_000_000,
+                        "rss_end_bytes": 110_000_000,
+                        "rss_peak_bytes": 125_829_120,
+                        "thread_peak": 18,
+                        "voluntary_context_switches": 240,
+                        "involuntary_context_switches": 12,
+                    }
+                },
+            },
         }
 
     def test_builds_normalized_report(self):
         report = build_report(self.summary, self.operations)
 
-        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v3")
+        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v4")
         self.assertEqual(report["run_id"], "g0-20260827")
         self.assertEqual(report["workload"]["attempted"], 125)
         self.assertEqual(report["workload"]["accepted"], 120)
@@ -112,6 +129,10 @@ class BaselineReportTest(unittest.TestCase):
         )
         self.assertEqual(report["kafka"]["peak_lag"], 7)
         self.assertEqual(report["kafka"]["settled_lag"], 0)
+        self.assertTrue(report["process_resources"]["available"])
+        self.assertEqual(report["process_resources"]["sample_count"], 4)
+        self.assertEqual(report["process_resources"]["services"]["gateway"]["cpu_core_percent"], 37.5)
+        self.assertEqual(report["process_resources"]["services"]["gateway"]["rss_peak_bytes"], 125_829_120)
 
     def test_missing_samples_remain_explicit(self):
         self.summary["metrics"].pop("msg_e2e_latency_ms")
@@ -131,7 +152,7 @@ class BaselineReportTest(unittest.TestCase):
 
         report = build_report(self.summary, self.operations)
 
-        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v3")
+        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v4")
         self.assertEqual(report["source_schema_version"], "dipole.performance.operations.v1")
         self.assertEqual(
             report["storage"]["conversation_state"],
@@ -148,6 +169,16 @@ class BaselineReportTest(unittest.TestCase):
                 "timing": None,
             },
         )
+        self.assertEqual(
+            report["process_resources"],
+            {
+                "available": False,
+                "sample_count": None,
+                "duration_seconds": None,
+                "services": None,
+                "counter_source": None,
+            },
+        )
 
     def test_v2_remains_readable_with_explicit_missing_timing_evidence(self):
         self.operations["schema_version"] = "dipole.performance.operations.v2"
@@ -162,6 +193,35 @@ class BaselineReportTest(unittest.TestCase):
         self.assertFalse(conversation["timing_available"])
         self.assertIsNone(conversation["duration_source"])
         self.assertIsNone(conversation["timing"])
+
+    def test_v3_remains_readable_with_explicit_missing_process_resources(self):
+        self.operations["schema_version"] = "dipole.performance.operations.v3"
+        self.operations.pop("process_resources")
+
+        report = build_report(self.summary, self.operations)
+
+        self.assertFalse(report["process_resources"]["available"])
+        self.assertIsNone(report["process_resources"]["services"])
+
+    def test_v4_requires_consistent_process_resources(self):
+        invalid_cases = []
+
+        missing = json.loads(json.dumps(self.operations))
+        missing.pop("process_resources")
+        invalid_cases.append(missing)
+
+        wrong_schema = json.loads(json.dumps(self.operations))
+        wrong_schema["process_resources"]["schema_version"] = "unknown"
+        invalid_cases.append(wrong_schema)
+
+        negative = json.loads(json.dumps(self.operations))
+        negative["process_resources"]["services"]["gateway"]["rss_peak_bytes"] = -1
+        invalid_cases.append(negative)
+
+        for operations in invalid_cases:
+            with self.subTest(operations=operations):
+                with self.assertRaises(ValueError):
+                    build_report(self.summary, operations)
 
     def test_v3_requires_consistent_non_negative_conversation_evidence(self):
         invalid_cases = []
@@ -200,6 +260,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("Messages per sender | 5", markdown)
         self.assertIn("Receiver connection window | 15000 ms", markdown)
         self.assertIn("Hot-group thresholds | members=200, messages=50", markdown)
+        self.assertIn("Gateway | 37.50% | 120.00 MiB | 18 | 240 | 12", markdown)
         self.assertIn("该报告只描述本次环境", markdown)
 
     def test_json_round_trip_is_stable(self):

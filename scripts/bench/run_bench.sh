@@ -32,6 +32,7 @@ HOT_GROUP_MESSAGE_THRESHOLD="${HOT_GROUP_MESSAGE_THRESHOLD:-}"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
 KAFKA_SERVICE="${KAFKA_SERVICE:-kafka}"
 CONVERSATION_METRICS_SERVICES="${CONVERSATION_METRICS_SERVICES:-dipole-node1 dipole-node2 dipole-node3}"
+PROCESS_METRICS_SERVICES="${PROCESS_METRICS_SERVICES:-dipole-node1 dipole-node2 dipole-node3}"
 
 SUMMARY_JSON="${RESULTS_DIR}/${RUN_ID}.k6-summary.json"
 OPERATIONS_JSON="${RESULTS_DIR}/${RUN_ID}.operations.json"
@@ -40,7 +41,10 @@ BASELINE_MD="${RESULTS_DIR}/${RUN_ID}.baseline.md"
 RUN_LOG="${RESULTS_DIR}/${RUN_ID}.log"
 LAG_FILE="${RESULTS_DIR}/${RUN_ID}.lag"
 CONVERSATION_METRICS_JSON="${RESULTS_DIR}/${RUN_ID}.conversation-metrics.json"
+PROCESS_SAMPLES_JSONL="${RESULTS_DIR}/${RUN_ID}.process-samples.jsonl"
+PROCESS_RESOURCES_JSON="${RESULTS_DIR}/${RUN_ID}.process-resources.json"
 CONVERSATION_METRIC_ARGS=()
+PROCESS_METRIC_ARGS=()
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -64,6 +68,7 @@ fi
 
 mkdir -p "${RESULTS_DIR}"
 : >"${LAG_FILE}"
+: >"${PROCESS_SAMPLES_JSONL}"
 
 for port in 8081 8082; do
   curl --fail --silent --show-error "http://127.0.0.1:${port}/health" >/dev/null || {
@@ -100,7 +105,32 @@ capture_conversation_metrics() {
   done
 }
 
+resolve_process_metric_bindings() {
+  local service container_id host_pid
+  for service in ${PROCESS_METRICS_SERVICES}; do
+    container_id="$(docker compose -f "${COMPOSE_FILE}" ps -q "${service}")"
+    if [[ -z "${container_id}" ]]; then
+      echo "process metrics service is not running: ${service}" >&2
+      exit 1
+    fi
+    host_pid="$(docker inspect --format '{{.State.Pid}}' "${container_id}")"
+    if [[ ! "${host_pid}" =~ ^[1-9][0-9]*$ ]]; then
+      echo "process metrics service has no host pid: ${service}" >&2
+      exit 1
+    fi
+    PROCESS_METRIC_ARGS+=(--service "${service}=${host_pid}")
+  done
+}
+
+capture_process_metrics() {
+  python3 scripts/bench/process_metrics.py capture \
+    "${PROCESS_METRIC_ARGS[@]}" \
+    --output "${PROCESS_SAMPLES_JSONL}"
+}
+
 capture_conversation_metrics before
+resolve_process_metric_bindings
+capture_process_metrics
 
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
@@ -129,12 +159,14 @@ k6_pid=$!
 
 while kill -0 "${k6_pid}" 2>/dev/null; do
   sample_kafka_lag
+  capture_process_metrics
   sleep "${LAG_SAMPLE_SECONDS}"
 done
 wait "${k6_pid}"
 k6_status=$?
 set -e
 sample_kafka_lag
+capture_process_metrics
 settle_started="$(date +%s)"
 while [[ "${LAST_KAFKA_LAG}" != "0" ]] && (( $(date +%s) - settle_started < LAG_SETTLE_TIMEOUT_SECONDS )); do
   sleep "${LAG_SAMPLE_SECONDS}"
@@ -147,6 +179,10 @@ python3 scripts/bench/conversation_metrics.py \
   "${CONVERSATION_METRIC_ARGS[@]}" \
   --output "${CONVERSATION_METRICS_JSON}"
 conversation_metrics="$(cat "${CONVERSATION_METRICS_JSON}")"
+python3 scripts/bench/process_metrics.py summarize \
+  --input "${PROCESS_SAMPLES_JSONL}" \
+  --output "${PROCESS_RESOURCES_JSON}"
+process_resources="$(cat "${PROCESS_RESOURCES_JSON}")"
 
 if [[ ! -s "${SUMMARY_JSON}" ]]; then
   echo "k6 did not produce ${SUMMARY_JSON}" >&2
@@ -197,8 +233,9 @@ jq -n \
   --argjson conversation_rows "${conversation_rows}" \
   --argjson conversation_messages "${conversation_messages}" \
   --argjson conversation_metrics "${conversation_metrics}" \
+  --argjson process_resources "${process_resources}" \
   '{
-    schema_version: "dipole.performance.operations.v3",
+    schema_version: "dipole.performance.operations.v4",
     run_id: $run_id,
     scenario: $scenario,
     captured_at: $captured_at,
@@ -234,7 +271,8 @@ jq -n \
         messages_observed: $conversation_messages
       })
     },
-    kafka_lag_samples: $kafka_lag_samples
+    kafka_lag_samples: $kafka_lag_samples,
+    process_resources: $process_resources
   }' >"${OPERATIONS_JSON}"
 
 report_args=(
