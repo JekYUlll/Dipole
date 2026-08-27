@@ -79,7 +79,7 @@ func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capab
 	return newCoreRPCServer(cfg, capability, agentAdapter)
 }
 
-func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, artifacts application.AgentArtifactServiceV1) (*InternalRPCServer, error) {
+func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, artifacts application.AgentArtifactServiceV1) (*InternalRPCServer, error) {
 	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
@@ -87,6 +87,11 @@ func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability appli
 	if artifacts != nil {
 		if _, err := agentAdapter.WithArtifacts(artifacts); err != nil {
 			return nil, fmt.Errorf("configure Agent Artifact rpc adapter: %w", err)
+		}
+	}
+	if subscriptions != nil {
+		if _, err := agentAdapter.WithEventSubscriptions(subscriptions); err != nil {
+			return nil, fmt.Errorf("configure Agent Event Subscription rpc adapter: %w", err)
 		}
 	}
 	return newCoreRPCServer(cfg, capability, agentAdapter)
@@ -256,6 +261,7 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {
 		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")
 	}

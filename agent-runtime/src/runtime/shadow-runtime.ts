@@ -9,6 +9,7 @@ import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
 import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js";
+import { matchEventSubscriptions, type AgentEventSubscription } from "../events/event-subscription.js";
 import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
 import { decodeMessageCreatedEvent } from "../events/message-event.js";
@@ -16,7 +17,16 @@ import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { MySQLShadowAuditSink } from "../events/mysql-shadow-audit-sink.js";
 import { PROBE_AGENT_SHADOW_PLANS } from "../events/mysql-shadow-audit-queries.js";
-import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner, type ShadowTaskDispatcher } from "../events/shadow-processor.js";
+import {
+  ShadowEventProcessor,
+  type AgentEvent,
+  type AgentIdentity,
+  type ShadowAuditRecord,
+  type ShadowAuditSink,
+  type ShadowPlanner,
+  type ShadowRunAdmission,
+  type ShadowTaskDispatcher
+} from "../events/shadow-processor.js";
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
@@ -38,6 +48,7 @@ const shadowRuntimeConfigSchema = z.object({
   topicReplicationFactor: z.number().int().min(1),
   tenantId: z.string().trim().min(1),
   agentUuid: z.string().trim().min(1),
+  triggerMode: z.enum(["direct_target", "subscription"]),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
@@ -109,6 +120,13 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.enabled && config.capabilityRpc.enabled && (!config.capabilityRpc.target || !config.capabilityRpc.secret)) {
     refinement.addIssue({ code: "custom", message: "Agent Capability RPC target and shared secret are required", path: ["capabilityRpc"] });
   }
+  if (config.enabled && config.triggerMode === "subscription" && !config.capabilityRpc.enabled) {
+    refinement.addIssue({
+      code: "custom",
+      message: "Subscription trigger mode requires Agent Capability RPC",
+      path: ["capabilityRpc", "enabled"]
+    });
+  }
   if (config.modelMode === "ai_sdk" && !config.capabilityRpc.enabled) {
     refinement.addIssue({ code: "custom", message: "AI SDK mode requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
   }
@@ -136,6 +154,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     topicReplicationFactor: Number.parseInt(env.DIPOLE_AGENT_KAFKA_TOPIC_REPLICATION_FACTOR ?? "1", 10),
     tenantId: env.DIPOLE_AGENT_TENANT_ID ?? "dipole",
     agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
+    triggerMode: env.DIPOLE_AGENT_TRIGGER_MODE?.trim().toLowerCase() || "direct_target",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
@@ -175,6 +194,10 @@ export interface ShadowRuntime {
   stop(): Promise<void>;
 }
 
+interface ShadowSubscriptionAdmission extends ShadowRunAdmission {
+  matchEventSubscriptions(event: AgentEvent, identity: AgentIdentity): Promise<AgentEventSubscription[]>;
+}
+
 export interface TemporalReadActivityResources {
   readonly activities: AgentTaskActivities;
   readonly client: AgentCapabilityRPCClient;
@@ -204,7 +227,7 @@ export function buildKafkaShadowRuntime(
   audit: ShadowAuditSink = new ConsoleShadowAuditSink(),
   ledger: EventLedger = new InMemoryEventLedger(),
   failureRouter?: KafkaFailureRouter,
-  admission?: AgentCapabilityRPCClient,
+  admission?: ShadowSubscriptionAdmission,
   registry?: CapabilityRegistry,
   trajectory?: MySQLShadowAuditSink,
   dispatcher?: ShadowTaskDispatcher
@@ -217,16 +240,26 @@ export function buildKafkaShadowRuntime(
     } catch (error) {
       throw new PermanentKafkaEventError(error);
     }
-    if (decoded.targetUuid !== config.agentUuid) {
+    if (config.triggerMode === "direct_target" && decoded.targetUuid !== config.agentUuid) {
       return;
     }
-    await processor.process(decoded.event, {
+    const identity: AgentIdentity = {
       tenantId: config.tenantId,
       principalUuid: decoded.principalUuid,
       agentUuid: config.agentUuid,
       ...(decoded.requestId === undefined ? {} : { requestId: decoded.requestId }),
       ...(decoded.traceId === undefined ? {} : { traceId: decoded.traceId })
-    });
+    };
+    let event = decoded.event;
+    if (config.triggerMode === "subscription") {
+      if (admission === undefined) {
+        throw new Error("Subscription trigger mode has no Agent Capability RPC admission client");
+      }
+      const matches = matchEventSubscriptions(event, await admission.matchEventSubscriptions(event, identity));
+      if (matches.length === 0) return;
+      event = { ...event, subscriptionId: matches[0]!.subscriptionId };
+    }
+    await processor.process(event, identity);
   }, failureRouter);
 }
 
@@ -251,7 +284,9 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher
     ), ["conversation.list"], routeContextCompiler(config))
     : new MetadataShadowPlanner();
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
-  const rpcTransport = config.capabilityRpc.enabled && dispatcher === undefined ? createAgentCapabilityRPC(config) : undefined;
+  const rpcTransport = config.capabilityRpc.enabled && (dispatcher === undefined || config.triggerMode === "subscription")
+    ? createAgentCapabilityRPC(config)
+    : undefined;
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
   if (config.modelMode === "ai_sdk" && dispatcher === undefined) {

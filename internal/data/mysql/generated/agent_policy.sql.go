@@ -208,6 +208,34 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 	return i, err
 }
 
+const getAgentEventSubscription = `-- name: GetAgentEventSubscription :one
+SELECT id, subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid, status, event_type, resource_type, resource_id, filter_kind, filter_json, created_at, revoked_at FROM agent_event_subscriptions
+WHERE subscription_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error) {
+	row := q.db.QueryRowContext(ctx, getAgentEventSubscription, subscriptionUuid)
+	var i AgentEventSubscription
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionUuid,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.TenantID,
+		&i.AgentUuid,
+		&i.Status,
+		&i.EventType,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.FilterKind,
+		&i.FilterJson,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
 const getAgentRun = `-- name: GetAgentRun :one
 SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at FROM agent_runs WHERE run_uuid = ? LIMIT 1
 `
@@ -232,7 +260,7 @@ func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, er
 }
 
 const getAgentTask = `-- name: GetAgentTask :one
-SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at FROM agent_tasks WHERE task_uuid = ? LIMIT 1
+SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at, trigger_subscription_uuid FROM agent_tasks WHERE task_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error) {
@@ -257,6 +285,7 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 		&i.WorkflowStatus,
 		&i.WorkflowRevision,
 		&i.WorkflowUpdatedAt,
+		&i.TriggerSubscriptionUuid,
 	)
 	return i, err
 }
@@ -447,6 +476,47 @@ func (q *Queries) InsertAgentDefinitionVersion(ctx context.Context, arg InsertAg
 	return err
 }
 
+const insertAgentEventSubscription = `-- name: InsertAgentEventSubscription :exec
+INSERT INTO agent_event_subscriptions (
+    subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
+    status, event_type, resource_type, resource_id, filter_kind, filter_json,
+    created_at, revoked_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), ?)
+`
+
+type InsertAgentEventSubscriptionParams struct {
+	SubscriptionUuid  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	TenantID          string
+	AgentUuid         string
+	Status            string
+	EventType         string
+	ResourceType      string
+	ResourceID        string
+	FilterKind        string
+	FilterJson        json.RawMessage
+	RevokedAt         sql.NullTime
+}
+
+func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) error {
+	_, err := q.db.ExecContext(ctx, insertAgentEventSubscription,
+		arg.SubscriptionUuid,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.TenantID,
+		arg.AgentUuid,
+		arg.Status,
+		arg.EventType,
+		arg.ResourceType,
+		arg.ResourceID,
+		arg.FilterKind,
+		arg.FilterJson,
+		arg.RevokedAt,
+	)
+	return err
+}
+
 const insertAgentRun = `-- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
     run_uuid, task_uuid, runtime_id, mode, status, started_at
@@ -476,21 +546,22 @@ func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) 
 const insertAgentTask = `-- name: InsertAgentTask :execrows
 INSERT IGNORE INTO agent_tasks (
     task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid,
-    agent_uuid, status, trigger_type, trigger_ref, goal, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+    agent_uuid, status, trigger_type, trigger_ref, trigger_subscription_uuid, goal, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
 `
 
 type InsertAgentTaskParams struct {
-	TaskUuid          string
-	DefinitionUuid    string
-	DefinitionVersion uint64
-	TenantID          string
-	PrincipalUuid     string
-	AgentUuid         string
-	Status            string
-	TriggerType       string
-	TriggerRef        string
-	Goal              string
+	TaskUuid                string
+	DefinitionUuid          string
+	DefinitionVersion       uint64
+	TenantID                string
+	PrincipalUuid           string
+	AgentUuid               string
+	Status                  string
+	TriggerType             string
+	TriggerRef              string
+	TriggerSubscriptionUuid sql.NullString
+	Goal                    string
 }
 
 func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error) {
@@ -504,6 +575,7 @@ func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams
 		arg.Status,
 		arg.TriggerType,
 		arg.TriggerRef,
+		arg.TriggerSubscriptionUuid,
 		arg.Goal,
 	)
 	if err != nil {
@@ -645,6 +717,70 @@ func (q *Queries) ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, 
 	return items, nil
 }
 
+const listMatchingAgentEventSubscriptions = `-- name: ListMatchingAgentEventSubscriptions :many
+SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at
+FROM agent_event_subscriptions AS s
+JOIN agent_definition_versions AS d
+  ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
+WHERE s.tenant_id = ? AND s.agent_uuid = ? AND s.event_type = ?
+  AND s.resource_type = ? AND (s.resource_id = ? OR s.resource_id = '*')
+  AND s.status = 'active' AND s.revoked_at IS NULL
+  AND d.status = 'active' AND d.revoked_at IS NULL
+ORDER BY s.subscription_uuid ASC
+`
+
+type ListMatchingAgentEventSubscriptionsParams struct {
+	TenantID     string
+	AgentUuid    string
+	EventType    string
+	ResourceType string
+	ResourceID   string
+}
+
+func (q *Queries) ListMatchingAgentEventSubscriptions(ctx context.Context, arg ListMatchingAgentEventSubscriptionsParams) ([]AgentEventSubscription, error) {
+	rows, err := q.db.QueryContext(ctx, listMatchingAgentEventSubscriptions,
+		arg.TenantID,
+		arg.AgentUuid,
+		arg.EventType,
+		arg.ResourceType,
+		arg.ResourceID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentEventSubscription{}
+	for rows.Next() {
+		var i AgentEventSubscription
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionUuid,
+			&i.DefinitionUuid,
+			&i.DefinitionVersion,
+			&i.TenantID,
+			&i.AgentUuid,
+			&i.Status,
+			&i.EventType,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.FilterKind,
+			&i.FilterJson,
+			&i.CreatedAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
 UPDATE agent_tasks
 SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
@@ -730,6 +866,25 @@ type RevokeAgentDefinitionVersionParams struct {
 
 func (q *Queries) RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentDefinitionVersion, arg.RevokedAt, arg.DefinitionUuid, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAgentEventSubscription = `-- name: RevokeAgentEventSubscription :execrows
+UPDATE agent_event_subscriptions
+SET status = 'revoked', revoked_at = ?
+WHERE subscription_uuid = ? AND status = 'active' AND revoked_at IS NULL
+`
+
+type RevokeAgentEventSubscriptionParams struct {
+	RevokedAt        sql.NullTime
+	SubscriptionUuid string
+}
+
+func (q *Queries) RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeAgentEventSubscription, arg.RevokedAt, arg.SubscriptionUuid)
 	if err != nil {
 		return 0, err
 	}

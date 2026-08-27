@@ -4,6 +4,7 @@ import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
 
 const callerService = "dipole-agent";
@@ -25,6 +26,7 @@ export interface AgentRunAdmissionRequest {
   readonly eventId: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly subscriptionId?: string;
 }
 
 export interface AgentApprovalBinding {
@@ -115,6 +117,7 @@ export class AgentCapabilityRPCClient {
       triggerType: event.eventType,
       triggerRef: event.aggregateId,
       eventId: event.eventId,
+      ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId }),
       ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
       ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
     });
@@ -132,7 +135,8 @@ export class AgentCapabilityRPCClient {
         triggerRef: input.triggerRef,
         eventId: input.eventId,
         runtimeId: callerService,
-        mode: "shadow"
+        mode: "shadow",
+        subscriptionId: input.subscriptionId ?? ""
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent Run admission returned no response"));
@@ -143,6 +147,40 @@ export class AgentCapabilityRPCClient {
           return;
         }
         resolve({ taskId: response.taskId, runId: response.runId, runStatus: response.runStatus });
+      });
+    });
+  }
+
+  async matchEventSubscriptions(event: AgentEvent, identity: AgentIdentity): Promise<AgentEventSubscription[]> {
+    const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
+    if (!resourceId) throw new Error("Agent event has no subscription resource identity");
+    const metadata = this.metadata(identity.requestId, identity.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.matchEventSubscriptions({
+        context: this.requestContext(identity.requestId, identity.traceId),
+        tenantId: identity.tenantId,
+        agentId: identity.agentUuid,
+        eventType: event.eventType,
+        resourceType: "conversation",
+        resourceId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Event Subscription lookup returned no response"));
+        try {
+          resolve(response.subscriptions.map((item) => ({
+            subscriptionId: item.subscriptionId,
+            definitionId: item.definitionId,
+            definitionVersion: Number(item.definitionVersion),
+            tenantId: item.tenantId,
+            agentId: item.agentId,
+            eventType: item.eventType,
+            resourceType: item.resourceType,
+            resourceId: item.resourceId,
+            filterKind: item.filterKind,
+            filter: JSON.parse(new TextDecoder().decode(item.filterJson)) as unknown
+          })) as AgentEventSubscription[]);
+        } catch (decodeError) {
+          reject(decodeError);
+        }
       });
     });
   }

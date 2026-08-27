@@ -131,6 +131,8 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 
 `AgentSubscription` 描述 Agent、资源范围、事件类型、过滤策略和 Capability 授权。事件先经过规则、小模型或向量召回做低成本筛选，相关事件才创建 Durable Task。
 
+G3 v1 使用 migration v28 的 `agent_event_subscriptions` 保存 Subscription 与精确 Definition version。Core 通过受认证的 additive RPC 按 tenant、Agent、event type 和 conversation resource 查询候选，并重新校验 Definition 有效期、撤销状态、`conversation.read` permission 和 read scope。TS Runtime 的 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 只执行严格 `all|message_contains_any` 规则，零匹配时在 EventLedger、Temporal 和模型之前返回；多匹配按 Subscription ID 排序，并把首个 ID 固定到 Task。默认 `direct_target` 保留既有行为。认证管理 API、变更审计和语义/向量预筛由 `AD-034` 继续跟踪。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact
@@ -146,7 +148,7 @@ G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、�
 首期包含：
 
 - `agent_definition_versions`：所有者、Agent、permission、resource scope、有效期、版本和撤销状态；grant 内容按版本追加，Task 始终固定精确版本。
-- `agent_subscriptions`：事件、资源、过滤器和策略。
+- `agent_event_subscriptions`：v28 保存事件、资源、确定性过滤器和固定 Definition version；Task 可空绑定触发 Subscription ID。
 - `agent_tasks`：目标、触发来源、主体、状态和固定 Definition version；v16 先提供 compare-and-set 状态迁移，后续追加 Temporal Workflow ID。
 - `agent_runs`：v21 按 Task、runtime 和 mode 保存独立 `running/completed/failed/cancelled` 生命周期；同一 Task 可同时拥有 Embedded、Shadow 和未来 Active Run。
 - `agent_shadow_steps`：v20-v21 保存不可变 capability/input、attempt、lease/token 和 result/error；Step owner 只能用精确 token 在租约内完成，重领后旧 owner 无法覆盖。
@@ -156,7 +158,7 @@ G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、�
 
 敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
 
-当前 `dipole.agent.policy.persistence.v1`、migration v16-v26 和 sqlc Store 已落地 Definition/Task/Approval/Run/Artifact 的持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。TS Runtime 使用同一 Task ID，经受认证 admission 创建独立 Shadow Run；已完成 Run 的 admission 与 completion 均幂等收敛。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
+当前 `dipole.agent.policy.persistence.v1`、migration v16-v28 和 sqlc Store 已落地 Definition/Task/Approval/Run/Artifact/Subscription 的持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。TS Runtime 使用同一 Task ID，经受认证 admission 创建独立 Shadow Run；已完成 Run 的 admission 与 completion 均幂等收敛。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
 
 ## 8. 可观测性与评测
 

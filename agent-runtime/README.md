@@ -29,6 +29,8 @@ npm start
 
 Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
+触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
+
 ## Temporal G3 foundation
 
 Temporal Worker 默认关闭，默认注册无副作用的 foundation Activity，不接管 Kafka Shadow 流量：

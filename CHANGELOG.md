@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G3 增加 migration v28 与 Event Subscription 确定性触发基础：Core/sqlc 按 Definition version、tenant、Agent、事件和 conversation resource 持久化 `all|message_contains_any` 订阅，受认证 `dipole-agent` RPC 仅返回当前有效 Definition 且具备 read scope 的候选。TypeScript Runtime 可显式选择 `subscription` 模式，在 EventLedger、Temporal 和模型调用前完成严格 schema、资源、事件及 Unicode 关键词过滤；零匹配直接退出，多匹配按 Subscription ID 稳定选择，并把 ID 固定到 Task 防止重放漂移。默认与 Compose 保持 `direct_target`，现有流量不切换。
 - Agent G3 增加 Message v1 事件 lineage：可选 `origin`、`causation_event_id` 与 `agent_task_id` 从 Embedded Agent 命令经 Kafka `send_requested`、consumer context 和 Transactional Outbox 传播到 confirmed Message；Agent origin 强制绑定 Task，非法 lineage 在 Go/TS decoder 中 fail closed。TypeScript Shadow Runtime 在领取 EventLedger、启动 Temporal 或调用模型前返回 `suppressed`，阻断同一 Agent 因果链的循环触发；不带 lineage 的 legacy v1 事件保持兼容。
 - Conversation State 增加低基数成功写 Counter 和 `dipole_conversation_projection_write_duration_seconds{projection,outcome}` Histogram，区分 direct message、group message 与 group init 的 Repository 调用耗时和错误；端到端基准升级为兼容 v1/v2 的 operations/baseline v3，逐节点保存前后 Prometheus 快照并拒绝 Counter 回退或成功次数漂移。20/100 人普通群和热群写放大证据位于 `benchmarks/ad005-2026-08-27/`，projection timing 与原始快照位于 `benchmarks/ad005-projection-timing-2026-08-27/`。
 - Go 长运行服务增加缓存型动态依赖 readiness：按服务关键依赖矩阵周期探测 MySQL、Redis、Kafka、内部 gRPC、Elasticsearch 与 Cassandra，使用超时和失败/恢复双阈值避免瞬时抖动；HTTP readiness 与 gRPC health 同步摘流和恢复，Prometheus 可按服务/依赖告警。微服务 Compose 默认启用，Elasticsearch 隔离演练验证 Search 局部摘流且应用容器不发生级联重启。
@@ -269,6 +270,7 @@
 
 ### 迁移说明
 
+- migration v28 创建 `agent_event_subscriptions` 并为 `agent_tasks` 增加 nullable `trigger_subscription_uuid` 外键。发布新 Runtime 前先迁移 Core，再滚动发布 additive Proto 两端；启用 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 前必须通过受控 Store 写入绑定有效 Definition 的订阅。回滚先恢复 `direct_target` 并等待在途 Task 收敛，再执行 v28 Down；Down 会删除订阅表及 Task 订阅绑定，仅适用于确认不再需要相关审计数据的环境。
 - migration v27 将历史 `users.status=0` 归一为 `normal=1`，把默认值改为 `1`，并增加仅允许 `1/2` 的数据库约束。Down 会移除约束并恢复默认值 `0`，已归一的行继续保留 `1`，避免破坏合法账号状态。
 - `dipole-agent-artifact-maintenance -action authorize` 从已签名 reconcile JSON 生成短期授权；`-action evaluate` 需单独注入 `storage.artifact_maintenance_access_key/secret_key` 并连接只读 MySQL。`would_delete` 仅表示当前证据满足条件，不能转换为删除动作；其余阻断结果退出码为 2。
 - 运行 `dipole-agent-artifact-reconcile` 前通过环境变量单独注入 `storage.artifact_audit_access_key/secret_key`，并保持最短 `-minimum-age=24h`；命令输出 JSON，发现候选或异常键时退出码为 2。当前报告仅用于审查和容量治理，不能直接作为删除授权。
@@ -311,6 +313,7 @@
 
 ### 验证
 
+- Agent Event Subscription 单元与契约测试覆盖未知过滤器字段、控制字符、Definition 撤销/过期/漂移、resource scope 越权、RPC 服务身份、零匹配零台账/零计划、多匹配稳定选择和 Task 绑定冲突；真实 MySQL 8.4 验证默认 21 字符 Agent ID、sqlc 创建/查询/撤销、外键/CHECK 约束及 migration v28 `up→down→up`。Go/TS Proto、sqlc 生成物、112 项 TS 测试、typecheck 和 build 通过。
 - Node 22.12.0/npm 10.9.0 干净容器通过冷安装、3 项 Vite 工具链契约、53 项 Vitest、`vue-tsc`、Vite 8 生产构建和双重 audit；HTTP/WS 开发代理、`/app/` 静态资源路径及 Chromium/Firefox/WebKit 全部适用 E2E 场景通过。
 - User status 契约测试固定 JSON Schema ID、版本、默认值、枚举与 Go 常量一致；真实 MySQL 8.4 migration 测试覆盖历史 `0` 回填、默认写入、非法值拒绝和保留归一数据的降级边界。
 - maintenance 单元/契约测试覆盖双审批与职责分离、15 分钟有效期、候选绑定、24 小时语义复核、元数据回补、对象缺失/漂移/过期和可复算 authorization/receipt 示例；真实 tmpfs MinIO 验证 inspect 身份可 Stat 且无法 List/Put/Delete，生产 Agent protobuf 继续没有 Artifact 清理方法，第 21 个后端二进制及当前源码镜像构建通过。
@@ -395,6 +398,7 @@
 
 ### 已知问题
 
+- Event Subscription v1 尚无用户/Gateway 管理 API，也未接入小模型、embedding 或向量召回；共享环境继续固定 `direct_target`。管理入口完成认证、版本化变更、撤销审计和 UI 前，不启用 `subscription` 流量模式，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。

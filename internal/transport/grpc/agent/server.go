@@ -18,14 +18,55 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability  application.AgentCapabilityV1
-	resolver    application.AgentInvocationResolverV1
-	admission   application.AgentRunAdmissionServiceV1
-	approvals   application.AgentApprovalServiceV1
-	controls    application.AgentTaskControlAuthorizerV1
-	projections application.AgentTaskWorkflowProjectionServiceV1
-	repairs     application.AgentWorkflowRepairAuditServiceV1
-	artifacts   application.AgentArtifactServiceV1
+	capability    application.AgentCapabilityV1
+	resolver      application.AgentInvocationResolverV1
+	admission     application.AgentRunAdmissionServiceV1
+	approvals     application.AgentApprovalServiceV1
+	controls      application.AgentTaskControlAuthorizerV1
+	projections   application.AgentTaskWorkflowProjectionServiceV1
+	repairs       application.AgentWorkflowRepairAuditServiceV1
+	artifacts     application.AgentArtifactServiceV1
+	subscriptions application.AgentEventSubscriptionResolverV1
+}
+
+func (s *Server) WithEventSubscriptions(resolver application.AgentEventSubscriptionResolverV1) (*Server, error) {
+	if s == nil || resolver == nil {
+		return nil, errors.New("Agent Event Subscription resolver is required")
+	}
+	s.subscriptions = resolver
+	return s, nil
+}
+
+func (s *Server) MatchEventSubscriptions(ctx context.Context, request *agentv1.MatchEventSubscriptionsRequest) (*agentv1.MatchEventSubscriptionsResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may match Event Subscriptions")
+	}
+	if s.subscriptions == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription resolver is unavailable")
+	}
+	items, err := s.subscriptions.MatchEventSubscriptions(grpccommon.Correlation(ctx, request.GetContext()), application.AgentEventSubscriptionMatchRequestV1{
+		TenantID: request.GetTenantId(), AgentUUID: request.GetAgentId(), EventType: request.GetEventType(),
+		ResourceType: request.GetResourceType(), ResourceID: request.GetResourceId(),
+	})
+	if err != nil {
+		if errors.Is(err, application.ErrAgentSubscriptionInvalid) {
+			return nil, status.Error(codes.FailedPrecondition, "Agent Event Subscription policy is invalid")
+		}
+		return nil, status.Error(codes.Internal, "Agent Event Subscription lookup failed")
+	}
+	response := &agentv1.MatchEventSubscriptionsResponse{Subscriptions: make([]*agentv1.AgentEventSubscription, 0, len(items))}
+	for _, item := range items {
+		response.Subscriptions = append(response.Subscriptions, &agentv1.AgentEventSubscription{
+			SubscriptionId: item.SubscriptionUUID, DefinitionId: item.DefinitionUUID, DefinitionVersion: item.DefinitionVersion,
+			TenantId: item.TenantID, AgentId: item.AgentUUID, EventType: item.EventType,
+			ResourceType: item.ResourceType, ResourceId: item.ResourceID, FilterKind: string(item.FilterKind), FilterJson: item.FilterJSON,
+		})
+	}
+	return response, nil
 }
 
 func (s *Server) WithArtifacts(artifacts application.AgentArtifactServiceV1) (*Server, error) {
@@ -406,7 +447,8 @@ func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest)
 		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
 			TenantID: request.GetTenantId(), PrincipalUUID: request.GetPrincipalUserId(), AgentUUID: request.GetAgentId(),
 			DelegatedByUUID: request.GetPrincipalUserId(), TriggerType: request.GetTriggerType(), TriggerRef: request.GetTriggerRef(),
-			RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), EventID: request.GetEventId(),
+			SubscriptionUUID: request.GetSubscriptionId(),
+			RequestID:        request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), EventID: request.GetEventId(),
 		}, RuntimeID: "dipole-agent", Mode: "shadow",
 	})
 	if err != nil {

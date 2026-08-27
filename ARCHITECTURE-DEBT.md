@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-034：Event Subscription 缺少认证管理入口与语义预筛
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Trigger Engine、Definition 授权、模型成本、Gateway/前端配置与 Project Guardian 演示
+- **现状：** migration v28、sqlc Store、Core resolver 和受认证 Agent RPC 已持久化并解析绑定精确 Definition version 的订阅；TS Runtime 可显式使用 `all|message_contains_any` 在 EventLedger、Temporal 和模型前确定性过滤，并把稳定 Subscription ID 固定到 Task。Compose 与默认配置继续使用 `direct_target`。
+- **风险：** 当前仅能通过受控内部 Store 配置订阅，缺少面向用户的认证创建、版本化更新、撤销审计和 UI；确定性关键词无法覆盖语义等价表达。直接启用共享环境订阅模式会造成不可运维策略或相关事件漏触发。
+- **建议方向：** 先增加由 Gateway principal 派生 owner 的管理 API，固定 immutable version、Definition/scope 复核、撤销与审计，再用离线 Eval 比较规则、embedding、小模型分类器的 recall、precision、延迟和单事件成本；高成本 Agent 仍只接收预筛后的事件。
+- **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成管理与撤销链；语义预筛在确定性规则建立真实事件基线后评估，不能直接对每条消息调用大模型。
+
 ### AD-032：Artifact 对象写入后缺少孤儿清扫证据
 
 - **优先级：** P2

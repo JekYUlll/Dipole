@@ -16,6 +16,7 @@ message AdmitRunRequest {
   string event_id = 7;
   string runtime_id = 8;
   string mode = 9;
+  string subscription_id = 10;
 }
 
 message AdmitRunResponse {
@@ -245,7 +246,34 @@ message GetArtifactResponse {
   bytes content = 2;
 }
 
+message MatchEventSubscriptionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string agent_id = 3;
+  string event_type = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+}
+
+message AgentEventSubscription {
+  string subscription_id = 1;
+  string definition_id = 2;
+  uint64 definition_version = 3;
+  string tenant_id = 4;
+  string agent_id = 5;
+  string event_type = 6;
+  string resource_type = 7;
+  string resource_id = 8;
+  string filter_kind = 9;
+  bytes filter_json = 10;
+}
+
+message MatchEventSubscriptionsResponse {
+  repeated AgentEventSubscription subscriptions = 1;
+}
+
 service AgentCapabilityService {
+  rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);

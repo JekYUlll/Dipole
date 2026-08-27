@@ -36,6 +36,10 @@ type PersistentAgentRunAdmissionV1 struct {
 	now   agentPolicyClockV1
 }
 
+type agentEventSubscriptionReaderV1 interface {
+	GetEventSubscription(ctx context.Context, subscriptionUUID string) (*application.AgentEventSubscriptionV1, error)
+}
+
 var _ application.AgentInvocationResolverV1 = (*PersistentAgentInvocationResolverV1)(nil)
 
 func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1) (*PersistentAgentInvocationResolverV1, error) {
@@ -106,10 +110,14 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		if lookupErr != nil || authorizeDefinitionAtV1(latest, request, a.now()) != nil {
 			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 		}
+		if err := authorizeTriggerSubscriptionV1(ctx, a.store, request, latest, a.now()); err != nil {
+			return nil, err
+		}
 		task = application.AgentTaskV1{
 			TaskUUID: taskUUID, DefinitionUUID: latest.DefinitionUUID, DefinitionVersion: latest.Version,
 			TenantID: request.TenantID, PrincipalUUID: request.PrincipalUUID, AgentUUID: request.AgentUUID,
 			Status: application.AgentTaskStatusCreated, TriggerType: request.TriggerType, TriggerRef: request.TriggerRef, Goal: "handle_agent_trigger",
+			TriggerSubscriptionUUID: strings.TrimSpace(request.SubscriptionUUID),
 		}
 		created, createErr := a.store.CreateTask(ctx, task)
 		if createErr != nil {
@@ -175,6 +183,29 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	}, nil
 }
 
+func authorizeTriggerSubscriptionV1(ctx context.Context, store application.AgentPolicyStoreV1, request application.AgentExecutionPolicyStartV1, definition *application.AgentDefinitionVersionV1, at time.Time) error {
+	subscriptionUUID := strings.TrimSpace(request.SubscriptionUUID)
+	if subscriptionUUID == "" {
+		return nil
+	}
+	reader, ok := store.(agentEventSubscriptionReaderV1)
+	if !ok {
+		return fmt.Errorf("%w: Agent Event Subscription reader unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	subscription, err := reader.GetEventSubscription(ctx, subscriptionUUID)
+	if err != nil || subscription == nil {
+		return fmt.Errorf("%w: Agent Event Subscription unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	match := application.AgentEventSubscriptionMatchRequestV1{
+		TenantID: request.TenantID, AgentUUID: request.AgentUUID, EventType: request.TriggerType,
+		ResourceType: subscription.ResourceType, ResourceID: subscription.ResourceID,
+	}
+	if subscription.SubscriptionUUID != subscriptionUUID || !validSubscriptionDefinitionV1(definition, *subscription, match, at.UTC()) {
+		return fmt.Errorf("%w: Agent Event Subscription binding is invalid", application.ErrAgentExecutionPolicyDenied)
+	}
+	return nil
+}
+
 func (a *PersistentAgentRunAdmissionV1) Complete(ctx context.Context, taskUUID, runUUID, runtimeID, mode string) error {
 	return a.Finish(ctx, taskUUID, runUUID, runtimeID, mode, application.AgentRunStatusCompleted, "")
 }
@@ -223,7 +254,8 @@ func agentTaskMatchesStartV1(task application.AgentTaskV1, request application.A
 		strings.TrimSpace(task.PrincipalUUID) == strings.TrimSpace(request.PrincipalUUID) &&
 		strings.TrimSpace(task.AgentUUID) == strings.TrimSpace(request.AgentUUID) &&
 		strings.TrimSpace(task.TriggerType) == strings.TrimSpace(request.TriggerType) &&
-		strings.TrimSpace(task.TriggerRef) == strings.TrimSpace(request.TriggerRef)
+		strings.TrimSpace(task.TriggerRef) == strings.TrimSpace(request.TriggerRef) &&
+		strings.TrimSpace(task.TriggerSubscriptionUUID) == strings.TrimSpace(request.SubscriptionUUID)
 }
 
 var _ application.AgentExecutionPolicyV1 = (*StaticAgentExecutionPolicyV1)(nil)
@@ -317,11 +349,15 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 		if err := authorizeDefinitionAtV1(latest, request, p.now()); err != nil {
 			return nil, err
 		}
+		if err := authorizeTriggerSubscriptionV1(ctx, p.store, request, latest, p.now()); err != nil {
+			return nil, err
+		}
 		task = application.AgentTaskV1{
 			TaskUUID: taskUUID, DefinitionUUID: latest.DefinitionUUID, DefinitionVersion: latest.Version,
 			TenantID: strings.TrimSpace(request.TenantID), PrincipalUUID: strings.TrimSpace(request.PrincipalUUID),
 			AgentUUID: strings.TrimSpace(request.AgentUUID), Status: application.AgentTaskStatusCreated,
 			TriggerType: strings.TrimSpace(request.TriggerType), TriggerRef: strings.TrimSpace(request.TriggerRef), Goal: "handle_agent_trigger",
+			TriggerSubscriptionUUID: strings.TrimSpace(request.SubscriptionUUID),
 		}
 		created, createErr := p.store.CreateTask(ctx, task)
 		if createErr != nil {

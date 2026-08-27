@@ -8,10 +8,12 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -23,14 +25,27 @@ func (s resolverStub) Resolve(context.Context, string, string) (application.Agen
 
 type admissionStub struct {
 	result         application.AgentRunAdmissionV1
+	admitted       application.AgentRunAdmissionRequestV1
 	completedTask  string
 	completedRun   string
 	finishedStatus application.AgentRunStatusV1
 	finishedError  string
 }
 
-func (s *admissionStub) Admit(context.Context, application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
+func (s *admissionStub) Admit(_ context.Context, request application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
+	s.admitted = request
 	return &s.result, nil
+}
+
+type eventSubscriptionResolverStub struct {
+	request application.AgentEventSubscriptionMatchRequestV1
+	items   []application.AgentEventSubscriptionV1
+	err     error
+}
+
+func (s *eventSubscriptionResolverStub) MatchEventSubscriptions(_ context.Context, request application.AgentEventSubscriptionMatchRequestV1) ([]application.AgentEventSubscriptionV1, error) {
+	s.request = request
+	return s.items, s.err
 }
 
 func (s *admissionStub) Complete(_ context.Context, taskUUID, runUUID, _, _ string) error {
@@ -234,15 +249,61 @@ func TestAuthorizeTaskControlHidesForeignTaskAndRejectsContextPrincipal(t *testi
 }
 
 func TestAdmitRunReturnsServerDerivedIdentity(t *testing.T) {
-	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{result: application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}})
+	admission := &admissionStub{result: application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, admission)
 	response, err := server.AdmitRun(context.Background(), &agentv1.AdmitRunRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole", PrincipalUserId: "U100",
 		AgentId: "UAI", TriggerType: "message.direct.created", TriggerRef: "M100", EventId: "E1",
-		RuntimeId: "dipole-agent", Mode: "shadow",
+		RuntimeId: "dipole-agent", Mode: "shadow", SubscriptionId: "SUB-1",
 	})
-	if err != nil || response.GetTaskId() != "TASK-1" || response.GetRunId() != "RUN-1" || response.GetRunStatus() != "running" {
-		t.Fatalf("unexpected admission response: response=%+v err=%v", response, err)
+	if err != nil || response.GetTaskId() != "TASK-1" || response.GetRunId() != "RUN-1" || response.GetRunStatus() != "running" || admission.admitted.SubscriptionUUID != "SUB-1" {
+		t.Fatalf("unexpected admission response: response=%+v request=%+v err=%v", response, admission.admitted, err)
 	}
+}
+
+func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
+	resolver := &eventSubscriptionResolverStub{items: []application.AgentEventSubscriptionV1{{
+		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 2,
+		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		FilterKind: application.AgentSubscriptionFilterMessageContainsAny, FilterJSON: []byte(`{"terms":["incident"]}`),
+	}}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithEventSubscriptions(resolver)
+	request := &agentv1.MatchEventSubscriptionsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole", AgentId: "UAI",
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceId: "group:G1",
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.MatchEventSubscriptions(ctx, request)
+	})
+	if err != nil {
+		t.Fatalf("match Event Subscriptions: %v", err)
+	}
+	matched := response.(*agentv1.MatchEventSubscriptionsResponse)
+	if resolver.request.ResourceID != "group:G1" || len(matched.GetSubscriptions()) != 1 || matched.GetSubscriptions()[0].GetSubscriptionId() != "SUB-1" {
+		t.Fatalf("unexpected Subscription match: request=%+v response=%+v", resolver.request, matched)
+	}
+
+	request.Context.PrincipalUserId = "U999"
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.MatchEventSubscriptions(ctx, request)
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func invokeAuthenticatedAgentRPC(t *testing.T, caller string, handler func(context.Context) (any, error)) (any, error) {
+	t.Helper()
+	interceptor, err := grpcauth.NewUnaryServerInterceptor("secret", caller)
+	if err != nil {
+		t.Fatalf("new auth interceptor: %v", err)
+	}
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+		"x-dipole-caller-service", caller, "x-dipole-service-token", "secret",
+	))
+	return interceptor(ctx, nil, nil, func(ctx context.Context, _ any) (any, error) { return handler(ctx) })
 }
 
 func TestAdmitRunRejectsForgedRuntimeMode(t *testing.T) {

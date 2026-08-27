@@ -15,6 +15,7 @@ export interface AgentTaskWorkflowInput {
     aggregateId: string;
     occurredAt: string;
     payload: Readonly<Record<string, unknown>>;
+    subscriptionId?: string | undefined;
   };
 }
 
@@ -27,6 +28,7 @@ export interface AgentTaskAdmissionInput {
   eventId: string;
   requestId?: string;
   traceId?: string;
+  subscriptionId?: string;
 }
 
 export interface TemporalWorkflowHandle {
@@ -94,6 +96,7 @@ export class TemporalShadowTaskDispatcher implements ShadowTaskDispatcher {
         triggerType: event.eventType,
         triggerRef: event.aggregateId,
         eventId: event.eventId,
+        ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId }),
         ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
         ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
       }

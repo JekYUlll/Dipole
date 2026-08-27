@@ -48,9 +48,19 @@ type rpcAgentApprovalStub struct{}
 type rpcAgentTaskControlStub struct{}
 type rpcAgentWorkflowProjectionStub struct{}
 type rpcAgentWorkflowRepairStub struct{ operator string }
+type rpcAgentSubscriptionStub struct{}
 type rpcAgentArtifactStub struct {
 	artifact *application.AgentArtifactV1
 	body     []byte
+}
+
+func (rpcAgentSubscriptionStub) MatchEventSubscriptions(_ context.Context, request application.AgentEventSubscriptionMatchRequestV1) ([]application.AgentEventSubscriptionV1, error) {
+	return []application.AgentEventSubscriptionV1{{
+		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
+		TenantID: request.TenantID, AgentUUID: request.AgentUUID, Status: application.AgentSubscriptionStatusActive,
+		EventType: request.EventType, ResourceType: request.ResourceType, ResourceID: request.ResourceID,
+		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`),
+	}}, nil
 }
 
 func (s *rpcAgentArtifactStub) Create(_ context.Context, input application.AgentArtifactCreateV1) (*application.AgentArtifactV1, error) {
@@ -371,7 +381,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, artifacts)
+	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,6 +394,13 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = agentConnection.Close() })
 	agentClient := agentv1.NewAgentCapabilityServiceClient(agentConnection)
+	matched, err := agentClient.MatchEventSubscriptions(context.Background(), &agentv1.MatchEventSubscriptionsRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TenantId: "dipole", AgentId: "UAI",
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceId: "group:G1",
+	})
+	if err != nil || len(matched.GetSubscriptions()) != 1 || matched.GetSubscriptions()[0].GetSubscriptionId() != "SUB-1" {
+		t.Fatalf("Agent Event Subscription match=%+v err=%v", matched, err)
+	}
 	created, err := agentClient.CreateArtifact(context.Background(), &agentv1.CreateArtifactRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TenantId: "dipole", TaskId: "TASK-1", RunId: "RUN-1",
 		ArtifactType: "conversation_digest", Version: 1, Title: "Digest", MediaType: "text/markdown", Content: []byte("digest"), MetadataJson: []byte(`{}`),
