@@ -45,6 +45,20 @@ message.direct.created / message.group.created
 
 foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 listener 前验证完整 golden directory，随后暴露 `/livez`、`/readyz`、`/health`；host 仅允许 `0.0.0.0|127.0.0.1`，port 仅允许 `1..65535`。它没有 Kafka、Redis、Gateway transport 或业务存储依赖，也没有进入 Compose。
 
+## C++ 消息事件纯投影
+
+`event_projection` 将 broker adapter 提供的 `{topic, partition, offset, value}` 与显式策略输入转换为 `DeliveryEnvelope`，函数内部没有网络、Redis、时钟或进程级状态。Kafka 重放同一 record 会生成相同 batch ID、delivery ID、排序键、事件时间与 payload。
+
+当前只接受 `message.direct.created` 和 `message.group.created` 的 v1/minor-additive envelope，并保持现有 Go Delivery 语义：
+
+- 私聊向 target 生成 `chat.message`，普通群按原 recipient 顺序排除 sender。
+- `timeline_notify_shadow` 为每个完整消息追加 `sync.item.notify.v1`；legacy created 缺少 Seq 时仍可投递完整消息，但拒绝生成 Timeline 通知。
+- `hot_group` 生成 `group.message.notify`，沿用包含 sender 的完整 recipient 集合，并抑制逐消息 Timeline 通知。
+- 文件消息生成与 Go `FilePayload` 一致的下载路径和可选过期时间；事件未知字段继续允许 producer-first 发布。
+- channel/target 不匹配、未知 major version、无效时间戳、重复 recipient 和空群 fanout 均 fail closed；输出返回前再次执行 Delivery v1 validator。
+
+该投影尚未被 `serve` 调用。后续 librdkafka adapter 只负责 poll、record ownership、重平衡和 commit；Redis 热群分类与对照证据也保持在投影之外，避免 broker 生命周期改变业务映射。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
@@ -56,6 +70,8 @@ C++ shadow 阶段遵守以下门禁：
 3. 有界队列满时返回 `BACKPRESSURED`，不得静默丢弃；Kafka offset 策略在 primary 切流前单独故障演练。
 4. primary 阶段提交 offset 前必须收到节点 ACK 或写入可重放的持久边界；稳定 delivery ID 配合 Gateway 去重后才能开启自动重试。
 5. `OFFLINE` 可提交，消息事实与 Inbox 已持久化；客户端重连后从 Sync Timeline 恢复。
+
+当前主机具备 nlohmann/json 3.11.3；Ubuntu Noble 可提供 librdkafka 2.3.0 开发包，但本里程碑未安装或链接该依赖。真实 consumer 接入时必须把 librdkafka 版本写入构建镜像和运行证据，禁止依赖开发机隐式库。
 
 ## 进程与数据所有权
 

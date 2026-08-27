@@ -26,7 +26,9 @@ cmake --build "${build_dir}" --parallel
   --exclude-header-filter='.*generated.*' \
   -p "${build_dir}" \
   "${root_dir}/realtime-delivery/src/contract_validator.cpp" \
+  "${root_dir}/realtime-delivery/src/event_projection.cpp" \
   "${root_dir}/realtime-delivery/src/health_server.cpp" \
   "${root_dir}/realtime-delivery/src/main.cpp" \
-  "${root_dir}/realtime-delivery/tests/contract_test.cpp"
+  "${root_dir}/realtime-delivery/tests/contract_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/event_projection_test.cpp"
 ctest --test-dir "${build_dir}" --output-on-failure
