@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 var agentMCPIdentifier = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
@@ -18,11 +19,12 @@ type AgentMCPApplication interface {
 }
 
 type AgentMCPProxy struct {
-	target *url.URL
-	secret string
+	target   *url.URL
+	secret   string
+	resource string
 }
 
-func NewAgentMCPProxy(target, secret string) (*AgentMCPProxy, error) {
+func NewAgentMCPProxy(target, secret, resource string) (*AgentMCPProxy, error) {
 	parsed, err := url.Parse(strings.TrimSpace(target))
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return nil, errors.New("Agent MCP target is invalid")
@@ -30,7 +32,10 @@ func NewAgentMCPProxy(target, secret string) (*AgentMCPProxy, error) {
 	if strings.TrimSpace(secret) == "" {
 		return nil, errors.New("Agent MCP secret is required")
 	}
-	return &AgentMCPProxy{target: parsed, secret: secret}, nil
+	if err := service.ValidateAgentMCPResource(resource); err != nil {
+		return nil, errors.New("Agent MCP resource is invalid")
+	}
+	return &AgentMCPProxy{target: parsed, secret: secret, resource: strings.TrimSpace(resource)}, nil
 }
 
 func (p *AgentMCPProxy) ServeMCP(writer http.ResponseWriter, request *http.Request, principalUUID, taskUUID, runUUID string) {
@@ -49,9 +54,13 @@ func (p *AgentMCPProxy) ServeMCP(writer http.ResponseWriter, request *http.Reque
 		proxied.Header.Del("X-Dipole-Caller-Service")
 		proxied.Header.Del("X-Dipole-Service-Token")
 		proxied.Header.Del("X-Dipole-Principal-User-ID")
+		proxied.Header.Del("X-Dipole-OAuth-Resource")
+		proxied.Header.Del("X-Dipole-OAuth-Scope")
 		proxied.Header.Set("X-Dipole-Caller-Service", "dipole-gateway")
 		proxied.Header.Set("X-Dipole-Service-Token", p.secret)
 		proxied.Header.Set("X-Dipole-Principal-User-ID", principalUUID)
+		proxied.Header.Set("X-Dipole-OAuth-Resource", p.resource)
+		proxied.Header.Set("X-Dipole-OAuth-Scope", service.AgentMCPReadScope)
 		ids := correlation.FromContext(proxied.Context())
 		proxied.Header.Set(correlation.RequestHeader, ids.RequestID)
 		proxied.Header.Set(correlation.TraceHeader, ids.TraceID)

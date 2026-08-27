@@ -357,7 +357,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Gateway 增加独立于旧总开关的 Redis principal 限流：GET/POST 跨 Task/Run/实例共享额度，Redis 故障 fail closed，DELETE 保留 Session 清理能力。
   - [x] 增加默认关闭的 Node trace SDK + OTLP/HTTP protobuf exporter，使用标准 OTel endpoint/protocol/sampler 参数、ParentBased 比例采样、低敏 span limit 和 graceful flush。
   - [x] 增加默认关闭的 Collector + Tempo 运维 profile、24 小时 local retention、低基数告警、trace/audit runbook 和真实 trace 查询 smoke。
-  - [ ] 完成 OAuth resource indicator、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool Approval 和 Elicitation adapter（`AD-037`）。
+  - [x] 增加第一方 consent exchange 和 15 分钟 MCP 专用 JWT，以 canonical `aud`、只读 `scope`、`token_use` 及 Gateway/Runtime 双重验证阻止令牌混用；部署 URI 可统一覆盖且入口继续默认关闭。
+  - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool Approval 和 Elicitation adapter（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
   - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。
   - [x] 使用 sqlc/TS 共享只读查询将真实 Shadow Task 转换为五类 observation；Task/Run 摘要绑定 Suite，缺失终态、指标、价格或逐 attempt 耗时证据时 fail closed。

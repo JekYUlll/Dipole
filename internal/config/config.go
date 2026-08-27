@@ -94,9 +94,10 @@ type Elasticsearch struct {
 }
 
 type Auth struct {
-	TokenTTLHours int    `mapstructure:"token_ttl_hours"`
-	JWTSecret     string `mapstructure:"jwt_secret"`
-	JWTIssuer     string `mapstructure:"jwt_issuer"`
+	TokenTTLHours    int    `mapstructure:"token_ttl_hours"`
+	JWTSecret        string `mapstructure:"jwt_secret"`
+	JWTIssuer        string `mapstructure:"jwt_issuer"`
+	AgentMCPResource string `mapstructure:"agent_mcp_resource"`
 }
 
 type Kafka struct {
@@ -343,6 +344,7 @@ func Load() error {
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
+		v.SetDefault("auth.agent_mcp_resource", "https://dipole.local/api/v1/agent/mcp")
 		v.SetDefault("redis.mode", "single")
 		v.SetDefault("cassandra.enabled", false)
 		v.SetDefault("cassandra.hosts", []string{"127.0.0.1:19042"})
@@ -804,6 +806,7 @@ func AuthConfig() Auth {
 	auth.TokenTTLHours = cfg.GetInt("auth.token_ttl_hours")
 	auth.JWTSecret = cfg.GetString("auth.jwt_secret")
 	auth.JWTIssuer = cfg.GetString("auth.jwt_issuer")
+	auth.AgentMCPResource = cfg.GetString("auth.agent_mcp_resource")
 
 	return auth
 }

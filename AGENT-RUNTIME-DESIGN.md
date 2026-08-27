@@ -105,7 +105,7 @@ G4 MCP foundation 使用官方拆分版 TypeScript SDK v2。Server 只将显式�
 
 每次 Tool 调用先经 additive Core RPC 写入 migration v30 的 `agent_tool_invocations`，只有 durable begin 成功后才执行 Capability；完成或失败只能从 `running` 转换一次。审计只保存哈希、大小、耗时和稳定错误码，不保存参数、结果或内部异常正文。TS Runtime 同时通过 OpenTelemetry API 创建 ToolCall span；当前不装配 SDK/exporter，部署方启用观测后仍需遵守正文禁入 span 的约束。
 
-Gateway 在 JWT principal 解析后、Runtime 代理前执行 MCP 专用 Redis 固定窗口限流。GET/POST 使用 `rate:agent_mcp:{principal}`，因此更换 Task、Run、方法或 Gateway 副本不会获得新额度；DELETE 不计数，确保超限后仍能释放 Streamable HTTP Session。该安全限流独立于旧 `rate_limit.enabled` 开关，Redis 不可用、额度或窗口非法时返回 429 并给出 `Retry-After`。OAuth resource indicator、外部 Server 凭据、exporter/告警、write Tool 与 Elicitation adapter 继续由 `AD-037` 跟踪。
+Gateway 在 JWT principal 解析后、Runtime 代理前执行 MCP 专用 Redis 固定窗口限流。GET/POST 使用 `rate:agent_mcp:{principal}`，因此更换 Task、Run、方法或 Gateway 副本不会获得新额度；DELETE 不计数，确保超限后仍能释放 Streamable HTTP Session。该安全限流独立于旧 `rate_limit.enabled` 开关，Redis 不可用、额度或窗口非法时返回 429 并给出 `Retry-After`。第一方调用需先以 session 对 canonical resource 和只读 scope 显式 consent，取得 15 分钟 `aud/scope/token_use` 绑定的 MCP JWT；Gateway 与 Runtime 双重验证且不透传客户端令牌。通用 OAuth 2.1 discovery/PKCE、外部 Server 凭据、生产 trace、write Tool 与 Elicitation adapter 继续由 `AD-037` 跟踪。
 
 ### Agent Task
 

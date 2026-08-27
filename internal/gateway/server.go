@@ -91,7 +91,10 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
 	if dependencies.AgentMCP != nil {
-		auth := middleware.Auth(tokenService, userFinder)
+		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
+			return nil, errors.New("gateway Agent MCP resource is invalid")
+		}
+		auth := middleware.AgentMCPAuth(tokenService, userFinder)
 		agentMCPLimiter := dependencies.AgentMCPLimiter
 		if agentMCPLimiter == nil {
 			agentMCPLimiter = platformRateLimit.NewLimiter()

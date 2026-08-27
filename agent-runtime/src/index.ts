@@ -40,11 +40,18 @@ const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerC
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
 const mcpSecret = process.env.DIPOLE_AGENT_MCP_SERVER_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
+const mcpResource = process.env.DIPOLE_AGENT_MCP_RESOURCE?.trim() || "https://dipole.local/api/v1/agent/mcp";
 if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.enabled || controlSecret.trim().length === 0)) {
   throw new Error("Agent Task controls require Temporal, Agent Capability RPC, and a control secret");
 }
 if (mcpEnabled && (!shadowConfig.capabilityRpc.enabled || mcpSecret.trim().length === 0)) {
   throw new Error("Agent MCP Server requires Agent Capability RPC and an MCP server secret");
+}
+if (mcpEnabled) {
+  const resource = new URL(mcpResource);
+  if ((resource.protocol !== "https:" && resource.protocol !== "http:") || resource.username !== "" || resource.password !== "" || resource.hash !== "" || resource.search !== "") {
+    throw new Error("Agent MCP resource must be a canonical HTTP(S) URI without credentials, query, or fragment");
+  }
 }
 observabilityRuntime.start();
 let temporalRuntime: TemporalWorkerRuntime | undefined;
@@ -72,6 +79,7 @@ const controlService = controlEnabled
 const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));
 const mcpAuthExtraSchema = z.object({
+  resource: z.literal(mcpResource),
   taskId: z.string().trim().min(1),
   runId: z.string().trim().min(1),
   requestId: z.string().trim().min(1).optional(),
@@ -101,7 +109,7 @@ const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHa
 const server = buildServer(
   { isReady: () => ready },
   controlService === undefined ? undefined : { secret: controlSecret, service: controlService },
-  mcpHandler === undefined ? undefined : { secret: mcpSecret, handler: mcpHandler }
+  mcpHandler === undefined ? undefined : { secret: mcpSecret, resource: mcpResource, handler: mcpHandler }
 );
 const stop = (): Promise<void> => {
   stopPromise ??= (async () => {

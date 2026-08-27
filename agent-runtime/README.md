@@ -35,6 +35,7 @@ MCP Server 网络入口默认关闭。受控环境需要同时启用 Runtime 与
 
 ```bash
 DIPOLE_AGENT_MCP_SERVER_ENABLED=true
+DIPOLE_AGENT_MCP_RESOURCE=https://dipole.example.com/api/v1/agent/mcp
 DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
 ```
 

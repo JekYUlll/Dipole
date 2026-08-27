@@ -42,6 +42,8 @@ auth:
   token_ttl_hours: 168
   jwt_secret: dipole-dev-jwt-secret-change-me
   jwt_issuer: dipole
+  # Canonical public MCP resource URI. Override together with the Agent Runtime in shared environments.
+  agent_mcp_resource: https://dipole.local/api/v1/agent/mcp
 
 mysql:
   host: mysql
