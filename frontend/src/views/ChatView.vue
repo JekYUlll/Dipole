@@ -1755,7 +1755,7 @@ onMounted(async () => {
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
 	await chat.syncMessages().catch(() => {})
 	await chat.recoverGroupMessages().catch(() => {})
-  ws.connect(auth.token)
+  ws.connect(auth.token, auth.currentUser!.uuid)
   setupMediaObserver()
 })
 
