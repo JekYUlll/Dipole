@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 `contracts/events/message/v1` 语言中立事件契约，分别描述 pre-persistence `send_requested` 与 confirmed Message fact；统一 Gateway、Cassandra、Sync、Search、Backfill 和 Replay 的 v1 decoder，并验证 legacy created 默认值、minor additive 字段、事件通道与 producer schema drift。
 - 增加真实 Vue 应用共享设备 E2E：在生产默认 IndexedDB 同时保存 U1/U2，通过 Axios 401 和 WebSocket `session.kicked` 两条生产链路终止 U1；Chromium、Firefox、WebKit 均验证凭据与 U1 被清理、U2 Message/Cursor 保留。
 - 增加 `scripts/check-web-sync-real-quota.sh`：在无特权 128 MiB tmpfs 中运行独立 Chromium profile，以随机不可压缩正文触发真实 IndexedDB 容量拒绝；释放 reserve file 后验证失败页未推进安全 Cursor，Message 与 manifest 保持一致。
 - Web IndexedDB 验收增加真实 Chromium 主进程强退场景：独立 persistent profile 在生产 `commitPage` 仍 pending 时触发 `Browser.crash`，以同一 profile 重启后验证 Message、manifest 与安全 Cursor 只能整页提交或整页回滚。

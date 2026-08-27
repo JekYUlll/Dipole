@@ -86,6 +86,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
 - [x] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
 - [ ] 为核心事件建立版本化契约和新旧版本兼容测试。
+- [x] 首批核心 Message fact/send-requested 已建立语言中立 v1 JSON Schema、统一 decoder、producer drift 和新旧版本兼容测试；Group、Session、Contact 等领域事件继续按同一模式收敛。
 - [ ] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout。
 - [ ] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
 - [ ] 建立服务级健康检查、指标、结构化日志和最小告警规则。

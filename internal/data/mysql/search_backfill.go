@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -63,8 +62,8 @@ func (s *SearchBackfillSource) ListAfter(ctx context.Context, afterID, throughID
 		if envelope.EventType != row.EventType {
 			return nil, fmt.Errorf("Search backfill outbox event %d type mismatch: row=%s envelope=%s", row.ID, row.EventType, envelope.EventType)
 		}
-		var payload service.MessageEventPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+		if err != nil {
 			return nil, fmt.Errorf("decode Search backfill payload %d: %w", row.ID, err)
 		}
 		mutation, err := service.MessageSearchMutation(envelope.EventType, payload)

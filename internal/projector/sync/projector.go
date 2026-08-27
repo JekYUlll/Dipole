@@ -2,7 +2,6 @@ package syncprojector
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -50,8 +49,8 @@ func projectionFromEvent(event platformkafka.Event) (*model.SyncProjection, bool
 	if event.Envelope == nil {
 		return nil, false, errors.New("Kafka envelope is required")
 	}
-	var payload service.MessageEventPayload
-	if err := json.Unmarshal(event.Envelope.Payload, &payload); err != nil {
+	payload, err := service.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
+	if err != nil {
 		return nil, false, fmt.Errorf("decode Sync projection payload: %w", err)
 	}
 	return service.MessageSyncProjection(event.Envelope.EventID, event.Envelope.EventType, payload)

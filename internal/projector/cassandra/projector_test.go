@@ -9,7 +9,10 @@ import (
 
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	"github.com/JekYUlll/Dipole/internal/service"
 )
+
+type createdMessagePayload = service.MessageEventPayload
 
 type stubTimelineAppender struct {
 	projection cassandradata.TimelineProjection
@@ -106,6 +109,7 @@ func TestProjectorPropagatesTimelineFailure(t *testing.T) {
 		MessageID:       "M1",
 		ConversationKey: "direct:U1:U2",
 		MessageSeq:      1,
+		SenderUUID:      "U1",
 		TargetType:      0,
 		SentAt:          time.Now().UTC(),
 	}

@@ -14,15 +14,16 @@ func TestDecodeMessageEventPayloadPreservesSyncFanoutPresence(t *testing.T) {
 		payload   string
 		wantValue *bool
 	}{
-		{name: "legacy field omitted", payload: `{"message_id":"M1"}`},
-		{name: "hot group explicitly disabled", payload: `{"message_id":"M2","sync_fanout":false}`, wantValue: boolPointer(false)},
-		{name: "normal group explicitly enabled", payload: `{"message_id":"M3","sync_fanout":true}`, wantValue: boolPointer(true)},
+		{name: "legacy field omitted", payload: `{"message_id":"M1","sender_uuid":"U1"}`},
+		{name: "fanout explicitly disabled", payload: `{"message_id":"M2","sender_uuid":"U1","sync_fanout":false}`, wantValue: boolPointer(false)},
+		{name: "fanout explicitly enabled", payload: `{"message_id":"M3","sender_uuid":"U1","sync_fanout":true}`, wantValue: boolPointer(true)},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decoded, err := decodeMessageEventPayload(platformKafka.Event{Envelope: &platformKafka.Envelope{
-				Payload: json.RawMessage(tt.payload),
+				EventType: "message.direct.created",
+				Payload:   json.RawMessage(tt.payload),
 			}})
 			if err != nil {
 				t.Fatalf("decode message event payload: %v", err)
@@ -46,14 +47,15 @@ func TestDecodeMessageEventPayloadPreservesOptionalConversationSequence(t *testi
 		payload string
 		want    uint64
 	}{
-		{name: "legacy field omitted", payload: `{"message_id":"M1"}`},
-		{name: "sequence present", payload: `{"message_id":"M2","message_seq":42}`, want: 42},
+		{name: "legacy field omitted", payload: `{"message_id":"M1","sender_uuid":"U1"}`},
+		{name: "sequence present", payload: `{"message_id":"M2","sender_uuid":"U1","message_seq":42}`, want: 42},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decoded, err := decodeMessageEventPayload(platformKafka.Event{Envelope: &platformKafka.Envelope{
-				Payload: json.RawMessage(tt.payload),
+				EventType: "message.direct.created",
+				Payload:   json.RawMessage(tt.payload),
 			}})
 			if err != nil {
 				t.Fatalf("decode message event payload: %v", err)

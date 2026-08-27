@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -55,8 +54,8 @@ func (s *SyncReplaySource) ListAfter(ctx context.Context, afterID, throughID uin
 		if envelope.EventType != row.EventType {
 			return nil, fmt.Errorf("Sync replay outbox event %d type mismatch: row=%s envelope=%s", row.ID, row.EventType, envelope.EventType)
 		}
-		var payload service.MessageEventPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+		if err != nil {
 			return nil, fmt.Errorf("decode Sync replay payload %d: %w", row.ID, err)
 		}
 		projection, fanout, err := service.MessageSyncProjection(envelope.EventID, envelope.EventType, payload)
