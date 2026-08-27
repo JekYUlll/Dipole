@@ -2,6 +2,21 @@
 
 本文档滚动记录可重复的性能基线。微基准用于比较协议与实现开销，端到端基准用于固定消息接受、持久化、投递、Kafka lag 与 Inbox 写放大行为。
 
+## 2026-08-27：AD-005 Conversation Projection Amplification
+
+候选提交 `2202f1f5dd022a27603656d32a205ed9939de9cf` 增加 `dipole_conversation_projection_writes_total`，三个 Core 节点分别按 `direct_message|group_message|group_init` 计数成功 SQL upsert。基准脚本在 workload 前后求和取差值，并以同一 run namespace 的全部消息作为分母。
+
+| Scenario | Members | Measured messages | Conversation writes/message | Inbox writes/message | Delivery | P95 | Kafka settled lag |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Regular | 20 | 20 | 20 | 20 | 380/380 | 1924.15 ms | 0 |
+| Hot | 20 | 20 + 1 warm-up | 20 | 0 | 380/380 | 668.80 ms | 0 |
+| Regular | 100 | 10 | 100 | 100 | 990/990 | 10065.00 ms | 0 |
+| Hot | 100 | 10 + 1 warm-up | 100 | 0 | 990/990 | 1853.00 ms | 0 |
+
+结果确认普通群与热群的 Conversation State 写扩散都随成员数线性增长。热群将 Inbox 扩散降为零后，本次 100 人 P95 明显下降；两条链路仍包含投递策略差异，因此该对照不足以把剩余延迟单独归因于 Conversation SQL。AD-005 继续处理中，下一阶段需补充 projection 级数据库耗时，再决定读扩散或批处理。
+
+规范化 JSON、参数、解释边界与 SHA-256 位于 `benchmarks/ad005-2026-08-27/`。节点在采集后已恢复默认热群阈值 `200/50`。
+
 ## 2026-08-27：G0 End-to-End Message Flow
 
 环境：

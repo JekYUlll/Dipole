@@ -132,6 +132,7 @@ func (f *stubConversationUserFinder) ListByUUIDs(uuids []string) ([]*model.User,
 type stubConversationGroupRepository struct {
 	groupsByUUID  map[string]*model.Group
 	membersByPair map[string]*model.GroupMember
+	members       []*model.GroupMember
 }
 
 func (r *stubConversationGroupRepository) GetByUUID(groupUUID string) (*model.Group, error) {
@@ -139,7 +140,7 @@ func (r *stubConversationGroupRepository) GetByUUID(groupUUID string) (*model.Gr
 }
 
 func (r *stubConversationGroupRepository) ListMembers(groupUUID string) ([]*model.GroupMember, error) {
-	return nil, nil
+	return r.members, nil
 }
 
 func (r *stubConversationGroupRepository) GetMember(groupUUID, userUUID string) (*model.GroupMember, error) {
@@ -201,6 +202,43 @@ func TestConversationServiceUpdateDirectConversationsSuccess(t *testing.T) {
 	}
 	if repo.upsertCalls[1].userUUID != "U200" || repo.upsertCalls[1].targetUUID != "U100" || repo.upsertCalls[1].unreadIncrement != 1 {
 		t.Fatalf("unexpected target upsert call: %+v", repo.upsertCalls[1])
+	}
+}
+
+func TestConversationServiceCountsSuccessfulProjectionWrites(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubConversationRepository{}
+	groupRepo := &stubConversationGroupRepository{members: []*model.GroupMember{
+		{UserUUID: "U100"},
+		{UserUUID: "U200"},
+	}}
+	conversationService := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+	writes := map[string]int{}
+	conversationService.SetProjectionWriteObserver(func(projection string) {
+		writes[projection]++
+	})
+
+	direct := &model.Message{SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect}
+	if err := conversationService.UpdateDirectConversations(direct); err != nil {
+		t.Fatalf("update direct conversations: %v", err)
+	}
+	if err := conversationService.InitGroupConversations("G100", []string{"U100", "U200"}, time.Now().UTC()); err != nil {
+		t.Fatalf("initialize group conversations: %v", err)
+	}
+	group := &model.Message{SenderUUID: "U100", TargetUUID: "G100", TargetType: model.MessageTargetGroup}
+	if err := conversationService.UpdateGroupConversations(group); err != nil {
+		t.Fatalf("update group conversations: %v", err)
+	}
+
+	for projection, want := range map[string]int{
+		"direct_message": 2,
+		"group_init":     2,
+		"group_message":  2,
+	} {
+		if got := writes[projection]; got != want {
+			t.Fatalf("projection %s writes = %v, want %v (all metrics: %v)", projection, got, want, writes)
+		}
 	}
 }
 

@@ -4,8 +4,11 @@ import json
 from pathlib import Path
 
 
-SCHEMA_VERSION = "dipole.performance.baseline.v1"
-OPERATIONS_SCHEMA_VERSION = "dipole.performance.operations.v1"
+SCHEMA_VERSION = "dipole.performance.baseline.v2"
+OPERATIONS_SCHEMA_VERSIONS = {
+    "dipole.performance.operations.v1",
+    "dipole.performance.operations.v2",
+}
 
 
 def _metric_values(summary, name):
@@ -37,8 +40,67 @@ def _storage_section(storage, name):
     }
 
 
+def _nonnegative_int(value, field):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{field} must be a non-negative integer")
+    return value
+
+
+def _conversation_state_section(storage, required):
+    values = storage.get("conversation_state")
+    if not isinstance(values, dict):
+        if required:
+            raise ValueError("operations v2 requires storage.conversation_state")
+        return {
+            "available": False,
+            "rows_touched": None,
+            "messages_observed": None,
+            "write_operations": None,
+            "writes_per_observed_message": None,
+            "projection_writes": None,
+            "counter_source": None,
+        }
+
+    expected_fields = {
+        "rows_touched",
+        "messages_observed",
+        "write_operations",
+        "projection_writes",
+        "counter_source",
+    }
+    if set(values) != expected_fields:
+        raise ValueError("storage.conversation_state fields do not match operations v2")
+    rows_touched = _nonnegative_int(values["rows_touched"], "rows_touched")
+    messages_observed = _nonnegative_int(values["messages_observed"], "messages_observed")
+    write_operations = _nonnegative_int(values["write_operations"], "write_operations")
+    raw_projection_writes = values["projection_writes"]
+    projection_names = {"direct_message", "group_message", "group_init"}
+    if not isinstance(raw_projection_writes, dict) or set(raw_projection_writes) != projection_names:
+        raise ValueError("projection_writes fields do not match operations v2")
+    projection_writes = {
+        name: _nonnegative_int(raw_projection_writes[name], f"projection_writes.{name}")
+        for name in sorted(projection_names)
+    }
+    if write_operations != projection_writes["direct_message"] + projection_writes["group_message"]:
+        raise ValueError("write_operations must equal direct_message plus group_message writes")
+    if values["counter_source"] != "dipole_conversation_projection_writes_total":
+        raise ValueError("unsupported conversation counter_source")
+    return {
+        "available": True,
+        "rows_touched": rows_touched,
+        "messages_observed": messages_observed,
+        "write_operations": write_operations,
+        "writes_per_observed_message": _rounded(
+            write_operations / messages_observed if messages_observed > 0 else None
+        ),
+        "projection_writes": projection_writes,
+        "counter_source": values["counter_source"],
+    }
+
+
 def build_report(summary, operations):
-    if operations.get("schema_version") != OPERATIONS_SCHEMA_VERSION:
+    source_schema_version = operations.get("schema_version")
+    if source_schema_version not in OPERATIONS_SCHEMA_VERSIONS:
         raise ValueError("unsupported operations schema_version")
 
     attempted_values = _metric_values(summary, "msg_attempted_total")
@@ -64,6 +126,7 @@ def build_report(summary, operations):
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "source_schema_version": source_schema_version,
         "run_id": operations.get("run_id", ""),
         "scenario": operations.get("scenario", ""),
         "captured_at": operations.get("captured_at"),
@@ -94,6 +157,10 @@ def build_report(summary, operations):
         "storage": {
             "direct": _storage_section(storage, "direct"),
             "group": _storage_section(storage, "group"),
+            "conversation_state": _conversation_state_section(
+                storage,
+                required=source_schema_version == "dipole.performance.operations.v2",
+            ),
         },
         "kafka": {
             "samples": lag_samples,
@@ -145,6 +212,7 @@ def render_markdown(report):
     latency = report["latency_ms"]
     direct = report["storage"]["direct"]
     group = report["storage"]["group"]
+    conversation_state = report["storage"]["conversation_state"]
     kafka = report["kafka"]
     delivery = report["delivery"]
     workload = report["workload"]
@@ -205,6 +273,20 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | --- | ---: | ---: | ---: |
 | Direct | {direct['messages']} | {direct['inbox_rows']} | {_format_number(direct['inbox_write_amplification'])} |
 | Group | {group['messages']} | {group['inbox_rows']} | {_format_number(group['inbox_write_amplification'])} |
+
+## Conversation State
+
+| Metric | Value |
+| --- | ---: |
+| Evidence available | {'yes' if conversation_state['available'] else 'no'} |
+| Conversation rows touched | {conversation_state['rows_touched'] if conversation_state['rows_touched'] is not None else 'N/A'} |
+| Conversation messages observed | {conversation_state['messages_observed'] if conversation_state['messages_observed'] is not None else 'N/A'} |
+| Conversation write operations | {conversation_state['write_operations'] if conversation_state['write_operations'] is not None else 'N/A'} |
+| Conversation writes / observed message | {_format_number(conversation_state['writes_per_observed_message'])} |
+| Direct-message projection writes | {conversation_state['projection_writes']['direct_message'] if conversation_state['projection_writes'] is not None else 'N/A'} |
+| Group-message projection writes | {conversation_state['projection_writes']['group_message'] if conversation_state['projection_writes'] is not None else 'N/A'} |
+| Group-init projection writes | {conversation_state['projection_writes']['group_init'] if conversation_state['projection_writes'] is not None else 'N/A'} |
+| Counter source | `{conversation_state['counter_source'] or 'N/A'}` |
 
 ## Kafka Lag
 

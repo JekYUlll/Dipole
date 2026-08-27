@@ -31,6 +31,7 @@ HOT_GROUP_MEMBER_COUNT_THRESHOLD="${HOT_GROUP_MEMBER_COUNT_THRESHOLD:-}"
 HOT_GROUP_MESSAGE_THRESHOLD="${HOT_GROUP_MESSAGE_THRESHOLD:-}"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
 KAFKA_SERVICE="${KAFKA_SERVICE:-kafka}"
+CONVERSATION_METRICS_SERVICES="${CONVERSATION_METRICS_SERVICES:-dipole-node1 dipole-node2 dipole-node3}"
 
 SUMMARY_JSON="${RESULTS_DIR}/${RUN_ID}.k6-summary.json"
 OPERATIONS_JSON="${RESULTS_DIR}/${RUN_ID}.operations.json"
@@ -85,6 +86,31 @@ sample_kafka_lag() {
   printf '%s\n' "${LAST_KAFKA_LAG}" >>"${LAG_FILE}"
 }
 
+sample_conversation_writes() {
+  local projection="$1"
+  local total=0
+  local service metrics value
+  for service in ${CONVERSATION_METRICS_SERVICES}; do
+    metrics="$(docker compose -f "${COMPOSE_FILE}" exec -T "${service}" \
+      wget -q -O - http://127.0.0.1:9100/metrics)"
+    value="$(printf '%s\n' "${metrics}" | awk -v projection="${projection}" '
+      $1 == "dipole_conversation_projection_writes_total{projection=\"" projection "\"}" {
+        total += $2
+        found = 1
+      }
+      END {
+        if (!found) exit 1
+        printf "%.0f", total
+      }')"
+    total=$((total + value))
+  done
+  printf '%s\n' "${total}"
+}
+
+conversation_direct_before="$(sample_conversation_writes direct_message)"
+conversation_group_before="$(sample_conversation_writes group_message)"
+conversation_init_before="$(sample_conversation_writes group_init)"
+
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
 k6 run \
@@ -125,19 +151,37 @@ while [[ "${LAST_KAFKA_LAG}" != "0" ]] && (( $(date +%s) - settle_started < LAG_
 done
 cat "${RUN_LOG}"
 
+conversation_direct_after="$(sample_conversation_writes direct_message)"
+conversation_group_after="$(sample_conversation_writes group_message)"
+conversation_init_after="$(sample_conversation_writes group_init)"
+for projection in direct group init; do
+  before_var="conversation_${projection}_before"
+  after_var="conversation_${projection}_after"
+  if (( ${!after_var} < ${!before_var} )); then
+    echo "conversation projection counter reset during benchmark: ${projection}" >&2
+    exit 1
+  fi
+done
+conversation_direct_writes=$((conversation_direct_after - conversation_direct_before))
+conversation_group_writes=$((conversation_group_after - conversation_group_before))
+conversation_init_writes=$((conversation_init_after - conversation_init_before))
+conversation_message_writes=$((conversation_direct_writes + conversation_group_writes))
+
 if [[ ! -s "${SUMMARY_JSON}" ]]; then
   echo "k6 did not produce ${SUMMARY_JSON}" >&2
   exit "${k6_status}"
 fi
 
-read -r direct_messages direct_inbox group_messages group_inbox < <(
+read -r direct_messages direct_inbox group_messages group_inbox conversation_messages conversation_rows < <(
   docker compose -f "${COMPOSE_FILE}" exec -T "${MYSQL_SERVICE}" \
     mysql --batch --skip-column-names -uroot -proot123 dipole -e "
       SELECT
         (SELECT COUNT(*) FROM messages WHERE target_type = 0 AND content LIKE 'bench:${RUN_ID}:%'),
         (SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid = i.message_uuid WHERE m.target_type = 0 AND m.content LIKE 'bench:${RUN_ID}:%'),
         (SELECT COUNT(*) FROM messages WHERE target_type = 1 AND content LIKE 'bench:${RUN_ID}:%'),
-        (SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid = i.message_uuid WHERE m.target_type = 1 AND m.content LIKE 'bench:${RUN_ID}:%');" \
+        (SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid = i.message_uuid WHERE m.target_type = 1 AND m.content LIKE 'bench:${RUN_ID}:%'),
+        (SELECT COUNT(*) FROM messages WHERE LEFT(client_message_id, CHAR_LENGTH('${RUN_ID}') + 1) = CONCAT('${RUN_ID}', '-')),
+        (SELECT COUNT(*) FROM conversations c JOIN messages m ON m.uuid = c.last_message_uuid WHERE LEFT(m.client_message_id, CHAR_LENGTH('${RUN_ID}') + 1) = CONCAT('${RUN_ID}', '-'));" \
     2>/dev/null
 )
 
@@ -167,8 +211,14 @@ jq -n \
   --argjson group_messages "${group_messages}" \
   --argjson group_inbox "${group_inbox}" \
   --argjson kafka_lag_samples "${lag_samples}" \
+  --argjson conversation_rows "${conversation_rows}" \
+  --argjson conversation_messages "${conversation_messages}" \
+  --argjson conversation_message_writes "${conversation_message_writes}" \
+  --argjson conversation_direct_writes "${conversation_direct_writes}" \
+  --argjson conversation_group_writes "${conversation_group_writes}" \
+  --argjson conversation_init_writes "${conversation_init_writes}" \
   '{
-    schema_version: "dipole.performance.operations.v1",
+    schema_version: "dipole.performance.operations.v2",
     run_id: $run_id,
     scenario: $scenario,
     captured_at: $captured_at,
@@ -196,7 +246,18 @@ jq -n \
     },
     storage: {
       direct: {messages: $direct_messages, inbox_rows: $direct_inbox},
-      group: {messages: $group_messages, inbox_rows: $group_inbox}
+      group: {messages: $group_messages, inbox_rows: $group_inbox},
+      conversation_state: {
+        rows_touched: $conversation_rows,
+        messages_observed: $conversation_messages,
+        write_operations: $conversation_message_writes,
+        projection_writes: {
+          direct_message: $conversation_direct_writes,
+          group_message: $conversation_group_writes,
+          group_init: $conversation_init_writes
+        },
+        counter_source: "dipole_conversation_projection_writes_total"
+      }
     },
     kafka_lag_samples: $kafka_lag_samples
   }' >"${OPERATIONS_JSON}"

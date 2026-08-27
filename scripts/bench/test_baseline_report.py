@@ -21,7 +21,7 @@ class BaselineReportTest(unittest.TestCase):
             }
         }
         self.operations = {
-            "schema_version": "dipole.performance.operations.v1",
+            "schema_version": "dipole.performance.operations.v2",
             "run_id": "g0-20260827",
             "scenario": "mixed",
             "environment": {"git_commit": "abc123", "cpu": "test cpu", "topology": "dist"},
@@ -39,6 +39,17 @@ class BaselineReportTest(unittest.TestCase):
             "storage": {
                 "direct": {"messages": 100, "inbox_rows": 100},
                 "group": {"messages": 20, "inbox_rows": 380},
+                "conversation_state": {
+                    "rows_touched": 20,
+                    "messages_observed": 12,
+                    "write_operations": 240,
+                    "projection_writes": {
+                        "direct_message": 40,
+                        "group_message": 200,
+                        "group_init": 20,
+                    },
+                    "counter_source": "dipole_conversation_projection_writes_total",
+                },
             },
             "kafka_lag_samples": [0, 7, 3, 0],
         }
@@ -46,7 +57,7 @@ class BaselineReportTest(unittest.TestCase):
     def test_builds_normalized_report(self):
         report = build_report(self.summary, self.operations)
 
-        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v1")
+        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v2")
         self.assertEqual(report["run_id"], "g0-20260827")
         self.assertEqual(report["workload"]["attempted"], 125)
         self.assertEqual(report["workload"]["accepted"], 120)
@@ -61,6 +72,12 @@ class BaselineReportTest(unittest.TestCase):
         self.assertEqual(report["latency_ms"]["p95"], 42.5)
         self.assertEqual(report["storage"]["direct"]["inbox_write_amplification"], 1.0)
         self.assertEqual(report["storage"]["group"]["inbox_write_amplification"], 19.0)
+        self.assertEqual(report["storage"]["conversation_state"]["rows_touched"], 20)
+        self.assertEqual(report["storage"]["conversation_state"]["messages_observed"], 12)
+        self.assertEqual(report["storage"]["conversation_state"]["write_operations"], 240)
+        self.assertEqual(report["storage"]["conversation_state"]["writes_per_observed_message"], 20.0)
+        self.assertEqual(report["storage"]["conversation_state"]["projection_writes"]["group_init"], 20)
+        self.assertTrue(report["storage"]["conversation_state"]["available"])
         self.assertEqual(report["kafka"]["peak_lag"], 7)
         self.assertEqual(report["kafka"]["settled_lag"], 0)
 
@@ -76,12 +93,56 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIsNone(report["kafka"]["peak_lag"])
         self.assertIsNone(report["kafka"]["settled_lag"])
 
+    def test_v1_operations_remain_readable_with_explicit_missing_conversation_evidence(self):
+        self.operations["schema_version"] = "dipole.performance.operations.v1"
+        self.operations["storage"].pop("conversation_state")
+
+        report = build_report(self.summary, self.operations)
+
+        self.assertEqual(report["schema_version"], "dipole.performance.baseline.v2")
+        self.assertEqual(report["source_schema_version"], "dipole.performance.operations.v1")
+        self.assertEqual(
+            report["storage"]["conversation_state"],
+            {
+                "available": False,
+                "rows_touched": None,
+                "messages_observed": None,
+                "write_operations": None,
+                "writes_per_observed_message": None,
+                "projection_writes": None,
+                "counter_source": None,
+            },
+        )
+
+    def test_v2_requires_consistent_non_negative_conversation_evidence(self):
+        invalid_cases = []
+
+        missing = json.loads(json.dumps(self.operations))
+        missing["storage"].pop("conversation_state")
+        invalid_cases.append(missing)
+
+        negative = json.loads(json.dumps(self.operations))
+        negative["storage"]["conversation_state"]["rows_touched"] = -1
+        invalid_cases.append(negative)
+
+        inconsistent = json.loads(json.dumps(self.operations))
+        inconsistent["storage"]["conversation_state"]["write_operations"] = 239
+        invalid_cases.append(inconsistent)
+
+        for operations in invalid_cases:
+            with self.subTest(operations=operations):
+                with self.assertRaises(ValueError):
+                    build_report(self.summary, operations)
+
     def test_markdown_contains_scope_and_key_metrics(self):
         markdown = render_markdown(build_report(self.summary, self.operations))
 
         self.assertIn("`g0-20260827`", markdown)
         self.assertIn("P95 | 42.50 ms", markdown)
         self.assertIn("Group | 20 | 380 | 19.00", markdown)
+        self.assertIn("Conversation rows touched | 20", markdown)
+        self.assertIn("Conversation messages observed | 12", markdown)
+        self.assertIn("Conversation writes / observed message | 20.00", markdown)
         self.assertIn("Messages per sender | 5", markdown)
         self.assertIn("Hot-group thresholds | members=200, messages=50", markdown)
         self.assertIn("该报告只描述本次环境", markdown)
