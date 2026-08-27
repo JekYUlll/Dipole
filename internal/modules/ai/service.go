@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 var (
@@ -130,6 +131,7 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		EventID:            ids.EventID,
 	}, invocation.Permissions, invocation.ApprovedCapabilities, invocation.ResourceScopes)
 	runCtx := withExecutionContext(ctx, execution)
+	runCtx = eventlineage.AgentAction(runCtx, assistantUUID, policyExecution.TaskUUID, ids.EventID)
 
 	conversationContext, err := s.contextBuilder.BuildDirectContext(runCtx, message.SenderUUID, assistantUUID)
 	if err != nil {

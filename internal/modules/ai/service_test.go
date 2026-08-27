@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 type stubContextBuilder struct {
@@ -52,6 +53,7 @@ func (s *stubCallLogRepository) MarkFailed(triggerMessageUUID, errorMessage stri
 type stubAgentCommands struct {
 	command application.AgentMessageCommandV1
 	ids     correlation.IDs
+	lineage eventlineage.Lineage
 	message *model.Message
 	err     error
 }
@@ -59,6 +61,7 @@ type stubAgentCommands struct {
 func (s *stubAgentCommands) SendMessage(ctx context.Context, command application.AgentMessageCommandV1) (*model.Message, error) {
 	s.command = command
 	s.ids = correlation.FromContext(ctx)
+	s.lineage = eventlineage.FromContext(ctx)
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -160,7 +163,8 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 		},
 	}
 
-	err := service.HandleDirectMessage(context.Background(), &model.Message{
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{EventID: "E-TRIGGER"})
+	err := service.HandleDirectMessage(ctx, &model.Message{
 		UUID:            "M100",
 		ConversationKey: model.DirectConversationKey("U100", "UAI"),
 		SenderUUID:      "U100",
@@ -180,6 +184,9 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 	}
 	if commands.command.CommandID != "reply:M100" || commands.command.Kind != application.AgentMessageCommandAssistantReplyV1 || commands.command.Content != "ai response" {
 		t.Fatalf("unexpected reply command: %+v", commands.command)
+	}
+	if commands.lineage.Origin != (eventlineage.Origin{Type: eventlineage.OriginAgent, ID: "UAI"}) || commands.lineage.AgentTaskID != "TASK-1" || commands.lineage.CausationEventID == "" {
+		t.Fatalf("unexpected Agent command lineage: %+v", commands.lineage)
 	}
 	if len(logs.successArgs) == 0 {
 		t.Fatalf("expected ai call success log to be recorded")

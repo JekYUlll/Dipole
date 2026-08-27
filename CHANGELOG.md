@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G3 增加 Message v1 事件 lineage：可选 `origin`、`causation_event_id` 与 `agent_task_id` 从 Embedded Agent 命令经 Kafka `send_requested`、consumer context 和 Transactional Outbox 传播到 confirmed Message；Agent origin 强制绑定 Task，非法 lineage 在 Go/TS decoder 中 fail closed。TypeScript Shadow Runtime 在领取 EventLedger、启动 Temporal 或调用模型前返回 `suppressed`，阻断同一 Agent 因果链的循环触发；不带 lineage 的 legacy v1 事件保持兼容。
 - Conversation State 增加低基数成功写 Counter 和 `dipole_conversation_projection_write_duration_seconds{projection,outcome}` Histogram，区分 direct message、group message 与 group init 的 Repository 调用耗时和错误；端到端基准升级为兼容 v1/v2 的 operations/baseline v3，逐节点保存前后 Prometheus 快照并拒绝 Counter 回退或成功次数漂移。20/100 人普通群和热群写放大证据位于 `benchmarks/ad005-2026-08-27/`，projection timing 与原始快照位于 `benchmarks/ad005-projection-timing-2026-08-27/`。
 - Go 长运行服务增加缓存型动态依赖 readiness：按服务关键依赖矩阵周期探测 MySQL、Redis、Kafka、内部 gRPC、Elasticsearch 与 Cassandra，使用超时和失败/恢复双阈值避免瞬时抖动；HTTP readiness 与 gRPC health 同步摘流和恢复，Prometheus 可按服务/依赖告警。微服务 Compose 默认启用，Elasticsearch 隔离演练验证 Search 局部摘流且应用容器不发生级联重启。
 - Agent Context 校准增加语言中立的 evidence/report v1 与离线 `context:calibrate` 命令：输入仅接受 synthetic corpus，要求每个 model route 覆盖中英文、代码、Emoji 与 Tool schema 五类语料，并绑定候选提交、provider/model/tokenizer revision 和 reference Token；报告逐 route 输出正文 SHA-256、估算误差、fallback 与 underestimate，原文不回显，evidence/report 均可复算哈希。完整 profile 且零低估返回 0，校准阻断返回 2，契约错误返回 1；命令不访问模型、网络或运行时配置。

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 	kafkago "github.com/segmentio/kafka-go"
 )
 
@@ -17,6 +18,29 @@ func TestHandleAllRestoresEnvelopeCorrelation(t *testing.T) {
 	err := consumer.handleAll(context.Background(), event, []Handler{func(ctx context.Context, _ Event) error {
 		if got := correlation.FromContext(ctx); got != (correlation.IDs{RequestID: "R1", TraceID: "T1", EventID: "E1"}) {
 			t.Fatalf("unexpected handler correlation: %+v", got)
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+}
+
+func TestHandleAllAdvancesEnvelopeLineageForDownstreamEvents(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{}
+	event := Event{Envelope: &Envelope{
+		EventID: "E1",
+		Lineage: &eventlineage.Lineage{
+			Origin:           eventlineage.Origin{Type: eventlineage.OriginAgent, ID: "UAI"},
+			CausationEventID: "E0",
+			AgentTaskID:      "TASK-1",
+		},
+	}}
+	err := consumer.handleAll(context.Background(), event, []Handler{func(ctx context.Context, _ Event) error {
+		got := eventlineage.FromContext(ctx)
+		if got.Origin.ID != "UAI" || got.AgentTaskID != "TASK-1" || got.CausationEventID != "E1" {
+			t.Fatalf("unexpected downstream lineage: %+v", got)
 		}
 		return nil
 	}})

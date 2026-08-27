@@ -42,11 +42,36 @@
       "type": "string",
       "format": "date-time"
     },
+    "lineage": {
+      "$ref": "#/$defs/event_lineage"
+    },
     "payload": {
       "$ref": "#/$defs/message_payload"
     }
   },
   "$defs": {
+    "event_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin"],
+      "properties": {
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "id"],
+          "properties": {
+            "type": {"type": "string", "enum": ["agent", "service", "system"]},
+            "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}
+          }
+        },
+        "causation_event_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+        "agent_task_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}
+      },
+      "allOf": [{
+        "if": {"properties": {"origin": {"properties": {"type": {"const": "agent"}}}}},
+        "then": {"required": ["agent_task_id"]}
+      }]
+    },
     "message_payload": {
       "type": "object",
       "additionalProperties": true,

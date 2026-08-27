@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { AgentEvent } from "./shadow-processor.js";
 
+const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
+
 const messagePayloadSchema = z.object({
   mutation_type: z.literal("created"),
   revision: z.number().int().min(1),
@@ -17,10 +19,24 @@ const messagePayloadSchema = z.object({
   sent_at: z.iso.datetime()
 }).passthrough();
 
+const wireLineageSchema = z.object({
+  origin: z.object({
+    type: z.enum(["agent", "service", "system"]),
+    id: z.string().trim().min(1).max(128).regex(lineageIdentifier)
+  }).strict(),
+  causation_event_id: z.string().trim().min(1).max(128).regex(lineageIdentifier).optional(),
+  agent_task_id: z.string().trim().min(1).max(128).regex(lineageIdentifier).optional()
+}).strict().superRefine((lineage, context) => {
+  if (lineage.origin.type === "agent" && lineage.agent_task_id === undefined) {
+    context.addIssue({ code: "custom", path: ["agent_task_id"], message: "agent_task_id is required for Agent origin" });
+  }
+});
+
 const messageCreatedEnvelopeSchema = z.object({
   event_id: z.string().trim().min(1),
   request_id: z.string().trim().min(1).optional(),
   trace_id: z.string().trim().min(1).optional(),
+  lineage: wireLineageSchema.optional(),
   event_type: z.literal("message.direct.created"),
   version: z.string().regex(/^v1(?:\.[0-9]+)*$/, "unsupported version"),
   source: z.literal("dipole"),
@@ -44,7 +60,14 @@ export function decodeMessageCreatedEvent(raw: string): DecodedMessageCreatedEve
       eventType: envelope.event_type,
       aggregateId: envelope.payload.message_id,
       occurredAt: envelope.occurred_at,
-      payload: envelope.payload
+      payload: envelope.payload,
+      ...(envelope.lineage === undefined ? {} : {
+        lineage: {
+          origin: envelope.lineage.origin,
+          ...(envelope.lineage.causation_event_id === undefined ? {} : { causationEventId: envelope.lineage.causation_event_id }),
+          ...(envelope.lineage.agent_task_id === undefined ? {} : { agentTaskId: envelope.lineage.agent_task_id })
+        }
+      })
     },
     principalUuid: envelope.payload.sender_uuid,
     targetUuid: envelope.payload.target_uuid,

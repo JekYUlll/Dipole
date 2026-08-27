@@ -8,6 +8,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 type agentCommandMessagesStub struct {
@@ -17,6 +18,7 @@ type agentCommandMessagesStub struct {
 	content         string
 	clientMessageID string
 	ids             correlation.IDs
+	lineage         eventlineage.Lineage
 }
 
 func (s *agentCommandMessagesStub) SendAssistantTextMessageContext(ctx context.Context, sender, target, content, clientMessageID string) (*model.Message, error) {
@@ -32,6 +34,7 @@ func (s *agentCommandMessagesStub) SendSystemDirectMessageCommandContext(ctx con
 func (s *agentCommandMessagesStub) record(ctx context.Context, kind application.AgentMessageCommandKindV1, sender, target, content, clientMessageID string) {
 	s.kind, s.sender, s.target, s.content, s.clientMessageID = kind, sender, target, content, clientMessageID
 	s.ids = correlation.FromContext(ctx)
+	s.lineage = eventlineage.FromContext(ctx)
 }
 
 func TestLocalAgentCommandV1RoutesTrustedIdentityAndCorrelation(t *testing.T) {
@@ -52,7 +55,11 @@ func TestLocalAgentCommandV1RoutesTrustedIdentityAndCorrelation(t *testing.T) {
 		Invocation: invocation,
 		Content:    "hello",
 	}
-	message, err := commands.SendMessage(context.Background(), command)
+	ctx := eventlineage.WithContext(context.Background(), eventlineage.Lineage{
+		Origin:           eventlineage.Origin{Type: eventlineage.OriginAgent, ID: "UAI"},
+		CausationEventID: "EVENT-1", AgentTaskID: "TASK-1",
+	})
+	message, err := commands.SendMessage(ctx, command)
 	if err != nil {
 		t.Fatalf("send Agent Message Command: %v", err)
 	}
@@ -67,6 +74,9 @@ func TestLocalAgentCommandV1RoutesTrustedIdentityAndCorrelation(t *testing.T) {
 	}
 	if messages.ids != (correlation.IDs{RequestID: "REQ-1", TraceID: "TRACE-1", EventID: "EVENT-1"}) {
 		t.Fatalf("command lost correlation IDs: %+v", messages.ids)
+	}
+	if messages.lineage.Origin.ID != "UAI" || messages.lineage.AgentTaskID != "TASK-1" || messages.lineage.CausationEventID != "EVENT-1" {
+		t.Fatalf("command lost event lineage: %+v", messages.lineage)
 	}
 }
 
