@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 export interface ModelUsage {
   readonly inputTokens: number | undefined;
@@ -76,7 +77,8 @@ export class ModelRouter {
     routes: readonly string[],
     policy: ModelRunBudgetPolicy,
     private readonly now: () => number = () => Date.now(),
-    private readonly audit?: ModelAuditStore
+    private readonly audit?: ModelAuditStore,
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
   ) {
     this.#routes = normalizeRoutes(routes);
     this.#policy = validatePolicy(policy);
@@ -124,14 +126,24 @@ export class ModelRouter {
       const callStartedAt = this.now();
       let response: Awaited<ReturnType<StructuredModelClient["generate"]>>;
       try {
-        response = await this.client.generate({
-          route,
-          prompt: input.prompt,
-          schema: input.schema,
-          maxOutputTokens: this.#policy.maxOutputTokensPerCall,
-          timeoutMs: Math.max(1, Math.floor(remainingMs))
-        });
-        response = { ...response, output: input.schema.parse(response.output) };
+        const generate = async (span?: Parameters<Parameters<typeof this.telemetry.withSpan>[2]>[0]) => {
+          const value = await this.client.generate({
+            route, prompt: input.prompt, schema: input.schema,
+            maxOutputTokens: this.#policy.maxOutputTokensPerCall,
+            timeoutMs: Math.max(1, Math.floor(remainingMs))
+          });
+          const validated = { ...value, output: input.schema.parse(value.output) };
+          if (span !== undefined) {
+            if (value.usage.inputTokens !== undefined) span.setAttribute("dipole.agent.model.input_tokens", value.usage.inputTokens);
+            if (value.usage.outputTokens !== undefined) span.setAttribute("dipole.agent.model.output_tokens", value.usage.outputTokens);
+          }
+          return validated;
+        };
+        response = input.taskId === undefined ? await generate() : await this.telemetry.withSpan("agent.model.call", {
+          taskId: input.taskId,
+          ...(reservation?.runId === undefined ? {} : { runId: reservation.runId }),
+          attributes: { "dipole.agent.model.route": route, "dipole.agent.model.attempt": attempts }
+        }, generate);
       } catch (error) {
         if (reservation !== undefined) {
           await this.audit!.failCall(reservation, error, elapsed(this.now(), callStartedAt));

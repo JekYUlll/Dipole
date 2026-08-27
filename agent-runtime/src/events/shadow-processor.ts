@@ -5,6 +5,7 @@ import { z } from "zod";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { CapabilityRegistry } from "../capabilities/registry.js";
 import type { EventLedger } from "./event-ledger.js";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
@@ -121,6 +122,7 @@ export interface ShadowPlanExecutionDependencies {
     readonly intervalMs: number;
     readonly maxWaitMs: number;
   };
+  readonly telemetry?: Pick<AgentTelemetry, "withSpan">;
 }
 
 export type ShadowProcessResult = { readonly outcome: "recorded" | "duplicate" | "suppressed"; readonly taskId: string };
@@ -144,7 +146,8 @@ export class ShadowEventProcessor {
     private readonly registry?: CapabilityRegistry,
     private readonly trajectory?: ShadowStepTrajectory,
     private readonly stepLeaseMs = 60_000,
-    private readonly dispatcher?: ShadowTaskDispatcher
+    private readonly dispatcher?: ShadowTaskDispatcher,
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
   ) {
     if ((registry === undefined) !== (trajectory === undefined)) {
       throw new Error("Capability Registry and Step trajectory must be configured together");
@@ -159,17 +162,24 @@ export class ShadowEventProcessor {
       triggerType: event.eventType,
       triggerRef: event.aggregateId
     });
-    if (event.lineage?.origin.type === "agent" && event.lineage.origin.id === identity.agentUuid.trim()) {
-      return { outcome: "suppressed", taskId };
-    }
-    const claim = await this.ledger.claim(event.eventId, taskId, event.eventType);
-    if (claim === undefined) {
-      return { outcome: "duplicate", taskId };
-    }
-    try {
+    return this.telemetry.withSpan("agent.task", {
+      taskId,
+      attributes: { "dipole.agent.event.type": event.eventType, "dipole.agent.mode": "shadow" }
+    }, async taskSpan => {
+      if (event.lineage?.origin.type === "agent" && event.lineage.origin.id === identity.agentUuid.trim()) {
+        taskSpan.setAttribute("dipole.agent.task.outcome", "suppressed");
+        return { outcome: "suppressed", taskId };
+      }
+      const claim = await this.ledger.claim(event.eventId, taskId, event.eventType);
+      if (claim === undefined) {
+        taskSpan.setAttribute("dipole.agent.task.outcome", "duplicate");
+        return { outcome: "duplicate", taskId };
+      }
+      try {
       if (this.dispatcher !== undefined) {
         await this.dispatcher.dispatch(event, identity, taskId);
         await this.ledger.complete(claim);
+        taskSpan.setAttribute("dipole.agent.task.outcome", "recorded");
         return { outcome: "recorded", taskId };
       }
       const expectedRunId = agentRunId(taskId);
@@ -197,18 +207,25 @@ export class ShadowEventProcessor {
         ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
         ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
       });
-      const plan = await this.planner.plan(event, context);
-      await this.audit.append({ eventId: event.eventId, taskId, eventType: event.eventType, plan });
-      if (this.registry !== undefined && this.trajectory !== undefined) {
-        await executeShadowPlanSteps(plan, context, this.registry, this.trajectory, this.stepLeaseMs);
+      return await this.telemetry.withSpan("agent.run", {
+        taskId, runId: admitted.runId, attributes: { "dipole.agent.mode": context.mode }
+      }, async runSpan => {
+        const plan = await this.planner.plan(event, context);
+        await this.audit.append({ eventId: event.eventId, taskId, eventType: event.eventType, plan });
+        if (this.registry !== undefined && this.trajectory !== undefined) {
+          await executeShadowPlanSteps(plan, context, this.registry, this.trajectory, this.stepLeaseMs, undefined, this.telemetry);
+        }
+        await this.admission?.complete(taskId, admitted.runId, context);
+        await this.ledger.complete(claim);
+        runSpan.setAttribute("dipole.agent.run.step_count", plan.steps.length);
+        taskSpan.setAttribute("dipole.agent.task.outcome", "recorded");
+        return { outcome: "recorded", taskId };
+      });
+      } catch (error) {
+        await this.ledger.release(claim, error);
+        throw error;
       }
-      await this.admission?.complete(taskId, admitted.runId, context);
-      await this.ledger.complete(claim);
-      return { outcome: "recorded", taskId };
-    } catch (error) {
-      await this.ledger.release(claim, error);
-      throw error;
-    }
+    });
   }
 
 }
@@ -222,7 +239,7 @@ export async function executeShadowPlan(
   await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
   await executeShadowPlanSteps(
     plan, context, dependencies.registry, dependencies.trajectory,
-    dependencies.stepLeaseMs, dependencies.busyStepRetry
+    dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
   );
   return plan;
 }
@@ -233,7 +250,8 @@ async function executeShadowPlanSteps(
   registry: CapabilityRegistry,
   trajectory: ShadowStepTrajectory,
   stepLeaseMs: number,
-  busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"]
+  busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
+  telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
 ): Promise<void> {
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
@@ -251,7 +269,14 @@ async function executeShadowPlanSteps(
     }
     const claimToken = claim.token;
     try {
-      const output = await registry.execute(step.capabilityId, step.input, context);
+      const output = await telemetry.withSpan("agent.tool.call", {
+        taskId: context.taskId, runId: context.runId,
+        attributes: {
+          "dipole.agent.capability.id": step.capabilityId,
+          "dipole.agent.step.number": stepNo,
+          "dipole.agent.tool.transport": "native"
+        }
+      }, async () => registry.execute(step.capabilityId, step.input, context));
       await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);

@@ -8,6 +8,7 @@ import {
 } from "../events/shadow-processor.js";
 import type { AgentTaskActivities } from "./agent-task-activities.js";
 import type { AgentArtifactCreateInput, AgentArtifactRecord } from "../capabilities/agent-capability-rpc.js";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 interface AgentArtifactWriter {
   createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord>;
@@ -48,28 +49,42 @@ export function createTemporalReadStepActivities(
         ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
         ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
       });
-      const plan = await executeShadowPlan(event, context, dependencies);
-	  const artifact = dependencies.artifacts === undefined ? undefined : await dependencies.artifacts.createArtifact({
-	    tenantId: context.tenantId,
-	    taskId: context.taskId,
-	    runId: context.runId,
-	    artifactType: "conversation_digest",
-	    version: 1,
-	    title: "Conversation digest",
-	    mediaType: "text/markdown",
-	    content: Buffer.from(`# Conversation digest\n\n${plan.summary.trim()}\n`, "utf8"),
-	    metadata: { event_id: event.eventId, event_type: event.eventType, step_count: plan.steps.length },
-	    ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
-	    ...(context.traceId === undefined ? {} : { traceId: context.traceId })
-	  });
-      return {
-        kind: "complete",
-		output: {
-		  summary: plan.summary,
-		  stepCount: plan.steps.length,
-		  ...(artifact === undefined ? {} : { artifactId: artifact.artifactId, artifactVersion: artifact.version })
-		}
-      };
+      const telemetry = dependencies.telemetry ?? new AgentTelemetry();
+      return telemetry.withSpan("agent.run", {
+        taskId: context.taskId, runId: context.runId,
+        attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
+      }, async span => {
+        const plan = await executeShadowPlan(event, context, { ...dependencies, telemetry });
+        const artifact = dependencies.artifacts === undefined ? undefined : await telemetry.withSpan("agent.artifact.create", {
+          taskId: context.taskId, runId: context.runId,
+          attributes: { "dipole.agent.artifact.type": "conversation_digest", "dipole.agent.artifact.version": 1 }
+        }, async artifactSpan => {
+          const value = await dependencies.artifacts!.createArtifact({
+            tenantId: context.tenantId,
+            taskId: context.taskId,
+            runId: context.runId,
+            artifactType: "conversation_digest",
+            version: 1,
+            title: "Conversation digest",
+            mediaType: "text/markdown",
+            content: Buffer.from(`# Conversation digest\n\n${plan.summary.trim()}\n`, "utf8"),
+            metadata: { event_id: event.eventId, event_type: event.eventType, step_count: plan.steps.length },
+            ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
+            ...(context.traceId === undefined ? {} : { traceId: context.traceId })
+          });
+          artifactSpan.setAttribute("dipole.agent.artifact.size_bytes", value.sizeBytes);
+          return value;
+        });
+        span.setAttribute("dipole.agent.run.step_count", plan.steps.length);
+        return {
+          kind: "complete",
+          output: {
+            summary: plan.summary,
+            stepCount: plan.steps.length,
+            ...(artifact === undefined ? {} : { artifactId: artifact.artifactId, artifactVersion: artifact.version })
+          }
+        };
+      });
     }
   };
 }

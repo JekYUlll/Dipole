@@ -4,6 +4,7 @@ import { DeterministicContextCompiler, type ContextCompiler, type ContextFragmen
 import type { ShadowPlanner } from "../events/shadow-processor.js";
 import type { ModelRouter } from "./model-router.js";
 import type { AgentContextMemory } from "../capabilities/agent-capability-rpc.js";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const modelPlanSchema = z.object({
   summary: z.string().trim().min(1).max(2000),
@@ -34,7 +35,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
     private readonly router: Pick<ModelRouter, "generate">,
     allowedCapabilityIds: readonly string[],
     private readonly compiler: ContextCompiler = new DeterministicContextCompiler(),
-    private readonly memories?: ContextMemoryReader
+    private readonly memories?: ContextMemoryReader,
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
   ) {
     this.#allowedCapabilityIds = new Set(allowedCapabilityIds.map((id) => id.trim()).filter(Boolean));
   }
@@ -44,11 +46,26 @@ export class ModelShadowPlanner implements ShadowPlanner {
     const memories = this.memories === undefined || resourceId === ""
       ? [] : await this.memories.listContextMemories(context, "conversation", resourceId, 20);
     const budget = memories.length === 0 ? baseContextBudget : memoryContextBudget;
-    const compiled = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories) });
-    const result = await this.router.generate({
-      schema: modelPlanSchema,
-      taskId: context.taskId,
-      prompt: compiled.prompt
+    const compiled = await this.telemetry.withSpan("agent.context.compile", {
+      taskId: context.taskId, runId: context.runId,
+      attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
+    }, async span => {
+      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories) });
+      span.setAttribute("dipole.agent.context.compiler_version", value.compilerVersion);
+      span.setAttribute("dipole.agent.context.estimated_tokens", value.estimatedTokens);
+      span.setAttribute("dipole.agent.context.selected_count", value.selected.length);
+      span.setAttribute("dipole.agent.context.omitted_count", value.omitted.length);
+      return value;
+    });
+    const result = await this.telemetry.withSpan("agent.model.route", {
+      taskId: context.taskId, runId: context.runId, attributes: { "dipole.agent.mode": context.mode }
+    }, async span => {
+      const value = await this.router.generate({ schema: modelPlanSchema, taskId: context.taskId, prompt: compiled.prompt });
+      span.setAttribute("dipole.agent.model.route", value.route);
+      span.setAttribute("dipole.agent.model.attempts", value.attempts);
+      if (value.usage.inputTokens !== undefined) span.setAttribute("dipole.agent.model.input_tokens", value.usage.inputTokens);
+      if (value.usage.outputTokens !== undefined) span.setAttribute("dipole.agent.model.output_tokens", value.usage.outputTokens);
+      return value;
     });
     for (const step of result.output.steps) {
       if (!this.#allowedCapabilityIds.has(step.capabilityId)) {

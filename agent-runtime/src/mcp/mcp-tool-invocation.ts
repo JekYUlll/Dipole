@@ -101,8 +101,8 @@ export class McpToolInvocationRunner {
     span.setAttribute("dipole.agent.run.id", context.runId);
   }
 
-  private failSpan(span: Span, error: unknown): void {
-    span.recordException(error instanceof Error ? error : new Error("Tool invocation failed"));
+  private failSpan(span: Span, _error: unknown): void {
+    span.recordException(new Error("agent.tool.call failed"));
     span.setStatus({ code: SpanStatusCode.ERROR });
   }
 }

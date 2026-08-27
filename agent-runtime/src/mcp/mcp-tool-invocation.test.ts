@@ -46,7 +46,8 @@ describe("McpToolInvocationRunner", () => {
       invocationId: "INV-2", taskId: "TASK-1", runId: "RUN-1", status: "failed", errorCode: "tool_execution_failed", latencyMs: 5
     });
     expect(JSON.stringify(finish.mock.calls)).not.toContain("sensitive database detail");
-    expect(span.recordException).toHaveBeenCalled();
+    expect(span.recordException).toHaveBeenCalledWith(expect.objectContaining({ message: "agent.tool.call failed" }));
+    expect(JSON.stringify(span.recordException.mock.calls)).not.toContain("sensitive database detail");
     expect(span.end).toHaveBeenCalledOnce();
   });
 

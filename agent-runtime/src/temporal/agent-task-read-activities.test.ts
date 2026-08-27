@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Span } from "@opentelemetry/api";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
@@ -6,6 +7,7 @@ import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-proce
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import type { ModelRouter } from "../models/model-router.js";
 import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
+import type { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 describe("Temporal read Step Activities", () => {
   it("compiles, plans, persists, and executes a read-only Step under the exact Task binding", async () => {
@@ -43,7 +45,9 @@ describe("Temporal read Step Activities", () => {
       title: "Conversation digest", mediaType: "text/markdown", contentSha256: "b".repeat(64),
       sizeBytes: 10, metadata: {}
     })) };
-    const activities = createTemporalReadStepActivities({ planner, audit: trajectory, registry, trajectory, artifacts, stepLeaseMs: 60_000 });
+    const spanNames: string[] = [];
+    const telemetry = recordingTelemetry(spanNames);
+    const activities = createTemporalReadStepActivities({ planner, audit: trajectory, registry, trajectory, artifacts, telemetry, stepLeaseMs: 60_000 });
 
     await expect(activities.executeAgentTaskStep({
       taskId, runId: agentRunId(taskId), goal: "observe", step: 0, shadowEvent: event,
@@ -60,6 +64,7 @@ describe("Temporal read Step Activities", () => {
       taskId, runId: agentRunId(taskId), artifactType: "conversation_digest", version: 1,
       metadata: { event_id: event.eventId, event_type: event.eventType, step_count: 1 }
     }));
+    expect(spanNames).toEqual(["agent.run", "agent.tool.call", "agent.artifact.create"]);
   });
 
   it("rejects event or Run drift before planning", async () => {
@@ -106,3 +111,12 @@ describe("Temporal read Step Activities", () => {
     expect(trajectory.completeStep).not.toHaveBeenCalled();
   });
 });
+
+function recordingTelemetry(names: string[]): Pick<AgentTelemetry, "withSpan"> {
+  return {
+    withSpan: vi.fn(async (name: string, _context: unknown, operation: (span: Span) => Promise<unknown>) => {
+      names.push(name);
+      return operation({ setAttribute: vi.fn() } as unknown as Span);
+    })
+  } as unknown as Pick<AgentTelemetry, "withSpan">;
+}
