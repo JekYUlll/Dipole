@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { chromium, expect, test } from '@playwright/test'
 
 const harnessURL = '/app/e2e/indexeddb.html'
 
@@ -52,6 +52,50 @@ test('keeps an interrupted page transaction atomic across reload', async ({ page
   ]).toContainEqual({ syncSeq: result.syncSeq, messageCount: result.messageCount })
   expect(result.manifest.syncSeq).toBe(result.syncSeq)
   expect(result.manifest.messageCount).toBe(result.messageCount)
+})
+
+test('keeps a Sync page atomic after a full Chromium process crash', async ({ browserName }, testInfo) => {
+  test.skip(browserName !== 'chromium', 'persistent-profile process crash is Chromium-only')
+  const profile = testInfo.outputPath('crash-profile')
+  const databaseName = 'dipole-process-crash'
+  const crashed = await chromium.launchPersistentContext(profile, { headless: true })
+  const crashPage = crashed.pages()[0] ?? await crashed.newPage()
+  await crashPage.goto(harnessURL)
+  await expect(crashPage.getByText('Dipole IndexedDB acceptance harness')).toBeVisible()
+  const client = await crashed.newCDPSession(crashPage)
+  await crashPage.evaluate(async name => {
+    await window.dipoleIndexedDBAcceptance.startInterruptedWrite(name)
+  }, databaseName)
+  expect(await crashPage.evaluate(() => window.dipoleIndexedDBAcceptance.interruptedWritePending())).toBe(true)
+
+  const closed = new Promise<void>(resolve => crashed.once('close', () => resolve()))
+  void client.send('Browser.crash').catch(() => undefined)
+  await Promise.race([
+    closed,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Chromium did not crash within 10 seconds')), 10_000)),
+  ])
+
+  const reopened = await chromium.launchPersistentContext(profile, { headless: true })
+  try {
+    const page = reopened.pages()[0] ?? await reopened.newPage()
+    await page.goto(harnessURL)
+    const result = await page.evaluate(async name => {
+      return window.dipoleIndexedDBAcceptance.inspectInterruptedWrite(name)
+    }, databaseName)
+    await testInfo.attach('process-crash-recovery.json', {
+      body: JSON.stringify(result, null, 2),
+      contentType: 'application/json',
+    })
+
+    expect([
+      { syncSeq: 1, messageCount: 1 },
+      { syncSeq: 2_001, messageCount: 2_001 },
+    ]).toContainEqual({ syncSeq: result.syncSeq, messageCount: result.messageCount })
+    expect(result.manifest.syncSeq).toBe(result.syncSeq)
+    expect(result.manifest.messageCount).toBe(result.messageCount)
+  } finally {
+    await reopened.close()
+  }
 })
 
 test('provides the native quota exception used by the capacity classifier', async ({ page }) => {

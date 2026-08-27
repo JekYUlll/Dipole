@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Web IndexedDB 验收增加真实 Chromium 主进程强退场景：独立 persistent profile 在生产 `commitPage` 仍 pending 时触发 `Browser.crash`，以同一 profile 重启后验证 Message、manifest 与安全 Cursor 只能整页提交或整页回滚。
 - 增加版本化 `sync.item.notify.v1` WebSocket 轻量通知，固定只携带 event、Message UUID、会话 key/Seq 和目标 locator；`message.timeline_notify_mode=off|shadow` 默认关闭，shadow 保留现有完整消息投递并附加通知，热群继续只使用聚合 notify + pull。
 - Web 增加默认关闭的 Timeline notification shadow verifier，按会话串行使用 `after_seq` 补拉，覆盖通知丢失、重复、乱序、缺行和 UUID 冲突；仅上报 `match|missing|mismatch|error|invalid` 有界聚合指标，并配套 24 小时、至少 100 次 match、零失败的 Prometheus 晋级门禁。
 - Direct Message Timeline 增加 `after_seq` 增量查询，HTTP、Message v1 gRPC、Local/Remote/Shadow adapters 与 Cassandra cohort 路由保持同一语义；字段以 protobuf 追加方式兼容旧调用方，为在线 `sync.item.notify` 拉取路径提供前置契约。
