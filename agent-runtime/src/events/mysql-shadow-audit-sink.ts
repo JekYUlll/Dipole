@@ -48,7 +48,7 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
           required(record.plan.summary, "plan summary"), planHash, model?.route ?? null, model?.attempts ?? null,
           model?.inputTokens ?? null, model?.outputTokens ?? null, context?.compilerVersion ?? null,
           context?.estimatedTokens ?? null, context === undefined ? null : canonicalJSON({
-            selected: context.selected, omitted: context.omitted
+            estimatorId: context.estimatorId, selected: context.selected, omitted: context.omitted
           })
         ]);
         inserted = result.affectedRows === 1;

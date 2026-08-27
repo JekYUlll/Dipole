@@ -92,6 +92,8 @@ Shadow 模式仅生成并审计 plan，Policy Engine 拒绝 write/destructive ca
 ```bash
 DIPOLE_AGENT_MODEL_MODE=ai_sdk \
 DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,anthropic/claude-sonnet-4.5 \
+DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
+DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
 DIPOLE_AGENT_MODEL_MAX_CALLS=2 \
 DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=15000 \
 DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
@@ -100,5 +102,11 @@ npm start
 ```
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
+
+`CONTEXT_COMPILER_VERSION` 默认并在 Compose 中固定为 `v1`，从而保持已有不可变 Plan 的 prompt 与 manifest 哈希。新候选可显式设置 `v2`；切换前应等待旧候选 Task 收敛或使用新的 Task cohort，回滚只需恢复 `v1`。
+
+v2 的 `MODEL_CONTEXT_PROFILES` 是可选严格 JSON 数组。每个 route 可声明 `contextWindowTokens`、`utf8BytesPerToken` 与 `safetyMarginBps`；Runtime 对全部候选 route 取最大估算和最小窗口，确保同一 prompt 可安全进入后续 fallback。未声明 route 固定采用 8192 Token 窗口、2 UTF-8 bytes/token 与 25% 余量，并把最终 profile 集合的 SHA-256 estimator ID 写入 Context manifest。v1 拒绝 profile，v2 中任一 profile 引用未知 route，或最小窗口容纳不了 4096 输入预算与 `MAX_OUTPUT_TOKENS` 时，配置解析直接失败。
+
+`src/context/token-estimator.test.ts` 中的中英文、代码、Emoji 与 Tool schema 语料用于确定性回归，只代表工程夹具。生产 profile 需要使用对应 route 的可复现 tokenizer 或 provider usage 单独校准；Runtime 不会根据单次调用结果自动调整估算值。
 
 微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。

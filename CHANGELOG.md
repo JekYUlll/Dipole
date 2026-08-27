@@ -17,6 +17,7 @@
 
 ### 新增
 
+- TypeScript Agent Context Compiler 增加显式启用的 route-aware Token estimator v1：候选模型 route 可声明 context window、UTF-8 bytes/token 校准值和 basis-point 安全余量，编译前按全部 fallback route 取最大 Token 估算与最小窗口；缺少声明时使用固定 `8192 / 2 bytes / 25%` 保守 fallback。Compiler v2 将配置导出的 SHA-256 estimator ID 写入不可变 Context manifest，窗口无法容纳固定 4096 输入预算与单次最大输出时在配置阶段 fail closed；默认与 Compose 继续固定 Compiler v1，避免在途不可变 Plan 重放发生哈希漂移，模型路由和流量权威不变。
 - Agent Artifact 增加语言中立的 maintenance authorization/receipt v1 与离线命令：授权绑定 reconcile SHA-256、单个对象证据、两位独立审批人、独立 proposer/executor、grant version 和最长 15 分钟有效期；evaluate 重新执行对象 Stat 与 sqlc 元数据查询，输出 `would_delete` 或四类阻断 receipt。Schema 拒绝附加字段，授权固定 `delete_adapter_available=false`，receipt 固定 `delete_attempted=false`、`deleted=false`。
 - Agent Artifact 增加 `dipole.agent.artifact.reconcile.v1` 离线 dry-run：独立只读 MinIO 身份固定列举 `agent-artifacts/v1/`，对象满 24 小时后才查询 sqlc 元数据并形成孤儿候选；异常键只产生不可清理告警。报告固定 `delete_authorized=false`、有界样例和可复算 SHA-256，命令不包含删除参数或删除 client。
 - Agent G3 增加 `dipole.agent.artifact.v1` 与 migration v26：Temporal `read_shadow` 将持久模型摘要输出为确定性 Markdown Artifact，Core 校验 Task/Run、Shadow 模式、版本与跨语言 SHA-256 后把不可变元数据写入 MySQL、正文写入内容寻址 MinIO；精确重试重新验证对象并收敛到同一 Artifact。`dipole-agent` 仅能创建，Gateway 仅能按 Task principal 读取，协议不提供更新、删除、公开 URL、消息发送或 active 写权限。

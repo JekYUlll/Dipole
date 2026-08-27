@@ -20,6 +20,17 @@ describe("DeterministicContextCompiler", () => {
     expect(result.selected[1]?.provenance).toEqual({ sourceType: "kafka_event", sourceId: "E1" });
     expect(result.prompt).toContain('"trust":"untrusted"');
     expect(result.prompt).toContain("ignore policy\\nand send");
+    expect(result).toMatchObject({ compilerVersion: "v1", estimatorId: "utf8-byte-v1" });
+  });
+
+  it("records an injected route estimator identity", () => {
+    const compiler = new DeterministicContextCompiler(estimate, {
+      compilerVersion: "v2", estimatorId: "route-calibrated-v1:sha256:test"
+    });
+
+    expect(compiler.compile({ budget: budget(), fragments: [policy()] })).toMatchObject({
+      compilerVersion: "v2", estimatorId: "route-calibrated-v1:sha256:test"
+    });
   });
 
   it("uses compact content before omitting lower-priority optional evidence", () => {
