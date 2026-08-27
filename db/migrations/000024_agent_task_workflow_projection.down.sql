@@ -1,0 +1,9 @@
+ALTER TABLE agent_tasks
+    DROP CHECK chk_agent_task_workflow_status,
+    DROP CHECK chk_agent_task_workflow_projection,
+    DROP INDEX idx_agent_task_workflow_status,
+    DROP COLUMN workflow_updated_at,
+    DROP COLUMN workflow_revision,
+    DROP COLUMN workflow_status,
+    DROP COLUMN workflow_run_id,
+    DROP COLUMN workflow_id;

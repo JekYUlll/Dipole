@@ -87,7 +87,6 @@ func (s *stubUserService) UpdateStatus(currentUser *model.User, targetUUID strin
 
 func TestUserHandlerUpdateProfileSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
@@ -132,7 +131,6 @@ func TestUserHandlerUpdateProfileSuccess(t *testing.T) {
 
 func TestUserHandlerUpdateProfileForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
@@ -164,7 +162,6 @@ func TestUserHandlerUpdateProfileForbidden(t *testing.T) {
 
 func TestUserHandlerGetByUUIDNotFound(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		getByUUIDFn: func(uuid string) (*model.User, error) {
@@ -194,7 +191,6 @@ func TestUserHandlerGetByUUIDNotFound(t *testing.T) {
 
 func TestUserHandlerUpdateProfileBadRequest(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
@@ -226,7 +222,6 @@ func TestUserHandlerUpdateProfileBadRequest(t *testing.T) {
 
 func TestUserHandlerUploadAvatarSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		uploadAvatarFn: func(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error) {
@@ -269,7 +264,6 @@ func TestUserHandlerUploadAvatarSuccess(t *testing.T) {
 
 func TestUserHandlerGetAvatarRedirects(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
@@ -297,7 +291,6 @@ func TestUserHandlerGetAvatarRedirects(t *testing.T) {
 
 func TestUserHandlerGetAvatarStreamsContent(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
@@ -332,7 +325,6 @@ func TestUserHandlerGetAvatarStreamsContent(t *testing.T) {
 
 func TestUserHandlerSearchSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		searchUsersFn: func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
@@ -362,7 +354,6 @@ func TestUserHandlerSearchSuccess(t *testing.T) {
 
 func TestUserHandlerListForAdminForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		listUsersFn: func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
@@ -384,7 +375,6 @@ func TestUserHandlerListForAdminForbidden(t *testing.T) {
 
 func TestUserHandlerUpdateStatusRejectsSelfDisable(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewUserHandler(&stubUserService{
 		updateStatusFn: func(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {

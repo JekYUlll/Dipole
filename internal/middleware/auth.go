@@ -53,6 +53,37 @@ func Auth(tokenService *service.TokenService, userRepo authUserFinder) gin.Handl
 	}
 }
 
+func AgentMCPAuth(tokenService *service.TokenService, userRepo authUserFinder) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, ok := parseBearerToken(c.GetHeader("Authorization"))
+		if !ok {
+			writeError(c, http.StatusUnauthorized, "Agent MCP access token is required")
+			c.Abort()
+			return
+		}
+		session, err := tokenService.ResolveAgentMCPAccessToken(token, service.AgentMCPResourceIdentifier(), service.AgentMCPReadScope)
+		if err != nil {
+			writeError(c, http.StatusUnauthorized, "Agent MCP access token is invalid")
+			c.Abort()
+			return
+		}
+		user, err := userRepo.GetByUUID(session.UserUUID)
+		if err != nil {
+			writeError(c, http.StatusInternalServerError, err.Error())
+			c.Abort()
+			return
+		}
+		if user == nil || user.Status == model.UserStatusDisabled {
+			writeError(c, http.StatusUnauthorized, "user session is invalid")
+			c.Abort()
+			return
+		}
+		c.Set(ContextUserKey, user)
+		c.Set(ContextTokenKey, token)
+		c.Next()
+	}
+}
+
 func CurrentUser(c *gin.Context) (*model.User, bool) {
 	val, ok := c.Get(ContextUserKey)
 	if !ok {

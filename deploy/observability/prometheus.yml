@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - /etc/prometheus/kafka-alerts.yml
+  - /etc/prometheus/cassandra-read-alerts.yml
+  - /etc/prometheus/sync-projector-alerts.yml
+  - /etc/prometheus/web-sync-alerts.yml
+  - /etc/prometheus/duplicate-hydration-alerts.yml
+
+scrape_configs:
+  - job_name: kafka
+    static_configs:
+      - targets:
+          - kafka-exporter:9308

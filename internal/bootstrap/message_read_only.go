@@ -37,12 +37,28 @@ func (a *queryOnlyMessageApplication) ListDirectMessages(userUUID, targetUUID st
 	return a.queries.ListDirectMessages(userUUID, targetUUID, beforeID, limit)
 }
 
+func (a *queryOnlyMessageApplication) ListDirectMessagesBeforeSeq(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListDirectMessagesBeforeSeq(userUUID, targetUUID, beforeSeq, limit)
+}
+
+func (a *queryOnlyMessageApplication) ListDirectMessagesAfterSeq(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListDirectMessagesAfterSeq(userUUID, targetUUID, afterSeq, limit)
+}
+
 func (a *queryOnlyMessageApplication) ListGroupMessages(userUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	return a.queries.ListGroupMessages(userUUID, groupUUID, beforeID, limit)
 }
 
+func (a *queryOnlyMessageApplication) ListGroupMessagesBeforeSeq(userUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListGroupMessagesBeforeSeq(userUUID, groupUUID, beforeSeq, limit)
+}
+
 func (a *queryOnlyMessageApplication) ListGroupMessagesAfter(userUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
 	return a.queries.ListGroupMessagesAfter(userUUID, groupUUID, afterID, limit)
+}
+
+func (a *queryOnlyMessageApplication) ListGroupMessagesAfterSeq(userUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	return a.queries.ListGroupMessagesAfterSeq(userUUID, groupUUID, afterSeq, limit)
 }
 
 func (a *queryOnlyMessageApplication) ListOfflineMessages(userUUID string, afterID uint, limit int) ([]*model.Message, error) {

@@ -1,0 +1,67 @@
+rule_files:
+  - service-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: required service down triggers critical alert
+    interval: 1m
+    input_series:
+      - series: 'up{job="dipole-required",service="dipole-message",instance="message:9100"}'
+        values: '0x3'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleServiceInstanceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: dipole-required
+              service: dipole-message
+              instance: message:9100
+            exp_annotations:
+              summary: Required Dipole service instance is unreachable
+
+  - name: prolonged not-ready state triggers warning
+    interval: 1m
+    input_series:
+      - series: 'dipole_service_ready{job="dipole-required",service="dipole-sync",instance="sync:9100"}'
+        values: '0x4'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: DipoleServiceNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: dipole-required
+              service: dipole-sync
+              instance: sync:9100
+            exp_annotations:
+              summary: Required Dipole service remains not ready
+
+  - name: optional service absence stays outside required alerts
+    interval: 1m
+    input_series:
+      - series: 'up{job="dipole-optional",service="dipole-search",instance="search:9100"}'
+        values: '0x4'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: DipoleServiceInstanceDown
+        exp_alerts: []
+
+  - name: prolonged critical dependency failure identifies the dependency
+    interval: 1m
+    input_series:
+      - series: 'dipole_dependency_ready{job="dipole-optional",service="dipole-search",dependency="elasticsearch",instance="search:9100"}'
+        values: '0x4'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: DipoleCriticalDependencyNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: dipole-optional
+              service: dipole-search
+              dependency: elasticsearch
+              instance: search:9100
+            exp_annotations:
+              summary: Dipole service critical dependency remains unavailable

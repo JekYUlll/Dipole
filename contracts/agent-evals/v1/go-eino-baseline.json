@@ -1,0 +1,94 @@
+{
+  "schema_version": "dipole.agent.eval.v1",
+  "baseline_id": "go-eino-embedded-v1",
+  "cases": [
+    {
+      "id": "event.assistant-direct-plain-reply",
+      "category": "reply",
+      "operation": "handle_direct_message",
+      "input": {"mode": "plain", "sender_uuid": "U100", "target_uuid": "UAI"},
+      "expected": {
+        "outcome": "succeeded",
+        "trajectory": ["trigger.accepted", "agent.reply", "message.send_assistant", "run.succeeded"],
+        "permission": "principal_targeted"
+      }
+    },
+    {
+      "id": "event.non-assistant-target-ignored",
+      "category": "event",
+      "operation": "handle_direct_message",
+      "input": {"mode": "plain", "sender_uuid": "U100", "target_uuid": "U200"},
+      "expected": {
+        "outcome": "ignored",
+        "trajectory": ["trigger.ignored"],
+        "permission": "not_applicable"
+      }
+    },
+    {
+      "id": "event.duplicate-trigger-deduplicated",
+      "category": "event",
+      "operation": "handle_direct_message",
+      "input": {"mode": "duplicate", "sender_uuid": "U100", "target_uuid": "UAI"},
+      "expected": {
+        "outcome": "deduplicated",
+        "trajectory": ["trigger.deduplicated"],
+        "permission": "principal_targeted"
+      }
+    },
+    {
+      "id": "reply.tool-message-suppresses-fallback",
+      "category": "trajectory",
+      "operation": "handle_direct_message",
+      "input": {"mode": "tool", "sender_uuid": "U100", "target_uuid": "UAI"},
+      "expected": {
+        "outcome": "succeeded",
+        "trajectory": ["trigger.accepted", "agent.reply", "tool.send_system_message", "run.succeeded"],
+        "permission": "model_argument_matches_principal"
+      }
+    },
+    {
+      "id": "permission.read-conversation-allowed",
+      "category": "permission",
+      "operation": "read_conversation",
+      "input": {"user_uuid": "U100", "target_uuid": "U200", "allowed": true},
+      "expected": {
+        "outcome": "found",
+        "trajectory": ["tool.read_conversation", "conversation.authorized", "messages.read"],
+        "permission": "allowed"
+      }
+    },
+    {
+      "id": "permission.read-conversation-denied",
+      "category": "permission",
+      "operation": "read_conversation",
+      "input": {"user_uuid": "U100", "target_uuid": "U999", "allowed": false},
+      "expected": {
+        "outcome": "not_found",
+        "trajectory": ["tool.read_conversation", "conversation.denied"],
+        "permission": "denied"
+      }
+    },
+    {
+      "id": "permission.model-overrides-profile-principal",
+      "category": "permission",
+      "operation": "get_user_profile",
+      "input": {"principal_uuid": "U100", "argument_user_uuid": "U999"},
+      "expected": {
+        "outcome": "found",
+        "trajectory": ["tool.get_user_profile", "identity.execution_context", "user.read"],
+        "permission": "principal_enforced"
+      }
+    },
+    {
+      "id": "permission.model-overrides-system-message-target",
+      "category": "permission",
+      "operation": "send_system_message",
+      "input": {"principal_uuid": "U100", "argument_user_uuid": "U999"},
+      "expected": {
+        "outcome": "sent",
+        "trajectory": ["tool.send_system_message", "identity.execution_context", "message.send_system"],
+        "permission": "principal_enforced"
+      }
+    }
+  ]
+}

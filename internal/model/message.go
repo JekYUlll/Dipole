@@ -23,6 +23,7 @@ type Message struct {
 	UUID            string     `json:"uuid"`
 	ClientMessageID string     `json:"-"`
 	ConversationKey string     `json:"-"`
+	Seq             uint64     `json:"seq,omitempty"`
 	SenderUUID      string     `json:"sender_uuid"`
 	TargetType      int8       `json:"target_type"`
 	TargetUUID      string     `json:"target_uuid"`

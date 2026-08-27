@@ -12,18 +12,35 @@ import (
 	"time"
 )
 
+const advanceConversationSequence = `-- name: AdvanceConversationSequence :exec
+UPDATE conversation_sequences
+SET last_seq = ?, updated_at = NOW(3)
+WHERE conversation_key = ?
+`
+
+type AdvanceConversationSequenceParams struct {
+	LastSeq         uint64
+	ConversationKey string
+}
+
+func (q *Queries) AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error {
+	_, err := q.db.ExecContext(ctx, advanceConversationSequence, arg.LastSeq, arg.ConversationKey)
+	return err
+}
+
 const createMessage = `-- name: CreateMessage :execresult
 INSERT INTO messages (
-    uuid, client_message_id, conversation_key, sender_uuid, target_type,
+    uuid, client_message_id, conversation_key, seq, sender_uuid, target_type,
     target_uuid, message_type, content, file_id, file_name, file_size,
     file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
 `
 
 type CreateMessageParams struct {
 	Uuid            string
 	ClientMessageID string
 	ConversationKey string
+	Seq             uint64
 	SenderUuid      string
 	TargetType      int8
 	TargetUuid      string
@@ -43,6 +60,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (s
 		arg.Uuid,
 		arg.ClientMessageID,
 		arg.ConversationKey,
+		arg.Seq,
 		arg.SenderUuid,
 		arg.TargetType,
 		arg.TargetUuid,
@@ -58,75 +76,30 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (s
 	)
 }
 
-const findLatestAccessibleFileMessage = `-- name: FindLatestAccessibleFileMessage :one
-SELECT messages.id, messages.uuid, messages.client_message_id, messages.conversation_key, messages.sender_uuid, messages.target_type, messages.target_uuid, messages.message_type, messages.content, messages.file_id, messages.file_name, messages.file_size, messages.file_url, messages.file_content_type, messages.file_expires_at, messages.sent_at, messages.created_at, messages.updated_at FROM messages
-WHERE file_id = ?
-  AND message_type = ?
-  AND (
-    (target_type = ?
-      AND (sender_uuid = ? OR target_uuid = ?))
-    OR
-    (target_type = ?
-      AND EXISTS (
-        SELECT 1 FROM group_members gm
-        JOIN ` + "`" + `groups` + "`" + ` g ON g.uuid = gm.group_uuid
-        WHERE gm.group_uuid = messages.target_uuid
-          AND gm.user_uuid = ?
-          AND g.status IN (?, ?)
-      ))
-  )
-ORDER BY sent_at DESC, id DESC
-LIMIT 1
+const ensureConversationSequence = `-- name: EnsureConversationSequence :execresult
+INSERT INTO conversation_sequences (conversation_key, last_seq)
+VALUES (?, 0)
+ON DUPLICATE KEY UPDATE conversation_key = VALUES(conversation_key)
 `
 
-type FindLatestAccessibleFileMessageParams struct {
-	FileUuid             string
-	FileMessageType      int8
-	DirectType           int8
-	UserUuid             string
-	GroupType            int8
-	GroupNormalStatus    int8
-	GroupDismissedStatus int8
+func (q *Queries) EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, ensureConversationSequence, conversationKey)
 }
 
-func (q *Queries) FindLatestAccessibleFileMessage(ctx context.Context, arg FindLatestAccessibleFileMessageParams) (Message, error) {
-	row := q.db.QueryRowContext(ctx, findLatestAccessibleFileMessage,
-		arg.FileUuid,
-		arg.FileMessageType,
-		arg.DirectType,
-		arg.UserUuid,
-		arg.UserUuid,
-		arg.GroupType,
-		arg.UserUuid,
-		arg.GroupNormalStatus,
-		arg.GroupDismissedStatus,
-	)
-	var i Message
-	err := row.Scan(
-		&i.ID,
-		&i.Uuid,
-		&i.ClientMessageID,
-		&i.ConversationKey,
-		&i.SenderUuid,
-		&i.TargetType,
-		&i.TargetUuid,
-		&i.MessageType,
-		&i.Content,
-		&i.FileID,
-		&i.FileName,
-		&i.FileSize,
-		&i.FileUrl,
-		&i.FileContentType,
-		&i.FileExpiresAt,
-		&i.SentAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+const getConversationSequence = `-- name: GetConversationSequence :one
+SELECT last_seq FROM conversation_sequences
+WHERE conversation_key = ?
+`
+
+func (q *Queries) GetConversationSequence(ctx context.Context, conversationKey string) (uint64, error) {
+	row := q.db.QueryRowContext(ctx, getConversationSequence, conversationKey)
+	var last_seq uint64
+	err := row.Scan(&last_seq)
+	return last_seq, err
 }
 
 const getMessageBySenderAndClientID = `-- name: GetMessageBySenderAndClientID :one
-SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at FROM messages WHERE sender_uuid = ? AND client_message_id = ? LIMIT 1
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages WHERE sender_uuid = ? AND client_message_id = ? LIMIT 1
 `
 
 type GetMessageBySenderAndClientIDParams struct {
@@ -156,12 +129,13 @@ func (q *Queries) GetMessageBySenderAndClientID(ctx context.Context, arg GetMess
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Seq,
 	)
 	return i, err
 }
 
 const getMessageByUUID = `-- name: GetMessageByUUID :one
-SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at FROM messages WHERE uuid = ? LIMIT 1
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages WHERE uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetMessageByUUID(ctx context.Context, uuid string) (Message, error) {
@@ -186,6 +160,7 @@ func (q *Queries) GetMessageByUUID(ctx context.Context, uuid string) (Message, e
 		&i.SentAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Seq,
 	)
 	return i, err
 }
@@ -202,7 +177,7 @@ func (q *Queries) HasConversationMessages(ctx context.Context, conversationKey s
 }
 
 const listMessagesByConversationAfter = `-- name: ListMessagesByConversationAfter :many
-SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at FROM messages
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
 WHERE conversation_key = ?
   AND (? = 0 OR id > ?)
 ORDER BY id ASC
@@ -248,6 +223,7 @@ func (q *Queries) ListMessagesByConversationAfter(ctx context.Context, arg ListM
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Seq,
 		); err != nil {
 			return nil, err
 		}
@@ -263,7 +239,7 @@ func (q *Queries) ListMessagesByConversationAfter(ctx context.Context, arg ListM
 }
 
 const listMessagesByConversationBefore = `-- name: ListMessagesByConversationBefore :many
-SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at FROM messages
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
 WHERE conversation_key = ?
   AND (? = 0 OR id < ?)
 ORDER BY id DESC
@@ -309,6 +285,126 @@ func (q *Queries) ListMessagesByConversationBefore(ctx context.Context, arg List
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Seq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessagesByConversationSeqAfter = `-- name: ListMessagesByConversationSeqAfter :many
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
+WHERE conversation_key = ?
+  AND seq > ?
+ORDER BY seq ASC
+LIMIT ?
+`
+
+type ListMessagesByConversationSeqAfterParams struct {
+	ConversationKey string
+	AfterSeq        uint64
+	Limit           int32
+}
+
+func (q *Queries) ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByConversationSeqAfter, arg.ConversationKey, arg.AfterSeq, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.ClientMessageID,
+			&i.ConversationKey,
+			&i.SenderUuid,
+			&i.TargetType,
+			&i.TargetUuid,
+			&i.MessageType,
+			&i.Content,
+			&i.FileID,
+			&i.FileName,
+			&i.FileSize,
+			&i.FileUrl,
+			&i.FileContentType,
+			&i.FileExpiresAt,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Seq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMessagesByConversationSeqBefore = `-- name: ListMessagesByConversationSeqBefore :many
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages
+WHERE conversation_key = ?
+  AND (? = 0 OR seq < ?)
+ORDER BY seq DESC
+LIMIT ?
+`
+
+type ListMessagesByConversationSeqBeforeParams struct {
+	ConversationKey string
+	BeforeSeq       uint64
+	Limit           int32
+}
+
+func (q *Queries) ListMessagesByConversationSeqBefore(ctx context.Context, arg ListMessagesByConversationSeqBeforeParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByConversationSeqBefore,
+		arg.ConversationKey,
+		arg.BeforeSeq,
+		arg.BeforeSeq,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.ClientMessageID,
+			&i.ConversationKey,
+			&i.SenderUuid,
+			&i.TargetType,
+			&i.TargetUuid,
+			&i.MessageType,
+			&i.Content,
+			&i.FileID,
+			&i.FileName,
+			&i.FileSize,
+			&i.FileUrl,
+			&i.FileContentType,
+			&i.FileExpiresAt,
+			&i.SentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Seq,
 		); err != nil {
 			return nil, err
 		}
@@ -324,7 +420,7 @@ func (q *Queries) ListMessagesByConversationBefore(ctx context.Context, arg List
 }
 
 const listMessagesByUUIDs = `-- name: ListMessagesByUUIDs :many
-SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at FROM messages WHERE uuid IN (/*SLICE:uuids*/?)
+SELECT id, uuid, client_message_id, conversation_key, sender_uuid, target_type, target_uuid, message_type, content, file_id, file_name, file_size, file_url, file_content_type, file_expires_at, sent_at, created_at, updated_at, seq FROM messages WHERE uuid IN (/*SLICE:uuids*/?)
 `
 
 func (q *Queries) ListMessagesByUUIDs(ctx context.Context, uuids []string) ([]Message, error) {
@@ -365,6 +461,7 @@ func (q *Queries) ListMessagesByUUIDs(ctx context.Context, uuids []string) ([]Me
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Seq,
 		); err != nil {
 			return nil, err
 		}
@@ -380,7 +477,7 @@ func (q *Queries) ListMessagesByUUIDs(ctx context.Context, uuids []string) ([]Me
 }
 
 const listOfflineMessagesByUser = `-- name: ListOfflineMessagesByUser :many
-SELECT messages.id, messages.uuid, messages.client_message_id, messages.conversation_key, messages.sender_uuid, messages.target_type, messages.target_uuid, messages.message_type, messages.content, messages.file_id, messages.file_name, messages.file_size, messages.file_url, messages.file_content_type, messages.file_expires_at, messages.sent_at, messages.created_at, messages.updated_at FROM messages
+SELECT messages.id, messages.uuid, messages.client_message_id, messages.conversation_key, messages.sender_uuid, messages.target_type, messages.target_uuid, messages.message_type, messages.content, messages.file_id, messages.file_name, messages.file_size, messages.file_url, messages.file_content_type, messages.file_expires_at, messages.sent_at, messages.created_at, messages.updated_at, messages.seq FROM messages
 WHERE messages.id > ?
   AND (
     (messages.target_type = ? AND messages.target_uuid = ?)
@@ -447,6 +544,7 @@ func (q *Queries) ListOfflineMessagesByUser(ctx context.Context, arg ListOffline
 			&i.SentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Seq,
 		); err != nil {
 			return nil, err
 		}
@@ -459,4 +557,17 @@ func (q *Queries) ListOfflineMessagesByUser(ctx context.Context, arg ListOffline
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockConversationSequence = `-- name: LockConversationSequence :one
+SELECT last_seq FROM conversation_sequences
+WHERE conversation_key = ?
+FOR UPDATE
+`
+
+func (q *Queries) LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error) {
+	row := q.db.QueryRowContext(ctx, lockConversationSequence, conversationKey)
+	var last_seq uint64
+	err := row.Scan(&last_seq)
+	return last_seq, err
 }

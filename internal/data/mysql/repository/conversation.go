@@ -38,12 +38,23 @@ func (r *ConversationRepository) upsertMessage(userUUID string, targetType int8,
 	if message == nil {
 		return fmt.Errorf("upsert %s conversation with sqlc: message is required", kind)
 	}
+	initialReadSeq := message.Seq
+	if unreadIncrement > 0 {
+		increment := uint64(unreadIncrement)
+		if message.Seq > increment {
+			initialReadSeq = message.Seq - increment
+		} else {
+			initialReadSeq = 0
+		}
+	}
 	_, err := r.queries.UpsertConversationMessage(context.Background(), generated.UpsertConversationMessageParams{
 		UserUuid:              userUUID,
 		TargetType:            targetType,
 		TargetUuid:            targetUUID,
 		ConversationKey:       message.ConversationKey,
 		LastMessageUuid:       message.UUID,
+		LastMessageSeq:        message.Seq,
+		InitialReadSeq:        initialReadSeq,
 		LastMessageType:       message.MessageType,
 		LastMessagePreview:    model.BuildMessagePreview(message),
 		LastMessageAt:         message.SentAt,
@@ -65,6 +76,17 @@ func (r *ConversationRepository) ListByUserUUID(userUUID string, limit int) ([]*
 		return nil, fmt.Errorf("list conversations by user UUID with sqlc: %w", err)
 	}
 	return mapper.Conversations(rows), nil
+}
+
+func (r *ConversationRepository) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	keys, err := r.queries.ListSearchConversationKeysByUser(context.Background(), generated.ListSearchConversationKeysByUserParams{
+		UserUuid: userUUID, DirectTargetType: model.MessageTargetDirect,
+		GroupNormalStatus: model.GroupStatusNormal, GroupDismissedStatus: model.GroupStatusDismissed,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list Search conversation keys by user with sqlc: %w", err)
+	}
+	return keys, nil
 }
 
 func (r *ConversationRepository) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
@@ -107,13 +129,17 @@ func (r *ConversationRepository) UpdateRemarkByConversationKey(userUUID, convers
 	return nil
 }
 
-func (r *ConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
-	_, err := r.queries.ClearConversationUnread(context.Background(), generated.ClearConversationUnreadParams{
+func (r *ConversationRepository) MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error {
+	if readThroughSeq > uint64(^uint64(0)>>1) {
+		return errors.New("mark conversation read with sqlc: sequence exceeds signed query range")
+	}
+	_, err := r.queries.MarkConversationReadThrough(context.Background(), generated.MarkConversationReadThroughParams{
+		ReadThroughSeq:  int64(readThroughSeq),
 		UserUuid:        userUUID,
 		ConversationKey: conversationKey,
 	})
 	if err != nil {
-		return fmt.Errorf("clear conversation unread count with sqlc: %w", err)
+		return fmt.Errorf("mark conversation read through with sqlc: %w", err)
 	}
 	return nil
 }

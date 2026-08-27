@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/web-sync-observation/v1/evidence.schema.json",
+  "title": "Dipole Web Sync observation evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "session_id", "session_sha256", "candidate", "prometheus_url",
+    "started_at", "ended_at", "duration_seconds", "decision", "issues",
+    "final_snapshot", "snapshot_sha256", "evidence_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.web-sync.observation-evidence.v1" },
+    "session_id": { "type": "string", "pattern": "^web-sync:[a-f0-9]{64}$" },
+    "session_sha256": { "$ref": "#/$defs/sha256" },
+    "candidate": { "$ref": "session.schema.json#/$defs/candidate" },
+    "prometheus_url": { "type": "string", "pattern": "^https?://[^?#]+$" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": "integer", "minimum": 86400 },
+    "decision": { "enum": ["eligible", "blocked"] },
+    "issues": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "final_snapshot": { "$ref": "session.schema.json#/$defs/snapshot" },
+    "snapshot_sha256": { "$ref": "#/$defs/sha256" },
+    "evidence_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

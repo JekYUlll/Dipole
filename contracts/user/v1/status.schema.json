@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/user/v1/status.schema.json",
+  "title": "Dipole User Status v1",
+  "description": "Language-neutral status values persisted in users.status and exchanged across service boundaries.",
+  "x-dipole-version": "dipole.user.status.v1",
+  "type": "integer",
+  "enum": [1, 2],
+  "default": 1,
+  "x-dipole-symbols": {
+    "normal": 1,
+    "disabled": 2
+  }
+}

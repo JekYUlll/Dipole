@@ -24,6 +24,7 @@ func (n *conversationNotifier) NotifyDirectRead(receipt service.ConversationRead
 		TargetType:          receipt.TargetType,
 		ConversationKey:     receipt.ConversationKey,
 		LastReadMessageUUID: receipt.LastReadMessageUUID,
+		LastReadSeq:         receipt.LastReadSeq,
 		ReadAt:              receipt.ReadAt,
 	})
 }

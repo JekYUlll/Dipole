@@ -70,7 +70,6 @@ func (s *stubGroupService) DismissGroup(currentUserUUID, groupUUID string) error
 
 func TestGroupHandlerCreateSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		createGroupFn: func(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error) {
@@ -96,7 +95,6 @@ func TestGroupHandlerCreateSuccess(t *testing.T) {
 
 func TestGroupHandlerGetForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		getGroupFn: func(currentUserUUID, groupUUID string) (*service.GroupView, error) {
@@ -119,7 +117,6 @@ func TestGroupHandlerGetForbidden(t *testing.T) {
 
 func TestGroupHandlerAddMembersSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		addMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error) {
@@ -143,7 +140,6 @@ func TestGroupHandlerAddMembersSuccess(t *testing.T) {
 
 func TestGroupHandlerLeaveConflict(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		leaveGroupFn: func(currentUserUUID, groupUUID string) error {
@@ -166,7 +162,6 @@ func TestGroupHandlerLeaveConflict(t *testing.T) {
 
 func TestGroupHandlerUpdateSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		updateGroupFn: func(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error) {
@@ -193,7 +188,6 @@ func TestGroupHandlerUpdateSuccess(t *testing.T) {
 
 func TestGroupHandlerRemoveMembersConflict(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		removeMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) error {
@@ -217,7 +211,6 @@ func TestGroupHandlerRemoveMembersConflict(t *testing.T) {
 
 func TestGroupHandlerDismissSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		dismissGroupFn: func(currentUserUUID, groupUUID string) error {
@@ -240,7 +233,6 @@ func TestGroupHandlerDismissSuccess(t *testing.T) {
 
 func TestGroupHandlerGetAvatarStreamsContent(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		getAvatarFn: func(groupUUID string) (*service.GroupAvatarResponse, error) {
@@ -266,7 +258,6 @@ func TestGroupHandlerGetAvatarStreamsContent(t *testing.T) {
 
 func TestGroupHandlerDismissConflictWhenAlreadyDismissed(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewGroupHandler(&stubGroupService{
 		dismissGroupFn: func(currentUserUUID, groupUUID string) error {

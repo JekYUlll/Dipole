@@ -92,7 +92,6 @@ func (s *stubFileLimiter) AllowFileUpload(userUUID string) (bool, time.Duration)
 
 func TestFileHandlerUploadSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		uploadFn: func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
@@ -133,7 +132,6 @@ func TestFileHandlerUploadSuccess(t *testing.T) {
 
 func TestFileHandlerUploadRateLimited(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		uploadFn: func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
@@ -173,7 +171,6 @@ func TestFileHandlerUploadRateLimited(t *testing.T) {
 
 func TestFileHandlerDownloadSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		downloadFn: func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
@@ -205,7 +202,6 @@ func TestFileHandlerDownloadSuccess(t *testing.T) {
 
 func TestFileHandlerContentSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		openContentFn: func(currentUserUUID, fileUUID string) (*service.FileContentResult, error) {
@@ -243,7 +239,6 @@ func TestFileHandlerContentSuccess(t *testing.T) {
 
 func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		initiateMultipartFn: func(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error) {
@@ -273,7 +268,6 @@ func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 
 func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := newFileHandler(&stubFileService{
 		uploadPartFn: func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {

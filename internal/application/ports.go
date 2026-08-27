@@ -15,10 +15,21 @@ type MessageCommand interface {
 	SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
+type MessageCommandContext interface {
+	SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	SendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
+	SendDirectFileMessageContext(ctx context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
+	SendGroupFileMessageContext(ctx context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
+}
+
 type MessageQuery interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error)
+	ListDirectMessagesAfterSeq(currentUserUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
+	ListGroupMessagesBeforeSeq(currentUserUUID, groupUUID string, beforeSeq uint64, limit int) ([]*model.Message, error)
 	ListGroupMessagesAfter(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error)
+	ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineMessages(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
@@ -35,6 +46,18 @@ type SyncPage struct {
 
 type SyncApplication interface {
 	List(userUUID string, afterSeq uint64, limit int) (*SyncPage, error)
+	GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
+	AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error)
+	ListGroupCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error)
+	AdvanceGroupCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error)
+}
+
+type ClientSyncComparisonObserver interface {
+	ObserveClientSyncComparison(outcome string, count int)
+}
+
+type SearchApplication interface {
+	Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error)
 }
 
 type CoreCapability interface {
@@ -44,6 +67,7 @@ type CoreCapability interface {
 	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
 	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
 	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
+	ListSearchConversationKeys(userUUID string) ([]string, error)
 }
 
 type AICallLogStore interface {
@@ -73,9 +97,11 @@ type FileMetadataStore interface {
 	GetByUUID(uuid string) (*model.UploadedFile, error)
 }
 
+type MessageOutboxBuilder func(message *model.Message) (*model.OutboxEvent, error)
+
 type MessageStore interface {
 	CreateWithSync(message *model.Message, recipientUUIDs []string) error
-	StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error
+	StoreWithOutboxAndSync(message *model.Message, buildOutbox MessageOutboxBuilder, recipientUUIDs []string) error
 	EnsureOutbox(event *model.OutboxEvent) error
 	EnsureSyncInbox(message *model.Message, recipientUUIDs []string) error
 	GetByUUID(uuid string) (*model.Message, error)
@@ -83,12 +109,38 @@ type MessageStore interface {
 	HasConversationMessages(conversationKey string) (bool, error)
 	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
 	ListByConversationKeyAfter(conversationKey string, afterID uint, limit int) ([]*model.Message, error)
+	ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error)
+	ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error)
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
 }
 
+type MessageMetadataStore interface {
+	GetMetadataByUUID(uuid string) (*model.MessageMetadata, error)
+	GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error)
+}
+
+type SearchIndex interface {
+	Apply(mutation *model.MessageSearchMutation) error
+	Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error)
+}
+
 type SyncStore interface {
 	ListByUserAfter(userUUID string, afterSeq uint64, limit int) ([]*model.SyncMessage, error)
+	GetDeviceCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error)
+	GetLatestUserSyncSequence(userUUID string) (uint64, error)
+	AdvanceDeviceSyncCheckpoint(userUUID, deviceID string, syncSeq uint64) error
+	ListGroupSyncCheckpoints(userUUID, deviceID string, groupUUIDs []string) ([]*model.GroupSyncCheckpoint, error)
+	GetGroupSyncState(groupUUID string) (*model.GroupSyncState, error)
+	AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error
+}
+
+type SyncMessageHydrator interface {
+	Hydrate(ctx context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error)
+}
+
+type SyncProjectionStore interface {
+	Apply(projection *model.SyncProjection) error
 }
 
 type UserStore interface {
@@ -133,10 +185,11 @@ type ConversationStore interface {
 	UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error
 	UpsertGroupMessage(userUUID, groupUUID string, message *model.Message, unreadIncrement int) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
+	ListSearchConversationKeys(userUUID string) ([]string, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
-	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error
 }
 
 type OutboxRelayStore interface {

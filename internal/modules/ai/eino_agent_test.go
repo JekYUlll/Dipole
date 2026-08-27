@@ -75,7 +75,7 @@ func TestNewAgentAcceptsTools(t *testing.T) {
 		context.Background(),
 		model,
 		"You are Dipole AI",
-		NewUserProfileTool(&stubAIUserReader{}),
+		NewUserProfileTool(&stubAgentCapability{}, "UAI"),
 	)
 	if err != nil {
 		t.Fatalf("expected no error creating agent, got %v", err)

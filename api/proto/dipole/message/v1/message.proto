@@ -19,6 +19,7 @@ enum ErrorReason {
   ERROR_REASON_FILE_REQUIRED = 8;
   ERROR_REASON_FILE_UNAVAILABLE = 9;
   ERROR_REASON_IDEMPOTENCY_CONFLICT = 10;
+  ERROR_REASON_CLIENT_MESSAGE_ID_INVALID = 11;
 }
 
 message ErrorDetail {
@@ -42,6 +43,7 @@ message Message {
   string file_content_type = 14;
   google.protobuf.Timestamp file_expires_at = 15;
   google.protobuf.Timestamp sent_at = 16;
+  uint64 sequence = 17;
 }
 
 message SendDirectTextRequest {
@@ -77,10 +79,28 @@ message SendMessageResponse {
   repeated string recipient_user_ids = 2;
 }
 
+enum MessageCommandReceiptStatus {
+  MESSAGE_COMMAND_RECEIPT_STATUS_UNSPECIFIED = 0;
+  MESSAGE_COMMAND_RECEIPT_STATUS_ABSENT = 1;
+  MESSAGE_COMMAND_RECEIPT_STATUS_COMMITTED = 2;
+}
+
+message GetMessageCommandReceiptRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string client_message_id = 2;
+}
+
+message GetMessageCommandReceiptResponse {
+  MessageCommandReceiptStatus status = 1;
+  Message message = 2;
+}
+
 message ListDirectHistoryRequest {
   dipole.common.v1.RequestContext context = 1;
   string target_user_id = 2;
   uint64 before_id = 3;
+  optional uint64 before_sequence = 5;
+  optional uint64 after_sequence = 6;
   int32 page_size = 4;
 }
 
@@ -90,6 +110,8 @@ message ListGroupHistoryRequest {
   oneof cursor {
     uint64 before_id = 3;
     uint64 after_id = 4;
+    uint64 after_sequence = 6;
+    uint64 before_sequence = 7;
   }
   int32 page_size = 5;
 }
@@ -111,6 +133,7 @@ service MessageService {
   rpc SendGroupText(SendGroupTextRequest) returns (SendMessageResponse);
   rpc SendDirectFile(SendDirectFileRequest) returns (SendMessageResponse);
   rpc SendGroupFile(SendGroupFileRequest) returns (SendMessageResponse);
+  rpc GetMessageCommandReceipt(GetMessageCommandReceiptRequest) returns (GetMessageCommandReceiptResponse);
   rpc ListDirectHistory(ListDirectHistoryRequest) returns (ListMessagesResponse);
   rpc ListGroupHistory(ListGroupHistoryRequest) returns (ListMessagesResponse);
   rpc ListOfflineMessages(ListOfflineMessagesRequest) returns (ListMessagesResponse);

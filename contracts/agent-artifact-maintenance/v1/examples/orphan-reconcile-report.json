@@ -1,0 +1,29 @@
+{
+  "schema_version": "dipole.agent.artifact.reconcile.v1",
+  "mode": "dry_run",
+  "delete_authorized": false,
+  "bucket": "dipole-agent-artifacts",
+  "prefix": "agent-artifacts/v1/",
+  "minimum_age_seconds": 86400,
+  "started_at": "2026-08-27T09:59:00Z",
+  "completed_at": "2026-08-27T09:59:01Z",
+  "scanned_count": 1,
+  "referenced_count": 0,
+  "young_count": 0,
+  "orphan_candidate_count": 1,
+  "unsafe_count": 0,
+  "consistent": false,
+  "examples": [
+    {
+      "kind": "orphan_candidate",
+      "object_key": "agent-artifacts/v1/dipole/task/2222222222222222222222222222222222222222222222222222222222222222/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 128,
+      "etag": "etag-v1",
+      "last_modified": "2026-08-25T10:00:00Z",
+      "eligible_after": "2026-08-26T10:00:00Z",
+      "eligible_for_cleanup": true
+    }
+  ],
+  "evidence_sha256": "a84d26f95d239af96a0b75845eb81a2fc69aa16a32b8d2c5b2a944032ca06a47"
+}

@@ -1,0 +1,30 @@
+app:
+  name: dipole-search-backfill-smoke
+  env: test
+log:
+  level: info
+  format: console
+  development: false
+mysql:
+  host: mysql
+  port: 3306
+  user: root
+  password: dipole-root
+  dbname: dipole
+elasticsearch:
+  enabled: true
+  address: http://elasticsearch:9200
+  index_prefix: dipole-smoke
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 15
+storage:
+  enabled: true
+  provider: minio
+  endpoint: minio:9000
+  access_key: dipoleminio
+  secret_key: dipoleminiopass
+  use_ssl: false
+  bucket: dipole-files
+  search_archive_bucket: dipole-search-archives
+  search_archive_retention_days: 30

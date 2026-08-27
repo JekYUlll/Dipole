@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-subscription-prefilter/v1/review-report.schema.json",
+  "title": "Dipole Agent Subscription Corpus Review Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "corpusSha256", "reviewSha256", "finalLabelsSha256", "passed", "reasons", "metrics", "disagreementCaseIds", "finalLabelMismatchCaseIds"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.subscription-corpus-review-report.v1"},
+    "corpusSha256": {"$ref": "#/$defs/sha256"},
+    "reviewSha256": {"$ref": "#/$defs/sha256"},
+    "finalLabelsSha256": {"$ref": "#/$defs/sha256"},
+    "passed": {"type": "boolean"},
+    "reasons": {"type": "array", "maxItems": 2, "uniqueItems": true, "items": {"enum": ["agreement_below_minimum", "final_label_mismatch"]}},
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["totalCases", "agreedCases", "disagreedCases", "agreementBps", "minimumAgreementBps", "adjudicatedCases"],
+      "properties": {
+        "totalCases": {"type": "integer", "minimum": 2, "maximum": 10000},
+        "agreedCases": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "disagreedCases": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "agreementBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "minimumAgreementBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "adjudicatedCases": {"type": "integer", "minimum": 0, "maximum": 10000}
+      }
+    },
+    "disagreementCaseIds": {"$ref": "#/$defs/ids"},
+    "finalLabelMismatchCaseIds": {"$ref": "#/$defs/ids"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"},
+    "ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

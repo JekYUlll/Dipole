@@ -36,7 +36,6 @@ func (s *stubSessionService) ForceLogoutAll(userUUID, currentToken string) error
 
 func TestSessionHandlerListDevicesSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewSessionHandler(&stubSessionService{
 		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {
@@ -69,7 +68,6 @@ func TestSessionHandlerListDevicesSuccess(t *testing.T) {
 
 func TestSessionHandlerForceLogoutDeviceNotFound(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewSessionHandler(&stubSessionService{
 		forceLogoutConnectionFn: func(userUUID, connectionID string) error {
@@ -100,7 +98,6 @@ func TestSessionHandlerForceLogoutDeviceNotFound(t *testing.T) {
 
 func TestSessionHandlerForceLogoutAllSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewSessionHandler(&stubSessionService{
 		forceLogoutAllFn: func(userUUID, currentToken string) error {
@@ -126,7 +123,6 @@ func TestSessionHandlerForceLogoutAllSuccess(t *testing.T) {
 
 func TestSessionHandlerListDevicesFailure(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewSessionHandler(&stubSessionService{
 		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {

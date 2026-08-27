@@ -36,8 +36,10 @@ type Server struct {
 }
 
 type Dependencies struct {
-	Messages  applicationPort.MessageApplication
-	Messaging *appComposition.MessagingServices
+	Messages       applicationPort.MessageApplication
+	Sync           applicationPort.SyncApplication
+	SyncComparison applicationPort.ClientSyncComparisonObserver
+	Messaging      *appComposition.MessagingServices
 }
 
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
@@ -50,6 +52,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	}
 
 	engine := gin.New()
+	engine.Use(middleware.Correlation())
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
 	mountWebApp(engine)
@@ -112,7 +115,9 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = messaging.Conversations
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).
+		WithTimelineNotifyMode(config.MessageConfig().TimelineNotifyMode).
+		WithLimiter(requestLimiter)
 	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(messaging.Conversations)
@@ -121,7 +126,11 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	sessionHandler := httpHandler.NewSessionHandler(sessionService)
 	userHandler := httpHandler.NewUserHandler(userService).WithAvatarMaxUploadBytes(minInt64(5*1024*1024, storageCfg.FileMaxSizeMB*1024*1024))
 	messageHandler := httpHandler.NewMessageHandler(messageApplication)
-	syncHandler := httpHandler.NewSyncHandler(messaging.Sync)
+	syncApplication := applicationPort.SyncApplication(messaging.Sync)
+	if dependencies.Sync != nil {
+		syncApplication = dependencies.Sync
+	}
+	syncHandler := httpHandler.NewSyncHandler(syncApplication).WithComparisonObserver(dependencies.SyncComparison)
 	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, repos.Users)
@@ -145,6 +154,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 		protected.Use(authRequired)
 		{
 			protected.POST("/auth/logout", authHandler.Logout)
+			protected.POST("/auth/agent-mcp/token", authHandler.IssueAgentMCPGrant)
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
 			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
@@ -169,6 +179,11 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
 			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
 			protected.GET("/sync", syncHandler.List)
+			protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+			protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+			protected.POST("/sync/comparison", syncHandler.ReportComparison)
+			protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
+			protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)

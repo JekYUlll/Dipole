@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-artifact-maintenance/v1/authorization.schema.json",
+  "title": "Dipole Agent Artifact Maintenance Authorization v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "mode", "action", "report_evidence_sha256", "bucket", "prefix",
+    "object_key", "content_sha256", "size_bytes", "etag", "last_modified", "eligible_after",
+    "candidate_observed_at", "proposal_id", "proposer_id", "approver_ids", "executor_id",
+    "maintenance_grant_version", "generated_at", "expires_at", "metadata_recheck_required",
+    "delete_adapter_available", "authorization_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.agent.artifact-maintenance-authorization.v1" },
+    "mode": { "const": "dry_run" },
+    "action": { "const": "delete_candidate" },
+    "report_evidence_sha256": { "$ref": "#/$defs/sha256" },
+    "bucket": { "const": "dipole-agent-artifacts" },
+    "prefix": { "const": "agent-artifacts/v1/" },
+    "object_key": { "type": "string", "pattern": "^agent-artifacts/v1/" },
+    "content_sha256": { "$ref": "#/$defs/sha256" },
+    "size_bytes": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+    "etag": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "last_modified": { "type": "string", "format": "date-time" },
+    "eligible_after": { "type": "string", "format": "date-time" },
+    "candidate_observed_at": { "type": "string", "format": "date-time" },
+    "proposal_id": { "$ref": "#/$defs/id" },
+    "proposer_id": { "$ref": "#/$defs/id" },
+    "approver_ids": { "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "executor_id": { "$ref": "#/$defs/id" },
+    "maintenance_grant_version": { "$ref": "#/$defs/id" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "metadata_recheck_required": { "const": true },
+    "delete_adapter_available": { "const": false },
+    "authorization_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 64 }
+  }
+}

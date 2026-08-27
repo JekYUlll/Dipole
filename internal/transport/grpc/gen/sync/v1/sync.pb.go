@@ -88,6 +88,8 @@ type SyncMessage struct {
 	SyncSeq         uint64                 `protobuf:"varint,1,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
 	ConversationKey string                 `protobuf:"bytes,2,opt,name=conversation_key,json=conversationKey,proto3" json:"conversation_key,omitempty"`
 	Message         *v11.Message           `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	MessageUuid     string                 `protobuf:"bytes,4,opt,name=message_uuid,json=messageUuid,proto3" json:"message_uuid,omitempty"`
+	MessageSeq      uint64                 `protobuf:"varint,5,opt,name=message_seq,json=messageSeq,proto3" json:"message_seq,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -141,6 +143,20 @@ func (x *SyncMessage) GetMessage() *v11.Message {
 		return x.Message
 	}
 	return nil
+}
+
+func (x *SyncMessage) GetMessageUuid() string {
+	if x != nil {
+		return x.MessageUuid
+	}
+	return ""
+}
+
+func (x *SyncMessage) GetMessageSeq() uint64 {
+	if x != nil {
+		return x.MessageSeq
+	}
+	return 0
 }
 
 type ListSyncMessagesResponse struct {
@@ -203,6 +219,378 @@ func (x *ListSyncMessagesResponse) GetHasMore() bool {
 	return false
 }
 
+type GetDeviceCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDeviceCheckpointRequest) Reset() {
+	*x = GetDeviceCheckpointRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDeviceCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDeviceCheckpointRequest) ProtoMessage() {}
+
+func (x *GetDeviceCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDeviceCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*GetDeviceCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetDeviceCheckpointRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+type AdvanceDeviceCheckpointRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	SyncSeq       uint64                 `protobuf:"varint,2,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdvanceDeviceCheckpointRequest) Reset() {
+	*x = AdvanceDeviceCheckpointRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdvanceDeviceCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdvanceDeviceCheckpointRequest) ProtoMessage() {}
+
+func (x *AdvanceDeviceCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdvanceDeviceCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*AdvanceDeviceCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AdvanceDeviceCheckpointRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *AdvanceDeviceCheckpointRequest) GetSyncSeq() uint64 {
+	if x != nil {
+		return x.SyncSeq
+	}
+	return 0
+}
+
+type DeviceCheckpointResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	SyncSeq       uint64                 `protobuf:"varint,2,opt,name=sync_seq,json=syncSeq,proto3" json:"sync_seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeviceCheckpointResponse) Reset() {
+	*x = DeviceCheckpointResponse{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeviceCheckpointResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeviceCheckpointResponse) ProtoMessage() {}
+
+func (x *DeviceCheckpointResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeviceCheckpointResponse.ProtoReflect.Descriptor instead.
+func (*DeviceCheckpointResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DeviceCheckpointResponse) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *DeviceCheckpointResponse) GetSyncSeq() uint64 {
+	if x != nil {
+		return x.SyncSeq
+	}
+	return 0
+}
+
+type ListGroupCheckpointsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	GroupIds      []string               `protobuf:"bytes,2,rep,name=group_ids,json=groupIds,proto3" json:"group_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupCheckpointsRequest) Reset() {
+	*x = ListGroupCheckpointsRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupCheckpointsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupCheckpointsRequest) ProtoMessage() {}
+
+func (x *ListGroupCheckpointsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupCheckpointsRequest.ProtoReflect.Descriptor instead.
+func (*ListGroupCheckpointsRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListGroupCheckpointsRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ListGroupCheckpointsRequest) GetGroupIds() []string {
+	if x != nil {
+		return x.GroupIds
+	}
+	return nil
+}
+
+type GroupCheckpoint struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	GroupId               string                 `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	LatestMessageSequence uint64                 `protobuf:"varint,2,opt,name=latest_message_sequence,json=latestMessageSequence,proto3" json:"latest_message_sequence,omitempty"`
+	LatestMessageId       string                 `protobuf:"bytes,3,opt,name=latest_message_id,json=latestMessageId,proto3" json:"latest_message_id,omitempty"`
+	PulledMessageSequence uint64                 `protobuf:"varint,4,opt,name=pulled_message_sequence,json=pulledMessageSequence,proto3" json:"pulled_message_sequence,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GroupCheckpoint) Reset() {
+	*x = GroupCheckpoint{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupCheckpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupCheckpoint) ProtoMessage() {}
+
+func (x *GroupCheckpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupCheckpoint.ProtoReflect.Descriptor instead.
+func (*GroupCheckpoint) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GroupCheckpoint) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *GroupCheckpoint) GetLatestMessageSequence() uint64 {
+	if x != nil {
+		return x.LatestMessageSequence
+	}
+	return 0
+}
+
+func (x *GroupCheckpoint) GetLatestMessageId() string {
+	if x != nil {
+		return x.LatestMessageId
+	}
+	return ""
+}
+
+func (x *GroupCheckpoint) GetPulledMessageSequence() uint64 {
+	if x != nil {
+		return x.PulledMessageSequence
+	}
+	return 0
+}
+
+type ListGroupCheckpointsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Checkpoints   []*GroupCheckpoint     `protobuf:"bytes,1,rep,name=checkpoints,proto3" json:"checkpoints,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupCheckpointsResponse) Reset() {
+	*x = ListGroupCheckpointsResponse{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupCheckpointsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupCheckpointsResponse) ProtoMessage() {}
+
+func (x *ListGroupCheckpointsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupCheckpointsResponse.ProtoReflect.Descriptor instead.
+func (*ListGroupCheckpointsResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListGroupCheckpointsResponse) GetCheckpoints() []*GroupCheckpoint {
+	if x != nil {
+		return x.Checkpoints
+	}
+	return nil
+}
+
+type AdvanceGroupCheckpointRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Context         *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	GroupId         string                 `protobuf:"bytes,2,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	MessageSequence uint64                 `protobuf:"varint,3,opt,name=message_sequence,json=messageSequence,proto3" json:"message_sequence,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AdvanceGroupCheckpointRequest) Reset() {
+	*x = AdvanceGroupCheckpointRequest{}
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdvanceGroupCheckpointRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdvanceGroupCheckpointRequest) ProtoMessage() {}
+
+func (x *AdvanceGroupCheckpointRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_sync_v1_sync_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdvanceGroupCheckpointRequest.ProtoReflect.Descriptor instead.
+func (*AdvanceGroupCheckpointRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_sync_v1_sync_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AdvanceGroupCheckpointRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *AdvanceGroupCheckpointRequest) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+func (x *AdvanceGroupCheckpointRequest) GetMessageSequence() uint64 {
+	if x != nil {
+		return x.MessageSequence
+	}
+	return 0
+}
+
 var File_dipole_sync_v1_sync_proto protoreflect.FileDescriptor
 
 const file_dipole_sync_v1_sync_proto_rawDesc = "" +
@@ -211,17 +599,46 @@ const file_dipole_sync_v1_sync_proto_rawDesc = "" +
 	"\x17ListSyncMessagesRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
 	"\tafter_seq\x18\x02 \x01(\x04R\bafterSeq\x12\x1b\n" +
-	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"\x89\x01\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"\xcd\x01\n" +
 	"\vSyncMessage\x12\x19\n" +
 	"\bsync_seq\x18\x01 \x01(\x04R\asyncSeq\x12)\n" +
 	"\x10conversation_key\x18\x02 \x01(\tR\x0fconversationKey\x124\n" +
-	"\amessage\x18\x03 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\"\x83\x01\n" +
+	"\amessage\x18\x03 \x01(\v2\x1a.dipole.message.v1.MessageR\amessage\x12!\n" +
+	"\fmessage_uuid\x18\x04 \x01(\tR\vmessageUuid\x12\x1f\n" +
+	"\vmessage_seq\x18\x05 \x01(\x04R\n" +
+	"messageSeq\"\x83\x01\n" +
 	"\x18ListSyncMessagesResponse\x121\n" +
 	"\x05items\x18\x01 \x03(\v2\x1b.dipole.sync.v1.SyncMessageR\x05items\x12\x19\n" +
 	"\bnext_seq\x18\x02 \x01(\x04R\anextSeq\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore2y\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"X\n" +
+	"\x1aGetDeviceCheckpointRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\"w\n" +
+	"\x1eAdvanceDeviceCheckpointRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
+	"\bsync_seq\x18\x02 \x01(\x04R\asyncSeq\"R\n" +
+	"\x18DeviceCheckpointResponse\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x19\n" +
+	"\bsync_seq\x18\x02 \x01(\x04R\asyncSeq\"v\n" +
+	"\x1bListGroupCheckpointsRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
+	"\tgroup_ids\x18\x02 \x03(\tR\bgroupIds\"\xc8\x01\n" +
+	"\x0fGroupCheckpoint\x12\x19\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x126\n" +
+	"\x17latest_message_sequence\x18\x02 \x01(\x04R\x15latestMessageSequence\x12*\n" +
+	"\x11latest_message_id\x18\x03 \x01(\tR\x0flatestMessageId\x126\n" +
+	"\x17pulled_message_sequence\x18\x04 \x01(\x04R\x15pulledMessageSequence\"a\n" +
+	"\x1cListGroupCheckpointsResponse\x12A\n" +
+	"\vcheckpoints\x18\x01 \x03(\v2\x1f.dipole.sync.v1.GroupCheckpointR\vcheckpoints\"\xa1\x01\n" +
+	"\x1dAdvanceGroupCheckpointRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
+	"\bgroup_id\x18\x02 \x01(\tR\agroupId\x12)\n" +
+	"\x10message_sequence\x18\x03 \x01(\x04R\x0fmessageSequence2\xb8\x04\n" +
 	"\x10SyncQueryService\x12e\n" +
-	"\x10ListSyncMessages\x12'.dipole.sync.v1.ListSyncMessagesRequest\x1a(.dipole.sync.v1.ListSyncMessagesResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1b\x06proto3"
+	"\x10ListSyncMessages\x12'.dipole.sync.v1.ListSyncMessagesRequest\x1a(.dipole.sync.v1.ListSyncMessagesResponse\x12k\n" +
+	"\x13GetDeviceCheckpoint\x12*.dipole.sync.v1.GetDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponse\x12s\n" +
+	"\x17AdvanceDeviceCheckpoint\x12..dipole.sync.v1.AdvanceDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponse\x12q\n" +
+	"\x14ListGroupCheckpoints\x12+.dipole.sync.v1.ListGroupCheckpointsRequest\x1a,.dipole.sync.v1.ListGroupCheckpointsResponse\x12h\n" +
+	"\x16AdvanceGroupCheckpoint\x12-.dipole.sync.v1.AdvanceGroupCheckpointRequest\x1a\x1f.dipole.sync.v1.GroupCheckpointBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1b\x06proto3"
 
 var (
 	file_dipole_sync_v1_sync_proto_rawDescOnce sync.Once
@@ -235,25 +652,45 @@ func file_dipole_sync_v1_sync_proto_rawDescGZIP() []byte {
 	return file_dipole_sync_v1_sync_proto_rawDescData
 }
 
-var file_dipole_sync_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dipole_sync_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dipole_sync_v1_sync_proto_goTypes = []any{
-	(*ListSyncMessagesRequest)(nil),  // 0: dipole.sync.v1.ListSyncMessagesRequest
-	(*SyncMessage)(nil),              // 1: dipole.sync.v1.SyncMessage
-	(*ListSyncMessagesResponse)(nil), // 2: dipole.sync.v1.ListSyncMessagesResponse
-	(*v1.RequestContext)(nil),        // 3: dipole.common.v1.RequestContext
-	(*v11.Message)(nil),              // 4: dipole.message.v1.Message
+	(*ListSyncMessagesRequest)(nil),        // 0: dipole.sync.v1.ListSyncMessagesRequest
+	(*SyncMessage)(nil),                    // 1: dipole.sync.v1.SyncMessage
+	(*ListSyncMessagesResponse)(nil),       // 2: dipole.sync.v1.ListSyncMessagesResponse
+	(*GetDeviceCheckpointRequest)(nil),     // 3: dipole.sync.v1.GetDeviceCheckpointRequest
+	(*AdvanceDeviceCheckpointRequest)(nil), // 4: dipole.sync.v1.AdvanceDeviceCheckpointRequest
+	(*DeviceCheckpointResponse)(nil),       // 5: dipole.sync.v1.DeviceCheckpointResponse
+	(*ListGroupCheckpointsRequest)(nil),    // 6: dipole.sync.v1.ListGroupCheckpointsRequest
+	(*GroupCheckpoint)(nil),                // 7: dipole.sync.v1.GroupCheckpoint
+	(*ListGroupCheckpointsResponse)(nil),   // 8: dipole.sync.v1.ListGroupCheckpointsResponse
+	(*AdvanceGroupCheckpointRequest)(nil),  // 9: dipole.sync.v1.AdvanceGroupCheckpointRequest
+	(*v1.RequestContext)(nil),              // 10: dipole.common.v1.RequestContext
+	(*v11.Message)(nil),                    // 11: dipole.message.v1.Message
 }
 var file_dipole_sync_v1_sync_proto_depIdxs = []int32{
-	3, // 0: dipole.sync.v1.ListSyncMessagesRequest.context:type_name -> dipole.common.v1.RequestContext
-	4, // 1: dipole.sync.v1.SyncMessage.message:type_name -> dipole.message.v1.Message
-	1, // 2: dipole.sync.v1.ListSyncMessagesResponse.items:type_name -> dipole.sync.v1.SyncMessage
-	0, // 3: dipole.sync.v1.SyncQueryService.ListSyncMessages:input_type -> dipole.sync.v1.ListSyncMessagesRequest
-	2, // 4: dipole.sync.v1.SyncQueryService.ListSyncMessages:output_type -> dipole.sync.v1.ListSyncMessagesResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	10, // 0: dipole.sync.v1.ListSyncMessagesRequest.context:type_name -> dipole.common.v1.RequestContext
+	11, // 1: dipole.sync.v1.SyncMessage.message:type_name -> dipole.message.v1.Message
+	1,  // 2: dipole.sync.v1.ListSyncMessagesResponse.items:type_name -> dipole.sync.v1.SyncMessage
+	10, // 3: dipole.sync.v1.GetDeviceCheckpointRequest.context:type_name -> dipole.common.v1.RequestContext
+	10, // 4: dipole.sync.v1.AdvanceDeviceCheckpointRequest.context:type_name -> dipole.common.v1.RequestContext
+	10, // 5: dipole.sync.v1.ListGroupCheckpointsRequest.context:type_name -> dipole.common.v1.RequestContext
+	7,  // 6: dipole.sync.v1.ListGroupCheckpointsResponse.checkpoints:type_name -> dipole.sync.v1.GroupCheckpoint
+	10, // 7: dipole.sync.v1.AdvanceGroupCheckpointRequest.context:type_name -> dipole.common.v1.RequestContext
+	0,  // 8: dipole.sync.v1.SyncQueryService.ListSyncMessages:input_type -> dipole.sync.v1.ListSyncMessagesRequest
+	3,  // 9: dipole.sync.v1.SyncQueryService.GetDeviceCheckpoint:input_type -> dipole.sync.v1.GetDeviceCheckpointRequest
+	4,  // 10: dipole.sync.v1.SyncQueryService.AdvanceDeviceCheckpoint:input_type -> dipole.sync.v1.AdvanceDeviceCheckpointRequest
+	6,  // 11: dipole.sync.v1.SyncQueryService.ListGroupCheckpoints:input_type -> dipole.sync.v1.ListGroupCheckpointsRequest
+	9,  // 12: dipole.sync.v1.SyncQueryService.AdvanceGroupCheckpoint:input_type -> dipole.sync.v1.AdvanceGroupCheckpointRequest
+	2,  // 13: dipole.sync.v1.SyncQueryService.ListSyncMessages:output_type -> dipole.sync.v1.ListSyncMessagesResponse
+	5,  // 14: dipole.sync.v1.SyncQueryService.GetDeviceCheckpoint:output_type -> dipole.sync.v1.DeviceCheckpointResponse
+	5,  // 15: dipole.sync.v1.SyncQueryService.AdvanceDeviceCheckpoint:output_type -> dipole.sync.v1.DeviceCheckpointResponse
+	8,  // 16: dipole.sync.v1.SyncQueryService.ListGroupCheckpoints:output_type -> dipole.sync.v1.ListGroupCheckpointsResponse
+	7,  // 17: dipole.sync.v1.SyncQueryService.AdvanceGroupCheckpoint:output_type -> dipole.sync.v1.GroupCheckpoint
+	13, // [13:18] is the sub-list for method output_type
+	8,  // [8:13] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dipole_sync_v1_sync_proto_init() }
@@ -267,7 +704,7 @@ func file_dipole_sync_v1_sync_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_sync_v1_sync_proto_rawDesc), len(file_dipole_sync_v1_sync_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

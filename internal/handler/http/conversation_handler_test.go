@@ -58,7 +58,6 @@ func (s *stubConversationService) UpdateGroupRemark(userUUID, groupUUID, remark 
 
 func TestConversationHandlerListSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
 		listForUserFn: func(userUUID string, limit int) ([]*service.ConversationView, error) {
@@ -115,7 +114,6 @@ func TestConversationHandlerListSuccess(t *testing.T) {
 
 func TestConversationHandlerMarkDirectReadNotFound(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
 		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
@@ -146,7 +144,6 @@ func TestConversationHandlerMarkDirectReadNotFound(t *testing.T) {
 
 func TestConversationHandlerMarkDirectReadInternal(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
 		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
@@ -169,7 +166,6 @@ func TestConversationHandlerMarkDirectReadInternal(t *testing.T) {
 
 func TestConversationHandlerMarkGroupReadForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
 		markGroupReadFn: func(userUUID, groupUUID string) error {
@@ -192,7 +188,6 @@ func TestConversationHandlerMarkGroupReadForbidden(t *testing.T) {
 
 func TestConversationHandlerUpdateGroupRemarkSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewConversationHandler(&stubConversationService{
 		updateGroupRemarkFn: func(userUUID, groupUUID, remark string) (*model.Conversation, error) {

@@ -37,3 +37,7 @@ func (c *LocalCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*mode
 	}
 	return file, nil
 }
+
+func (c *LocalCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {
+	return c.repos.Conversations.ListSearchConversationKeys(userUUID)
+}
