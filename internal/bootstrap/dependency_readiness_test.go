@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -32,6 +33,16 @@ func TestConfigureRuntimeDependencyReadinessRequiresMetrics(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("enabled dependency readiness must require metrics")
+	}
+}
+
+func TestKafkaConsumerReadinessProbeRequiresInitialAssignment(t *testing.T) {
+	probe := kafkaConsumerReadinessProbe("kafka-assignment", nil)
+	if probe.Name != "kafka-assignment" || !probe.RequireInitialSuccess {
+		t.Fatalf("unexpected kafka consumer readiness probe: %+v", probe)
+	}
+	if err := probe.Check(t.Context()); err == nil || !strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("nil consumer readiness error = %v", err)
 	}
 }
 

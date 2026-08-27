@@ -184,6 +184,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		grpcReadinessProbe("core-rpc", runtime.coreConn),
 		grpcReadinessProbe("message-rpc", runtime.messageConn),
 		kafkaReadinessProbe("kafka", platformKafka.Client),
+		kafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber),
 	); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("configure Gateway dependency readiness: %w", err)

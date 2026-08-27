@@ -62,6 +62,14 @@ func kafkaReadinessProbe(name string, publisher *platformkafka.Publisher) platfo
 	return platformobservability.DependencyProbe{Name: name, Check: publisher.Ping}
 }
 
+func kafkaConsumerReadinessProbe(name string, consumer *platformkafka.Consumer) platformobservability.DependencyProbe {
+	return platformobservability.DependencyProbe{
+		Name:                  name,
+		RequireInitialSuccess: true,
+		Check:                 consumer.ValidateReadiness,
+	}
+}
+
 func grpcReadinessProbe(name string, connection *grpc.ClientConn) platformobservability.DependencyProbe {
 	return platformobservability.DependencyProbe{Name: name, Check: func(ctx context.Context) error {
 		response, err := healthv1.NewHealthClient(connection).Check(ctx, &healthv1.HealthCheckRequest{})
