@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-subscription-prefilter/v1/report.schema.json",
+  "title": "Dipole Agent Subscription Prefilter Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "corpusId", "corpusRevision", "corpusSha256", "evidenceSha256", "candidate", "passed", "reasons", "confusion", "metrics", "falsePositiveCaseIds", "falseNegativeCaseIds"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.subscription-prefilter-report.v1"},
+    "corpusId": {"$ref": "#/$defs/id"},
+    "corpusRevision": {"$ref": "#/$defs/revision"},
+    "corpusSha256": {"$ref": "#/$defs/sha256"},
+    "evidenceSha256": {"$ref": "#/$defs/sha256"},
+    "candidate": {"$ref": "evidence.schema.json#/properties/candidate"},
+    "passed": {"type": "boolean"},
+    "reasons": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"enum": ["precision_below_minimum", "recall_below_minimum", "p95_latency_exceeded", "mean_cost_exceeded"]}},
+    "confusion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["truePositive", "trueNegative", "falsePositive", "falseNegative"],
+      "properties": {
+        "truePositive": {"type": "integer", "minimum": 0}, "trueNegative": {"type": "integer", "minimum": 0},
+        "falsePositive": {"type": "integer", "minimum": 0}, "falseNegative": {"type": "integer", "minimum": 0}
+      }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["precisionBps", "recallBps", "p95LatencyMicros", "meanCostMicrousd", "totalCostMicrousd"],
+      "properties": {
+        "precisionBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "recallBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "p95LatencyMicros": {"type": "integer", "minimum": 0},
+        "meanCostMicrousd": {"type": "integer", "minimum": 0},
+        "totalCostMicrousd": {"type": "integer", "minimum": 0}
+      }
+    },
+    "falsePositiveCaseIds": {"$ref": "#/$defs/ids"},
+    "falseNegativeCaseIds": {"$ref": "#/$defs/ids"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"},
+    "ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "revision": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

@@ -18,12 +18,18 @@ const (
 	TypeChatRead             = "chat.read"
 	TypeSessionKicked        = "session.kicked"
 	TypeGroupMessageNotify   = "group.message.notify"
+	TypeSyncItemNotifyV1     = "sync.item.notify.v1"
 	TypeGroupCreated         = "group.created"
 	TypeGroupUpdated         = "group.updated"
 	TypeGroupMembersAdded    = "group.members_added"
 	TypeGroupMembersRemoved  = "group.members_removed"
 	TypeGroupDismissed       = "group.dismissed"
 	TypeContactFriendDeleted = "contact.friend_deleted"
+)
+
+const (
+	TimelineNotifyOff    = "off"
+	TimelineNotifyShadow = "shadow"
 )
 
 const (
@@ -36,13 +42,18 @@ const (
 )
 
 type InboundEnvelope struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Type      string          `json:"type"`
+	RequestID string          `json:"request_id,omitempty"`
+	TraceID   string          `json:"trace_id,omitempty"`
+	Data      json.RawMessage `json:"data,omitempty"`
 }
 
 type OutboundEvent struct {
-	Type string `json:"type"`
-	Data any    `json:"data,omitempty"`
+	Type      string `json:"type"`
+	RequestID string `json:"request_id,omitempty"`
+	TraceID   string `json:"trace_id,omitempty"`
+	EventID   string `json:"event_id,omitempty"`
+	Data      any    `json:"data,omitempty"`
 }
 
 type ConnectedEventData struct {
@@ -86,6 +97,7 @@ type FilePayload struct {
 
 type ChatMessageData struct {
 	MessageID   string       `json:"message_id"`
+	MessageSeq  uint64       `json:"message_seq,omitempty"`
 	FromUUID    string       `json:"from_uuid"`
 	TargetUUID  string       `json:"target_uuid"`
 	TargetType  int8         `json:"target_type"`
@@ -107,17 +119,29 @@ type ChatReadData struct {
 	TargetType          int8      `json:"target_type"`
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	LastReadSeq         uint64    `json:"last_read_seq"`
 	ReadAt              time.Time `json:"read_at"`
 }
 
 type GroupMessageNotifyData struct {
 	GroupUUID          string    `json:"group_uuid"`
 	LatestMessageID    string    `json:"latest_message_id"`
+	LatestMessageSeq   uint64    `json:"latest_message_seq"`
 	MessageType        int8      `json:"message_type"`
 	Preview            string    `json:"preview"`
 	RecentMessageCount int       `json:"recent_message_count"`
 	SentAt             time.Time `json:"sent_at"`
 	SenderUUID         string    `json:"sender_uuid"`
+}
+
+type SyncItemNotifyData struct {
+	SchemaVersion   string `json:"schema_version"`
+	EventID         string `json:"event_id"`
+	MessageUUID     string `json:"message_uuid"`
+	ConversationKey string `json:"conversation_key"`
+	MessageSeq      uint64 `json:"message_seq"`
+	TargetType      int8   `json:"target_type"`
+	TargetUUID      string `json:"target_uuid"`
 }
 
 type SessionKickedData struct {

@@ -110,6 +110,13 @@ definitions:
           $ref: '#/definitions/httpdto.DeviceSessionResponse'
         type: array
     type: object
+  http.DeviceSyncCheckpointResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.DeviceSyncCheckpointResponse'
+    type: object
   http.ErrorEnvelope:
     properties:
       code:
@@ -146,6 +153,22 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/httpdto.GroupResponse'
+    type: object
+  http.GroupSyncCheckpointListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.GroupSyncCheckpointResponse'
+        type: array
+    type: object
+  http.GroupSyncCheckpointResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.GroupSyncCheckpointResponse'
     type: object
   http.IDStatusResponse:
     properties:
@@ -241,6 +264,21 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.PublicUserResponse'
     type: object
+  http.SearchMessageListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.SearchMessageResponse'
+        type: array
+    type: object
+  http.SuccessEnvelope:
+    properties:
+      code:
+        type: integer
+      data: {}
+    type: object
   http.SyncPageResponseEnvelope:
     properties:
       code:
@@ -298,6 +336,16 @@ definitions:
       user_total:
         type: integer
     type: object
+  httpdto.AdvanceGroupSyncCheckpointRequest:
+    properties:
+      message_seq:
+        type: integer
+    type: object
+  httpdto.AdvanceSyncCheckpointRequest:
+    properties:
+      sync_seq:
+        type: integer
+    type: object
   httpdto.ApplyContactRequest:
     properties:
       message:
@@ -314,6 +362,35 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/httpdto.PrivateUserResponse'
+    type: object
+  httpdto.ClientSyncComparisonRequest:
+    properties:
+      baseline:
+        type: boolean
+      legacy_only:
+        type: integer
+      match:
+        type: integer
+      overflow:
+        type: integer
+      pending:
+        type: integer
+      storage_full:
+        type: integer
+      sync_error:
+        type: integer
+      sync_only:
+        type: integer
+      timeline_error:
+        type: integer
+      timeline_invalid:
+        type: integer
+      timeline_match:
+        type: integer
+      timeline_mismatch:
+        type: integer
+      timeline_missing:
+        type: integer
     type: object
   httpdto.ContactApplicationResponse:
     properties:
@@ -364,6 +441,10 @@ definitions:
         type: string
       last_message:
         $ref: '#/definitions/httpdto.ConversationMessageSummaryResponse'
+      last_message_seq:
+        type: integer
+      read_seq:
+        type: integer
       remark:
         type: string
       target_type:
@@ -409,6 +490,13 @@ definitions:
         type: string
       user_agent:
         type: string
+    type: object
+  httpdto.DeviceSyncCheckpointResponse:
+    properties:
+      device_id:
+        type: string
+      sync_seq:
+        type: integer
     type: object
   httpdto.FileDownloadResponse:
     properties:
@@ -481,6 +569,17 @@ definitions:
       uuid:
         type: string
     type: object
+  httpdto.GroupSyncCheckpointResponse:
+    properties:
+      group_uuid:
+        type: string
+      latest_message_id:
+        type: string
+      latest_message_seq:
+        type: integer
+      pulled_message_seq:
+        type: integer
+    type: object
   httpdto.HandleContactApplicationRequest:
     properties:
       action:
@@ -527,6 +626,8 @@ definitions:
         type: integer
       message_id:
         type: string
+      message_seq:
+        type: integer
       message_type:
         type: integer
       sent_at:
@@ -608,12 +709,35 @@ definitions:
     required:
     - member_uuids
     type: object
+  httpdto.SearchMessageResponse:
+    properties:
+      content:
+        type: string
+      conversation_key:
+        type: string
+      from_uuid:
+        type: string
+      message_id:
+        type: string
+      message_seq:
+        type: integer
+      message_type:
+        type: integer
+      revision:
+        type: integer
+      sent_at:
+        type: string
+    type: object
   httpdto.SyncMessageResponse:
     properties:
       conversation_key:
         type: string
       message:
         $ref: '#/definitions/httpdto.MessageResponse'
+      message_seq:
+        type: integer
+      message_uuid:
+        type: string
       sync_seq:
         type: integer
     type: object
@@ -2063,6 +2187,14 @@ paths:
         in: query
         name: before_id
         type: integer
+      - description: 会话序号向前翻页游标
+        in: query
+        name: before_seq
+        type: integer
+      - description: 会话序号增量补拉游标
+        in: query
+        name: after_seq
+        type: integer
       - description: 返回数量
         in: query
         name: limit
@@ -2096,7 +2228,7 @@ paths:
             $ref: '#/definitions/http.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: 获取单聊历史消息
+      summary: 获取单聊历史或增量消息
       tags:
       - Message
   /messages/group/{group_uuid}:
@@ -2111,9 +2243,17 @@ paths:
         in: query
         name: before_id
         type: integer
+      - description: 会话序号向前翻页游标
+        in: query
+        name: before_seq
+        type: integer
       - description: 增量补拉游标
         in: query
         name: after_id
+        type: integer
+      - description: 会话序号增量补拉游标
+        in: query
+        name: after_seq
         type: integer
       - description: 返回数量
         in: query
@@ -2186,6 +2326,42 @@ paths:
       summary: 获取离线消息
       tags:
       - Message
+  /messages/search:
+    get:
+      parameters:
+      - description: 检索文本，1..256 个字符
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: 返回数量，1..100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SearchMessageListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 搜索当前用户可访问的消息
+      tags:
+      - Message
   /sync:
     get:
       parameters:
@@ -2219,6 +2395,191 @@ paths:
       security:
       - BearerAuth: []
       summary: 增量同步用户消息
+      tags:
+      - Sync
+  /sync/checkpoint:
+    get:
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取当前设备同步游标
+      tags:
+      - Sync
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - description: 已持久化的同步游标
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AdvanceSyncCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 确认当前设备同步游标
+      tags:
+      - Sync
+  /sync/comparison:
+    post:
+      consumes:
+      - application/json
+      description: 仅接收对照与客户端错误计数，不接收消息 ID 或正文
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - description: 旧 Offline 与 Sync 聚合对照结果
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.ClientSyncComparisonRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SuccessEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 上报 Web 同步协议聚合观测结果
+      tags:
+      - Sync
+  /sync/groups/{group_uuid}/checkpoint:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - description: 群 ID
+        in: path
+        name: group_uuid
+        required: true
+        type: string
+      - description: 已持久化的群消息序号
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AdvanceGroupSyncCheckpointRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupSyncCheckpointResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 确认设备已持久化的群消息位点
+      tags:
+      - Sync
+  /sync/groups/checkpoints:
+    get:
+      parameters:
+      - description: 稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: 客户端已知群 ID
+        in: query
+        items:
+          type: string
+        name: group_id
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GroupSyncCheckpointListResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询设备的群消息同步位点
       tags:
       - Sync
   /users:

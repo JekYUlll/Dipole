@@ -107,10 +107,43 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      DIPOLE_PLATFORM_MINIO_ACCESS_KEY: ${DIPOLE_PLATFORM_MINIO_ACCESS_KEY:-dipoleplatform}
+      DIPOLE_PLATFORM_MINIO_SECRET_KEY: ${DIPOLE_PLATFORM_MINIO_SECRET_KEY:-dipoleplatformpass}
+      DIPOLE_ARTIFACT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MINIO_ACCESS_KEY:-dipoleartifact}
+      DIPOLE_ARTIFACT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY:-dipoleartifactaudit}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY:-dipoleartifactauditpass}
+      DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY:-dipoleartifactmaintenance}
+      DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY:-dipoleartifactmaintenancepass}
+    volumes:
+      - ./configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
+      - ./configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
+      - ./configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
+      - ./configs/minio/agent-artifact-maintenance-policy.json:/policies/agent-artifact-maintenance-policy.json:ro
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
-      mc mb --ignore-existing local/dipole-files
+      mc mb --ignore-existing local/dipole-files &&
+      mc mb --ignore-existing --with-lock local/dipole-search-archives &&
+      mc version enable local/dipole-search-archives &&
+      mc retention set --default governance 30d local/dipole-search-archives &&
+      mc mb --ignore-existing --with-lock local/dipole-message-archives &&
+      mc version enable local/dipole-message-archives &&
+      mc retention set --default governance 30d local/dipole-message-archives &&
+      mc admin user add local \"$$DIPOLE_PLATFORM_MINIO_ACCESS_KEY\" \"$$DIPOLE_PLATFORM_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-platform-storage-rw /policies/platform-storage-policy.json &&
+      mc admin policy attach local dipole-platform-storage-rw --user \"$$DIPOLE_PLATFORM_MINIO_ACCESS_KEY\" &&
+      mc mb --ignore-existing local/dipole-agent-artifacts &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-rw /policies/agent-artifact-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-rw --user \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-audit /policies/agent-artifact-audit-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-audit --user \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\" &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-maintenance-inspect /policies/agent-artifact-maintenance-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-maintenance-inspect --user \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY\"
       "
 
   # ── 应用节点 ────────────────────────────────────────────────────────────────
@@ -133,9 +166,14 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
+      DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
+      DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD: "${DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD:-50}"
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
       - "8081:8080" # 暴露到宿主机，方便直连 node1 调试
     deploy:
@@ -162,9 +200,14 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
+      DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
+      DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD: "${DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD:-50}"
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
       - "8082:8080" # 暴露到宿主机，方便直连 node2 调试
     deploy:
@@ -191,9 +234,14 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node3
+      DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
+      DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD: "${DIPOLE_HOT_GROUP_MESSAGE_THRESHOLD:-50}"
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
       - "8083:8080"
     deploy:

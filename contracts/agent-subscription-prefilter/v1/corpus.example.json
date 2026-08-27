@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "dipole.agent.subscription-prefilter-corpus.v1",
+  "corpusId": "guardian-synthetic",
+  "revision": "reviewed@2026-08-28",
+  "thresholds": {
+    "minimumPrecisionBps": 9000,
+    "minimumRecallBps": 9000,
+    "maximumP95LatencyMicros": 100000,
+    "maximumMeanCostMicrousd": 10
+  },
+  "cases": [
+    {
+      "id": "incident-positive",
+      "expectedRelevant": true,
+      "event": {
+        "eventId": "event:incident-positive",
+        "eventType": "message.direct.created",
+        "aggregateId": "message:incident-positive",
+        "occurredAt": "2026-08-28T00:00:00.000Z",
+        "payload": {"conversation_key": "group:G1", "content": "Incident detected"}
+      }
+    },
+    {
+      "id": "weekly-negative",
+      "expectedRelevant": false,
+      "event": {
+        "eventId": "event:weekly-negative",
+        "eventType": "message.direct.created",
+        "aggregateId": "message:weekly-negative",
+        "occurredAt": "2026-08-28T00:01:00.000Z",
+        "payload": {"conversation_key": "group:G1", "content": "Weekly hello"}
+      }
+    }
+  ]
+}

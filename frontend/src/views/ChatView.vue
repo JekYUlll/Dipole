@@ -1,7 +1,7 @@
 <template>
   <div class="im-container">
     <!-- Left Panel (nav + session) -->
-    <div class="left-panel" :class="{ hidden: !!chat.activeKey }">
+    <div class="left-panel" :class="{ hidden: !!chat.activeKey || showMessageSearch }">
       <!-- Nav Bar -->
     <div class="nav-bar">
       <button class="nav-avatar profile-btn" @click="openSelfProfile" title="个人资料">
@@ -28,7 +28,15 @@
     <!-- Session Panel -->
     <div class="session-panel">
       <div class="search-wrap">
-        <input v-model="searchText" type="text" placeholder="搜索" />
+        <input
+          v-model="searchText"
+          type="text"
+          :placeholder="messageSearchEnabled ? '筛选会话，回车搜索消息' : '搜索'"
+          @keydown.enter="handleSearchEnter"
+        />
+        <button v-if="messageSearchEnabled" class="message-search-btn" type="button" title="搜索消息" aria-label="搜索消息" @click="openMessageSearch">
+          <IconSearch :size="15" />
+        </button>
       </div>
 
       <!-- 消息列表 -->
@@ -141,8 +149,17 @@
     </div><!-- /session-panel -->
     </div><!-- /left-panel -->
 
+    <SearchWorkspace
+      v-if="showMessageSearch"
+      :conversations="chat.conversations"
+      :current-user="auth.currentUser ?? undefined"
+      :initial-query="searchText"
+      @close="closeMessageSearch"
+      @select="openSearchResult"
+    />
+
     <!-- Chat Area -->
-    <div class="chat-area">
+    <div v-else class="chat-area">
       <template v-if="activeConv">
         <div class="chat-header">
           <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
@@ -152,6 +169,19 @@
             <span class="status-chip-icon">!</span>
             已删好友
           </span>
+          <button
+            v-if="chat.syncStatus !== 'idle'"
+            class="sync-status"
+            :class="`sync-status-${chat.syncStatus}`"
+            :title="chat.syncStatus === 'storage_full' ? '本地消息空间不足，点击重试' : chat.syncStatus === 'error' ? '点击重试消息同步' : `安全同步游标 ${chat.safeSyncSeq}`"
+            @click="(chat.syncStatus === 'error' || chat.syncStatus === 'storage_full') && chat.syncMessages().catch(() => {})"
+          >
+            <span class="sync-status-dot" aria-hidden="true"></span>
+            <span v-if="chat.syncStatus === 'restoring'">正在恢复</span>
+            <span v-else-if="chat.syncStatus === 'error'">同步中断</span>
+            <span v-else-if="chat.syncStatus === 'storage_full'">本地空间不足</span>
+            <span v-else>已同步</span>
+          </button>
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
         </div>
 
@@ -276,7 +306,7 @@
     </div>
 
     <!-- Detail Panel -->
-    <div v-if="activeConv && showDetail" class="detail-panel">
+    <div v-if="activeConv && showDetail && !showMessageSearch" class="detail-panel">
       <template v-if="activeConv.target_type === 1">
         <!-- 群头像 + 基本信息 -->
         <div class="detail-header">
@@ -550,18 +580,21 @@ import {
   IconChat, IconContacts, IconGroups, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
 } from '@/components/icons'
+import SearchWorkspace from '@/components/SearchWorkspace.vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser } from '@/types'
+import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
+import { observeBrowserTimelineNotification } from '@/sync/browserSync'
 
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
+const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -586,6 +619,7 @@ const toast = {
 
 const navTab = ref<'chat' | 'contacts' | 'groups'>('chat')
 const searchText = ref('')
+const showMessageSearch = ref(false)
 const inputText = ref('')
 const showDetail = ref(false)
 const msgListRef = ref<HTMLDivElement | null>(null)
@@ -724,6 +758,7 @@ const deriveMessageKey = (msg: Message, myUUID: string): string => {
 const wsDataToMessage = (data: Record<string, unknown>): Message => ({
   id: 0,
   message_id: data.message_id as string,
+	message_seq: Number(data.message_seq || 0),
   from_uuid: data.from_uuid as string,
   target_uuid: data.target_uuid as string,
   target_type: data.target_type as number,
@@ -734,14 +769,25 @@ const wsDataToMessage = (data: Record<string, unknown>): Message => ({
 })
 
 
-const latestLoadedMessageID = (key: string) => {
+const latestLoadedMessageSeq = (key: string) => {
   const list = chat.messageMap.get(key) || []
-  return list.reduce((max, item) => Math.max(max, item.id || 0), 0)
+  return list.reduce((max, item) => Math.max(max, item.message_seq || 0), 0)
 }
 
 const hotGroupPullTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const hotGroupPullInFlight = new Map<string, Promise<void>>()
 const hotGroupPullPending = new Set<string>()
+let syncComparisonTimer: ReturnType<typeof setTimeout> | null = null
+
+const scheduleSyncComparison = (message: Message) => {
+  const currentUserUUID = auth.currentUser?.uuid
+  if (!currentUserUUID || message.target_type !== 0 || message.target_uuid !== currentUserUUID || message.from_uuid === currentUserUUID) return
+  if (syncComparisonTimer) clearTimeout(syncComparisonTimer)
+  syncComparisonTimer = setTimeout(() => {
+    syncComparisonTimer = null
+    void chat.syncMessages().catch(() => {})
+  }, 1000)
+}
 
 const performHotGroupPull = async (groupUUID: string) => {
   const key = `group:${groupUUID}`
@@ -751,12 +797,12 @@ const performHotGroupPull = async (groupUUID: string) => {
     return
   }
 
-  const afterID = latestLoadedMessageID(key)
-  if (afterID <= 0) {
+  const afterSeq = latestLoadedMessageSeq(key)
+  if (afterSeq <= 0) {
     await chat.fetchGroupMessages(groupUUID)
     return
   }
-  await chat.fetchGroupMessagesAfter(groupUUID, afterID)
+  await chat.fetchGroupMessagesAfterSeq(groupUUID, afterSeq)
 }
 
 const flushHotGroupPull = async (groupUUID: string) => {
@@ -1062,6 +1108,40 @@ const selectConversation = async (conv: Conversation) => {
   nextTick(scrollToBottom)
 }
 
+const openMessageSearch = () => {
+  if (!messageSearchEnabled) return
+  showDetail.value = false
+  showMessageSearch.value = true
+}
+
+const closeMessageSearch = () => {
+  showMessageSearch.value = false
+}
+
+const handleSearchEnter = (event: KeyboardEvent) => {
+  if (!messageSearchEnabled) return
+  event.preventDefault()
+  openMessageSearch()
+}
+
+const openSearchResult = async (message: SearchMessageResult) => {
+  const conversation = chat.conversations.find(item => item.conversation_key === message.conversation_key)
+  if (!conversation) {
+    toast.error('该会话当前不可用')
+    return
+  }
+  showMessageSearch.value = false
+  await selectConversation(conversation)
+}
+
+const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
+  if (!messageSearchEnabled) return
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    openMessageSearch()
+  }
+}
+
 const sendMessage = () => {
   sendErrorMessage.value = ''
   const content = inputText.value.trim()
@@ -1144,15 +1224,15 @@ const downloadFile = async (msg: Message) => {
 const loadMore = async () => {
   if (!activeConv.value) return
   const msgs = currentMessages.value
-  // WS-pushed messages have id=0; only use messages with real DB ids
-  const oldest = msgs.find(m => m.id > 0)
+  // WS echoes can precede persistence and carry sequence 0; they cannot be history cursors.
+  const oldest = msgs.find(m => (m.message_seq || 0) > 0)
   if (!oldest) return
-  const beforeID = oldest.id
+  const beforeSeq = oldest.message_seq!
   if (activeConv.value.target_type === 1) {
     const groupUUID = activeConv.value.target_group?.uuid ?? activeConv.value.conversation_key.replace('group:', '')
-    await chat.fetchGroupMessages(groupUUID, beforeID)
+    await chat.fetchGroupMessages(groupUUID, beforeSeq)
   } else {
-    await chat.fetchDirectMessages(activeConv.value.target_user!.uuid, beforeID)
+    await chat.fetchDirectMessages(activeConv.value.target_user!.uuid, beforeSeq)
   }
 }
 
@@ -1286,6 +1366,8 @@ const openDirectChatByUser = async (user: PublicUser) => {
       remark: contactOf(user.uuid)?.remark || '',
       last_message: { message_id: '', message_type: 0, preview: '', sent_at: '', sender_uuid: '' },
       unread_count: 0,
+		last_message_seq: 0,
+		read_seq: 0,
     })
   }
   chat.activeKey = key
@@ -1561,7 +1643,9 @@ const handleWsPacket = async (packet: WsPacket) => {
   const { type, data } = packet
   switch (type) {
     case 'connected':
-      await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
+	  await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
+	  await chat.syncMessages().catch(() => {})
+	  await chat.recoverGroupMessages().catch(() => {})
       break
     case 'chat.message':
     case 'chat.sent': {
@@ -1573,6 +1657,7 @@ const handleWsPacket = async (packet: WsPacket) => {
       }
       const msg = wsDataToMessage(data as Record<string, unknown>)
       chat.pushMessage(msg)
+      scheduleSyncComparison(msg)
       const key = deriveMessageKey(msg, auth.currentUser!.uuid)
       if (key === chat.activeKey) {
         scrollToBottom()
@@ -1599,7 +1684,7 @@ const handleWsPacket = async (packet: WsPacket) => {
     }
     case 'session.kicked':
       toast.error(`被踢下线: ${(data as any)?.reason || ''}`)
-      await auth.logout()
+      await auth.terminateSession(false)
       router.push({ name: 'login' })
       break
     case 'group.created':
@@ -1641,6 +1726,11 @@ const handleWsPacket = async (packet: WsPacket) => {
       }
       break
     }
+    case 'sync.item.notify.v1': {
+      const userUUID = auth.currentUser?.uuid || ''
+      void observeBrowserTimelineNotification(userUUID, data as unknown as SyncItemNotify)
+      break
+    }
     case 'contact.friend_deleted': {
       await Promise.allSettled([chat.fetchContacts(), chat.fetchConversations()])
       if (viewedUser.value?.uuid === (data as any)?.friend_uuid) {
@@ -1659,9 +1749,12 @@ const ws = useWebSocket({
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleGlobalSearchShortcut)
   if (!auth.token) return
   await auth.fetchMe()
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
+	await chat.syncMessages().catch(() => {})
+	await chat.recoverGroupMessages().catch(() => {})
   ws.connect(auth.token)
   setupMediaObserver()
 })
@@ -1685,7 +1778,9 @@ watch(() => activeConv.value?.conversation_key, () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalSearchShortcut)
   clearHotGroupPullSchedulers()
+  if (syncComparisonTimer) clearTimeout(syncComparisonTimer)
   pendingOutboundMessages.clear()
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()
@@ -2084,15 +2179,38 @@ onBeforeUnmount(() => {
 .search-wrap {
   padding: 8px 10px;
   background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .search-wrap input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 5px 10px;
   border-radius: 14px;
   border: none;
   background: #d4d4d4;
   font-size: 13px;
+  outline: none;
+}
+
+.message-search-btn {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: #f7fff9;
+  background: #172126;
+  cursor: pointer;
+}
+
+.message-search-btn:hover,
+.message-search-btn:focus-visible {
+  background: #007a4e;
   outline: none;
 }
 
@@ -2261,6 +2379,44 @@ onBeforeUnmount(() => {
   justify-content: center;
   font-size: 10px;
   font-weight: 700;
+}
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8f7ee;
+  color: #087a4d;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sync-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sync-status-restoring .sync-status-dot {
+  animation: sync-pulse 1s ease-in-out infinite;
+}
+
+.sync-status-error,
+.sync-status-storage_full {
+  background: #fdeaea;
+  color: #c53b3b;
+  cursor: pointer;
+}
+
+@keyframes sync-pulse {
+  50% { opacity: 0.3; }
 }
 
 .detail-toggle {
@@ -2837,6 +2993,10 @@ onBeforeUnmount(() => {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .sync-status {
+    padding: 5px 7px;
+  }
+
   .left-panel {
     position: absolute;
     left: 0;

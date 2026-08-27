@@ -1,7 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser } from '@/types'
+import type { Conversation, Message, Contact, FriendApplication, Group, Device, PublicUser, GroupSyncCheckpoint } from '@/types'
 import api from '@/api'
+import {
+  browserSyncEnabled,
+  browserSyncMode,
+  clearBrowserMessages,
+  compareBrowserSyncMessages,
+  isLocalSyncCapacityError,
+  reportBrowserSyncFailure,
+  recoverBrowserGroupMessages,
+  recoverBrowserMessages,
+} from '@/sync/browserSync'
+import { drainLegacyOffline } from '@/sync/legacyOffline'
+
+export type MessageSyncStatus = 'idle' | 'restoring' | 'current' | 'error' | 'storage_full'
 
 export const useChatStore = defineStore('chat', () => {
   const conversations = ref<Conversation[]>([])
@@ -12,7 +25,11 @@ export const useChatStore = defineStore('chat', () => {
   const devices = ref<Device[]>([])
   const messageMap = ref<Map<string, Message[]>>(new Map())
   const activeKey = ref('')
+  const syncStatus = ref<MessageSyncStatus>('idle')
+  const safeSyncSeq = ref(0)
   const lastOfflineID = ref(Number(localStorage.getItem('dipole.web.lastOfflineID') || '0'))
+  let activeSync: Promise<number> | undefined
+  let pendingComparisonTimer: ReturnType<typeof setTimeout> | undefined
   // current user UUID — set by auth store after login, needed for key derivation
   const myUUID = ref(localStorage.getItem('dipole.web.user')
     ? (() => { try { return JSON.parse(localStorage.getItem('dipole.web.user')!).uuid } catch { return '' } })()
@@ -40,19 +57,19 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   // ── messages ───────────────────────────────────────────────────
-  const fetchDirectMessages = async (targetUUID: string, beforeID?: number) => {
-    const q = beforeID ? `?before_id=${beforeID}&limit=30` : '?limit=30'
+  const fetchDirectMessages = async (targetUUID: string, beforeSeq = 0) => {
+    const q = `?before_seq=${beforeSeq}&limit=30`
     const data = await api.get(`/api/v1/messages/direct/${targetUUID}${q}`) as Message[]
     const key = myUUID.value
       ? `direct:${[myUUID.value, targetUUID].sort().join(':')}`
       : `direct:${targetUUID}`
-    _mergeMessages(key, Array.isArray(data) ? data : [], Boolean(beforeID))
+    _mergeMessages(key, Array.isArray(data) ? data : [], beforeSeq > 0)
   }
 
-  const fetchGroupMessages = async (groupUUID: string, beforeID?: number) => {
-    const q = beforeID ? `?before_id=${beforeID}&limit=30` : '?limit=30'
+  const fetchGroupMessages = async (groupUUID: string, beforeSeq = 0) => {
+    const q = `?before_seq=${beforeSeq}&limit=30`
     const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
-    _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], Boolean(beforeID))
+    _mergeMessages(groupKey(groupUUID), Array.isArray(data) ? data : [], beforeSeq > 0)
   }
 
   const fetchGroupMessagesAfter = async (groupUUID: string, afterID: number) => {
@@ -62,31 +79,122 @@ export const useChatStore = defineStore('chat', () => {
     return Array.isArray(data) ? data : []
   }
 
+  const fetchGroupMessagesAfterSeq = async (groupUUID: string, afterSeq: number) => {
+	const q = `?after_seq=${afterSeq}&limit=100`
+	const data = await api.get(`/api/v1/messages/group/${groupUUID}${q}`) as Message[]
+	const items = Array.isArray(data) ? data : []
+	_mergeMessages(groupKey(groupUUID), items, false)
+	return items
+  }
+
+  const recoverGroupMessages = async () => {
+	const groupUUIDs = conversations.value
+	  .filter(conversation => conversation.target_type === 1)
+	  .map(conversation => conversation.conversation_key.replace('group:', ''))
+	  .filter(Boolean)
+	if (groupUUIDs.length === 0) return 0
+	const query = new URLSearchParams()
+	groupUUIDs.forEach(groupUUID => query.append('group_id', groupUUID))
+	const checkpoints = await api.get(`/api/v1/sync/groups/checkpoints?${query.toString()}`) as GroupSyncCheckpoint[]
+	let recovered = 0
+	for (const checkpoint of Array.isArray(checkpoints) ? checkpoints : []) {
+	  if (browserSyncEnabled && myUUID.value) {
+		const result = await recoverBrowserGroupMessages(
+		  myUUID.value,
+		  { groupUUID: checkpoint.group_uuid, latestMessageSeq: checkpoint.latest_message_seq },
+		  messages => _mergeMessages(groupKey(checkpoint.group_uuid), messages, false),
+		)
+		recovered += result.synchronized
+		continue
+	  }
+	  const key = groupKey(checkpoint.group_uuid)
+	  // Compatibility mode has no durable local group checkpoint and cannot safely ACK.
+	  let afterSeq = Math.max(0, ...(messageMap.value.get(key) || []).map(message => message.message_seq || 0))
+	  while (afterSeq < checkpoint.latest_message_seq) {
+		const page = await fetchGroupMessagesAfterSeq(checkpoint.group_uuid, afterSeq)
+		if (page.length === 0) break
+		const nextSeq = Math.max(...page.map(message => message.message_seq || 0))
+		if (nextSeq <= afterSeq) break
+		afterSeq = nextSeq
+		recovered += page.length
+	  }
+	}
+	return recovered
+  }
+
   const syncOffline = async () => {
-    const data = await api.get(`/api/v1/messages/offline?after_id=${lastOfflineID.value}&limit=100`) as Message[]
-    const items = Array.isArray(data) ? data : []
-    items.forEach(m => pushMessage(m))
-    _updateLastOfflineID(items)
+    const items = await _fetchLegacyOfflineMessages(true)
     return items.length
+  }
+
+  const syncMessages = () => {
+    if (!browserSyncEnabled || !myUUID.value) return Promise.resolve(0)
+    if (activeSync) return activeSync
+    syncStatus.value = 'restoring'
+    activeSync = (async () => {
+      let legacyMessages: Message[] | undefined
+      try {
+        legacyMessages = await _fetchLegacyOfflineMessages(browserSyncMode === 'shadow')
+      } catch (error) {
+        if (browserSyncMode === 'shadow') throw error
+      }
+
+      const remoteSyncMessages: Message[] = []
+      const result = await recoverBrowserMessages(myUUID.value, (messages, source) => {
+        if (source === 'remote') remoteSyncMessages.push(...messages)
+        if (browserSyncMode === 'primary') messages.forEach(message => pushMessage(message))
+      })
+      if (legacyMessages) {
+        const comparison = await compareBrowserSyncMessages(myUUID.value, legacyMessages, remoteSyncMessages)
+        if (pendingComparisonTimer) clearTimeout(pendingComparisonTimer)
+        pendingComparisonTimer = comparison.pending > 0
+          ? setTimeout(() => { void syncMessages().catch(() => {}) }, 61_000)
+          : undefined
+      }
+      safeSyncSeq.value = result.syncSeq
+      syncStatus.value = 'current'
+      return result.synchronized
+    })().catch(error => {
+      syncStatus.value = isLocalSyncCapacityError(error) ? 'storage_full' : 'error'
+      void reportBrowserSyncFailure(error)
+      throw error
+    }).finally(() => {
+      activeSync = undefined
+    })
+    return activeSync
+  }
+
+  const clearLocalMessages = async (userUUID = myUUID.value) => {
+    if (activeSync) await activeSync.catch(() => {})
+    if (pendingComparisonTimer) clearTimeout(pendingComparisonTimer)
+    pendingComparisonTimer = undefined
+    if (userUUID) await clearBrowserMessages(userUUID)
+    resetRuntimeMessages()
+  }
+
+  const resetRuntimeMessages = () => {
+    messageMap.value = new Map()
+    activeKey.value = ''
+    safeSyncSeq.value = 0
+    syncStatus.value = 'idle'
   }
 
   const pushMessage = (msg: Message) => {
     const key = _deriveKey(msg)
     const list = messageMap.value.get(key) || []
-    if (!list.some(m => m.message_id === msg.message_id)) {
+    const existingIndex = list.findIndex(message => message.message_id === msg.message_id)
+    if (existingIndex < 0) {
       list.push(msg)
-      list.sort((a, b) => {
-        // id:0 means not yet persisted (WS echo before Kafka commit) — sort by sent_at only
-        if (a.id === 0 || b.id === 0) return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
-        return a.id - b.id
-      })
-      messageMap.value.set(key, list)
       const conv = conversations.value.find(c => c.conversation_key === key)
       if (conv) {
         conv.last_message = { message_id: msg.message_id, message_type: msg.message_type, preview: msg.content, sent_at: msg.sent_at, sender_uuid: msg.from_uuid }
         conv.unread_count = key === activeKey.value ? 0 : conv.unread_count + 1
       }
+    } else if (_messagePersistenceRank(msg) > _messagePersistenceRank(list[existingIndex])) {
+      list[existingIndex] = msg
     }
+    list.sort(_compareMessages)
+    messageMap.value.set(key, list)
     _updateLastOfflineID([msg])
   }
 
@@ -138,13 +246,34 @@ export const useChatStore = defineStore('chat', () => {
   const _mergeMessages = (key: string, items: Message[], prepend: boolean) => {
     const existing = messageMap.value.get(key) || []
     const merged = _dedupe(prepend ? [...items, ...existing] : [...existing, ...items])
-    merged.sort((a, b) => a.id - b.id || new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime())
+    merged.sort(_compareMessages)
     messageMap.value.set(key, merged)
   }
 
   const _dedupe = (msgs: Message[]) => {
-    const seen = new Set<string>()
-    return msgs.filter(m => { if (seen.has(m.message_id)) return false; seen.add(m.message_id); return true })
+    const deduped: Message[] = []
+    const positions = new Map<string, number>()
+    msgs.forEach(message => {
+      const position = positions.get(message.message_id)
+      if (position === undefined) {
+        positions.set(message.message_id, deduped.length)
+        deduped.push(message)
+      } else if (_messagePersistenceRank(message) > _messagePersistenceRank(deduped[position])) {
+        deduped[position] = message
+      }
+    })
+    return deduped
+  }
+
+  const _messagePersistenceRank = (message: Message) =>
+    ((message.message_seq || 0) > 0 ? 2 : 0) + (message.id > 0 ? 1 : 0)
+
+  const _compareMessages = (left: Message, right: Message) => {
+    const leftSeq = left.message_seq || 0
+    const rightSeq = right.message_seq || 0
+    if (leftSeq > 0 && rightSeq > 0 && leftSeq !== rightSeq) return leftSeq - rightSeq
+    const sentAt = new Date(left.sent_at).getTime() - new Date(right.sent_at).getTime()
+    return sentAt || left.id - right.id
   }
 
   const _updateLastOfflineID = (msgs: Message[]) => {
@@ -152,11 +281,28 @@ export const useChatStore = defineStore('chat', () => {
     localStorage.setItem('dipole.web.lastOfflineID', String(lastOfflineID.value))
   }
 
+  const _fetchLegacyOfflineMessages = async (deliver: boolean) => {
+    return drainLegacyOffline(
+      lastOfflineID.value,
+      async (afterID, limit) => {
+        const data = await api.get(`/api/v1/messages/offline?after_id=${afterID}&limit=${limit}`) as Message[]
+        return Array.isArray(data) ? data : []
+      },
+      (items, nextID) => {
+        if (deliver) items.forEach(message => pushMessage(message))
+        lastOfflineID.value = nextID
+        localStorage.setItem('dipole.web.lastOfflineID', String(nextID))
+      },
+    )
+  }
+
   return {
     conversations, contacts, applications, groups, users, devices, messageMap, activeKey, myUUID,
+    syncStatus, safeSyncSeq,
     fetchConversations, markRead,
-    fetchDirectMessages, fetchGroupMessages, syncOffline, pushMessage,
-    fetchGroupMessagesAfter,
+    fetchDirectMessages, fetchGroupMessages, syncOffline, syncMessages, clearLocalMessages, resetRuntimeMessages, pushMessage,
+	fetchGroupMessagesAfter,
+	fetchGroupMessagesAfterSeq, recoverGroupMessages,
     fetchContacts, fetchApplications,
     fetchGroup, fetchDevices, ensureUser,
   }

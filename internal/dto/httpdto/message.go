@@ -9,6 +9,7 @@ import (
 type MessageResponse struct {
 	ID            uint       `json:"id"`
 	MessageID     string     `json:"message_id"`
+	MessageSeq    uint64     `json:"message_seq"`
 	FromUUID      string     `json:"from_uuid"`
 	TargetUUID    string     `json:"target_uuid"`
 	TargetType    int8       `json:"target_type"`
@@ -32,6 +33,7 @@ func ToMessageResponse(message *model.Message) *MessageResponse {
 	return &MessageResponse{
 		ID:            message.ID,
 		MessageID:     message.UUID,
+		MessageSeq:    message.Seq,
 		FromUUID:      message.SenderUUID,
 		TargetUUID:    message.TargetUUID,
 		TargetType:    message.TargetType,

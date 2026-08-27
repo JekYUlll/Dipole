@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-manifest.v1",
+  "candidateVersion": "agent-runtime@example",
+  "taskId": "TASK-EXAMPLE",
+  "runId": "RUN-EXAMPLE",
+  "labels": {
+    "outcome": {
+      "requiredOutputIds": ["artifact:conversation_digest:v1"],
+      "forbiddenOutputIds": ["message:unexpected"]
+    },
+    "trajectory": {
+      "steps": ["context.compile", "capability:conversation.list:completed", "artifact:conversation_digest:v1"],
+      "forbiddenSteps": ["capability:message.system.send:completed"]
+    },
+    "permission": [{
+      "stepNo": 1,
+      "capabilityId": "conversation.list",
+      "resourceType": "conversation",
+      "resourceId": "user:example",
+      "action": "read",
+      "decision": "allowed"
+    }],
+    "retrieval": {
+      "relevantEvidenceIds": ["evidence:00000000000000000000000000000000"],
+      "minimumRecall": 1,
+      "minimumPrecision": 1
+    },
+    "cost": {
+      "maximums": {
+        "modelCalls": 2,
+        "toolCalls": 2,
+        "totalTokens": 4096,
+        "totalCostMicrousd": 50000,
+        "latencyMs": 30000
+      },
+      "routePrices": [{
+        "route": "gateway/example",
+        "inputMicrousdPerMillionTokens": 1000000,
+        "outputMicrousdPerMillionTokens": 4000000
+      }]
+    }
+  }
+}

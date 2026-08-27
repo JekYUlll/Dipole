@@ -1,0 +1,101 @@
+rule_files:
+  - duplicate-hydration-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: clean full window becomes promotion ready
+    interval: 1h
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="hit"}'
+        values: '0 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120 125'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="fallback"}'
+        values: '0+0x25'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:duplicate_hydration:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:duplicate_hydration:promotion_ready"}'
+            value: 1
+
+  - name: incomplete window remains blocked
+    interval: 1h
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="hit"}'
+        values: '0 120'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="fallback"}'
+        values: '0 0'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0 0'
+    promql_expr_test:
+      - expr: dipole:duplicate_hydration:promotion_ready
+        eval_time: 1h
+        exp_samples:
+          - labels: '{__name__="dipole:duplicate_hydration:promotion_ready"}'
+            value: 0
+
+  - name: fallback blocks promotion and alerts
+    interval: 1h
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="hit"}'
+        values: '0 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120 125'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="fallback"}'
+        values: '0+0x23 1 1'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:duplicate_hydration:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:duplicate_hydration:promotion_ready"}'
+            value: 0
+
+  - name: historical no-seq blocks promotion
+    interval: 1h
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="hit"}'
+        values: '0 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120 125'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="fallback"}'
+        values: '0+0x25'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0+0x23 1 1'
+    promql_expr_test:
+      - expr: dipole:duplicate_hydration:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:duplicate_hydration:promotion_ready"}'
+            value: 0
+
+  - name: no-seq emits warning
+    interval: 1m
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleDuplicateHydrationMissingSequence
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Duplicate hydration observed historical metadata without a conversation sequence
+
+  - name: sustained fallback ratio emits warning
+    interval: 1m
+    input_series:
+      - series: 'dipole_message_duplicate_hydration_total{outcome="hit"}'
+        values: '0 100 200 300 400 500 600 700'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="fallback"}'
+        values: '0 2 4 6 8 10 12 14'
+      - series: 'dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}'
+        values: '0+0x7'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: DipoleDuplicateHydrationFallbackRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Duplicate hydration fallback ratio remains above one percent

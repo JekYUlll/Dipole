@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-external-mcp/v1/profile.schema.json",
+  "title": "Dipole Agent External MCP Profile v1",
+  "description": "Tenant-bound external MCP connection metadata. Credential and CA fields contain opaque references only.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.external-mcp-profile.v1",
+  "required": ["schema_version", "profile_id", "tenant_id", "server_id", "endpoint", "credential", "network_policy", "allowed_tools"],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.external-mcp-profile.v1"},
+    "profile_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+    "tenant_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+    "server_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+    "endpoint": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "credential": {
+      "type": "object",
+      "required": ["ref", "version"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^CRED-[A-Z0-9]{16,64}$"},
+        "version": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "network_policy": {
+      "type": "object",
+      "required": ["allowed_hosts", "allowed_ports", "dns_resolution", "tls_server_name", "ca_bundle_ref"],
+      "properties": {
+        "allowed_hosts": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 253}},
+        "allowed_ports": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 65535}},
+        "dns_resolution": {"const": "public_only", "description": "The transport factory must reject loopback, private, link-local, multicast, and otherwise non-public resolved addresses on every connection."},
+        "tls_server_name": {"type": "string", "minLength": 1, "maxLength": 253},
+        "ca_bundle_ref": {"type": "string", "pattern": "^CA-[A-Z0-9]{16,64}$"}
+      },
+      "additionalProperties": false
+    },
+    "allowed_tools": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"}
+    }
+  },
+  "additionalProperties": false
+}
