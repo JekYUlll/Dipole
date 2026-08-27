@@ -1,12 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Span } from "@opentelemetry/api";
 
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { InMemoryEventLedger } from "./event-ledger.js";
 import { ShadowEventProcessor, agentRunId, agentTaskId, type AgentEvent } from "./shadow-processor.js";
+import type { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 describe("ShadowEventProcessor", () => {
+  it("nests a Run span under the Task processing boundary", async () => {
+    const names: string[] = [];
+    const telemetry = {
+      withSpan: vi.fn(async (name: string, _context: unknown, operation: (span: Span) => Promise<unknown>) => {
+        names.push(name);
+        return operation({ setAttribute: vi.fn() } as unknown as Span);
+      })
+    };
+    const processor = new ShadowEventProcessor(
+      { plan: async () => ({ summary: "observe", steps: [] }) },
+      { append: async () => undefined }, new InMemoryEventLedger(),
+      undefined, undefined, undefined, 60_000, undefined, telemetry as unknown as Pick<AgentTelemetry, "withSpan">
+    );
+
+    await processor.process({
+      eventId: "E-TRACE", eventType: "message.direct.created", aggregateId: "M-TRACE",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    }, { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" });
+
+    expect(names).toEqual(["agent.task", "agent.run"]);
+  });
+
   it("suppresses events from the same Agent causal chain before claiming or dispatching", async () => {
     const plan = vi.fn();
     const append = vi.fn();
@@ -120,9 +144,15 @@ describe("ShadowEventProcessor", () => {
   it("hands an exact event binding to Temporal and skips inline planning", async () => {
     const plan = vi.fn();
     const dispatch = vi.fn(async () => undefined);
+    const setAttribute = vi.fn();
+    const telemetry = {
+      withSpan: vi.fn(async (_name: string, _context: unknown, operation: (span: Span) => Promise<unknown>) => {
+        return operation({ setAttribute } as unknown as Span);
+      })
+    };
     const processor = new ShadowEventProcessor(
       { plan }, { append: vi.fn() }, new InMemoryEventLedger(),
-      undefined, undefined, undefined, 60_000, { dispatch }
+      undefined, undefined, undefined, 60_000, { dispatch }, telemetry as unknown as Pick<AgentTelemetry, "withSpan">
     );
     const event = {
       eventId: "E-DISPATCH", eventType: "message.direct.created", aggregateId: "M-DISPATCH",
@@ -134,6 +164,7 @@ describe("ShadowEventProcessor", () => {
 
     expect(dispatch).toHaveBeenCalledWith(event, identity, result.taskId);
     expect(plan).not.toHaveBeenCalled();
+    expect(setAttribute).toHaveBeenCalledWith("dipole.agent.task.outcome", "recorded");
     await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "duplicate" });
   });
 

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { SpanStatusCode, type Span, type Tracer } from "@opentelemetry/api";
 import { z } from "zod";
 
 import { ModelRouter, ModelRoutingError, type ModelAuditStore, type StructuredModelClient } from "./model-router.js";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const outputSchema = z.object({ summary: z.string() });
 
@@ -161,6 +163,61 @@ describe("ModelRouter", () => {
     });
     expect(generate).not.toHaveBeenCalled();
     expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError));
+  });
+
+  it("records one ModelCall span per provider attempt", async () => {
+    const spanAttributes: Array<Record<string, unknown>> = [];
+    const tracer = {
+      startActiveSpan: vi.fn((_name: string, _options: unknown, callback: (span: Span) => unknown) => {
+        const span = {
+          setAttributes: vi.fn((attributes: Record<string, unknown>) => { spanAttributes.push(attributes); return span; }),
+          setAttribute: vi.fn((key: string, value: unknown) => { spanAttributes.push({ [key]: value }); return span; }),
+          setStatus: vi.fn(), recordException: vi.fn(), end: vi.fn()
+        } as unknown as Span;
+        return callback(span);
+      })
+    } as unknown as Tracer;
+    const generate: StructuredModelClient["generate"] = vi.fn()
+      .mockRejectedValueOnce(new Error("primary unavailable"))
+      .mockResolvedValueOnce({ output: { summary: "fallback" }, usage: { inputTokens: 8, outputTokens: 3 } });
+    const router = new ModelRouter(
+      { generate }, ["primary", "fallback"],
+      { maxCalls: 2, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64 },
+      () => 1000, undefined, new AgentTelemetry(tracer)
+    );
+
+    await router.generate({ prompt: "sensitive prompt", schema: outputSchema, taskId: "TASK-1" });
+
+    expect(tracer.startActiveSpan).toHaveBeenCalledTimes(2);
+    expect(tracer.startActiveSpan).toHaveBeenNthCalledWith(1, "agent.model.call", {}, expect.any(Function));
+    expect(spanAttributes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ "dipole.agent.model.route": "primary", "dipole.agent.model.attempt": 1 }),
+      expect.objectContaining({ "dipole.agent.model.route": "fallback", "dipole.agent.model.attempt": 2 }),
+      expect.objectContaining({ "dipole.agent.model.input_tokens": 8 })
+    ]));
+    expect(JSON.stringify(spanAttributes)).not.toContain("sensitive prompt");
+  });
+
+  it("marks schema-incompatible provider output as a failed ModelCall", async () => {
+    const statuses: unknown[] = [];
+    const tracer = {
+      startActiveSpan: vi.fn((_name: string, _options: unknown, callback: (span: Span) => unknown) => callback({
+        setAttributes: vi.fn(), setAttribute: vi.fn(),
+        setStatus: vi.fn(status => statuses.push(status)), recordException: vi.fn(), end: vi.fn()
+      } as unknown as Span))
+    } as unknown as Tracer;
+    const generate: StructuredModelClient["generate"] = vi.fn()
+      .mockResolvedValueOnce({ output: { summary: 42 }, usage: { inputTokens: 8, outputTokens: 3 } })
+      .mockResolvedValueOnce({ output: { summary: "validated" }, usage: { inputTokens: 9, outputTokens: 4 } });
+    const router = new ModelRouter(
+      { generate }, ["primary", "fallback"],
+      { maxCalls: 2, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64 },
+      () => 1000, undefined, new AgentTelemetry(tracer)
+    );
+
+    await router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" });
+
+    expect(statuses).toEqual([{ code: SpanStatusCode.ERROR }, { code: SpanStatusCode.OK }]);
   });
 });
 

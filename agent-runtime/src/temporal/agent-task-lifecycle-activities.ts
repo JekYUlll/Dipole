@@ -4,6 +4,7 @@ import type {
   AgentRunTerminalStatus
 } from "../capabilities/agent-capability-rpc.js";
 import type { AgentTaskLifecycleActivities } from "./agent-task-activities.js";
+import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 export interface PersistentAgentRunLifecyclePort {
   admitRun(input: AgentRunAdmissionRequest): Promise<AgentRunIdentity>;
@@ -27,14 +28,23 @@ export interface PersistentAgentRunLifecyclePort {
 }
 
 export function createPersistentAgentTaskLifecycleActivities(
-  lifecycle: PersistentAgentRunLifecyclePort
+  lifecycle: PersistentAgentRunLifecyclePort,
+  telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
 ): AgentTaskLifecycleActivities {
   return {
     async admitAgentTask(input) {
       if (input.admission === undefined) {
         throw new Error("Persistent Agent Task admission input is required");
       }
-      const admitted = await lifecycle.admitRun(input.admission);
+      const admitted = await telemetry.withSpan("agent.task", {
+        taskId: input.taskId,
+        attributes: { "dipole.agent.task.phase": "admit", "dipole.agent.trigger.type": input.admission.triggerType }
+      }, async span => {
+        const value = await lifecycle.admitRun(input.admission!);
+        span.setAttribute("dipole.agent.run.id", value.runId);
+        span.setAttribute("dipole.agent.run.status", value.runStatus);
+        return value;
+      });
       if (admitted.taskId !== input.taskId) {
         throw new Error("Persistent Agent Task admission returned a different Task ID");
       }
@@ -45,13 +55,10 @@ export function createPersistentAgentTaskLifecycleActivities(
         ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
         ...(input.traceId === undefined ? {} : { traceId: input.traceId })
       };
-      await lifecycle.finish(
-        input.taskId,
-        input.runId,
-        input.runStatus,
-        input.lastError,
-        context
-      );
+      await telemetry.withSpan("agent.task", {
+        taskId: input.taskId, runId: input.runId,
+        attributes: { "dipole.agent.task.phase": "finish", "dipole.agent.run.status": input.runStatus }
+      }, async () => lifecycle.finish(input.taskId, input.runId, input.runStatus, input.lastError, context));
     },
     async projectAgentTaskState(input) {
       await lifecycle.projectTaskWorkflowState({
@@ -64,10 +71,18 @@ export function createPersistentAgentTaskLifecycleActivities(
       }, correlation(input));
     },
     async requestAgentTaskApproval(input) {
-      await lifecycle.requestApproval(input.taskId, input.runId, input.approval, correlation(input));
+      await telemetry.withSpan("agent.approval", {
+        taskId: input.taskId, runId: input.runId,
+        attributes: { "dipole.agent.approval.phase": "request", "dipole.agent.capability.id": input.approval.capabilityId }
+      }, async () => lifecycle.requestApproval(input.taskId, input.runId, input.approval, correlation(input)));
     },
     async resolveAgentTaskApproval(input) {
-      await lifecycle.resolveApproval(input.taskId, input.runId, input.approvalId, input.decision, input.actorUserId, correlation(input));
+      await telemetry.withSpan("agent.approval", {
+        taskId: input.taskId, runId: input.runId,
+        attributes: { "dipole.agent.approval.phase": "resolve", "dipole.agent.approval.decision": input.decision }
+      }, async () => lifecycle.resolveApproval(
+        input.taskId, input.runId, input.approvalId, input.decision, input.actorUserId, correlation(input)
+      ));
     }
   };
 }
