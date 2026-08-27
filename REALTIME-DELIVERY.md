@@ -89,7 +89,9 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，增加低敏 `message_type` selector 及 requested/observed/duplicate/rejected/backpressured 聚合计数，不保存正文、收件人或 connection ID。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
 
-真实跨进程证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。该归档绑定的旧候选仍需重启恢复，后续同进程重试修复使用独立提交和门禁。真实 queue saturation/backpressure 与同 workload Go/C++ 对照仍待完成。
+首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
+
+同 workload 对照证据位于 `benchmarks/c2-cpp-comparison-2026-08-28/`。Go baseline 在 20 用户、每用户 2 条文本消息下完成 40/40 accepted、persisted、received；C++ v3 evidence 观察 80 个 Kafka 坐标，`message_type=0` 选择 40 条 workload，40 条好友初始化系统消息保持可见并计为 filtered-out。选中记录全部 projected，node transport requested/observed 为 40/40，最终拒绝和背压为 0，comparison v1 决策为 `eligible`。真实 Go TCP queue saturation race 测试确认容量满时返回 `BACKPRESSURED/QUEUE_FULL`。演练同时发现 Gateway assignment 未进入 readiness，已记录为 `AD-039`；成功候选在负载前显式要求 direct-created 六个分区完成 assignment。
 
 `contracts/realtime-delivery-comparison/v1/report.schema.json` 固定同 workload 对照报告。`scripts/realtime_delivery_comparison.py` 先按 Kafka topic/partition/offset 折叠全部 v3 evidence，再使用 Go baseline 声明的 `message_type` 选择工作负载；初始化系统事件继续计入 observed/filtered-out，避免从原始证据中隐去。选中记录允许 deferred attempt，但要求每个坐标最终 projected、全部请求节点被 observed、最终拒绝/背压为零，并与 Go baseline v4 的 accepted/persisted/received/lag 精确比较。报告只保存双端完整 revision、输入 SHA-256 和聚合计数；结构无效、blocked 和 eligible 分别使用退出码 1、2、0。Harness 单测不能替代真实候选证据。
 
