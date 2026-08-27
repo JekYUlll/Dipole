@@ -52,7 +52,7 @@ describe("shadow runtime composition", () => {
       disconnect: async () => undefined
     };
     const factory: KafkaConsumerFactoryPort = { create: () => consumer };
-    const planner = { plan: vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({ summary: "observe", capabilityIds: [] })) };
+    const planner = { plan: vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({ summary: "observe", steps: [] })) };
     const audit = { append: vi.fn(async () => undefined) };
     const config = loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"
@@ -76,7 +76,7 @@ describe("shadow runtime composition", () => {
       run: async (config) => { eachMessage = config.eachMessage; },
       disconnect: async () => undefined
     };
-    const planner = { plan: vi.fn(async () => ({ summary: "observe", capabilityIds: [] })) };
+    const planner = { plan: vi.fn(async () => ({ summary: "observe", steps: [] })) };
     const audit = { append: vi.fn(async () => undefined) };
     const config = loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"

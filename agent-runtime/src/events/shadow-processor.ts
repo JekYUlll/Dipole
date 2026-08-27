@@ -27,13 +27,18 @@ export interface AgentIdentity {
 
 export interface ShadowPlan {
   readonly summary: string;
-  readonly capabilityIds: readonly string[];
+  readonly steps: readonly ShadowPlanStep[];
   readonly model?: {
     readonly route: string;
     readonly attempts: number;
     readonly inputTokens: number | undefined;
     readonly outputTokens: number | undefined;
   };
+}
+
+export interface ShadowPlanStep {
+  readonly capabilityId: string;
+  readonly input: Readonly<Record<string, unknown>>;
 }
 
 export interface ShadowPlanner {
@@ -80,7 +85,7 @@ export class ShadowEventProcessor {
         agentUuid: identity.agentUuid,
         taskId,
         mode: "shadow",
-        permissions: ["conversation.read"],
+        permissions: ["conversation.list", "conversation.read"],
         resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
         approvedCapabilities: [],
         eventId: event.eventId,

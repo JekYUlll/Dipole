@@ -8,16 +8,16 @@ import type { ModelRouter } from "./model-router.js";
 describe("ModelShadowPlanner", () => {
   it("returns a budgeted model plan with routing evidence", async () => {
     const generate = vi.fn(async () => ({
-      output: { summary: "inspect the conversation", capabilityIds: ["conversation.read"] },
+      output: { summary: "inspect recent conversations", steps: [{ capabilityId: "conversation.list", input: { limit: 20 } }] },
       route: "gateway/primary", attempts: 2, usage: { inputTokens: 42, outputTokens: 12 }
     }));
-    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.read"]);
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list"]);
 
     const plan = await planner.plan(event(), context());
 
     expect(plan).toEqual({
-      summary: "inspect the conversation",
-      capabilityIds: ["conversation.read"],
+      summary: "inspect recent conversations",
+      steps: [{ capabilityId: "conversation.list", input: { limit: 20 } }],
       model: { route: "gateway/primary", attempts: 2, inputTokens: 42, outputTokens: 12 }
     });
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({
@@ -27,10 +27,10 @@ describe("ModelShadowPlanner", () => {
 
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
-      output: { summary: "send a reply", capabilityIds: ["message.send"] },
+      output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },
       route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
     })) } as unknown as ModelRouter;
-    const planner = new ModelShadowPlanner(router, ["conversation.read"]);
+    const planner = new ModelShadowPlanner(router, ["conversation.list"]);
 
     await expect(planner.plan(event(), context())).rejects.toThrow(/message.send.*not allowed/);
   });

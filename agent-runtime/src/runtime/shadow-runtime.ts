@@ -7,6 +7,8 @@ import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryP
 import { decodeMessageCreatedEvent } from "../events/message-event.js";
 import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
+import { MySQLShadowAuditSink } from "../events/mysql-shadow-audit-sink.js";
+import { PROBE_AGENT_SHADOW_PLANS } from "../events/mysql-shadow-audit-queries.js";
 import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner } from "../events/shadow-processor.js";
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import { ModelRouter } from "../models/model-router.js";
@@ -100,7 +102,7 @@ export class MetadataShadowPlanner implements ShadowPlanner {
   async plan(event: Parameters<ShadowPlanner["plan"]>[0]): ReturnType<ShadowPlanner["plan"]> {
     return {
       summary: `observe ${event.eventType} for ${event.aggregateId}`,
-      capabilityIds: []
+      steps: []
     };
   }
 }
@@ -158,14 +160,16 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   const planner = config.modelMode === "ai_sdk"
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
-    ), ["conversation.read"])
+    ), ["conversation.list"])
     : new MetadataShadowPlanner();
-  const consumer = buildKafkaShadowRuntime(config, factory, planner, undefined, ledger, failureRouter);
+  const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
+  const consumer = buildKafkaShadowRuntime(config, factory, planner, audit, ledger, failureRouter);
   const mainTopic = physicalTopic(config);
   return {
     start: async () => {
       if (pool !== undefined) {
         await pool.query(PROBE_AGENT_EVENT_LEDGER);
+        await pool.query(PROBE_AGENT_SHADOW_PLANS);
         if (config.modelMode === "ai_sdk") {
           await pool.query(PROBE_AGENT_MODEL_RUNS);
         }

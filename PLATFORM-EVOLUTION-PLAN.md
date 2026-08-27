@@ -323,8 +323,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 使用独立 consumer group 消费版本化事件，通过 Event ID/Task ID 双唯一、事务 claim、lease 和精确 token 实现跨进程幂等。
 - [x] 使用显式 main/retry/dead topic 实现永久错误直达死信和瞬时错误有界重试，失败发布阻止 handler 完成；真实 Kafka 验证 poison、retry→dead 与 rebalance（`AD-028`）。
 - [x] migration v19 与 MySQL ModelAuditStore 持久化 Task 唯一 Run、预算快照、原子 call slot 和模型调用终态；ModelRouter 每次 provider 调用均先占 slot，跨 Kafka 重投共享 Task 上限（`AD-029` 已关闭）。
+- [x] migration v20 持久化不可变 Shadow Plan 与有序结构化 Step；同一 Task 并发重放幂等收敛，plan/event 绑定漂移 fail closed，Step 当前固定停留在 `planned`。
 - [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。
-  - [x] metadata-only shadow plan 已通过真实 Kafka 3.9 事件与重复投递验证；模型计划、Tool 轨迹和持久审计尚未接入。
+  - [x] metadata-only shadow plan 已通过真实 Kafka 3.9 事件与重复投递验证；模型结构化 Plan/Step 已持久化。
+  - [ ] 通过受认证 Agent Capability RPC 执行首个 `conversation.list` 只读 Step，并持久化 claim/result/error；公开 HTTP 旁路保持禁止（`AD-030`）。
 - [ ] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter。
 
 ### G3：Durable Task、Context 与 Memory

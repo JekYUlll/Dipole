@@ -10,7 +10,9 @@ describe("ShadowEventProcessor", () => {
       tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100"
     })).toBe("task:e47647aaf491da8a27072ed94d6b69b87a025a1e211000cbef6a9aeb458");
 
-    const plan = vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({ summary: "read only plan", capabilityIds: ["conversation.read"] }));
+    const plan = vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({
+      summary: "read only plan", steps: [{ capabilityId: "conversation.list", input: { limit: 20 } }]
+    }));
     const append = vi.fn(async () => undefined);
     const processor = new ShadowEventProcessor({ plan }, { append }, new InMemoryEventLedger());
     const event = {
@@ -33,7 +35,7 @@ describe("ShadowEventProcessor", () => {
     const ledger = new InMemoryEventLedger();
     const plan = vi.fn()
       .mockRejectedValueOnce(new Error("temporary model failure"))
-      .mockResolvedValueOnce({ summary: "retry", capabilityIds: [] });
+      .mockResolvedValueOnce({ summary: "retry", steps: [] });
     const processor = new ShadowEventProcessor({ plan }, { append: async () => undefined }, ledger);
     const event = {
       eventId: "E-RETRY", eventType: "message.direct.created", aggregateId: "M-RETRY",

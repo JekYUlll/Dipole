@@ -5,7 +5,10 @@ import type { ModelRouter } from "./model-router.js";
 
 const modelPlanSchema = z.object({
   summary: z.string().trim().min(1).max(2000),
-  capabilityIds: z.array(z.string().trim().min(1)).max(16)
+  steps: z.array(z.object({
+    capabilityId: z.string().trim().min(1),
+    input: z.record(z.string(), z.unknown())
+  }).strict()).max(16)
 }).strict();
 
 export class ModelShadowPlanner implements ShadowPlanner {
@@ -29,14 +32,14 @@ export class ModelShadowPlanner implements ShadowPlanner {
         "END_UNTRUSTED_EVENT_JSON"
       ].join("\n")
     });
-    for (const capabilityId of result.output.capabilityIds) {
-      if (!this.#allowedCapabilityIds.has(capabilityId)) {
-        throw new Error(`model capability ${capabilityId} is not allowed in shadow mode`);
+    for (const step of result.output.steps) {
+      if (!this.#allowedCapabilityIds.has(step.capabilityId)) {
+        throw new Error(`model capability ${step.capabilityId} is not allowed in shadow mode`);
       }
     }
     return {
       summary: result.output.summary,
-      capabilityIds: result.output.capabilityIds,
+      steps: result.output.steps,
       model: {
         route: result.route,
         attempts: result.attempts,
