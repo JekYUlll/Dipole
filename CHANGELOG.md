@@ -192,6 +192,7 @@
 
 ### 变更
 
+- 前端开发工具链升级到 Vite 8.2.2、Vitest 4.1.11、plugin-vue 6.0.8 和 Rolldown 1.2.6，并固定 Node 22.12+ LTS；配置改用 `import.meta.dirname`，隔离测试可通过 `DIPOLE_WEB_PROXY_TARGET` 覆盖 HTTP/WS 代理目标。
 - 用户状态固定为语言中立 `dipole.user.status.v1`：`normal=1`、`disabled=2`，Go 领域常量改为显式值，避免其他常量或多语言实现改变持久化语义。
 - Web 会话终止统一覆盖显式退出、HTTP 401、WS kick 和账号切换：先撤销本地凭据，再等待在途 Sync 收敛并清理该用户 IndexedDB；并发终止复用 singleflight，快速重登等待旧清理完成。
 
@@ -250,6 +251,7 @@
 
 ### 安全
 
+- 移除 Vite 5/esbuild 与 Vitest 2 开发依赖链中的 1 个 critical、1 个 high 和 3 个 moderate 公告；完整依赖及生产依赖 `npm audit` 均为零漏洞。
 - 新增第三个离线 `dipoleartifactmaintenance` 检查身份，MinIO policy 仅允许固定 Artifact 前缀 GetObject 证据权限；Go adapter 只暴露 Stat，配置拒绝复用 Runtime 或 audit access key。该身份无法 List、Put、Delete，Core、Agent 与 Gateway 均不持有其凭据。
 - 新增 `dipoleartifactaudit` 身份，policy 只有专用 bucket 的定位和 List 权限；CLI 显式拒绝复用 Artifact Runtime access key，Core、TS Agent 和公开 Gateway 均不接收 audit 凭据。候选发现不授予 Get/Put/Delete，未来清理身份继续与 audit/Runtime 分离。
 - Agent Artifact 改用独立 `dipole-agent-artifacts` bucket 与专用 Core 身份，policy 仅允许 bucket 定位/列举和 `agent-artifacts/v1/*` 的 Get/Put，明确不授予删除权限；通用文件/归档身份同步从 MinIO root 降为限定三个既有 bucket 的 `dipoleplatform` 用户，两个运行时身份无法跨 bucket 写入。TS Agent Runtime 不接收对象存储凭据。
@@ -307,6 +309,7 @@
 
 ### 验证
 
+- Node 22.12.0/npm 10.9.0 干净容器通过冷安装、3 项 Vite 工具链契约、53 项 Vitest、`vue-tsc`、Vite 8 生产构建和双重 audit；HTTP/WS 开发代理、`/app/` 静态资源路径及 Chromium/Firefox/WebKit 全部适用 E2E 场景通过。
 - User status 契约测试固定 JSON Schema ID、版本、默认值、枚举与 Go 常量一致；真实 MySQL 8.4 migration 测试覆盖历史 `0` 回填、默认写入、非法值拒绝和保留归一数据的降级边界。
 - maintenance 单元/契约测试覆盖双审批与职责分离、15 分钟有效期、候选绑定、24 小时语义复核、元数据回补、对象缺失/漂移/过期和可复算 authorization/receipt 示例；真实 tmpfs MinIO 验证 inspect 身份可 Stat 且无法 List/Put/Delete，生产 Agent protobuf 继续没有 Artifact 清理方法，第 21 个后端二进制及当前源码镜像构建通过。
 - 真实 MySQL 8.4 验证对象键存在/缺失查询与 migration v26 回滚重建，真实 tmpfs MinIO 验证 audit 用户可列举固定前缀且无法 Get/Put/Delete；联合环境运行 CLI 后输出年轻对象隔离和有效 evidence SHA-256。单元测试覆盖过期孤儿、已引用对象、年轻对象、异常键、24 小时门槛、样例上限与报告复核，新增第 20 个后端二进制的当前源码镜像构建通过。
@@ -390,7 +393,6 @@
 
 ### 已知问题
 
-- 前端完整开发依赖审计仍受 Vite 5/esbuild 链影响，主版本升级和兼容验证记录为 `AD-022`；生产依赖审计已通过。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。

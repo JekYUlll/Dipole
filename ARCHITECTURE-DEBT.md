@@ -99,17 +99,6 @@
 - **解决记录：** 2026-08-27 完成专用 `search.mysql.*` 配置和最小授权模板；单测验证批次中断后可重入。真实 MySQL/MinIO/Elasticsearch 演练按 2/2/1 删除 5 条 eligible mutation，保留无关 Outbox，维护账号访问 Core 表被拒绝；随后仅凭保留对象版本从空索引恢复并完成 3/3 hash 对账、Alias 正向切换与回滚。
 - **长期约束：** 禁止手工批量删除 Outbox。每次执行必须保存 operator、snapshot/object version、Reconcile 时间、高水位和删除统计；对象保留期、清理窗口或 mutation 类型变化时重新评审本条契约。
 
-### AD-022：前端开发工具链仍停留在 Vite 5
-
-- **优先级：** P2
-- **状态：** 暂缓
-- **发现日期：** 2026-08-27
-- **影响范围：** 前端本地开发服务器、Vite、Vitest、esbuild、依赖审计
-- **现状：** 生产依赖高危公告已修复且 `npm audit --omit=dev` 为零漏洞；完整开发依赖审计仍报告 Vite 5 间接使用旧 esbuild，自动修复要求跨主版本升级到 Vite 8，并同步升级测试链。
-- **风险：** 开发服务器在不受信任网络上运行时可能暴露响应读取风险；直接强制升级会同时改变构建、插件和测试运行时，缺少独立兼容验证。
-- **建议方向：** 在独立前端工具链分支升级 Vite/Vitest，验证 Node LTS、生产 bundle、代理 WebSocket、测试和静态资源基路径后再合并。
-- **处理门槛：** 前端开发服务器需要暴露到共享网络前完成；当前仅绑定可信本机开发环境。
-
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **优先级：** P2
@@ -191,6 +180,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-022：前端开发工具链仍停留在 Vite 5
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** 前端开发服务器、Vite、Vitest、Rolldown、依赖审计
+- **解决方式：** 前端升级到 Vite 8.2.2、Vitest 4.1.11 和 plugin-vue 6.0.8，固定 Node 22.12+ LTS；Vite 配置使用 `import.meta.dirname` 兼容 native config loader，并允许测试环境覆盖代理目标。旧 Vite/esbuild 开发链由 Vite 8/Rolldown 取代。
+- **验证：** Node 22.12.0 干净容器完成 `npm ci`、3 项工具链契约、53 项单测、生产构建和完整/生产依赖零漏洞审计；真实 HTTP/WS 代理及 `/app/` 资源路径通过。Chromium、Firefox、WebKit 的全部适用 Playwright 场景通过，平台专属场景按既有条件跳过。
+- **长期约束：** Node 最低版本、Vite/plugin-vue/Vitest peer 范围和 `.nvmrc` 同步维护；工具链主版本升级必须重新运行代理、base path、三浏览器和 audit 门禁。
 
 ### AD-006：消息仓储保留未使用的兼容包装
 
