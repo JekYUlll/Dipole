@@ -367,6 +367,38 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 	return response, nil
 }
 
+func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.ResolveMcpContextRequest) (*agentv1.ResolveMcpContextResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may resolve MCP context")
+	}
+	invocation, err := s.resolver.Resolve(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.NotFound, "Agent MCP context unavailable")
+		}
+		return nil, status.Error(codes.Internal, "Agent MCP context lookup failed")
+	}
+	if strings.TrimSpace(request.GetPrincipalUserId()) == "" || request.GetPrincipalUserId() != invocation.PrincipalUUID {
+		return nil, status.Error(codes.NotFound, "Agent MCP context unavailable")
+	}
+	response := &agentv1.ResolveMcpContextResponse{
+		TenantId: invocation.TenantID, PrincipalUserId: invocation.PrincipalUUID, AgentId: invocation.AgentUUID,
+		DelegatedByUserId: invocation.DelegatedByUUID, Permissions: append([]string(nil), invocation.Permissions...),
+		ApprovedCapabilities: append([]string(nil), invocation.ApprovedCapabilities...),
+		ResourceScopes:       make([]*agentv1.AgentResourceScope, 0, len(invocation.ResourceScopes)),
+	}
+	for _, scope := range invocation.ResourceScopes {
+		response.ResourceScopes = append(response.ResourceScopes, &agentv1.AgentResourceScope{
+			ResourceType: scope.ResourceType, ResourceId: scope.ResourceID, Actions: append([]string(nil), scope.Actions...),
+		})
+	}
+	return response, nil
+}
+
 func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.ProjectTaskWorkflowStateRequest) (*agentv1.ProjectTaskWorkflowStateResponse, error) {
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err

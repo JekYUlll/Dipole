@@ -3,7 +3,7 @@ import * as grpc from "@grpc/grpc-js";
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js";
-import type { ExecutionContext } from "../runtime/execution-context.js";
+import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
 
@@ -355,6 +355,35 @@ export class AgentCapabilityRPCClient {
           workflowRevision: safeRevision(response.workflowRevision)
         };
         resolve({ taskId: response.taskId, taskStatus: response.taskStatus, ...(workflow === undefined ? {} : { workflow }) });
+      });
+    });
+  }
+
+  async resolveMcpContext(taskId: string, runId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<ExecutionContext> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveMcpContext({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId, principalUserId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent MCP context resolution returned no response"));
+          return;
+        }
+        try {
+          resolve(executionContextSchema.parse({
+            tenantId: response.tenantId, principalUuid: response.principalUserId, agentUuid: response.agentId,
+            ...(response.delegatedByUserId.trim() === "" ? {} : { delegatedByUuid: response.delegatedByUserId }),
+            taskId, runId, mode: "shadow", permissions: response.permissions,
+            resourceScopes: response.resourceScopes.map((scope) => ({
+              resourceType: scope.resourceType, resourceId: scope.resourceId, actions: scope.actions
+            })),
+            approvedCapabilities: response.approvedCapabilities,
+            ...(context?.requestId === undefined ? {} : { requestId: context.requestId }),
+            ...(context?.traceId === undefined ? {} : { traceId: context.traceId })
+          }));
+        } catch (validationError) {
+          reject(validationError);
+        }
       });
     });
   }

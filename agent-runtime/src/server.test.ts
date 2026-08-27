@@ -74,3 +74,61 @@ describe("agent runtime Task control API", () => {
     await server.close();
   });
 });
+
+describe("agent runtime MCP HTTP API", () => {
+  const headers = {
+    "x-dipole-caller-service": "dipole-gateway",
+    "x-dipole-service-token": "mcp-secret",
+    "x-dipole-principal-user-id": "U100",
+    "x-request-id": "R1",
+    "x-trace-id": "T1"
+  };
+
+  it("stays unmounted by default and requires the trusted Gateway identity", async () => {
+    const fetch = vi.fn(async () => new Response("ok"));
+    const disabled = buildServer({ isReady: () => true });
+    expect((await disabled.inject({ method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", payload: {} })).statusCode).toBe(404);
+    await disabled.close();
+
+    const server = buildServer({ isReady: () => true }, undefined, { secret: "mcp-secret", handler: { fetch } });
+    expect((await server.inject({ method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", payload: {} })).statusCode).toBe(401);
+    expect((await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp",
+      headers: { ...headers, "x-dipole-service-token": "wrong" }, payload: {}
+    })).statusCode).toBe(401);
+    expect(fetch).not.toHaveBeenCalled();
+    for (const method of ["GET", "DELETE"] as const) {
+      expect((await server.inject({
+        method, url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", headers
+      })).statusCode).toBe(200);
+    }
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await server.close();
+  });
+
+  it("binds Task and Run to AuthInfo without exposing the service secret", async () => {
+    const fetch = vi.fn(async (request: Request, options?: { authInfo?: unknown; parsedBody?: unknown }) => {
+      expect(request.headers.get("x-dipole-service-token")).toBeNull();
+      expect(request.headers.get("content-length")).toBeNull();
+      expect(options?.parsedBody).toEqual({ jsonrpc: "2.0", id: 1, method: "tools/list", principalUserId: "U999" });
+      expect(options?.authInfo).toEqual({
+        token: "gateway-authenticated", clientId: "U100", scopes: ["dipole.agent.mcp"],
+        extra: { taskId: "TASK-1", runId: "RUN-1", requestId: "R1", traceId: "T1" }
+      });
+      return new Response("event: message\ndata: accepted\n\n", {
+        status: 202, headers: { "content-type": "text/event-stream", "mcp-session-id": "S1" }
+      });
+    });
+    const server = buildServer({ isReady: () => true }, undefined, { secret: "mcp-secret", handler: { fetch } });
+    const response = await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", headers,
+      payload: { jsonrpc: "2.0", id: 1, method: "tools/list", principalUserId: "U999" }
+    });
+    expect(response.statusCode).toBe(202);
+    expect(response.headers["content-type"]).toContain("text/event-stream");
+    expect(response.headers["mcp-session-id"]).toBe("S1");
+    expect(response.body).toContain("data: accepted");
+    expect(fetch).toHaveBeenCalledOnce();
+    await server.close();
+  });
+});

@@ -7,10 +7,10 @@ import { createDipoleMcpServer, type DipoleMcpToolProjection } from "./dipole-mc
 export function createDipoleMcpHttpHandler(input: {
   registry: CapabilityRegistry;
   tools: readonly DipoleMcpToolProjection[];
-  resolveContext(auth: AuthInfo): ExecutionContext;
+  resolveContext(auth: AuthInfo): ExecutionContext | Promise<ExecutionContext>;
 }): McpHttpHandler {
-  return createMcpHandler((request) => {
+  return createMcpHandler(async (request) => {
     if (request.authInfo === undefined) throw new Error("authenticated MCP request context is required");
-    return createDipoleMcpServer({ registry: input.registry, tools: input.tools, context: input.resolveContext(request.authInfo) });
+    return createDipoleMcpServer({ registry: input.registry, tools: input.tools, context: await input.resolveContext(request.authInfo) });
   });
 }

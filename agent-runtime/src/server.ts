@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
+import { Readable } from "node:stream";
 
 import { AgentTaskControlError, type AgentTaskControlIdentity } from "./control/agent-task-control.js";
 
@@ -19,7 +20,20 @@ export interface AgentTaskControlHTTPOptions {
   service: AgentTaskControlAPI;
 }
 
-export function buildServer(readiness: RuntimeReadiness, control?: AgentTaskControlHTTPOptions): FastifyInstance {
+export interface AgentMcpHttpHandler {
+  fetch(request: Request, options?: { authInfo?: unknown; parsedBody?: unknown }): Promise<Response>;
+}
+
+export interface AgentMcpHTTPOptions {
+  secret: string;
+  handler: AgentMcpHttpHandler;
+}
+
+export function buildServer(
+  readiness: RuntimeReadiness,
+  control?: AgentTaskControlHTTPOptions,
+  mcp?: AgentMcpHTTPOptions
+): FastifyInstance {
   const server = Fastify({ logger: false });
 
   server.get("/livez", async () => ({ status: "ok", service: "dipole-agent" }));
@@ -82,7 +96,77 @@ export function buildServer(readiness: RuntimeReadiness, control?: AgentTaskCont
     });
   }
 
+  if (mcp !== undefined) {
+    if (mcp.secret.trim().length === 0) {
+      throw new Error("Agent MCP HTTP secret is required");
+    }
+    server.route<{
+      Params: { taskId: string; runId: string };
+      Body?: unknown;
+    }>({
+      method: ["GET", "POST", "DELETE"],
+      url: "/internal/v1/agent/tasks/:taskId/runs/:runId/mcp",
+      bodyLimit: 256 * 1024,
+      handler: async (request, reply) => {
+        const identity = trustedMcpIdentity(request.headers, request.params.taskId, request.params.runId, mcp.secret);
+        if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent MCP authentication failed" });
+
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(request.headers)) {
+          if (value !== undefined && !privateForwardHeader(name)) headers.set(name, Array.isArray(value) ? value.join(",") : value);
+        }
+        const body = request.method === "POST" && request.body !== undefined ? JSON.stringify(request.body) : undefined;
+        const mcpRequest = new Request(`http://dipole-agent.local${request.raw.url}`, {
+          method: request.method,
+          headers,
+          ...(body === undefined ? {} : { body })
+        });
+        const response = await mcp.handler.fetch(mcpRequest, {
+          authInfo: {
+            token: "gateway-authenticated",
+            clientId: identity.principalUserId,
+            scopes: ["dipole.agent.mcp"],
+            extra: {
+              taskId: identity.taskId,
+              runId: identity.runId,
+              ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
+              ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
+            }
+          },
+          ...(request.body === undefined ? {} : { parsedBody: request.body })
+        });
+        for (const [name, value] of response.headers.entries()) reply.header(name, value);
+        reply.code(response.status);
+        if (response.body === null) return reply.send();
+        return reply.send(Readable.from(response.body));
+      }
+    });
+  }
+
   return server;
+}
+
+interface TrustedMcpIdentity extends AgentTaskControlIdentity {
+  runId: string;
+}
+
+function trustedMcpIdentity(
+  headers: Record<string, string | string[] | undefined>,
+  taskId: string,
+  runId: string,
+  secret: string
+): TrustedMcpIdentity | undefined {
+  const base = trustedControlIdentity(headers, taskId, secret);
+  const normalizedRunId = runId.trim();
+  if (base === undefined || !validIdentifier(normalizedRunId)) return undefined;
+  return { ...base, runId: normalizedRunId };
+}
+
+function privateForwardHeader(name: string): boolean {
+  const normalized = name.toLowerCase();
+  return normalized === "authorization" || normalized === "cookie" || normalized === "x-dipole-caller-service" ||
+    normalized === "x-dipole-service-token" || normalized === "x-dipole-principal-user-id" ||
+    normalized === "content-length" || normalized === "transfer-encoding" || normalized === "connection" || normalized === "host";
 }
 
 function trustedControlIdentity(headers: Record<string, string | string[] | undefined>, taskId: string, secret: string): AgentTaskControlIdentity | undefined {

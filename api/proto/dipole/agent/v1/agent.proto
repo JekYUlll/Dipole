@@ -119,6 +119,23 @@ message AuthorizeTaskControlResponse {
   uint64 workflow_revision = 6;
 }
 
+message ResolveMcpContextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string principal_user_id = 4;
+}
+
+message ResolveMcpContextResponse {
+  string tenant_id = 1;
+  string principal_user_id = 2;
+  string agent_id = 3;
+  string delegated_by_user_id = 4;
+  repeated string permissions = 5;
+  repeated AgentResourceScope resource_scopes = 6;
+  repeated string approved_capabilities = 7;
+}
+
 message ProjectTaskWorkflowStateRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -311,6 +328,7 @@ service AgentCapabilityService {
   rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
+  rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
   rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);

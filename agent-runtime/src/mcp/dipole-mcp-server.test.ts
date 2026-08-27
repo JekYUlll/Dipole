@@ -69,7 +69,7 @@ describe("Dipole MCP read-only projection", () => {
       resolveResource: () => ({ resourceType: "conversation", resourceId: "*", action: "list" }),
       execute: async (_input, execution) => ({ principal: execution.principalUuid })
     });
-    const handler = createDipoleMcpHttpHandler({ registry, resolveContext: (auth) => ({ ...context, principalUuid: auth.clientId }), tools: [{
+    const handler = createDipoleMcpHttpHandler({ registry, resolveContext: async (auth) => ({ ...context, principalUuid: auth.clientId }), tools: [{
       name: "dipole_conversation_list", capabilityId: "conversation.list", title: "List conversations",
       description: "List conversations", inputSchema: z.object({ limit: z.number().int().min(1).max(100) }).strict()
     }] });

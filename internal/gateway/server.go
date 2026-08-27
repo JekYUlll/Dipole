@@ -28,6 +28,7 @@ type Dependencies struct {
 	Core       application.CoreCapability
 	Search     application.SearchApplication
 	AgentTasks AgentTaskControlApplication
+	AgentMCP   AgentMCPApplication
 	Presence   wsTransport.PresenceTracker
 	Limiter    MessageRateLimiter
 }
@@ -83,6 +84,10 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
+	if dependencies.AgentMCP != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP))
+	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
 		logger.Warn("gateway core proxy failed", zap.Error(proxyErr))
@@ -93,6 +98,21 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentMCPHandler(proxy AgentMCPApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodPost && c.Request.Method != http.MethodDelete {
+			c.Status(http.StatusMethodNotAllowed)
+			return
+		}
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		proxy.ServeMCP(c.Writer, c.Request, user.UUID, c.Param("task_id"), c.Param("run_id"))
+	}
 }
 
 func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {

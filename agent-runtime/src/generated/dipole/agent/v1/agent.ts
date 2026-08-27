@@ -361,6 +361,60 @@ export interface AuthorizeTaskControlResponse {
     workflowRevision: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ResolveMcpContextRequest
+ */
+export interface ResolveMcpContextRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string principal_user_id = 4
+     */
+    principalUserId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ResolveMcpContextResponse
+ */
+export interface ResolveMcpContextResponse {
+    /**
+     * @generated from protobuf field: string tenant_id = 1
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string principal_user_id = 2
+     */
+    principalUserId: string;
+    /**
+     * @generated from protobuf field: string agent_id = 3
+     */
+    agentId: string;
+    /**
+     * @generated from protobuf field: string delegated_by_user_id = 4
+     */
+    delegatedByUserId: string;
+    /**
+     * @generated from protobuf field: repeated string permissions = 5
+     */
+    permissions: string[];
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentResourceScope resource_scopes = 6
+     */
+    resourceScopes: AgentResourceScope[];
+    /**
+     * @generated from protobuf field: repeated string approved_capabilities = 7
+     */
+    approvedCapabilities: string[];
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ProjectTaskWorkflowStateRequest
  */
 export interface ProjectTaskWorkflowStateRequest {
@@ -2055,6 +2109,171 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
  * @generated MessageType for protobuf message dipole.agent.v1.AuthorizeTaskControlResponse
  */
 export const AuthorizeTaskControlResponse = new AuthorizeTaskControlResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveMcpContextRequest$Type extends MessageType<ResolveMcpContextRequest> {
+    constructor() {
+        super("dipole.agent.v1.ResolveMcpContextRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "principal_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveMcpContextRequest>): ResolveMcpContextRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.principalUserId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ResolveMcpContextRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveMcpContextRequest): ResolveMcpContextRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string principal_user_id */ 4:
+                    message.principalUserId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveMcpContextRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string principal_user_id = 4; */
+        if (message.principalUserId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.principalUserId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveMcpContextRequest
+ */
+export const ResolveMcpContextRequest = new ResolveMcpContextRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextResponse> {
+    constructor() {
+        super("dipole.agent.v1.ResolveMcpContextResponse", [
+            { no: 1, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "principal_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "agent_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "delegated_by_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "permissions", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "resource_scopes", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentResourceScope },
+            { no: 7, name: "approved_capabilities", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveMcpContextResponse>): ResolveMcpContextResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.principalUserId = "";
+        message.agentId = "";
+        message.delegatedByUserId = "";
+        message.permissions = [];
+        message.resourceScopes = [];
+        message.approvedCapabilities = [];
+        if (value !== undefined)
+            reflectionMergePartial<ResolveMcpContextResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveMcpContextResponse): ResolveMcpContextResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string tenant_id */ 1:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string principal_user_id */ 2:
+                    message.principalUserId = reader.string();
+                    break;
+                case /* string agent_id */ 3:
+                    message.agentId = reader.string();
+                    break;
+                case /* string delegated_by_user_id */ 4:
+                    message.delegatedByUserId = reader.string();
+                    break;
+                case /* repeated string permissions */ 5:
+                    message.permissions.push(reader.string());
+                    break;
+                case /* repeated dipole.agent.v1.AgentResourceScope resource_scopes */ 6:
+                    message.resourceScopes.push(AgentResourceScope.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* repeated string approved_capabilities */ 7:
+                    message.approvedCapabilities.push(reader.string());
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveMcpContextResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string tenant_id = 1; */
+        if (message.tenantId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.tenantId);
+        /* string principal_user_id = 2; */
+        if (message.principalUserId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.principalUserId);
+        /* string agent_id = 3; */
+        if (message.agentId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.agentId);
+        /* string delegated_by_user_id = 4; */
+        if (message.delegatedByUserId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.delegatedByUserId);
+        /* repeated string permissions = 5; */
+        for (let i = 0; i < message.permissions.length; i++)
+            writer.tag(5, WireType.LengthDelimited).string(message.permissions[i]);
+        /* repeated dipole.agent.v1.AgentResourceScope resource_scopes = 6; */
+        for (let i = 0; i < message.resourceScopes.length; i++)
+            AgentResourceScope.internalBinaryWrite(message.resourceScopes[i], writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        /* repeated string approved_capabilities = 7; */
+        for (let i = 0; i < message.approvedCapabilities.length; i++)
+            writer.tag(7, WireType.LengthDelimited).string(message.approvedCapabilities[i]);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveMcpContextResponse
+ */
+export const ResolveMcpContextResponse = new ResolveMcpContextResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ProjectTaskWorkflowStateRequest$Type extends MessageType<ProjectTaskWorkflowStateRequest> {
     constructor() {
@@ -3838,6 +4057,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
+    { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
     { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse },
     { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
