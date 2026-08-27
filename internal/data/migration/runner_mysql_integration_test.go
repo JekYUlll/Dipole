@@ -33,25 +33,49 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 19)
+		assertCurrentVersion(t, runner, 23)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 30)
+		assertTableCount(t, db, 33)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 19)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (20, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 23)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (24, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 20"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 24"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Model output replay migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 22)
+		assertTableCount(t, db, 33)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Context manifest migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 21)
+		assertTableCount(t, db, 33)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Run migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 20)
+		assertTableCount(t, db, 32)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Shadow trajectory migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 19)
+		assertTableCount(t, db, 30)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Model Audit migration: %v", err)
 		}

@@ -118,7 +118,10 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     try {
       directive = await executeAgentTaskStep({
         taskId: input.taskId,
+        runId: binding.runId,
         goal: input.goal,
+        ...(input.admission === undefined ? {} : { admission: input.admission }),
+        ...(input.shadowEvent === undefined ? {} : { shadowEvent: input.shadowEvent }),
         step,
         ...(checkpoint === undefined ? {} : { checkpoint }),
         ...(resume === undefined ? {} : { resume })

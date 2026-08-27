@@ -88,4 +88,43 @@ describe("ShadowEventProcessor", () => {
     await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "recorded" });
     expect(plan).toHaveBeenCalledTimes(2);
   });
+
+  it("hands an exact event binding to Temporal and skips inline planning", async () => {
+    const plan = vi.fn();
+    const dispatch = vi.fn(async () => undefined);
+    const processor = new ShadowEventProcessor(
+      { plan }, { append: vi.fn() }, new InMemoryEventLedger(),
+      undefined, undefined, undefined, 60_000, { dispatch }
+    );
+    const event = {
+      eventId: "E-DISPATCH", eventType: "message.direct.created", aggregateId: "M-DISPATCH",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    };
+    const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
+
+    const result = await processor.process(event, identity);
+
+    expect(dispatch).toHaveBeenCalledWith(event, identity, result.taskId);
+    expect(plan).not.toHaveBeenCalled();
+    await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "duplicate" });
+  });
+
+  it("releases the Event claim when Temporal start fails", async () => {
+    const dispatch = vi.fn()
+      .mockRejectedValueOnce(new Error("Temporal unavailable"))
+      .mockResolvedValueOnce(undefined);
+    const processor = new ShadowEventProcessor(
+      { plan: vi.fn() }, { append: vi.fn() }, new InMemoryEventLedger(),
+      undefined, undefined, undefined, 60_000, { dispatch }
+    );
+    const event = {
+      eventId: "E-DISPATCH-RETRY", eventType: "message.direct.created", aggregateId: "M-DISPATCH-RETRY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    };
+    const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" };
+
+    await expect(processor.process(event, identity)).rejects.toThrow("Temporal unavailable");
+    await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "recorded" });
+    expect(dispatch).toHaveBeenCalledTimes(2);
+  });
 });

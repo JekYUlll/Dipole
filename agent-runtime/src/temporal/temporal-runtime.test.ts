@@ -36,6 +36,13 @@ describe("Temporal runtime configuration", () => {
     });
   });
 
+  it("loads the default-off Temporal read shadow profile", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "read_shadow"
+    })).toMatchObject({ enabled: true, activityMode: "read_shadow" });
+  });
+
   it("rejects empty required values when enabled", () => {
     expect(() => loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",

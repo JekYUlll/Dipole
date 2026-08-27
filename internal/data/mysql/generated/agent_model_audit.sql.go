@@ -8,6 +8,7 @@ package generated
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
 const abandonAgentModelCalls = `-- name: AbandonAgentModelCalls :execrows
@@ -31,11 +32,12 @@ func (q *Queries) AbandonAgentModelCalls(ctx context.Context, arg AbandonAgentMo
 
 const completeAgentModelCall = `-- name: CompleteAgentModelCall :execrows
 UPDATE agent_model_calls
-SET status = 'completed', input_tokens = ?, output_tokens = ?, finish_reason = ?, latency_ms = ?, finished_at = UTC_TIMESTAMP(), last_error = NULL
+SET status = 'completed', output_json = ?, input_tokens = ?, output_tokens = ?, finish_reason = ?, latency_ms = ?, finished_at = UTC_TIMESTAMP(), last_error = NULL
 WHERE call_uuid = ? AND run_uuid = ? AND call_no = ? AND status = 'reserved'
 `
 
 type CompleteAgentModelCallParams struct {
+	OutputJson   json.RawMessage
 	InputTokens  sql.NullInt32
 	OutputTokens sql.NullInt32
 	FinishReason sql.NullString
@@ -47,6 +49,7 @@ type CompleteAgentModelCallParams struct {
 
 func (q *Queries) CompleteAgentModelCall(ctx context.Context, arg CompleteAgentModelCallParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, completeAgentModelCall,
+		arg.OutputJson,
 		arg.InputTokens,
 		arg.OutputTokens,
 		arg.FinishReason,
@@ -139,6 +142,61 @@ func (q *Queries) FailAgentModelRunByTask(ctx context.Context, arg FailAgentMode
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const getAgentModelRunStatus = `-- name: GetAgentModelRunStatus :one
+SELECT status
+FROM agent_model_runs
+WHERE run_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getAgentModelRunStatus, runUuid)
+	var status string
+	err := row.Scan(&status)
+	return status, err
+}
+
+const getCompletedAgentModelCall = `-- name: GetCompletedAgentModelCall :one
+SELECT c.run_uuid, c.call_uuid, c.call_no, c.route, c.output_json, c.input_tokens, c.output_tokens,
+       r.max_calls, r.total_timeout_ms, r.max_output_tokens_per_call
+FROM agent_model_calls c
+JOIN agent_model_runs r ON r.run_uuid = c.run_uuid
+WHERE r.task_uuid = ? AND c.status = 'completed'
+ORDER BY c.call_no DESC
+LIMIT 1
+`
+
+type GetCompletedAgentModelCallRow struct {
+	RunUuid                string
+	CallUuid               string
+	CallNo                 uint16
+	Route                  string
+	OutputJson             json.RawMessage
+	InputTokens            sql.NullInt32
+	OutputTokens           sql.NullInt32
+	MaxCalls               uint16
+	TotalTimeoutMs         uint32
+	MaxOutputTokensPerCall uint32
+}
+
+func (q *Queries) GetCompletedAgentModelCall(ctx context.Context, taskUuid string) (GetCompletedAgentModelCallRow, error) {
+	row := q.db.QueryRowContext(ctx, getCompletedAgentModelCall, taskUuid)
+	var i GetCompletedAgentModelCallRow
+	err := row.Scan(
+		&i.RunUuid,
+		&i.CallUuid,
+		&i.CallNo,
+		&i.Route,
+		&i.OutputJson,
+		&i.InputTokens,
+		&i.OutputTokens,
+		&i.MaxCalls,
+		&i.TotalTimeoutMs,
+		&i.MaxOutputTokensPerCall,
+	)
+	return i, err
 }
 
 const incrementAgentModelRunCalls = `-- name: IncrementAgentModelRunCalls :execrows

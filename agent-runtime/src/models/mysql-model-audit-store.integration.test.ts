@@ -25,6 +25,8 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 20, multipleStatements: true });
     const migration = await readFile(new URL("../../../db/migrations/000019_agent_model_audit.up.sql", import.meta.url), "utf8");
     await pool.query(migration);
+    const outputReplay = await readFile(new URL("../../../db/migrations/000023_agent_model_output_replay.up.sql", import.meta.url), "utf8");
+    await pool.query(outputReplay);
   });
 
   afterAll(async () => {
@@ -59,10 +61,17 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
   it("records terminal call evidence and rejects a stale completion", async () => {
     const store = new MySQLModelAuditStore(pool);
     const completed = await store.reserve("TASK-TERMINAL", policy, "gateway/primary");
-    await store.completeCall(completed!, { inputTokens: 21, outputTokens: 7 }, "stop", 35);
+    await store.completeCall(completed!, { summary: "persisted" }, { inputTokens: 21, outputTokens: 7 }, "stop", 35);
     const failed = await store.reserve("TASK-TERMINAL", policy, "gateway/fallback");
     await store.failCall(failed!, new Error("provider unavailable"), 12);
-    await expect(store.completeCall(failed!, { inputTokens: 1, outputTokens: 1 }, "stop", 1)).rejects.toThrow(/stale/);
+    await expect(store.completeCall(failed!, { summary: "stale" }, { inputTokens: 1, outputTokens: 1 }, "stop", 1)).rejects.toThrow(/stale/);
+
+    await expect(store.recover("TASK-TERMINAL", policy)).resolves.toMatchObject({
+      runId: completed!.runId, callId: completed!.callId, callNo: 1,
+      route: "gateway/primary", output: { summary: "persisted" },
+      usage: { inputTokens: 21, outputTokens: 7 }
+    });
+    await expect(store.recover("TASK-TERMINAL", { ...policy, maxCalls: 2 })).rejects.toThrow(/policy conflict/);
 
     const [rows] = await pool.query<Array<RowDataPacket & {
       status: string; input_tokens: number | null; output_tokens: number | null; finish_reason: string | null; last_error: string | null;
@@ -82,7 +91,7 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
     expect(crashed).toBeDefined();
     expect(recovered).toBeDefined();
     await expect(store.reserve("TASK-CRASH", tight, "gateway/other")).resolves.toBeUndefined();
-    await store.completeCall(recovered!, { inputTokens: 5, outputTokens: 2 }, "stop", 8);
+    await store.completeCall(recovered!, { summary: "recovered" }, { inputTokens: 5, outputTokens: 2 }, "stop", 8);
     await store.completeRun(recovered!.runId);
     await expect(store.reserve("TASK-CRASH", tight, "gateway/other")).resolves.toBeUndefined();
 
@@ -117,5 +126,23 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
       "SELECT status, calls_reserved FROM agent_model_runs WHERE task_uuid = 'TASK-KAFKA-RETRY'"
     );
     expect(runs[0]).toMatchObject({ status: "failed", calls_reserved: 2 });
+  });
+
+  it("replays one completed structured result after the Run is already terminal", async () => {
+    const store = new MySQLModelAuditStore(pool);
+    let providerCalls = 0;
+    const client: StructuredModelClient = {
+      generate: async () => {
+        providerCalls += 1;
+        return { output: { summary: "durable" }, usage: { inputTokens: 7, outputTokens: 2 }, finishReason: "stop" };
+      }
+    };
+    const first = new ModelRouter(client, ["gateway/primary"], policy, undefined, store);
+    const replay = new ModelRouter(client, ["gateway/primary"], policy, undefined, store);
+    const request = { taskId: "TASK-OUTPUT-REPLAY", prompt: "plan", schema: z.object({ summary: z.string() }) };
+
+    await expect(first.generate(request)).resolves.toMatchObject({ output: { summary: "durable" } });
+    await expect(replay.generate(request)).resolves.toMatchObject({ output: { summary: "durable" } });
+    expect(providerCalls).toBe(1);
   });
 });

@@ -4,6 +4,7 @@ import type { AgentApprovalBinding } from "../capabilities/agent-capability-rpc.
 import type { AgentTaskWorkflowInput } from "./temporal-task-client.js";
 
 export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
+  runId: string;
   step: number;
   checkpoint?: unknown;
   resume?: AgentTaskResume;

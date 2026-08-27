@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Temporal G3 增加默认关闭的 `read_shadow` 执行模式与 migration v23：Kafka Shadow 保留独立 consumer/EventLedger 和事件触发责任，成功启动稳定 Workflow 后由 Temporal Activity 执行 ContextCompiler、持久 ModelRouter、不可变 Plan 与首条只读 Capability 轨迹。成功模型调用保存 Zod 校验后的结构化输出，Activity 在 provider 返回、Plan 或 Step 完成后丢失 ACK 时可恢复同一输出和已完成 Step，不能重复付费调用或 Tool 副作用；Task/Run/admission/event 任一绑定漂移均 fail closed。
 - Temporal G3 增加持久 Approval Signal：`wait_approval` 在进入等待前通过 additive `RequestApproval` RPC 保存 capability、resource scope、arguments、nonce 与过期时间绑定；Signal 必须同时匹配 request/approval ID，并由 `ResolveApproval` 校验运行中的 Task/Run 和持久 Task principal，Core 完成 approved/revoked 后 Workflow 才恢复。创建、批准、拒绝和并发网络重放均收敛，默认 `foundation` 与现有 Kafka/模型/Capability 流量保持不变。
 - Temporal G3 增加默认关闭的持久 shadow 生命周期 Activity：Workflow 在 Step 前通过受认证 Capability RPC 建立确定性 Task/Run admission，并在 completed、failed、cancelled 后提交精确终态证据；Core 新增 additive `FinishRun` RPC，以 Task/Run/runtime/mode 绑定、compare-and-set 和终态证据实现网络重试幂等。`DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=foundation|persistent_shadow` 默认保持 `foundation`，Kafka、模型、Capability、Approval 与权威 Task 状态均未切流。
 - TypeScript Agent Runtime 增加 Temporal G3 foundation：以持久 Agent Task ID 生成稳定 Workflow ID，运行中重复启动使用 `USE_EXISTING` 收敛、终态使用 `REJECT_DUPLICATE` 阻止重放；框架中立状态机覆盖 running、waiting_input、waiting_approval、completed、failed、cancelled，Workflow 提供输入/审批/取消 Signal 与状态 Query，模型、Capability、存储和副作用统一隔离到带三次有界重试的 Activity。Worker 配置默认关闭，Compose 显式保持零流量切换，foundation Activity 不产生外部副作用。
@@ -246,6 +247,7 @@
 
 ### 迁移说明
 
+- 启用 `read_shadow` 前先执行 migration v23，并同时配置 MySQL ledger、`ai_sdk` model routes、Agent Capability RPC 与 Temporal；启动顺序为 Store 探针、Worker、Temporal dispatcher、Kafka consumer。回滚先将 Activity mode 恢复为 `persistent_shadow`/`foundation` 或关闭 Temporal，再回滚 v23；v23 仅增加 nullable `agent_model_calls.output_json`，旧 Runtime 可继续运行。
 - `FinishRun`、`RequestApproval` 和 `ResolveApproval` 是 Agent Capability v1 的 additive RPC，旧 Runtime 可继续调用 `CompleteRun`。持久 shadow Worker 需同时显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow`、启用 Agent Capability RPC 并配置既有共享密钥或 mTLS；回滚时先恢复 `foundation` 或关闭 Temporal Worker，无需数据迁移。
 - Agent 镜像新增精确锁定的 Temporal TypeScript SDK `1.23.0`，构建和运行基底由 Node 22 Alpine 切换为 Node 22 Bookworm slim，以满足 Temporal Native Core 的 glibc ABI。现有部署无需启动 Temporal Server；`DIPOLE_AGENT_TEMPORAL_ENABLED` 默认为 `false`，仅在独立 foundation 验证环境设置为 `true`，并配置 address、namespace 与 task queue。
 - 发布 Context Compiler v1 前先执行 migration v22；该 migration 只向 `agent_shadow_plans` 追加 nullable compiler/Token/manifest 字段，旧 Runtime 可继续写入空值。回滚新 Runtime 后可执行 v22 down 删除 manifest 字段，不影响 Plan/Step 主数据。
@@ -283,6 +285,7 @@
 
 ### 验证
 
+- 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 read Activity 在模型、Plan 与 Capability 完成后丢失 ACK 并重试时，provider 和 Capability 均只执行一次；真实 MySQL 8.4 验证结构化输出恢复、持久预算漂移拒绝、已完成 Run 精确重放，以及完整 migration v23 `up→down` 链。TypeScript 绑定测试覆盖 Kafka 仅启动稳定 Workflow、inline planner 不再执行和伪造 Task/Run/event 拒绝。
 - 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 Approval 在 Worker 替换前仅持久创建一次、恢复后保持同一等待点、精确 Signal 只解析一次且解析完成后才继续 Step；真实 MySQL 8.4 验证 pending 精确创建重放、绑定冲突拒绝、16 路并发批准收敛、approve/deny 竞争仅一个 CAS 获胜、终态重放和伪造 principal/cross-Task 拒绝。
 - Temporal 状态机、稳定 Workflow ID、重复启动策略、默认关闭配置和 Worker 启停单测通过；真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 admission 仅执行一次、Step 两次失败后第三次成功、替换 Worker 从历史恢复审批等待、Signal 后完成、terminal Activity 失败后重试，以及超步数精确写入 failed。真实 MySQL 8.4 验证 failed/cancelled Run 首次提交、精确重放、持久读取与冲突终态拒绝；Agent 全量为 62 passed / 13 skipped，TypeScript typecheck/build 和 Proto drift 门禁通过。
 - 已通过 Context Compiler 的确定性顺序、section/global budget、full→compact、optional omit、required fail-closed、重复 ID 和不可信内容隔离测试；真实 MySQL 8.4 验证 v22 manifest 持久化与 `up→down→up`，最终 schema version 为 22。

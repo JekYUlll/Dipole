@@ -173,10 +173,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v22 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态和 Approval Signal；Approval 在等待前固定 capability/scope/arguments/nonce，Signal 解析受 Task principal 与运行中 shadow Run 约束。该路径仅在 `persistent_shadow` 显式模式启用，Worker 与 Compose 默认仍关闭。
-- **风险：** Temporal 尚未接入 ContextCompiler、ModelRouter、Capability Step 与 Kafka Event Trigger，审批入口也尚未由 Gateway 的终端用户认证 API 发出。Workflow Task 状态尚未成为 MySQL `agent_tasks` 的权威状态，提前切流会产生双状态源或重复预算。
-- **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史不在替换 Worker 后重放、审批解析后再恢复 Step，以及 Step/terminal 独立重试；真实 MySQL 8.4 已验证 Run 与 Approval 的精确重放、16 路并发批准收敛及伪造 actor/cross-Task 拒绝。现有 Kafka Shadow 与 Go/Eino 权威路径保持不变。
-- **建议方向：** 下一步接入只读 ContextCompiler/ModelRouter/Capability Step，再增加默认关闭的 Event Trigger bridge；随后提供 Gateway authenticated approval endpoint，并通过 shadow trajectory 对照后转移权威 Task 状态和业务流量。
+- **现状：** migration v16-v23 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Compose 继续关闭 Temporal 并固定 `foundation`。
+- **风险：** 审批 Signal 入口尚未由 Gateway 的终端用户认证 API 发出，Workflow Task 状态尚未成为 MySQL `agent_tasks` 的权威状态；当前 `read_shadow` 只允许 `conversation.list`，也没有 Artifact、Memory 或 Eval 终态。提前转为 active 会产生双状态源并缺少用户可控恢复入口。
+- **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复和 Activity 丢失完成 ACK 后的模型/Step 重放，provider 与 Capability 各执行一次；真实 MySQL 8.4 已验证 Run、Approval、模型输出、预算 policy 和 migration v23 全链。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
+- **建议方向：** 下一步提供 Gateway authenticated approval/query/cancel API 与 Signal bridge，再建立 Workflow/MySQL Task 状态投影和 Eval 对照；满足 shadow 晋级证据后才转移权威 Task 与回复流量。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
 ### AD-012：用户状态常量与 schema 默认值偏移
