@@ -54,7 +54,7 @@ describe("Dipole MCP read-only projection", () => {
     });
     expect(() => createDipoleMcpServer({ registry, context, tools: [{
       name: "send", capabilityId: "message.send", title: "Send", description: "Send", inputSchema: z.object({})
-    }] })).toThrow(/read-only/);
+    }] })).toThrow(/explicit approval-bound executor/);
     expect(() => new AllowlistedMcpToolClient("unknown", ["dipole-agent"], ["read"], {
       read: { allowedArgumentNames: [], maximumBytes: 1024 }
     })).toThrow(/Server/);

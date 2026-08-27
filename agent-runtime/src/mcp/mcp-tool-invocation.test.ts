@@ -113,7 +113,7 @@ describe("McpToolInvocationRunner", () => {
       const pending = runner.execute({ name: "list", capabilityId: "conversation.list" }, {}, context, operation);
       await vi.advanceTimersByTimeAsync(200);
       await expect(pending).rejects.toThrow("Tool invocation failed");
-      expect(operation).toHaveBeenCalledWith(expect.objectContaining({ aborted: true }));
+      expect(operation).toHaveBeenCalledWith(expect.objectContaining({ aborted: true }), "INV-TIMEOUT");
       expect(finish).toHaveBeenCalledOnce();
       expect(finish).toHaveBeenCalledWith(expect.objectContaining({
         invocationId: "INV-TIMEOUT", status: "failed", errorCode: "tool_timeout", latencyMs: 250
