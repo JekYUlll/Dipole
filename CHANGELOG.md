@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加五路径 deterministic security suite：真实 ContextCompiler 验证 Prompt Injection 保持 `untrusted` provenance，Capability Registry 验证越权资源在执行前拒绝，EventLedger/lineage 验证重复事件单次规划与同源循环在 Ledger 前抑制，MCP Client/Server 验证敏感外发在网络调用前阻断。外部 MCP Tool 现在必须配置与 allowlist 完全匹配的 egress policy，限制顶层参数、JSON 大小和嵌套深度，并递归拒绝常见凭据字段；值级 DLP 与模型语义攻击继续作为 Shadow 切流门禁。
 - Agent G4 增加 outcome、trajectory、permission、retrieval、cost 五类 deterministic 离线评测：严格 Suite/Report 契约要求五类 case、唯一 ID 和有界输入，以 canonical SHA-256 绑定候选数据集；CLI 输出不含消息正文的类别结果与 precision/recall、调用、Token、成本和延迟指标，并以 `0/2/1` 区分通过、评测失败和输入错误。Shadow promotion v2 强制携带同一候选版本的完整报告并逐类别阻断，v1 证据继续兼容；当前 synthetic fixture 只验证 Harness，真实 Task/corpus 由 `AD-038` 跟踪。
 - Agent G4 为认证 MCP 入口增加 Redis principal 限流：Gateway 在 JWT principal 解析后对 GET/POST 使用统一 `rate:agent_mcp:{principal}` 固定窗口，跨 Task、Run、方法和 Gateway 实例共享额度；超限返回 429 与向上取整的 `Retry-After`。Redis 缺失、调用失败或额度配置非法时 fail closed，DELETE 继续允许释放 Streamable HTTP Session；旧登录、消息和文件限流的兼容语义不变。
 - Agent G4 增加 migration v30 与 MCP ToolCall 持久审计：Core/sqlc 绑定权威 tenant、principal、Agent、Task 和 Run，仅保存参数/结果 SHA-256、结果字节数、耗时、稳定错误码与单次终态；TypeScript Runtime 只有在 durable begin 成功后才执行只读 Capability，并使用 `@opentelemetry/api` 创建不含正文的 ToolCall span。结果超过 64 KiB、工具异常或审计不可用均 fail closed；默认未装配 OTel SDK/exporter。

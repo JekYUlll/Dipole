@@ -29,11 +29,17 @@ describe("Dipole MCP read-only projection", () => {
     }] });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
-    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_conversation_list"]);
+    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_conversation_list"], {
+      dipole_conversation_list: { allowedArgumentNames: ["limit"], maximumBytes: 1024 }
+    });
     await expect(client.connect(clientTransport)).resolves.toHaveLength(1);
     const result = await client.callTool("dipole_conversation_list", { limit: 10 });
     expect(result.content).toEqual([{ type: "text", text: JSON.stringify({ owner: "U100", count: 1 }) }]);
     expect(execute).toHaveBeenCalledWith({ limit: 10 }, expect.objectContaining({ principalUuid: "U100" }));
+    await expect(client.callTool("dipole_conversation_list", {
+      limit: 10, credentials: { authorization: "Bearer sensitive-token" }
+    })).rejects.toThrow(/egress policy/);
+    expect(execute).toHaveBeenCalledTimes(1);
     await expect(client.callTool("dipole_conversation_list", { limit: 10, principalUuid: "U999" })).rejects.toThrow();
     await expect(client.callTool("unlisted", {})).rejects.toThrow(/allowlisted/);
     await client.close();
@@ -49,14 +55,25 @@ describe("Dipole MCP read-only projection", () => {
     expect(() => createDipoleMcpServer({ registry, context, tools: [{
       name: "send", capabilityId: "message.send", title: "Send", description: "Send", inputSchema: z.object({})
     }] })).toThrow(/read-only/);
-    expect(() => new AllowlistedMcpToolClient("unknown", ["dipole-agent"], ["read"])).toThrow(/Server/);
+    expect(() => new AllowlistedMcpToolClient("unknown", ["dipole-agent"], ["read"], {
+      read: { allowedArgumentNames: [], maximumBytes: 1024 }
+    })).toThrow(/Server/);
+    expect(() => new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {})).toThrow(/egress policies/);
+    expect(() => new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {
+      read: { allowedArgumentNames: [], maximumBytes: 0 }
+    })).toThrow(/byte limit/);
+    expect(() => new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {
+      read: { allowedArgumentNames: ["apiKey"], maximumBytes: 1024 }
+    })).toThrow(/argument names/);
   });
 
   it("rejects a configured identity that differs from the MCP handshake", async () => {
     const server = createDipoleMcpServer({ registry: new CapabilityRegistry(), context, tools: [] });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
-    const client = new AllowlistedMcpToolClient("expected-server", ["expected-server"], ["read"]);
+    const client = new AllowlistedMcpToolClient("expected-server", ["expected-server"], ["read"], {
+      read: { allowedArgumentNames: [], maximumBytes: 1024 }
+    });
     await expect(client.connect(clientTransport)).rejects.toThrow(/identity mismatch/);
     await server.close();
   });
@@ -78,7 +95,9 @@ describe("Dipole MCP read-only projection", () => {
         authInfo: { token: "test-token", clientId: "U200", scopes: ["conversation.list"] }
       })
     });
-    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_conversation_list"]);
+    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_conversation_list"], {
+      dipole_conversation_list: { allowedArgumentNames: ["limit"], maximumBytes: 1024 }
+    });
     await client.connect(transport);
     await expect(client.callTool("dipole_conversation_list", { limit: 1 })).resolves.toMatchObject({
       content: [{ type: "text", text: JSON.stringify({ principal: "U200" }) }]

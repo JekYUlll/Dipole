@@ -188,6 +188,8 @@ G4 使用 `dipole.agent.offline-eval-suite.v1` 固定五类 deterministic case�
 
 Shadow 晋级 v2 将完整五类报告作为证据，任一类别缺失或失败均阻断；v1 保留历史兼容。当前语言中立 fixture 只验证 Harness 与版本迁移，真实 Task adapter、人工标注语料、生产 retrieval relevance 和成本阈值需要在切流前独立采证（`AD-038`）。
 
+G4 security suite 复用五类 Harness 串联实际 Runtime 边界：ContextCompiler 保留系统策略顺序并标记外部事件为 `untrusted`，Capability Registry 在执行前拒绝越权资源，EventLedger 收敛重复事件，lineage 在 Ledger/模型前抑制同源循环，MCP Client 在网络发送前执行 Tool 级 egress policy。Egress policy 采用显式顶层参数 allowlist、请求大小/深度上限和常见凭据字段拒绝；值级 DLP、外部凭据托管和模型语义攻击仍属于切流前门禁。
+
 G3 Shadow 晋级使用 `contracts/agent-promotion/v1/policy.json`：同一候选版本连续观察至少 24 小时，至少 24 个观察点且最大间隔 90 分钟，累计比较至少 100 个 Task，Workflow projection 六类对账中只能出现 `match`；projection、outcome、trajectory、permission Eval 必须全部通过。策略评估只产出 `eligible|blocked` Artifact，不修改 Runtime mode。Workflow repair 也只生成一小时内有效、绑定操作员声明/工单/Temporal 证据与 SHA-256 的 proposal；服务端认证、持久审计和审批链完成前没有执行入口。
 
 当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个原 `AD-008` case 持续提交恶意身份参数，并要求资料读取和系统消息目标使用服务端派生 principal；TypeScript Runtime 必须通过同一契约后才能获得流量。

@@ -23,3 +23,5 @@ npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
 ```
 
 退出码 `0` 表示全部 case 通过，`2` 表示有效 Suite 存在评测失败，`1` 表示参数或契约无效。当前 fixture 用于验证 Harness 语义，真实 Shadow Task adapter、人工标注 corpus 和检索相关性基线由 `AD-038` 跟踪。
+
+`security-suite.json` 将五条真实 Runtime 结构性安全探针映射到同一 Harness：MCP 敏感参数外发对应 outcome，同源 Agent 循环对应 trajectory，越权 Capability 对应 permission，Prompt Injection provenance 对应 retrieval，重复事件的 planner 调用上限对应 cost。该 Suite 验证代码路径与稳定证据，不代表模型语义已免疫 Prompt Injection；真实 adversarial model corpus 仍需在 Shadow 晋级前归档。
