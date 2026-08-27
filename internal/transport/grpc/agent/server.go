@@ -18,19 +18,28 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability      application.AgentCapabilityV1
-	resolver        application.AgentInvocationResolverV1
-	admission       application.AgentRunAdmissionServiceV1
-	approvals       application.AgentApprovalServiceV1
-	approvalGrants  application.AgentApprovalGrantResolverV1
-	controls        application.AgentTaskControlAuthorizerV1
-	projections     application.AgentTaskWorkflowProjectionServiceV1
-	repairs         application.AgentWorkflowRepairAuditServiceV1
-	artifacts       application.AgentArtifactServiceV1
-	subscriptions   application.AgentEventSubscriptionResolverV1
-	memories        application.AgentMemoryContextResolverV1
-	toolAudits      application.AgentToolInvocationAuditServiceV1
-	messageCommands application.AgentMessageCommandExecutionV1
+	capability        application.AgentCapabilityV1
+	resolver          application.AgentInvocationResolverV1
+	admission         application.AgentRunAdmissionServiceV1
+	approvals         application.AgentApprovalServiceV1
+	approvalGrants    application.AgentApprovalGrantResolverV1
+	controls          application.AgentTaskControlAuthorizerV1
+	projections       application.AgentTaskWorkflowProjectionServiceV1
+	repairs           application.AgentWorkflowRepairAuditServiceV1
+	promotionControls application.AgentRuntimePromotionControlServiceV1
+	artifacts         application.AgentArtifactServiceV1
+	subscriptions     application.AgentEventSubscriptionResolverV1
+	memories          application.AgentMemoryContextResolverV1
+	toolAudits        application.AgentToolInvocationAuditServiceV1
+	messageCommands   application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithPromotionControls(controls application.AgentRuntimePromotionControlServiceV1) (*Server, error) {
+	if s == nil || controls == nil {
+		return nil, errors.New("Agent Runtime promotion control service is required")
+	}
+	s.promotionControls = controls
+	return s, nil
 }
 
 func (s *Server) WithApprovalGrants(grants application.AgentApprovalGrantResolverV1) (*Server, error) {
@@ -318,6 +327,117 @@ func (s *Server) GetWorkflowRepair(ctx context.Context, request *agentv1.GetWork
 		return nil, workflowRepairErrorV1(err)
 	}
 	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func (s *Server) ProposeRuntimePromotion(ctx context.Context, request *agentv1.ProposeRuntimePromotionRequest) (*agentv1.RuntimePromotionProposalResponse, error) {
+	principal, err := runtimePromotionOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.promotionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Runtime promotion control is unavailable")
+	}
+	proposal, err := s.promotionControls.Propose(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentRuntimePromotionProposalRequestV1{
+		TenantID: request.GetTenantId(), RuntimeID: request.GetRuntimeId(), CandidateVersion: request.GetCandidateVersion(),
+		DefinitionUUID: request.GetDefinitionId(), DefinitionVersion: request.GetDefinitionVersion(),
+		EvidenceArtifactUUID: request.GetEvidenceArtifactId(), EvidenceSHA256: request.GetEvidenceSha256(), EvalSuiteSHA256: request.GetEvalSuiteSha256(),
+		TicketRef: request.GetTicketRef(), Reason: request.GetReason(), ProposedAt: time.UnixMilli(request.GetProposedAtUnixMs()), ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()),
+		GrantValidFrom: time.UnixMilli(request.GetGrantValidFromUnixMs()), GrantExpiresAt: time.UnixMilli(request.GetGrantExpiresAtUnixMs()),
+	})
+	if err != nil {
+		return nil, runtimePromotionControlErrorV1(err)
+	}
+	return runtimePromotionProposalResponseV1(proposal), nil
+}
+
+func (s *Server) ReviewRuntimePromotion(ctx context.Context, request *agentv1.ReviewRuntimePromotionRequest) (*agentv1.RuntimePromotionProposalResponse, error) {
+	principal, err := runtimePromotionOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.promotionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Runtime promotion control is unavailable")
+	}
+	proposal, err := s.promotionControls.Review(grpccommon.Correlation(ctx, request.GetContext()), principal, request.GetProposalId(), application.AgentRuntimePromotionReviewDecisionV1(request.GetDecision()))
+	if err != nil {
+		return nil, runtimePromotionControlErrorV1(err)
+	}
+	return runtimePromotionProposalResponseV1(proposal), nil
+}
+
+func (s *Server) GetRuntimePromotion(ctx context.Context, request *agentv1.GetRuntimePromotionRequest) (*agentv1.RuntimePromotionProposalResponse, error) {
+	principal, err := runtimePromotionOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.promotionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Runtime promotion control is unavailable")
+	}
+	proposal, err := s.promotionControls.Get(grpccommon.Correlation(ctx, request.GetContext()), principal, request.GetTenantId(), request.GetProposalId())
+	if err != nil {
+		return nil, runtimePromotionControlErrorV1(err)
+	}
+	return runtimePromotionProposalResponseV1(proposal), nil
+}
+
+func (s *Server) RevokeRuntimePromotion(ctx context.Context, request *agentv1.RevokeRuntimePromotionRequest) (*agentv1.RuntimePromotionGrantResponse, error) {
+	principal, err := runtimePromotionOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.promotionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Runtime promotion control is unavailable")
+	}
+	grant, err := s.promotionControls.Revoke(grpccommon.Correlation(ctx, request.GetContext()), principal, request.GetGrantId(), request.GetTicketRef(), request.GetReason())
+	if err != nil {
+		return nil, runtimePromotionControlErrorV1(err)
+	}
+	response := &agentv1.RuntimePromotionGrantResponse{GrantId: grant.GrantUUID, TenantId: grant.TenantID, RuntimeId: grant.RuntimeID,
+		CandidateVersion: grant.CandidateVersion, DefinitionId: grant.DefinitionUUID, DefinitionVersion: grant.DefinitionVersion,
+		PolicyVersion: grant.PolicyVersion, EvidenceSha256: grant.EvidenceSHA256, EvalSuiteSha256: grant.EvalSuiteSHA256,
+		GrantedById: grant.GrantedByUUID, ReviewedById: grant.ReviewedByUUID, ValidFromUnixMs: grant.ValidFrom.UnixMilli(), ExpiresAtUnixMs: grant.ExpiresAt.UnixMilli()}
+	if grant.RevokedAt != nil {
+		response.RevokedAtUnixMs = grant.RevokedAt.UnixMilli()
+	}
+	return response, nil
+}
+
+func runtimePromotionOperatorV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return "", status.Error(codes.PermissionDenied, "only the authenticated Gateway may submit Runtime promotion control requests")
+	}
+	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
+		return "", err
+	}
+	return grpccommon.Principal(requestContext)
+}
+
+func runtimePromotionProposalResponseV1(value *application.AgentRuntimePromotionProposalV1) *agentv1.RuntimePromotionProposalResponse {
+	if value == nil {
+		return nil
+	}
+	response := &agentv1.RuntimePromotionProposalResponse{ProposalId: value.ProposalUUID, TenantId: value.TenantID, RuntimeId: value.RuntimeID,
+		CandidateVersion: value.CandidateVersion, DefinitionId: value.DefinitionUUID, DefinitionVersion: value.DefinitionVersion,
+		EvidenceArtifactId: value.EvidenceArtifactUUID, EvidenceSha256: value.EvidenceSHA256, EvalSuiteSha256: value.EvalSuiteSHA256,
+		ProposerId: value.ProposerUUID, TicketRef: value.TicketRef, Reason: value.Reason, Status: string(value.Status), GrantId: value.GrantUUID,
+		ProposedAtUnixMs: value.ProposedAt.UnixMilli(), ExpiresAtUnixMs: value.ExpiresAt.UnixMilli(),
+		GrantValidFromUnixMs: value.GrantValidFrom.UnixMilli(), GrantExpiresAtUnixMs: value.GrantExpiresAt.UnixMilli()}
+	if value.DecidedAt != nil {
+		response.DecidedAtUnixMs = value.DecidedAt.UnixMilli()
+	}
+	return response
+}
+
+func runtimePromotionControlErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentRuntimePromotionControlDenied):
+		return status.Error(codes.PermissionDenied, "Runtime promotion control request denied")
+	case errors.Is(err, application.ErrAgentRuntimePromotionControlConflict):
+		return status.Error(codes.FailedPrecondition, "Runtime promotion control evidence conflicts")
+	default:
+		return status.Error(codes.Internal, "Runtime promotion control operation failed")
+	}
 }
 
 func workflowRepairOperatorV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

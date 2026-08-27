@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 32
+const currentMigrationVersion = 33
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,21 +39,27 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 41)
+		assertTableCount(t, db, 45)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
 		assertMigrationCount(t, db, currentMigrationVersion)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (33, 'future_expand')"); err != nil {
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (34, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 33"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 34"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Runtime promotion control migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 32)
+		assertTableCount(t, db, 41)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Runtime promotion grant migration: %v", err)
 		}

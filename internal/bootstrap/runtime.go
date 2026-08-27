@@ -193,6 +193,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
+		promotionControls, composeErr := appComposition.NewPersistentAgentRuntimePromotionControlServiceV1(repos.AgentPolicy, repos.AgentArtifacts, repos.AgentPromotionControls)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
+		}
 		subscriptionResolver, composeErr := appComposition.NewPersistentAgentEventSubscriptionResolverV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
@@ -226,7 +230,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, messageCommands, approvalGrants, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, messageCommands, approvalGrants, promotionControls, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

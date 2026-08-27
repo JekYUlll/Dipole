@@ -314,6 +314,82 @@ message WorkflowRepairProposalResponse {
   int64 expires_at_unix_ms = 14;
 }
 
+message ProposeRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string evidence_artifact_id = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string ticket_ref = 10;
+  string reason = 11;
+  int64 proposed_at_unix_ms = 12;
+  int64 expires_at_unix_ms = 13;
+  int64 grant_valid_from_unix_ms = 14;
+  int64 grant_expires_at_unix_ms = 15;
+}
+
+message ReviewRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+  string decision = 3;
+}
+
+message GetRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string proposal_id = 3;
+}
+
+message RevokeRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string grant_id = 2;
+  string ticket_ref = 3;
+  string reason = 4;
+}
+
+message RuntimePromotionProposalResponse {
+  string proposal_id = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string evidence_artifact_id = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string proposer_id = 10;
+  string ticket_ref = 11;
+  string reason = 12;
+  string status = 13;
+  string grant_id = 14;
+  int64 proposed_at_unix_ms = 15;
+  int64 expires_at_unix_ms = 16;
+  int64 grant_valid_from_unix_ms = 17;
+  int64 grant_expires_at_unix_ms = 18;
+  int64 decided_at_unix_ms = 19;
+}
+
+message RuntimePromotionGrantResponse {
+  string grant_id = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string policy_version = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string granted_by_id = 10;
+  string reviewed_by_id = 11;
+  int64 valid_from_unix_ms = 12;
+  int64 expires_at_unix_ms = 13;
+  int64 revoked_at_unix_ms = 14;
+}
+
 message CreateArtifactRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -432,6 +508,10 @@ service AgentCapabilityService {
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc ProposeRuntimePromotion(ProposeRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc ReviewRuntimePromotion(ReviewRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc GetRuntimePromotion(GetRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc RevokeRuntimePromotion(RevokeRuntimePromotionRequest) returns (RuntimePromotionGrantResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
 }

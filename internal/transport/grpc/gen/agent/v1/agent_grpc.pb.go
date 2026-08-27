@@ -39,6 +39,10 @@ const (
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
 	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
 	AgentCapabilityService_GetWorkflowRepair_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
+	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
+	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
+	AgentCapabilityService_GetRuntimePromotion_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
+	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
 	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
 	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
 )
@@ -67,6 +71,10 @@ type AgentCapabilityServiceClient interface {
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
+	ReviewRuntimePromotion(ctx context.Context, in *ReviewRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
+	GetRuntimePromotion(ctx context.Context, in *GetRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
+	RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
 }
@@ -279,6 +287,46 @@ func (c *agentCapabilityServiceClient) GetWorkflowRepair(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimePromotionProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ProposeRuntimePromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ReviewRuntimePromotion(ctx context.Context, in *ReviewRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimePromotionProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ReviewRuntimePromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) GetRuntimePromotion(ctx context.Context, in *GetRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimePromotionProposalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_GetRuntimePromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimePromotionGrantResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RevokeRuntimePromotion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateArtifactResponse)
@@ -323,6 +371,10 @@ type AgentCapabilityServiceServer interface {
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
+	ReviewRuntimePromotion(context.Context, *ReviewRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
+	GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
+	RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
 	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
@@ -394,6 +446,18 @@ func (UnimplementedAgentCapabilityServiceServer) DecideWorkflowRepair(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProposeRuntimePromotion not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ReviewRuntimePromotion(context.Context, *ReviewRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReviewRuntimePromotion not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRuntimePromotion not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeRuntimePromotion not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateArtifact not implemented")
@@ -783,6 +847,78 @@ func _AgentCapabilityService_GetWorkflowRepair_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ProposeRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProposeRuntimePromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ProposeRuntimePromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ProposeRuntimePromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ProposeRuntimePromotion(ctx, req.(*ProposeRuntimePromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ReviewRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReviewRuntimePromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ReviewRuntimePromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ReviewRuntimePromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ReviewRuntimePromotion(ctx, req.(*ReviewRuntimePromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_GetRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRuntimePromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).GetRuntimePromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_GetRuntimePromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).GetRuntimePromotion(ctx, req.(*GetRuntimePromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RevokeRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeRuntimePromotionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RevokeRuntimePromotion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RevokeRuntimePromotion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RevokeRuntimePromotion(ctx, req.(*RevokeRuntimePromotionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_CreateArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateArtifactRequest)
 	if err := dec(in); err != nil {
@@ -905,6 +1041,22 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkflowRepair",
 			Handler:    _AgentCapabilityService_GetWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "ProposeRuntimePromotion",
+			Handler:    _AgentCapabilityService_ProposeRuntimePromotion_Handler,
+		},
+		{
+			MethodName: "ReviewRuntimePromotion",
+			Handler:    _AgentCapabilityService_ReviewRuntimePromotion_Handler,
+		},
+		{
+			MethodName: "GetRuntimePromotion",
+			Handler:    _AgentCapabilityService_GetRuntimePromotion_Handler,
+		},
+		{
+			MethodName: "RevokeRuntimePromotion",
+			Handler:    _AgentCapabilityService_RevokeRuntimePromotion_Handler,
 		},
 		{
 			MethodName: "CreateArtifact",

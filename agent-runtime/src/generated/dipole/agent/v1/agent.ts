@@ -980,6 +980,268 @@ export interface WorkflowRepairProposalResponse {
     expiresAtUnixMs: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ProposeRuntimePromotionRequest
+ */
+export interface ProposeRuntimePromotionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string runtime_id = 3
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string candidate_version = 4
+     */
+    candidateVersion: string;
+    /**
+     * @generated from protobuf field: string definition_id = 5
+     */
+    definitionId: string;
+    /**
+     * @generated from protobuf field: uint64 definition_version = 6
+     */
+    definitionVersion: bigint;
+    /**
+     * @generated from protobuf field: string evidence_artifact_id = 7
+     */
+    evidenceArtifactId: string;
+    /**
+     * @generated from protobuf field: string evidence_sha256 = 8
+     */
+    evidenceSha256: string;
+    /**
+     * @generated from protobuf field: string eval_suite_sha256 = 9
+     */
+    evalSuiteSha256: string;
+    /**
+     * @generated from protobuf field: string ticket_ref = 10
+     */
+    ticketRef: string;
+    /**
+     * @generated from protobuf field: string reason = 11
+     */
+    reason: string;
+    /**
+     * @generated from protobuf field: int64 proposed_at_unix_ms = 12
+     */
+    proposedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 13
+     */
+    expiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 grant_valid_from_unix_ms = 14
+     */
+    grantValidFromUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 grant_expires_at_unix_ms = 15
+     */
+    grantExpiresAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ReviewRuntimePromotionRequest
+ */
+export interface ReviewRuntimePromotionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string proposal_id = 2
+     */
+    proposalId: string;
+    /**
+     * @generated from protobuf field: string decision = 3
+     */
+    decision: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.GetRuntimePromotionRequest
+ */
+export interface GetRuntimePromotionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string proposal_id = 3
+     */
+    proposalId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RevokeRuntimePromotionRequest
+ */
+export interface RevokeRuntimePromotionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string grant_id = 2
+     */
+    grantId: string;
+    /**
+     * @generated from protobuf field: string ticket_ref = 3
+     */
+    ticketRef: string;
+    /**
+     * @generated from protobuf field: string reason = 4
+     */
+    reason: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RuntimePromotionProposalResponse
+ */
+export interface RuntimePromotionProposalResponse {
+    /**
+     * @generated from protobuf field: string proposal_id = 1
+     */
+    proposalId: string;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string runtime_id = 3
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string candidate_version = 4
+     */
+    candidateVersion: string;
+    /**
+     * @generated from protobuf field: string definition_id = 5
+     */
+    definitionId: string;
+    /**
+     * @generated from protobuf field: uint64 definition_version = 6
+     */
+    definitionVersion: bigint;
+    /**
+     * @generated from protobuf field: string evidence_artifact_id = 7
+     */
+    evidenceArtifactId: string;
+    /**
+     * @generated from protobuf field: string evidence_sha256 = 8
+     */
+    evidenceSha256: string;
+    /**
+     * @generated from protobuf field: string eval_suite_sha256 = 9
+     */
+    evalSuiteSha256: string;
+    /**
+     * @generated from protobuf field: string proposer_id = 10
+     */
+    proposerId: string;
+    /**
+     * @generated from protobuf field: string ticket_ref = 11
+     */
+    ticketRef: string;
+    /**
+     * @generated from protobuf field: string reason = 12
+     */
+    reason: string;
+    /**
+     * @generated from protobuf field: string status = 13
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: string grant_id = 14
+     */
+    grantId: string;
+    /**
+     * @generated from protobuf field: int64 proposed_at_unix_ms = 15
+     */
+    proposedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 16
+     */
+    expiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 grant_valid_from_unix_ms = 17
+     */
+    grantValidFromUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 grant_expires_at_unix_ms = 18
+     */
+    grantExpiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 decided_at_unix_ms = 19
+     */
+    decidedAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RuntimePromotionGrantResponse
+ */
+export interface RuntimePromotionGrantResponse {
+    /**
+     * @generated from protobuf field: string grant_id = 1
+     */
+    grantId: string;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string runtime_id = 3
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string candidate_version = 4
+     */
+    candidateVersion: string;
+    /**
+     * @generated from protobuf field: string definition_id = 5
+     */
+    definitionId: string;
+    /**
+     * @generated from protobuf field: uint64 definition_version = 6
+     */
+    definitionVersion: bigint;
+    /**
+     * @generated from protobuf field: string policy_version = 7
+     */
+    policyVersion: string;
+    /**
+     * @generated from protobuf field: string evidence_sha256 = 8
+     */
+    evidenceSha256: string;
+    /**
+     * @generated from protobuf field: string eval_suite_sha256 = 9
+     */
+    evalSuiteSha256: string;
+    /**
+     * @generated from protobuf field: string granted_by_id = 10
+     */
+    grantedById: string;
+    /**
+     * @generated from protobuf field: string reviewed_by_id = 11
+     */
+    reviewedById: string;
+    /**
+     * @generated from protobuf field: int64 valid_from_unix_ms = 12
+     */
+    validFromUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 13
+     */
+    expiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 revoked_at_unix_ms = 14
+     */
+    revokedAtUnixMs: bigint;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.CreateArtifactRequest
  */
 export interface CreateArtifactRequest {
@@ -4291,6 +4553,700 @@ class WorkflowRepairProposalResponse$Type extends MessageType<WorkflowRepairProp
  */
 export const WorkflowRepairProposalResponse = new WorkflowRepairProposalResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class ProposeRuntimePromotionRequest$Type extends MessageType<ProposeRuntimePromotionRequest> {
+    constructor() {
+        super("dipole.agent.v1.ProposeRuntimePromotionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "candidate_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "definition_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "definition_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 7, name: "evidence_artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "evidence_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "eval_suite_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "ticket_ref", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "proposed_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 13, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 14, name: "grant_valid_from_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 15, name: "grant_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ProposeRuntimePromotionRequest>): ProposeRuntimePromotionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.runtimeId = "";
+        message.candidateVersion = "";
+        message.definitionId = "";
+        message.definitionVersion = 0n;
+        message.evidenceArtifactId = "";
+        message.evidenceSha256 = "";
+        message.evalSuiteSha256 = "";
+        message.ticketRef = "";
+        message.reason = "";
+        message.proposedAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        message.grantValidFromUnixMs = 0n;
+        message.grantExpiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ProposeRuntimePromotionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ProposeRuntimePromotionRequest): ProposeRuntimePromotionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string runtime_id */ 3:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string candidate_version */ 4:
+                    message.candidateVersion = reader.string();
+                    break;
+                case /* string definition_id */ 5:
+                    message.definitionId = reader.string();
+                    break;
+                case /* uint64 definition_version */ 6:
+                    message.definitionVersion = reader.uint64().toBigInt();
+                    break;
+                case /* string evidence_artifact_id */ 7:
+                    message.evidenceArtifactId = reader.string();
+                    break;
+                case /* string evidence_sha256 */ 8:
+                    message.evidenceSha256 = reader.string();
+                    break;
+                case /* string eval_suite_sha256 */ 9:
+                    message.evalSuiteSha256 = reader.string();
+                    break;
+                case /* string ticket_ref */ 10:
+                    message.ticketRef = reader.string();
+                    break;
+                case /* string reason */ 11:
+                    message.reason = reader.string();
+                    break;
+                case /* int64 proposed_at_unix_ms */ 12:
+                    message.proposedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 13:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 grant_valid_from_unix_ms */ 14:
+                    message.grantValidFromUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 grant_expires_at_unix_ms */ 15:
+                    message.grantExpiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ProposeRuntimePromotionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string runtime_id = 3; */
+        if (message.runtimeId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runtimeId);
+        /* string candidate_version = 4; */
+        if (message.candidateVersion !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.candidateVersion);
+        /* string definition_id = 5; */
+        if (message.definitionId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.definitionId);
+        /* uint64 definition_version = 6; */
+        if (message.definitionVersion !== 0n)
+            writer.tag(6, WireType.Varint).uint64(message.definitionVersion);
+        /* string evidence_artifact_id = 7; */
+        if (message.evidenceArtifactId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.evidenceArtifactId);
+        /* string evidence_sha256 = 8; */
+        if (message.evidenceSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.evidenceSha256);
+        /* string eval_suite_sha256 = 9; */
+        if (message.evalSuiteSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.evalSuiteSha256);
+        /* string ticket_ref = 10; */
+        if (message.ticketRef !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.ticketRef);
+        /* string reason = 11; */
+        if (message.reason !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.reason);
+        /* int64 proposed_at_unix_ms = 12; */
+        if (message.proposedAtUnixMs !== 0n)
+            writer.tag(12, WireType.Varint).int64(message.proposedAtUnixMs);
+        /* int64 expires_at_unix_ms = 13; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(13, WireType.Varint).int64(message.expiresAtUnixMs);
+        /* int64 grant_valid_from_unix_ms = 14; */
+        if (message.grantValidFromUnixMs !== 0n)
+            writer.tag(14, WireType.Varint).int64(message.grantValidFromUnixMs);
+        /* int64 grant_expires_at_unix_ms = 15; */
+        if (message.grantExpiresAtUnixMs !== 0n)
+            writer.tag(15, WireType.Varint).int64(message.grantExpiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ProposeRuntimePromotionRequest
+ */
+export const ProposeRuntimePromotionRequest = new ProposeRuntimePromotionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ReviewRuntimePromotionRequest$Type extends MessageType<ReviewRuntimePromotionRequest> {
+    constructor() {
+        super("dipole.agent.v1.ReviewRuntimePromotionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "decision", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ReviewRuntimePromotionRequest>): ReviewRuntimePromotionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proposalId = "";
+        message.decision = "";
+        if (value !== undefined)
+            reflectionMergePartial<ReviewRuntimePromotionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ReviewRuntimePromotionRequest): ReviewRuntimePromotionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string proposal_id */ 2:
+                    message.proposalId = reader.string();
+                    break;
+                case /* string decision */ 3:
+                    message.decision = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ReviewRuntimePromotionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string proposal_id = 2; */
+        if (message.proposalId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.proposalId);
+        /* string decision = 3; */
+        if (message.decision !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.decision);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ReviewRuntimePromotionRequest
+ */
+export const ReviewRuntimePromotionRequest = new ReviewRuntimePromotionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetRuntimePromotionRequest$Type extends MessageType<GetRuntimePromotionRequest> {
+    constructor() {
+        super("dipole.agent.v1.GetRuntimePromotionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetRuntimePromotionRequest>): GetRuntimePromotionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.proposalId = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetRuntimePromotionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetRuntimePromotionRequest): GetRuntimePromotionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string proposal_id */ 3:
+                    message.proposalId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetRuntimePromotionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string proposal_id = 3; */
+        if (message.proposalId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.proposalId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.GetRuntimePromotionRequest
+ */
+export const GetRuntimePromotionRequest = new GetRuntimePromotionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RevokeRuntimePromotionRequest$Type extends MessageType<RevokeRuntimePromotionRequest> {
+    constructor() {
+        super("dipole.agent.v1.RevokeRuntimePromotionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "grant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "ticket_ref", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RevokeRuntimePromotionRequest>): RevokeRuntimePromotionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.grantId = "";
+        message.ticketRef = "";
+        message.reason = "";
+        if (value !== undefined)
+            reflectionMergePartial<RevokeRuntimePromotionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RevokeRuntimePromotionRequest): RevokeRuntimePromotionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string grant_id */ 2:
+                    message.grantId = reader.string();
+                    break;
+                case /* string ticket_ref */ 3:
+                    message.ticketRef = reader.string();
+                    break;
+                case /* string reason */ 4:
+                    message.reason = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RevokeRuntimePromotionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string grant_id = 2; */
+        if (message.grantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.grantId);
+        /* string ticket_ref = 3; */
+        if (message.ticketRef !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.ticketRef);
+        /* string reason = 4; */
+        if (message.reason !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.reason);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RevokeRuntimePromotionRequest
+ */
+export const RevokeRuntimePromotionRequest = new RevokeRuntimePromotionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RuntimePromotionProposalResponse$Type extends MessageType<RuntimePromotionProposalResponse> {
+    constructor() {
+        super("dipole.agent.v1.RuntimePromotionProposalResponse", [
+            { no: 1, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "candidate_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "definition_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "definition_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 7, name: "evidence_artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "evidence_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "eval_suite_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "proposer_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "ticket_ref", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 13, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 14, name: "grant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 15, name: "proposed_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 16, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 17, name: "grant_valid_from_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 18, name: "grant_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 19, name: "decided_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RuntimePromotionProposalResponse>): RuntimePromotionProposalResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proposalId = "";
+        message.tenantId = "";
+        message.runtimeId = "";
+        message.candidateVersion = "";
+        message.definitionId = "";
+        message.definitionVersion = 0n;
+        message.evidenceArtifactId = "";
+        message.evidenceSha256 = "";
+        message.evalSuiteSha256 = "";
+        message.proposerId = "";
+        message.ticketRef = "";
+        message.reason = "";
+        message.status = "";
+        message.grantId = "";
+        message.proposedAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        message.grantValidFromUnixMs = 0n;
+        message.grantExpiresAtUnixMs = 0n;
+        message.decidedAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<RuntimePromotionProposalResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RuntimePromotionProposalResponse): RuntimePromotionProposalResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string proposal_id */ 1:
+                    message.proposalId = reader.string();
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string runtime_id */ 3:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string candidate_version */ 4:
+                    message.candidateVersion = reader.string();
+                    break;
+                case /* string definition_id */ 5:
+                    message.definitionId = reader.string();
+                    break;
+                case /* uint64 definition_version */ 6:
+                    message.definitionVersion = reader.uint64().toBigInt();
+                    break;
+                case /* string evidence_artifact_id */ 7:
+                    message.evidenceArtifactId = reader.string();
+                    break;
+                case /* string evidence_sha256 */ 8:
+                    message.evidenceSha256 = reader.string();
+                    break;
+                case /* string eval_suite_sha256 */ 9:
+                    message.evalSuiteSha256 = reader.string();
+                    break;
+                case /* string proposer_id */ 10:
+                    message.proposerId = reader.string();
+                    break;
+                case /* string ticket_ref */ 11:
+                    message.ticketRef = reader.string();
+                    break;
+                case /* string reason */ 12:
+                    message.reason = reader.string();
+                    break;
+                case /* string status */ 13:
+                    message.status = reader.string();
+                    break;
+                case /* string grant_id */ 14:
+                    message.grantId = reader.string();
+                    break;
+                case /* int64 proposed_at_unix_ms */ 15:
+                    message.proposedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 16:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 grant_valid_from_unix_ms */ 17:
+                    message.grantValidFromUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 grant_expires_at_unix_ms */ 18:
+                    message.grantExpiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 decided_at_unix_ms */ 19:
+                    message.decidedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RuntimePromotionProposalResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string proposal_id = 1; */
+        if (message.proposalId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.proposalId);
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string runtime_id = 3; */
+        if (message.runtimeId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runtimeId);
+        /* string candidate_version = 4; */
+        if (message.candidateVersion !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.candidateVersion);
+        /* string definition_id = 5; */
+        if (message.definitionId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.definitionId);
+        /* uint64 definition_version = 6; */
+        if (message.definitionVersion !== 0n)
+            writer.tag(6, WireType.Varint).uint64(message.definitionVersion);
+        /* string evidence_artifact_id = 7; */
+        if (message.evidenceArtifactId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.evidenceArtifactId);
+        /* string evidence_sha256 = 8; */
+        if (message.evidenceSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.evidenceSha256);
+        /* string eval_suite_sha256 = 9; */
+        if (message.evalSuiteSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.evalSuiteSha256);
+        /* string proposer_id = 10; */
+        if (message.proposerId !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.proposerId);
+        /* string ticket_ref = 11; */
+        if (message.ticketRef !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.ticketRef);
+        /* string reason = 12; */
+        if (message.reason !== "")
+            writer.tag(12, WireType.LengthDelimited).string(message.reason);
+        /* string status = 13; */
+        if (message.status !== "")
+            writer.tag(13, WireType.LengthDelimited).string(message.status);
+        /* string grant_id = 14; */
+        if (message.grantId !== "")
+            writer.tag(14, WireType.LengthDelimited).string(message.grantId);
+        /* int64 proposed_at_unix_ms = 15; */
+        if (message.proposedAtUnixMs !== 0n)
+            writer.tag(15, WireType.Varint).int64(message.proposedAtUnixMs);
+        /* int64 expires_at_unix_ms = 16; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(16, WireType.Varint).int64(message.expiresAtUnixMs);
+        /* int64 grant_valid_from_unix_ms = 17; */
+        if (message.grantValidFromUnixMs !== 0n)
+            writer.tag(17, WireType.Varint).int64(message.grantValidFromUnixMs);
+        /* int64 grant_expires_at_unix_ms = 18; */
+        if (message.grantExpiresAtUnixMs !== 0n)
+            writer.tag(18, WireType.Varint).int64(message.grantExpiresAtUnixMs);
+        /* int64 decided_at_unix_ms = 19; */
+        if (message.decidedAtUnixMs !== 0n)
+            writer.tag(19, WireType.Varint).int64(message.decidedAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RuntimePromotionProposalResponse
+ */
+export const RuntimePromotionProposalResponse = new RuntimePromotionProposalResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RuntimePromotionGrantResponse$Type extends MessageType<RuntimePromotionGrantResponse> {
+    constructor() {
+        super("dipole.agent.v1.RuntimePromotionGrantResponse", [
+            { no: 1, name: "grant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "candidate_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "definition_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "definition_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 7, name: "policy_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "evidence_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "eval_suite_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "granted_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "reviewed_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "valid_from_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 13, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 14, name: "revoked_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RuntimePromotionGrantResponse>): RuntimePromotionGrantResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.grantId = "";
+        message.tenantId = "";
+        message.runtimeId = "";
+        message.candidateVersion = "";
+        message.definitionId = "";
+        message.definitionVersion = 0n;
+        message.policyVersion = "";
+        message.evidenceSha256 = "";
+        message.evalSuiteSha256 = "";
+        message.grantedById = "";
+        message.reviewedById = "";
+        message.validFromUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        message.revokedAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<RuntimePromotionGrantResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RuntimePromotionGrantResponse): RuntimePromotionGrantResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string grant_id */ 1:
+                    message.grantId = reader.string();
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string runtime_id */ 3:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string candidate_version */ 4:
+                    message.candidateVersion = reader.string();
+                    break;
+                case /* string definition_id */ 5:
+                    message.definitionId = reader.string();
+                    break;
+                case /* uint64 definition_version */ 6:
+                    message.definitionVersion = reader.uint64().toBigInt();
+                    break;
+                case /* string policy_version */ 7:
+                    message.policyVersion = reader.string();
+                    break;
+                case /* string evidence_sha256 */ 8:
+                    message.evidenceSha256 = reader.string();
+                    break;
+                case /* string eval_suite_sha256 */ 9:
+                    message.evalSuiteSha256 = reader.string();
+                    break;
+                case /* string granted_by_id */ 10:
+                    message.grantedById = reader.string();
+                    break;
+                case /* string reviewed_by_id */ 11:
+                    message.reviewedById = reader.string();
+                    break;
+                case /* int64 valid_from_unix_ms */ 12:
+                    message.validFromUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 13:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 revoked_at_unix_ms */ 14:
+                    message.revokedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RuntimePromotionGrantResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string grant_id = 1; */
+        if (message.grantId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.grantId);
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string runtime_id = 3; */
+        if (message.runtimeId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runtimeId);
+        /* string candidate_version = 4; */
+        if (message.candidateVersion !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.candidateVersion);
+        /* string definition_id = 5; */
+        if (message.definitionId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.definitionId);
+        /* uint64 definition_version = 6; */
+        if (message.definitionVersion !== 0n)
+            writer.tag(6, WireType.Varint).uint64(message.definitionVersion);
+        /* string policy_version = 7; */
+        if (message.policyVersion !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.policyVersion);
+        /* string evidence_sha256 = 8; */
+        if (message.evidenceSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.evidenceSha256);
+        /* string eval_suite_sha256 = 9; */
+        if (message.evalSuiteSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.evalSuiteSha256);
+        /* string granted_by_id = 10; */
+        if (message.grantedById !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.grantedById);
+        /* string reviewed_by_id = 11; */
+        if (message.reviewedById !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.reviewedById);
+        /* int64 valid_from_unix_ms = 12; */
+        if (message.validFromUnixMs !== 0n)
+            writer.tag(12, WireType.Varint).int64(message.validFromUnixMs);
+        /* int64 expires_at_unix_ms = 13; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(13, WireType.Varint).int64(message.expiresAtUnixMs);
+        /* int64 revoked_at_unix_ms = 14; */
+        if (message.revokedAtUnixMs !== 0n)
+            writer.tag(14, WireType.Varint).int64(message.revokedAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RuntimePromotionGrantResponse
+ */
+export const RuntimePromotionGrantResponse = new RuntimePromotionGrantResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class CreateArtifactRequest$Type extends MessageType<CreateArtifactRequest> {
     constructor() {
         super("dipole.agent.v1.CreateArtifactRequest", [
@@ -5263,6 +6219,10 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
     { name: "DecideWorkflowRepair", options: {}, I: DecideWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
     { name: "GetWorkflowRepair", options: {}, I: GetWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
+    { name: "ProposeRuntimePromotion", options: {}, I: ProposeRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
+    { name: "ReviewRuntimePromotion", options: {}, I: ReviewRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
+    { name: "GetRuntimePromotion", options: {}, I: GetRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
+    { name: "RevokeRuntimePromotion", options: {}, I: RevokeRuntimePromotionRequest, O: RuntimePromotionGrantResponse },
     { name: "CreateArtifact", options: {}, I: CreateArtifactRequest, O: CreateArtifactResponse },
     { name: "GetArtifact", options: {}, I: GetArtifactRequest, O: GetArtifactResponse }
 ]);
