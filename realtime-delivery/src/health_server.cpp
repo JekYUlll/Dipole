@@ -21,6 +21,7 @@ constexpr int kRequestBufferSize = 4096;
 
 enum class HttpStatus : std::uint16_t {
   kOk = 200,
+  kServiceUnavailable = 503,
   kNotFound = 404,
 };
 
@@ -48,7 +49,12 @@ bool ParsePort(const std::string& raw, std::uint16_t* port) {
 }
 
 void Respond(int client, HttpStatus status, std::string_view body) {
-  const std::string status_text = status == HttpStatus::kOk ? "200 OK" : "404 Not Found";
+  std::string status_text = "404 Not Found";
+  if (status == HttpStatus::kOk) {
+    status_text = "200 OK";
+  } else if (status == HttpStatus::kServiceUnavailable) {
+    status_text = "503 Service Unavailable";
+  }
   const std::string response = "HTTP/1.1 " + status_text +
                                "\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: " +
                                std::to_string(body.size()) + "\r\n\r\n" + std::string(body);
@@ -84,6 +90,11 @@ std::optional<std::string> LoadRuntimeConfig(RuntimeConfig* config) {
 }
 
 int ServeHealth(const RuntimeConfig& config, const volatile std::sig_atomic_t& running) {
+  return ServeHealth(config, running, {});
+}
+
+int ServeHealth(const RuntimeConfig& config, const volatile std::sig_atomic_t& running,
+                const std::function<bool()>& ready_probe) {
   const int server = ::socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
   if (server < 0) {
     std::cerr << "create health socket: " << std::strerror(errno) << '\n';
@@ -135,10 +146,16 @@ int ServeHealth(const RuntimeConfig& config, const volatile std::sig_atomic_t& r
     char request[kRequestBufferSize]{};
     const auto count = ::recv(client, request, sizeof(request) - 1, 0);
     const std::string_view line(request, count > 0 ? static_cast<std::size_t>(count) : 0);
-    if (line.starts_with("GET /livez ") || line.starts_with("GET /readyz ") ||
-        line.starts_with("GET /health ")) {
+    if (line.starts_with("GET /livez ")) {
       Respond(client, HttpStatus::kOk,
-              R"({"status":"ok","service":"dipole-realtime-delivery","mode":"contract_only"})");
+              "{\"status\":\"ok\",\"service\":\"dipole-realtime-delivery\",\"mode\":\"" +
+                  config.mode + "\"}");
+    } else if (line.starts_with("GET /readyz ") || line.starts_with("GET /health ")) {
+      const bool ready = !ready_probe || ready_probe();
+      Respond(client, ready ? HttpStatus::kOk : HttpStatus::kServiceUnavailable,
+              "{\"status\":\"" + std::string(ready ? "ok" : "not_ready") +
+                  "\",\"service\":\"dipole-realtime-delivery\",\"mode\":\"" + config.mode +
+                  "\"}");
     } else {
       Respond(client, HttpStatus::kNotFound, R"({"status":"not_found"})");
     }

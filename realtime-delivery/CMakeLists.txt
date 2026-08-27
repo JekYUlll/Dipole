@@ -53,6 +53,7 @@ add_library(delivery_contract
   src/librdkafka_consumer.cpp
   src/shadow_evidence.cpp
   src/shadow_runner.cpp
+  src/shadow_runtime.cpp
   "${DELIVERY_PROTO_CC}"
 )
 target_include_directories(delivery_contract PUBLIC
@@ -110,4 +111,11 @@ if(BUILD_TESTING)
       "${PROTO_ROOT}/dipole/delivery/v1/testdata"
   )
   set_tests_properties(delivery_health PROPERTIES TIMEOUT 15)
+  add_test(
+    NAME delivery_shadow_health
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tests/shadow_health_test.sh"
+      "$<TARGET_FILE:dipole-realtime-delivery>"
+      "${PROTO_ROOT}/dipole/delivery/v1/testdata"
+  )
+  set_tests_properties(delivery_shadow_health PROPERTIES TIMEOUT 15)
 endif()

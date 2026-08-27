@@ -3,6 +3,7 @@
 
 #include <csignal>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -16,6 +17,8 @@ struct RuntimeConfig {
 
 std::optional<std::string> LoadRuntimeConfig(RuntimeConfig* config);
 int ServeHealth(const RuntimeConfig& config, const volatile std::sig_atomic_t& running);
+int ServeHealth(const RuntimeConfig& config, const volatile std::sig_atomic_t& running,
+                const std::function<bool()>& ready);
 
 }  // namespace dipole::realtime
 

@@ -10,15 +10,15 @@ ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* e
 
 ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy) {
   if (consumer_ == nullptr) {
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow consumer is required";
   }
   if (evidence_sink_ == nullptr) {
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow evidence sink is required";
   }
   if (poll_timeout_ms_ <= 0) {
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow poll timeout must be positive";
   }
 
@@ -28,7 +28,7 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy) {
   }
   if (result.status == PollStatus::kError) {
     ++stats_.poll_errors;
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow Kafka poll failed: " + result.error;
   }
 
@@ -53,23 +53,23 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy) {
 
   if (const auto evidence_error = evidence_sink_->Append(evidence); evidence_error) {
     ++stats_.evidence_errors;
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow evidence append failed: " + *evidence_error;
   }
   ++stats_.evidence_written;
 
   if (const auto commit_error = consumer_->Commit(result.record); commit_error) {
     ++stats_.commit_errors;
-    healthy_ = false;
+    healthy_.store(false);
     return "shadow Kafka commit failed: " + *commit_error;
   }
   ++stats_.committed;
-  healthy_ = true;
+  healthy_.store(true);
   return std::nullopt;
 }
 
 bool ShadowRunner::Ready() const {
-  return healthy_ && consumer_ != nullptr && evidence_sink_ != nullptr && poll_timeout_ms_ > 0 &&
+  return healthy_.load() && consumer_ != nullptr && evidence_sink_ != nullptr && poll_timeout_ms_ > 0 &&
          consumer_->AssignmentCount() > 0;
 }
 

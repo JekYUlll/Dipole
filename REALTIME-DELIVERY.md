@@ -65,7 +65,9 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 `ShadowRunner` 的顺序固定为 `poll -> project/reject -> append evidence -> commit`。NDJSON evidence v1 只保存 topic/partition/offset、event/batch ID、item count、projected/rejected 和固定错误类别，不保存 recipient、消息正文或原始异常。evidence 写失败与 commit 失败都会撤销 runner readiness；poison event 在记录 `invalid_event` 后允许独立 shadow group 前进。
 
-这些组件目前只有 fake-adapter 和配置/序列化测试，尚未由 executable 组合，也尚未执行真实 broker replay/rebalance/poison 验证。`contract_only` 仍是唯一可启动模式。
+`shadow` 命令已组合这些组件。consumer worker 独占 Kafka 和 evidence stream，主线程暴露健康面；`/livez` 始终报告进程存活，`/readyz` 和 `/health` 仅在实际 assignment 非空且最近操作健康时返回 200。SIGINT/SIGTERM 会停止 worker 并关闭 consumer，不进入 Gateway 写路径。
+
+无 Redis 阶段使用 created event 中持久化的 `sync_fanout=false` 选择热群通知模式，避免历史回放误做完整 fanout；动态 `recent_message_count` 暂以 0 表达未知，后续 Redis adapter 独立补齐。该字段不参与当前低敏 evidence。
 
 ## Offset 与重试边界
 
@@ -89,4 +91,4 @@ Gateway 继续拥有连接认证、心跳、WebSocket envelope、连接级有界
 
 ## 回滚
 
-路线图预留 `realtime.delivery=go|shadow|cpp` 开关语义；当前尚未加入运行配置，系统等价于 `go`。未来 `shadow` 只增加观察链，失败不会阻塞 Go；`cpp` 需要独立 consumer group、自动回切和同一 workload 的 Go/C++ 对照证据。任何 ACK 漂移、队列溢出、顺序差异或恢复退化都回切 `go`，无需数据回滚。
+路线图预留 `realtime.delivery=go|shadow|cpp` 开关语义；当前生产配置和 Compose 尚未加入该开关，系统等价于 `go`。独立执行 `shadow` 只增加观察链，失败不会阻塞 Go；`cpp` 需要节点投递、自动回切和同一 workload 的 Go/C++ 对照证据。任何 ACK 漂移、队列溢出、顺序差异或恢复退化都回切 `go`，无需数据回滚。

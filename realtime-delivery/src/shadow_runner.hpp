@@ -69,10 +69,11 @@ class ShadowRunner {
   ShadowRecordConsumer* consumer_;
   ShadowEvidenceSink* evidence_sink_;
   int poll_timeout_ms_;
-  bool healthy_ = true;
+  std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;
 };
 
 }  // namespace dipole::realtime
 
 #endif  // DIPOLE_REALTIME_DELIVERY_SHADOW_RUNNER_HPP_
+#include <atomic>
