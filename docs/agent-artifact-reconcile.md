@@ -34,3 +34,33 @@ export DIPOLE_STORAGE_ARTIFACT_AUDIT_SECRET_KEY='replace-me'
 - Runtime/Core、TS Agent 和 Gateway 不持有 audit 凭据。
 - 当前命令和报告不授权清理；删除执行器由 AD-032 后续里程碑单独设计。
 - 未来执行删除前必须重新查询对象键元数据，防止 dry-run 后新增引用造成竞态。
+
+## Maintenance Dry-run
+
+先从已归档 reconcile 报告中的一个候选生成最长 15 分钟的授权：
+
+```bash
+/app/dipole-agent-artifact-maintenance \
+  -action=authorize \
+  -input=artifact-reconcile.json \
+  -object-key='agent-artifacts/v1/...' \
+  -proposal-id='proposal-1' \
+  -proposer-id='operator-1' \
+  -approver-ids='operator-2,operator-3' \
+  -executor-id='operator-4' \
+  -grant-version='artifact-maintenance/v1' \
+  > artifact-maintenance-authorization.json
+```
+
+四个操作员身份必须互不相同。授权同时复核报告的 24 小时门槛、候选资格、报告 SHA-256 和对象证据。
+
+随后仅向离线 evaluator 注入 `DIPOLE_STORAGE_ARTIFACT_MAINTENANCE_ACCESS_KEY/SECRET_KEY`，执行：
+
+```bash
+/app/dipole-agent-artifact-maintenance \
+  -action=evaluate \
+  -input=artifact-maintenance-authorization.json \
+  > artifact-maintenance-receipt.json
+```
+
+evaluator 会重新 Stat 对象并查询 MySQL。结果可能是 `would_delete`、`blocked_metadata_present`、`blocked_object_missing`、`blocked_evidence_drift` 或 `blocked_expired`。所有 v1 receipt 都固定 `delete_attempted=false` 和 `deleted=false`；`would_delete` 也不构成删除授权。

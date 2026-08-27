@@ -1,0 +1,15 @@
+{
+  "schema_version": "dipole.agent.artifact-maintenance-receipt.v1",
+  "authorization_sha256": "e7735f3bfbb8703a450969d4e12a4a8ef6626b572e297f9f13e5ec901029cb33",
+  "mode": "dry_run",
+  "outcome": "would_delete",
+  "bucket": "dipole-agent-artifacts",
+  "object_key": "agent-artifacts/v1/dipole/task/2222222222222222222222222222222222222222222222222222222222222222/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "checked_at": "2026-08-27T10:01:00Z",
+  "metadata_exists": false,
+  "object_found": true,
+  "object_evidence_matched": true,
+  "delete_attempted": false,
+  "deleted": false,
+  "receipt_sha256": "3e50bea230cc33a4b7cc82dc6d63d7714e8fb37094eecfffc935b8ed8ed0232d"
+}

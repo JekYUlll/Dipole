@@ -63,6 +63,20 @@ func TestNewAgentArtifactObjectSourceRequiresSeparateReadOnlyIdentity(t *testing
 	}
 }
 
+func TestNewAgentArtifactMaintenanceInspectorRequiresThirdIdentity(t *testing.T) {
+	for name, cfg := range map[string]AgentArtifactMaintenanceConfigV1{
+		"missing":       {},
+		"runtime reuse": {Endpoint: "minio:9000", AccessKey: "runtime", SecretKey: "secret", Bucket: "artifacts", RuntimeAccessKey: "runtime", AuditAccessKey: "audit"},
+		"audit reuse":   {Endpoint: "minio:9000", AccessKey: "audit", SecretKey: "secret", Bucket: "artifacts", RuntimeAccessKey: "runtime", AuditAccessKey: "audit"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := NewAgentArtifactMaintenanceInspectorV1(cfg); err == nil {
+				t.Fatal("expected shared maintenance inspection identity to fail")
+			}
+		})
+	}
+}
+
 type agentArtifactObjectClientStubV1 struct {
 	objects map[string][]byte
 	puts    int

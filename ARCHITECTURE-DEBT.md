@@ -18,9 +18,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Artifact、MinIO 容量、MySQL 元数据、故障恢复与审计
-- **现状：** migration v26 保存不可变 Artifact 元数据，正文使用 Task/Run/版本/内容哈希导出的确定性对象键。已增加固定前缀、24 小时门槛、sqlc 二次存在性查询和 SHA-256 报告的只读 dry-run；独立 audit 身份只有 bucket 定位/List 权限，报告固定不授权删除。
+- **现状：** migration v26 保存不可变 Artifact 元数据，正文使用 Task/Run/版本/内容哈希导出的确定性对象键。已增加固定前缀、24 小时门槛、sqlc 二次存在性查询和 SHA-256 报告的只读 dry-run；maintenance authorization/receipt 再绑定双审批、职责分离、15 分钟有效期、对象 Stat 与执行前元数据复核。三个离线/运行时身份均无删除权限。
 - **风险：** MinIO 写入成功后若 MySQL 持续失败且任务不再重试，会留下无法从用户 API 引用的内容寻址对象。该对象不会覆盖其他版本，也不会获得读取授权，但会长期占用容量。
-- **建议方向：** 在真实 Shadow 观察窗口持续归档 dry-run 报告；后续清理需增加独立 maintenance 身份、执行前再次查询元数据、最短保留窗口、双人审批和审计 receipt，Runtime/Core/audit 账号继续没有删除权限。
+- **建议方向：** 在真实 Shadow 观察窗口持续归档 dry-run 报告和 receipt；是否增加 DeleteObject-capable 执行器需单独评审，并要求新的不可回退契约版本、独立删除身份、对象版本/保留策略、审批持久化和删除后 receipt，现有 Runtime/Core/audit/inspect 账号继续没有删除权限。
 - **处理门槛：** Artifact 进入 active 模式或配置自动保留期限前完成；Shadow 阶段以容量指标和人工审计接受该风险。
 
 ### AD-031：Context Token 预算使用确定性近似估算

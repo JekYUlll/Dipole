@@ -158,31 +158,33 @@ type InternalRPC struct {
 }
 
 type Storage struct {
-	Enabled                     bool   `mapstructure:"enabled"`
-	Provider                    string `mapstructure:"provider"`
-	Endpoint                    string `mapstructure:"endpoint"`
-	PresignEndpoint             string `mapstructure:"presign_endpoint"`
-	AccessKey                   string `mapstructure:"access_key"`
-	SecretKey                   string `mapstructure:"secret_key"`
-	UseSSL                      bool   `mapstructure:"use_ssl"`
-	Bucket                      string `mapstructure:"bucket"`
-	SearchArchiveBucket         string `mapstructure:"search_archive_bucket"`
-	SearchArchiveRetentionDays  int    `mapstructure:"search_archive_retention_days"`
-	MessageArchiveBucket        string `mapstructure:"message_archive_bucket"`
-	MessageArchiveRetentionDays int    `mapstructure:"message_archive_retention_days"`
-	ArtifactEnabled             bool   `mapstructure:"artifact_enabled"`
-	ArtifactEndpoint            string `mapstructure:"artifact_endpoint"`
-	ArtifactAccessKey           string `mapstructure:"artifact_access_key"`
-	ArtifactSecretKey           string `mapstructure:"artifact_secret_key"`
-	ArtifactUseSSL              bool   `mapstructure:"artifact_use_ssl"`
-	ArtifactBucket              string `mapstructure:"artifact_bucket"`
-	ArtifactAuditAccessKey      string `mapstructure:"artifact_audit_access_key"`
-	ArtifactAuditSecretKey      string `mapstructure:"artifact_audit_secret_key"`
-	PublicBaseURL               string `mapstructure:"public_base_url"`
-	FileMaxSizeMB               int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB        int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin      int    `mapstructure:"multipart_session_ttl_minutes"`
-	DownloadURLTTLMinutes       int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                      bool   `mapstructure:"enabled"`
+	Provider                     string `mapstructure:"provider"`
+	Endpoint                     string `mapstructure:"endpoint"`
+	PresignEndpoint              string `mapstructure:"presign_endpoint"`
+	AccessKey                    string `mapstructure:"access_key"`
+	SecretKey                    string `mapstructure:"secret_key"`
+	UseSSL                       bool   `mapstructure:"use_ssl"`
+	Bucket                       string `mapstructure:"bucket"`
+	SearchArchiveBucket          string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays   int    `mapstructure:"search_archive_retention_days"`
+	MessageArchiveBucket         string `mapstructure:"message_archive_bucket"`
+	MessageArchiveRetentionDays  int    `mapstructure:"message_archive_retention_days"`
+	ArtifactEnabled              bool   `mapstructure:"artifact_enabled"`
+	ArtifactEndpoint             string `mapstructure:"artifact_endpoint"`
+	ArtifactAccessKey            string `mapstructure:"artifact_access_key"`
+	ArtifactSecretKey            string `mapstructure:"artifact_secret_key"`
+	ArtifactUseSSL               bool   `mapstructure:"artifact_use_ssl"`
+	ArtifactBucket               string `mapstructure:"artifact_bucket"`
+	ArtifactAuditAccessKey       string `mapstructure:"artifact_audit_access_key"`
+	ArtifactAuditSecretKey       string `mapstructure:"artifact_audit_secret_key"`
+	ArtifactMaintenanceAccessKey string `mapstructure:"artifact_maintenance_access_key"`
+	ArtifactMaintenanceSecretKey string `mapstructure:"artifact_maintenance_secret_key"`
+	PublicBaseURL                string `mapstructure:"public_base_url"`
+	FileMaxSizeMB                int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB         int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin       int    `mapstructure:"multipart_session_ttl_minutes"`
+	DownloadURLTTLMinutes        int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -416,6 +418,8 @@ func Load() error {
 		v.SetDefault("storage.artifact_bucket", "dipole-agent-artifacts")
 		v.SetDefault("storage.artifact_audit_access_key", "")
 		v.SetDefault("storage.artifact_audit_secret_key", "")
+		v.SetDefault("storage.artifact_maintenance_access_key", "")
+		v.SetDefault("storage.artifact_maintenance_secret_key", "")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -581,6 +585,8 @@ func Load() error {
 			"storage.artifact_bucket",
 			"storage.artifact_audit_access_key",
 			"storage.artifact_audit_secret_key",
+			"storage.artifact_maintenance_access_key",
+			"storage.artifact_maintenance_secret_key",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -920,6 +926,8 @@ func StorageConfig() Storage {
 	storageConfig.ArtifactBucket = cfg.GetString("storage.artifact_bucket")
 	storageConfig.ArtifactAuditAccessKey = cfg.GetString("storage.artifact_audit_access_key")
 	storageConfig.ArtifactAuditSecretKey = cfg.GetString("storage.artifact_audit_secret_key")
+	storageConfig.ArtifactMaintenanceAccessKey = cfg.GetString("storage.artifact_maintenance_access_key")
+	storageConfig.ArtifactMaintenanceSecretKey = cfg.GetString("storage.artifact_maintenance_secret_key")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")

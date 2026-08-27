@@ -24,6 +24,7 @@ COPY dist/dipole-cassandra-backfill /app/dipole-cassandra-backfill
 COPY dist/dipole-cassandra-reconcile /app/dipole-cassandra-reconcile
 COPY dist/dipole-cassandra-archive /app/dipole-cassandra-archive
 COPY dist/dipole-agent-artifact-reconcile /app/dipole-agent-artifact-reconcile
+COPY dist/dipole-agent-artifact-maintenance /app/dipole-agent-artifact-maintenance
 
 EXPOSE 8080
 
