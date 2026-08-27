@@ -7,11 +7,13 @@
 namespace dipole::realtime {
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink,
-                           int poll_timeout_ms, PresenceReader* presence_reader)
+                           int poll_timeout_ms, PresenceReader* presence_reader,
+                           NodeBatchTransport* node_transport)
     : consumer_(consumer),
       evidence_sink_(evidence_sink),
       poll_timeout_ms_(poll_timeout_ms),
-      presence_reader_(presence_reader) {}
+      presence_reader_(presence_reader),
+      node_transport_(node_transport) {}
 
 ValidationError ShadowRunner::RunOnce(
     const ProjectionPolicy& policy,
@@ -28,6 +30,10 @@ ValidationError ShadowRunner::RunOnce(
     healthy_.store(false);
     return "shadow poll timeout must be positive";
   }
+  if (node_transport_ != nullptr && presence_reader_ == nullptr) {
+    healthy_.store(false);
+    return "node transport requires Presence routing";
+  }
 
   PollResult result = consumer_->Poll(poll_timeout_ms_);
   if (result.status == PollStatus::kTimeout) {
@@ -43,6 +49,7 @@ ValidationError ShadowRunner::RunOnce(
   delivery::v1::DeliveryEnvelope envelope;
   const auto projection_error = ProjectMessageEvent(result.record, policy, &envelope);
   ShadowEvidence evidence;
+  ValidationError deferred_error;
   evidence.topic = result.record.topic;
   evidence.partition = result.record.partition;
   evidence.offset = result.record.offset;
@@ -85,6 +92,20 @@ ValidationError ShadowRunner::RunOnce(
       } else {
         evidence.outcome = ShadowOutcome::kProjected;
         ++stats_.projected;
+        if (node_transport_ != nullptr) {
+          NodeTransportStats transport_stats;
+          deferred_error = node_transport_->Observe(batches, &transport_stats);
+          evidence.transport_requested = transport_stats.requested;
+          evidence.transport_observed = transport_stats.observed;
+          evidence.transport_duplicate = transport_stats.duplicate;
+          evidence.transport_rejected = transport_stats.rejected;
+          evidence.transport_backpressured = transport_stats.backpressured;
+          if (deferred_error) {
+            evidence.outcome = ShadowOutcome::kDeferred;
+            evidence.error_code = "node_transport";
+            ++stats_.transport_errors;
+          }
+        }
       }
     } else {
       evidence.outcome = ShadowOutcome::kProjected;
@@ -98,6 +119,11 @@ ValidationError ShadowRunner::RunOnce(
     return "shadow evidence append failed: " + *evidence_error;
   }
   ++stats_.evidence_written;
+
+  if (deferred_error) {
+    healthy_.store(false);
+    return "shadow node transport failed: " + *deferred_error;
+  }
 
   if (const auto commit_error = consumer_->Commit(result.record); commit_error) {
     ++stats_.commit_errors;

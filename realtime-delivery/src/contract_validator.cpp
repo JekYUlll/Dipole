@@ -19,6 +19,7 @@ using delivery::v1::DeliveryErrorCode;
 using delivery::v1::DeliveryMode;
 using delivery::v1::DeliveryResult;
 using delivery::v1::DeliveryResultStatus;
+using delivery::v1::NodeObservationStatus;
 
 bool IsBlank(std::string_view value) {
   return value.empty() || value.find_first_not_of(" \t\r\n") == std::string_view::npos;
@@ -224,6 +225,41 @@ ValidationError ValidateAck(const delivery::v1::DeliveryAck& ack) {
   return std::nullopt;
 }
 
+ValidationError ValidateObservation(const delivery::v1::NodeDeliveryObservation& observation) {
+  if (observation.contract_version() != kContractVersion || IsBlank(observation.batch_id()) ||
+      IsBlank(observation.target_node_id()) || !observation.has_observed_at() ||
+      !IsValidTimestamp(observation.observed_at())) {
+    return "node observation version, identity, node, and timestamp are required";
+  }
+  switch (observation.status()) {
+    case NodeObservationStatus::NODE_OBSERVATION_STATUS_OBSERVED:
+      if (observation.observed_items() == 0 || observation.observed_connections() == 0 ||
+          observation.error_code() != DeliveryErrorCode::DELIVERY_ERROR_CODE_UNSPECIFIED) {
+        return "observed node delivery requires positive counts and no error";
+      }
+      break;
+    case NodeObservationStatus::NODE_OBSERVATION_STATUS_REJECTED:
+      if (observation.observed_items() != 0 || observation.observed_connections() != 0 ||
+          observation.has_pressure() ||
+          observation.error_code() != DeliveryErrorCode::DELIVERY_ERROR_CODE_INVALID_ITEM) {
+        return "rejected node delivery requires invalid_item and no observed work";
+      }
+      break;
+    case NodeObservationStatus::NODE_OBSERVATION_STATUS_BACKPRESSURED:
+      if (observation.observed_items() != 0 || observation.observed_connections() != 0 ||
+          observation.error_code() != DeliveryErrorCode::DELIVERY_ERROR_CODE_QUEUE_FULL ||
+          !observation.has_pressure() || observation.pressure().capacity() == 0 ||
+          observation.pressure().depth() < observation.pressure().capacity() ||
+          observation.pressure().retry_after_ms() == 0) {
+        return "backpressured node delivery requires saturated queue pressure";
+      }
+      break;
+    default:
+      return "node observation status is required";
+  }
+  return std::nullopt;
+}
+
 ValidationError ParseEnvelopeJsonFile(const std::string& path,
                                       delivery::v1::DeliveryEnvelope* envelope) {
   return ParseJsonFile(path, envelope);
@@ -236,6 +272,11 @@ ValidationError ParseNodeBatchJsonFile(const std::string& path,
 
 ValidationError ParseAckJsonFile(const std::string& path, delivery::v1::DeliveryAck* ack) {
   return ParseJsonFile(path, ack);
+}
+
+ValidationError ParseObservationJsonFile(
+    const std::string& path, delivery::v1::NodeDeliveryObservation* observation) {
+  return ParseJsonFile(path, observation);
 }
 
 ValidationError ValidateGoldenDirectory(const std::string& directory) {
@@ -264,7 +305,17 @@ ValidationError ValidateGoldenDirectory(const std::string& directory) {
       error.has_value()) {
     return error;
   }
-  return ValidateAck(ack);
+  if (const auto error = ValidateAck(ack); error.has_value()) {
+    return error;
+  }
+
+  delivery::v1::NodeDeliveryObservation observation;
+  if (const auto error = ParseObservationJsonFile(
+          (root / "node_delivery_observation.v1.json").string(), &observation);
+      error.has_value()) {
+    return error;
+  }
+  return ValidateObservation(observation);
 }
 
 }  // namespace dipole::realtime

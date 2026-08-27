@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -15,6 +16,8 @@ import (
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
+	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
+	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -22,13 +25,29 @@ import (
 )
 
 type GatewayRuntime struct {
-	server      *gateway.Server
-	router      *wsTransport.PubSubRouter
-	messageConn *grpc.ClientConn
-	coreConn    *grpc.ClientConn
-	searchConn  *grpc.ClientConn
-	redis       *redis.Client
-	metrics     *platformObservability.MetricsServer
+	server                 *gateway.Server
+	router                 *wsTransport.PubSubRouter
+	messageConn            *grpc.ClientConn
+	coreConn               *grpc.ClientConn
+	searchConn             *grpc.ClientConn
+	redis                  *redis.Client
+	metrics                *platformObservability.MetricsServer
+	deliveryObservationRPC *InternalRPCServer
+	deliveryObserver       *deliverygrpc.ShadowServer
+}
+
+type gatewayObservationSink struct {
+	batches     atomic.Uint64
+	items       atomic.Uint64
+	connections atomic.Uint64
+}
+
+func (s *gatewayObservationSink) Observe(batch *deliveryv1.NodeDeliveryBatch) {
+	s.batches.Add(1)
+	s.items.Add(uint64(len(batch.GetItems())))
+	for _, item := range batch.GetItems() {
+		s.connections.Add(uint64(len(item.GetConnectionIds())))
+	}
 }
 
 func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
@@ -116,6 +135,26 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, fmt.Errorf("initialize gateway server: %w", err)
 	}
 	runtime.server = srv
+	if rpcCfg.DeliveryObservationEnabled {
+		if presence == nil || presence.NodeID() == "" {
+			cleanup()
+			return nil, fmt.Errorf("delivery observation requires Redis Presence node identity")
+		}
+		runtime.deliveryObserver, err = deliverygrpc.NewShadowServer(
+			presence.NodeID(), rpcCfg.DeliveryObservationCapacity,
+			time.Duration(rpcCfg.DeliveryObservationRetryAfterMS)*time.Millisecond,
+			&gatewayObservationSink{},
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize delivery observation receiver: %w", err)
+		}
+		runtime.deliveryObservationRPC, err = NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("start delivery observation rpc: %w", err)
+		}
+	}
 
 	var eventSender kafkaWSEventSender = srv.WSHub()
 	if config.PresenceConfig().Enabled && store.RDB != nil {
@@ -170,6 +209,16 @@ func (r *GatewayRuntime) Server() *gateway.Server {
 func (r *GatewayRuntime) Close() {
 	if r == nil {
 		return
+	}
+	if r.deliveryObservationRPC != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), GatewayShutdownTimeout())
+		r.deliveryObservationRPC.Close(ctx)
+		cancel()
+		r.deliveryObservationRPC = nil
+	}
+	if r.deliveryObserver != nil {
+		r.deliveryObserver.Close()
+		r.deliveryObserver = nil
 	}
 	if err := closeRuntimeMetrics(r.metrics); err != nil {
 		logger.Warn("gateway metrics close failed", zap.Error(err))

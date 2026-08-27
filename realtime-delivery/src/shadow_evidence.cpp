@@ -13,6 +13,8 @@ std::string_view OutcomeName(ShadowOutcome outcome) {
       return "projected";
     case ShadowOutcome::kRejected:
       return "rejected";
+    case ShadowOutcome::kDeferred:
+      return "deferred";
   }
   return "unknown";
 }
@@ -29,7 +31,7 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
     return "shadow evidence Kafka coordinates are invalid";
   }
   const nlohmann::json record = {
-      {"schema_version", "dipole.realtime.shadow-evidence.v2"},
+      {"schema_version", "dipole.realtime.shadow-evidence.v3"},
       {"topic", evidence.topic},
       {"partition", evidence.partition},
       {"offset", evidence.offset},
@@ -44,6 +46,11 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
       {"presence_stale", evidence.presence_stale},
       {"presence_malformed", evidence.presence_malformed},
       {"offline_item_count", evidence.offline_item_count},
+      {"transport_requested", evidence.transport_requested},
+      {"transport_observed", evidence.transport_observed},
+      {"transport_duplicate", evidence.transport_duplicate},
+      {"transport_rejected", evidence.transport_rejected},
+      {"transport_backpressured", evidence.transport_backpressured},
   };
   *output_ << record.dump() << '\n';
   output_->flush();

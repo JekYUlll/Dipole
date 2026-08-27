@@ -28,6 +28,24 @@ func TestConfigDistDeclaresSafeDependencyReadinessDefaults(t *testing.T) {
 	}
 }
 
+func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("internal_rpc.delivery_observation_enabled") {
+		t.Fatal("C2 delivery observation receiver must remain opt-in")
+	}
+	if got := v.GetString("internal_rpc.delivery_observation_listen_address"); got != "127.0.0.1:9095" {
+		t.Fatalf("delivery observation listener = %q", got)
+	}
+	if v.GetInt("internal_rpc.delivery_observation_capacity") != 1024 ||
+		v.GetInt("internal_rpc.delivery_observation_retry_after_ms") != 25 {
+		t.Fatal("delivery observation queue defaults drifted")
+	}
+}
+
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {
 	t.Setenv("DIPOLE_CONFIG_FILE", "/tmp/dipole-explicit-config.yaml")
 	v := viper.New()

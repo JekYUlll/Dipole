@@ -7,6 +7,7 @@
 #include "health_server.hpp"
 #include "hiredis_presence_reader.hpp"
 #include "librdkafka_consumer.hpp"
+#include "node_delivery_transport.hpp"
 
 namespace dipole::realtime {
 
@@ -20,6 +21,8 @@ struct ShadowRuntimeConfig {
   bool presence_shadow = false;
   HiredisPresenceConfig presence;
   std::int64_t presence_ttl_ms = 120'000;
+  bool node_transport_shadow = false;
+  GrpcNodeTransportConfig node_transport;
 };
 
 ValidationError LoadShadowRuntimeConfig(ShadowRuntimeConfig* config);

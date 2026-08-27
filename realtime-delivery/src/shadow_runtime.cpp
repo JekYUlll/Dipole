@@ -48,6 +48,18 @@ bool ParseBoundedInt(const std::string& raw, int minimum, int maximum, int* outp
   }
 }
 
+bool ParseBool(const std::string& raw, bool* output) {
+  if (raw == "true") {
+    *output = true;
+    return true;
+  }
+  if (raw == "false") {
+    *output = false;
+    return true;
+  }
+  return false;
+}
+
 ValidationError ParseEndpoints(const std::string& raw, std::vector<RedisEndpoint>* endpoints) {
   endpoints->clear();
   if (raw.empty()) return std::nullopt;
@@ -80,7 +92,11 @@ ValidationError ValidateShadowRuntimeConfig(const ShadowRuntimeConfig& config) {
     if (config.presence_ttl_ms < 1000 || config.presence_ttl_ms > 3'600'000) {
       return "shadow Presence ttl is out of range";
     }
-    return ValidateHiredisPresenceConfig(config.presence);
+    if (auto error = ValidateHiredisPresenceConfig(config.presence)) return error;
+  }
+  if (config.node_transport_shadow) {
+    if (!config.presence_shadow) return "node transport shadow requires Presence shadow";
+    return ValidateGrpcNodeTransportConfig(config.node_transport);
   }
   return std::nullopt;
 }
@@ -143,6 +159,28 @@ ValidationError LoadShadowRuntimeConfig(ShadowRuntimeConfig* config) {
     config->presence.timeout_ms = timeout_ms;
     config->presence_ttl_ms = static_cast<std::int64_t>(ttl_seconds) * 1000;
   }
+  const auto transport_mode = Environment("DIPOLE_REALTIME_NODE_TRANSPORT_MODE", "off");
+  if (transport_mode != "off" && transport_mode != "shadow") {
+    return "DIPOLE_REALTIME_NODE_TRANSPORT_MODE must be off or shadow";
+  }
+  config->node_transport_shadow = transport_mode == "shadow";
+  if (config->node_transport_shadow) {
+    if (auto error = ParseNodeTargets(Environment("DIPOLE_REALTIME_NODE_TARGETS"),
+                                      &config->node_transport.targets)) {
+      return error;
+    }
+    config->node_transport.shared_secret = Environment("DIPOLE_INTERNAL_RPC_SHARED_SECRET");
+    if (!ParseBoundedInt(Environment("DIPOLE_REALTIME_NODE_TIMEOUT_MS", "500"), 10, 30'000,
+                         &config->node_transport.timeout_ms) ||
+        !ParseBool(Environment("DIPOLE_REALTIME_NODE_TLS_ENABLED", "false"),
+                   &config->node_transport.tls_enabled)) {
+      return "shadow node transport environment is invalid";
+    }
+    config->node_transport.tls_ca_file = Environment("DIPOLE_REALTIME_NODE_TLS_CA_FILE");
+    config->node_transport.tls_cert_file = Environment("DIPOLE_REALTIME_NODE_TLS_CERT_FILE");
+    config->node_transport.tls_key_file = Environment("DIPOLE_REALTIME_NODE_TLS_KEY_FILE");
+    config->node_transport.tls_server_name = Environment("DIPOLE_REALTIME_NODE_TLS_SERVER_NAME");
+  }
   return ValidateShadowRuntimeConfig(*config);
 }
 
@@ -166,7 +204,16 @@ int RunShadow(const ShadowRuntimeConfig& config, volatile std::sig_atomic_t& run
   if (config.presence_shadow) {
     presence_reader = std::make_unique<HiredisPresenceReader>(config.presence);
   }
-  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, presence_reader.get());
+  std::unique_ptr<GrpcNodeBatchTransport> node_transport;
+  if (config.node_transport_shadow) {
+    if (const auto error = GrpcNodeBatchTransport::Create(config.node_transport, &node_transport);
+        error) {
+      std::cerr << *error << '\n';
+      return 1;
+    }
+  }
+  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, presence_reader.get(),
+                      node_transport.get());
   const ProjectionPolicy policy{.timeline_notify_shadow = config.timeline_notify_shadow};
 
   std::thread worker([&]() {

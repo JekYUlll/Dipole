@@ -60,6 +60,18 @@ func TestGoldenNodeBatchAndAckV1AreStableAndValid(t *testing.T) {
 	if err := ValidateAck(&ack); err != nil {
 		t.Fatalf("validate golden ack: %v", err)
 	}
+
+	observationRaw, err := os.ReadFile(filepath.Join(testdata, "node_delivery_observation.v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var observation deliveryv1.NodeDeliveryObservation
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(observationRaw, &observation); err != nil {
+		t.Fatalf("decode golden observation: %v", err)
+	}
+	if err := ValidateNodeObservation(&observation); err != nil {
+		t.Fatalf("validate golden observation: %v", err)
+	}
 }
 
 func TestValidateNodeBatchRequiresResolvedConnections(t *testing.T) {
@@ -102,6 +114,45 @@ func TestValidateAckRequiresBackpressureRetrySignal(t *testing.T) {
 	ack.Pressure = &deliveryv1.QueuePressure{Depth: 10, Capacity: 10, RetryAfterMs: 25}
 	if err := ValidateAck(ack); err != nil {
 		t.Fatalf("validate backpressure ack: %v", err)
+	}
+}
+
+func TestValidateNodeObservationSeparatesShadowFromDeliveryAck(t *testing.T) {
+	t.Parallel()
+
+	observation := &deliveryv1.NodeDeliveryObservation{
+		ContractVersion:     ContractVersion,
+		BatchId:             "NB1",
+		TargetNodeId:        "gateway-1",
+		Status:              deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_OBSERVED,
+		ObservedItems:       2,
+		ObservedConnections: 3,
+		ObservedAt:          timestamppb.New(time.Unix(3, 0).UTC()),
+	}
+	if err := ValidateNodeObservation(observation); err != nil {
+		t.Fatalf("validate observed response: %v", err)
+	}
+
+	observation.Status = deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_BACKPRESSURED
+	observation.ObservedItems = 0
+	observation.ObservedConnections = 0
+	observation.ErrorCode = deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_QUEUE_FULL
+	observation.Pressure = &deliveryv1.QueuePressure{Depth: 10, Capacity: 10, RetryAfterMs: 25}
+	if err := ValidateNodeObservation(observation); err != nil {
+		t.Fatalf("validate backpressured observation: %v", err)
+	}
+
+	observation.Pressure = nil
+	if err := ValidateNodeObservation(observation); err == nil {
+		t.Fatal("expected backpressured observation to require queue pressure")
+	}
+
+	observation.Status = deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_REJECTED
+	observation.ObservedItems = 0
+	observation.ObservedConnections = 0
+	observation.ErrorCode = deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_INVALID_ITEM
+	if err := ValidateNodeObservation(observation); err != nil {
+		t.Fatalf("validate rejected observation: %v", err)
 	}
 }
 

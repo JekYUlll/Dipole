@@ -13,6 +13,24 @@ pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET "protobuf>=3.21")
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET "hiredis>=1.2")
 find_program(PROTOC_EXECUTABLE protoc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 
+set(DIPOLE_GRPC_ROOT "" CACHE PATH "Optional extracted gRPC C++ package root")
+if(DIPOLE_GRPC_ROOT)
+  find_path(GRPC_INCLUDE_DIR grpcpp/grpcpp.h
+    PATHS "${DIPOLE_GRPC_ROOT}/usr/include" NO_DEFAULT_PATH REQUIRED)
+  set(_DIPOLE_GRPC_PKG_CONFIG_PATH "$ENV{PKG_CONFIG_PATH}")
+  set(ENV{PKG_CONFIG_PATH}
+    "${DIPOLE_GRPC_ROOT}/usr/lib/x86_64-linux-gnu/pkgconfig:${DIPOLE_GRPC_ROOT}/usr/share/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+  pkg_check_modules(GRPCPP_ROOT REQUIRED IMPORTED_TARGET "grpc++>=1.51")
+  set(ENV{PKG_CONFIG_PATH} "${_DIPOLE_GRPC_PKG_CONFIG_PATH}")
+  add_library(GRPC::grpc++ ALIAS PkgConfig::GRPCPP_ROOT)
+  find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin
+    PATHS "${DIPOLE_GRPC_ROOT}/usr/bin" NO_DEFAULT_PATH REQUIRED)
+else()
+  pkg_check_modules(GRPCPP REQUIRED IMPORTED_TARGET "grpc++>=1.51")
+  add_library(GRPC::grpc++ ALIAS PkgConfig::GRPCPP)
+  find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+endif()
+
 set(DIPOLE_RDKAFKA_ROOT "" CACHE PATH "Optional extracted librdkafka package root")
 if(DIPOLE_RDKAFKA_ROOT)
   find_path(RDKAFKA_INCLUDE_DIR librdkafka/rdkafka.h
@@ -35,12 +53,16 @@ set(DELIVERY_PROTO "${PROTO_ROOT}/dipole/delivery/v1/delivery.proto")
 set(GENERATED_ROOT "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(DELIVERY_PROTO_CC "${GENERATED_ROOT}/dipole/delivery/v1/delivery.pb.cc")
 set(DELIVERY_PROTO_H "${GENERATED_ROOT}/dipole/delivery/v1/delivery.pb.h")
+set(DELIVERY_GRPC_CC "${GENERATED_ROOT}/dipole/delivery/v1/delivery.grpc.pb.cc")
+set(DELIVERY_GRPC_H "${GENERATED_ROOT}/dipole/delivery/v1/delivery.grpc.pb.h")
 
 add_custom_command(
-  OUTPUT "${DELIVERY_PROTO_CC}" "${DELIVERY_PROTO_H}"
+  OUTPUT "${DELIVERY_PROTO_CC}" "${DELIVERY_PROTO_H}" "${DELIVERY_GRPC_CC}" "${DELIVERY_GRPC_H}"
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${GENERATED_ROOT}"
   COMMAND "${PROTOC_EXECUTABLE}"
     "--cpp_out=${GENERATED_ROOT}"
+    "--grpc_out=${GENERATED_ROOT}"
+    "--plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}"
     "--proto_path=${PROTO_ROOT}"
     "${DELIVERY_PROTO}"
   DEPENDS "${DELIVERY_PROTO}"
@@ -53,19 +75,28 @@ add_library(delivery_contract
   src/health_server.cpp
   src/hiredis_presence_reader.cpp
   src/librdkafka_consumer.cpp
+  src/node_delivery_transport.cpp
   src/presence_projection.cpp
   src/shadow_evidence.cpp
   src/shadow_runner.cpp
   src/shadow_runtime.cpp
   "${DELIVERY_PROTO_CC}"
+  "${DELIVERY_GRPC_CC}"
 )
 target_include_directories(delivery_contract PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
   "${GENERATED_ROOT}"
+  $<$<BOOL:${DIPOLE_GRPC_ROOT}>:${GRPC_INCLUDE_DIR}>
 )
+if(DIPOLE_GRPC_ROOT)
+  target_link_directories(delivery_contract PUBLIC
+    "${DIPOLE_GRPC_ROOT}/usr/lib/x86_64-linux-gnu"
+  )
+endif()
 target_link_libraries(delivery_contract PUBLIC
   PkgConfig::PROTOBUF
   PkgConfig::HIREDIS
+  GRPC::grpc++
   RDKAFKA::rdkafka
   nlohmann_json::nlohmann_json
 )
@@ -114,6 +145,10 @@ if(BUILD_TESTING)
   target_link_libraries(delivery_hiredis_presence_reader_test PRIVATE delivery_contract)
   target_compile_options(delivery_hiredis_presence_reader_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME delivery_hiredis_presence_reader_test COMMAND delivery_hiredis_presence_reader_test)
+  add_executable(delivery_node_transport_test tests/node_delivery_transport_test.cpp)
+  target_link_libraries(delivery_node_transport_test PRIVATE delivery_contract)
+  target_compile_options(delivery_node_transport_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_node_transport_test COMMAND delivery_node_transport_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"
