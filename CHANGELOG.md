@@ -259,6 +259,7 @@
 
 ### 移除
 
+- 移除 Message Service 测试替身中遗留的 `Create`、`StoreWithOutbox` 兼容写入口，并以方法集测试固定生产 `MessageRepository` 仅暴露 Sync-aware 原子写契约。
 - 移除 legacy GORM repositories、model persistence tags、运行时 `AutoMigrate`、SQLite 方言测试以及 `gorm.io/*` 依赖。
 - 移除 `data.mysql_adapter`、`mysql.auto_migrate` 和无依赖 Repository/Server/Kafka 便捷构造入口。
 
