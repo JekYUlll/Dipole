@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
+
+- **优先级：** P0
+- **状态：** 待处理
+- **发现日期：** 2026-08-28
+- **影响范围：** Gateway Kafka consumer、C++ primary consumer、WebSocket 客户端、C3 灰度与自动回切
+- **现状：** 隔离 primary runtime 演练中，Go Gateway 权威 consumer 与 C++ 专用 consumer group 同时处理同一 `message.created`。客户端对每个测试事件收到一条无 `delivery_id` 的 legacy Go frame 和一条带稳定 `delivery_id` 的 C++ frame。C++ ACK、evidence 和 offset 均正确，双 authority 仍会造成可见重复投递。
+- **风险：** 直接把 C++ primary 加入 Compose 会让客户端重复展示消息或重复执行通知副作用；legacy frame 缺少同一 delivery ID，Web 持久 claim 无法将两条跨 authority frame 合并。两个 consumer group 的 offset 独立，未经协议的回切还可能重放不同窗口。
+- **建议方向：** 在 Gateway 投递 handler 前建立版本化 `realtime.delivery=go|shadow|cpp` authority，保持消息事实、Conversation/Inbox projector 不受影响；`cpp` 模式停止 Go 客户端写入但保留可观测性，切换时记录双 group checkpoint、高水位和稳定窗口。回切先冻结 C++ authority，再从明确 checkpoint 恢复 Go，禁止两个客户端写 authority 同时为 active。
+- **处理门槛：** 用隔离 topology 证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame；完成进程崩溃、Kafka rebalance、Redis 故障和切换中断演练，并保存可执行回切 receipt 后才能开始 C3 用户/节点灰度。
+
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1
@@ -175,7 +186,7 @@
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
 - **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零。`AD-039` 已关闭。默认关闭的 primary seam 提供 connection 定向入队、逐项 ACK、部分成功 connection 重试、有界 Gateway replay state 与 additive WebSocket delivery ID；Web 通过账户隔离的 IndexedDB v4 原子 claim 跨页面重载去重。C++ one-shot probe 经 mTLS 实际验证 `ENQUEUED(1)`、稳定重放去重与 stale Presence `OFFLINE`。显式 primary CLI 现使用独立 `dipole-realtime-primary-*` authority，要求 enable/Presence/transport 三重配置，并将 terminal ACK、低敏 primary evidence 与 Kafka commit 串联；partial/rejected/failed、身份漂移和故障保留同一 pending record。当前 Go Redis Pub/Sub 流量语义未切换，primary 未进入 Compose。
-- **后续方向：** 运行真实 primary queue saturation、consume-to-ACK offset 提交和 evidence/commit 窗口进程崩溃重放，再评审 C++ primary mode 与自动回切。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
+- **后续方向：** `benchmarks/c2-primary-runtime-2026-08-28/` 已验证真实 queue saturation、terminal ACK 后 commit、故障 retain、`SIGKILL` 后同坐标重放和 lag 归零；窄 terminal-evidence-to-commit 崩溃窗口仍未作确定性声明。C3 由 `AD-041` 继续跟踪互斥 authority 与自动回切。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
 ### AD-015：Message Service 数据库账号尚未收敛表级权限

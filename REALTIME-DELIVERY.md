@@ -93,6 +93,10 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 primary 顺序固定为 `poll -> project -> Presence -> DeliverNodeBatch -> primary-evidence.v1 -> commit`。完整 ACK 必须与 batch 数量、batch ID 和全部 delivery ID 精确一致；所有结果均为 `ENQUEUED|OFFLINE` 时允许 commit，`PARTIAL/BACKPRESSURED`、`REJECTED`、`FAILED` 或任何漂移会记录有界分类并保留 pending record。Presence 已确认全部 item 离线且没有 node batch 时不发起 RPC，在 evidence 刷盘后直接提交。evidence append 仍先于 offset commit；进程在两者之间崩溃时依靠稳定 delivery ID、Gateway replay state、Web IndexedDB claim 和 Sync Timeline 补偿重放。
 
+真实 primary runtime 证据位于 `benchmarks/c2-primary-runtime-2026-08-28/`。隔离环境中 terminal ACK 将目标分区提交到 log end；600 KiB probe 在第 40 个批次将真实 WebSocket queue 压至 16/16并收到 `PARTIAL/BACKPRESSURED`；错误 gRPC target worker 为同一坐标写 deferred/retain，`SIGKILL` 前 offset 保持、lag 为 1，正常 worker 重平衡后重放并将 lag 降为 0。报告 8/8 且绑定两张 clean same-revision 镜像。演练声明的是 deferred evidence 后崩溃重放，未声明窄 terminal evidence/commit 窗口的确定性故障点。
+
+同一演练确认 Go Gateway consumer 与 C++ primary group 并行时会各写一条客户端 frame；legacy Go frame 没有可与 C++ stable delivery ID 合并的标识。`AD-041` 因此阻止 primary 加入 tracked Compose。C3 必须先实现互斥 `realtime.delivery` authority、双 group checkpoint 与回切 receipt。
+
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
 
 同 workload 对照证据位于 `benchmarks/c2-cpp-comparison-2026-08-28/`。Go baseline 在 20 用户、每用户 2 条文本消息下完成 40/40 accepted、persisted、received；C++ v3 evidence 观察 80 个 Kafka 坐标，`message_type=0` 选择 40 条 workload，40 条好友初始化系统消息保持可见并计为 filtered-out。选中记录全部 projected，node transport requested/observed 为 40/40，最终拒绝和背压为 0，comparison v1 决策为 `eligible`。真实 Go TCP queue saturation race 测试确认容量满时返回 `BACKPRESSURED/QUEUE_FULL`。演练同时发现 Gateway assignment 未进入 readiness，已记录为 `AD-039`；成功候选在负载前显式要求 direct-created 六个分区完成 assignment。
