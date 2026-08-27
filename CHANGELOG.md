@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent Artifact 增加 `dipole.agent.artifact.reconcile.v1` 离线 dry-run：独立只读 MinIO 身份固定列举 `agent-artifacts/v1/`，对象满 24 小时后才查询 sqlc 元数据并形成孤儿候选；异常键只产生不可清理告警。报告固定 `delete_authorized=false`、有界样例和可复算 SHA-256，命令不包含删除参数或删除 client。
 - Agent G3 增加 `dipole.agent.artifact.v1` 与 migration v26：Temporal `read_shadow` 将持久模型摘要输出为确定性 Markdown Artifact，Core 校验 Task/Run、Shadow 模式、版本与跨语言 SHA-256 后把不可变元数据写入 MySQL、正文写入内容寻址 MinIO；精确重试重新验证对象并收敛到同一 Artifact。`dipole-agent` 仅能创建，Gateway 仅能按 Task principal 读取，协议不提供更新、删除、公开 URL、消息发送或 active 写权限。
 - Agent G3 增加语言中立的 Workflow repair execution plan v1：当前只允许 `dry_run`，固定 approved Proposal、proposer、两位 approver、独立 executor grant version、当前/目标/回滚投影和三组 SHA-256 CAS 证据，并以 15 分钟有效期约束重新采证。生产 protobuf 继续没有 apply/execute/rollback 方法，实际写执行器需发布新契约版本并单独评审。
 - Agent G3 增加 migration v25 与 Workflow repair 审计控制面：Core 以 Gateway 认证 principal 和默认空授权表接收服务端重算 SHA-256 的一小时修复提案，MySQL 不可变保存工单、投影/Temporal 证据和操作员身份；提案人无权审批，每位审批人仅能提交一票，至少两位独立授权操作员批准后才进入 `approved`，任一拒绝进入 `rejected`。API 未提供 apply/execute 方法，`dipole-agent` 服务身份被方法级拒绝，批准结果仍不能改变 Workflow projection。
@@ -244,6 +245,7 @@
 
 ### 安全
 
+- 新增 `dipoleartifactaudit` 身份，policy 只有专用 bucket 的定位和 List 权限；CLI 显式拒绝复用 Artifact Runtime access key，Core、TS Agent 和公开 Gateway 均不接收 audit 凭据。候选发现不授予 Get/Put/Delete，未来清理身份继续与 audit/Runtime 分离。
 - Agent Artifact 改用独立 `dipole-agent-artifacts` bucket 与专用 Core 身份，policy 仅允许 bucket 定位/列举和 `agent-artifacts/v1/*` 的 Get/Put，明确不授予删除权限；通用文件/归档身份同步从 MinIO root 降为限定三个既有 bucket 的 `dipoleplatform` 用户，两个运行时身份无法跨 bucket 写入。TS Agent Runtime 不接收对象存储凭据。
 - Message atomic/projector 账号仅保留 sqlc 实际使用的表操作；显式拒绝 Message UPDATE/DELETE、Outbox DELETE、migration 写入、Core 表访问，以及 projector 模式的 Inbox 权限，关闭 AD-015。
 - Sync 与 projector-mode Message 账号按表和操作拆分；启动时拒绝 Sync 修改 Message/Outbox/群高水位或读取 Core 数据，也拒绝 Message projector 访问 Inbox 状态。
@@ -256,6 +258,7 @@
 
 ### 迁移说明
 
+- 运行 `dipole-agent-artifact-reconcile` 前通过环境变量单独注入 `storage.artifact_audit_access_key/secret_key`，并保持最短 `-minimum-age=24h`；命令输出 JSON，发现候选或异常键时退出码为 2。当前报告仅用于审查和容量治理，不能直接作为删除授权。
 - 通用存储默认凭据由 MinIO root 改为 `dipoleplatform`，Artifact 存储通过 `storage.artifact_*` 独立配置且默认关闭；更新后的 `minio-init` 会幂等创建两个受限用户、policy 和专用 bucket。微服务 Compose 显式启用 Artifact 存储；自定义部署需先创建等价 policy，再设置独立 access key/secret，回滚时关闭 `storage.artifact_enabled` 即可停止 Artifact blob 装配，现有元数据与对象保持不变。
 - 启用 `read_shadow` 前先执行 migration v23，并同时配置 MySQL ledger、`ai_sdk` model routes、Agent Capability RPC 与 Temporal；启动顺序为 Store 探针、Worker、Temporal dispatcher、Kafka consumer。回滚先将 Activity mode 恢复为 `persistent_shadow`/`foundation` 或关闭 Temporal，再回滚 v23；v23 仅增加 nullable `agent_model_calls.output_json`，旧 Runtime 可继续运行。
 - `FinishRun`、`RequestApproval` 和 `ResolveApproval` 是 Agent Capability v1 的 additive RPC，旧 Runtime 可继续调用 `CompleteRun`。持久 shadow Worker 需同时显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow`、启用 Agent Capability RPC 并配置既有共享密钥或 mTLS；回滚时先恢复 `foundation` 或关闭 Temporal Worker，无需数据迁移。
@@ -295,6 +298,7 @@
 
 ### 验证
 
+- 真实 MySQL 8.4 验证对象键存在/缺失查询与 migration v26 回滚重建，真实 tmpfs MinIO 验证 audit 用户可列举固定前缀且无法 Get/Put/Delete；联合环境运行 CLI 后输出年轻对象隔离和有效 evidence SHA-256。单元测试覆盖过期孤儿、已引用对象、年轻对象、异常键、24 小时门槛、样例上限与报告复核，新增第 20 个后端二进制的当前源码镜像构建通过。
 - 真实 tmpfs MinIO 验证 Artifact 专用身份可幂等 Put/Get，无法删除、写入通用文件 bucket 或逃逸对象前缀；`dipoleplatform` 可正常写入/清理文件对象且无法写 Artifact bucket。三份 Compose 配置渲染和两次连续 `minio-init` 均通过，Go 全量包 test/vet、定向 race、TS 90 项测试、typecheck/build、sqlc/Go+TS Proto 漂移及 19 个当前源码后端二进制镜像构建门禁通过。
 - 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 read Activity 在模型、Plan 与 Capability 完成后丢失 ACK 并重试时，provider 和 Capability 均只执行一次；真实 MySQL 8.4 验证结构化输出恢复、持久预算漂移拒绝、已完成 Run 精确重放，以及完整 migration v23 `up→down` 链。TypeScript 绑定测试覆盖 Kafka 仅启动稳定 Workflow、inline planner 不再执行和伪造 Task/Run/event 拒绝。
 - 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 Approval 在 Worker 替换前仅持久创建一次、恢复后保持同一等待点、精确 Signal 只解析一次且解析完成后才继续 Step；真实 MySQL 8.4 验证 pending 精确创建重放、绑定冲突拒绝、16 路并发批准收敛、approve/deny 竞争仅一个 CAS 获胜、终态重放和伪造 principal/cross-Task 拒绝。

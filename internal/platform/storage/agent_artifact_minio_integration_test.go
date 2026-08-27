@@ -5,23 +5,27 @@ import (
 	"context"
 	"io"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func TestAgentArtifactMinIOIdentityIsBucketAndOperationBound(t *testing.T) {
 	endpoint := os.Getenv("DIPOLE_TEST_MINIO_ENDPOINT")
-	if endpoint == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY") == "" {
+	if endpoint == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY") == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_ACCESS_KEY") == "" {
 		t.Skip("isolated MinIO identity environment is required")
 	}
 	artifactAccessKey := os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY")
 	artifactSecretKey := os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_SECRET_KEY")
 	platformAccessKey := os.Getenv("DIPOLE_TEST_PLATFORM_MINIO_ACCESS_KEY")
 	platformSecretKey := os.Getenv("DIPOLE_TEST_PLATFORM_MINIO_SECRET_KEY")
+	auditAccessKey := os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_ACCESS_KEY")
+	auditSecretKey := os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_SECRET_KEY")
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	store, err := NewAgentArtifactBlobStoreFromConfig(ctx, AgentArtifactStorageConfigV1{
@@ -68,6 +72,37 @@ func TestAgentArtifactMinIOIdentityIsBucketAndOperationBound(t *testing.T) {
 		t.Fatalf("immutable object disappeared after denied operations: %v", err)
 	} else {
 		_ = reader.Close()
+	}
+	auditSource, err := NewAgentArtifactObjectSourceV1(ctx, AgentArtifactAuditConfigV1{
+		Endpoint: endpoint, AccessKey: auditAccessKey, SecretKey: auditSecretKey, Bucket: receipt.Bucket, RuntimeAccessKey: artifactAccessKey,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var listed []string
+	if err := auditSource.Walk(ctx, "agent-artifacts/v1/", func(object artifactreconcile.ObjectEvidenceV1) error {
+		listed = append(listed, object.Key)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(listed, receipt.ObjectKey) {
+		t.Fatalf("audit identity did not list Artifact object: %v", listed)
+	}
+	auditClient := mustMinIOTestClient(t, endpoint, auditAccessKey, auditSecretKey)
+	auditObject, err := auditClient.GetObject(ctx, receipt.Bucket, receipt.ObjectKey, minio.GetObjectOptions{})
+	if err == nil {
+		_, err = auditObject.Stat()
+		_ = auditObject.Close()
+	}
+	if err == nil {
+		t.Fatal("audit identity read Artifact content")
+	}
+	if _, err := auditClient.PutObject(ctx, receipt.Bucket, receipt.ObjectKey+"-forbidden", bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{}); err == nil {
+		t.Fatal("audit identity wrote Artifact content")
+	}
+	if err := auditClient.RemoveObject(ctx, receipt.Bucket, receipt.ObjectKey, minio.RemoveObjectOptions{}); err == nil {
+		t.Fatal("audit identity deleted Artifact content")
 	}
 }
 

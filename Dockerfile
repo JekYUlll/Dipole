@@ -23,6 +23,7 @@ COPY dist/dipole-search-outbox-cleanup /app/dipole-search-outbox-cleanup
 COPY dist/dipole-cassandra-backfill /app/dipole-cassandra-backfill
 COPY dist/dipole-cassandra-reconcile /app/dipole-cassandra-reconcile
 COPY dist/dipole-cassandra-archive /app/dipole-cassandra-archive
+COPY dist/dipole-agent-artifact-reconcile /app/dipole-agent-artifact-reconcile
 
 EXPOSE 8080
 

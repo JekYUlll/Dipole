@@ -176,6 +176,8 @@ type Storage struct {
 	ArtifactSecretKey           string `mapstructure:"artifact_secret_key"`
 	ArtifactUseSSL              bool   `mapstructure:"artifact_use_ssl"`
 	ArtifactBucket              string `mapstructure:"artifact_bucket"`
+	ArtifactAuditAccessKey      string `mapstructure:"artifact_audit_access_key"`
+	ArtifactAuditSecretKey      string `mapstructure:"artifact_audit_secret_key"`
 	PublicBaseURL               string `mapstructure:"public_base_url"`
 	FileMaxSizeMB               int64  `mapstructure:"file_max_size_mb"`
 	MultipartChunkSizeMB        int64  `mapstructure:"multipart_chunk_size_mb"`
@@ -412,6 +414,8 @@ func Load() error {
 		v.SetDefault("storage.artifact_secret_key", "")
 		v.SetDefault("storage.artifact_use_ssl", false)
 		v.SetDefault("storage.artifact_bucket", "dipole-agent-artifacts")
+		v.SetDefault("storage.artifact_audit_access_key", "")
+		v.SetDefault("storage.artifact_audit_secret_key", "")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -575,6 +579,8 @@ func Load() error {
 			"storage.artifact_secret_key",
 			"storage.artifact_use_ssl",
 			"storage.artifact_bucket",
+			"storage.artifact_audit_access_key",
+			"storage.artifact_audit_secret_key",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -912,6 +918,8 @@ func StorageConfig() Storage {
 	storageConfig.ArtifactSecretKey = cfg.GetString("storage.artifact_secret_key")
 	storageConfig.ArtifactUseSSL = cfg.GetBool("storage.artifact_use_ssl")
 	storageConfig.ArtifactBucket = cfg.GetString("storage.artifact_bucket")
+	storageConfig.ArtifactAuditAccessKey = cfg.GetString("storage.artifact_audit_access_key")
+	storageConfig.ArtifactAuditSecretKey = cfg.GetString("storage.artifact_audit_secret_key")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")
