@@ -143,6 +143,8 @@ G3 v1 使用 migration v29 建立读取基础：`agent_memories` 按 tenant、pr
 
 G3 v1 使用 migration v28 的 `agent_event_subscriptions` 保存 Subscription 与精确 Definition version。Core 通过受认证的 additive RPC 按 tenant、Agent、event type 和 conversation resource 查询候选，并重新校验 Definition 有效期、撤销状态、`conversation.read` permission 和 read scope。G4 migration v34 增加 creator/revoker、撤销原因和更新时间；Gateway-only 控制 RPC 从认证 principal 派生 owner，创建时再次复核固定 Definition 和 scope，并将大小写无关关键词集合规范化为稳定 SHA-256 Subscription ID。等价创建与同原因撤销可重放，payload 或撤销原因漂移冲突。TS Runtime 的 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 只执行严格 `all|message_contains_any` 规则，零匹配时在 EventLedger、Temporal 和模型之前返回；多匹配按 Subscription ID 排序，并把首个 ID 固定到 Task。默认 `direct_target` 保留既有行为。公开 HTTP/Pencil 管理页和语义/向量预筛由 `AD-034` 继续跟踪。
 
+G4 预筛评测使用独立 `dipole.agent.subscription-prefilter-*.v1` 合同。受控 corpus 保存最多 10000 条事件与人工相关性标签；candidate evidence 将 `rule|embedding|small_model` 的 revision/configuration SHA-256 绑定到逐 case 决策、basis-point 分数、微秒耗时和微美元成本。纯 evaluator 不访问模型、数据库或网络，输出 corpus/evidence SHA-256、混淆矩阵、向下取整的 precision/recall bps、nearest-rank p95、向上取整平均成本和误判 case ID，不回显消息正文。首个 rule adapter 直接复用生产 `matchEventSubscriptions`，防止测试基线与部署语义分叉。synthetic 示例只验证合同和规则链；真实 Project Guardian corpus 及 embedding/小模型 evidence 达标前，生产仍固定 `direct_target`。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact
