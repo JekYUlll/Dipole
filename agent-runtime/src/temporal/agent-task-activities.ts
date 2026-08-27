@@ -13,7 +13,7 @@ export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
 
 export type AgentTaskDirective =
   | { kind: "continue"; checkpoint?: unknown }
-  | { kind: "wait_input"; requestId: string; prompt: string; form: AgentElicitationForm; checkpoint?: unknown }
+  | { kind: "wait_input"; requestId: string; prompt: string; form: AgentElicitationForm; expiresAtUnixMs: number; checkpoint?: unknown }
   | { kind: "wait_approval"; requestId: string; summary: string; approval: AgentApprovalBinding; checkpoint?: unknown }
   | { kind: "complete"; output: unknown }
   | { kind: "failed"; message: string };

@@ -105,11 +105,18 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
       projectedRevision = state.revision;
     }
     if (state.status === "waiting_input") {
-      await condition(() => state.status !== "waiting_input");
+      const requestId = state.pending!.requestId;
+      const resumed = await condition(() => state.status !== "waiting_input", waitDuration(state.pending!.expiresAtUnixMs));
+      if (!resumed && state.status === "waiting_input") state = transitionAgentTask(state, { type: "expire_wait", requestId });
       continue;
     }
     if (state.status === "waiting_approval") {
-      await condition(() => state.status !== "waiting_approval" || approvalSignal !== undefined);
+      const requestId = state.pending!.requestId;
+      const resumed = await condition(() => state.status !== "waiting_approval" || approvalSignal !== undefined, waitDuration(state.pending!.expiresAtUnixMs));
+      if (!resumed && state.status === "waiting_approval") {
+        state = transitionAgentTask(state, { type: "expire_wait", requestId });
+        continue;
+      }
       if (state.status !== "waiting_approval") continue;
       const signal = approvalSignal!;
       await resolveAgentTaskApproval({
@@ -194,17 +201,22 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): A
         : { taskId: state.taskId, status: state.status, revision: state.revision };
     case "wait_input":
       return transitionAgentTask(state, {
-        type: "request_input", requestId: directive.requestId, prompt: directive.prompt, form: directive.form
+        type: "request_input", requestId: directive.requestId, prompt: directive.prompt, form: directive.form, expiresAtUnixMs: directive.expiresAtUnixMs
       });
     case "wait_approval":
       return transitionAgentTask(state, {
-        type: "request_approval", requestId: directive.requestId, approvalId: directive.approval.approvalId, summary: directive.summary
+        type: "request_approval", requestId: directive.requestId, approvalId: directive.approval.approvalId, summary: directive.summary,
+        expiresAtUnixMs: directive.approval.expiresAtUnixMs
       });
     case "complete":
       return transitionAgentTask(state, { type: "complete", output: directive.output });
     case "failed":
       return transitionAgentTask(state, { type: "fail", message: directive.message });
   }
+}
+
+function waitDuration(expiresAtUnixMs: number): number {
+  return Math.max(1, expiresAtUnixMs - Date.now());
 }
 
 function isTerminal(state: AgentTaskState): boolean {

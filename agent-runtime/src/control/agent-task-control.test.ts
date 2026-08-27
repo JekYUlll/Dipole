@@ -41,7 +41,7 @@ describe("AgentTaskControlService", () => {
     const authorizeTaskControl = vi.fn(async () => ({ taskId: "TASK-1", taskStatus: "waiting_approval" }));
     const query = vi.fn(async () => ({
       taskId: "TASK-1", status: "waiting_approval" as const, revision: 3,
-      pending: { kind: "approval" as const, requestId: "REQ-1", approvalId: "APR-1", summary: "send messages" }
+      pending: { kind: "approval" as const, requestId: "REQ-1", approvalId: "APR-1", summary: "send messages", expiresAtUnixMs: 2_000 }
     }));
     const resolveApproval = vi.fn(async () => undefined);
     const service = new AgentTaskControlService({ authorizeTaskControl }, { query, cancel: vi.fn(), resolveApproval, provideInput: vi.fn() });
@@ -58,7 +58,7 @@ describe("AgentTaskControlService", () => {
       { authorizeTaskControl: vi.fn(async () => ({ taskId: "TASK-1", taskStatus: "waiting_approval" })) },
       { query: vi.fn(async () => ({
         taskId: "TASK-1", status: "waiting_approval" as const, revision: 3,
-        pending: { kind: "approval" as const, requestId: "REQ-1", approvalId: "APR-CURRENT", summary: "send" }
+        pending: { kind: "approval" as const, requestId: "REQ-1", approvalId: "APR-CURRENT", summary: "send", expiresAtUnixMs: 2_000 }
       })), cancel: vi.fn(), resolveApproval, provideInput: vi.fn() }
     );
 
@@ -71,7 +71,7 @@ describe("AgentTaskControlService", () => {
   it("authorizes and validates the exact pending input before sending a Signal", async () => {
     const provideInput = vi.fn(async () => undefined);
     const pending = {
-      kind: "input" as const, requestId: "INPUT-1", prompt: "Choose scope",
+      kind: "input" as const, requestId: "INPUT-1", prompt: "Choose scope", expiresAtUnixMs: 2_000,
       form: { schemaVersion: "dipole.agent.elicitation.v1" as const, fields: [
         { id: "scope", label: "Scope", type: "select" as const, required: true, options: ["today", "week"] }
       ] }

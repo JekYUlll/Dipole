@@ -10,8 +10,8 @@ export type AgentTaskStatus =
   | "cancelled";
 
 export type AgentTaskPending =
-  | { kind: "input"; requestId: string; prompt: string; form: AgentElicitationForm }
-  | { kind: "approval"; requestId: string; approvalId: string; summary: string };
+  | { kind: "input"; requestId: string; prompt: string; form: AgentElicitationForm; expiresAtUnixMs: number }
+  | { kind: "approval"; requestId: string; approvalId: string; summary: string; expiresAtUnixMs: number };
 
 export type AgentTaskResume =
   | { kind: "input"; requestId: string; value: AgentElicitationValue }
@@ -30,10 +30,11 @@ export interface AgentTaskState {
 
 export type AgentTaskTransition =
   | { type: "start" }
-  | { type: "request_input"; requestId: string; prompt: string; form: AgentElicitationForm }
+  | { type: "request_input"; requestId: string; prompt: string; form: AgentElicitationForm; expiresAtUnixMs: number }
   | { type: "provide_input"; requestId: string; value: unknown }
-  | { type: "request_approval"; requestId: string; approvalId: string; summary: string }
+  | { type: "request_approval"; requestId: string; approvalId: string; summary: string; expiresAtUnixMs: number }
   | { type: "resolve_approval"; requestId: string; decision: "approved" | "denied" }
+  | { type: "expire_wait"; requestId: string }
   | { type: "complete"; output: unknown }
   | { type: "fail"; message: string }
   | { type: "cancel"; reason: string };
@@ -59,7 +60,7 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
     case "request_input":
       requireStatus(state, event.type, "running");
       if (event.requestId.trim().length === 0 || event.requestId.length > 128 || event.prompt.trim().length === 0 || event.prompt.length > 2000) throw new Error("Agent Elicitation request identity or prompt is invalid");
-      return { ...next(state, "waiting_input"), pending: { kind: "input", requestId: event.requestId, prompt: event.prompt, form: validateElicitationForm(event.form) } };
+      return { ...next(state, "waiting_input"), pending: { kind: "input", requestId: event.requestId, prompt: event.prompt, form: validateElicitationForm(event.form), expiresAtUnixMs: validDeadline(event.expiresAtUnixMs) } };
     case "provide_input": {
       requireStatus(state, event.type, "waiting_input");
       const pending = requirePending(state, "input", event.requestId);
@@ -72,7 +73,7 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
       requireStatus(state, event.type, "running");
       return {
         ...next(state, "waiting_approval"),
-        pending: { kind: "approval", requestId: event.requestId, approvalId: event.approvalId, summary: event.summary }
+        pending: { kind: "approval", requestId: event.requestId, approvalId: event.approvalId, summary: event.summary, expiresAtUnixMs: validDeadline(event.expiresAtUnixMs) }
       };
     case "resolve_approval": {
       requireStatus(state, event.type, "waiting_approval");
@@ -88,6 +89,14 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
         resume: { kind: "approval", requestId: pending.requestId, approvalId: pending.approvalId, decision: "approved" }
       };
     }
+    case "expire_wait": {
+      if (state.status !== "waiting_input" && state.status !== "waiting_approval") throw new Error(`Cannot expire wait while Agent Task is ${state.status}`);
+      const pending = requirePending(state, state.status === "waiting_input" ? "input" : "approval", event.requestId);
+      return {
+        ...next(state, "cancelled"),
+        cancellation: { reason: pending.kind === "input" ? "input_expired" : "approval_expired", requestId: pending.requestId }
+      };
+    }
     case "complete":
       requireStatus(state, event.type, "running");
       return { ...next(state, "completed"), output: event.output };
@@ -97,6 +106,11 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
     case "cancel":
       return { ...next(state, "cancelled"), cancellation: { reason: event.reason } };
   }
+}
+
+function validDeadline(value: number): number {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error("Agent Task wait deadline is invalid");
+  return value;
 }
 
 function next(state: AgentTaskState, status: AgentTaskStatus): AgentTaskState {
