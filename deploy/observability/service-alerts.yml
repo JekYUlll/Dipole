@@ -1,0 +1,18 @@
+groups:
+  - name: dipole-services
+    rules:
+      - alert: DipoleServiceInstanceDown
+        expr: up{job="dipole-required"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Required Dipole service instance is unreachable
+
+      - alert: DipoleServiceNotReady
+        expr: dipole_service_ready{job="dipole-required"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Required Dipole service remains not ready

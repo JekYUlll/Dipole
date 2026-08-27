@@ -64,7 +64,7 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		runtime.Close()
 		return nil, err
 	}
-	runtime.metrics, err = startRuntimeMetrics(metricsCfg, nil)
+	runtime.metrics, err = startRuntimeMetrics(metricsCfg, searchServiceName, nil)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Search Service metrics: %w", err)
@@ -73,6 +73,9 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Search rpc server: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Search Service runtime initialized", zap.String("read_alias", index.ReadAlias()))
 	return runtime, nil

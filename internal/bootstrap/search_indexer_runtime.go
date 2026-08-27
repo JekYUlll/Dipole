@@ -76,10 +76,13 @@ func InitializeSearchIndexer(ctx context.Context) (*SearchIndexerRuntime, error)
 		cleanup()
 		return nil, fmt.Errorf("start Search Indexer consumer: %w", err)
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), searchIndexerServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Search Indexer metrics: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Search Indexer runtime initialized",
 		zap.String("consumer", searchIndexerServiceName),

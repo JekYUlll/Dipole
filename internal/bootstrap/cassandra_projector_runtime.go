@@ -73,10 +73,13 @@ func InitializeCassandraProjector(ctx context.Context) (*CassandraProjectorRunti
 		cleanup()
 		return nil, fmt.Errorf("start Cassandra projector consumer: %w", err)
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), cassandraProjectorServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Cassandra projector metrics: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Cassandra projector runtime initialized",
 		zap.String("consumer", cassandraProjectorServiceName),

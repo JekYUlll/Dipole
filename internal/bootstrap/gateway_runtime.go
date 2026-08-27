@@ -115,10 +115,13 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("start gateway kafka consumer: %w", err)
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("gateway runtime initialized",
 		zap.String("core_http_target", gatewayCfg.CoreHTTPTarget),
