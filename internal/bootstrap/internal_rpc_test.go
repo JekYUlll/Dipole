@@ -20,16 +20,23 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
+	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
+	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type rpcCoreStub struct{}
+
+type rpcDeliveryObservationSink struct{}
+
+func (rpcDeliveryObservationSink) Observe(*deliveryv1.NodeDeliveryBatch) {}
 
 type rpcAgentCapabilityStub struct{ application.AgentCapabilityV1 }
 
@@ -233,6 +240,53 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected authenticated caller mismatch rejection, got %v", err)
+	}
+}
+
+func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
+	receiver, err := deliverygrpc.NewShadowServer("gateway-1", 4, 25*time.Millisecond, rpcDeliveryObservationSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(receiver.Close)
+	cfg := config.InternalRPC{
+		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
+		DialTimeoutSeconds: 2,
+	}
+	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	if err != nil {
+		t.Fatalf("start delivery observation rpc: %v", err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		server.Close(ctx)
+	})
+
+	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+	})
+	if err != nil {
+		t.Fatalf("dial delivery observation as Realtime: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	observation, err := deliveryv1.NewNodeDeliveryServiceClient(connection).ObserveNodeBatch(context.Background(), &deliveryv1.NodeDeliveryBatch{
+		ContractVersion: "v1", BatchId: "NB-bootstrap", TargetNodeId: "gateway-1", SourceEventId: "E1",
+		CreatedAt: timestamppb.New(time.Unix(1, 0).UTC()),
+		Items: []*deliveryv1.NodeDeliveryItem{{
+			DeliveryId: "D-bootstrap", RecipientUserId: "U1", ConnectionIds: []string{"C1"},
+			EventType: "chat.message", PayloadJson: []byte(`{"message_id":"M1"}`), OrderingKey: "direct:U1:U2",
+			Mode: deliveryv1.DeliveryMode_DELIVERY_MODE_FULL_EVENT,
+		}},
+	})
+	if err != nil || observation.GetStatus() != deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_OBSERVED {
+		t.Fatalf("delivery observation=%+v err=%v", observation, err)
+	}
+
+	if _, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+		Service: messageServiceName, Secret: cfg.SharedSecret,
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected Message caller rejection, got %v", err)
 	}
 }
 

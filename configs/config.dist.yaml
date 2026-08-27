@@ -175,6 +175,11 @@ internal_rpc:
   search_target: 127.0.0.1:9093
   sync_listen_address: 127.0.0.1:9094
   sync_target: 127.0.0.1:9094
+  # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
+  delivery_observation_enabled: false
+  delivery_observation_listen_address: 127.0.0.1:9095
+  delivery_observation_capacity: 1024
+  delivery_observation_retry_after_ms: 25
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
   # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.

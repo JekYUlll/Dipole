@@ -69,9 +69,9 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 无 Redis 阶段使用 created event 中持久化的 `sync_fanout=false` 选择热群通知模式，避免历史回放误做完整 fanout；动态 `recent_message_count` 暂以 0 表达未知，后续 Redis adapter 独立补齐。该字段不参与当前低敏 evidence。
 
-Presence 路由先落为纯投影：输入已解析的用户连接快照与明确的 `now/ttl`，过滤过期连接后按 node 稳定排序生成 `NodeDeliveryBatch`，并统计 observed、eligible、stale 与 offline。用户身份漂移、空 node/connection 和重复 connection 所有权会 fail closed。该边界尚未读取 Redis；后续 adapter 会同时记录 Go 原始 Hash 视图与 TTL 过滤视图，以量化旧连接随用户 Hash 续期而残留的兼容差异。
+Presence 路由先落为纯投影：输入已解析的用户连接快照与明确的 `now/ttl`，过滤过期连接后按 node 稳定排序生成 `NodeDeliveryBatch`，并统计 observed、eligible、stale 与 offline。用户身份漂移、空 node/connection 和重复 connection 所有权会 fail closed。ShadowRunner 已通过 hiredis adapter 读取 Go 原始 Hash，并以 TTL 过滤视图生成节点批次；该差异继续保留在低敏 evidence 中。
 
-hiredis adapter 只执行 Presence `HGETALL`，支持 direct 与 Sentinel master discovery、Redis/Sentinel 密码、DB 选择和批量 pipeline。网络、协议或认证失败会关闭连接，使下一轮重新发现 master；坏 Hash 记录按计数隔离。当前 adapter 已通过真实单节点 Redis fixture，尚未注入 Kafka runner，Sentinel 切主演练仍待完成。
+hiredis adapter 只执行 Presence `HGETALL`，支持 direct 与 Sentinel master discovery、Redis/Sentinel 密码、DB 选择和批量 pipeline。网络、协议或认证失败会关闭连接，使下一轮重新发现 master；坏 Hash 记录按计数隔离。adapter 已注入 Kafka ShadowRunner，并通过真实单节点 Redis fixture 与三 Redis/三 Sentinel 切主演练。
 
 `DIPOLE_REALTIME_PRESENCE_MODE=shadow` 会将 reader 注入 Kafka runner；direct 使用 `DIPOLE_REALTIME_REDIS_ENDPOINT`，Sentinel 使用 `DIPOLE_REALTIME_REDIS_SENTINELS` 与 `DIPOLE_REALTIME_REDIS_MASTER_NAME`。证据格式升级为 `dipole.realtime.shadow-evidence.v2`，只增加节点批次数和 Presence 聚合计数。Redis 读取失败不写 evidence、不提交 offset并撤销 readiness；可读取但身份/所有权冲突记录固定 `invalid_presence` 后允许独立 shadow group 前进。
 
@@ -82,6 +82,8 @@ Sentinel 恢复证据位于 `benchmarks/c2-cpp-presence-2026-08-28/`。隔离的
 ## Offset 与重试边界
 
 节点 transport shadow 使用 canonical gRPC `NodeDeliveryService.ObserveNodeBatch`。返回的 `NodeDeliveryObservation` 只证明 Gateway 节点验证并接纳了观察任务，可表达 `OBSERVED`、`REJECTED`、`BACKPRESSURED` 和稳定 batch 去重；它不声明 WebSocket queue 已入队。真实客户端投递继续使用独立 `DeliveryAck` 语义，后续 promotion 前再增加对应 RPC。
+
+Gateway 已提供默认关闭的 observation receiver。启用时，它在独立 loopback listener 上只接受共享密钥或 mTLS 认证后的 `dipole-realtime`，要求批次目标与本机 Redis Presence node ID 一致，并将 protobuf clone 放入有界内存队列。receiver 的 sink 只累计批次、条目和 connection 数，不持有 Hub/Client 引用；重复 batch 返回 `duplicate=true`，队列满返回容量、深度和重试提示。关闭流程先停止 RPC 接入，再排空观察队列。该接收端尚未进入生产 Compose，C++ transport client 仍待连接。
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 

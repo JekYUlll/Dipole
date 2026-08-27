@@ -147,23 +147,27 @@ type Sync struct {
 }
 
 type InternalRPC struct {
-	Enabled                bool   `mapstructure:"enabled"`
-	SharedSecret           string `mapstructure:"shared_secret"`
-	CoreListenAddress      string `mapstructure:"core_listen_address"`
-	CoreTarget             string `mapstructure:"core_target"`
-	MessageListenAddress   string `mapstructure:"message_listen_address"`
-	MessageTarget          string `mapstructure:"message_target"`
-	SearchListenAddress    string `mapstructure:"search_listen_address"`
-	SearchTarget           string `mapstructure:"search_target"`
-	SyncListenAddress      string `mapstructure:"sync_listen_address"`
-	SyncTarget             string `mapstructure:"sync_target"`
-	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
-	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
-	TLSEnabled             bool   `mapstructure:"tls_enabled"`
-	TLSCertFile            string `mapstructure:"tls_cert_file"`
-	TLSKeyFile             string `mapstructure:"tls_key_file"`
-	TLSCAFile              string `mapstructure:"tls_ca_file"`
-	TLSServerName          string `mapstructure:"tls_server_name"`
+	Enabled                          bool   `mapstructure:"enabled"`
+	SharedSecret                     string `mapstructure:"shared_secret"`
+	CoreListenAddress                string `mapstructure:"core_listen_address"`
+	CoreTarget                       string `mapstructure:"core_target"`
+	MessageListenAddress             string `mapstructure:"message_listen_address"`
+	MessageTarget                    string `mapstructure:"message_target"`
+	SearchListenAddress              string `mapstructure:"search_listen_address"`
+	SearchTarget                     string `mapstructure:"search_target"`
+	SyncListenAddress                string `mapstructure:"sync_listen_address"`
+	SyncTarget                       string `mapstructure:"sync_target"`
+	DeliveryObservationEnabled       bool   `mapstructure:"delivery_observation_enabled"`
+	DeliveryObservationListenAddress string `mapstructure:"delivery_observation_listen_address"`
+	DeliveryObservationCapacity      int    `mapstructure:"delivery_observation_capacity"`
+	DeliveryObservationRetryAfterMS  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DialTimeoutSeconds               int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds           int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled                       bool   `mapstructure:"tls_enabled"`
+	TLSCertFile                      string `mapstructure:"tls_cert_file"`
+	TLSKeyFile                       string `mapstructure:"tls_key_file"`
+	TLSCAFile                        string `mapstructure:"tls_ca_file"`
+	TLSServerName                    string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
@@ -418,6 +422,10 @@ func Load() error {
 		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.delivery_observation_enabled", false)
+		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
+		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
+		v.SetDefault("internal_rpc.delivery_observation_retry_after_ms", 25)
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)
@@ -589,6 +597,10 @@ func Load() error {
 			"internal_rpc.search_target",
 			"internal_rpc.sync_listen_address",
 			"internal_rpc.sync_target",
+			"internal_rpc.delivery_observation_enabled",
+			"internal_rpc.delivery_observation_listen_address",
+			"internal_rpc.delivery_observation_capacity",
+			"internal_rpc.delivery_observation_retry_after_ms",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -942,6 +954,12 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
 	internalRPC.SearchListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.search_listen_address"))
 	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
+	internalRPC.SyncListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.sync_listen_address"))
+	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
+	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
+	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
+	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")
+	internalRPC.DeliveryObservationRetryAfterMS = cfg.GetInt("internal_rpc.delivery_observation_retry_after_ms")
 	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
 	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
 	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")
