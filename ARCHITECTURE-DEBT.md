@@ -18,8 +18,8 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布
-- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。security suite 串联真实结构边界。真实 Shadow adapter 现通过 sqlc/TS 共享只读查询提取 Task/Run/Context/Step/Artifact/ModelCall/ToolCall，将数据库 observation 与版本化评审 manifest 合成五类 Suite；Task/Run 摘要绑定 case ID，独立 MySQL 账号仅具八张审计表 SELECT。缺失终态、指标或路由价格时 fail closed。通过门槛的 v2 证据可由独立 CLI 发布为 completed Shadow Run 绑定的不可变 `promotion_evaluation` Artifact，并返回只含 Artifact/content/Suite hash 与 candidate/Definition 绑定的低敏收据；Core 对该终态例外复核固定 envelope 和 metadata。Gateway-only review projection 让已授权 operator 按 Proposal 读取重新验哈希的精确正文，同时保持 Task-principal 下载边界。migration v32 以 durable grant 绑定 candidate、pinned Definition、promotion v2 evidence 与 Eval Suite SHA-256；migration v33 控制面要求 tenant-scoped operator Grant、不同 proposer/reviewer、不可变评测 Artifact provenance 和事务化 Grant 签发/撤销审计。active context 会逐次重查有效期和撤销状态。
-- **风险：** 当前证据可证明 Harness、结构性门禁和真实持久执行转换语义。缺少人工标注的 Project Guardian outcome/evidence、reviewer agreement、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本分位阈值时，`eligible` 仍无法证明产品效果或生产成本满足目标。Step 表仅保存最后一次 attempt 的时间，真实 adapter 会拒绝 `attempt_count != 1`，逐 attempt 成本审计仍待补充。
+- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。security suite 串联真实结构边界。真实 Shadow adapter 现通过 sqlc/TS 共享只读查询提取 Task/Run/Context/Step/Artifact/ModelCall/ToolCall，将数据库 observation 与版本化评审 manifest 合成五类 Suite；Task/Run 摘要绑定 case ID，独立 MySQL 账号仅具八张审计表 SELECT。通过门槛的 v2 证据可发布为不可变 `promotion_evaluation` Artifact，并通过 Gateway-only projection 审阅。Subscription corpus review v1 另以 corpus SHA-256 绑定双 reviewer 完整标签和第三方分歧裁决，输出不含正文/身份的 agreement 报告。migration v32/v33 已建立 durable grant 与双人控制面，active context 会逐次重查有效期和撤销状态。
+- **风险：** 当前证据可证明 Harness、结构性门禁、评审一致性合同和真实持久执行转换语义。缺少实际归档的 Project Guardian outcome/evidence 与 review 报告、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本分位阈值时，`eligible` 仍无法证明产品效果或生产成本满足目标。Step 表仅保存最后一次 attempt 的时间，真实 adapter 会拒绝 `attempt_count != 1`，逐 attempt 成本审计仍待补充。
 - **建议方向：** 建立版本化 Project Guardian corpus 和双评审 agreement，使用真实 adapter 按场景统计 precision/recall、trajectory 差异和成本分位数；报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 
@@ -62,7 +62,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Trigger Engine、Definition 授权、模型成本、Gateway/前端配置与 Project Guardian 演示
-- **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。创建重新校验 Definition/tenant/Agent/read scope，将大小写无关关键词集合规范化后生成稳定 ID，精确重放收敛。TS Runtime 可显式在 EventLedger、Temporal 和模型前确定性过滤。语言中立 prefilter Eval 已支持有界标签 corpus、`rule|embedding|small_model` candidate evidence、混淆矩阵、precision/recall、p95 延迟和单事件成本；首个规则基线复用生产 matcher。Compose 与默认配置继续使用 `direct_target`。
+- **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。TS Runtime 可在 EventLedger、Temporal 和模型前确定性过滤。语言中立 prefilter Eval 已支持有界标签 corpus、三类 candidate evidence、分类/延迟/成本指标和生产规则基线；corpus review v1 要求双 reviewer 完整标签、第三方分歧裁决并输出低敏 agreement 证据。Compose 与默认配置继续使用 `direct_target`。
 - **风险：** 管理能力目前仅为 Gateway-only 内部 gRPC，尚无公开 HTTP/Pencil 用户界面；确定性关键词无法覆盖语义等价表达。直接启用共享环境订阅模式仍会造成难以运维的策略或相关事件漏触发。
 - **建议方向：** Pencil transport 恢复后增加 owner 管理页面和公开 Gateway adapter；使用同一 reviewed corpus 采集 embedding 与小模型 candidate evidence，并与规则基线比较。高成本 Agent 只接收预筛后的事件。
 - **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成用户管理界面，归档真实事件 corpus、reviewer agreement 和至少一个候选 evidence/report；synthetic 规则示例只证明 Harness。语义预筛需先离线达标，不能直接对每条消息调用大模型。

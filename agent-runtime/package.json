@@ -15,6 +15,7 @@
     "context:calibrate": "tsx src/context/token-calibration-cli.ts",
     "eval:offline": "tsx src/evals/offline-eval-cli.ts",
     "eval:prefilter": "tsx src/evals/subscription-prefilter-eval-cli.ts",
+    "eval:prefilter-review": "tsx src/evals/subscription-corpus-review-cli.ts",
     "eval:shadow": "tsx src/evals/shadow-eval-cli.ts",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
