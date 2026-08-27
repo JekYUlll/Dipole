@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 增加首个独立 C++20 Realtime Delivery foundation：CMake 在 build 目录从 canonical `dipole.delivery.v1` 生成 C++ Protobuf 类型，手写 validator 与 Go 共用三组 golden vectors，并以 `contract_only` CLI/进程验证 envelope、节点批次和背压 ACK。进程启动前完成契约校验，只暴露 `/livez`、`/readyz`、`/health`，host/port/mode 非法时 fail closed；当前未消费 Kafka、查询 Redis、写客户端或进入 Compose。统一门禁使用系统 GCC 13、Protobuf 3.21、`-Werror`、clang-tidy 和 CTest。
 - C2 建立语言无关的 `dipole.delivery.v1` 实时投递契约：`DeliveryEnvelope` 固定 Kafka source coordinates 与用户级投递项，`NodeDeliveryBatch` 固定 Presence 解析后的节点/connection 批次，逐项 ACK 覆盖 enqueued、offline、backpressured、rejected 和 failed，并用饱和队列 retry hint 表达背压。三个 Protobuf JSON golden vectors 与 Go fail-closed validator 约束枚举、时间戳、批次上限、ID 唯一性和 ACK 一致性；legacy adapter 可映射现有 Go Hub 返回值但暂不接管流量，默认仍为 Go Delivery。
 - C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA、关闭 embedded Agent，并依次等待基础设施、执行 MinIO 初始化和 one-shot migration 后启动独立 project，`down` 保留候选卷。迁移编排不进入基础 Compose 服务依赖，既有共享拓扑继续支持 `compose start`。canonical Compose gate 同时验证默认和候选渲染。
 - C1 归档同一候选镜像下 20/50/100 并发连接、每连接 2 条消息的 Go 实时数据面梯度证据：三档接收、持久化和投递率均为 100%，Kafka lag 最终归零；吞吐从 2.51 增至 4.85 msg/s 的同时 P95 从 1.07s 增至 8.08s，提示下一步需用故障恢复和分段剖析定位等待/串行化路径。
