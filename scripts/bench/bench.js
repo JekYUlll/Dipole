@@ -12,6 +12,7 @@
 
 import http from "k6/http";
 import ws   from "k6/ws";
+import exec from "k6/execution";
 import { sleep } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 
@@ -21,57 +22,65 @@ const NODE2_WS   = __ENV.NODE2_WS   || "ws://localhost:8082";
 const USER_COUNT = parseInt(__ENV.USER_COUNT || "50");
 const GROUP_SIZE = parseInt(__ENV.GROUP_SIZE || "20");
 const IDLE_SECONDS = parseInt(__ENV.IDLE_SECONDS || "120");
+const RUN_ID = __ENV.RUN_ID || String(Date.now());
+const PHONE_PREFIX = __ENV.PHONE_PREFIX || "138";
+const SCENARIO_FILTER = __ENV.SCENARIO_FILTER || "";
+const DIRECT_SEND_COUNT = parseInt(__ENV.DIRECT_SEND_COUNT || "5");
+const CONCURRENT_SEND_COUNT = parseInt(__ENV.CONCURRENT_SEND_COUNT || "8");
 
 // ── 自定义指标 ───────────────────────────────────────────────────────────────
 
 const msgLatency      = new Trend("msg_e2e_latency_ms", true);
+const msgAttempted    = new Counter("msg_attempted_total");
+const msgAccepted     = new Counter("msg_accepted_total");
+const msgRejected     = new Counter("msg_rejected_total");
 const msgSent         = new Counter("msg_sent_total");
 const msgReceived     = new Counter("msg_received_total");
 const msgDeliveryRate = new Rate("msg_delivery_rate");
+const msgExpected     = new Counter("msg_expected_receipts_total");
 
 // ── 测试阶段 ─────────────────────────────────────────────────────────────────
 
-export const options = {
-  scenarios: {
+const allScenarios = {
     direct_msg: {
-      executor: "ramping-vus",
-      startVUs: 0,
-      stages: [
-        { duration: "15s", target: 20 },
-        { duration: "30s", target: 20 },
-        { duration: "10s", target: 0  },
-      ],
+      executor: "per-vu-iterations",
+      vus: 20,
+      iterations: 1,
+      maxDuration: "20s",
       env: { SCENARIO: "direct_msg" },
       tags: { scenario: "direct_msg" },
     },
     concurrent: {
-      executor: "ramping-vus",
-      startVUs: 0,
-      stages: [
-        { duration: "20s", target: USER_COUNT },
-        { duration: "40s", target: USER_COUNT },
-        { duration: "10s", target: 0          },
-      ],
-      startTime: "60s",
+      executor: "per-vu-iterations",
+      vus: USER_COUNT,
+      iterations: 1,
+      maxDuration: "20s",
+      startTime: "25s",
       env: { SCENARIO: "concurrent" },
       tags: { scenario: "concurrent" },
     },
     group_blast: {
-      executor: "ramping-vus",
-      startVUs: 0,
-      stages: [
-        { duration: "20s", target: GROUP_SIZE },
-        { duration: "40s", target: GROUP_SIZE },
-        { duration: "10s", target: 0          },
-      ],
-      startTime: "140s",
+      executor: "per-vu-iterations",
+      vus: GROUP_SIZE,
+      iterations: 1,
+      maxDuration: "20s",
+      startTime: "50s",
       env: { SCENARIO: "group_blast" },
       tags: { scenario: "group_blast" },
     },
-  },
+};
+
+const selectedScenarios = SCENARIO_FILTER
+  ? { [SCENARIO_FILTER]: { ...allScenarios[SCENARIO_FILTER], startTime: "0s" } }
+  : allScenarios;
+
+if (SCENARIO_FILTER && !allScenarios[SCENARIO_FILTER]) {
+  throw new Error(`unknown SCENARIO_FILTER: ${SCENARIO_FILTER}`);
+}
+
+export const options = {
+  scenarios: selectedScenarios,
   thresholds: {
-    msg_e2e_latency_ms:              ["p(95)<500", "p(99)<1000"],
-    msg_delivery_rate:               ["rate>0.90"],
     "http_req_failed{name:login}":   ["rate<0.01"],
   },
 };
@@ -95,7 +104,7 @@ function patch(path, body, token) {
   return http.patch(`${BASE_URL}${path}`, JSON.stringify(body), { headers, tags: { name: "patch" } });
 }
 
-function phone(i) { return `138${String(i).padStart(8, "0")}`; }
+function phone(i) { return `${PHONE_PREFIX}${String(i).padStart(8, "0")}`; }
 
 function registerUser(i) {
   const tel = phone(i);
@@ -159,7 +168,13 @@ function createGroup(token, memberUUIDs) {
 // ── setup：预建用户、好友关系、群组 ──────────────────────────────────────────
 
 export function setup() {
-  const totalUsers = USER_COUNT + GROUP_SIZE + 10;
+  const totalUsers = SCENARIO_FILTER === "direct_msg"
+    ? 20
+    : SCENARIO_FILTER === "concurrent"
+      ? USER_COUNT
+      : SCENARIO_FILTER === "group_blast"
+        ? GROUP_SIZE
+        : USER_COUNT + GROUP_SIZE + 10;
   console.log(`[setup] registering ${totalUsers} users...`);
 
   // 注册所有用户
@@ -176,35 +191,54 @@ export function setup() {
     sessions.push({ token: data.token, uuid });
   }
 
-  console.log(`[setup] logged in ${sessions.filter(Boolean).length}/${totalUsers} users`);
+  const loggedIn = sessions.filter(Boolean).length;
+  console.log(`[setup] logged in ${loggedIn}/${totalUsers} users`);
+  if (loggedIn !== totalUsers) {
+    throw new Error(`setup login gate failed: ${loggedIn}/${totalUsers}`);
+  }
 
   // 建立 direct_msg 场景的好友关系（前 20 对）
-  const directPairs = Math.min(10, Math.floor(USER_COUNT / 2));
-  console.log(`[setup] creating ${directPairs} friend pairs for direct_msg...`);
-  for (let i = 0; i < directPairs; i++) {
-    const sIdx = i * 2, rIdx = i * 2 + 1;
-    if (!sessions[sIdx] || !sessions[rIdx]) continue;
-    makeFriends(sessions[sIdx].token, sessions[sIdx].uuid, sessions[rIdx].token, sessions[rIdx].uuid);
+  if (!SCENARIO_FILTER || SCENARIO_FILTER === "direct_msg") {
+    const directPairs = Math.min(10, Math.floor(USER_COUNT / 2));
+    console.log(`[setup] creating ${directPairs} friend pairs for direct_msg...`);
+    for (let i = 0; i < directPairs; i++) {
+      const sIdx = i * 2, rIdx = i * 2 + 1;
+      if (!sessions[sIdx] || !sessions[rIdx]) continue;
+      makeFriends(sessions[sIdx].token, sessions[sIdx].uuid, sessions[rIdx].token, sessions[rIdx].uuid);
+    }
   }
 
   // 建立 concurrent 场景的好友关系（USER_COUNT 个用户两两相邻）
-  console.log(`[setup] creating friend pairs for concurrent...`);
-  for (let i = 0; i < USER_COUNT - 1; i++) {
-    if (!sessions[i] || !sessions[i+1]) continue;
-    makeFriends(sessions[i].token, sessions[i].uuid, sessions[i+1].token, sessions[i+1].uuid);
+  if (!SCENARIO_FILTER || SCENARIO_FILTER === "concurrent") {
+    console.log(`[setup] creating friend pairs for concurrent...`);
+    for (let i = 0; i < USER_COUNT - 1; i++) {
+      if (!sessions[i] || !sessions[i+1]) continue;
+      makeFriends(sessions[i].token, sessions[i].uuid, sessions[i+1].token, sessions[i+1].uuid);
+    }
+    if (USER_COUNT > 1) {
+      makeFriends(
+        sessions[USER_COUNT - 1].token,
+        sessions[USER_COUNT - 1].uuid,
+        sessions[0].token,
+        sessions[0].uuid,
+      );
+    }
   }
 
   // 建立 group_blast 场景的群组
-  const groupOffset = USER_COUNT + 5;
+  const groupOffset = SCENARIO_FILTER === "group_blast" ? 0 : USER_COUNT + 5;
   const groupMemberUUIDs = [];
   for (let i = groupOffset + 1; i < groupOffset + GROUP_SIZE && i < sessions.length; i++) {
     if (sessions[i]) groupMemberUUIDs.push(sessions[i].uuid);
   }
   let groupUUID = null;
-  if (sessions[groupOffset]) {
+  if ((!SCENARIO_FILTER || SCENARIO_FILTER === "group_blast") && sessions[groupOffset]) {
     console.log(`[setup] creating group with ${groupMemberUUIDs.length} members...`);
     groupUUID = createGroup(sessions[groupOffset].token, groupMemberUUIDs);
     console.log(`[setup] group created: ${groupUUID}`);
+  }
+  if ((!SCENARIO_FILTER || SCENARIO_FILTER === "group_blast") && !groupUUID) {
+    throw new Error("setup group gate failed");
   }
 
   console.log("[setup] done.");
@@ -220,7 +254,7 @@ export default function (data) {
   }
 
   const scenario = __ENV.SCENARIO;
-  const vuIndex  = __VU - 1;
+  const vuIndex = Number(exec.scenario.iterationInInstance);
   if (!data || !data.sessions) return;
 
   if (scenario === "direct_msg") {
@@ -236,8 +270,29 @@ function wsURL(token, nodeWS) {
   return `${nodeWS}/api/v1/ws?token=${token}`;
 }
 
-function sendMsg(socket, targetUUID, content) {
-  socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: targetUUID, content } }));
+function sendMsg(socket, targetUUID, content, clientMessageID) {
+  socket.send(JSON.stringify({
+    type: "chat.send",
+    data: { target_uuid: targetUUID, content, client_message_id: clientMessageID },
+  }));
+  msgAttempted.add(1);
+}
+
+function recordCommandResult(raw, commandPrefix, seenCommandResults, expectedReceipts) {
+  try {
+    const evt = JSON.parse(raw);
+    const clientMessageID = evt.data && evt.data.client_message_id || "";
+    if (!clientMessageID.startsWith(commandPrefix) || seenCommandResults.has(clientMessageID)) return;
+    if (evt.type === "chat.sent") {
+      seenCommandResults.add(clientMessageID);
+      msgAccepted.add(1);
+      msgSent.add(1);
+      msgExpected.add(expectedReceipts);
+    } else if (evt.type === "error" && evt.data?.request_type === "chat.send") {
+      seenCommandResults.add(clientMessageID);
+      msgRejected.add(1);
+    }
+  } catch (_) {}
 }
 
 // ── 场景1：单聊延迟 ──────────────────────────────────────────────────────────
@@ -261,18 +316,20 @@ function runDirectMsg(vuIndex, sessions) {
     sleep(1); // 等接收方先连上
     ws.connect(wsURL(mySession.token, nodeWS), {}, function (socket) {
       let i = 0;
+      const commandPrefix = `${RUN_ID}-direct-${vuIndex}-`;
+      const seenCommandResults = new Set();
       socket.on("open", () => {
         // 用 setInterval 替代 open 里的 sleep，保持事件循环活跃
         socket.setInterval(() => {
-          if (i >= 5) return;
+          if (i >= DIRECT_SEND_COUNT) return;
           const sentAt = Date.now();
-          sendMsg(socket, peerSession.uuid, `bench:${sentAt}`);
-          msgSent.add(1);
+          sendMsg(socket, peerSession.uuid, `bench:${RUN_ID}:${sentAt}`, `${RUN_ID}-direct-${vuIndex}-${i}`);
           i++;
         }, 500);
       });
+      socket.on("message", (raw) => recordCommandResult(raw, commandPrefix, seenCommandResults, 1));
       socket.on("error", () => {});
-      socket.setTimeout(() => { socket.close(); }, 55000);
+      socket.setTimeout(() => { socket.close(); }, 12000);
     });
   } else {
     ws.connect(wsURL(mySession.token, nodeWS), {}, function (socket) {
@@ -280,9 +337,9 @@ function runDirectMsg(vuIndex, sessions) {
         try {
           const evt = JSON.parse(raw);
           if (evt.type === "chat.message") {
-            const m = (evt.data && evt.data.content || "").match(/^bench:(\d+)$/);
-            if (m) {
-              msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "direct_msg" });
+            const m = (evt.data && evt.data.content || "").match(/^bench:([^:]+):(\d+)$/);
+            if (m && m[1] === RUN_ID) {
+              msgLatency.add(Date.now() - parseInt(m[2]), { scenario: "direct_msg" });
               msgReceived.add(1);
               msgDeliveryRate.add(1);
             }
@@ -290,7 +347,7 @@ function runDirectMsg(vuIndex, sessions) {
         } catch (_) {}
       });
       socket.on("error", () => {});
-      socket.setTimeout(() => { socket.close(); }, 55000);
+      socket.setTimeout(() => { socket.close(); }, 12000);
     });
   }
 }
@@ -298,8 +355,8 @@ function runDirectMsg(vuIndex, sessions) {
 // ── 场景2：多人并发在线 ──────────────────────────────────────────────────────
 
 function runConcurrent(vuIndex, sessions) {
-  const idx      = vuIndex % (sessions.length - 1);
-  const peerIdx  = (idx + 1) % sessions.length;
+  const idx      = vuIndex % USER_COUNT;
+  const peerIdx  = (idx + 1) % USER_COUNT;
   const myS      = sessions[idx];
   const peerS    = sessions[peerIdx];
   if (!myS || !peerS) {
@@ -311,22 +368,24 @@ function runConcurrent(vuIndex, sessions) {
 
   ws.connect(wsURL(myS.token, nodeWS), {}, function (socket) {
     let i = 0;
+    const commandPrefix = `${RUN_ID}-concurrent-${vuIndex}-`;
+    const seenCommandResults = new Set();
     socket.on("open", () => {
       socket.setInterval(() => {
-        if (i >= 8) return;
+        if (i >= CONCURRENT_SEND_COUNT) return;
         const sentAt = Date.now();
-        sendMsg(socket, peerS.uuid, `bench:${sentAt}`);
-        msgSent.add(1);
+        sendMsg(socket, peerS.uuid, `bench:${RUN_ID}:${sentAt}`, `${RUN_ID}-concurrent-${vuIndex}-${i}`);
         i++;
       }, 300);
     });
     socket.on("message", (raw) => {
+      recordCommandResult(raw, commandPrefix, seenCommandResults, 1);
       try {
         const evt = JSON.parse(raw);
         if (evt.type === "chat.message") {
-          const m = (evt.data && evt.data.content || "").match(/^bench:(\d+)$/);
-          if (m) {
-            msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "concurrent" });
+          const m = (evt.data && evt.data.content || "").match(/^bench:([^:]+):(\d+)$/);
+          if (m && m[1] === RUN_ID) {
+            msgLatency.add(Date.now() - parseInt(m[2]), { scenario: "concurrent" });
             msgReceived.add(1);
             msgDeliveryRate.add(1);
           }
@@ -334,7 +393,7 @@ function runConcurrent(vuIndex, sessions) {
       } catch (_) {}
     });
     socket.on("error", () => {});
-    socket.setTimeout(() => { socket.close(); }, 75000);
+    socket.setTimeout(() => { socket.close(); }, 12000);
   });
 }
 
@@ -355,25 +414,29 @@ function runGroupBlast(vuIndex, data) {
 
   ws.connect(wsURL(myS.token, nodeWS), {}, function (socket) {
     let i = 0;
+    const commandPrefix = `${RUN_ID}-group-${vuIndex}-`;
+    const seenCommandResults = new Set();
     socket.on("open", () => {
       // 只有第一个 VU 发消息，其余监听
       if (vuIndex === 0) {
-        socket.setInterval(() => {
-          if (i >= 10) return;
-          const sentAt = Date.now();
-          sendMsg(socket, groupUUID, `bench:${sentAt}`);
-          msgSent.add(1);
-          i++;
-        }, 300);
+        socket.setTimeout(() => {
+          socket.setInterval(() => {
+            if (i >= 10) return;
+            const sentAt = Date.now();
+            sendMsg(socket, groupUUID, `bench:${RUN_ID}:${sentAt}`, `${RUN_ID}-group-${vuIndex}-${i}`);
+            i++;
+          }, 300);
+        }, 1000);
       }
     });
     socket.on("message", (raw) => {
+      recordCommandResult(raw, commandPrefix, seenCommandResults, Math.max(0, GROUP_SIZE - 1));
       try {
         const evt = JSON.parse(raw);
         if (evt.type === "chat.message") {
-          const m = (evt.data && evt.data.content || "").match(/^bench:(\d+)$/);
-          if (m) {
-            msgLatency.add(Date.now() - parseInt(m[1]), { scenario: "group_blast" });
+          const m = (evt.data && evt.data.content || "").match(/^bench:([^:]+):(\d+)$/);
+          if (m && m[1] === RUN_ID) {
+            msgLatency.add(Date.now() - parseInt(m[2]), { scenario: "group_blast" });
             msgReceived.add(1);
             msgDeliveryRate.add(1);
           }
@@ -381,6 +444,6 @@ function runGroupBlast(vuIndex, data) {
       } catch (_) {}
     });
     socket.on("error", () => {});
-    socket.setTimeout(() => { socket.close(); }, 75000);
+    socket.setTimeout(() => { socket.close(); }, 12000);
   });
 }

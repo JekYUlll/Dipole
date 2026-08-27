@@ -16,6 +16,7 @@ func (stubCoreCapability) GetGroupByUUID(string) (*model.Group, error)          
 func (stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
 func (stubCoreCapability) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
+func (stubCoreCapability) ListSearchConversationKeys(string) ([]string, error)       { return nil, nil }
 
 func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 	workingDirectory, err := os.Getwd()
@@ -38,6 +39,7 @@ func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 	}
 
 	required := map[string]any{
+		"core":          services.Core,
 		"files":         services.Files,
 		"messages":      services.Messages,
 		"conversations": services.Conversations,
@@ -52,7 +54,10 @@ func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 
 func TestNewMessagingServicesAcceptsRemoteCompatibleCoreCapability(t *testing.T) {
 	services := NewMessagingServices(&Repositories{}, MessagingDependencies{Core: stubCoreCapability{}})
-	if services == nil || services.Messages == nil {
+	if services == nil || services.Messages == nil || services.Core == nil {
 		t.Fatal("expected messaging services with injected core capability")
+	}
+	if _, ok := services.Core.(stubCoreCapability); !ok {
+		t.Fatalf("injected Core capability was not preserved: %T", services.Core)
 	}
 }

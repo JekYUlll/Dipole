@@ -1,0 +1,40 @@
+groups:
+  - name: dipole-duplicate-hydration
+    rules:
+      - record: dipole:duplicate_hydration:hits_24h
+        expr: sum(increase(dipole_message_duplicate_hydration_total{outcome="hit"}[24h]))
+
+      - record: dipole:duplicate_hydration:fallbacks_24h
+        expr: sum(increase(dipole_message_duplicate_hydration_total{outcome="fallback"}[24h]))
+
+      - record: dipole:duplicate_hydration:no_seq_24h
+        expr: sum(increase(dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}[24h]))
+
+      - record: dipole:duplicate_hydration:window_complete
+        expr: (count(dipole_message_duplicate_hydration_total{outcome="hit"} offset 24h) or vector(0)) > bool 0
+
+      - record: dipole:duplicate_hydration:promotion_ready
+        expr: |
+          dipole:duplicate_hydration:window_complete
+          * (dipole:duplicate_hydration:hits_24h >= bool 100)
+          * (dipole:duplicate_hydration:fallbacks_24h == bool 0)
+          * (dipole:duplicate_hydration:no_seq_24h == bool 0)
+
+      - alert: DipoleDuplicateHydrationFallbackRateHigh
+        expr: |
+          sum(rate(dipole_message_duplicate_hydration_total{outcome="fallback"}[5m]))
+          /
+          clamp_min(sum(rate(dipole_message_duplicate_hydration_total[5m])), 0.001)
+          > 0.01
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Duplicate hydration fallback ratio remains above one percent
+
+      - alert: DipoleDuplicateHydrationMissingSequence
+        expr: sum(increase(dipole_message_duplicate_hydration_total{outcome="skipped_no_seq"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Duplicate hydration observed historical metadata without a conversation sequence

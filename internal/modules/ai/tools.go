@@ -12,36 +12,37 @@ import (
 	einoTool "github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 const (
-	ToolGetUserProfile          = "get_user_profile"
-	ToolListUserConversations   = "list_user_conversations"
-	ToolReadConversation        = "read_conversation"
+	ToolGetUserProfile        = "get_user_profile"
+	ToolListUserConversations = "list_user_conversations"
+	ToolReadConversation      = "read_conversation"
 )
 
 type userProfileTool struct {
-	users userReader
+	capability    application.AgentCapabilityV1
+	assistantUUID string
 }
 
 type recentMessageSearchTool struct {
-	messages      messageReader
+	capability    application.AgentCapabilityV1
 	assistantUUID string
 }
 
 type systemMessageTool struct {
-	sender        systemMessageSender
+	capability    application.AgentCapabilityV1
 	assistantUUID string
 }
 
 type listUserConversationsTool struct {
-	conversations conversationReader
+	capability application.AgentCapabilityV1
 }
 
 type readConversationTool struct {
-	conversations conversationReader
-	messages      messageReader
+	capability application.AgentCapabilityV1
 }
 
 type toolExecutionState struct {
@@ -51,41 +52,25 @@ type toolExecutionState struct {
 
 type toolExecutionStateKey struct{}
 
-// interfaces
-
-type conversationReader interface {
-	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
-	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
-}
-
-type systemMessageSender interface {
-	SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
-}
-
 // input types
 
 type getUserProfileInput struct {
-	UserUUID string `json:"user_uuid"`
 }
 
 type searchRecentMessagesInput struct {
-	UserUUID string `json:"user_uuid"`
-	Query    string `json:"query"`
-	Limit    int    `json:"limit"`
+	Query string `json:"query"`
+	Limit int    `json:"limit"`
 }
 
 type sendSystemMessageInput struct {
-	UserUUID string `json:"user_uuid"`
-	Content  string `json:"content"`
+	Content string `json:"content"`
 }
 
 type listUserConversationsInput struct {
-	UserUUID string `json:"user_uuid"`
-	Limit    int    `json:"limit"`
+	Limit int `json:"limit"`
 }
 
 type readConversationInput struct {
-	UserUUID   string `json:"user_uuid"`
 	TargetUUID string `json:"target_uuid"`
 	Limit      int    `json:"limit"`
 }
@@ -152,73 +137,59 @@ type toolReadConversationResult struct {
 
 // constructors
 
-func NewTools(users userReader, messages messageReader, conversations conversationReader, sender systemMessageSender, assistantUUID string) []einoTool.BaseTool {
-	tools := make([]einoTool.BaseTool, 0, 5)
-	if users != nil {
-		tools = append(tools, NewUserProfileTool(users))
+func NewTools(capability application.AgentCapabilityV1, assistantUUID string) []einoTool.BaseTool {
+	if capability == nil {
+		return nil
 	}
-	if messages != nil {
-		tools = append(tools, NewRecentMessageSearchTool(messages, assistantUUID))
+	return []einoTool.BaseTool{
+		NewUserProfileTool(capability, assistantUUID),
+		NewRecentMessageSearchTool(capability, assistantUUID),
+		NewListUserConversationsTool(capability),
+		NewReadConversationTool(capability),
+		NewSystemMessageTool(capability, assistantUUID),
 	}
-	if conversations != nil {
-		tools = append(tools, NewListUserConversationsTool(conversations))
-		if messages != nil {
-			tools = append(tools, NewReadConversationTool(conversations, messages))
-		}
-	}
-	if sender != nil {
-		tools = append(tools, NewSystemMessageTool(sender, assistantUUID))
-	}
-	return tools
 }
 
-func NewUserProfileTool(users userReader) einoTool.BaseTool {
-	return &userProfileTool{users: users}
+func NewUserProfileTool(capability application.AgentCapabilityV1, assistantUUID string) einoTool.BaseTool {
+	return &userProfileTool{capability: capability, assistantUUID: strings.TrimSpace(assistantUUID)}
 }
 
-func NewRecentMessageSearchTool(messages messageReader, assistantUUID string) einoTool.BaseTool {
+func NewRecentMessageSearchTool(capability application.AgentCapabilityV1, assistantUUID string) einoTool.BaseTool {
 	return &recentMessageSearchTool{
-		messages:      messages,
+		capability:    capability,
 		assistantUUID: strings.TrimSpace(assistantUUID),
 	}
 }
 
-func NewSystemMessageTool(sender systemMessageSender, assistantUUID string) einoTool.BaseTool {
+func NewSystemMessageTool(capability application.AgentCapabilityV1, assistantUUID string) einoTool.BaseTool {
 	return &systemMessageTool{
-		sender:        sender,
+		capability:    capability,
 		assistantUUID: strings.TrimSpace(assistantUUID),
 	}
 }
 
-func NewListUserConversationsTool(conversations conversationReader) einoTool.BaseTool {
-	return &listUserConversationsTool{conversations: conversations}
+func NewListUserConversationsTool(capability application.AgentCapabilityV1) einoTool.BaseTool {
+	return &listUserConversationsTool{capability: capability}
 }
 
-func NewReadConversationTool(conversations conversationReader, messages messageReader) einoTool.BaseTool {
-	return &readConversationTool{conversations: conversations, messages: messages}
+func NewReadConversationTool(capability application.AgentCapabilityV1) einoTool.BaseTool {
+	return &readConversationTool{capability: capability}
 }
 
 // tool Info and InvokableRun implementations
 
 func (t *userProfileTool) Info(context.Context) (*schema.ToolInfo, error) {
 	return &schema.ToolInfo{
-		Name: ToolGetUserProfile,
-		Desc: "Get a concise user profile by user UUID. Use it when you need nickname, avatar, user type, or current user status.",
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user you want to inspect.",
-				Required: true,
-			},
-		}),
+		Name:        ToolGetUserProfile,
+		Desc:        "Get the current user's concise profile. Use it when you need nickname, avatar, user type, or current user status.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
 	}, nil
 }
 
 func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
-	if t == nil || t.users == nil {
+	if t == nil || t.capability == nil {
 		return "", errors.New("user profile tool is not initialized")
 	}
 
@@ -227,12 +198,18 @@ func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON stri
 		return "", fmt.Errorf("decode get_user_profile input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityUserProfileRead, application.AgentResourceTypeUser, execution.PrincipalUserUUID, application.AgentResourceActionRead); err != nil {
+		return "", err
+	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", application.ErrAgentCapabilityDenied
 	}
 
-	user, err := t.users.GetByUUID(userUUID)
+	user, err := t.capability.GetUserProfile(ctx, execution.invocationV1(), execution.PrincipalUserUUID)
 	if err != nil {
 		return "", fmt.Errorf("get user profile: %w", err)
 	}
@@ -250,11 +227,6 @@ func (t *recentMessageSearchTool) Info(context.Context) (*schema.ToolInfo, error
 		Name: "search_recent_messages",
 		Desc: "Search recent direct conversation messages between the end user and the Dipole AI assistant by keyword. Use it when the user asks you to recall something said earlier.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the end user in the AI direct conversation.",
-				Required: true,
-			},
 			"query": {
 				Type:     schema.String,
 				Desc:     "The keyword or short phrase to search in recent messages.",
@@ -269,10 +241,9 @@ func (t *recentMessageSearchTool) Info(context.Context) (*schema.ToolInfo, error
 }
 
 func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
-	if t == nil || t.messages == nil {
+	if t == nil || t.capability == nil {
 		return "", errors.New("recent message search tool is not initialized")
 	}
 	if strings.TrimSpace(t.assistantUUID) == "" {
@@ -284,11 +255,17 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		return "", fmt.Errorf("decode search_recent_messages input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	query := strings.TrimSpace(input.Query)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityDirectMessagesRead, application.AgentResourceTypeConversation, model.DirectConversationKey(execution.PrincipalUserUUID, execution.AgentUUID), application.AgentResourceActionRead); err != nil {
+		return "", err
+	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", application.ErrAgentCapabilityDenied
+	}
+	query := strings.TrimSpace(input.Query)
 	if query == "" {
 		return "", errors.New("query is required")
 	}
@@ -301,7 +278,7 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		limit = 10
 	}
 
-	items, err := t.messages.ListByConversationKey(model.DirectConversationKey(userUUID, t.assistantUUID), 0, 50)
+	items, err := t.capability.ListDirectMessages(ctx, execution.invocationV1(), 50)
 	if err != nil {
 		return "", fmt.Errorf("list recent messages: %w", err)
 	}
@@ -342,11 +319,6 @@ func (t *systemMessageTool) Info(context.Context) (*schema.ToolInfo, error) {
 		Name: "send_system_message",
 		Desc: "Send a system message to the current user when you intentionally need to deliver an explicit system-style notification.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the target user.",
-				Required: true,
-			},
 			"content": {
 				Type:     schema.String,
 				Desc:     "The system message content to send. Maximum 500 characters.",
@@ -359,7 +331,7 @@ func (t *systemMessageTool) Info(context.Context) (*schema.ToolInfo, error) {
 func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
 	_ = opts
 
-	if t == nil || t.sender == nil {
+	if t == nil || t.capability == nil {
 		return "", errors.New("system message tool is not initialized")
 	}
 	if strings.TrimSpace(t.assistantUUID) == "" {
@@ -371,11 +343,17 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		return "", fmt.Errorf("decode send_system_message input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	content := strings.TrimSpace(input.Content)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilitySystemMessageSend, application.AgentResourceTypeConversation, model.DirectConversationKey(execution.PrincipalUserUUID, execution.AgentUUID), application.AgentResourceActionWrite); err != nil {
+		return "", err
+	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", errors.New("agent execution context does not match system message sender")
+	}
+	content := strings.TrimSpace(input.Content)
 	if content == "" {
 		return "", errors.New("content is required")
 	}
@@ -383,7 +361,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		content = string([]rune(content)[:500])
 	}
 
-	message, err := t.sender.SendSystemDirectMessage(t.assistantUUID, userUUID, content)
+	message, err := t.capability.SendSystemMessage(ctx, execution.invocationV1(), content)
 	if err != nil {
 		return "", fmt.Errorf("send system message: %w", err)
 	}
@@ -392,7 +370,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 	return marshalToolResult(toolSendMessageResult{
 		Sent:        message != nil,
 		MessageUUID: message.UUID,
-		TargetUUID:  userUUID,
+		TargetUUID:  execution.PrincipalUserUUID,
 		MessageType: model.MessageTypeSystem,
 	})
 }
@@ -402,11 +380,6 @@ func (t *listUserConversationsTool) Info(context.Context) (*schema.ToolInfo, err
 		Name: ToolListUserConversations,
 		Desc: "List the user's recent conversations with a short preview of the last message. Use this to discover which conversations are available before reading one.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user whose conversations to list.",
-				Required: true,
-			},
 			"limit": {
 				Type: schema.Integer,
 				Desc: "Maximum number of conversations to return. Default is 10, maximum is 20.",
@@ -416,10 +389,9 @@ func (t *listUserConversationsTool) Info(context.Context) (*schema.ToolInfo, err
 }
 
 func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
-	if t == nil || t.conversations == nil {
+	if t == nil || t.capability == nil {
 		return "", errors.New("list user conversations tool is not initialized")
 	}
 
@@ -428,9 +400,9 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		return "", fmt.Errorf("decode list_user_conversations input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireAuthorizedExecutionForResource(ctx, application.AgentCapabilityConversationsList, application.AgentResourceTypeConversation, application.AgentResourceWildcard, application.AgentResourceActionList)
+	if err != nil {
+		return "", err
 	}
 
 	limit := input.Limit
@@ -441,7 +413,7 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		limit = 20
 	}
 
-	convs, err := t.conversations.ListByUserUUID(userUUID, limit)
+	convs, err := t.capability.ListConversations(ctx, execution.invocationV1(), limit)
 	if err != nil {
 		return "", fmt.Errorf("list user conversations: %w", err)
 	}
@@ -475,11 +447,6 @@ func (t *readConversationTool) Info(context.Context) (*schema.ToolInfo, error) {
 		Name: ToolReadConversation,
 		Desc: "Read recent messages from one of the user's conversations. Only conversations the user participates in are accessible. Use list_user_conversations first to discover available target UUIDs.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user requesting the read.",
-				Required: true,
-			},
 			"target_uuid": {
 				Type:     schema.String,
 				Desc:     "The UUID of the other participant (user UUID for direct, group UUID for group).",
@@ -494,10 +461,9 @@ func (t *readConversationTool) Info(context.Context) (*schema.ToolInfo, error) {
 }
 
 func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
-	if t == nil || t.conversations == nil || t.messages == nil {
+	if t == nil || t.capability == nil {
 		return "", errors.New("read conversation tool is not initialized")
 	}
 
@@ -506,11 +472,12 @@ func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON
 		return "", fmt.Errorf("decode read_conversation input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	targetUUID := strings.TrimSpace(input.TargetUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityConversationRead)
+	if err != nil {
+		return "", err
 	}
+	userUUID := execution.PrincipalUserUUID
+	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if targetUUID == "" {
 		return "", errors.New("target_uuid is required")
 	}
@@ -523,37 +490,34 @@ func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON
 		limit = 50
 	}
 
-	// Determine conversation key and type from target UUID prefix.
-	var conversationKey string
 	targetType := "direct"
 	if strings.HasPrefix(targetUUID, "G") {
-		conversationKey = model.GroupConversationKey(targetUUID)
 		targetType = "group"
-	} else {
-		conversationKey = model.DirectConversationKey(userUUID, targetUUID)
 	}
 
-	// Permission check: verify the user is a participant in this conversation.
-	conv, err := t.conversations.GetByUserAndConversationKey(userUUID, conversationKey)
+	read, err := t.capability.ReadConversation(ctx, execution.invocationV1(), targetUUID, limit)
 	if err != nil {
-		return "", fmt.Errorf("check conversation access: %w", err)
+		return "", fmt.Errorf("read conversation capability: %w", err)
 	}
-	if conv == nil {
+	if read == nil || !read.Found {
+		reason := "conversation_not_found_or_not_accessible"
+		if read != nil && strings.TrimSpace(read.Reason) != "" {
+			reason = read.Reason
+		}
 		return marshalToolResult(toolReadConversationResult{
 			Found:      false,
-			Reason:     "conversation_not_found_or_not_accessible",
+			Reason:     reason,
 			TargetUUID: targetUUID,
 			TargetType: targetType,
 		})
 	}
 
-	items, err := t.messages.ListByConversationKey(conversationKey, 0, limit)
-	if err != nil {
-		return "", fmt.Errorf("read conversation messages: %w", err)
+	if read.TargetType == model.MessageTargetGroup {
+		targetType = "group"
 	}
 
-	messages := make([]toolConversationMessage, 0, len(items))
-	for _, item := range items {
+	messages := make([]toolConversationMessage, 0, len(read.Messages))
+	for _, item := range read.Messages {
 		if item == nil {
 			continue
 		}
@@ -644,4 +608,3 @@ func latestToolSentMessage(ctx context.Context) *model.Message {
 	}
 	return state.sentMessages[len(state.sentMessages)-1]
 }
-

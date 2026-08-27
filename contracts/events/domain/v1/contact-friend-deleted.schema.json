@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/events/domain/v1/contact-friend-deleted.schema.json",
+  "title": "Dipole Contact Friend Deleted v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["event_id", "event_type", "version", "source", "occurred_at", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "const": "contact.friend.deleted"},
+    "version": {"type": "string", "pattern": "^v1(?:\\.[0-9]+)*$"},
+    "source": {"type": "string", "const": "dipole"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "payload": {"$ref": "#/$defs/contact_payload"}
+  },
+  "$defs": {
+    "contact_payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["user_uuid", "friend_uuid", "occurred_at"],
+      "properties": {
+        "user_uuid": {"type": "string", "minLength": 1},
+        "friend_uuid": {"type": "string", "minLength": 1},
+        "occurred_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

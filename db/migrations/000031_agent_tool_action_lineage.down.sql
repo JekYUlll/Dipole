@@ -1,0 +1,9 @@
+ALTER TABLE agent_tool_invocations
+    DROP CHECK chk_agent_tool_invocation_action_reference,
+    DROP INDEX idx_agent_tool_invocation_action_resource,
+    DROP INDEX idx_agent_tool_invocation_approval,
+    DROP COLUMN action_command_id,
+    DROP COLUMN action_command_kind,
+    DROP COLUMN action_resource_uuid,
+    DROP COLUMN action_resource_type,
+    DROP COLUMN approval_uuid;

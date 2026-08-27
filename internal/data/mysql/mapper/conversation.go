@@ -13,6 +13,8 @@ func Conversation(row generated.Conversation) *model.Conversation {
 		TargetUUID:            row.TargetUuid,
 		ConversationKey:       row.ConversationKey,
 		LastMessageUUID:       row.LastMessageUuid,
+		LastMessageSeq:        row.LastMessageSeq,
+		ReadSeq:               row.ReadSeq,
 		LastMessageType:       row.LastMessageType,
 		LastMessagePreview:    row.LastMessagePreview,
 		LastMessageAt:         row.LastMessageAt,

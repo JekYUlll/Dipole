@@ -1,0 +1,11 @@
+{
+  "schema_version": "dipole.agent.projection-reconcile.eval.v1",
+  "cases": [
+    {"id": "projection-match", "projected_status": "running", "projected_revision": 2, "temporal_status": "running", "temporal_revision": 2, "expected": "match"},
+    {"id": "projection-missing", "temporal_status": "created", "temporal_revision": 0, "expected": "missing"},
+    {"id": "projection-stale", "projected_status": "running", "projected_revision": 1, "temporal_status": "running", "temporal_revision": 2, "expected": "stale"},
+    {"id": "projection-ahead", "projected_status": "running", "projected_revision": 3, "temporal_status": "running", "temporal_revision": 2, "expected": "ahead"},
+    {"id": "projection-state-conflict", "projected_status": "waiting_input", "projected_revision": 2, "temporal_status": "waiting_approval", "temporal_revision": 2, "expected": "conflict"},
+    {"id": "projection-workflow-unavailable", "projected_status": "running", "projected_revision": 1, "temporal_error": "unavailable", "expected": "unavailable"}
+  ]
+}

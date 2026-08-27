@@ -1,0 +1,205 @@
+rule_files:
+  - web-sync-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: high sample volume before a full window remains blocked
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}'
+        values: '0 120'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0 0'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="sync_only"}'
+        values: '0 0'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0 0'
+    promql_expr_test:
+      - expr: dipole:web_sync_shadow:promotion_ready
+        eval_time: 1h
+        exp_samples:
+          - labels: '{__name__="dipole:web_sync_shadow:promotion_ready"}'
+            value: 0
+
+  - name: clean shadow window becomes promotion ready
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="sync_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_sync_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_sync_shadow:promotion_ready"}'
+            value: 1
+
+  - name: insufficient sample volume remains blocked
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}'
+        values: '0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="sync_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_sync_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_sync_shadow:promotion_ready"}'
+            value: 0
+
+  - name: terminal divergence blocks promotion
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0+0x23 1 1'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="sync_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_sync_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_sync_shadow:promotion_ready"}'
+            value: 0
+
+  - name: comparison overflow blocks promotion
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="sync_only"}'
+        values: '0+0x25'
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0+0x23 1 1'
+    promql_expr_test:
+      - expr: dipole:web_sync_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_sync_shadow:promotion_ready"}'
+            value: 0
+
+  - name: terminal divergence alerts within the comparison window
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="legacy_only"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebSyncShadowDivergence
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Web Offline and Sync shadow protocols produced a terminal difference
+
+  - name: comparison overflow alerts within the comparison window
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebSyncShadowOverflow
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Web Sync shadow comparator exceeded its bounded local state
+
+  - name: browser storage full alerts on the first observation
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_client_errors_total{outcome="storage_full"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebSyncStorageFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Web Sync could not persist a page because local browser storage is full
+
+  - name: repeated browser sync recovery errors alert
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_sync_client_errors_total{outcome="sync_error"}'
+        values: '0 0 2 4 6 7'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DipoleWebSyncClientErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Web Sync client recovery errors are increasing
+
+  - name: clean Timeline notification shadow window becomes promotion ready
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="missing"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="error"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="invalid"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_timeline_notify_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_timeline_notify_shadow:promotion_ready"}'
+            value: 1
+
+  - name: Timeline notification mismatch alerts and blocks promotion
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="missing"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0+0x23 1 1'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="error"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="invalid"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_timeline_notify_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_timeline_notify_shadow:promotion_ready"}'
+            value: 0
+
+  - name: Timeline notification mismatch alerts within five minutes
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebTimelineNotifyDivergence
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Web Timeline notification shadow pull diverged from its message locator

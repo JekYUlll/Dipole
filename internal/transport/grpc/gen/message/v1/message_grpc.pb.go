@@ -19,13 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MessageService_SendDirectText_FullMethodName      = "/dipole.message.v1.MessageService/SendDirectText"
-	MessageService_SendGroupText_FullMethodName       = "/dipole.message.v1.MessageService/SendGroupText"
-	MessageService_SendDirectFile_FullMethodName      = "/dipole.message.v1.MessageService/SendDirectFile"
-	MessageService_SendGroupFile_FullMethodName       = "/dipole.message.v1.MessageService/SendGroupFile"
-	MessageService_ListDirectHistory_FullMethodName   = "/dipole.message.v1.MessageService/ListDirectHistory"
-	MessageService_ListGroupHistory_FullMethodName    = "/dipole.message.v1.MessageService/ListGroupHistory"
-	MessageService_ListOfflineMessages_FullMethodName = "/dipole.message.v1.MessageService/ListOfflineMessages"
+	MessageService_SendDirectText_FullMethodName           = "/dipole.message.v1.MessageService/SendDirectText"
+	MessageService_SendGroupText_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupText"
+	MessageService_SendDirectFile_FullMethodName           = "/dipole.message.v1.MessageService/SendDirectFile"
+	MessageService_SendGroupFile_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupFile"
+	MessageService_GetMessageCommandReceipt_FullMethodName = "/dipole.message.v1.MessageService/GetMessageCommandReceipt"
+	MessageService_ListDirectHistory_FullMethodName        = "/dipole.message.v1.MessageService/ListDirectHistory"
+	MessageService_ListGroupHistory_FullMethodName         = "/dipole.message.v1.MessageService/ListGroupHistory"
+	MessageService_ListOfflineMessages_FullMethodName      = "/dipole.message.v1.MessageService/ListOfflineMessages"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -36,6 +37,7 @@ type MessageServiceClient interface {
 	SendGroupText(ctx context.Context, in *SendGroupTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendDirectFile(ctx context.Context, in *SendDirectFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendGroupFile(ctx context.Context, in *SendGroupFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	GetMessageCommandReceipt(ctx context.Context, in *GetMessageCommandReceiptRequest, opts ...grpc.CallOption) (*GetMessageCommandReceiptResponse, error)
 	ListDirectHistory(ctx context.Context, in *ListDirectHistoryRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	ListGroupHistory(ctx context.Context, in *ListGroupHistoryRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	ListOfflineMessages(ctx context.Context, in *ListOfflineMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
@@ -89,6 +91,16 @@ func (c *messageServiceClient) SendGroupFile(ctx context.Context, in *SendGroupF
 	return out, nil
 }
 
+func (c *messageServiceClient) GetMessageCommandReceipt(ctx context.Context, in *GetMessageCommandReceiptRequest, opts ...grpc.CallOption) (*GetMessageCommandReceiptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMessageCommandReceiptResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetMessageCommandReceipt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) ListDirectHistory(ctx context.Context, in *ListDirectHistoryRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMessagesResponse)
@@ -127,6 +139,7 @@ type MessageServiceServer interface {
 	SendGroupText(context.Context, *SendGroupTextRequest) (*SendMessageResponse, error)
 	SendDirectFile(context.Context, *SendDirectFileRequest) (*SendMessageResponse, error)
 	SendGroupFile(context.Context, *SendGroupFileRequest) (*SendMessageResponse, error)
+	GetMessageCommandReceipt(context.Context, *GetMessageCommandReceiptRequest) (*GetMessageCommandReceiptResponse, error)
 	ListDirectHistory(context.Context, *ListDirectHistoryRequest) (*ListMessagesResponse, error)
 	ListGroupHistory(context.Context, *ListGroupHistoryRequest) (*ListMessagesResponse, error)
 	ListOfflineMessages(context.Context, *ListOfflineMessagesRequest) (*ListMessagesResponse, error)
@@ -151,6 +164,9 @@ func (UnimplementedMessageServiceServer) SendDirectFile(context.Context, *SendDi
 }
 func (UnimplementedMessageServiceServer) SendGroupFile(context.Context, *SendGroupFileRequest) (*SendMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendGroupFile not implemented")
+}
+func (UnimplementedMessageServiceServer) GetMessageCommandReceipt(context.Context, *GetMessageCommandReceiptRequest) (*GetMessageCommandReceiptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMessageCommandReceipt not implemented")
 }
 func (UnimplementedMessageServiceServer) ListDirectHistory(context.Context, *ListDirectHistoryRequest) (*ListMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListDirectHistory not implemented")
@@ -254,6 +270,24 @@ func _MessageService_SendGroupFile_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_GetMessageCommandReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMessageCommandReceiptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetMessageCommandReceipt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetMessageCommandReceipt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetMessageCommandReceipt(ctx, req.(*GetMessageCommandReceiptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_ListDirectHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListDirectHistoryRequest)
 	if err := dec(in); err != nil {
@@ -330,6 +364,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendGroupFile",
 			Handler:    _MessageService_SendGroupFile_Handler,
+		},
+		{
+			MethodName: "GetMessageCommandReceipt",
+			Handler:    _MessageService_GetMessageCommandReceipt_Handler,
 		},
 		{
 			MethodName: "ListDirectHistory",

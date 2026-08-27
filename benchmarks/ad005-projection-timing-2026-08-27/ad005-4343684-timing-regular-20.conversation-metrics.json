@@ -1,0 +1,33 @@
+{
+  "write_operations": 400,
+  "projection_writes": {
+    "direct_message": 0,
+    "group_init": 20,
+    "group_message": 400
+  },
+  "counter_source": "dipole_conversation_projection_writes_total",
+  "duration_source": "dipole_conversation_projection_write_duration_seconds",
+  "timing": {
+    "direct_message": {
+      "success_count": 0,
+      "error_count": 0,
+      "success_sum_seconds": 0.0,
+      "average_success_ms": null,
+      "p95_success_upper_bound_ms": null
+    },
+    "group_init": {
+      "success_count": 20,
+      "error_count": 0,
+      "success_sum_seconds": 0.21247041,
+      "average_success_ms": 10.623521,
+      "p95_success_upper_bound_ms": 25.0
+    },
+    "group_message": {
+      "success_count": 400,
+      "error_count": 0,
+      "success_sum_seconds": 5.626526748,
+      "average_success_ms": 14.066317,
+      "p95_success_upper_bound_ms": 50.0
+    }
+  }
+}

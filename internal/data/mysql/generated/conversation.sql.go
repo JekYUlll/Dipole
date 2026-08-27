@@ -11,28 +11,8 @@ import (
 	"time"
 )
 
-const clearConversationUnread = `-- name: ClearConversationUnread :execresult
-UPDATE conversations
-SET unread_count = 0,
-    updated_at = NOW(3)
-WHERE user_uuid = ? AND conversation_key = ?
-`
-
-type ClearConversationUnreadParams struct {
-	UserUuid        string
-	ConversationKey string
-}
-
-func (q *Queries) ClearConversationUnread(ctx context.Context, arg ClearConversationUnreadParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, clearConversationUnread, arg.UserUuid, arg.ConversationKey)
-}
-
 const getConversationByUserAndKey = `-- name: GetConversationByUserAndKey :one
-SELECT id, user_uuid, target_type, target_uuid, conversation_key,
-       last_message_uuid, last_message_type, last_message_preview,
-       last_message_at, last_message_sender_uuid, unread_count, remark,
-       created_at, updated_at
-FROM conversations
+SELECT id, user_uuid, target_type, target_uuid, conversation_key, last_message_uuid, last_message_type, last_message_preview, last_message_at, last_message_sender_uuid, unread_count, remark, created_at, updated_at, last_message_seq, read_seq FROM conversations
 WHERE user_uuid = ? AND conversation_key = ?
 LIMIT 1
 `
@@ -60,6 +40,8 @@ func (q *Queries) GetConversationByUserAndKey(ctx context.Context, arg GetConver
 		&i.Remark,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LastMessageSeq,
+		&i.ReadSeq,
 	)
 	return i, err
 }
@@ -71,6 +53,8 @@ INSERT INTO conversations (
     target_uuid,
     conversation_key,
     last_message_uuid,
+    last_message_seq,
+    read_seq,
     last_message_type,
     last_message_preview,
     last_message_at,
@@ -79,7 +63,7 @@ INSERT INTO conversations (
     remark,
     created_at,
     updated_at
-) VALUES (?, ?, ?, ?, '', 0, '', ?, '', 0, '', NOW(3), NOW(3))
+) VALUES (?, ?, ?, ?, '', 0, 0, 0, '', ?, '', 0, '', NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE id = id
 `
 
@@ -102,11 +86,7 @@ func (q *Queries) InitGroupConversation(ctx context.Context, arg InitGroupConver
 }
 
 const listConversationsByUser = `-- name: ListConversationsByUser :many
-SELECT id, user_uuid, target_type, target_uuid, conversation_key,
-       last_message_uuid, last_message_type, last_message_preview,
-       last_message_at, last_message_sender_uuid, unread_count, remark,
-       created_at, updated_at
-FROM conversations
+SELECT id, user_uuid, target_type, target_uuid, conversation_key, last_message_uuid, last_message_type, last_message_preview, last_message_at, last_message_sender_uuid, unread_count, remark, created_at, updated_at, last_message_seq, read_seq FROM conversations
 WHERE user_uuid = ?
 ORDER BY last_message_at DESC
 LIMIT ?
@@ -141,6 +121,8 @@ func (q *Queries) ListConversationsByUser(ctx context.Context, arg ListConversat
 			&i.Remark,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.LastMessageSeq,
+			&i.ReadSeq,
 		); err != nil {
 			return nil, err
 		}
@@ -153,6 +135,73 @@ func (q *Queries) ListConversationsByUser(ctx context.Context, arg ListConversat
 		return nil, err
 	}
 	return items, nil
+}
+
+const listSearchConversationKeysByUser = `-- name: ListSearchConversationKeysByUser :many
+SELECT c.conversation_key FROM conversations c
+WHERE c.user_uuid = ?
+  AND c.target_type = ?
+UNION
+SELECT CONCAT('group:', gm.group_uuid) AS conversation_key
+FROM group_members gm
+JOIN ` + "`" + `groups` + "`" + ` g ON g.uuid = gm.group_uuid
+WHERE gm.user_uuid = ?
+  AND g.status IN (?, ?)
+ORDER BY conversation_key ASC
+`
+
+type ListSearchConversationKeysByUserParams struct {
+	UserUuid             string
+	DirectTargetType     int8
+	GroupNormalStatus    int8
+	GroupDismissedStatus int8
+}
+
+func (q *Queries) ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listSearchConversationKeysByUser,
+		arg.UserUuid,
+		arg.DirectTargetType,
+		arg.UserUuid,
+		arg.GroupNormalStatus,
+		arg.GroupDismissedStatus,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var conversation_key string
+		if err := rows.Scan(&conversation_key); err != nil {
+			return nil, err
+		}
+		items = append(items, conversation_key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markConversationReadThrough = `-- name: MarkConversationReadThrough :execresult
+UPDATE conversations
+SET read_seq = GREATEST(read_seq, LEAST(last_message_seq, CAST(? AS UNSIGNED))),
+    unread_count = GREATEST(last_message_seq - read_seq, 0),
+    updated_at = NOW(3)
+WHERE user_uuid = ? AND conversation_key = ?
+`
+
+type MarkConversationReadThroughParams struct {
+	ReadThroughSeq  int64
+	UserUuid        string
+	ConversationKey string
+}
+
+func (q *Queries) MarkConversationReadThrough(ctx context.Context, arg MarkConversationReadThroughParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, markConversationReadThrough, arg.ReadThroughSeq, arg.UserUuid, arg.ConversationKey)
 }
 
 const updateConversationRemark = `-- name: UpdateConversationRemark :execresult
@@ -179,6 +228,8 @@ INSERT INTO conversations (
     target_uuid,
     conversation_key,
     last_message_uuid,
+    last_message_seq,
+    read_seq,
     last_message_type,
     last_message_preview,
     last_message_at,
@@ -187,24 +238,31 @@ INSERT INTO conversations (
     remark,
     created_at,
     updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', NOW(3), NOW(3))
+) VALUES (
+    ?, ?, ?, ?, ?, ?,
+    ?,
+    ?, ?, ?, ?, CAST(? AS SIGNED), '', NOW(3), NOW(3)
+)
 ON DUPLICATE KEY UPDATE
     unread_count = CASE
-        WHEN last_message_uuid <> VALUES(last_message_uuid)
-        THEN CASE
-            WHEN ? > 0
-            THEN unread_count + ?
-            ELSE 0
-        END
+        WHEN VALUES(last_message_seq) > last_message_seq AND CAST(? AS SIGNED) > 0
+            THEN VALUES(last_message_seq) - read_seq
+        WHEN VALUES(last_message_seq) > last_message_seq THEN 0
         ELSE unread_count
+    END,
+    read_seq = CASE
+        WHEN VALUES(last_message_seq) > last_message_seq AND CAST(? AS SIGNED) = 0
+            THEN VALUES(last_message_seq)
+        ELSE read_seq
     END,
     target_type = VALUES(target_type),
     target_uuid = VALUES(target_uuid),
-    last_message_uuid = VALUES(last_message_uuid),
-    last_message_type = VALUES(last_message_type),
-    last_message_preview = VALUES(last_message_preview),
-    last_message_at = VALUES(last_message_at),
-    last_message_sender_uuid = VALUES(last_message_sender_uuid),
+    last_message_uuid = IF(VALUES(last_message_seq) > last_message_seq, VALUES(last_message_uuid), last_message_uuid),
+    last_message_type = IF(VALUES(last_message_seq) > last_message_seq, VALUES(last_message_type), last_message_type),
+    last_message_preview = IF(VALUES(last_message_seq) > last_message_seq, VALUES(last_message_preview), last_message_preview),
+    last_message_at = IF(VALUES(last_message_seq) > last_message_seq, VALUES(last_message_at), last_message_at),
+    last_message_sender_uuid = IF(VALUES(last_message_seq) > last_message_seq, VALUES(last_message_sender_uuid), last_message_sender_uuid),
+    last_message_seq = GREATEST(last_message_seq, VALUES(last_message_seq)),
     updated_at = NOW(3)
 `
 
@@ -214,6 +272,8 @@ type UpsertConversationMessageParams struct {
 	TargetUuid            string
 	ConversationKey       string
 	LastMessageUuid       string
+	LastMessageSeq        uint64
+	InitialReadSeq        uint64
 	LastMessageType       int8
 	LastMessagePreview    string
 	LastMessageAt         time.Time
@@ -228,6 +288,8 @@ func (q *Queries) UpsertConversationMessage(ctx context.Context, arg UpsertConve
 		arg.TargetUuid,
 		arg.ConversationKey,
 		arg.LastMessageUuid,
+		arg.LastMessageSeq,
+		arg.InitialReadSeq,
 		arg.LastMessageType,
 		arg.LastMessagePreview,
 		arg.LastMessageAt,

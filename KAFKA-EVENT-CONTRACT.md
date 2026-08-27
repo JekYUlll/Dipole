@@ -43,6 +43,35 @@ Publisher 同时写入 `event_type`、`version`、`schema_version`、`source` �
 
 禁止在同一发布中同时修改 Topic、partition key 和 schema 主版本。
 
+## Message Mutation
+
+消息事实事件沿用 `message.<direct|group>.<mutation>` 命名，mutation 预留以下值：
+
+| Mutation | 当前状态 | Revision 语义 |
+| --- | --- | --- |
+| `created` | 已生产和消费 | 固定为 `1` |
+| `edited` | 仅保留契约 | 必须大于消费者已应用 revision |
+| `recalled` | 仅保留契约 | 必须大于消费者已应用 revision |
+| `deleted` | 仅保留契约 | 必须大于消费者已应用 revision |
+
+Mutation payload 在现有消息快照字段之外增加：
+
+```json
+{
+  "mutation_type": "created",
+  "revision": 1,
+  "actor_uuid": "U..."
+}
+```
+
+- `event_id` 用于投递幂等，`message_id + revision` 用于消息状态幂等与乱序保护；消费者只应用更高 revision。
+- Outbox created revision 1 继续以原 message ID 作为 aggregate ID；未来 mutation 使用 `message_id@r<revision>`，使同一 mutation 重试去重且不同 revision 可分别发布。
+- Kafka message key 保持原 message ID，使同一消息的 mutation 进入同一 partition；Timeline 投影仍按 conversation Seq 处理跨消息乱序。
+- Legacy `message.*.created` 缺少 mutation 字段时归一化为 `created`、revision `1`，actor 使用原始 sender。
+- 显式 mutation 必须与 event type 后缀一致；未来 mutation 缺少 revision 或 actor 时拒绝进入业务 Handler。
+- `message.*.send_requested` 是命令事件，不参与 mutation 归一化。
+- 当前产品只发布 `created`。编辑、撤回和删除需要各自的权限、持久化及同步语义完成后再启用对应 Topic。
+
 ## Retry And Dead Letter
 
 - 业务 Handler 的暂时性错误按配置进行进程内退避，并转发到 `<topic>.retry`。
@@ -56,4 +85,4 @@ Publisher 同时写入 `event_type`、`version`、`schema_version`、`source` �
 
 ## 当前 Topic
 
-Topic 清单位于 `internal/bootstrap/kafka_topics.go`。Message、Group、Conversation、Contact 与 Session 事件共享本规则；`message.*.created` 由 Transactional Outbox 发布，其 value 和 headers 在同一消息事务中固化。
+Topic 清单位于 `internal/bootstrap/kafka_topics.go`。Message、Group、Conversation、Contact 与 Session 事件共享本规则；`message.*.created` 由 Transactional Outbox 发布，其 value、mutation metadata 和 headers 在同一消息事务中固化。

@@ -1,8 +1,11 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
+
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	"time"
 )
 
@@ -153,9 +156,13 @@ func (h *Hub) DisconnectAllConnections(userUUID string, reason string) int {
 }
 
 func (h *Hub) SendEventToUser(userUUID string, eventType string, data any) int {
+	return h.SendEventToUserContext(context.Background(), userUUID, eventType, data)
+}
+
+func (h *Hub) SendEventToUserContext(ctx context.Context, userUUID string, eventType string, data any) int {
+	ids := correlation.FromContext(ctx)
 	payload, err := json.Marshal(OutboundEvent{
-		Type: eventType,
-		Data: data,
+		Type: eventType, RequestID: ids.RequestID, TraceID: ids.TraceID, EventID: ids.EventID, Data: data,
 	})
 	if err != nil {
 		return 0

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS agent_event_ledger (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(64) NOT NULL,
+    task_uuid VARCHAR(64) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    claim_token CHAR(36) NOT NULL,
+    attempt_count INT UNSIGNED NOT NULL DEFAULT 1,
+    claimed_at DATETIME(3) NOT NULL,
+    lease_expires_at DATETIME(3) NOT NULL,
+    completed_at DATETIME(3) NULL,
+    last_error TEXT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_agent_event_ledger_event (event_id),
+    UNIQUE KEY idx_agent_event_ledger_task (task_uuid),
+    KEY idx_agent_event_ledger_lease (status, lease_expires_at),
+    CONSTRAINT chk_agent_event_ledger_status CHECK (status IN ('claimed', 'completed'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

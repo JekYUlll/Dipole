@@ -1,0 +1,43 @@
+app:
+  name: dipole-cassandra-projector-smoke
+  env: test
+
+log:
+  level: info
+  format: console
+  development: false
+  file_enabled: false
+
+metrics:
+  enabled: false
+
+kafka:
+  enabled: true
+  brokers:
+    - kafka-1:9092
+    - kafka-2:9092
+    - kafka-3:9092
+  client_id: dipole-cassandra-projector
+  topic_prefix: dipole
+  topic_partitions: 6
+  topic_replication_factor: 3
+  topic_min_insync_replicas: 2
+  topic_retention_hours: 1
+  required_acks: all
+  dial_timeout_seconds: 5
+  write_timeout_seconds: 5
+  consume_retry_max_attempts: 2
+  consume_retry_backoff_ms: 100
+  consumer_group_balancer: roundrobin
+  consumer_heartbeat_seconds: 3
+  consumer_session_timeout_seconds: 30
+  consumer_rebalance_timeout_seconds: 30
+
+cassandra:
+  enabled: true
+  hosts:
+    - cassandra:9042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+  connect_timeout_seconds: 5

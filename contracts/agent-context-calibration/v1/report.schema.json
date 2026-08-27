@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-context-calibration/v1/report.schema.json",
+  "title": "Dipole Agent Context Calibration Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "candidate", "evidenceCapturedAt", "evidenceSha256", "estimatorId", "contextWindowTokens", "fallbackRoutes", "caseCount", "categories", "measurements", "underestimates", "eligible", "reportSha256"],
+  "properties": {
+    "version": { "const": "dipole.agent.context-calibration.report.v1" },
+    "candidate": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "evidenceCapturedAt": { "type": "string", "format": "date-time" },
+    "evidenceSha256": { "$ref": "#/$defs/sha256" },
+    "estimatorId": { "type": "string", "pattern": "^route-calibrated-v1:sha256:[a-f0-9]{64}$" },
+    "contextWindowTokens": { "type": "integer", "minimum": 1024 },
+    "fallbackRoutes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "caseCount": { "type": "integer", "minimum": 1 },
+    "categories": { "type": "array", "uniqueItems": true, "items": { "enum": ["chinese", "code", "emoji", "english", "tool_schema"] } },
+    "measurements": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/measurement" } },
+    "underestimates": { "type": "array", "items": { "$ref": "#/$defs/underestimate" } },
+    "eligible": { "type": "boolean" },
+    "reportSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "provider", "model", "revision"],
+      "properties": {
+        "kind": { "enum": ["provider_tokenizer", "provider_usage"] },
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "revision": { "type": "string" }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "route", "category", "textSha256", "utf8Bytes", "referenceTokens", "estimatedTokens", "errorBps", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "route": { "type": "string" },
+        "category": { "enum": ["chinese", "code", "emoji", "english", "tool_schema"] },
+        "textSha256": { "$ref": "#/$defs/sha256" },
+        "utf8Bytes": { "type": "integer", "minimum": 1 },
+        "referenceTokens": { "type": "integer", "minimum": 1 },
+        "estimatedTokens": { "type": "integer", "minimum": 0 },
+        "errorBps": { "type": "integer" },
+        "source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "underestimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "route", "estimatedTokens", "referenceTokens"],
+      "properties": {
+        "id": { "type": "string" },
+        "route": { "type": "string" },
+        "estimatedTokens": { "type": "integer", "minimum": 0 },
+        "referenceTokens": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

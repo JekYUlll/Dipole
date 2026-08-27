@@ -8,16 +8,48 @@ import (
 	"net"
 	"testing"
 
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
+
+func TestUnaryInterceptorsPropagateCorrelation(t *testing.T) {
+	clientInterceptor, err := NewUnaryClientInterceptor(Credentials{Service: "dipole-message", Secret: "test-secret"})
+	if err != nil {
+		t.Fatalf("create client interceptor: %v", err)
+	}
+	serverInterceptor, err := NewUnaryServerInterceptor("test-secret", "dipole-message")
+	if err != nil {
+		t.Fatalf("create server interceptor: %v", err)
+	}
+
+	clientCtx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1"})
+	err = clientInterceptor(clientCtx, "/test.Service/Call", nil, nil, nil, func(outgoing context.Context, _ string, _, _ any, _ *grpc.ClientConn, _ ...grpc.CallOption) error {
+		metadataValues, ok := metadata.FromOutgoingContext(outgoing)
+		if !ok {
+			t.Fatal("expected outgoing metadata")
+		}
+		incoming := metadata.NewIncomingContext(context.Background(), metadataValues)
+		_, serverErr := serverInterceptor(incoming, nil, &grpc.UnaryServerInfo{FullMethod: "/test.Service/Call"}, func(ctx context.Context, _ any) (any, error) {
+			if got := correlation.FromContext(ctx); got.RequestID != "R1" || got.TraceID != "T1" {
+				t.Fatalf("unexpected server correlation: %+v", got)
+			}
+			return nil, nil
+		})
+		return serverErr
+	})
+	if err != nil {
+		t.Fatalf("interceptor round trip: %v", err)
+	}
+}
 
 func TestUnaryAuthentication(t *testing.T) {
 	tests := []struct {
