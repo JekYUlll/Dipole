@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ func (s *PersistentAgentArtifactServiceV1) Create(ctx context.Context, input app
 		}
 		return existing, nil
 	}
-	if run.Status != application.AgentRunStatusRunning || run.RuntimeID != "dipole-agent" || run.Mode != "shadow" {
+	if !agentArtifactCreateAllowedV1(task, run, candidate, input.Content) {
 		return nil, fmt.Errorf("%w: Artifact creation requires the active authenticated shadow Run", application.ErrAgentArtifactDenied)
 	}
 	receipt, err := s.blobs.PutImmutable(ctx, candidate.ObjectKey, candidate.MediaType, input.Content, candidate.ContentSHA256)
@@ -94,6 +95,78 @@ func (s *PersistentAgentArtifactServiceV1) Create(ctx context.Context, input app
 		return nil, fmt.Errorf("%w: immutable Artifact replay differs", application.ErrAgentArtifactConflict)
 	}
 	return existing, nil
+}
+
+func agentArtifactCreateAllowedV1(task *application.AgentTaskV1, run *application.AgentRunV1, artifact *application.AgentArtifactV1, content []byte) bool {
+	if task == nil || run == nil || artifact == nil || run.RuntimeID != "dipole-agent" || run.Mode != "shadow" {
+		return false
+	}
+	if artifact.ArtifactType != "promotion_evaluation" {
+		return run.Status == application.AgentRunStatusRunning
+	}
+	if run.Status != application.AgentRunStatusCompleted || task.Status != application.AgentTaskStatusCompleted || artifact.Version != 1 ||
+		artifact.Title != "Agent Runtime promotion evaluation" || artifact.MediaType != "application/json" {
+		return false
+	}
+	return validPromotionEvaluationArtifactV1(task, artifact.Metadata, content)
+}
+
+func validPromotionEvaluationArtifactV1(task *application.AgentTaskV1, metadata, content json.RawMessage) bool {
+	var provenance struct {
+		RuntimeID         string `json:"runtimeId"`
+		CandidateVersion  string `json:"candidateVersion"`
+		DefinitionID      string `json:"definitionId"`
+		DefinitionVersion uint64 `json:"definitionVersion"`
+		EvalSuiteSHA256   string `json:"evalSuiteSHA256"`
+	}
+	var metadataFields map[string]json.RawMessage
+	if json.Unmarshal(metadata, &provenance) != nil || json.Unmarshal(metadata, &metadataFields) != nil || len(metadataFields) != 5 ||
+		provenance.RuntimeID != "dipole-agent" || strings.TrimSpace(provenance.CandidateVersion) == "" || len(provenance.CandidateVersion) > 128 ||
+		provenance.DefinitionID != task.DefinitionUUID || provenance.DefinitionVersion != task.DefinitionVersion || !validLowerSHA256V1(provenance.EvalSuiteSHA256) {
+		return false
+	}
+	var envelope struct {
+		SchemaVersion    string `json:"schemaVersion"`
+		RuntimeID        string `json:"runtimeId"`
+		CandidateVersion string `json:"candidateVersion"`
+		Definition       struct {
+			ID      string `json:"id"`
+			Version uint64 `json:"version"`
+		} `json:"definition"`
+		Evidence struct {
+			SchemaVersion     string `json:"schemaVersion"`
+			CandidateVersion  string `json:"candidateVersion"`
+			OfflineEvalReport struct {
+				SuiteSHA256 string `json:"suiteSha256"`
+				Passed      bool   `json:"passed"`
+			} `json:"offlineEvalReport"`
+		} `json:"evidence"`
+		Decision struct {
+			SchemaVersion          string `json:"schemaVersion"`
+			CandidateVersion       string `json:"candidateVersion"`
+			Decision               string `json:"decision"`
+			OfflineEvalSuiteSHA256 string `json:"offlineEvalSuiteSha256"`
+		} `json:"decision"`
+	}
+	var envelopeFields map[string]json.RawMessage
+	if json.Unmarshal(content, &envelope) != nil || json.Unmarshal(content, &envelopeFields) != nil || len(envelopeFields) != 6 {
+		return false
+	}
+	return envelope.SchemaVersion == "dipole.agent.promotion-evaluation.v1" && envelope.RuntimeID == provenance.RuntimeID &&
+		envelope.CandidateVersion == provenance.CandidateVersion && envelope.Definition.ID == provenance.DefinitionID &&
+		envelope.Definition.Version == provenance.DefinitionVersion && envelope.Evidence.SchemaVersion == "dipole.agent.shadow-promotion-evidence.v2" &&
+		envelope.Evidence.CandidateVersion == provenance.CandidateVersion && envelope.Evidence.OfflineEvalReport.Passed &&
+		envelope.Evidence.OfflineEvalReport.SuiteSHA256 == provenance.EvalSuiteSHA256 &&
+		envelope.Decision.SchemaVersion == "dipole.agent.shadow-promotion-decision.v2" && envelope.Decision.CandidateVersion == provenance.CandidateVersion &&
+		envelope.Decision.Decision == "eligible" && envelope.Decision.OfflineEvalSuiteSHA256 == provenance.EvalSuiteSHA256
+}
+
+func validLowerSHA256V1(value string) bool {
+	if len(value) != 64 || strings.ToLower(value) != value {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func (s *PersistentAgentArtifactServiceV1) GetForPrincipal(ctx context.Context, principalUUID, artifactUUID string) (*application.AgentArtifactV1, []byte, error) {

@@ -61,6 +61,68 @@ func TestPersistentAgentArtifactCreateRequiresActiveBoundShadowRun(t *testing.T)
 	}
 }
 
+func TestPersistentAgentArtifactCreateAllowsCompletedPromotionEvaluationOnly(t *testing.T) {
+	policies := agentArtifactPolicyStubV1{
+		task: &application.AgentTaskV1{TaskUUID: "TASK-1", DefinitionUUID: "DEF-1", DefinitionVersion: 7, TenantID: "dipole", PrincipalUUID: "U1", Status: application.AgentTaskStatusCompleted},
+		run:  &application.AgentRunV1{RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusCompleted},
+	}
+	valid := application.AgentArtifactCreateV1{
+		TenantID: "dipole", TaskUUID: "TASK-1", RunUUID: "RUN-1", ArtifactType: "promotion_evaluation", Version: 1,
+		Title: "Agent Runtime promotion evaluation", MediaType: "application/json",
+		Content:  []byte(`{"schemaVersion":"dipole.agent.promotion-evaluation.v1","runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definition":{"id":"DEF-1","version":7},"evidence":{"schemaVersion":"dipole.agent.shadow-promotion-evidence.v2","candidateVersion":"agent-runtime@abc1234","offlineEvalReport":{"suiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","passed":true}},"decision":{"schemaVersion":"dipole.agent.shadow-promotion-decision.v2","candidateVersion":"agent-runtime@abc1234","decision":"eligible","offlineEvalSuiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}}`),
+		Metadata: json.RawMessage(`{"runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definitionId":"DEF-1","definitionVersion":7,"evalSuiteSHA256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}`),
+	}
+	service, _ := NewPersistentAgentArtifactServiceV1(policies, newAgentArtifactStoreStubV1(), &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}})
+	first, err := service.Create(context.Background(), valid)
+	if err != nil {
+		t.Fatalf("publish completed promotion evaluation: %v", err)
+	}
+	replayed, err := service.Create(context.Background(), valid)
+	if err != nil || replayed.ArtifactUUID != first.ArtifactUUID {
+		t.Fatalf("replay completed promotion evaluation: artifact=%+v err=%v", replayed, err)
+	}
+
+	invalid := []application.AgentArtifactCreateV1{
+		func() application.AgentArtifactCreateV1 {
+			value := valid
+			value.ArtifactType = "project_report"
+			return value
+		}(),
+		func() application.AgentArtifactCreateV1 { value := valid; value.Version = 2; return value }(),
+		func() application.AgentArtifactCreateV1 { value := valid; value.MediaType = "text/plain"; return value }(),
+		func() application.AgentArtifactCreateV1 {
+			value := valid
+			value.Metadata = json.RawMessage(`{"runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definitionId":"OTHER","definitionVersion":7,"evalSuiteSHA256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}`)
+			return value
+		}(),
+		func() application.AgentArtifactCreateV1 {
+			value := valid
+			value.Metadata = json.RawMessage(`{"runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definitionId":"DEF-1","definitionVersion":7,"evalSuiteSHA256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","extra":true}`)
+			return value
+		}(),
+		func() application.AgentArtifactCreateV1 {
+			value := valid
+			value.Content = []byte(`{"schemaVersion":"dipole.agent.promotion-evaluation.v1","runtimeId":"dipole-agent","candidateVersion":"agent-runtime@other","definition":{"id":"DEF-1","version":7},"evidence":{"schemaVersion":"dipole.agent.shadow-promotion-evidence.v2","candidateVersion":"agent-runtime@other","offlineEvalReport":{"suiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","passed":true}},"decision":{"schemaVersion":"dipole.agent.shadow-promotion-decision.v2","candidateVersion":"agent-runtime@other","decision":"eligible","offlineEvalSuiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}}`)
+			return value
+		}(),
+	}
+	for index, input := range invalid {
+		fresh, _ := NewPersistentAgentArtifactServiceV1(policies, newAgentArtifactStoreStubV1(), &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}})
+		if _, err := fresh.Create(context.Background(), input); !errors.Is(err, application.ErrAgentArtifactDenied) {
+			t.Fatalf("invalid completed publication %d: %v", index, err)
+		}
+	}
+
+	runningPolicies := policies
+	runningRun := *policies.run
+	runningRun.Status = application.AgentRunStatusRunning
+	runningPolicies.run = &runningRun
+	running, _ := NewPersistentAgentArtifactServiceV1(runningPolicies, newAgentArtifactStoreStubV1(), &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}})
+	if _, err := running.Create(context.Background(), valid); !errors.Is(err, application.ErrAgentArtifactDenied) {
+		t.Fatalf("running Run published promotion evidence early: %v", err)
+	}
+}
+
 func TestPersistentAgentArtifactRetrievalEnforcesPrincipalAndContentEvidence(t *testing.T) {
 	store := newAgentArtifactStoreStubV1()
 	blobs := &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}}

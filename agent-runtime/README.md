@@ -121,6 +121,17 @@ npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
 
 报告绑定 candidate version 与 canonical Suite SHA-256，按 outcome、trajectory、permission、retrieval、cost 输出低敏结果。合法且全部通过返回 0，合法但有失败返回 2，输入错误返回 1。新候选应把完整报告写入 `dipole.agent.shadow-promotion-evidence.v2`；`promotion:check` 自动分派 v1/v2，v2 要求五类报告全部通过。当前样例属于 synthetic Harness 证据，不能代表真实 Agent 效果。
 
+真实 Shadow Run 与 Task 均已完成，且 `promotion:check` 返回 eligible 后，可按 `contracts/agent-promotion/v2/publication.schema.json` 准备发布输入并执行：
+
+```bash
+DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true \
+DIPOLE_AGENT_CAPABILITY_RPC_TARGET=127.0.0.1:9090 \
+DIPOLE_INTERNAL_RPC_SHARED_SECRET=change-me \
+npm run promotion:publish -- --input=/path/to/publication.json
+```
+
+命令复用 Agent Runtime 的受认证 Capability RPC/mTLS 配置，将完整证据和决策写入 content-addressed `promotion_evaluation` Artifact，只向标准输出返回 `contracts/agent-promotion/v2/receipt.schema.json` 定义的低敏收据。普通 Artifact 仍要求 running Shadow Run；该类型只能在 completed Shadow Run 上首次发布。收据可供 Gateway 控制面提案引用，发布本身不会创建 Proposal、Grant、active Run 或注册 write Tool。
+
 结构性安全回归位于 `src/evals/agent-security-regression.test.ts`，使用 `contracts/agent-evals/v1/security-suite.json` 串联真实 ContextCompiler、Capability Registry、EventLedger/Shadow Processor 和 MCP Client/Server。测试要求 Prompt Injection 内容保留 `untrusted` provenance、越权和敏感外发在副作用前拒绝、重复事件只规划一次、同源循环在 Ledger 前抑制。
 
 确认 Temporal 证据后，操作员可生成短时效修复候选 Artifact：

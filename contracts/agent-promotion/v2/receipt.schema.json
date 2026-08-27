@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-promotion/v2/receipt.schema.json",
+  "title": "Dipole Agent promotion evidence receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "artifactId", "evidenceSHA256", "evalSuiteSHA256", "tenantId", "taskId", "runId", "runtimeId", "candidateVersion", "definitionId", "definitionVersion"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.promotion-evidence-receipt.v1" },
+    "artifactId": { "$ref": "#/$defs/sha256" },
+    "evidenceSHA256": { "$ref": "#/$defs/sha256" },
+    "evalSuiteSHA256": { "$ref": "#/$defs/sha256" },
+    "tenantId": { "$ref": "#/$defs/id" },
+    "taskId": { "$ref": "#/$defs/id" },
+    "runId": { "$ref": "#/$defs/id" },
+    "runtimeId": { "const": "dipole-agent" },
+    "candidateVersion": { "type": "string", "minLength": 2, "maxLength": 128 },
+    "definitionId": { "$ref": "#/$defs/id" },
+    "definitionVersion": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
