@@ -35,6 +35,21 @@ export interface ShadowPlan {
     readonly attempts: number;
     readonly inputTokens: number | undefined;
     readonly outputTokens: number | undefined;
+    readonly context?: {
+      readonly compilerVersion: "v1";
+      readonly estimatedTokens: number;
+      readonly selected: readonly {
+        readonly id: string;
+        readonly representation: "full" | "compact";
+        readonly provenance: {
+          readonly sourceType: string;
+          readonly sourceId: string;
+          readonly uri?: string;
+          readonly sequence?: string;
+        };
+      }[];
+      readonly omitted: readonly string[];
+    };
   };
 }
 

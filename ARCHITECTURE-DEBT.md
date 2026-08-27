@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-031：Context Token 预算使用确定性近似估算
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** `agent-runtime`、Context Compiler、多模型路由、长上下文与成本门禁
+- **现状：** Context Compiler v1 使用 UTF-8 byte/4 估算 record Token，提供可复现的全局/section 预算、full/compact/omit 选择和 fail-closed 必需上下文；实际 provider usage 仍由 ModelAuditStore 在调用后记录。
+- **风险：** 不同模型 tokenizer、中文、多字节符号和 JSON 转义会产生估算偏差。接近模型窗口上限时，近似值可能低估输入并触发 provider 拒绝，也可能高估后过早省略证据。
+- **建议方向：** Model Router 为 route 声明 tokenizer/窗口能力，Context Compiler 注入 route-specific estimator 或经过实测的安全余量；用中英文、代码、Emoji 和长 Tool schema 数据集校准偏差，并保持 provider-neutral fallback。
+- **处理门槛：** 在 Context 接近任一生产模型窗口的 70%，或引入多模型动态上下文窗口前完成；当前 4096 Token 编译预算远低于候选模型窗口，可接受该近似。
+
 ### AD-030：TypeScript Agent 尚缺受认证的远程 Capability 传输
 
 - **优先级：** P1

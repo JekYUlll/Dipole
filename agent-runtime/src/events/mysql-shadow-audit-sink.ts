@@ -40,12 +40,16 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
     try {
       await connection.beginTransaction();
       const model = record.plan.model;
+      const context = model?.context;
       let inserted = false;
       try {
         const [result] = await connection.execute<ResultSetHeader>(INSERT_AGENT_SHADOW_PLAN, [
           required(record.taskId, "Task ID"), required(record.eventId, "event ID"), required(record.eventType, "event type"),
           required(record.plan.summary, "plan summary"), planHash, model?.route ?? null, model?.attempts ?? null,
-          model?.inputTokens ?? null, model?.outputTokens ?? null
+          model?.inputTokens ?? null, model?.outputTokens ?? null, context?.compilerVersion ?? null,
+          context?.estimatedTokens ?? null, context === undefined ? null : canonicalJSON({
+            selected: context.selected, omitted: context.omitted
+          })
         ]);
         inserted = result.affectedRows === 1;
       } catch (error) {

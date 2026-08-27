@@ -17,6 +17,7 @@
 
 ### 新增
 
+- TypeScript Agent Runtime 增加框架中立 `ContextCompiler` v1 与 migration v22：策略、身份、Task、事件证据和 Capability 以 system/trusted/untrusted JSON record 编译，按全局及 section Token 预算确定性选择 full/compact/omit，必需上下文超预算时 fail closed；Plan 审计持久化 compiler version、估算 Token、selected/omitted ID 和 provenance，不保存额外上下文正文。ModelShadowPlanner 只接收编译后的 prompt，模型 adapter 与上下文策略保持隔离。
 - Agent Runtime 增加 migration v21、独立 `agent_runs` 生命周期与首个受认证远程 Capability：Core 通过 `dipole.agent.v1.AgentCapabilityService` 完成确定性 Task/Run admission、持久 Definition 快照解析和 `conversation.list` 授权，TS Runtime 使用静态生成的 protobuf gRPC client、mTLS `dipole-agent` 身份与 Capability Registry 执行只读 Step。Step 通过 lease/token 持久 claim/result/error，旧 owner 无法覆盖重领结果；Run 完成接口支持网络重试幂等，模型仍不能提交 principal，Agent 身份也无法调用未授权 Core RPC。
 - Agent Runtime 增加 migration v20 与持久 Shadow Plan/Step 轨迹：模型输出升级为有序 `steps[]`，每步固定 capability ID 与结构化输入；Task Plan 以 SHA-256 不可变快照保存，Kafka 并发重放幂等收敛，计划漂移 fail closed。MySQL ledger 模式在 Kafka readiness 前探测轨迹表，最小账号仅获两表 `SELECT, INSERT`。
 - Agent Runtime 增加 migration v19 与 MySQL ModelAuditStore：Task 唯一绑定持久 Run 和不可变预算快照，ModelRouter 在调用 provider 前事务预留 call slot，16 路并发及跨 Kafka 重投均严格受 `max_calls` 限制；调用完成/失败记录 route、Token、finish reason、latency 和错误，崩溃遗留 slot 在 Run 终止时收敛为 `abandoned`。AI SDK 模式强制持久 Store，Agent 最小账号仅新增两张审计表的 SELECT/INSERT/UPDATE。
@@ -242,6 +243,7 @@
 
 ### 迁移说明
 
+- 发布 Context Compiler v1 前先执行 migration v22；该 migration 只向 `agent_shadow_plans` 追加 nullable compiler/Token/manifest 字段，旧 Runtime 可继续写入空值。回滚新 Runtime 后可执行 v22 down 删除 manifest 字段，不影响 Plan/Step 主数据。
 - 启动 TS Agent Capability 执行前先应用 migration v21 和更新后的 `agent-service-grants.dist.sql`，再为 `dipole-agent` 配置 Core target、共享密钥与 mTLS CA/cert/key/server name。微服务证书脚本已生成 Agent 双用途证书；回滚时先关闭 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED` 或恢复 metadata-only Runtime，再执行 v21 down。v21 down 会删除 Run 审计及未完成 Step lease，只应在确认 Agent consumer 停止后执行。
 - 启动前执行 migration v17。该变更仅扩宽 Agent policy 身份列；应用回滚时保留 24 字符宽度以兼容已有身份，因此 Down 为安全 no-op。需要临时回退策略来源时设置 `DIPOLE_AI_POLICY_MODE=static`。
 - 独立 Message Service 部署先应用 `message-service-atomic-grants.dist.sql` 或 `message-service-projector-grants.dist.sql`，再配置 `message.mysql.*` 并启用 `message.enforce_db_permissions`；atomic/projector 模式与账号必须匹配。微服务 Compose 已通过一次性 `mysql-permissions` 服务自动执行开发授权。
@@ -276,6 +278,7 @@
 
 ### 验证
 
+- 已通过 Context Compiler 的确定性顺序、section/global budget、full→compact、optional omit、required fail-closed、重复 ID 和不可信内容隔离测试；真实 MySQL 8.4 验证 v22 manifest 持久化与 `up→down→up`，最终 schema version 为 22。
 - 已通过 Go/TypeScript Task/Run ID 黄金向量、Agent application/transport/bootstrap 测试、真实认证 gRPC 最小权限测试、真实 MySQL 8.4 Agent Policy Repository 与 Step claim 合同，以及 migration v21 `up→down→up`；最终 schema version 为 21，`agent_runs` 和 Step claim 字段均存在。真实 Go Core 与 Node grpc-js 完成 `AdmitRun→ListConversations→CompleteRun→replay`，重放返回同一 completed Run。
 - 已通过真实 MySQL 8.4 Agent policy 合约：使用默认长度 Assistant/principal 初始化 Definition，持久 Task 固定版本并完成 `running→completed`；同时覆盖 Definition 撤销/过期、新版并发出现、重复触发和 resource scope 越权拒绝。
 - 已通过 Chromium、Firefox、WebKit 共 12 项真实 IndexedDB/Session Playwright 验收；实验性 Chromium quota override 未拒绝 IndexedDB 写入并被明确标记为 skip，未作为 AD-025 完成证据。
