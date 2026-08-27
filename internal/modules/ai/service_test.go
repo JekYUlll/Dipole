@@ -9,6 +9,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 type stubContextBuilder struct {
@@ -141,6 +142,62 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 	}
 	if len(logs.successArgs) == 0 {
 		t.Fatalf("expected ai call success log to be recorded")
+	}
+}
+
+func TestServiceDerivesTrustedExecutionContextFromTrigger(t *testing.T) {
+	t.Parallel()
+
+	var captured ExecutionContext
+	service := &Service{
+		config: config.AI{Enabled: true, AssistantUUID: "UAI"},
+		contextBuilder: &stubContextBuilder{context: &ConversationContext{
+			Messages: []*schema.Message{schema.UserMessage("hello")},
+		}},
+		logs:   &stubCallLogRepository{beginReturn: true},
+		sender: &stubMessageSender{message: &model.Message{UUID: "M-REPLY"}},
+		agent: &stubAgent{runFn: func(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
+			var err error
+			captured, err = requireExecutionContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if len(messages) != 1 || messages[0].Role != schema.User {
+				t.Fatalf("execution identity leaked into model messages: %+v", messages)
+			}
+			return schema.AssistantMessage("reply", nil), nil
+		}},
+	}
+
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{
+		RequestID: "REQ-1",
+		TraceID:   "TRACE-1",
+		EventID:   "EVENT-1",
+	})
+	message := &model.Message{
+		UUID:            "M-TRIGGER",
+		ConversationKey: model.DirectConversationKey("U100", "UAI"),
+		SenderUUID:      "U100",
+		TargetType:      model.MessageTargetDirect,
+		TargetUUID:      "UAI",
+		MessageType:     model.MessageTypeText,
+		Content:         "hello",
+	}
+	if err := service.HandleDirectMessage(ctx, message); err != nil {
+		t.Fatalf("handle direct message: %v", err)
+	}
+
+	want := ExecutionContext{
+		PrincipalUserUUID:  "U100",
+		AgentUUID:          "UAI",
+		TriggerMessageUUID: "M-TRIGGER",
+		ConversationKey:    message.ConversationKey,
+		RequestID:          "REQ-1",
+		TraceID:            "TRACE-1",
+		EventID:            "EVENT-1",
+	}
+	if captured != want {
+		t.Fatalf("execution context = %+v, want %+v", captured, want)
 	}
 }
 

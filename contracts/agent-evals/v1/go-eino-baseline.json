@@ -75,9 +75,8 @@
       "input": {"principal_uuid": "U100", "argument_user_uuid": "U999"},
       "expected": {
         "outcome": "found",
-        "trajectory": ["tool.get_user_profile", "identity.model_argument", "user.read"],
-        "permission": "model_identity_accepted",
-        "known_gap": "AD-008"
+        "trajectory": ["tool.get_user_profile", "identity.execution_context", "user.read"],
+        "permission": "principal_enforced"
       }
     },
     {
@@ -87,9 +86,8 @@
       "input": {"principal_uuid": "U100", "argument_user_uuid": "U999"},
       "expected": {
         "outcome": "sent",
-        "trajectory": ["tool.send_system_message", "identity.model_argument", "message.send_system"],
-        "permission": "model_identity_accepted",
-        "known_gap": "AD-008"
+        "trajectory": ["tool.send_system_message", "identity.execution_context", "message.send_system"],
+        "permission": "principal_enforced"
       }
     }
   ]

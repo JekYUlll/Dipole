@@ -233,8 +233,9 @@ func runReadConversationEval(t *testing.T, evalCase baselineEvalCase) baselineEx
 	}
 	messages := &recordingEvalMessageReader{}
 	tool := NewReadConversationTool(conversations, messages)
-	arguments, _ := json.Marshal(map[string]any{"user_uuid": userUUID, "target_uuid": targetUUID})
-	result, err := tool.(*readConversationTool).InvokableRun(context.Background(), string(arguments))
+	arguments, _ := json.Marshal(map[string]any{"target_uuid": targetUUID})
+	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: userUUID, AgentUUID: "UAI"})
+	result, err := tool.(*readConversationTool).InvokableRun(ctx, string(arguments))
 	if err != nil {
 		t.Fatalf("run read_conversation baseline: %v", err)
 	}
@@ -259,17 +260,19 @@ func runUserProfileEval(t *testing.T, evalCase baselineEvalCase) baselineExpecte
 
 	reader := &recordingEvalUserReader{}
 	tool := NewUserProfileTool(reader)
+	principal := evalString(t, evalCase.Input, "principal_uuid")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
-	result, err := tool.(*userProfileTool).InvokableRun(context.Background(), `{"user_uuid":"`+argumentUser+`"}`)
+	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
+	result, err := tool.(*userProfileTool).InvokableRun(ctx, `{"user_uuid":"`+argumentUser+`"}`)
 	if err != nil {
 		t.Fatalf("run get_user_profile baseline: %v", err)
 	}
-	if reader.requested != argumentUser || reader.requested == evalString(t, evalCase.Input, "principal_uuid") || result == "" {
-		t.Fatalf("expected model argument identity to reach user reader, requested=%q", reader.requested)
+	if reader.requested != principal || reader.requested == argumentUser || result == "" {
+		t.Fatalf("execution principal was not enforced, requested=%q", reader.requested)
 	}
 	return baselineExpected{
-		Outcome: "found", Trajectory: []string{"tool.get_user_profile", "identity.model_argument", "user.read"},
-		Permission: "model_identity_accepted", KnownGap: "AD-008",
+		Outcome: "found", Trajectory: []string{"tool.get_user_profile", "identity.execution_context", "user.read"},
+		Permission: "principal_enforced",
 	}
 }
 
@@ -278,17 +281,19 @@ func runSystemMessageEval(t *testing.T, evalCase baselineEvalCase) baselineExpec
 
 	sender := &stubSystemMessageSender{message: &model.Message{UUID: "M-SYSTEM", MessageType: model.MessageTypeSystem}}
 	tool := NewSystemMessageTool(sender, "UAI")
+	principal := evalString(t, evalCase.Input, "principal_uuid")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
-	_, err := tool.(*systemMessageTool).InvokableRun(context.Background(), `{"user_uuid":"`+argumentUser+`","content":"baseline"}`)
+	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
+	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"user_uuid":"`+argumentUser+`","content":"baseline"}`)
 	if err != nil {
 		t.Fatalf("run send_system_message baseline: %v", err)
 	}
-	if sender.targetUUID != argumentUser || sender.targetUUID == evalString(t, evalCase.Input, "principal_uuid") {
-		t.Fatalf("expected model argument target to reach sender, target=%q", sender.targetUUID)
+	if sender.targetUUID != principal || sender.targetUUID == argumentUser {
+		t.Fatalf("execution principal was not enforced as message target, target=%q", sender.targetUUID)
 	}
 	return baselineExpected{
-		Outcome: "sent", Trajectory: []string{"tool.send_system_message", "identity.model_argument", "message.send_system"},
-		Permission: "model_identity_accepted", KnownGap: "AD-008",
+		Outcome: "sent", Trajectory: []string{"tool.send_system_message", "identity.execution_context", "message.send_system"},
+		Permission: "principal_enforced",
 	}
 }
 

@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	ToolGetUserProfile          = "get_user_profile"
-	ToolListUserConversations   = "list_user_conversations"
-	ToolReadConversation        = "read_conversation"
+	ToolGetUserProfile        = "get_user_profile"
+	ToolListUserConversations = "list_user_conversations"
+	ToolReadConversation      = "read_conversation"
 )
 
 type userProfileTool struct {
@@ -65,27 +65,22 @@ type systemMessageSender interface {
 // input types
 
 type getUserProfileInput struct {
-	UserUUID string `json:"user_uuid"`
 }
 
 type searchRecentMessagesInput struct {
-	UserUUID string `json:"user_uuid"`
-	Query    string `json:"query"`
-	Limit    int    `json:"limit"`
+	Query string `json:"query"`
+	Limit int    `json:"limit"`
 }
 
 type sendSystemMessageInput struct {
-	UserUUID string `json:"user_uuid"`
-	Content  string `json:"content"`
+	Content string `json:"content"`
 }
 
 type listUserConversationsInput struct {
-	UserUUID string `json:"user_uuid"`
-	Limit    int    `json:"limit"`
+	Limit int `json:"limit"`
 }
 
 type readConversationInput struct {
-	UserUUID   string `json:"user_uuid"`
 	TargetUUID string `json:"target_uuid"`
 	Limit      int    `json:"limit"`
 }
@@ -202,20 +197,13 @@ func NewReadConversationTool(conversations conversationReader, messages messageR
 
 func (t *userProfileTool) Info(context.Context) (*schema.ToolInfo, error) {
 	return &schema.ToolInfo{
-		Name: ToolGetUserProfile,
-		Desc: "Get a concise user profile by user UUID. Use it when you need nickname, avatar, user type, or current user status.",
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user you want to inspect.",
-				Required: true,
-			},
-		}),
+		Name:        ToolGetUserProfile,
+		Desc:        "Get the current user's concise profile. Use it when you need nickname, avatar, user type, or current user status.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{}),
 	}, nil
 }
 
 func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
 	if t == nil || t.users == nil {
@@ -227,12 +215,12 @@ func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON stri
 		return "", fmt.Errorf("decode get_user_profile input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
 
-	user, err := t.users.GetByUUID(userUUID)
+	user, err := t.users.GetByUUID(execution.PrincipalUserUUID)
 	if err != nil {
 		return "", fmt.Errorf("get user profile: %w", err)
 	}
@@ -250,11 +238,6 @@ func (t *recentMessageSearchTool) Info(context.Context) (*schema.ToolInfo, error
 		Name: "search_recent_messages",
 		Desc: "Search recent direct conversation messages between the end user and the Dipole AI assistant by keyword. Use it when the user asks you to recall something said earlier.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the end user in the AI direct conversation.",
-				Required: true,
-			},
 			"query": {
 				Type:     schema.String,
 				Desc:     "The keyword or short phrase to search in recent messages.",
@@ -269,7 +252,6 @@ func (t *recentMessageSearchTool) Info(context.Context) (*schema.ToolInfo, error
 }
 
 func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
 	if t == nil || t.messages == nil {
@@ -284,11 +266,11 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		return "", fmt.Errorf("decode search_recent_messages input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	query := strings.TrimSpace(input.Query)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
+	query := strings.TrimSpace(input.Query)
 	if query == "" {
 		return "", errors.New("query is required")
 	}
@@ -301,7 +283,7 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		limit = 10
 	}
 
-	items, err := t.messages.ListByConversationKey(model.DirectConversationKey(userUUID, t.assistantUUID), 0, 50)
+	items, err := t.messages.ListByConversationKey(model.DirectConversationKey(execution.PrincipalUserUUID, t.assistantUUID), 0, 50)
 	if err != nil {
 		return "", fmt.Errorf("list recent messages: %w", err)
 	}
@@ -342,11 +324,6 @@ func (t *systemMessageTool) Info(context.Context) (*schema.ToolInfo, error) {
 		Name: "send_system_message",
 		Desc: "Send a system message to the current user when you intentionally need to deliver an explicit system-style notification.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the target user.",
-				Required: true,
-			},
 			"content": {
 				Type:     schema.String,
 				Desc:     "The system message content to send. Maximum 500 characters.",
@@ -371,11 +348,14 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		return "", fmt.Errorf("decode send_system_message input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	content := strings.TrimSpace(input.Content)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", errors.New("agent execution context does not match system message sender")
+	}
+	content := strings.TrimSpace(input.Content)
 	if content == "" {
 		return "", errors.New("content is required")
 	}
@@ -383,7 +363,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		content = string([]rune(content)[:500])
 	}
 
-	message, err := t.sender.SendSystemDirectMessage(t.assistantUUID, userUUID, content)
+	message, err := t.sender.SendSystemDirectMessage(t.assistantUUID, execution.PrincipalUserUUID, content)
 	if err != nil {
 		return "", fmt.Errorf("send system message: %w", err)
 	}
@@ -392,7 +372,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 	return marshalToolResult(toolSendMessageResult{
 		Sent:        message != nil,
 		MessageUUID: message.UUID,
-		TargetUUID:  userUUID,
+		TargetUUID:  execution.PrincipalUserUUID,
 		MessageType: model.MessageTypeSystem,
 	})
 }
@@ -402,11 +382,6 @@ func (t *listUserConversationsTool) Info(context.Context) (*schema.ToolInfo, err
 		Name: ToolListUserConversations,
 		Desc: "List the user's recent conversations with a short preview of the last message. Use this to discover which conversations are available before reading one.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user whose conversations to list.",
-				Required: true,
-			},
 			"limit": {
 				Type: schema.Integer,
 				Desc: "Maximum number of conversations to return. Default is 10, maximum is 20.",
@@ -416,7 +391,6 @@ func (t *listUserConversationsTool) Info(context.Context) (*schema.ToolInfo, err
 }
 
 func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
 	if t == nil || t.conversations == nil {
@@ -428,9 +402,9 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		return "", fmt.Errorf("decode list_user_conversations input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	limit := input.Limit
@@ -441,7 +415,7 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		limit = 20
 	}
 
-	convs, err := t.conversations.ListByUserUUID(userUUID, limit)
+	convs, err := t.conversations.ListByUserUUID(execution.PrincipalUserUUID, limit)
 	if err != nil {
 		return "", fmt.Errorf("list user conversations: %w", err)
 	}
@@ -475,11 +449,6 @@ func (t *readConversationTool) Info(context.Context) (*schema.ToolInfo, error) {
 		Name: ToolReadConversation,
 		Desc: "Read recent messages from one of the user's conversations. Only conversations the user participates in are accessible. Use list_user_conversations first to discover available target UUIDs.",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"user_uuid": {
-				Type:     schema.String,
-				Desc:     "The UUID of the user requesting the read.",
-				Required: true,
-			},
 			"target_uuid": {
 				Type:     schema.String,
 				Desc:     "The UUID of the other participant (user UUID for direct, group UUID for group).",
@@ -494,7 +463,6 @@ func (t *readConversationTool) Info(context.Context) (*schema.ToolInfo, error) {
 }
 
 func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...einoTool.Option) (string, error) {
-	_ = ctx
 	_ = opts
 
 	if t == nil || t.conversations == nil || t.messages == nil {
@@ -506,11 +474,12 @@ func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON
 		return "", fmt.Errorf("decode read_conversation input: %w", err)
 	}
 
-	userUUID := strings.TrimSpace(input.UserUUID)
-	targetUUID := strings.TrimSpace(input.TargetUUID)
-	if userUUID == "" {
-		return "", errors.New("user_uuid is required")
+	execution, err := requireExecutionContext(ctx)
+	if err != nil {
+		return "", err
 	}
+	userUUID := execution.PrincipalUserUUID
+	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if targetUUID == "" {
 		return "", errors.New("target_uuid is required")
 	}
@@ -644,4 +613,3 @@ func latestToolSentMessage(ctx context.Context) *model.Message {
 	}
 	return state.sentMessages[len(state.sentMessages)-1]
 }
-

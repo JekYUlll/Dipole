@@ -163,11 +163,13 @@ Eval Harness 同时评估：
 
 模型、Prompt、Tool Schema 和 Memory Policy 升级先跑离线数据集，再进入 shadow，最后按 Agent 或用户灰度。
 
-当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个 `AD-008` case 明确记录模型参数仍可覆盖资料读取身份和系统消息目标；TypeScript Runtime 在切流前必须让同一用例转为服务端 principal 派生结果，并保留旧 baseline 作为回归对照。
+当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个原 `AD-008` case 持续提交恶意身份参数，并要求资料读取和系统消息目标使用服务端派生 principal；TypeScript Runtime 必须通过同一契约后才能获得流量。
+
+Embedded Runtime 已完成第一层 `ExecutionContext`：Service 从触发 Message 与 correlation context 派生 principal、Agent、会话和 request/trace/event ID，Tool schema 不再暴露身份字段，缺少可信上下文时拒绝执行。tenant、委托身份、版本化 Capability 与审批策略留在 G1 后续切片。
 
 ## 9. 渐进路线
 
-1. 固化 Go/Eino 行为基线、事件契约和评测集，建立 Capability API 与 Agent Command API。
+1. 固化 Go/Eino 行为基线、可信 ExecutionContext、事件契约和评测集，建立 Capability API 与 Agent Command API。
 2. 建立 TS Runtime 骨架，实现 ExecutionContext、Capability Registry、Kafka shadow consumer 和执行审计。
 3. 引入 Temporal AgentTask，支持等待输入、审批、重试、取消和恢复。
 4. 实现 Context Compiler、分层 Memory、Event Subscription 和 Artifact。

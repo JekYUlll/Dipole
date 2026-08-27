@@ -10,6 +10,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 var (
@@ -109,18 +110,18 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return markFailed(err)
 	}
 
-	// Prepend a system message so the agent knows the current user's UUID
-	// when invoking tools that require user_uuid (e.g. list_user_conversations).
-	contextMessages := conversationContext.Messages
-	if conversationContext.EndUser != nil && conversationContext.EndUser.UUID != "" {
-		contextMessages = append(
-			[]*schema.Message{schema.SystemMessage("Current user UUID: " + conversationContext.EndUser.UUID)},
-			conversationContext.Messages...,
-		)
-	}
-
-	runCtx := withToolExecutionState(ctx, &toolExecutionState{})
-	reply, err := s.agent.Reply(runCtx, contextMessages)
+	ids := correlation.FromContext(ctx)
+	runCtx := withExecutionContext(ctx, ExecutionContext{
+		PrincipalUserUUID:  message.SenderUUID,
+		AgentUUID:          assistantUUID,
+		TriggerMessageUUID: message.UUID,
+		ConversationKey:    message.ConversationKey,
+		RequestID:          ids.RequestID,
+		TraceID:            ids.TraceID,
+		EventID:            ids.EventID,
+	})
+	runCtx = withToolExecutionState(runCtx, &toolExecutionState{})
+	reply, err := s.agent.Reply(runCtx, conversationContext.Messages)
 	if err != nil {
 		return markFailed(err)
 	}

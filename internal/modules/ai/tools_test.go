@@ -3,12 +3,21 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 )
+
+func toolTestContext(principalUserUUID string) context.Context {
+	return withExecutionContext(context.Background(), ExecutionContext{
+		PrincipalUserUUID: principalUserUUID,
+		AgentUUID:         "UAI",
+	})
+}
 
 func TestUserProfileToolInvokableRun(t *testing.T) {
 	t.Parallel()
@@ -33,7 +42,7 @@ func TestUserProfileToolInvokableRun(t *testing.T) {
 		t.Fatalf("expected tool name %s, got %s", ToolGetUserProfile, info.Name)
 	}
 
-	result, err := tool.(*userProfileTool).InvokableRun(context.Background(), `{"user_uuid":"U100"}`)
+	result, err := tool.(*userProfileTool).InvokableRun(toolTestContext("U100"), `{}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -58,7 +67,7 @@ func TestRecentMessageSearchToolInvokableRun(t *testing.T) {
 		},
 	}, "UAI")
 
-	result, err := tool.(*recentMessageSearchTool).InvokableRun(context.Background(), `{"user_uuid":"U100","query":"cache","limit":2}`)
+	result, err := tool.(*recentMessageSearchTool).InvokableRun(toolTestContext("U100"), `{"query":"cache","limit":2}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -107,7 +116,7 @@ func TestSystemMessageToolInvokableRun(t *testing.T) {
 	}
 	tool := NewSystemMessageTool(sender, "UAI")
 
-	result, err := tool.(*systemMessageTool).InvokableRun(context.Background(), `{"user_uuid":"U100","content":"maintenance notice"}`)
+	result, err := tool.(*systemMessageTool).InvokableRun(toolTestContext("U100"), `{"content":"maintenance notice"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -150,7 +159,7 @@ func TestListUserConversationsToolInvokableRun(t *testing.T) {
 		},
 	})
 
-	result, err := tool.(*listUserConversationsTool).InvokableRun(context.Background(), `{"user_uuid":"U100"}`)
+	result, err := tool.(*listUserConversationsTool).InvokableRun(toolTestContext("U100"), `{}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -188,7 +197,7 @@ func TestReadConversationToolInvokableRun(t *testing.T) {
 		},
 	)
 
-	result, err := tool.(*readConversationTool).InvokableRun(context.Background(), `{"user_uuid":"U100","target_uuid":"U200"}`)
+	result, err := tool.(*readConversationTool).InvokableRun(toolTestContext("U100"), `{"target_uuid":"U200"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -219,7 +228,7 @@ func TestReadConversationToolPermissionDenied(t *testing.T) {
 		&stubAIMessageReader{},
 	)
 
-	result, err := tool.(*readConversationTool).InvokableRun(context.Background(), `{"user_uuid":"U100","target_uuid":"U999"}`)
+	result, err := tool.(*readConversationTool).InvokableRun(toolTestContext("U100"), `{"target_uuid":"U999"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -233,3 +242,72 @@ func TestReadConversationToolPermissionDenied(t *testing.T) {
 	}
 }
 
+func TestAgentToolsFailClosedWithoutExecutionContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{name: ToolGetUserProfile, run: func(ctx context.Context) error {
+			_, err := NewUserProfileTool(&stubAIUserReader{}).(*userProfileTool).InvokableRun(ctx, `{}`)
+			return err
+		}},
+		{name: "search_recent_messages", run: func(ctx context.Context) error {
+			_, err := NewRecentMessageSearchTool(&stubAIMessageReader{}, "UAI").(*recentMessageSearchTool).InvokableRun(ctx, `{"query":"x"}`)
+			return err
+		}},
+		{name: "send_system_message", run: func(ctx context.Context) error {
+			_, err := NewSystemMessageTool(&stubSystemMessageSender{}, "UAI").(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
+			return err
+		}},
+		{name: ToolListUserConversations, run: func(ctx context.Context) error {
+			_, err := NewListUserConversationsTool(&stubConversationReader{}).(*listUserConversationsTool).InvokableRun(ctx, `{}`)
+			return err
+		}},
+		{name: ToolReadConversation, run: func(ctx context.Context) error {
+			_, err := NewReadConversationTool(&stubConversationReader{}, &stubAIMessageReader{}).(*readConversationTool).InvokableRun(ctx, `{"target_uuid":"U200"}`)
+			return err
+		}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if err := test.run(context.Background()); !errors.Is(err, ErrExecutionContextMissing) {
+				t.Fatalf("expected missing execution context, got %v", err)
+			}
+		})
+	}
+}
+
+func TestAgentToolSchemasDoNotExposeModelControlledIdentity(t *testing.T) {
+	t.Parallel()
+
+	tools := NewTools(&stubAIUserReader{}, &stubAIMessageReader{}, &stubConversationReader{}, &stubSystemMessageSender{}, "UAI")
+	for _, tool := range tools {
+		info, err := tool.Info(context.Background())
+		if err != nil {
+			t.Fatalf("read tool info: %v", err)
+		}
+		payload, err := json.Marshal(info.ParamsOneOf)
+		if err != nil {
+			t.Fatalf("marshal %s schema: %v", info.Name, err)
+		}
+		if strings.Contains(string(payload), "user_uuid") {
+			t.Errorf("tool %s exposes user_uuid in model schema: %s", info.Name, payload)
+		}
+	}
+}
+
+func TestSystemMessageToolRejectsMismatchedAgentIdentity(t *testing.T) {
+	t.Parallel()
+
+	tool := NewSystemMessageTool(&stubSystemMessageSender{}, "UAI")
+	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: "U100", AgentUUID: "UOTHER"})
+	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
+	if err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("expected agent identity mismatch, got %v", err)
+	}
+}
