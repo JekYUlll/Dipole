@@ -3,11 +3,29 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
-	"time"
 )
+
+type ConnectionEnqueueStatus string
+
+const (
+	ConnectionEnqueueStatusEnqueued      ConnectionEnqueueStatus = "enqueued"
+	ConnectionEnqueueStatusOffline       ConnectionEnqueueStatus = "offline"
+	ConnectionEnqueueStatusBackpressured ConnectionEnqueueStatus = "backpressured"
+)
+
+type ConnectionEnqueueResult struct {
+	ConnectionID  string
+	Status        ConnectionEnqueueStatus
+	QueueDepth    int
+	QueueCapacity int
+}
 
 type Hub struct {
 	mu       sync.RWMutex
@@ -169,6 +187,67 @@ func (h *Hub) SendEventToUserContext(ctx context.Context, userUUID string, event
 	}
 
 	return h.sendToUser(userUUID, payload)
+}
+
+func (h *Hub) EnqueueEventToConnectionsContext(
+	ctx context.Context,
+	userUUID string,
+	connectionIDs []string,
+	eventType string,
+	data any,
+) ([]ConnectionEnqueueResult, error) {
+	if h == nil || strings.TrimSpace(userUUID) == "" || strings.TrimSpace(eventType) == "" || len(connectionIDs) == 0 {
+		return nil, errors.New("targeted websocket delivery requires user, connections, and event type")
+	}
+	requested := make(map[string]struct{}, len(connectionIDs))
+	for _, connectionID := range connectionIDs {
+		if strings.TrimSpace(connectionID) == "" {
+			return nil, errors.New("targeted websocket connection identity is required")
+		}
+		if _, exists := requested[connectionID]; exists {
+			return nil, fmt.Errorf("targeted websocket connection %s is duplicated", connectionID)
+		}
+		requested[connectionID] = struct{}{}
+	}
+
+	ids := correlation.FromContext(ctx)
+	payload, err := json.Marshal(OutboundEvent{
+		Type: eventType, RequestID: ids.RequestID, TraceID: ids.TraceID, EventID: ids.EventID, Data: data,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal targeted websocket event: %w", err)
+	}
+	clients := make(map[string]*Client, len(connectionIDs))
+	for _, client := range h.snapshotClients(userUUID) {
+		if _, wanted := requested[client.connectionID]; wanted {
+			clients[client.connectionID] = client
+		}
+	}
+
+	results := make([]ConnectionEnqueueResult, 0, len(connectionIDs))
+	for _, connectionID := range connectionIDs {
+		result := ConnectionEnqueueResult{ConnectionID: connectionID, Status: ConnectionEnqueueStatusOffline}
+		client := clients[connectionID]
+		if client == nil {
+			results = append(results, result)
+			continue
+		}
+		depth, capacity, enqueueErr := client.enqueueWithPressure(payload)
+		result.QueueDepth = depth
+		result.QueueCapacity = capacity
+		switch {
+		case enqueueErr == nil:
+			result.Status = ConnectionEnqueueStatusEnqueued
+		case errors.Is(enqueueErr, ErrSendQueueFull):
+			result.Status = ConnectionEnqueueStatusBackpressured
+		case errors.Is(enqueueErr, ErrClientClosed):
+			result.Status = ConnectionEnqueueStatusOffline
+		default:
+			return nil, fmt.Errorf("enqueue targeted websocket event: %w", enqueueErr)
+		}
+		results = append(results, result)
+	}
+	return results, nil
 }
 
 func (h *Hub) sendToUser(userUUID string, payload []byte) int {
