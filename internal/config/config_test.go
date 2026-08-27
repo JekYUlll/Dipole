@@ -28,6 +28,35 @@ func TestConfigDistDeclaresSafeDependencyReadinessDefaults(t *testing.T) {
 	}
 }
 
+func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {
+	t.Setenv("DIPOLE_CONFIG_FILE", "/tmp/dipole-explicit-config.yaml")
+	v := viper.New()
+	configureConfigSource(v)
+	if err := v.ReadInConfig(); err == nil || !strings.Contains(err.Error(), "/tmp/dipole-explicit-config.yaml") {
+		t.Fatalf("explicit config source was not selected: %v", err)
+	}
+}
+
+func TestConfigureConfigSourceKeepsLegacySearchWhenUnset(t *testing.T) {
+	t.Setenv("DIPOLE_CONFIG_FILE", "")
+	directory := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(directory, "configs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "configs", "config.yaml"), []byte("app:\n  name: fixture\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(directory)
+	v := viper.New()
+	configureConfigSource(v)
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatalf("read legacy config search path: %v", err)
+	}
+	if got := v.GetString("app.name"); got != "fixture" {
+		t.Fatalf("legacy config value = %q", got)
+	}
+}
+
 func TestElasticsearchConfigLoadsEnvironmentOverrides(t *testing.T) {
 	t.Setenv("DIPOLE_ELASTICSEARCH_ENABLED", "true")
 	t.Setenv("DIPOLE_ELASTICSEARCH_ADDRESS", "http://search.example:9200")
