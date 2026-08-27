@@ -13,6 +13,8 @@ func TestClientSyncComparisonCollector(t *testing.T) {
 	collector.ObserveClientSyncComparison("match", 3)
 	collector.ObserveClientSyncComparison("legacy_only", 1)
 	collector.ObserveClientSyncComparison("storage_full", 2)
+	collector.ObserveClientSyncComparison("timeline_match", 4)
+	collector.ObserveClientSyncComparison("timeline_mismatch", 1)
 	collector.ObserveClientSyncComparison("unexpected", 1)
 
 	families, err := registry.Gather()
@@ -63,9 +65,25 @@ func TestClientSyncComparisonCollector(t *testing.T) {
 			if errors["storage_full"] != 2 || errors["sync_error"] != 0 {
 				t.Fatalf("unexpected client error metrics: %+v", errors)
 			}
+		case "dipole_web_timeline_notify_shadow_total":
+			found[family.GetName()] = true
+			if len(family.Metric) != 5 {
+				t.Fatalf("timeline metric count = %d", len(family.Metric))
+			}
+			outcomes := make(map[string]float64, len(family.Metric))
+			for _, metric := range family.Metric {
+				for _, label := range metric.Label {
+					if label.GetName() == "outcome" {
+						outcomes[label.GetValue()] = metric.GetCounter().GetValue()
+					}
+				}
+			}
+			if outcomes["match"] != 4 || outcomes["mismatch"] != 1 || outcomes["missing"] != 0 {
+				t.Fatalf("unexpected timeline metrics: %+v", outcomes)
+			}
 		}
 	}
-	if !found["dipole_web_sync_comparison_total"] || !found["dipole_web_sync_client_errors_total"] {
+	if !found["dipole_web_sync_comparison_total"] || !found["dipole_web_sync_client_errors_total"] || !found["dipole_web_timeline_notify_shadow_total"] {
 		t.Fatalf("missing Sync metric families: %+v", found)
 	}
 }

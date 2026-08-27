@@ -128,6 +128,16 @@ export interface GroupMessageNotify {
   sender_uuid?: string
 }
 
+export interface SyncItemNotify {
+  schema_version: string
+  event_id: string
+  message_uuid: string
+  conversation_key: string
+  message_seq: number
+  target_type: number
+  target_uuid: string
+}
+
 export interface GroupSyncCheckpoint {
 	group_uuid: string
 	latest_message_seq: number

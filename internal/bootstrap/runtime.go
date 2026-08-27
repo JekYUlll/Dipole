@@ -42,6 +42,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	kafkaCfg := config.KafkaConfig()
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
+	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+		return nil, err
+	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
 		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
 	}
@@ -239,6 +242,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 
 	return rt, nil
+}
+
+func validateTimelineNotifyMode(messageCfg config.Message) error {
+	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow {
+		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
+	}
+	return nil
 }
 
 func (r *Runtime) Server() *server.Server {

@@ -18,12 +18,18 @@ const (
 	TypeChatRead             = "chat.read"
 	TypeSessionKicked        = "session.kicked"
 	TypeGroupMessageNotify   = "group.message.notify"
+	TypeSyncItemNotifyV1     = "sync.item.notify.v1"
 	TypeGroupCreated         = "group.created"
 	TypeGroupUpdated         = "group.updated"
 	TypeGroupMembersAdded    = "group.members_added"
 	TypeGroupMembersRemoved  = "group.members_removed"
 	TypeGroupDismissed       = "group.dismissed"
 	TypeContactFriendDeleted = "contact.friend_deleted"
+)
+
+const (
+	TimelineNotifyOff    = "off"
+	TimelineNotifyShadow = "shadow"
 )
 
 const (
@@ -121,6 +127,16 @@ type GroupMessageNotifyData struct {
 	RecentMessageCount int       `json:"recent_message_count"`
 	SentAt             time.Time `json:"sent_at"`
 	SenderUUID         string    `json:"sender_uuid"`
+}
+
+type SyncItemNotifyData struct {
+	SchemaVersion   string `json:"schema_version"`
+	EventID         string `json:"event_id"`
+	MessageUUID     string `json:"message_uuid"`
+	ConversationKey string `json:"conversation_key"`
+	MessageSeq      uint64 `json:"message_seq"`
+	TargetType      int8   `json:"target_type"`
+	TargetUUID      string `json:"target_uuid"`
 }
 
 type SessionKickedData struct {

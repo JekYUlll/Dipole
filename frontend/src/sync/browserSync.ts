@@ -10,6 +10,11 @@ import {
   type SyncComparisonState,
 } from './syncComparison'
 import { MessageSyncEngine, type SyncDeliverySource, type SyncPage } from './syncEngine'
+import {
+  TimelineNotifyShadowVerifier,
+  type TimelineNotification,
+  type TimelineNotifyShadowOutcome,
+} from './timelineNotifyShadow'
 
 export type BrowserSyncMode = 'off' | 'shadow' | 'primary'
 
@@ -18,9 +23,11 @@ export const browserSyncMode: BrowserSyncMode = configuredMode === 'shadow' || c
   ? configuredMode
   : import.meta.env.VITE_SYNC_ENGINE_ENABLED === 'true' ? 'primary' : 'off'
 export const browserSyncEnabled = browserSyncMode !== 'off'
+export const timelineNotifyShadowEnabled = import.meta.env.VITE_TIMELINE_NOTIFY_MODE === 'shadow'
 export { isLocalSyncCapacityError }
 
 let store: IndexedDBSyncStore | undefined
+let timelineVerifier: { userUUID: string; verifier: TimelineNotifyShadowVerifier } | undefined
 
 export async function recoverBrowserMessages(
   userUUID: string,
@@ -98,9 +105,68 @@ export async function reportBrowserSyncFailure(error: unknown) {
   }
 }
 
+export function createBrowserTimelineNotifyVerifier(userUUID: string) {
+  return new TimelineNotifyShadowVerifier({
+    list: async (notification, afterSeq, limit) => {
+      const path = timelineNotificationPath(userUUID, notification, afterSeq, limit)
+      const messages = await api.get(path)
+      return Array.isArray(messages) ? messages as Message[] : []
+    },
+  }, reportTimelineNotifyShadowOutcome)
+}
+
+export function observeBrowserTimelineNotification(userUUID: string, notification: unknown) {
+  if (!timelineNotifyShadowEnabled || !userUUID) return Promise.resolve()
+  if (!timelineVerifier || timelineVerifier.userUUID !== userUUID) {
+    timelineVerifier = { userUUID, verifier: createBrowserTimelineNotifyVerifier(userUUID) }
+  }
+  return timelineVerifier.verifier.observe(notification)
+}
+
+export function timelineNotificationPath(
+  userUUID: string,
+  notification: TimelineNotification,
+  afterSeq: number,
+  limit: number,
+) {
+  if (notification.target_type === 1) {
+    if (notification.conversation_key !== `group:${notification.target_uuid}`) {
+      throw new Error('group timeline notification locator is invalid')
+    }
+    return `/api/v1/messages/group/${encodeURIComponent(notification.target_uuid)}?after_seq=${afterSeq}&limit=${limit}`
+  }
+  const parts = notification.conversation_key.split(':')
+  if (parts.length !== 3 || parts[0] !== 'direct' || notification.target_uuid !== userUUID) {
+    throw new Error('direct timeline notification locator is invalid')
+  }
+  const participants = [parts[1], parts[2]]
+  if (!participants.includes(userUUID) || participants[0] === participants[1]) {
+    throw new Error('direct timeline notification participants are invalid')
+  }
+  const peerUUID = participants[0] === userUUID ? participants[1] : participants[0]
+  return `/api/v1/messages/direct/${encodeURIComponent(peerUUID)}?after_seq=${afterSeq}&limit=${limit}`
+}
+
+async function reportTimelineNotifyShadowOutcome(outcome: TimelineNotifyShadowOutcome) {
+  const counts = {
+    timeline_match: 0,
+    timeline_missing: 0,
+    timeline_mismatch: 0,
+    timeline_error: 0,
+    timeline_invalid: 0,
+  }
+  counts[`timeline_${outcome}` as keyof typeof counts] = 1
+  try {
+    await api.post('/api/v1/sync/comparison', counts)
+  } catch {
+    // Shadow telemetry cannot affect realtime delivery or Timeline verification.
+  }
+}
+
 export async function clearBrowserMessages(userUUID: string) {
   if (!userUUID) return
   localStorage.removeItem(comparisonStorageKey(userUUID))
+  if (timelineVerifier?.userUUID === userUUID) timelineVerifier = undefined
   if (typeof indexedDB !== 'undefined') await getStore().clearUser(userUUID)
 }
 

@@ -3838,6 +3838,21 @@ const docTemplate = `{
                 },
                 "sync_only": {
                     "type": "integer"
+                },
+                "timeline_error": {
+                    "type": "integer"
+                },
+                "timeline_invalid": {
+                    "type": "integer"
+                },
+                "timeline_match": {
+                    "type": "integer"
+                },
+                "timeline_mismatch": {
+                    "type": "integer"
+                },
+                "timeline_missing": {
+                    "type": "integer"
                 }
             }
         },

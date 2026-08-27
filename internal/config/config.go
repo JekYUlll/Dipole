@@ -120,6 +120,7 @@ type Message struct {
 	CassandraDuplicateHydration bool   `mapstructure:"cassandra_duplicate_hydration"`
 	EnforceDBPermissions        bool   `mapstructure:"enforce_db_permissions"`
 	InboxWriteMode              string `mapstructure:"inbox_write_mode"`
+	TimelineNotifyMode          string `mapstructure:"timeline_notify_mode"`
 }
 
 type Search struct {
@@ -306,6 +307,7 @@ func Load() error {
 		v.SetDefault("message.cassandra_duplicate_hydration", false)
 		v.SetDefault("message.enforce_db_permissions", false)
 		v.SetDefault("message.inbox_write_mode", "atomic")
+		v.SetDefault("message.timeline_notify_mode", "off")
 		v.SetDefault("message.mysql.host", "")
 		v.SetDefault("message.mysql.port", 0)
 		v.SetDefault("message.mysql.user", "")
@@ -448,6 +450,7 @@ func Load() error {
 			"message.cassandra_duplicate_hydration",
 			"message.enforce_db_permissions",
 			"message.inbox_write_mode",
+			"message.timeline_notify_mode",
 			"message.mysql.host",
 			"message.mysql.port",
 			"message.mysql.user",
@@ -714,6 +717,7 @@ func MessageConfig() Message {
 		CassandraDuplicateHydration: cfg.GetBool("message.cassandra_duplicate_hydration"),
 		EnforceDBPermissions:        cfg.GetBool("message.enforce_db_permissions"),
 		InboxWriteMode:              strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
+		TimelineNotifyMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.timeline_notify_mode"))),
 	}
 }
 

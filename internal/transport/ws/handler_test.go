@@ -133,6 +133,11 @@ type chatMessageEvent struct {
 	Data ChatMessageData `json:"data"`
 }
 
+type syncItemNotifyEvent struct {
+	Type string             `json:"type"`
+	Data SyncItemNotifyData `json:"data"`
+}
+
 func TestHandlerRejectsMissingToken(t *testing.T) {
 	t.Parallel()
 
@@ -301,6 +306,8 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 
 			return &model.Message{
 				UUID:            "M100",
+				ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
+				Seq:             42,
 				ClientMessageID: clientMessageID,
 				SenderUUID:      senderUUID,
 				TargetUUID:      targetUUID,
@@ -320,7 +327,7 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			}
 			return nil
 		},
-	}, true)
+	}, true).WithTimelineNotifyMode(TimelineNotifyShadow)
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, dispatcher)
@@ -376,6 +383,14 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	if incoming.Data.Content != "hello from U100" {
 		t.Fatalf("expected message content preserved, got %q", incoming.Data.Content)
+	}
+	var notify syncItemNotifyEvent
+	readWebSocketJSON(t, second, &notify)
+	if notify.Type != TypeSyncItemNotifyV1 || notify.Data.MessageUUID != "M100" || notify.Data.MessageSeq != 42 {
+		t.Fatalf("unexpected timeline notification: %+v", notify)
+	}
+	if notify.Data.ConversationKey != model.DirectConversationKey("U100", "U200") {
+		t.Fatalf("unexpected timeline conversation: %+v", notify.Data)
 	}
 }
 
