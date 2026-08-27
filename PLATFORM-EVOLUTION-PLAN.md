@@ -89,7 +89,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout；标准化报告归档于 `benchmarks/g0-2026-08-27/`。
 - [x] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
 - [x] 建立服务级健康检查、指标、结构化日志和最小告警规则。
-- [ ] 将需要长期维护的架构 Markdown 纳入版本控制，关闭 `AD-007`。
+- [x] 将需要长期维护的架构 Markdown 纳入版本控制，以 manifest 和检查脚本持续约束并关闭 `AD-007`。
 
 **G0 验收：** 全量测试通过；事件兼容测试通过；基线压测结果归档；当前单体部署行为保持一致。
 

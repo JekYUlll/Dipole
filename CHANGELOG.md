@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 canonical 架构文档 manifest 与 Git 跟踪门禁，移除 `docs/*.md` 通配忽略；历史和本地参考资料改为显式单文件忽略，避免旧文档被误当作当前实现契约。
 - 增加 G0 可复现端到端性能门禁与版本化报告，覆盖 direct、concurrent、普通群和热群的接受/持久化/投递率、P50/P95/P99、Kafka lag 及 Inbox 写放大；Compose 热群阈值可在基准期间受控覆盖，默认仍为 `200/50`。
 - 增加统一服务健康面：Core、Gateway、Message、Sync、Search、Search Indexer 与 Cassandra Projector 通过 metrics listener 暴露 `/livez`、`/readyz`、兼容 `/health`、`dipole_service_info` 和 `dipole_service_ready`；微服务 Compose 使用 readiness 探针，Prometheus 增加必需服务 down/not-ready 告警及 promtool 时序测试。
 - 增加统一关联上下文：HTTP Core/Gateway 生成并回传 `X-Request-ID`、`X-Trace-ID`，gRPC metadata/protobuf、WebSocket 命令与 ACK、Kafka Envelope/headers、consumer handler 和 Transactional Outbox 保持同一 request/trace 因果链；每个领域事件独立生成 `event_id`，旧接口和旧事件仍保持兼容。
