@@ -69,6 +69,12 @@ func TestAgentArtifactMySQLImmutableConcurrencyContract(t *testing.T) {
 	if err != nil || loaded == nil || loaded.ArtifactUUID != artifact.ArtifactUUID || string(loaded.Metadata) != string(artifact.Metadata) {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
 	}
+	if exists, err := artifacts.ExistsByObjectKey(context.Background(), artifact.ObjectBucket, artifact.ObjectKey); err != nil || !exists {
+		t.Fatalf("existing Artifact object lookup=%t err=%v", exists, err)
+	}
+	if exists, err := artifacts.ExistsByObjectKey(context.Background(), artifact.ObjectBucket, artifact.ObjectKey+"-missing"); err != nil || exists {
+		t.Fatalf("missing Artifact object lookup=%t err=%v", exists, err)
+	}
 	if err := runner.Down(context.Background(), 1); err != nil {
 		t.Fatalf("rollback migration v26: %v", err)
 	}

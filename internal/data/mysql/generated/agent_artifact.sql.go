@@ -10,6 +10,25 @@ import (
 	"encoding/json"
 )
 
+const agentArtifactExistsByObjectKey = `-- name: AgentArtifactExistsByObjectKey :one
+SELECT EXISTS(
+    SELECT 1 FROM agent_artifacts
+    WHERE object_bucket = ? AND object_key = ?
+)
+`
+
+type AgentArtifactExistsByObjectKeyParams struct {
+	ObjectBucket string
+	ObjectKey    string
+}
+
+func (q *Queries) AgentArtifactExistsByObjectKey(ctx context.Context, arg AgentArtifactExistsByObjectKeyParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, agentArtifactExistsByObjectKey, arg.ObjectBucket, arg.ObjectKey)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getAgentArtifact = `-- name: GetAgentArtifact :one
 SELECT id, artifact_uuid, schema_version, task_uuid, run_uuid, artifact_type, version, title, media_type, object_bucket, object_key, content_sha256, size_bytes, metadata_json, created_at FROM agent_artifacts WHERE artifact_uuid = ? LIMIT 1
 `

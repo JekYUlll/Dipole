@@ -95,9 +95,12 @@ services:
       DIPOLE_PLATFORM_MINIO_SECRET_KEY: ${DIPOLE_PLATFORM_MINIO_SECRET_KEY:-dipoleplatformpass}
       DIPOLE_ARTIFACT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MINIO_ACCESS_KEY:-dipoleartifact}
       DIPOLE_ARTIFACT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY:-dipoleartifactaudit}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY:-dipoleartifactauditpass}
     volumes:
       - ./configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
       - ./configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
+      - ./configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
@@ -114,7 +117,10 @@ services:
       mc mb --ignore-existing local/dipole-agent-artifacts &&
       mc admin user add local \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_MINIO_SECRET_KEY\" &&
       mc admin policy create local dipole-agent-artifact-rw /policies/agent-artifact-policy.json &&
-      mc admin policy attach local dipole-agent-artifact-rw --user \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\"
+      mc admin policy attach local dipole-agent-artifact-rw --user \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-audit /policies/agent-artifact-audit-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-audit --user \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\"
       "
 
 volumes:

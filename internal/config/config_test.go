@@ -26,6 +26,8 @@ func TestConfigDistDeclaresDisabledIsolatedAgentArtifactStorage(t *testing.T) {
 		"storage.artifact_secret_key",
 		"storage.artifact_use_ssl",
 		"storage.artifact_bucket",
+		"storage.artifact_audit_access_key",
+		"storage.artifact_audit_secret_key",
 	} {
 		if !v.IsSet(key) {
 			t.Fatalf("missing isolated Agent Artifact storage key %s", key)
@@ -89,6 +91,28 @@ func TestPlatformMinIOPolicyCannotReachAgentArtifacts(t *testing.T) {
 	}
 	if strings.Contains(string(body), "arn:aws:s3:::dipole-agent-artifacts") {
 		t.Fatal("platform storage identity must not receive Agent Artifact resources")
+	}
+	var policy map[string]any
+	if err := json.Unmarshal(body, &policy); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentArtifactAuditPolicyIsStrictlyReadOnly(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "configs", "minio", "agent-artifact-audit-policy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, required := range []string{"s3:GetBucketLocation", "s3:ListBucket", "arn:aws:s3:::dipole-agent-artifacts"} {
+		if !strings.Contains(text, required) {
+			t.Fatalf("audit policy is missing %s", required)
+		}
+	}
+	for _, forbidden := range []string{"PutObject", "DeleteObject", "GetObject", "s3:*"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("audit policy contains forbidden action %s", forbidden)
+		}
 	}
 	var policy map[string]any
 	if err := json.Unmarshal(body, &policy); err != nil {

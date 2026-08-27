@@ -15,12 +15,12 @@
 ### AD-032：Artifact 对象写入后缺少孤儿清扫证据
 
 - **优先级：** P2
-- **状态：** 暂缓
+- **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Artifact、MinIO 容量、MySQL 元数据、故障恢复与审计
-- **现状：** migration v26 保存不可变 Artifact 元数据，正文使用 Task/Run/版本/内容哈希导出的确定性对象键。对象先写 MinIO，随后追加 MySQL 元数据；网络重试会复用并重新验证同一对象，用户读取只能到达已提交的元数据记录。
+- **现状：** migration v26 保存不可变 Artifact 元数据，正文使用 Task/Run/版本/内容哈希导出的确定性对象键。已增加固定前缀、24 小时门槛、sqlc 二次存在性查询和 SHA-256 报告的只读 dry-run；独立 audit 身份只有 bucket 定位/List 权限，报告固定不授权删除。
 - **风险：** MinIO 写入成功后若 MySQL 持续失败且任务不再重试，会留下无法从用户 API 引用的内容寻址对象。该对象不会覆盖其他版本，也不会获得读取授权，但会长期占用容量。
-- **建议方向：** 增加只读 Reconcile，按固定对象前缀与元数据快照列出孤儿并输出 SHA-256 证据；清理使用独立 maintenance 身份、最短保留窗口、dry-run 和审计 receipt，Runtime/Core 账号继续没有删除权限。
+- **建议方向：** 在真实 Shadow 观察窗口持续归档 dry-run 报告；后续清理需增加独立 maintenance 身份、执行前再次查询元数据、最短保留窗口、双人审批和审计 receipt，Runtime/Core/audit 账号继续没有删除权限。
 - **处理门槛：** Artifact 进入 active 模式或配置自动保留期限前完成；Shadow 阶段以容量指标和人工审计接受该风险。
 
 ### AD-031：Context Token 预算使用确定性近似估算

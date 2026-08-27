@@ -64,6 +64,17 @@ func (r *AgentArtifactRepository) GetAgentArtifactByTaskTypeVersion(ctx context.
 	return mapAgentArtifactV1(row), nil
 }
 
+func (r *AgentArtifactRepository) ExistsByObjectKey(ctx context.Context, bucket, objectKey string) (bool, error) {
+	exists, err := r.queries.AgentArtifactExistsByObjectKey(ctx, generated.AgentArtifactExistsByObjectKeyParams{
+		ObjectBucket: bucket,
+		ObjectKey:    objectKey,
+	})
+	if err != nil {
+		return false, fmt.Errorf("lookup Agent Artifact object metadata: %w", err)
+	}
+	return exists, nil
+}
+
 func mapAgentArtifactV1(row generated.AgentArtifact) *application.AgentArtifactV1 {
 	metadata := row.MetadataJson
 	var compact bytes.Buffer

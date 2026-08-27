@@ -194,6 +194,9 @@ storage:
   artifact_secret_key: ""
   artifact_use_ssl: false
   artifact_bucket: dipole-agent-artifacts
+  # Supplied only to the offline reconcile command; never inject into Core or Agent Runtime.
+  artifact_audit_access_key: ""
+  artifact_audit_secret_key: ""
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
   multipart_chunk_size_mb: 5

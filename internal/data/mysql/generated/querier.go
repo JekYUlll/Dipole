@@ -19,6 +19,7 @@ type Querier interface {
 	AdvanceDeviceSyncCheckpoint(ctx context.Context, arg AdvanceDeviceSyncCheckpointParams) (sql.Result, error)
 	AdvanceSearchBackfillJob(ctx context.Context, arg AdvanceSearchBackfillJobParams) (sql.Result, error)
 	AdvanceSyncReplayJob(ctx context.Context, arg AdvanceSyncReplayJobParams) (sql.Result, error)
+	AgentArtifactExistsByObjectKey(ctx context.Context, arg AgentArtifactExistsByObjectKeyParams) (bool, error)
 	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
 	ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)

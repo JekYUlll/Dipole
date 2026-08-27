@@ -12,3 +12,9 @@ SELECT * FROM agent_artifacts WHERE artifact_uuid = ? LIMIT 1;
 SELECT * FROM agent_artifacts
 WHERE task_uuid = ? AND artifact_type = ? AND version = ?
 LIMIT 1;
+
+-- name: AgentArtifactExistsByObjectKey :one
+SELECT EXISTS(
+    SELECT 1 FROM agent_artifacts
+    WHERE object_bucket = ? AND object_key = ?
+);

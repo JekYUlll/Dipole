@@ -47,6 +47,22 @@ func TestNewAgentArtifactBlobStoreRequiresDedicatedConfiguration(t *testing.T) {
 	}
 }
 
+func TestNewAgentArtifactObjectSourceRequiresSeparateReadOnlyIdentity(t *testing.T) {
+	for name, cfg := range map[string]AgentArtifactAuditConfigV1{
+		"missing": {},
+		"shared runtime identity": {
+			Endpoint: "minio:9000", AccessKey: "shared", SecretKey: "secret",
+			Bucket: "dipole-agent-artifacts", RuntimeAccessKey: "shared",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := NewAgentArtifactObjectSourceV1(context.Background(), cfg); err == nil {
+				t.Fatal("expected unsafe Artifact audit identity to be rejected")
+			}
+		})
+	}
+}
+
 type agentArtifactObjectClientStubV1 struct {
 	objects map[string][]byte
 	puts    int
