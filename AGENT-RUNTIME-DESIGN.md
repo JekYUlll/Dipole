@@ -145,6 +145,8 @@ G3 v1 使用 migration v28 的 `agent_event_subscriptions` 保存 Subscription �
 
 G4 预筛评测使用独立 `dipole.agent.subscription-prefilter-*.v1` 合同。受控 corpus 保存最多 10000 条事件与人工相关性标签；candidate evidence 将 `rule|embedding|small_model` 的 revision/configuration SHA-256 绑定到逐 case 决策、basis-point 分数、微秒耗时和微美元成本。纯 evaluator 不访问模型、数据库或网络，输出 corpus/evidence SHA-256、混淆矩阵、向下取整的 precision/recall bps、nearest-rank p95、向上取整平均成本和误判 case ID，不回显消息正文。首个 rule adapter 直接复用生产 `matchEventSubscriptions`，防止测试基线与部署语义分叉。synthetic 示例只验证合同和规则链；真实 Project Guardian corpus 及 embedding/小模型 evidence 达标前，生产仍固定 `direct_target`。
 
+Corpus review v1 将同一 corpus SHA-256 绑定到两个独立 reviewer 的完整逐 case 标签。两个标签集有分歧时，第三个独立 adjudicator 必须精确裁决全部分歧 case；身份复用、缺失/多余 case、无分歧时的多余裁决和最终标签漂移均 fail closed。离线 CLI 输出 review/final-label SHA-256、向下取整 agreement bps、计数与异常 case ID，不回显事件正文或 reviewer 身份。该合同只提供评审 provenance；真实事件收集、脱敏和 reviewer 操作仍由受控流程负责。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact
@@ -190,7 +192,7 @@ Eval Harness 同时评估：
 
 G4 使用 `dipole.agent.offline-eval-suite.v1` 固定五类 deterministic case，并生成绑定 candidate version 与 canonical Suite SHA-256 的低敏报告。Outcome 检查必要/禁止输出 ID，Trajectory 检查精确 Step 与禁止动作，Permission 比较 capability/resource/action 决策，Retrieval 计算 precision/recall，Cost 对模型调用、Tool 调用、Token、微美元与延迟执行硬预算。Harness 不调用 LLM judge，避免评测自身产生随机性和未审计成本。
 
-Shadow 晋级 v2 将完整五类报告作为证据，任一类别缺失或失败均阻断；v1 保留历史兼容。G4 真实 Task adapter 使用 sqlc/TS 共享查询只读提取 Task/Run、Context provenance、Step、Artifact、ModelCall 与 ToolCall，并与人工评审 manifest 合成五类 Suite；Task/Run 摘要进入 case ID，Suite SHA-256 因此绑定来源执行且报告不暴露内部 ID。模型路由单价必须显式版本化，缺失终态或指标时 fail closed。真实 Project Guardian corpus、reviewer agreement、生产 retrieval relevance 和成本分位阈值仍需在切流前独立采证（`AD-038`）。
+Shadow 晋级 v2 将完整五类报告作为证据，任一类别缺失或失败均阻断；v1 保留历史兼容。G4 真实 Task adapter 使用 sqlc/TS 共享查询只读提取 Task/Run、Context provenance、Step、Artifact、ModelCall 与 ToolCall，并与人工评审 manifest 合成五类 Suite；Task/Run 摘要进入 case ID，Suite SHA-256 因此绑定来源执行且报告不暴露内部 ID。模型路由单价必须显式版本化，缺失终态或指标时 fail closed。Subscription corpus 已有双评审 agreement 合同和低敏报告，但真实 Project Guardian corpus、生产 retrieval relevance 和成本分位阈值仍需在切流前独立采证（`AD-038`）。
 
 G4 security suite 复用五类 Harness 串联实际 Runtime 边界：ContextCompiler 保留系统策略顺序并标记外部事件为 `untrusted`，Capability Registry 在执行前拒绝越权资源，EventLedger 收敛重复事件，lineage 在 Ledger/模型前抑制同源循环，MCP Client 在网络发送前执行 Tool 级 egress policy。Egress policy 采用显式顶层参数 allowlist、请求大小/深度上限和常见凭据字段拒绝；值级 DLP、外部凭据托管和模型语义攻击仍属于切流前门禁。
 
