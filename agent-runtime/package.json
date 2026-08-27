@@ -21,6 +21,9 @@
     "@grpc/grpc-js": "1.14.4",
     "@protobuf-ts/runtime": "2.11.1",
     "@protobuf-ts/runtime-rpc": "2.11.1",
+    "@temporalio/client": "1.23.0",
+    "@temporalio/worker": "1.23.0",
+    "@temporalio/workflow": "1.23.0",
     "ai": "7.0.83",
     "fastify": "5.12.1",
     "kafkajs": "2.2.4",
@@ -29,6 +32,7 @@
   },
   "devDependencies": {
     "@protobuf-ts/plugin": "2.11.1",
+    "@temporalio/testing": "1.23.0",
     "@types/node": "24.10.13",
     "tsx": "4.23.12",
     "typescript": "7.0.2",

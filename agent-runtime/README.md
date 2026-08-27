@@ -29,6 +29,28 @@ npm start
 
 Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
+## Temporal G3 foundation
+
+Temporal Worker 默认关闭，当前仅注册无副作用的 foundation Activity，不接管 Kafka Shadow 流量：
+
+```bash
+DIPOLE_AGENT_TEMPORAL_ENABLED=true \
+DIPOLE_AGENT_TEMPORAL_ADDRESS=127.0.0.1:7233 \
+DIPOLE_AGENT_TEMPORAL_NAMESPACE=default \
+DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-task-v1 \
+npm start
+```
+
+Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复用现有 Workflow，终态 Task 拒绝重复启动。模型调用、Capability RPC、持久化和副作用重试均须通过 `executeAgentTaskStep` Activity；当前 foundation Activity 只返回受控失败，用于验证 Worker 部署、恢复和运维边界。
+
+Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
+
+真实 Temporal dev server 契约默认不进入快速测试，可显式运行：
+
+```bash
+DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm test -- --run src/temporal/agent-task-workflow.integration.test.ts
+```
+
 Shadow 模式仅生成并审计 plan，Policy Engine 拒绝 write/destructive capability。微服务默认使用 MySQL EventLedger，通过 Event ID/Task ID 唯一约束、claim token 与 lease 收敛重启和多副本重复投递；`memory` 只用于显式本地回滚。无效事件直接进入 dead，瞬时处理错误按 `retry_attempt` 有界重试；转移发布失败会让 handler 拒绝完成。migration v20 将 Plan 保存为不可变 Task 快照，并按顺序保存处于 `planned` 状态的结构化 capability Step；远程只读执行与 Step 终态将在 Agent Capability RPC 接入后启用。
 
 模型调用默认关闭。显式开启 AI SDK shadow planner 时配置有序 route 与预算，并通过 `AI_GATEWAY_API_KEY` 提供 Gateway 凭据：
