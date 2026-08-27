@@ -390,6 +390,67 @@ func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams
 	return result.RowsAffected()
 }
 
+const listAgentTaskWorkflowProjectionSnapshots = `-- name: ListAgentTaskWorkflowProjectionSnapshots :many
+SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
+       t.workflow_revision, t.workflow_updated_at
+FROM agent_tasks AS t
+JOIN agent_runs AS r ON r.task_uuid = t.task_uuid
+WHERE r.runtime_id = ? AND r.mode = ? AND t.task_uuid > ?
+ORDER BY t.task_uuid ASC
+LIMIT ?
+`
+
+type ListAgentTaskWorkflowProjectionSnapshotsParams struct {
+	RuntimeID string
+	Mode      string
+	TaskUuid  string
+	Limit     int32
+}
+
+type ListAgentTaskWorkflowProjectionSnapshotsRow struct {
+	TaskUuid          string
+	WorkflowID        sql.NullString
+	WorkflowRunID     sql.NullString
+	WorkflowStatus    sql.NullString
+	WorkflowRevision  sql.NullInt64
+	WorkflowUpdatedAt sql.NullTime
+}
+
+func (q *Queries) ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAgentTaskWorkflowProjectionSnapshots,
+		arg.RuntimeID,
+		arg.Mode,
+		arg.TaskUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAgentTaskWorkflowProjectionSnapshotsRow{}
+	for rows.Next() {
+		var i ListAgentTaskWorkflowProjectionSnapshotsRow
+		if err := rows.Scan(
+			&i.TaskUuid,
+			&i.WorkflowID,
+			&i.WorkflowRunID,
+			&i.WorkflowStatus,
+			&i.WorkflowRevision,
+			&i.WorkflowUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
 UPDATE agent_tasks
 SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,

@@ -74,6 +74,12 @@ func (s *taskWorkflowProjectionStub) Project(_ context.Context, request applicat
 	return &s.result, nil
 }
 
+func (s *taskWorkflowProjectionStub) ListProjectionSnapshots(_ context.Context, _ string, _ int) (*application.AgentTaskWorkflowProjectionPageV1, error) {
+	return &application.AgentTaskWorkflowProjectionPageV1{Tasks: []application.AgentTaskWorkflowProjectionSnapshotV1{{
+		TaskUUID: "TASK-1", Workflow: &s.result,
+	}}}, s.err
+}
+
 func (s *taskControlAuthorizerStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
 	s.taskUUID, s.principalUUID = taskUUID, principalUUID
 	if s.err != nil {
@@ -184,6 +190,28 @@ func TestProjectTaskWorkflowStateRejectsClientPrincipalAndConflict(t *testing.T)
 		if request.GetContext().GetPrincipalUserId() != "" && status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("projection principal code = %s", status.Code(err))
 		}
+	}
+}
+
+func TestListTaskWorkflowProjectionSnapshotsUsesServiceIdentity(t *testing.T) {
+	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+		Status: application.AgentTaskWorkflowStatusRunning, Revision: 1,
+	}}
+	server, _ := NewServerWithControlAndProjection(
+		&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{}, projection,
+	)
+	response, err := server.ListTaskWorkflowProjectionSnapshots(context.Background(), &agentv1.ListTaskWorkflowProjectionSnapshotsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), PageSize: 100,
+	})
+	if err != nil || len(response.GetTasks()) != 1 || !response.GetTasks()[0].GetHasWorkflow() || response.GetTasks()[0].GetWorkflowRevision() != 1 {
+		t.Fatalf("projection snapshots: response=%+v err=%v", response, err)
+	}
+	_, err = server.ListTaskWorkflowProjectionSnapshots(context.Background(), &agentv1.ListTaskWorkflowProjectionSnapshotsRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), PageSize: 100,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("projection snapshot principal code = %s", status.Code(err))
 	}
 }
 

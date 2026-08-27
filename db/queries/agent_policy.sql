@@ -43,6 +43,15 @@ WHERE task_uuid = ?
   AND (workflow_id IS NULL OR (workflow_id = ? AND workflow_run_id = ?))
   AND (workflow_revision IS NULL OR workflow_revision < ?);
 
+-- name: ListAgentTaskWorkflowProjectionSnapshots :many
+SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
+       t.workflow_revision, t.workflow_updated_at
+FROM agent_tasks AS t
+JOIN agent_runs AS r ON r.task_uuid = t.task_uuid
+WHERE r.runtime_id = ? AND r.mode = ? AND t.task_uuid > ?
+ORDER BY t.task_uuid ASC
+LIMIT ?;
+
 -- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
     run_uuid, task_uuid, runtime_id, mode, status, started_at

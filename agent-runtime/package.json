@@ -12,6 +12,7 @@
     "generate:sql": "node ../scripts/generate-agent-ledger-queries.mjs && node ../scripts/generate-agent-model-audit-queries.mjs && node ../scripts/generate-agent-shadow-trajectory-queries.mjs",
     "generate:proto": "node ../scripts/generate-agent-proto-ts.mjs",
     "check:proto": "node ../scripts/check-agent-proto-ts.mjs",
+    "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",

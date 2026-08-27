@@ -61,3 +61,17 @@ func TestPersistentAgentTaskWorkflowProjectionServiceRejectsBindingAndTerminalDr
 		}
 	}
 }
+
+func TestPersistentAgentTaskWorkflowProjectionListsFixedShadowCohort(t *testing.T) {
+	store := &agentPolicyStoreStub{tasks: map[string]*application.AgentTaskV1{
+		"TASK-1": {TaskUUID: "TASK-1", Workflow: &application.AgentTaskWorkflowProjectionV1{TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1"}},
+	}}
+	service, _ := NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	page, err := service.ListProjectionSnapshots(context.Background(), "", 10)
+	if err != nil || len(page.Tasks) != 1 || page.Tasks[0].TaskUUID != "TASK-1" || page.NextCursor != "" {
+		t.Fatalf("projection page: %+v err=%v", page, err)
+	}
+	if _, err := service.ListProjectionSnapshots(context.Background(), "", 0); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("invalid page size: %v", err)
+	}
+}

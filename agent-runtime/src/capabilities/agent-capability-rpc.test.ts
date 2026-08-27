@@ -70,7 +70,16 @@ describe("AgentCapabilityRPCClient", () => {
       });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState } as unknown as IAgentCapabilityServiceClient, "secret");
+    const listTaskWorkflowProjectionSnapshots = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ afterTaskId: "TASK-0", pageSize: 100 });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { tasks: [{
+        taskId: "TASK-1", hasWorkflow: true, workflowId: "dipole-agent-task/TASK-1",
+        workflowRunId: "temporal-run-1", workflowStatus: "running", workflowRevision: 1n
+      }, { taskId: "TASK-2", hasWorkflow: false }], nextCursor: "TASK-2" });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
 
@@ -103,5 +112,14 @@ describe("AgentCapabilityRPCClient", () => {
       taskId: "TASK-1", runId: "RUN-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
       workflowStatus: "waiting_approval", workflowRevision: 2
     }, identity)).resolves.toMatchObject({ workflowStatus: "waiting_approval", workflowRevision: 2 });
+    await expect(client.listTaskWorkflowProjectionSnapshots("TASK-0", 100)).resolves.toEqual({
+      tasks: [{
+        taskId: "TASK-1", workflow: {
+          workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
+          workflowStatus: "running", workflowRevision: 1
+        }
+      }, { taskId: "TASK-2" }],
+      nextCursor: "TASK-2"
+    });
   });
 });

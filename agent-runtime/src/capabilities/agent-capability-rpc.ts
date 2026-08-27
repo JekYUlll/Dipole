@@ -62,6 +62,11 @@ export interface AgentTaskWorkflowProjection {
   readonly workflowRevision: number;
 }
 
+export interface AgentTaskWorkflowProjectionSnapshotPage {
+  readonly tasks: readonly { taskId: string; workflow?: Omit<AgentTaskWorkflowProjection, "taskId"> }[];
+  readonly nextCursor: string;
+}
+
 export class AgentCapabilityRPCClient {
   constructor(
     private readonly rpc: IAgentCapabilityServiceClient,
@@ -275,6 +280,32 @@ export class AgentCapabilityRPCClient {
           return;
         }
         resolve(projection);
+      });
+    });
+  }
+
+  async listTaskWorkflowProjectionSnapshots(afterTaskId: string, pageSize: number): Promise<AgentTaskWorkflowProjectionSnapshotPage> {
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.listTaskWorkflowProjectionSnapshots({
+        context: this.requestContext(), afterTaskId, pageSize
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Task Workflow projection page returned no response"));
+          return;
+        }
+        resolve({
+          tasks: response.tasks.map((task) => ({
+            taskId: task.taskId,
+            ...(task.hasWorkflow ? { workflow: {
+              workflowId: task.workflowId,
+              workflowRunId: task.workflowRunId,
+              workflowStatus: task.workflowStatus,
+              workflowRevision: safeRevision(task.workflowRevision)
+            } } : {})
+          })),
+          nextCursor: response.nextCursor
+        });
       });
     });
   }

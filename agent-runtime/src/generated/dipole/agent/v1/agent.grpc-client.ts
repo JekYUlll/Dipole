@@ -5,6 +5,8 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { ListTaskWorkflowProjectionSnapshotsResponse } from "./agent.js";
+import type { ListTaskWorkflowProjectionSnapshotsRequest } from "./agent.js";
 import type { ProjectTaskWorkflowStateResponse } from "./agent.js";
 import type { ProjectTaskWorkflowStateRequest } from "./agent.js";
 import type { AuthorizeTaskControlResponse } from "./agent.js";
@@ -81,6 +83,13 @@ export interface IAgentCapabilityServiceClient {
     projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
     projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
     projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ListTaskWorkflowProjectionSnapshots
+     */
+    listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
+    listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
+    listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
+    listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, callback: (err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -146,5 +155,12 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[7];
         return this.makeUnaryRequest<ProjectTaskWorkflowStateRequest, ProjectTaskWorkflowStateResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProjectTaskWorkflowStateRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ProjectTaskWorkflowStateResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ListTaskWorkflowProjectionSnapshots
+     */
+    listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[8];
+        return this.makeUnaryRequest<ListTaskWorkflowProjectionSnapshotsRequest, ListTaskWorkflowProjectionSnapshotsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListTaskWorkflowProjectionSnapshotsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListTaskWorkflowProjectionSnapshotsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

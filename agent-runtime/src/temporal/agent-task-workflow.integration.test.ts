@@ -3,7 +3,8 @@ import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
-import { TemporalTaskClient, TemporalTaskControlClient } from "./temporal-task-client.js";
+import { TemporalTaskClient, TemporalTaskControlClient, TemporalTaskWorkflowInspector } from "./temporal-task-client.js";
+import { AgentTaskProjectionReconciler } from "../reconcile/agent-task-projection-reconciler.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
@@ -104,8 +105,6 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     });
     await waitForStatus(env, handle, "completed");
     const result = await handle.result();
-    workerTwo.shutdown();
-    await workerTwoRun;
     expect(result).toMatchObject({
       taskId: "task-recovery-1", status: "completed",
       output: { artifactId: "A1", checkpoint: { phase: "ready" } }
@@ -123,7 +122,16 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     ]);
     expect(projections.every((projection) => projection.workflowId === first.workflowId && projection.workflowRunId === first.runId)).toBe(true);
 
+    const report = await new AgentTaskProjectionReconciler({
+      list: async () => ({ tasks: [{ taskId: "task-recovery-1", workflow: {
+        workflowId: first.workflowId, workflowRunId: first.runId!, workflowStatus: "completed", workflowRevision: 4
+      } }], nextCursor: "" })
+    }, new TemporalTaskWorkflowInspector(env.client.workflow)).run({ pageSize: 10, maxExamples: 10 });
+    expect(report).toMatchObject({ consistent: true, scanned: 1, outcomes: { match: 1 } });
+
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
+    workerTwo.shutdown();
+    await workerTwoRun;
   }, 120_000);
 
   it("cancels a waiting Workflow through the stable Task control adapter", async () => {

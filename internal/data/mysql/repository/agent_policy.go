@@ -196,6 +196,30 @@ func (r *AgentPolicyRepository) ProjectTaskWorkflowState(ctx context.Context, pr
 	return false, fmt.Errorf("%w: %w: task_uuid=%s", ErrAgentPolicyConflict, application.ErrAgentWorkflowProjectionConflict, projection.TaskUUID)
 }
 
+func (r *AgentPolicyRepository) ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]application.AgentTaskWorkflowProjectionSnapshotV1, error) {
+	if strings.TrimSpace(runtimeID) == "" || strings.TrimSpace(mode) == "" || limit < 1 || limit > 1000 {
+		return nil, fmt.Errorf("%w: invalid Agent Task Workflow projection page", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.ListAgentTaskWorkflowProjectionSnapshots(ctx, generated.ListAgentTaskWorkflowProjectionSnapshotsParams{
+		RuntimeID: strings.TrimSpace(runtimeID), Mode: strings.TrimSpace(mode), TaskUuid: strings.TrimSpace(afterTaskUUID), Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list Agent Task Workflow projection snapshots: %w", err)
+	}
+	result := make([]application.AgentTaskWorkflowProjectionSnapshotV1, 0, len(rows))
+	for _, row := range rows {
+		snapshot := application.AgentTaskWorkflowProjectionSnapshotV1{TaskUUID: row.TaskUuid}
+		if row.WorkflowID.Valid && row.WorkflowRunID.Valid && row.WorkflowStatus.Valid && row.WorkflowRevision.Valid && row.WorkflowUpdatedAt.Valid {
+			snapshot.Workflow = &application.AgentTaskWorkflowProjectionV1{
+				TaskUUID: row.TaskUuid, WorkflowID: row.WorkflowID.String, RunID: row.WorkflowRunID.String,
+				Status: application.AgentTaskWorkflowStatusV1(row.WorkflowStatus.String), Revision: uint64(row.WorkflowRevision.Int64), UpdatedAt: row.WorkflowUpdatedAt.Time,
+			}
+		}
+		result = append(result, snapshot)
+	}
+	return result, nil
+}
+
 func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.AgentRunV1) (bool, error) {
 	if err := run.Validate(); err != nil {
 		return false, fmt.Errorf("validate Agent Run: %w", err)

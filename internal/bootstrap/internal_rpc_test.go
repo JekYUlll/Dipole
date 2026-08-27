@@ -60,6 +60,10 @@ func (rpcAgentWorkflowProjectionStub) Project(_ context.Context, request applica
 	return &projection, nil
 }
 
+func (rpcAgentWorkflowProjectionStub) ListProjectionSnapshots(_ context.Context, _ string, _ int) (*application.AgentTaskWorkflowProjectionPageV1, error) {
+	return &application.AgentTaskWorkflowProjectionPageV1{}, nil
+}
+
 func (rpcAgentApprovalStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
 	approval := request.Approval
 	return &approval, nil
@@ -259,6 +263,12 @@ func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
 	})
 	if err != nil || projected.GetWorkflowRevision() != 1 || projected.GetWorkflowId() != "dipole-agent-task/TASK-1" {
 		t.Fatalf("project Agent Task Workflow state: response=%+v err=%v", projected, err)
+	}
+	projectionPage, err := client.ListTaskWorkflowProjectionSnapshots(context.Background(), &agentv1.ListTaskWorkflowProjectionSnapshotsRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, PageSize: 100,
+	})
+	if err != nil || len(projectionPage.GetTasks()) != 0 {
+		t.Fatalf("list Agent Task Workflow projections: response=%+v err=%v", projectionPage, err)
 	}
 	if _, err := corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",

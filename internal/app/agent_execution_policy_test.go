@@ -102,6 +102,16 @@ func (s *agentPolicyStoreStub) ProjectTaskWorkflowState(_ context.Context, proje
 	return true, nil
 }
 
+func (s *agentPolicyStoreStub) ListTaskWorkflowProjectionSnapshots(_ context.Context, _, _, afterTaskUUID string, limit int) ([]application.AgentTaskWorkflowProjectionSnapshotV1, error) {
+	result := make([]application.AgentTaskWorkflowProjectionSnapshotV1, 0, limit)
+	for taskUUID, task := range s.tasks {
+		if taskUUID > afterTaskUUID {
+			result = append(result, application.AgentTaskWorkflowProjectionSnapshotV1{TaskUUID: taskUUID, Workflow: task.Workflow})
+		}
+	}
+	return result, nil
+}
+
 func (s *agentPolicyStoreStub) CreateRun(_ context.Context, run application.AgentRunV1) (bool, error) {
 	if s.runs == nil {
 		s.runs = map[string]*application.AgentRunV1{}

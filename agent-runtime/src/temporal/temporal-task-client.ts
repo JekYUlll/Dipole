@@ -2,6 +2,7 @@ import type { AgentEvent, AgentIdentity, ShadowTaskDispatcher } from "../events/
 import type { AgentTaskWorkflowControlPort } from "../control/agent-task-control.js";
 import type { AgentTaskState } from "../task/agent-task-state.js";
 import type { Connection } from "@temporalio/client";
+import type { AgentTaskWorkflowInspector } from "../reconcile/agent-task-projection-reconciler.js";
 
 export interface AgentTaskWorkflowInput {
   taskId: string;
@@ -52,6 +53,7 @@ interface TemporalWorkflowStartPort {
 interface TemporalWorkflowControlHandle {
   query(queryName: string): Promise<unknown>;
   signal(signalName: string, payload: unknown): Promise<void>;
+  describe?(): Promise<{ workflowId: string; runId: string }>;
 }
 
 interface TemporalWorkflowControlClientPort {
@@ -116,6 +118,20 @@ export class TemporalTaskControlClient implements AgentTaskWorkflowControlPort {
 
   private handle(taskId: string): TemporalWorkflowControlHandle {
     return this.workflow.getHandle(agentTaskWorkflowId(taskId));
+  }
+}
+
+export class TemporalTaskWorkflowInspector implements AgentTaskWorkflowInspector {
+  constructor(private readonly workflow: TemporalWorkflowControlClientPort) {}
+
+  async inspect(taskId: string): Promise<{ workflowId: string; workflowRunId: string; state: AgentTaskState }> {
+    const handle = this.workflow.getHandle(agentTaskWorkflowId(taskId));
+    if (handle.describe === undefined) throw new Error("Temporal Workflow describe is unavailable");
+    const [state, description] = await Promise.all([
+      handle.query("taskState") as Promise<AgentTaskState>,
+      handle.describe()
+    ]);
+    return { workflowId: description.workflowId, workflowRunId: description.runId, state };
   }
 }
 

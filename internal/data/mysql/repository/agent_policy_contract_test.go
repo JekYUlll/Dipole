@@ -132,6 +132,26 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		loadedTask.Workflow.Status != application.AgentTaskWorkflowStatusWaitingInput || loadedTask.Workflow.Revision != 2 {
 		t.Fatalf("loaded Workflow projection: task=%+v err=%v", loadedTask, err)
 	}
+	missingProjectionTask := task
+	missingProjectionTask.TaskUUID, missingProjectionTask.TriggerRef = "TASK-2", "M200"
+	missingProjectionTask.Status = application.AgentTaskStatusCreated
+	if created, err := store.CreateTask(context.Background(), missingProjectionTask); err != nil || !created {
+		t.Fatalf("create missing-projection task: created=%v err=%v", created, err)
+	}
+	missingRunUUID, _ := application.AgentRunUUIDV1(missingProjectionTask.TaskUUID, "dipole-agent", "shadow")
+	if created, err := store.CreateRun(context.Background(), application.AgentRunV1{
+		RunUUID: missingRunUUID, TaskUUID: missingProjectionTask.TaskUUID, RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning,
+	}); err != nil || !created {
+		t.Fatalf("create missing-projection run: created=%v err=%v", created, err)
+	}
+	projectionPage, err := store.ListTaskWorkflowProjectionSnapshots(context.Background(), "dipole-agent", "shadow", "", 10)
+	if err != nil || len(projectionPage) != 2 || projectionPage[0].TaskUUID != task.TaskUUID || projectionPage[0].Workflow == nil || projectionPage[0].Workflow.Revision != 2 ||
+		projectionPage[1].TaskUUID != missingProjectionTask.TaskUUID || projectionPage[1].Workflow != nil {
+		t.Fatalf("list Workflow projection snapshots: page=%+v err=%v", projectionPage, err)
+	}
+	if page, err := store.ListTaskWorkflowProjectionSnapshots(context.Background(), "dipole-agent", "shadow", task.TaskUUID, 10); err != nil || len(page) != 1 || page[0].TaskUUID != missingProjectionTask.TaskUUID {
+		t.Fatalf("list Workflow projection snapshots after cursor: page=%+v err=%v", page, err)
+	}
 	for _, conflictProjection := range []application.AgentTaskWorkflowProjectionV1{
 		projection,
 		{TaskUUID: task.TaskUUID, WorkflowID: projection.WorkflowID, RunID: projection.RunID, Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2},
