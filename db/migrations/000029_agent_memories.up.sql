@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS agent_memories (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    memory_uuid VARCHAR(64) NOT NULL,
+    tenant_id VARCHAR(64) NOT NULL,
+    principal_uuid VARCHAR(64) NOT NULL,
+    agent_uuid VARCHAR(24) NOT NULL,
+    memory_type VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'active',
+    resource_type VARCHAR(64) NOT NULL,
+    resource_id VARCHAR(128) NOT NULL,
+    content TEXT NOT NULL,
+    compact_content TEXT NULL,
+    priority INT NOT NULL DEFAULT 0,
+    source_type VARCHAR(64) NOT NULL,
+    source_id VARCHAR(128) NOT NULL,
+    source_uri VARCHAR(512) NULL,
+    source_sequence VARCHAR(128) NULL,
+    valid_from DATETIME(3) NOT NULL,
+    expires_at DATETIME(3) NULL,
+    revoked_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_agent_memory_uuid (memory_uuid),
+    KEY idx_agent_memory_context (tenant_id, agent_uuid, principal_uuid, resource_type, resource_id, status, priority, memory_uuid),
+    CONSTRAINT chk_agent_memory_type CHECK (memory_type IN ('working', 'episodic', 'semantic', 'procedural', 'observational')),
+    CONSTRAINT chk_agent_memory_status CHECK (status IN ('active', 'revoked')),
+    CONSTRAINT chk_agent_memory_priority CHECK (priority BETWEEN 0 AND 1000),
+    CONSTRAINT chk_agent_memory_expiry CHECK (expires_at IS NULL OR expires_at > valid_from),
+    CONSTRAINT chk_agent_memory_revocation CHECK (
+        (status = 'active' AND revoked_at IS NULL) OR (status = 'revoked' AND revoked_at IS NOT NULL)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

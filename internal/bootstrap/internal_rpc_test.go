@@ -49,6 +49,7 @@ type rpcAgentTaskControlStub struct{}
 type rpcAgentWorkflowProjectionStub struct{}
 type rpcAgentWorkflowRepairStub struct{ operator string }
 type rpcAgentSubscriptionStub struct{}
+type rpcAgentMemoryStub struct{}
 type rpcAgentArtifactStub struct {
 	artifact *application.AgentArtifactV1
 	body     []byte
@@ -60,6 +61,16 @@ func (rpcAgentSubscriptionStub) MatchEventSubscriptions(_ context.Context, reque
 		TenantID: request.TenantID, AgentUUID: request.AgentUUID, Status: application.AgentSubscriptionStatusActive,
 		EventType: request.EventType, ResourceType: request.ResourceType, ResourceID: request.ResourceID,
 		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`),
+	}}, nil
+}
+
+func (rpcAgentMemoryStub) ResolveContextMemories(_ context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]application.AgentMemoryV1, error) {
+	if taskUUID != "TASK-1" || runUUID != "RUN-1" || resourceType != "conversation" || resourceID != "group:G1" || limit != 20 {
+		return nil, application.ErrAgentMemoryDenied
+	}
+	return []application.AgentMemoryV1{{
+		MemoryUUID: "MEM-1", MemoryType: application.AgentMemoryTypeSemantic, Content: "Owner is Alice", Priority: 90,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "message", SourceID: "M1"},
 	}}, nil
 }
 
@@ -381,7 +392,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts)
+	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,6 +411,13 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	})
 	if err != nil || len(matched.GetSubscriptions()) != 1 || matched.GetSubscriptions()[0].GetSubscriptionId() != "SUB-1" {
 		t.Fatalf("Agent Event Subscription match=%+v err=%v", matched, err)
+	}
+	memories, err := agentClient.ListContextMemories(context.Background(), &agentv1.ListContextMemoriesRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1",
+		ResourceType: "conversation", ResourceId: "group:G1", Limit: 20,
+	})
+	if err != nil || len(memories.GetMemories()) != 1 || memories.GetMemories()[0].GetMemoryId() != "MEM-1" {
+		t.Fatalf("Agent Context Memories=%+v err=%v", memories, err)
 	}
 	created, err := agentClient.CreateArtifact(context.Background(), &agentv1.CreateArtifactRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TenantId: "dipole", TaskId: "TASK-1", RunId: "RUN-1",

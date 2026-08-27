@@ -846,6 +846,94 @@ export interface MatchEventSubscriptionsResponse {
      */
     subscriptions: AgentEventSubscription[];
 }
+/**
+ * @generated from protobuf message dipole.agent.v1.ListContextMemoriesRequest
+ */
+export interface ListContextMemoriesRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string resource_type = 4
+     */
+    resourceType: string;
+    /**
+     * @generated from protobuf field: string resource_id = 5
+     */
+    resourceId: string;
+    /**
+     * @generated from protobuf field: uint32 limit = 6
+     */
+    limit: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentMemoryProvenance
+ */
+export interface AgentMemoryProvenance {
+    /**
+     * @generated from protobuf field: string source_type = 1
+     */
+    sourceType: string;
+    /**
+     * @generated from protobuf field: string source_id = 2
+     */
+    sourceId: string;
+    /**
+     * @generated from protobuf field: string uri = 3
+     */
+    uri: string;
+    /**
+     * @generated from protobuf field: string sequence = 4
+     */
+    sequence: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentContextMemory
+ */
+export interface AgentContextMemory {
+    /**
+     * @generated from protobuf field: string memory_id = 1
+     */
+    memoryId: string;
+    /**
+     * @generated from protobuf field: string memory_type = 2
+     */
+    memoryType: string;
+    /**
+     * @generated from protobuf field: string content = 3
+     */
+    content: string;
+    /**
+     * @generated from protobuf field: string compact_content = 4
+     */
+    compactContent: string;
+    /**
+     * @generated from protobuf field: int32 priority = 5
+     */
+    priority: number;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentMemoryProvenance provenance = 6
+     */
+    provenance?: AgentMemoryProvenance;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListContextMemoriesResponse
+ */
+export interface ListContextMemoriesResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentContextMemory memories = 1
+     */
+    memories: AgentContextMemory[];
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
     constructor() {
@@ -3447,11 +3535,302 @@ class MatchEventSubscriptionsResponse$Type extends MessageType<MatchEventSubscri
  * @generated MessageType for protobuf message dipole.agent.v1.MatchEventSubscriptionsResponse
  */
 export const MatchEventSubscriptionsResponse = new MatchEventSubscriptionsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListContextMemoriesRequest$Type extends MessageType<ListContextMemoriesRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListContextMemoriesRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "resource_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "resource_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "limit", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListContextMemoriesRequest>): ListContextMemoriesRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.resourceType = "";
+        message.resourceId = "";
+        message.limit = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListContextMemoriesRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListContextMemoriesRequest): ListContextMemoriesRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string resource_type */ 4:
+                    message.resourceType = reader.string();
+                    break;
+                case /* string resource_id */ 5:
+                    message.resourceId = reader.string();
+                    break;
+                case /* uint32 limit */ 6:
+                    message.limit = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListContextMemoriesRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string resource_type = 4; */
+        if (message.resourceType !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.resourceType);
+        /* string resource_id = 5; */
+        if (message.resourceId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.resourceId);
+        /* uint32 limit = 6; */
+        if (message.limit !== 0)
+            writer.tag(6, WireType.Varint).uint32(message.limit);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListContextMemoriesRequest
+ */
+export const ListContextMemoriesRequest = new ListContextMemoriesRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentMemoryProvenance$Type extends MessageType<AgentMemoryProvenance> {
+    constructor() {
+        super("dipole.agent.v1.AgentMemoryProvenance", [
+            { no: 1, name: "source_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "source_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "uri", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "sequence", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentMemoryProvenance>): AgentMemoryProvenance {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.sourceType = "";
+        message.sourceId = "";
+        message.uri = "";
+        message.sequence = "";
+        if (value !== undefined)
+            reflectionMergePartial<AgentMemoryProvenance>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentMemoryProvenance): AgentMemoryProvenance {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string source_type */ 1:
+                    message.sourceType = reader.string();
+                    break;
+                case /* string source_id */ 2:
+                    message.sourceId = reader.string();
+                    break;
+                case /* string uri */ 3:
+                    message.uri = reader.string();
+                    break;
+                case /* string sequence */ 4:
+                    message.sequence = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentMemoryProvenance, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string source_type = 1; */
+        if (message.sourceType !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.sourceType);
+        /* string source_id = 2; */
+        if (message.sourceId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.sourceId);
+        /* string uri = 3; */
+        if (message.uri !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.uri);
+        /* string sequence = 4; */
+        if (message.sequence !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.sequence);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentMemoryProvenance
+ */
+export const AgentMemoryProvenance = new AgentMemoryProvenance$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentContextMemory$Type extends MessageType<AgentContextMemory> {
+    constructor() {
+        super("dipole.agent.v1.AgentContextMemory", [
+            { no: 1, name: "memory_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "memory_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "compact_content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "priority", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 6, name: "provenance", kind: "message", T: () => AgentMemoryProvenance }
+        ]);
+    }
+    create(value?: PartialMessage<AgentContextMemory>): AgentContextMemory {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.memoryId = "";
+        message.memoryType = "";
+        message.content = "";
+        message.compactContent = "";
+        message.priority = 0;
+        if (value !== undefined)
+            reflectionMergePartial<AgentContextMemory>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentContextMemory): AgentContextMemory {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string memory_id */ 1:
+                    message.memoryId = reader.string();
+                    break;
+                case /* string memory_type */ 2:
+                    message.memoryType = reader.string();
+                    break;
+                case /* string content */ 3:
+                    message.content = reader.string();
+                    break;
+                case /* string compact_content */ 4:
+                    message.compactContent = reader.string();
+                    break;
+                case /* int32 priority */ 5:
+                    message.priority = reader.int32();
+                    break;
+                case /* dipole.agent.v1.AgentMemoryProvenance provenance */ 6:
+                    message.provenance = AgentMemoryProvenance.internalBinaryRead(reader, reader.uint32(), options, message.provenance);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentContextMemory, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string memory_id = 1; */
+        if (message.memoryId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.memoryId);
+        /* string memory_type = 2; */
+        if (message.memoryType !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.memoryType);
+        /* string content = 3; */
+        if (message.content !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.content);
+        /* string compact_content = 4; */
+        if (message.compactContent !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.compactContent);
+        /* int32 priority = 5; */
+        if (message.priority !== 0)
+            writer.tag(5, WireType.Varint).int32(message.priority);
+        /* dipole.agent.v1.AgentMemoryProvenance provenance = 6; */
+        if (message.provenance)
+            AgentMemoryProvenance.internalBinaryWrite(message.provenance, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentContextMemory
+ */
+export const AgentContextMemory = new AgentContextMemory$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListContextMemoriesResponse$Type extends MessageType<ListContextMemoriesResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListContextMemoriesResponse", [
+            { no: 1, name: "memories", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentContextMemory }
+        ]);
+    }
+    create(value?: PartialMessage<ListContextMemoriesResponse>): ListContextMemoriesResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.memories = [];
+        if (value !== undefined)
+            reflectionMergePartial<ListContextMemoriesResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListContextMemoriesResponse): ListContextMemoriesResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.AgentContextMemory memories */ 1:
+                    message.memories.push(AgentContextMemory.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListContextMemoriesResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.AgentContextMemory memories = 1; */
+        for (let i = 0; i < message.memories.length; i++)
+            AgentContextMemory.internalBinaryWrite(message.memories[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListContextMemoriesResponse
+ */
+export const ListContextMemoriesResponse = new ListContextMemoriesResponse$Type();
 /**
  * @generated ServiceType for protobuf service dipole.agent.v1.AgentCapabilityService
  */
 export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapabilityService", [
     { name: "MatchEventSubscriptions", options: {}, I: MatchEventSubscriptionsRequest, O: MatchEventSubscriptionsResponse },
+    { name: "ListContextMemories", options: {}, I: ListContextMemoriesRequest, O: ListContextMemoriesResponse },
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },

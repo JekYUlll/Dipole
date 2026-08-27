@@ -272,8 +272,38 @@ message MatchEventSubscriptionsResponse {
   repeated AgentEventSubscription subscriptions = 1;
 }
 
+message ListContextMemoriesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string resource_type = 4;
+  string resource_id = 5;
+  uint32 limit = 6;
+}
+
+message AgentMemoryProvenance {
+  string source_type = 1;
+  string source_id = 2;
+  string uri = 3;
+  string sequence = 4;
+}
+
+message AgentContextMemory {
+  string memory_id = 1;
+  string memory_type = 2;
+  string content = 3;
+  string compact_content = 4;
+  int32 priority = 5;
+  AgentMemoryProvenance provenance = 6;
+}
+
+message ListContextMemoriesResponse {
+  repeated AgentContextMemory memories = 1;
+}
+
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
+  rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
