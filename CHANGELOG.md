@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加外部 MCP Credential Catalog v1：语言中立 lifecycle manifest 仅保存 tenant、credential ref/version、生效/过期/吊销状态、provider ID 和 opaque provider secret ref，拒绝附加 secret 字段、重复绑定与非法时间状态。Catalog 在每次建连前重新加载，精确版本已吊销、未生效、过期或跨租户时均在 Transport Factory 前 fail closed；轮换可通过新增版本并更新 Profile 完成，Task、Workflow、Context 和审计不接触秘密正文。生产 Catalog source、Secret Provider 与真实外部连接继续关闭。
 - Agent G4 增加默认关闭的外部 MCP 凭据与网络边界：语言中立 Profile v1 仅允许 tenant、HTTPS endpoint、Server/Tool/Host/Port allowlist、TLS ServerName、CA opaque ref 和版本化 credential opaque ref；拒绝 URL 凭据、query/fragment、IP/localhost/内部域名及附加 secret 字段。租户 Registry 只有在精确 owner 匹配后才调用注入式 Transport Factory，并要求 Factory 每次建连拒绝非公网 DNS 解析；当前生产 Provider 尚未实现，误开 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED` 会直接 fail closed，不产生外部连接。
 - Agent G4 为 MCP 执行补充有界取消/超时：Runtime Tool invocation 默认 5 秒并限制在 100 ms 至 60 秒，超时触发 cooperative `AbortSignal`、持久化稳定 `tool_timeout` 且关闭 OTel span；外部 MCP Client 的 connect/list/call 默认使用 10 秒 request/total timeout并接受调用方取消信号。Gateway 断连经 Runtime Streamable HTTP Request signal 传播，DELETE Session 清理与长流入口不受统一代理超时破坏。配置保持默认关闭路径无行为变化。
 - Agent G4 增加默认关闭的第一方 MCP 授权交换与资源边界：受认证 session 需对唯一 canonical resource 和 `dipole.agent.mcp.read` 显式 consent，才能取得 15 分钟专用 JWT；令牌以 `aud`、`scope`、`token_use` 防止跨资源和 session/MCP 混用。Gateway 验证后剥离客户端凭据，仅向 Runtime 传递可信 principal/resource/scope，Runtime 再构造只读 `AuthInfo`。Compose 支持统一覆盖 canonical URI，发布与回滚见 `docs/agent-mcp-authorization.md`；通用 OAuth 2.1 discovery/PKCE/客户端注册继续由 `AD-037` 跟踪。
@@ -289,6 +290,7 @@
 
 ### 迁移说明
 
+- Credential Catalog v1 没有数据库迁移或生产配置入口。后续 Catalog source 必须返回完整、受信的 `contracts/agent-external-mcp/v1/credential-catalog.schema.json` manifest，并在轮换时先发布新版本、更新 Profile、确认新建连成功，再吊销旧版本；Catalog 中只允许 opaque `provider_secret_ref`，禁止 Secret 值或 provider credential。
 - 外部 MCP Profile foundation 没有数据迁移，Compose 固定 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`。现阶段不要在部署环境开启该变量；Runtime 会在发现启用配置后拒绝启动，直到后续里程碑注入具备加密凭据解析、轮换/吊销、逐次 DNS 地址检查和 TLS 验证的生产 Transport Factory。Profile JSON 禁止保存 Token、密码、私钥或 CA 正文。
 - MCP 限流没有数据迁移。微服务 Gateway 默认配置为 60 次/60 秒；发布后可调整 `DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT` 与 `DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS`。两个值必须为正且 Redis 必须可用，否则认证 MCP GET/POST 返回 429。回滚先关闭 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED`，保留限流配置不会影响其他入口。
 - `BeginMcpToolInvocation` 与 `FinishMcpToolInvocation` 是 Agent Capability v1 的 additive RPC。先执行 migration v30 并滚动 Core，再滚动 Runtime；入口默认关闭，确认 Core 审计可用后再按既有双开关启用。回滚先关闭 Gateway/Runtime MCP 开关并等待 `running` 调用收敛，再回退 Runtime/Core；v30 down 会删除 `agent_tool_invocations` 审计历史，应先完成合规留存判断。

@@ -2,6 +2,8 @@ import type { Transport } from "@modelcontextprotocol/client";
 import { isIP } from "node:net";
 import { z } from "zod";
 
+import type { ExternalMcpCredentialBinding, ExternalMcpCredentialCatalog } from "./external-mcp-credential-catalog.js";
+
 export const externalMcpProfileSchemaVersion = "dipole.agent.external-mcp-profile.v1" as const;
 
 const identifierSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/);
@@ -100,7 +102,10 @@ export type ExternalMcpConfig =
   | { readonly enabled: true; readonly profiles: readonly ExternalMcpProfile[] };
 
 export interface ExternalMcpTransportFactory {
-  connect(profile: ExternalMcpProfile, signal?: AbortSignal): Promise<Transport>;
+  connect(input: {
+    readonly profile: ExternalMcpProfile;
+    readonly credential: ExternalMcpCredentialBinding;
+  }, signal?: AbortSignal): Promise<Transport>;
 }
 
 export function loadExternalMcpConfig(env: NodeJS.ProcessEnv): ExternalMcpConfig {
@@ -140,19 +145,36 @@ export function loadExternalMcpConfig(env: NodeJS.ProcessEnv): ExternalMcpConfig
 
 export class ExternalMcpTransportRegistry {
   readonly #config: ExternalMcpConfig;
+  readonly #credentialCatalog: ExternalMcpCredentialCatalog;
   readonly #factory: ExternalMcpTransportFactory;
+  readonly #now: () => Date;
 
-  constructor(config: ExternalMcpConfig, factory: ExternalMcpTransportFactory) {
+  constructor(
+    config: ExternalMcpConfig,
+    credentialCatalog: ExternalMcpCredentialCatalog,
+    factory: ExternalMcpTransportFactory,
+    now: () => Date = () => new Date()
+  ) {
     this.#config = config;
+    this.#credentialCatalog = credentialCatalog;
     this.#factory = factory;
+    this.#now = now;
   }
 
   async connect(profileId: string, tenantId: string, signal?: AbortSignal): Promise<Transport> {
     if (!this.#config.enabled) throw new Error("External MCP connections are disabled");
+    signal?.throwIfAborted();
     const profile = this.#config.profiles.find(candidate => candidate.profileId === profileId);
     if (profile === undefined) throw new Error("External MCP profile is not configured");
     if (profile.tenantId !== tenantId) throw new Error("External MCP profile tenant does not match the execution tenant");
-    return this.#factory.connect(profile, signal);
+    const credential = await this.#credentialCatalog.resolve({
+      tenantId,
+      credentialRef: profile.credentialRef,
+      credentialVersion: profile.credentialVersion,
+      now: this.#now()
+    });
+    signal?.throwIfAborted();
+    return this.#factory.connect({ profile, credential }, signal);
   }
 }
 
