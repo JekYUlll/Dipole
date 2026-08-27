@@ -5,9 +5,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	deliverycontract "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	"google.golang.org/protobuf/proto"
@@ -57,6 +59,7 @@ type PrimaryDispatcher struct {
 }
 
 func NewPrimaryDispatcher(nodeID string, capacity int, retryAfter time.Duration, sink PrimaryDeliverySink) (*PrimaryDispatcher, error) {
+	nodeID = strings.TrimSpace(nodeID)
 	if nodeID == "" || capacity < 1 || retryAfter <= 0 || retryAfter > time.Minute || sink == nil {
 		return nil, errors.New("primary delivery dispatcher requires node, capacity, retry delay, and sink")
 	}
@@ -73,6 +76,9 @@ func (d *PrimaryDispatcher) DeliverNodeBatch(ctx context.Context, batch *deliver
 	if err := deliverycontract.ValidateNodeBatch(batch); err != nil || batch.GetTargetNodeId() != d.nodeID {
 		return rejectedDeliveryAck(batch), nil
 	}
+	ctx = correlation.WithContext(ctx, correlation.IDs{
+		RequestID: batch.RequestId, TraceID: batch.TraceId, EventID: batch.SourceEventId,
+	})
 	fingerprint, err := nodeBatchFingerprint(batch)
 	if err != nil {
 		return nil, err

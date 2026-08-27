@@ -161,6 +161,8 @@ type InternalRPC struct {
 	DeliveryObservationListenAddress string `mapstructure:"delivery_observation_listen_address"`
 	DeliveryObservationCapacity      int    `mapstructure:"delivery_observation_capacity"`
 	DeliveryObservationRetryAfterMS  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DeliveryPrimaryEnabled           bool   `mapstructure:"delivery_primary_enabled"`
+	DeliveryPrimaryReplayCapacity    int    `mapstructure:"delivery_primary_replay_capacity"`
 	DialTimeoutSeconds               int    `mapstructure:"dial_timeout_seconds"`
 	ShutdownTimeoutSeconds           int    `mapstructure:"shutdown_timeout_seconds"`
 	TLSEnabled                       bool   `mapstructure:"tls_enabled"`
@@ -426,6 +428,8 @@ func Load() error {
 		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
 		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
 		v.SetDefault("internal_rpc.delivery_observation_retry_after_ms", 25)
+		v.SetDefault("internal_rpc.delivery_primary_enabled", false)
+		v.SetDefault("internal_rpc.delivery_primary_replay_capacity", 8192)
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)
@@ -601,6 +605,8 @@ func Load() error {
 			"internal_rpc.delivery_observation_listen_address",
 			"internal_rpc.delivery_observation_capacity",
 			"internal_rpc.delivery_observation_retry_after_ms",
+			"internal_rpc.delivery_primary_enabled",
+			"internal_rpc.delivery_primary_replay_capacity",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -960,6 +966,8 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
 	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")
 	internalRPC.DeliveryObservationRetryAfterMS = cfg.GetInt("internal_rpc.delivery_observation_retry_after_ms")
+	internalRPC.DeliveryPrimaryEnabled = cfg.GetBool("internal_rpc.delivery_primary_enabled")
+	internalRPC.DeliveryPrimaryReplayCapacity = cfg.GetInt("internal_rpc.delivery_primary_replay_capacity")
 	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
 	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
 	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")
