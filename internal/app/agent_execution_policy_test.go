@@ -430,6 +430,59 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	}
 }
 
+func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(7, now.Add(-time.Hour), []string{application.AgentPermissionMessageWrite})
+	store := policyStoreWithDefinitionV1(definition)
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "runtime-v7",
+	}
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: func() time.Time { return now }}
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("active admission without promotion authorization error = %v, want policy denied", err)
+	}
+	if len(store.tasks) != 0 || len(store.runs) != 0 {
+		t.Fatalf("denied active admission created state: tasks=%+v runs=%+v", store.tasks, store.runs)
+	}
+
+	authorizer := &activeRunPromotionAuthorizerStub{}
+	admission.activeAuthorizer = authorizer
+	missingCandidate := request
+	missingCandidate.CandidateVersion = ""
+	if _, err := admission.Admit(context.Background(), missingCandidate); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("active admission without candidate version error = %v, want policy denied", err)
+	}
+	authorizer.err = errors.New("promotion evidence unavailable")
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("denied promotion error = %v, want policy denied", err)
+	}
+	if len(store.tasks) != 0 || len(store.runs) != 0 {
+		t.Fatalf("denied promotion created state: tasks=%+v runs=%+v", store.tasks, store.runs)
+	}
+	authorizer.err = nil
+	execution, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("admit promoted active Run: %v", err)
+	}
+	if execution.Invocation.RuntimeID != "dipole-agent" || execution.Invocation.Mode != "active" ||
+		authorizer.request.RuntimeID != "dipole-agent" || authorizer.request.CandidateVersion != "runtime-v7" || authorizer.request.Task.DefinitionVersion != 7 ||
+		authorizer.request.Definition.Version != 7 {
+		t.Fatalf("promotion binding drifted: execution=%+v request=%+v", execution, authorizer.request)
+	}
+}
+
+type activeRunPromotionAuthorizerStub struct {
+	request application.AgentActiveRunPromotionRequestV1
+	err     error
+}
+
+func (s *activeRunPromotionAuthorizerStub) AuthorizeActiveRun(_ context.Context, request application.AgentActiveRunPromotionRequestV1) error {
+	s.request = request
+	return s.err
+}
+
 func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing.T) {
 	t.Parallel()
 

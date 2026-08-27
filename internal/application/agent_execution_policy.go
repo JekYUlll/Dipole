@@ -48,8 +48,20 @@ type AgentTaskControlAuthorizerV1 interface {
 
 type AgentRunAdmissionRequestV1 struct {
 	AgentExecutionPolicyStartV1
-	RuntimeID string
-	Mode      string
+	RuntimeID        string
+	Mode             string
+	CandidateVersion string
+}
+
+type AgentActiveRunPromotionRequestV1 struct {
+	RuntimeID        string
+	CandidateVersion string
+	Task             AgentTaskV1
+	Definition       AgentDefinitionVersionV1
+}
+
+type AgentActiveRunPromotionAuthorizerV1 interface {
+	AuthorizeActiveRun(ctx context.Context, request AgentActiveRunPromotionRequestV1) error
 }
 
 type AgentRunAdmissionV1 struct {

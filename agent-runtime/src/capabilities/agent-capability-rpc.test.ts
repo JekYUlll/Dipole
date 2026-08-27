@@ -114,6 +114,7 @@ describe("AgentCapabilityRPCClient", () => {
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
       callback(null, {
         tenantId: "dipole", principalUserId: "U100", agentId: "UAI", delegatedByUserId: "U100",
+        runtimeId: "dipole-agent", mode: "active",
         permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }],
         approvedCapabilities: []
       });
@@ -233,9 +234,18 @@ describe("AgentCapabilityRPCClient", () => {
       }
     });
     await expect(client.resolveMcpContext("TASK-1", "RUN-1", "U100", identity)).resolves.toMatchObject({
-      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "active",
       permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }]
     });
+    resolveMcpContext.mockImplementationOnce((_input, _metadata, _options, callback) => {
+      callback(null, {
+        tenantId: "dipole", principalUserId: "U100", agentId: "UAI", delegatedByUserId: "U100",
+        runtimeId: "forged-runtime", mode: "active", permissions: ["conversation.list"],
+        resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }], approvedCapabilities: []
+      });
+      return {};
+    });
+    await expect(client.resolveMcpContext("TASK-1", "RUN-1", "U100", identity)).rejects.toThrow(/Runtime binding/i);
     await expect(client.begin({
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "dipole_conversation_list",
       capabilityId: "conversation.list", argumentsSha256: "a".repeat(64), requestId: "R1", traceId: "T1"

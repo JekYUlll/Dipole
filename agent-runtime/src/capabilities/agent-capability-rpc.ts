@@ -493,10 +493,13 @@ export class AgentCapabilityRPCClient {
           return;
         }
         try {
+          if (response.runtimeId !== callerService || (response.mode !== "shadow" && response.mode !== "active")) {
+            throw new Error("Agent MCP context returned a conflicting Runtime binding");
+          }
           resolve(executionContextSchema.parse({
             tenantId: response.tenantId, principalUuid: response.principalUserId, agentUuid: response.agentId,
             ...(response.delegatedByUserId.trim() === "" ? {} : { delegatedByUuid: response.delegatedByUserId }),
-            taskId, runId, mode: "shadow", permissions: response.permissions,
+            taskId, runId, mode: response.mode, permissions: response.permissions,
             resourceScopes: response.resourceScopes.map((scope) => ({
               resourceType: scope.resourceType, resourceId: scope.resourceId, actions: scope.actions
             })),

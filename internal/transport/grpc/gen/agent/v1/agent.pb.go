@@ -1519,6 +1519,8 @@ type ResolveMcpContextResponse struct {
 	Permissions          []string               `protobuf:"bytes,5,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	ResourceScopes       []*AgentResourceScope  `protobuf:"bytes,6,rep,name=resource_scopes,json=resourceScopes,proto3" json:"resource_scopes,omitempty"`
 	ApprovedCapabilities []string               `protobuf:"bytes,7,rep,name=approved_capabilities,json=approvedCapabilities,proto3" json:"approved_capabilities,omitempty"`
+	RuntimeId            string                 `protobuf:"bytes,8,opt,name=runtime_id,json=runtimeId,proto3" json:"runtime_id,omitempty"`
+	Mode                 string                 `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1600,6 +1602,20 @@ func (x *ResolveMcpContextResponse) GetApprovedCapabilities() []string {
 		return x.ApprovedCapabilities
 	}
 	return nil
+}
+
+func (x *ResolveMcpContextResponse) GetRuntimeId() string {
+	if x != nil {
+		return x.RuntimeId
+	}
+	return ""
+}
+
+func (x *ResolveMcpContextResponse) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
 }
 
 type BeginMcpToolInvocationRequest struct {
@@ -3985,7 +4001,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12*\n" +
-	"\x11principal_user_id\x18\x04 \x01(\tR\x0fprincipalUserId\"\xd5\x02\n" +
+	"\x11principal_user_id\x18\x04 \x01(\tR\x0fprincipalUserId\"\x88\x03\n" +
 	"\x19ResolveMcpContextResponse\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12*\n" +
 	"\x11principal_user_id\x18\x02 \x01(\tR\x0fprincipalUserId\x12\x19\n" +
@@ -3993,7 +4009,10 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x14delegated_by_user_id\x18\x04 \x01(\tR\x11delegatedByUserId\x12 \n" +
 	"\vpermissions\x18\x05 \x03(\tR\vpermissions\x12L\n" +
 	"\x0fresource_scopes\x18\x06 \x03(\v2#.dipole.agent.v1.AgentResourceScopeR\x0eresourceScopes\x123\n" +
-	"\x15approved_capabilities\x18\a \x03(\tR\x14approvedCapabilities\"\xbe\x02\n" +
+	"\x15approved_capabilities\x18\a \x03(\tR\x14approvedCapabilities\x12\x1d\n" +
+	"\n" +
+	"runtime_id\x18\b \x01(\tR\truntimeId\x12\x12\n" +
+	"\x04mode\x18\t \x01(\tR\x04mode\"\xbe\x02\n" +
 	"\x1dBeginMcpToolInvocationRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
