@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,19 +10,14 @@ import (
 
 	"go.uber.org/zap"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type inboundHandler interface {
 	Handle(client *Client, payload []byte)
-}
-
-type directMessageService interface {
-	SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
-	SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
-	SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
-	SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
 type conversationUpdater interface {
@@ -35,13 +31,19 @@ type messageRateLimiter interface {
 
 type Dispatcher struct {
 	hub                 *Hub
-	messageService      directMessageService
+	messageService      applicationPort.MessageCommand
 	conversationUpdater conversationUpdater
 	syncDispatch        bool
 	limiter             messageRateLimiter
+	timelineNotifyMode  string
 }
 
-func NewDispatcher(hub *Hub, messageService directMessageService, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
+func (d *Dispatcher) WithTimelineNotifyMode(mode string) *Dispatcher {
+	d.timelineNotifyMode = mode
+	return d
+}
+
+func NewDispatcher(hub *Hub, messageService applicationPort.MessageCommand, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
 	return &Dispatcher{
 		hub:                 hub,
 		messageService:      messageService,
@@ -61,14 +63,15 @@ func (d *Dispatcher) Handle(client *Client, payload []byte) {
 		_ = client.SendError(ErrorBadRequest, "message payload is invalid", "", "")
 		return
 	}
+	ctx, _ := correlation.Ensure(context.Background(), envelope.RequestID, envelope.TraceID)
 
 	switch envelope.Type {
 	case TypePing:
 		_ = client.SendEvent(TypePong, PongData{ServerTime: time.Now().UTC()})
 	case TypeChatSend:
-		d.handleChatSend(client, envelope.Data)
+		d.handleChatSend(ctx, client, envelope.Data)
 	case TypeChatSendFile:
-		d.handleChatSendFile(client, envelope.Data)
+		d.handleChatSendFile(ctx, client, envelope.Data)
 	default:
 		_ = client.SendError(
 			ErrorUnsupportedType,
@@ -79,7 +82,7 @@ func (d *Dispatcher) Handle(client *Client, payload []byte) {
 	}
 }
 
-func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
+func (d *Dispatcher) handleChatSend(ctx context.Context, client *Client, raw json.RawMessage) {
 	var input SendTextMessageInput
 	if err := json.Unmarshal(raw, &input); err != nil {
 		_ = client.SendError(ErrorBadRequest, "chat.send payload is invalid", TypeChatSend, "")
@@ -101,20 +104,26 @@ func (d *Dispatcher) handleChatSend(client *Client, raw json.RawMessage) {
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if strings.HasPrefix(targetUUID, "G") {
-		d.handleGroupChatSend(client, targetUUID, input.Content, input.ClientMessageID)
+		d.handleGroupChatSend(ctx, client, targetUUID, input.Content, input.ClientMessageID)
 		return
 	}
 
-	message, err := d.messageService.SendDirectMessage(client.sessionUser.UUID, targetUUID, input.Content, input.ClientMessageID)
+	var message *model.Message
+	var err error
+	if contextual, ok := d.messageService.(applicationPort.MessageCommandContext); ok {
+		message, err = contextual.SendDirectMessageContext(ctx, client.sessionUser.UUID, targetUUID, input.Content, input.ClientMessageID)
+	} else {
+		message, err = d.messageService.SendDirectMessage(client.sessionUser.UUID, targetUUID, input.Content, input.ClientMessageID)
+	}
 	if err != nil {
 		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSend, input.ClientMessageID)
 		return
 	}
 
-	d.dispatchDirect(client, message)
+	d.dispatchDirect(ctx, client, message)
 }
 
-func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
+func (d *Dispatcher) handleChatSendFile(ctx context.Context, client *Client, raw json.RawMessage) {
 	var input SendFileMessageInput
 	if err := json.Unmarshal(raw, &input); err != nil {
 		_ = client.SendError(ErrorBadRequest, "chat.send_file payload is invalid", TypeChatSendFile, "")
@@ -136,42 +145,62 @@ func (d *Dispatcher) handleChatSendFile(client *Client, raw json.RawMessage) {
 
 	targetUUID := strings.TrimSpace(input.TargetUUID)
 	if strings.HasPrefix(targetUUID, "G") {
-		d.handleGroupFileSend(client, targetUUID, input.FileID, input.ClientMessageID)
+		d.handleGroupFileSend(ctx, client, targetUUID, input.FileID, input.ClientMessageID)
 		return
 	}
 
-	message, err := d.messageService.SendDirectFileMessage(client.sessionUser.UUID, targetUUID, input.FileID, input.ClientMessageID)
+	var message *model.Message
+	var err error
+	if contextual, ok := d.messageService.(applicationPort.MessageCommandContext); ok {
+		message, err = contextual.SendDirectFileMessageContext(ctx, client.sessionUser.UUID, targetUUID, input.FileID, input.ClientMessageID)
+	} else {
+		message, err = d.messageService.SendDirectFileMessage(client.sessionUser.UUID, targetUUID, input.FileID, input.ClientMessageID)
+	}
 	if err != nil {
 		d.handleChatSendError(client, err, "target user is unavailable", TypeChatSendFile, input.ClientMessageID)
 		return
 	}
 
-	d.dispatchDirect(client, message)
+	d.dispatchDirect(ctx, client, message)
 }
 
-func (d *Dispatcher) handleGroupChatSend(client *Client, groupUUID, content string, clientMessageID string) {
-	message, recipients, err := d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content, clientMessageID)
+func (d *Dispatcher) handleGroupChatSend(ctx context.Context, client *Client, groupUUID, content string, clientMessageID string) {
+	var message *model.Message
+	var recipients []string
+	var err error
+	if contextual, ok := d.messageService.(applicationPort.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupMessageContext(ctx, client.sessionUser.UUID, groupUUID, content, clientMessageID)
+	} else {
+		message, recipients, err = d.messageService.SendGroupMessage(client.sessionUser.UUID, groupUUID, content, clientMessageID)
+	}
 	if err != nil {
 		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSend, clientMessageID)
 		return
 	}
 
-	d.dispatchGroup(client, message, recipients)
+	d.dispatchGroup(ctx, client, message, recipients)
 }
 
-func (d *Dispatcher) handleGroupFileSend(client *Client, groupUUID, fileUUID string, clientMessageID string) {
-	message, recipients, err := d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID, clientMessageID)
+func (d *Dispatcher) handleGroupFileSend(ctx context.Context, client *Client, groupUUID, fileUUID string, clientMessageID string) {
+	var message *model.Message
+	var recipients []string
+	var err error
+	if contextual, ok := d.messageService.(applicationPort.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupFileMessageContext(ctx, client.sessionUser.UUID, groupUUID, fileUUID, clientMessageID)
+	} else {
+		message, recipients, err = d.messageService.SendGroupFileMessage(client.sessionUser.UUID, groupUUID, fileUUID, clientMessageID)
+	}
 	if err != nil {
 		d.handleChatSendError(client, err, "target group is unavailable", TypeChatSendFile, clientMessageID)
 		return
 	}
 
-	d.dispatchGroup(client, message, recipients)
+	d.dispatchGroup(ctx, client, message, recipients)
 }
 
 // dispatchDirect handles post-send steps for direct messages: conversation
 // update, optional sync WS push, and ACK back to sender.
-func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
+func (d *Dispatcher) dispatchDirect(ctx context.Context, client *Client, message *model.Message) {
 	// conversationUpdater is nil when Kafka is enabled; conversation updates are
 	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
@@ -184,6 +213,7 @@ func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
 	deliveredCount := 0
 	if d.syncDispatch {
 		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+		d.sendTimelineNotification(message.TargetUUID, message)
 		if message.TargetUUID == client.sessionUser.UUID {
 			deliveredCount = max(deliveredCount-1, 0)
 		}
@@ -193,14 +223,14 @@ func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
 		Delivered:       deliveredCount > 0,
 		ClientMessageID: message.ClientMessageID,
 	}
-	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
+	if err := client.SendEventContext(ctx, TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket chat ack failed", zap.Error(err))
 	}
 }
 
 // dispatchGroup handles post-send steps for group messages: conversation
 // update, optional sync WS push to each recipient, and ACK back to sender.
-func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recipients []string) {
+func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message *model.Message, recipients []string) {
 	// conversationUpdater is nil when Kafka is enabled; conversation updates are
 	// handled asynchronously by the Kafka consumer in that case.
 	if d.conversationUpdater != nil {
@@ -217,6 +247,7 @@ func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recip
 				continue
 			}
 			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
+			d.sendTimelineNotification(recipientUUID, message)
 		}
 	}
 	ack := ChatSentData{
@@ -224,9 +255,20 @@ func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recip
 		Delivered:       deliveredCount > 0,
 		ClientMessageID: message.ClientMessageID,
 	}
-	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
+	if err := client.SendEventContext(ctx, TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket group chat ack failed", zap.Error(err))
 	}
+}
+
+func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) {
+	if d.timelineNotifyMode != TimelineNotifyShadow || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
+		return
+	}
+	d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
+		SchemaVersion: "v1", EventID: message.UUID, MessageUUID: message.UUID,
+		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
+		TargetType: message.TargetType, TargetUUID: message.TargetUUID,
+	})
 }
 
 func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string, clientMessageID string) {
@@ -254,6 +296,7 @@ func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableM
 func newChatMessageData(message *model.Message) ChatMessageData {
 	data := ChatMessageData{
 		MessageID:   message.UUID,
+		MessageSeq:  message.Seq,
 		FromUUID:    message.SenderUUID,
 		TargetUUID:  message.TargetUUID,
 		TargetType:  message.TargetType,

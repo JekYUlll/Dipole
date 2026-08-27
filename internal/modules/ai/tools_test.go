@@ -3,17 +3,30 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
+
+func toolTestContext(principalUserUUID string) context.Context {
+	execution := newExecutionContext(ExecutionContext{
+		TenantID:          defaultAgentTenantID,
+		PrincipalUserUUID: principalUserUUID,
+		AgentUUID:         "UAI",
+		DelegatedByUUID:   principalUserUUID,
+	}, embeddedAgentPermissionsV1(), nil, embeddedAgentResourceScopesV1())
+	return withExecutionContext(context.Background(), execution)
+}
 
 func TestUserProfileToolInvokableRun(t *testing.T) {
 	t.Parallel()
 
-	tool := NewUserProfileTool(&stubAIUserReader{
+	tool := NewUserProfileTool(&stubAgentCapability{
 		users: map[string]*model.User{
 			"U100": {
 				UUID:     "U100",
@@ -23,7 +36,7 @@ func TestUserProfileToolInvokableRun(t *testing.T) {
 				Status:   model.UserStatusNormal,
 			},
 		},
-	})
+	}, "UAI")
 
 	info, err := tool.Info(context.Background())
 	if err != nil {
@@ -33,7 +46,7 @@ func TestUserProfileToolInvokableRun(t *testing.T) {
 		t.Fatalf("expected tool name %s, got %s", ToolGetUserProfile, info.Name)
 	}
 
-	result, err := tool.(*userProfileTool).InvokableRun(context.Background(), `{"user_uuid":"U100"}`)
+	result, err := tool.(*userProfileTool).InvokableRun(toolTestContext("U100"), `{}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -50,7 +63,7 @@ func TestUserProfileToolInvokableRun(t *testing.T) {
 func TestRecentMessageSearchToolInvokableRun(t *testing.T) {
 	t.Parallel()
 
-	tool := NewRecentMessageSearchTool(&stubAIMessageReader{
+	tool := NewRecentMessageSearchTool(&stubAgentCapability{
 		messages: []*model.Message{
 			{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "hello there"},
 			{UUID: "M2", SenderUUID: "UAI", MessageType: model.MessageTypeAIText, Content: "I can help with redis cache"},
@@ -58,7 +71,7 @@ func TestRecentMessageSearchToolInvokableRun(t *testing.T) {
 		},
 	}, "UAI")
 
-	result, err := tool.(*recentMessageSearchTool).InvokableRun(context.Background(), `{"user_uuid":"U100","query":"cache","limit":2}`)
+	result, err := tool.(*recentMessageSearchTool).InvokableRun(toolTestContext("U100"), `{"query":"cache","limit":2}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -78,36 +91,18 @@ func TestRecentMessageSearchToolInvokableRun(t *testing.T) {
 	}
 }
 
-type stubSystemMessageSender struct {
-	message    *model.Message
-	senderUUID string
-	targetUUID string
-	content    string
-	err        error
-}
-
-func (s *stubSystemMessageSender) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
-	s.senderUUID = senderUUID
-	s.targetUUID = targetUUID
-	s.content = content
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.message, nil
-}
-
 func TestSystemMessageToolInvokableRun(t *testing.T) {
 	t.Parallel()
 
-	sender := &stubSystemMessageSender{
-		message: &model.Message{
+	capability := &stubAgentCapability{
+		sentMessage: &model.Message{
 			UUID:        "MSYS1",
 			MessageType: model.MessageTypeSystem,
 		},
 	}
-	tool := NewSystemMessageTool(sender, "UAI")
+	tool := NewSystemMessageTool(capability, "UAI")
 
-	result, err := tool.(*systemMessageTool).InvokableRun(context.Background(), `{"user_uuid":"U100","content":"maintenance notice"}`)
+	result, err := tool.(*systemMessageTool).InvokableRun(toolTestContext("U100"), `{"content":"maintenance notice"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -119,38 +114,22 @@ func TestSystemMessageToolInvokableRun(t *testing.T) {
 	if !payload.Sent || payload.MessageUUID != "MSYS1" {
 		t.Fatalf("unexpected tool payload: %+v", payload)
 	}
-	if sender.senderUUID != "UAI" || sender.targetUUID != "U100" || sender.content != "maintenance notice" {
-		t.Fatalf("unexpected sender args: %+v", sender)
+	if capability.senderUUID != "UAI" || capability.targetUUID != "U100" || capability.content != "maintenance notice" {
+		t.Fatalf("unexpected sender args: %+v", capability)
 	}
-}
-
-type stubConversationReader struct {
-	conversations []*model.Conversation
-	byKey         map[string]*model.Conversation
-}
-
-func (s *stubConversationReader) ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error) {
-	return s.conversations, nil
-}
-
-func (s *stubConversationReader) GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error) {
-	if s.byKey == nil {
-		return nil, nil
-	}
-	return s.byKey[conversationKey], nil
 }
 
 func TestListUserConversationsToolInvokableRun(t *testing.T) {
 	t.Parallel()
 
-	tool := NewListUserConversationsTool(&stubConversationReader{
+	tool := NewListUserConversationsTool(&stubAgentCapability{
 		conversations: []*model.Conversation{
 			{TargetUUID: "U200", TargetType: model.MessageTargetDirect, LastMessagePreview: "hey", UnreadCount: 2},
 			{TargetUUID: "GXYZ", TargetType: model.MessageTargetGroup, LastMessagePreview: "hello group", UnreadCount: 0},
 		},
 	})
 
-	result, err := tool.(*listUserConversationsTool).InvokableRun(context.Background(), `{"user_uuid":"U100"}`)
+	result, err := tool.(*listUserConversationsTool).InvokableRun(toolTestContext("U100"), `{}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -173,22 +152,17 @@ func TestListUserConversationsToolInvokableRun(t *testing.T) {
 func TestReadConversationToolInvokableRun(t *testing.T) {
 	t.Parallel()
 
-	convKey := model.DirectConversationKey("U100", "U200")
-	tool := NewReadConversationTool(
-		&stubConversationReader{
-			byKey: map[string]*model.Conversation{
-				convKey: {ConversationKey: convKey},
-			},
-		},
-		&stubAIMessageReader{
-			messages: []*model.Message{
+	tool := NewReadConversationTool(&stubAgentCapability{
+		read: &application.AgentConversationReadV1{
+			Found: true, TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+			Messages: []*model.Message{
 				{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "hi"},
 				{UUID: "M2", SenderUUID: "U200", MessageType: model.MessageTypeText, Content: "hello"},
 			},
 		},
-	)
+	})
 
-	result, err := tool.(*readConversationTool).InvokableRun(context.Background(), `{"user_uuid":"U100","target_uuid":"U200"}`)
+	result, err := tool.(*readConversationTool).InvokableRun(toolTestContext("U100"), `{"target_uuid":"U200"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -214,12 +188,9 @@ func TestReadConversationToolInvokableRun(t *testing.T) {
 func TestReadConversationToolPermissionDenied(t *testing.T) {
 	t.Parallel()
 
-	tool := NewReadConversationTool(
-		&stubConversationReader{byKey: map[string]*model.Conversation{}},
-		&stubAIMessageReader{},
-	)
+	tool := NewReadConversationTool(&stubAgentCapability{read: &application.AgentConversationReadV1{Found: false}})
 
-	result, err := tool.(*readConversationTool).InvokableRun(context.Background(), `{"user_uuid":"U100","target_uuid":"U999"}`)
+	result, err := tool.(*readConversationTool).InvokableRun(toolTestContext("U100"), `{"target_uuid":"U999"}`)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -233,3 +204,102 @@ func TestReadConversationToolPermissionDenied(t *testing.T) {
 	}
 }
 
+func TestAgentToolsFailClosedWithoutExecutionContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{name: ToolGetUserProfile, run: func(ctx context.Context) error {
+			_, err := NewUserProfileTool(&stubAgentCapability{}, "UAI").(*userProfileTool).InvokableRun(ctx, `{}`)
+			return err
+		}},
+		{name: "search_recent_messages", run: func(ctx context.Context) error {
+			_, err := NewRecentMessageSearchTool(&stubAgentCapability{}, "UAI").(*recentMessageSearchTool).InvokableRun(ctx, `{"query":"x"}`)
+			return err
+		}},
+		{name: "send_system_message", run: func(ctx context.Context) error {
+			_, err := NewSystemMessageTool(&stubAgentCapability{}, "UAI").(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
+			return err
+		}},
+		{name: ToolListUserConversations, run: func(ctx context.Context) error {
+			_, err := NewListUserConversationsTool(&stubAgentCapability{}).(*listUserConversationsTool).InvokableRun(ctx, `{}`)
+			return err
+		}},
+		{name: ToolReadConversation, run: func(ctx context.Context) error {
+			_, err := NewReadConversationTool(&stubAgentCapability{}).(*readConversationTool).InvokableRun(ctx, `{"target_uuid":"U200"}`)
+			return err
+		}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if err := test.run(context.Background()); !errors.Is(err, ErrExecutionContextMissing) {
+				t.Fatalf("expected missing execution context, got %v", err)
+			}
+		})
+	}
+}
+
+func TestAgentToolSchemasDoNotExposeModelControlledIdentity(t *testing.T) {
+	t.Parallel()
+
+	tools := NewTools(&stubAgentCapability{}, "UAI")
+	for _, tool := range tools {
+		info, err := tool.Info(context.Background())
+		if err != nil {
+			t.Fatalf("read tool info: %v", err)
+		}
+		payload, err := json.Marshal(info.ParamsOneOf)
+		if err != nil {
+			t.Fatalf("marshal %s schema: %v", info.Name, err)
+		}
+		if strings.Contains(string(payload), "user_uuid") {
+			t.Errorf("tool %s exposes user_uuid in model schema: %s", info.Name, payload)
+		}
+	}
+}
+
+func TestSystemMessageToolRejectsMismatchedAgentIdentity(t *testing.T) {
+	t.Parallel()
+
+	tool := NewSystemMessageTool(&stubAgentCapability{}, "UAI")
+	execution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UOTHER", DelegatedByUUID: "U100",
+	}, embeddedAgentPermissionsV1(), nil, embeddedAgentResourceScopesV1())
+	ctx := withExecutionContext(context.Background(), execution)
+	_, err := tool.(*systemMessageTool).InvokableRun(ctx, `{"content":"x"}`)
+	if err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("expected agent identity mismatch, got %v", err)
+	}
+}
+
+func TestAgentToolsEnforceCapabilityPermissionsBeforeAdapters(t *testing.T) {
+	t.Parallel()
+
+	capability := &stubAgentCapability{read: &application.AgentConversationReadV1{Found: true}}
+	readExecution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+	}, []string{application.AgentPermissionUserProfileRead}, nil)
+	readCtx := withExecutionContext(context.Background(), readExecution)
+	if _, err := NewReadConversationTool(capability).(*readConversationTool).InvokableRun(readCtx, `{"target_uuid":"U200"}`); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected read permission denial, got %v", err)
+	}
+	if capability.conversationReads != 0 {
+		t.Fatalf("denied read reached Capability adapter %d times", capability.conversationReads)
+	}
+
+	writeExecution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+	}, []string{application.AgentPermissionConversationRead}, nil)
+	writeCtx := withExecutionContext(context.Background(), writeExecution)
+	if _, err := NewSystemMessageTool(capability, "UAI").(*systemMessageTool).InvokableRun(writeCtx, `{"content":"notice"}`); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected write permission denial, got %v", err)
+	}
+	if capability.targetUUID != "" {
+		t.Fatalf("denied write reached Capability adapter target %q", capability.targetUUID)
+	}
+}

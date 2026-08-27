@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium firefox webkit",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,10 +19,15 @@
     "vue-router": "^4.3.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20.14.9",
     "@vitejs/plugin-vue": "^5.0.5",
+    "@vue/test-utils": "^2.4.6",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^25.0.1",
     "typescript": "^5.2.2",
     "vite": "^5.3.1",
+    "vitest": "^2.1.9",
     "vue-tsc": "^2.0.21"
   }
 }

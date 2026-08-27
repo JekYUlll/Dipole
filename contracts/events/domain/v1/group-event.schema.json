@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/events/domain/v1/group-event.schema.json",
+  "title": "Dipole Group Event v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["event_id", "event_type", "version", "source", "occurred_at", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "group.created",
+        "group.updated",
+        "group.members.added",
+        "group.members.removed",
+        "group.dismissed"
+      ]
+    },
+    "version": {"type": "string", "pattern": "^v1(?:\\.[0-9]+)*$"},
+    "source": {"type": "string", "const": "dipole"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "payload": {"$ref": "#/$defs/group_payload"}
+  },
+  "$defs": {
+    "group_payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["group_uuid", "operator_uuid", "recipient_uuids", "occurred_at"],
+      "properties": {
+        "group_uuid": {"type": "string", "minLength": 1},
+        "group_name": {"type": "string"},
+        "name": {"type": "string"},
+        "notice": {"type": "string"},
+        "avatar": {"type": "string"},
+        "operator_uuid": {"type": "string", "minLength": 1},
+        "member_uuids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "recipient_uuids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "occurred_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/events/message/v1/message-event.schema.json",
+  "title": "Dipole Message Event v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "event_id",
+    "event_type",
+    "version",
+    "source",
+    "occurred_at",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "message.direct.created",
+        "message.direct.edited",
+        "message.direct.recalled",
+        "message.direct.deleted",
+        "message.group.created",
+        "message.group.edited",
+        "message.group.recalled",
+        "message.group.deleted"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v1(?:\\.[0-9]+)*$"
+    },
+    "source": {
+      "type": "string",
+      "const": "dipole"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "$ref": "#/$defs/message_payload"
+    }
+  },
+  "$defs": {
+    "message_payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "mutation_type",
+        "revision",
+        "actor_uuid",
+        "message_id",
+        "conversation_key",
+        "message_seq",
+        "sender_uuid",
+        "target_uuid",
+        "target_type",
+        "message_type",
+        "content",
+        "sent_at"
+      ],
+      "properties": {
+        "mutation_type": {
+          "type": "string",
+          "enum": ["created", "edited", "recalled", "deleted"]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "actor_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "client_message_id": {
+          "type": "string"
+        },
+        "conversation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sender_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_type": {
+          "type": "integer",
+          "enum": [0, 1]
+        },
+        "message_type": {
+          "type": "integer"
+        },
+        "content": {
+          "type": "string"
+        },
+        "file_id": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "file_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "file_url": {
+          "type": "string"
+        },
+        "file_content_type": {
+          "type": "string"
+        },
+        "file_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sent_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "recipient_uuids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sync_fanout": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

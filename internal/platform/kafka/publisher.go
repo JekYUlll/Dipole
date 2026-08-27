@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 var Client *Publisher
@@ -20,15 +22,20 @@ const (
 	// IM text/file messages favor tail latency over batching throughput.
 	kafkaWriterBatchSize    = 1
 	kafkaWriterBatchTimeout = 5 * time.Millisecond
+	topicMetadataAttempts   = 30
+	topicMetadataBackoff    = 100 * time.Millisecond
 )
 
 type Publisher struct {
-	clientID    string
-	topicPrefix string
-	brokers     []string
-	timeout     time.Duration
-	partitions  int
-	replicas    int
+	clientID     string
+	topicPrefix  string
+	brokers      []string
+	timeout      time.Duration
+	partitions   int
+	replicas     int
+	minISR       int
+	retention    time.Duration
+	requiredAcks kafkago.RequiredAcks
 
 	mu      sync.Mutex
 	writers map[string]*kafkago.Writer
@@ -47,13 +54,18 @@ func Init() error {
 		return nil
 	}
 
-	publisher, err := newPublisher(cfg)
+	publisher, err := NewPublisher(cfg)
 	if err != nil {
 		return err
 	}
 
 	Client = publisher
 	return nil
+}
+
+// NewPublisher builds an isolated publisher for service runtimes and integration tests.
+func NewPublisher(cfg config.Kafka) (*Publisher, error) {
+	return newPublisher(cfg)
 }
 
 func Close() error {
@@ -71,6 +83,15 @@ func newPublisher(cfg config.Kafka) (*Publisher, error) {
 	if len(brokers) == 0 {
 		return nil, fmt.Errorf("kafka brokers are empty")
 	}
+	requiredAcks, err := normalizeRequiredAcks(cfg.RequiredAcks)
+	if err != nil {
+		return nil, err
+	}
+	minISR := normalizeTopicMinISR(cfg.TopicMinInSyncReplicas)
+	replicas := normalizeTopicReplicationFactor(cfg.TopicReplicationFactor)
+	if minISR > replicas {
+		return nil, fmt.Errorf("kafka topic min ISR %d exceeds replication factor %d", minISR, replicas)
+	}
 
 	timeout := time.Duration(cfg.DialTimeoutSeconds) * time.Second
 	if timeout <= 0 {
@@ -87,13 +108,16 @@ func newPublisher(cfg config.Kafka) (*Publisher, error) {
 	}
 
 	return &Publisher{
-		clientID:    strings.TrimSpace(cfg.ClientID),
-		topicPrefix: strings.TrimSpace(cfg.TopicPrefix),
-		brokers:     brokers,
-		timeout:     writeTimeout,
-		partitions:  normalizeTopicPartitions(cfg.TopicPartitions),
-		replicas:    normalizeTopicReplicationFactor(cfg.TopicReplicationFactor),
-		writers:     make(map[string]*kafkago.Writer),
+		clientID:     strings.TrimSpace(cfg.ClientID),
+		topicPrefix:  strings.TrimSpace(cfg.TopicPrefix),
+		brokers:      brokers,
+		timeout:      writeTimeout,
+		partitions:   normalizeTopicPartitions(cfg.TopicPartitions),
+		replicas:     replicas,
+		minISR:       minISR,
+		retention:    normalizeTopicRetention(cfg.TopicRetentionHours),
+		requiredAcks: requiredAcks,
+		writers:      make(map[string]*kafkago.Writer),
 	}, nil
 }
 
@@ -154,18 +178,23 @@ func (p *Publisher) PublishJSON(ctx context.Context, topic string, key string, p
 }
 
 func (p *Publisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
-	envelope, err := NewEnvelope(eventType, payload)
+	envelope, err := NewEnvelopeContext(ctx, eventType, payload)
 	if err != nil {
 		return fmt.Errorf("create kafka event envelope for %s: %w", topic, err)
 	}
 
-	if headers == nil {
-		headers = map[string]string{}
-	}
+	headers = cloneHeaders(headers)
 	headers["event_type"] = envelope.EventType
 	headers["version"] = envelope.Version
+	headers["schema_version"] = envelope.Version
 	headers["source"] = envelope.Source
 	headers["event_id"] = envelope.EventID
+	if envelope.RequestID != "" {
+		headers[correlation.RequestEventHeader] = envelope.RequestID
+	}
+	if envelope.TraceID != "" {
+		headers[correlation.TraceEventHeader] = envelope.TraceID
+	}
 
 	return p.PublishJSON(ctx, topic, key, envelope, headers)
 }
@@ -190,11 +219,11 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 		return errors.New("kafka publisher is not initialized")
 	}
 
-	configs := make([]kafkago.TopicConfig, 0, len(topics)*2)
-	seen := make(map[string]struct{}, len(topics)*2)
+	configs := make([]kafkago.TopicConfig, 0, len(topics)*3)
+	seen := make(map[string]struct{}, len(topics)*3)
 	for _, topic := range topics {
 		fullTopic := p.topicName(topic)
-		for _, candidate := range []string{fullTopic, retryTopicName(fullTopic)} {
+		for _, candidate := range []string{fullTopic, retryTopicName(fullTopic), deadTopicName(fullTopic)} {
 			if strings.TrimSpace(candidate) == "" {
 				continue
 			}
@@ -206,6 +235,7 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 				Topic:             candidate,
 				NumPartitions:     p.partitions,
 				ReplicationFactor: p.replicas,
+				ConfigEntries:     topicConfigEntries(p.minISR, p.retention),
 			})
 		}
 	}
@@ -239,7 +269,11 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 		return fmt.Errorf("create kafka topics: %w", err)
 	}
 
-	partitionMetadata, err := controllerConn.ReadPartitions(topicNames(configs)...)
+	metadataContext, cancel := context.WithTimeout(context.Background(), p.timeout)
+	defer cancel()
+	partitionMetadata, err := readTopicPartitionsWithRetry(metadataContext, func() ([]kafkago.Partition, error) {
+		return controllerConn.ReadPartitions(topicNames(configs)...)
+	})
 	if err != nil {
 		return fmt.Errorf("read kafka partitions after create: %w", err)
 	}
@@ -284,6 +318,26 @@ func (p *Publisher) EnsureTopics(topics []string) error {
 	return nil
 }
 
+func readTopicPartitionsWithRetry(ctx context.Context, read func() ([]kafkago.Partition, error)) ([]kafkago.Partition, error) {
+	var lastErr error
+	for attempt := 1; attempt <= topicMetadataAttempts; attempt++ {
+		partitions, err := read()
+		if err == nil {
+			return partitions, nil
+		}
+		lastErr = err
+		if attempt == topicMetadataAttempts {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, errors.Join(lastErr, ctx.Err())
+		case <-time.After(topicMetadataBackoff):
+		}
+	}
+	return nil, lastErr
+}
+
 func (p *Publisher) topicName(topic string) string {
 	topic = strings.TrimSpace(topic)
 	if p.topicPrefix == "" {
@@ -308,7 +362,7 @@ func (p *Publisher) writerForTopic(topic string) *kafkago.Writer {
 		Addr:         kafkago.TCP(p.brokers...),
 		Topic:        topic,
 		Balancer:     &kafkago.Hash{},
-		RequiredAcks: kafkago.RequireOne,
+		RequiredAcks: p.requiredAcks,
 		Async:        false,
 		BatchSize:    kafkaWriterBatchSize,
 		BatchTimeout: kafkaWriterBatchTimeout,
@@ -365,6 +419,41 @@ func normalizeTopicReplicationFactor(replicas int) int {
 		return 1
 	}
 	return replicas
+}
+
+func normalizeTopicMinISR(minISR int) int {
+	if minISR <= 0 {
+		return 1
+	}
+	return minISR
+}
+
+func normalizeTopicRetention(hours int) time.Duration {
+	if hours <= 0 {
+		hours = 168
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+func normalizeRequiredAcks(value string) (kafkago.RequiredAcks, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "one", "1":
+		return kafkago.RequireOne, nil
+	case "all", "-1":
+		return kafkago.RequireAll, nil
+	default:
+		return 0, fmt.Errorf("kafka required_acks must be one or all, got %q", value)
+	}
+}
+
+func topicConfigEntries(minISR int, retention time.Duration) []kafkago.ConfigEntry {
+	if retention <= 0 {
+		retention = normalizeTopicRetention(0)
+	}
+	return []kafkago.ConfigEntry{
+		{ConfigName: "min.insync.replicas", ConfigValue: strconv.Itoa(normalizeTopicMinISR(minISR))},
+		{ConfigName: "retention.ms", ConfigValue: strconv.FormatInt(retention.Milliseconds(), 10)},
+	}
 }
 
 func isTopicAlreadyExistsError(err error) bool {

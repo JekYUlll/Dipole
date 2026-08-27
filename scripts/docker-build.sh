@@ -21,10 +21,11 @@ if [[ -z "${GO_BIN}" && -x "${BREW_BIN}/go" ]]; then
 fi
 
 usage() {
-  echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend]"
+  echo "Usage: $0 [build|up|deploy|down|restart|logs|frontend|backend]"
   echo ""
   echo "  frontend  Build frontend only (outputs to internal/server/webapp/)"
-  echo "  build     Build frontend and Go binary locally, then package Docker image"
+  echo "  backend   Build Go service binaries only (outputs to dist/)"
+  echo "  build     Build frontend and Go service binaries locally, then package Docker image"
   echo "  up        Build image and start all services"
   echo "  deploy    Rebuild image and force-recreate dipole nodes (zero-downtime redeploy)"
   echo "  down      Stop and remove all containers"
@@ -65,13 +66,31 @@ cmd_backend() {
     echo "go not found; set GO_BIN or install go" >&2
     exit 1
   fi
-  echo "==> Building backend binary..."
+  echo "==> Building backend service binaries..."
   mkdir -p "${ROOT_DIR}/dist"
   (
     cd "${ROOT_DIR}"
     GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-server" ./cmd/server
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-gateway" ./cmd/gateway
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-message" ./cmd/message-service
+    GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-migrate" ./cmd/migrate
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-projector" ./cmd/cassandra-projector
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-indexer" ./cmd/search-indexer
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search" ./cmd/search-service
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-sync" ./cmd/sync-service
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-sync-replay" ./cmd/sync-replay
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-sync-reconcile" ./cmd/sync-reconcile
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-sync-baseline" ./cmd/sync-baseline
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-backfill" ./cmd/search-backfill
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-reconcile" ./cmd/search-reconcile
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-alias" ./cmd/search-alias
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-archive" ./cmd/search-archive
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-search-outbox-cleanup" ./cmd/search-outbox-cleanup
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-backfill" ./cmd/cassandra-backfill
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-reconcile" ./cmd/cassandra-reconcile
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-archive" ./cmd/cassandra-archive
   )
-  echo "==> Backend built → dist/dipole-server"
+  echo "==> Backend built → dist/dipole-{server,gateway,message,search,sync,sync-replay,sync-reconcile,sync-baseline,migrate,cassandra-projector,search-indexer,search-backfill,search-reconcile,search-alias,search-archive,search-outbox-cleanup,cassandra-backfill,cassandra-reconcile,cassandra-archive}"
 }
 
 cmd_build() {
@@ -123,6 +142,7 @@ cmd_logs() {
 
 case "${1:-}" in
   frontend) cmd_frontend ;;
+  backend)  cmd_backend ;;
   build)    cmd_build ;;
   up)       cmd_up ;;
   deploy)   cmd_deploy ;;

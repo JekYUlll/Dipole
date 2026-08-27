@@ -4,15 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/JekYUlll/Dipole/db/migrations"
+	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
+	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"github.com/JekYUlll/Dipole/internal/store"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
@@ -21,16 +27,30 @@ import (
 )
 
 type Runtime struct {
-	server     *server.Server
-	router     *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
-	outboxFlow *outboxRelay
+	server      *server.Server
+	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
+	outboxFlow  *outboxRelay
+	messageFlow *messageApplicationTransport
+	syncFlow    *syncApplicationTransport
+	coreRPC     *InternalRPCServer
+	metrics     *platformObservability.MetricsServer
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
 	mysqlCfg := config.MySQLConfig()
 	redisCfg := config.RedisConfig()
 	kafkaCfg := config.KafkaConfig()
+	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
+	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+		return nil, err
+	}
+	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
+		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
+	}
+	if gatewayCfg.Mode == "remote" && config.MessageConfig().Transport != "grpc" {
+		return nil, fmt.Errorf("gateway.mode=remote requires message.transport=grpc")
+	}
 
 	if err := store.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
@@ -90,10 +110,18 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("storage is disabled")
 	}
 
-	if err := store.AutoMigrate(); err != nil {
-		return nil, fmt.Errorf("auto migrate failed: %w", err)
+	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
+	if err != nil {
+		return nil, fmt.Errorf("initialize migration validation: %w", err)
 	}
-	if err := ensureAIAssistantUser(); err != nil {
+	if err := runner.ValidateCurrent(ctx); err != nil {
+		return nil, fmt.Errorf("database schema is not ready: %w", err)
+	}
+	repos, err := appComposition.NewRepositories(store.SQLDB)
+	if err != nil {
+		return nil, fmt.Errorf("compose repositories: %w", err)
+	}
+	if err := ensureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -111,13 +139,59 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("bloom filter distributed mode enabled, local filter bypassed")
 	}
 
-	srv := server.New()
+	var messageEvents applicationPort.EventPublisher
+	if kafkaCfg.Enabled {
+		messageEvents = platformKafka.Client
+	}
+	localMessaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+		Events:    messageEvents,
+		HotGroups: platformHotGroup.NewRedisDetector(),
+		Storage:   platformStorage.Client,
+	})
+	rpcCfg := config.InternalRPCConfig()
+	var coreRPC *InternalRPCServer
+	if rpcCfg.Enabled {
+		coreRPC, err = NewCoreRPCServer(rpcCfg, appComposition.NewLocalCoreCapability(repos))
+		if err != nil {
+			return nil, fmt.Errorf("initialize core rpc server: %w", err)
+		}
+		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
+	}
+	messageFlow, err := newMessageApplicationTransport(ctx, config.MessageConfig(), rpcCfg, localMessaging.Messages)
+	if err != nil {
+		if coreRPC != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			coreRPC.Close(shutdownCtx)
+			cancel()
+		}
+		return nil, fmt.Errorf("initialize message transport: %w", err)
+	}
+	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	if err != nil {
+		messageFlow.Close()
+		if coreRPC != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			coreRPC.Close(shutdownCtx)
+			cancel()
+		}
+		return nil, fmt.Errorf("initialize Sync transport: %w", err)
+	}
+	syncComparisonMetrics := platformObservability.NewClientSyncComparisonCollector()
+	srv := server.NewWithDependencies(repos, server.Dependencies{
+		Messages:       messageFlow.Application,
+		Sync:           syncFlow.Application,
+		SyncComparison: syncComparisonMetrics,
+		Messaging:      localMessaging,
+	})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
-	rt := &Runtime{server: srv}
-	var wsEventSender kafkaWSEventSender = srv.WSHub()
-	if kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
+	rt := &Runtime{server: srv, messageFlow: messageFlow, syncFlow: syncFlow, coreRPC: coreRPC}
+	var wsEventSender kafkaWSEventSender
+	if gatewayCfg.Mode == "embedded" {
+		wsEventSender = srv.WSHub()
+	}
+	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
 		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
 		redisPresence := platformPresence.NewRedisPresence()
 		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, store.RDB)
@@ -130,10 +204,16 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			)
 		}
 	}
-	if err := RegisterKafkaHandlers(wsEventSender); err != nil {
-		return nil, fmt.Errorf("register kafka handlers failed: %w", err)
+	registerErr := registerCoreKafkaHandlers(
+		wsEventSender,
+		repos,
+		localMessaging,
+		config.MessageConfig().Transport != "grpc",
+	)
+	if registerErr != nil {
+		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}
-	if kafkaCfg.Enabled && platformKafka.Client != nil {
+	if kafkaCfg.Enabled && platformKafka.Client != nil && config.MessageConfig().Transport != "grpc" {
 		if err := platformKafka.Client.EnsureTopics(kafkaManagedTopics()); err != nil {
 			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
 		}
@@ -149,14 +229,29 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = newOutboxRelay(repository.NewOutboxRepository())
+		rt.outboxFlow = newOutboxRelay(repos.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
 		}
 	}
+	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber, syncComparisonMetrics)
+	if err != nil {
+		rt.Close()
+		return nil, fmt.Errorf("start runtime metrics: %w", err)
+	}
+	if rt.metrics != nil {
+		markRuntimeReady(rt.metrics)
+	}
 
 	return rt, nil
+}
+
+func validateTimelineNotifyMode(messageCfg config.Message) error {
+	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow {
+		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
+	}
+	return nil
 }
 
 func (r *Runtime) Server() *server.Server {
@@ -185,6 +280,24 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("metrics server close failed", zap.Error(err))
+	}
+	if r.coreRPC != nil {
+		shutdownSeconds := config.InternalRPCConfig().ShutdownTimeoutSeconds
+		if shutdownSeconds <= 0 {
+			shutdownSeconds = 15
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(shutdownSeconds)*time.Second)
+		r.coreRPC.Close(ctx)
+		cancel()
+	}
+	if r.messageFlow != nil {
+		r.messageFlow.Close()
+	}
+	if r.syncFlow != nil {
+		r.syncFlow.Close()
+	}
 	if r.outboxFlow != nil {
 		r.outboxFlow.Stop()
 	}
@@ -213,7 +326,11 @@ func ensureTLSFiles(tlsCfg config.TLS) error {
 	return nil
 }
 
-func ensureAIAssistantUser() error {
+type aiAssistantUserRepository interface {
+	UpsertAssistant(user *model.User) error
+}
+
+func ensureAIAssistantUser(users aiAssistantUserRepository) error {
 	cfg := config.AIConfig()
 	if !cfg.Enabled {
 		return nil
@@ -239,7 +356,7 @@ func ensureAIAssistantUser() error {
 		assistant.Avatar = model.DefaultAvatarURL
 	}
 
-	if err := repository.NewUserRepository().UpsertAssistant(assistant); err != nil {
+	if err := users.UpsertAssistant(assistant); err != nil {
 		return err
 	}
 

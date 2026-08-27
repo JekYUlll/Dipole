@@ -2,18 +2,22 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/alicebob/miniredis/v2"
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 type stubMessageRepository struct {
@@ -34,11 +38,54 @@ type stubMessageRepository struct {
 	hasConversation       bool
 	lastConversationKey   string
 	lastBeforeID          uint
+	lastBeforeSeq         uint64
 	lastAfterID           uint
+	lastAfterSeq          uint64
 	lastLimit             int
 	lastUserUUID          string
 	listAfterCallCount    int
+	getByUUIDCalls        int
 	listAfterDelay        time.Duration
+}
+
+type stubCoreCapability struct {
+	users              map[string]*model.User
+	ownedFiles         map[string]*model.UploadedFile
+	directMessageAllow bool
+	userLookups        []string
+	friendshipChecks   [][2]string
+}
+
+func (c *stubCoreCapability) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
+
+func (c *stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	file := c.ownedFiles[fileUUID]
+	if file == nil || file.UploaderUUID != uploaderUUID {
+		return nil, nil
+	}
+	return file, nil
+}
+
+func (c *stubCoreCapability) GetUserByUUID(userUUID string) (*model.User, error) {
+	c.userLookups = append(c.userLookups, userUUID)
+	return c.users[userUUID], nil
+}
+
+func (c *stubCoreCapability) CanSendDirectMessage(userUUID, friendUUID string) (bool, error) {
+	c.friendshipChecks = append(c.friendshipChecks, [2]string{userUUID, friendUUID})
+	return c.directMessageAllow, nil
+}
+
+func (c *stubCoreCapability) GetGroupByUUID(string) (*model.Group, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) {
+	return nil, nil
+}
+
+func (c *stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error) {
+	return nil, nil
 }
 
 func (r *stubMessageRepository) Create(message *model.Message) error {
@@ -60,6 +107,7 @@ func (r *stubMessageRepository) Create(message *model.Message) error {
 func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.getByUUIDCalls++
 
 	if r.messagesByUUID == nil {
 		return nil, nil
@@ -85,6 +133,20 @@ func (r *stubMessageRepository) GetBySenderAndClientMessageID(senderUUID, client
 	return nil, nil
 }
 
+func (r *stubMessageRepository) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
+	message, err := r.GetByUUID(uuid)
+	return stubMessageMetadata(message), err
+}
+
+func (r *stubMessageRepository) GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error) {
+	message, err := r.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+	return stubMessageMetadata(message), err
+}
+
+func stubMessageMetadata(message *model.Message) *model.MessageMetadata {
+	return model.MetadataFromMessage(message)
+}
+
 func (r *stubMessageRepository) HasConversationMessages(conversationKey string) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -97,15 +159,22 @@ func (r *stubMessageRepository) HasConversationMessages(conversationKey string) 
 }
 
 func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
-	return r.StoreWithOutboxAndSync(message, event, nil)
+	return r.StoreWithOutboxAndSync(message, func(*model.Message) (*model.OutboxEvent, error) { return event, nil }, nil)
 }
 
-func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, event *model.OutboxEvent, recipientUUIDs []string) error {
+func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.storeWithOutboxErr != nil {
 		return r.storeWithOutboxErr
+	}
+	if message.Seq == 0 {
+		message.Seq = 1
+	}
+	event, err := buildOutbox(message)
+	if err != nil {
+		return err
 	}
 
 	r.createdMessages = append(r.createdMessages, message)
@@ -180,6 +249,26 @@ func (r *stubMessageRepository) ListByConversationKeyAfter(conversationKey strin
 	}
 
 	return messages, nil
+}
+
+func (r *stubMessageRepository) ListByConversationSeqAfter(conversationKey string, afterSeq uint64, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
+	r.lastConversationKey = conversationKey
+	r.lastAfterSeq = afterSeq
+	r.lastLimit = limit
+	r.listAfterCallCount++
+	err := r.listErr
+	messages := r.listAfterMessages
+	r.mu.Unlock()
+	return messages, err
+}
+
+func (r *stubMessageRepository) ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error) {
+	r.mu.Lock()
+	r.lastConversationKey, r.lastBeforeSeq, r.lastLimit = conversationKey, beforeSeq, limit
+	messages, err := r.listMessages, r.listErr
+	r.mu.Unlock()
+	return messages, err
 }
 
 func (r *stubMessageRepository) ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -281,6 +370,7 @@ type stubEventPublisher struct {
 	keys       []string
 	eventTypes []string
 	payloads   []any
+	contexts   []correlation.IDs
 }
 
 type stubHotGroupObserver struct {
@@ -300,21 +390,40 @@ func (o *stubHotGroupObserver) Status(groupUUID string, memberCount int) (platfo
 	return o.status, o.err
 }
 
-func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
+func (p *stubEventPublisher) PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
 	p.payloads = append(p.payloads, payload)
+	p.contexts = append(p.contexts, correlation.FromContext(ctx))
 	_ = headers
 	return nil
 }
 
-func (p *stubEventPublisher) PublishEvent(_ context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+func (p *stubEventPublisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
 	p.eventTypes = append(p.eventTypes, eventType)
 	p.payloads = append(p.payloads, payload)
+	p.contexts = append(p.contexts, correlation.FromContext(ctx))
 	_ = headers
 	return nil
+}
+
+func TestMessageServiceCommandContextReachesRequestedEvent(t *testing.T) {
+	t.Parallel()
+	publisher := &stubEventPublisher{}
+	messageService := NewMessageService(
+		&stubMessageRepository{},
+		&stubMessageUserFinder{users: map[string]*model.User{"U200": {UUID: "U200"}}},
+		&stubFriendshipChecker{friendships: map[string]map[string]bool{"U100": {"U200": true}}}, nil, nil, publisher, nil,
+	)
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1"})
+	if _, err := messageService.SendDirectMessageContext(ctx, "U100", "U200", "hello", "C1"); err != nil {
+		t.Fatalf("send direct message: %v", err)
+	}
+	if len(publisher.contexts) != 1 || publisher.contexts[0].RequestID != "R1" || publisher.contexts[0].TraceID != "T1" {
+		t.Fatalf("unexpected event context: %+v", publisher.contexts)
+	}
 }
 
 func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
@@ -359,6 +468,35 @@ func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
 	}
 	if message.MessageType != model.MessageTypeText {
 		t.Fatalf("expected text message type, got %d", message.MessageType)
+	}
+}
+
+func TestMessageServiceWithCoreListsDirectMessagesThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{
+		listMessages: []*model.Message{{UUID: "M100"}},
+	}
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(repo, core, nil, nil, nil)
+
+	messages, err := service.ListDirectMessages("U100", " U200 ", 0, 20)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(messages) != 1 || messages[0].UUID != "M100" {
+		t.Fatalf("unexpected messages: %#v", messages)
+	}
+	if len(core.userLookups) != 1 || core.userLookups[0] != "U200" {
+		t.Fatalf("unexpected user lookups: %#v", core.userLookups)
+	}
+	if len(core.friendshipChecks) != 1 || core.friendshipChecks[0] != [2]string{"U100", "U200"} {
+		t.Fatalf("unexpected friendship checks: %#v", core.friendshipChecks)
 	}
 }
 
@@ -472,6 +610,42 @@ func TestMessageServiceListDirectMessagesSuccess(t *testing.T) {
 	}
 	if repo.lastLimit != 10 {
 		t.Fatalf("expected limit 10, got %d", repo.lastLimit)
+	}
+}
+
+func TestMessageServiceListDirectMessagesBeforeSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listMessages: []*model.Message{{Seq: 40, UUID: "M40"}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"U200": {UUID: "U200", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{friendships: map[string]map[string]bool{
+		"U100": {"U200": true},
+	}}, nil, nil, nil, nil)
+
+	messages, err := service.ListDirectMessagesBeforeSeq("U100", " U200 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 40 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.DirectConversationKey("U100", "U200") || repo.lastBeforeSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q before=%d limit=%d", repo.lastConversationKey, repo.lastBeforeSeq, repo.lastLimit)
+	}
+}
+
+func TestMessageServiceListDirectMessagesAfterSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listAfterMessages: []*model.Message{{Seq: 42, UUID: "M42"}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"U200": {UUID: "U200", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{friendships: map[string]map[string]bool{
+		"U100": {"U200": true},
+	}}, nil, nil, nil, nil)
+
+	messages, err := service.ListDirectMessagesAfterSeq("U100", " U200 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 42 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.DirectConversationKey("U100", "U200") || repo.lastAfterSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q after=%d limit=%d", repo.lastConversationKey, repo.lastAfterSeq, repo.lastLimit)
 	}
 }
 
@@ -673,6 +847,25 @@ func TestMessageServiceListGroupMessagesSuccess(t *testing.T) {
 	}
 	if repo.lastConversationKey != model.GroupConversationKey("G100") {
 		t.Fatalf("unexpected conversation key: %s", repo.lastConversationKey)
+	}
+}
+
+func TestMessageServiceListGroupMessagesBeforeSeqUsesSequenceCursor(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{listMessages: []*model.Message{{Seq: 40, UUID: "M40", TargetType: model.MessageTargetGroup}}}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{"G100": {UUID: "G100", Status: model.GroupStatusNormal}},
+		members: map[string]map[string]*model.GroupMember{"G100": {
+			"U100": {GroupUUID: "G100", UserUUID: "U100"},
+		}},
+	}, nil, nil, nil)
+
+	messages, err := service.ListGroupMessagesBeforeSeq("U100", " G100 ", 41, 10)
+	if err != nil || len(messages) != 1 || messages[0].Seq != 40 {
+		t.Fatalf("unexpected sequence page=%+v err=%v", messages, err)
+	}
+	if repo.lastConversationKey != model.GroupConversationKey("G100") || repo.lastBeforeSeq != 41 || repo.lastLimit != 10 {
+		t.Fatalf("unexpected repository query: key=%q before=%d limit=%d", repo.lastConversationKey, repo.lastBeforeSeq, repo.lastLimit)
 	}
 }
 
@@ -975,6 +1168,34 @@ func TestMessageServiceSendDirectFileMessageSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceWithCoreLoadsOwnedFileThroughCapability(t *testing.T) {
+	t.Parallel()
+
+	core := &stubCoreCapability{
+		users: map[string]*model.User{
+			"U200": {UUID: "U200", Status: model.UserStatusNormal},
+		},
+		ownedFiles: map[string]*model.UploadedFile{
+			"F100": {UUID: "F100", UploaderUUID: "U100", FileName: "remote.txt", FileSize: 64, ContentType: "text/plain", URL: "https://files.test/remote.txt"},
+		},
+		directMessageAllow: true,
+	}
+	service := NewMessageServiceWithCore(&stubMessageRepository{}, core, nil, nil, nil)
+
+	message, err := service.SendDirectFileMessage("U100", "U200", "F100", "cmid-core-file")
+	if err != nil {
+		t.Fatalf("send file through core capability: %v", err)
+	}
+	if message == nil || message.FileID != "F100" || message.FileName != "remote.txt" {
+		t.Fatalf("unexpected file message: %+v", message)
+	}
+
+	_, err = service.SendDirectFileMessage("U999", "U200", "F100", "cmid-unowned-file")
+	if !errors.Is(err, ErrMessageFileUnavailable) {
+		t.Fatalf("expected unavailable unowned file, got %v", err)
+	}
+}
+
 func TestMessageServiceSendDirectFileMessageRejectsMissingFileID(t *testing.T) {
 	t.Parallel()
 
@@ -1009,6 +1230,28 @@ func TestMessageServiceSendAssistantTextMessageSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceAgentCommandsPreserveExplicitClientMessageID(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+		"U100": {UUID: "U100", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{}, nil, nil, nil, nil)
+
+	reply, err := service.SendAssistantTextMessageContext(context.Background(), "UAI", "U100", "hello", "agent-command-reply")
+	if err != nil {
+		t.Fatalf("send assistant command: %v", err)
+	}
+	system, err := service.SendSystemDirectMessageCommandContext(context.Background(), "UAI", "U100", "notice", "agent-command-system")
+	if err != nil {
+		t.Fatalf("send system command: %v", err)
+	}
+	if reply.ClientMessageID != "agent-command-reply" || system.ClientMessageID != "agent-command-system" {
+		t.Fatalf("explicit command IDs were not preserved: reply=%q system=%q", reply.ClientMessageID, system.ClientMessageID)
+	}
+}
+
 func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	t.Parallel()
 
@@ -1040,7 +1283,7 @@ func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 		t.Fatalf("expected direct routing key %s, got %+v", model.DirectConversationKey("U100", "U200"), publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected direct message sync fanout")
 	}
 }
@@ -1077,7 +1320,7 @@ func TestMessageServicePublishesKafkaEventOnGroupMessageWithGroupRoutingKey(t *t
 		t.Fatalf("expected group routing key G100, got %+v", publisher.keys)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if !payload.SyncFanout {
+	if payload.SyncFanout == nil || !*payload.SyncFanout {
 		t.Fatal("expected regular group sync fanout")
 	}
 }
@@ -1104,7 +1347,7 @@ func TestMessageServiceSkipsSyncFanoutForHotGroup(t *testing.T) {
 		t.Fatalf("send hot group message: %v", err)
 	}
 	payload := publisher.payloads[0].(MessageEventPayload)
-	if payload.SyncFanout {
+	if payload.SyncFanout == nil || *payload.SyncFanout {
 		t.Fatal("expected hot group to keep notify-and-pull without inbox fanout")
 	}
 }
@@ -1124,12 +1367,12 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if message == nil || message.UUID != "M100" {
+	if message == nil || message.UUID != "M100" || message.Seq != 1 {
 		t.Fatalf("expected persisted message M100, got %+v", message)
 	}
 	if len(repo.createdMessages) != 1 {
@@ -1140,6 +1383,28 @@ func TestMessageServicePersistRequestedMessageStoresCreatedOutbox(t *testing.T) 
 	}
 	if repo.outboxEvents[0].Topic != "message.direct.created" {
 		t.Fatalf("expected outbox topic message.direct.created, got %s", repo.outboxEvents[0].Topic)
+	}
+	if repo.outboxEvents[0].AggregateID != "M100" || repo.outboxEvents[0].MessageKey != "M100" {
+		t.Fatalf("created outbox identity changed: %+v", repo.outboxEvents[0])
+	}
+	var headers map[string]string
+	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
+		t.Fatalf("decode outbox headers: %v", err)
+	}
+	if headers["version"] != "v1" || headers["schema_version"] != "v1" {
+		t.Fatalf("expected versioned outbox headers, got %+v", headers)
+	}
+	var envelope struct {
+		Payload MessageEventPayload `json:"payload"`
+	}
+	if err := json.Unmarshal(repo.outboxEvents[0].Value, &envelope); err != nil {
+		t.Fatalf("decode outbox envelope: %v", err)
+	}
+	if envelope.Payload.MessageSeq != 1 {
+		t.Fatalf("created event sequence = %d, want 1", envelope.Payload.MessageSeq)
+	}
+	if envelope.Payload.MutationType != MessageMutationCreated || envelope.Payload.Revision != 1 || envelope.Payload.ActorUUID != "U100" {
+		t.Fatalf("unexpected created mutation metadata: %+v", envelope.Payload)
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected direct participants in sync inbox, got %+v", repo.syncRecipients)
@@ -1166,6 +1431,59 @@ func TestMessageServicePersistRequestedLegacyDirectEventStillWritesSyncInbox(t *
 	}
 }
 
+func TestMessageServicePersistRequestedContextStoresCorrelationInOutbox(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{}
+	messageService := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, &stubEventPublisher{}, nil)
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1", EventID: "requested-event"})
+	_, err := messageService.PersistRequestedMessageContext(ctx, MessageEventPayload{
+		MessageID: "M-context", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello", SyncFanout: boolFlag(true),
+	})
+	if err != nil {
+		t.Fatalf("persist requested message: %v", err)
+	}
+	if len(repo.outboxEvents) != 1 {
+		t.Fatalf("outbox events = %d, want 1", len(repo.outboxEvents))
+	}
+	var headers map[string]string
+	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
+		t.Fatalf("decode headers: %v", err)
+	}
+	if headers["request_id"] != "R1" || headers["trace_id"] != "T1" || headers["event_id"] == "" || headers["event_id"] == "requested-event" {
+		t.Fatalf("unexpected outbox correlation: %+v", headers)
+	}
+	var envelope platformKafka.Envelope
+	if err := json.Unmarshal(repo.outboxEvents[0].Value, &envelope); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if envelope.RequestID != "R1" || envelope.TraceID != "T1" || envelope.EventID != headers["event_id"] {
+		t.Fatalf("envelope/header mismatch: envelope=%+v headers=%+v", envelope, headers)
+	}
+}
+
+func TestMessageServicePersistRequestedLegacyGroupEventDefaultsToSyncFanout(t *testing.T) {
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	if _, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M-legacy-group",
+		ConversationKey: model.GroupConversationKey("G100"),
+		SenderUUID:      "U100",
+		TargetUUID:      "G100",
+		TargetType:      model.MessageTargetGroup,
+		MessageType:     model.MessageTypeText,
+		Content:         "legacy group",
+		RecipientUUIDs:  []string{"U100", "U200"},
+	}); err != nil {
+		t.Fatalf("persist legacy group event: %v", err)
+	}
+	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
+		t.Fatalf("expected legacy group event to default to sync fanout, got %+v", repo.syncRecipients)
+	}
+}
+
 func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testing.T) {
 	t.Parallel()
 
@@ -1179,7 +1497,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1195,7 +1513,7 @@ func TestMessageServicePersistRequestedMessageEnsuresOutboxOnDuplicate(t *testin
 		TargetType:      model.MessageTargetDirect,
 		MessageType:     model.MessageTypeText,
 		Content:         "hello",
-		SyncFanout:      true,
+		SyncFanout:      boolFlag(true),
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -1231,7 +1549,7 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 		Content:         "hello",
 	}
 	repo := &stubMessageRepository{
-		storeWithOutboxErr: gorm.ErrDuplicatedKey,
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
 		messagesByUUID: map[string]*model.Message{
 			"M100": existing,
 		},
@@ -1256,5 +1574,184 @@ func TestMessageServicePersistRequestedMessageReusesExistingMessageByClientMessa
 	}
 	if len(repo.ensuredOutboxEvents) != 1 {
 		t.Fatalf("expected ensured outbox event, got %d", len(repo.ensuredOutboxEvents))
+	}
+}
+
+func TestMessageServiceDuplicateHydrationUsesCassandraAndFallsBackToMySQL(t *testing.T) {
+	existing := &model.Message{
+		ID: 42, UUID: "M100", ClientMessageID: "cmid-duplicate", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		Seq: 7, SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello",
+	}
+	request := MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate", ConversationKey: existing.ConversationKey,
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello",
+	}
+	cassandraMessage := *existing
+	cassandraMessage.ID = 0
+	for _, test := range []struct {
+		name           string
+		hydrator       *stubDuplicateHydrator
+		wantMySQLReads int
+		wantOutcome    string
+	}{
+		{name: "Cassandra hit", hydrator: &stubDuplicateHydrator{message: &cassandraMessage}, wantOutcome: "hit"},
+		{name: "Cassandra miss", hydrator: &stubDuplicateHydrator{err: errors.New("missing")}, wantMySQLReads: 1, wantOutcome: "fallback"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repo := &stubMessageRepository{storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062}, messagesByUUID: map[string]*model.Message{"M100": existing}}
+			messageService := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+			var outcome string
+			messageService.SetDuplicateMessageHydrator(test.hydrator, func(value string) { outcome = value })
+			message, err := messageService.PersistRequestedMessage(request)
+			if err != nil || message == nil || message.UUID != existing.UUID || message.ID != existing.ID {
+				t.Fatalf("duplicate hydration: message=%+v err=%v", message, err)
+			}
+			if test.hydrator.locator.MessageUUID != "M100" || test.hydrator.locator.ConversationKey != existing.ConversationKey || test.hydrator.locator.MessageSeq != 7 {
+				t.Fatalf("unexpected Cassandra locator: %+v", test.hydrator.locator)
+			}
+			if repo.getByUUIDCalls != test.wantMySQLReads {
+				t.Fatalf("MySQL body reads=%d want=%d", repo.getByUUIDCalls, test.wantMySQLReads)
+			}
+			if outcome != test.wantOutcome {
+				t.Fatalf("hydration outcome=%q want=%q", outcome, test.wantOutcome)
+			}
+		})
+	}
+}
+
+func TestMessageServiceDuplicateHydrationSkipsHistoricalMetadataWithoutSequence(t *testing.T) {
+	existing := &model.Message{
+		UUID: "M100", ClientMessageID: "cmid-duplicate", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeText, Content: "hello",
+	}
+	repo := &stubMessageRepository{storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062}, messagesByUUID: map[string]*model.Message{"M100": existing}}
+	hydrator := &stubDuplicateHydrator{message: existing}
+	messageService := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+	var outcome string
+	messageService.SetDuplicateMessageHydrator(hydrator, func(value string) { outcome = value })
+	message, err := messageService.PersistRequestedMessage(MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate", ConversationKey: existing.ConversationKey,
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeText, Content: "hello",
+	})
+	if err != nil || message != existing || repo.getByUUIDCalls != 1 {
+		t.Fatalf("historical duplicate fallback: message=%+v reads=%d err=%v", message, repo.getByUUIDCalls, err)
+	}
+	if hydrator.locator.MessageUUID != "" {
+		t.Fatalf("historical metadata reached Cassandra: %+v", hydrator.locator)
+	}
+	if outcome != "skipped_no_seq" {
+		t.Fatalf("historical hydration outcome=%q", outcome)
+	}
+}
+
+type stubDuplicateHydrator struct {
+	message *model.Message
+	err     error
+	locator model.SyncMessageLocator
+}
+
+func (h *stubDuplicateHydrator) Hydrate(_ context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error) {
+	if len(locators) == 1 {
+		h.locator = locators[0]
+	}
+	if h.err != nil {
+		return nil, h.err
+	}
+	return map[string]*model.Message{h.message.UUID: h.message}, nil
+}
+
+func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID:     map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	_, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID:       "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+		MessageType:     model.MessageTypeText,
+		Content:         "private",
+	})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no duplicate repair for conflicting target, outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
+	}
+}
+
+func TestMessageServicePersistRequestedMessageRejectsConflictingIdempotencyPayload(t *testing.T) {
+	existing := &model.Message{
+		UUID: "M100", ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "original",
+	}
+	repo := &stubMessageRepository{
+		storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID:     map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+
+	_, err := service.PersistRequestedMessage(MessageEventPayload{
+		MessageID: "M999", ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "changed",
+	})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected payload conflict, got %v", err)
+	}
+	if len(repo.ensuredOutboxEvents) != 0 || len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("payload conflict repaired duplicate state: outbox=%d inbox=%+v", len(repo.ensuredOutboxEvents), repo.ensuredSyncRecipients)
+	}
+}
+
+func TestMessageServicePersistLocalMessageRejectsConflictingIdempotencyTarget(t *testing.T) {
+	existing := &model.Message{
+		UUID:            "M100",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U200",
+		TargetType:      model.MessageTargetDirect,
+	}
+	repo := &stubMessageRepository{
+		createErr:      &mysqlDriver.MySQLError{Number: 1062},
+		messagesByUUID: map[string]*model.Message{"M100": existing},
+	}
+	service := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, nil, nil)
+	requested := &model.Message{
+		UUID:            "M999",
+		ClientMessageID: "cmid-duplicate",
+		ConversationKey: model.DirectConversationKey("U100", "U300"),
+		SenderUUID:      "U100",
+		TargetUUID:      "U300",
+		TargetType:      model.MessageTargetDirect,
+	}
+
+	_, err := service.persistLocalMessage(requested, "persist direct message", []string{"U100", "U300"})
+	if !errors.Is(err, ErrMessageIdempotencyConflict) {
+		t.Fatalf("expected ErrMessageIdempotencyConflict, got %v", err)
+	}
+	if len(repo.ensuredSyncRecipients) != 0 {
+		t.Fatalf("expected no local inbox repair for conflicting target, got %+v", repo.ensuredSyncRecipients)
 	}
 }

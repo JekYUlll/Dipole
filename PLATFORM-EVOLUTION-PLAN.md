@@ -4,7 +4,7 @@
 >
 > 基线：`99f2ef0 feat(sync): add user inbox timeline`
 >
-> 更新日期：2026-08-26
+> 更新日期：2026-08-27
 
 ## 1. 目标
 
@@ -82,14 +82,14 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 各阶段实施前先完成以下基线治理，当前仅列入计划：
 
-- [ ] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
-- [ ] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
-- [ ] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
-- [ ] 为核心事件建立版本化契约和新旧版本兼容测试。
-- [ ] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout。
-- [ ] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
-- [ ] 建立服务级健康检查、指标、结构化日志和最小告警规则。
-- [ ] 将需要长期维护的架构 Markdown 纳入版本控制，关闭 `AD-007`。
+- [x] 解决 `AD-001`：改为并发安全的用户级 Sync Sequence，补充提交乱序测试。
+- [x] 解决 `AD-002`：消除旧群事件与 `sync_fanout=false` 的协议歧义。
+- [x] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
+- [x] 为全部 Kafka managed topics 建立语言中立 v1 JSON Schema、统一领域 decoder、producer drift 与新旧版本兼容测试；新增受管主题必须先通过契约覆盖门禁。
+- [x] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout；标准化报告归档于 `benchmarks/g0-2026-08-27/`。
+- [x] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
+- [x] 建立服务级健康检查、指标、结构化日志和最小告警规则。
+- [x] 将需要长期维护的架构 Markdown 纳入版本控制，以 manifest 和检查脚本持续约束并关闭 `AD-007`。
 
 **G0 验收：** 全量测试通过；事件兼容测试通过；基线压测结果归档；当前单体部署行为保持一致。
 
@@ -113,22 +113,23 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 目标是在一个进程内完成边界整理，不增加网络调用。
 
-- [ ] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复构造逻辑收口到 Composition Root。
-- [ ] 按领域定义应用端口：`MessageApplication`、`CoreCapability`、`SyncApplication`、`EventPublisher`。
-- [ ] 将 repository 接口移动到使用方领域，避免 handler/bootstrap 依赖具体 repository。
-- [ ] 禁止跨模块直接 `repository.NewXXXRepository()`，统一通过构造参数注入。
-- [ ] 建立架构约束测试，阻止 Gateway/Handler 直接导入数据库实现。
-- [ ] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
+- [x] 将 `server.New()` 和 `RegisterKafkaHandlers()` 中的重复 Repository 与消息域 Service 构造收口到 Composition Root。
+- [x] 定义 `MessageApplication`、`SyncApplication` 与 `EventPublisher`，并提供 Local adapter。
+- [x] 定义 `CoreCapability` 与 Local adapter，供 Message 与 Agent 复用受控的 User/Group/Contact 查询。
+- [x] 将 repository 接口保留在使用方 Service，避免 handler 和 transport 依赖具体 repository。
+- [x] 禁止跨模块直接 `repository.NewXXXRepository()`，统一由 Composition Root 创建并通过构造参数注入。
+- [x] 建立架构约束测试，阻止 Server、Handler 和 Transport 直接导入数据库实现。
+- [x] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
 
 **验收：** HTTP/WS 契约不变；`go test ./...`、race 定向测试和现有端到端测试通过；单体镜像仍可独立部署。
 
 ### M2：从 GORM 渐进迁移到 sqlc
 
-- [ ] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
-- [ ] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
-- [ ] 对同一 Repository Port 建立 GORM/sqlc contract test，按低风险到高风险逐仓储迁移。
-- [ ] 最后迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
-- [ ] 全部生产路径稳定后删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
+- [x] 建立版本化 SQL migration，以空库和现有库升级测试替代运行时 `AutoMigrate`。
+- [x] 引入 `database/sql + sqlc`、可复现生成命令、DBTX 事务边界和 domain mapper。
+- [x] 对同一 Repository Port 建立迁移契约，按低风险到高风险逐仓储迁移。
+- [x] 迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
+- [x] 删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
 
 **验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
 
@@ -136,32 +137,36 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M3：定义远程契约但仍走本地实现
 
-- [ ] 使用 protobuf 定义 Message Command、History Query、Core Authorization 和 Sync Query 契约。
-- [ ] 明确错误码、超时、幂等键、分页游标和认证上下文传递规则。
-- [ ] 生成 gRPC server/client，并用 in-process adapter 跑同一组契约测试。
-- [ ] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
-- [ ] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`。
+- [x] 使用 protobuf 定义 Message Command 与 History Query v1 契约。
+- [x] 使用 protobuf 定义 Core Authorization 和 Sync Query 契约，并复用 `common.v1.RequestContext`。
+- [x] 明确 Message RPC 错误码、超时、幂等键、分页游标和认证上下文传递规则。
+- [x] 生成 Message gRPC server/client，并用 bufconn 验证 Local server 与 Remote client adapters。
+- [x] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。
+- [x] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
+- [x] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`；M3 的 grpc 模式先走 bufconn，M4 再替换为受认证网络 channel。
 
 **验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M2 一致。
 
 ### M4：抽离 Message Service
 
-- [ ] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
-- [ ] 当前单体先作为 Gateway/Core，通过 gRPC 调用 Message Service。
-- [ ] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取 Core 表。
-- [ ] 使用影子请求比对 Local 与 Remote 响应，影子链路禁止产生第二次业务写入。
-- [ ] 按节点逐步将 `message.transport` 切换为 `grpc`，保留快速回切能力。
-- [ ] 明确 Message Service 数据表所有权，其他进程停止直接写 `messages` 和 `outbox_events`。
+- [x] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
+- [x] 当前单体先作为 Gateway/Core，通过受认证 gRPC 调用 Message Service，并保留 `local` 回切。
+- [x] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取这些 Core 表。
+- [x] 使用异步影子请求比对 Local 与 Remote 查询响应；四类发送命令只执行 primary，影子链路禁止业务写入。
+- [x] 提供按节点逐步切换 `message.transport=grpc` 的 shadow/owner 运行模式、consumer group 交接手册和 Local 快速回切能力。
+- [x] 明确 Message Service 数据表所有权；远程模式下 Core 停止写 `messages` 和 `outbox_events`，独立进程只组合 Message 与 Outbox adapters。
+
+当前部署仍共享 MySQL schema，凭据与表操作已通过 AD-015 分离：Message 使用 `message.mysql.*` 和 atomic/projector 最小账号，文件所有权通过 Core Capability，内部 RPC 通过 AD-013 完成 TLS 1.3 mTLS 与 caller 身份绑定。
 
 **验收：** 发送、历史、文件消息、热群、幂等和 Outbox 故障场景通过；Remote 模式达到基线延迟目标；回切 Local 不需要数据回滚。
 
 ### M5：抽离 IM Gateway
 
-- [ ] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
-- [ ] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有 GORM repository。
-- [ ] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
-- [ ] 将静态 Web、Swagger 和管理入口的归属显式化，避免 Gateway 混入后台任务。
-- [ ] 保留现有单体入口作为回滚部署，直到 Gateway 完成全流量验证。
+- [x] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
+- [x] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
+- [x] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
+- [x] 将静态 Web、Swagger 和管理入口的归属显式化；M5 期间由 Gateway 代理到私网 Core。
+- [x] 保留 `gateway.mode=embedded` 单体入口作为无数据回滚部署。
 
 **验收：** 多节点 WS 路由、断线重连、踢下线、跨节点投递和滚动升级通过；Gateway 进程断开数据库后仍能正常处理其职责。
 
@@ -177,44 +182,62 @@ dipole-message    Message command / history / idempotency / outbox
 
 Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件和持久化游标后再独立。User、Group、Contact 和 File 继续留在 Core。
 
+- [x] 统一镜像打包 Core、Message、Gateway 与 migration 四个二进制，旧单体入口继续作为默认 entrypoint。
+- [x] 增加独立微服务 Compose，Core/Message/Gateway 使用 TLS 1.3 mTLS、独立 caller 与健康依赖启动。
+- [x] Gateway 不依赖 MySQL service，Core 与 Message 继续使用当前 MySQL schema，表级账号由 AD-015 跟踪。
+- [x] 增加可重复 smoke，覆盖 migration、冷启动、Gateway health、Core HTTP 代理和 remote WS 所有权。
+
+**验收：** 隔离 Compose project 全部长期服务 healthy；Gateway 只暴露公开端口；自动 smoke 完成后可无残留销毁拓扑。
+
 ## 7. 阶段二：存储与事件架构重构
 
 ### A1：稳定 Timeline 与 Store 抽象
 
-- [ ] 增加会话内单调 `conversation_seq`，消息唯一 ID 与排序序号分离。
-- [ ] 增加 `read_seq` 和设备级同步 checkpoint，保留旧 `UnreadCount` 兼容投影。
-- [ ] 定义 `MessageStore`、`SyncStore` 和 `SearchIndex` 接口，MySQL 实现先通过完整 contract test。
-- [ ] 为热群定义持久化 checkpoint，解决 `AD-004` 后再计划移除旧离线接口。
-- [ ] 为消息创建、撤回、编辑和删除预留版本化 mutation 事件，当前只实现已支持的动作。
+- [x] 增加会话内单调 `conversation_seq`，消息唯一 ID 与排序序号分离。
+- [x] 增加 `read_seq` 和设备级同步 checkpoint，保留旧 `UnreadCount` 兼容投影。
+- [x] 定义 `MessageStore`、`SyncStore` 和 `SearchIndex` 接口，MySQL 实现先通过完整 contract test。
+- [x] 为热群定义持久化 checkpoint，解决 `AD-004` 后再计划移除旧离线接口。
+- [x] 为消息创建、撤回、编辑和删除预留版本化 mutation 事件，当前只实现已支持的动作。
 
 **验收：** MySQL 实现下的新旧 API 结果一致；Sequence 并发测试、设备同步测试和历史分页测试通过。
 
 ### A2：基础设施集群化
 
-- [ ] MySQL Cluster 承载用户、群、联系人、文件元数据、幂等记录、Outbox、Conversation 和迁移控制表。
-- [ ] Kafka Cluster 设置明确的 partition key、复制因子、最小 ISR、保留期和 DLQ 监控。
-- [ ] Redis 使用可故障转移拓扑，并验证 Presence、PubSub、热点检测和限流语义。
-- [ ] Cassandra 与 Elasticsearch 先进入隔离环境，不接生产读流量。
-- [ ] Local Compose 保持单节点开发模式，新增 cluster profile 用于集成和故障演练。
+- [x] MySQL Cluster 承载用户、群、联系人、文件元数据、幂等记录、Outbox、Conversation 和迁移控制表。
+- [x] Kafka Cluster 设置明确的 partition key、复制因子、最小 ISR、保留期和 `acks=all`，并验证单 broker 故障与 quorum 恢复。
+- [x] 固定 Kafka consumer rebalance policy，验证成员退出后的 partition 接管与 lag 归零，并提供进程内处理结果 snapshot。
+- [x] 增加 lag、under-replicated partitions、retry 和 DLQ 的 Prometheus 监控门禁。
+- [x] Redis 使用可故障转移拓扑，并验证 Presence、PubSub、热点检测和限流语义。
+- [x] Cassandra 与 Elasticsearch 先进入隔离环境，不接生产读流量。
+- [x] Local Compose 保持单节点开发模式，新增 cluster profile 用于集成和故障演练。
 
 **验收：** 单节点故障演练、Kafka 重平衡、MySQL 主节点切换和 Redis 故障转移期间不丢已确认消息。
 
 ### A3：Cassandra Message Store 影子投影
 
-- [ ] 设计按 `conversation_id + bucket` 分区、按 `conversation_seq` 聚簇排序的 Timeline 表。
-- [ ] 通过 Kafka `message.created.vN` 将 MySQL 已确认消息投影到 Cassandra，消费者按事件 ID 幂等。
-- [ ] 先回填历史数据，再持续追平增量；记录 checkpoint 和失败重试。
-- [ ] 建立数量、哈希、抽样内容和会话序号连续性校验。
-- [ ] Message Service 执行 shadow-read，对比 Cassandra 与 MySQL，客户端仍读取 MySQL。
+- [x] 设计按稳定 `conversation_key + bucket` 分区、按 `conversation_seq` 聚簇排序的 Timeline 表。
+- [x] 通过 Kafka `message.created.vN` 将 MySQL 已确认消息投影到 Cassandra，消费者按事件负载幂等。
+- [x] 先回填历史数据，再持续追平增量；记录 checkpoint 和失败重试。
+- [x] 建立数量、哈希、抽样内容和会话序号连续性校验。
+- [x] Message Service 执行 shadow-read，对比 Cassandra 与 MySQL，客户端仍读取 MySQL。
 
 **验收：** 全量校验达到约定阈值；Kafka lag 可观测；重复消费和乱序事件不会破坏 Timeline。
 
 ### A4：渐进切换 Cassandra 读取与写入职责
 
-- [ ] 按用户或会话灰度将历史读取切到 Cassandra，失败时回退 MySQL 并记录差异。
+- [x] 按会话灰度将 Direct/Group Seq 历史读取切到 Cassandra，失败时使用同一 Seq cursor 整页回退 MySQL。
 - [ ] 逐步提升 Cassandra 读取比例，持续比较结果和延迟。
-- [ ] 稳定后停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
-- [ ] 在停止 MySQL 正文写入前完成备份、回放工具和明确回滚窗口。
+- [x] 首批按会话稳定 cohort 灰度群 `after_seq` 增量读取，缺页或存储错误自动回退 MySQL，百分比 0 可即时回切。
+- [x] 增加 Direct/Group `before_seq` HTTP/RPC 契约，Web 首屏、历史分页与热群补拉统一使用 Seq cursor domain。
+- [x] 暴露 Cassandra/MySQL fallback 路由计数和延迟指标，并通过真实双存储缺行演练。
+- [x] 增加可配置主读抽样核验、match/mismatch/error 指标；Seq 连续但 payload 被篡改时整页回退 MySQL。
+- [x] 增加 fallback ratio、payload mismatch 与 verification dependency 告警，并用 promtool 固定时序验证停止门禁。
+- [x] 审计 MySQL 正文依赖，确认 Sync 补全、旧 Offline、UUID/幂等回放、文件授权和迁移校验尚未具备完整替代契约（AD-019）。
+- [x] 增加不可变完整消息归档与 source-bound Cassandra Job；按固定 MinIO 对象版本恢复后删除 MySQL 正文，仍可完成 Timeline 重建、全量对账和篡改检测。
+- [x] 固化重复消息 Cassandra hydration 的 24 小时观测门禁：至少 100 次 hit、零 fallback、零历史无 Seq，并以 promtool 固定时序验证晋级和停止条件。
+- [ ] 持续提升 Cassandra 读取比例并完成生产观测；A4 期间继续保存 MySQL 完整消息，保留对账与即时回切基准。
+- [ ] A5/A6 替代读契约双跑通过后，再停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
+- [ ] 在切换为 metadata-only 写入前完成固定快照备份、事件回放演练、责任人和明确回滚窗口。
 - [ ] 达到保留期后再归档或删除 MySQL 历史消息表。
 
 应用层禁止直接同步双写 MySQL 和 Cassandra；跨存储复制通过 Outbox/Kafka 投影完成，避免分布式事务。
@@ -223,19 +246,53 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### A5：引入 Elasticsearch Search Projection
 
-- [ ] Search Indexer 消费版本化消息事件，按 `message_id` 幂等写入。
-- [ ] 使用 index alias 支持重建、切换和回滚；索引映射纳入版本控制。
-- [ ] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
-- [ ] 支持从 Kafka/Message Store 全量重建索引，ES 故障不阻断消息发送。
+- [x] 固化 `dipole-messages-v1` strict mapping、read/write Alias、schema readiness 和原子 Alias 切换契约。
+- [x] 实现 storage-neutral Elasticsearch Search adapter，以 Message UUID 为 `_id`、external revision 与 payload hash 分类重复、乱序和冲突事件。
+- [x] 独立 Search Indexer 使用专属 Kafka consumer group 消费八类版本化 mutation，以 `message_id` 和 revision 幂等投影。
+- [x] 解决 AD-020，以版本化 tombstone 处理 recall/delete，并让 MySQL/Elasticsearch 共享 mutation contract。
+- [x] 实现 Backfill/Reconcile 和 Alias 运维命令，完成真实重建、切换和回滚演练。
+- [x] 搜索接口执行会话成员权限校验，索引结果不能绕过 Core 权限。
+- [x] 使用固定 Outbox mutation 高水位全量重建索引，ES 故障不阻断消息发送。
+- [x] 完成 Pencil Search desktop/mobile 的 Results、Loading、Empty、Error 四态和可复用组件。
+- [x] 实现默认关闭的 Vue Search 工作区、Gateway/前端双开关、请求防抖、乱序响应淘汰和组件测试。
+- [x] 搜索全量重建支持 MinIO 不可变事件归档源；receipt 固定 object version ID 和 Governance retention，Backfill、Reconcile 与 Alias 共同校验 snapshot ID、高水位和 SHA-256，删除本地副本与历史 Message Outbox 后仍可恢复、重建和回滚。
+- [x] 解决 AD-021：以专用最小权限账号执行 receipt/Reconcile/Job 三重绑定的 Outbox dry-run 与分批清理，记录责任人和对象版本；清理后仅凭归档完成空索引重建、对账与 Alias 回滚。
 
 **验收：** 搜索正确性、权限隔离、重建和 alias 切换测试通过。
 
 ### A6：独立 Sync Service 与实时投影
 
-- [ ] 新增 `dipole-sync`，消费消息事件并维护 Durable Inbox、群 checkpoint 和设备 Cursor。
-- [ ] 通过 checkpoint、重放和回填保证消费者可恢复，修复事件进入同一幂等模型。
-- [ ] 前端增加 IndexedDB/本地游标，先双跑 `/messages/offline` 与 `/sync` 并比较结果。
-- [ ] 热群使用 Sync Item 通知客户端按 `conversation_seq` 拉取 Cassandra Timeline。
+- [x] 建立独立 `dipole-sync` 查询/Checkpoint 运行时、sqlc 仓储边界和最小权限内部 RPC；Message 事务暂时继续原子写 Inbox。
+- [x] 增加默认 Local 的 Core `sync.transport` 切流开关，独立服务不可用时可无数据迁移地回切进程内实现。
+- [x] 增加只读 Sync 影子比较，覆盖 Inbox 页面、设备 Cursor 和群 checkpoint，禁止影子推进 Cursor。
+- [x] 为 `dipole-sync` 增加默认关闭的独立 Kafka consumer，按事件时收件人快照维护 Durable Inbox；精确重放幂等，冲突整批回滚，热群跳过用户 fanout。
+- [x] 固化 checkpoint 恢复边界：Inbox 与群 Timeline 高水位可由事件重建；设备 Cursor 与群 `pulled_message_seq` 只能由已持久化客户端 ACK 单调推进，禁止从消息事件推导。
+- [x] 让 Sync 新 consumer group 从 earliest retained offset 追平，完成 backlog、consumer lag、retry/DLQ 告警与故障演练。
+- [x] 增加固定 Outbox 高水位、lease/checkpoint Replay 和 recipient/locator Reconcile；差异报告返回退出码 2，修复事件复用在线投影幂等模型。
+- [x] 审计 created Outbox 历史覆盖，为缺少 created Outbox 的 Inbox 建立固定高水位、SHA-256 不可变 baseline、精确 Reconcile 与保序 Restore，解决 `AD-024`。
+- [x] 验证 earliest consumer 与固定 Outbox Replay 拼接后的在线追平窗口，并以 lag=0、retry/DLQ 无增量和 Reconcile 一致作为停止门槛。
+- [x] 迁移 Message 的 Inbox 写责任和数据库权限：Sync/Message 使用操作级最小账号，`projector` 停止 Message Inbox 写入，`atomic` 保留一键恢复窗口，并通过真实 MySQL 演练解决 `AD-023`。
+- [x] 前端增加默认关闭的 IndexedDB Sync Engine，以同一事务提交消息和本地游标，恢复/重连后再显式 ACK 服务端设备 Cursor。
+- [x] 增加 `shadow` 双跑模式、持久化 UUID 基线/pending 窗口和 Prometheus 聚合遥测；首批只比较两个协议语义一致的收到私聊消息。
+- [x] 固化 24 小时 Web Sync 观测门禁：至少 100 个 match、零终态单边差异、零 overflow，并以 promtool 固定时序验证晋级和停止条件。
+- [ ] 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，再结束旧 Offline 兼容窗口。
+- [x] 统一显式退出、HTTP 401、WS kick 与账号切换的 Session Termination；凭据先撤销，IndexedDB 清理等待在途同步收敛，快速重登等待旧清理完成。
+- [x] 建立 IndexedDB 高低容量水位、按会话保底的最近消息安全淘汰、缓存 manifest 和 quota error 状态；淘汰与 Cursor 提交保持同一事务且不额外推进安全游标。
+- [x] 建立 Playwright 三浏览器 IndexedDB 验收，覆盖淘汰、重开、账号隔离、延迟清理和页面中断事务原子性；增加 `storage_full/sync_error` 聚合指标与 promtool 告警。
+- [x] 使用独立 Chromium persistent profile 在 `commitPage` pending 窗口触发完整浏览器主进程 crash；同一 profile 重启后 Message、manifest 与安全 Cursor 保持整页原子性。
+- [x] 使用无特权 user/mount namespace 和 128 MiB tmpfs 触发真实 Chromium IndexedDB 容量拒绝；释放 reserve 后验证失败页不推进安全 Cursor，现有 `storage_full` 分类有效。
+- [x] 完成真实浏览器配额、共享设备 HTTP 401/WS kick 和完整进程强退验收，关闭 `AD-025`。
+- [x] Web Sync Engine 将热群补拉消息与群 `message_seq` 原子写入 IndexedDB，落库后再 ACK 设备群 checkpoint；`off` 模式保持不 ACK 的内存兼容路径。
+- [x] 补齐 Direct Timeline `after_seq` 的 HTTP、Message v1 gRPC、Local/Remote/Shadow 与 Cassandra cohort/fallback 契约，使单聊和群聊共享会话 Seq 增量语义。
+- [x] 增加默认关闭的 `sync.item.notify.v1` shadow 协议；通知只携带版本化 locator，现有完整 WS 正文继续投递，热群保留单一聚合 notify + pull 路径。
+- [x] 增加 Web Timeline shadow verifier、会话级补洞/去重和有界遥测；固化完整 24 小时、至少 100 次 match、零 missing/mismatch/error/invalid 的晋级门禁。
+- [ ] 在线 Sync Item 通知直接驱动客户端按 `conversation_seq` 拉取 Cassandra 主 Timeline，并完成主读灰度门禁。
+- [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
+- [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
+- [ ] 达到观察门槛后为 Cassandra hydration 增加受控主读与 MySQL fallback；切换前补齐告警、灰度比例和无 MySQL 内部 ID 的兼容审计。
+- [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
+- [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
+- [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 
 **验收：** 离线、多设备、热群、重放、Cursor 恢复和客户端升级测试通过；关闭 Redis 后仍可恢复持久同步状态。
@@ -244,11 +301,16 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### G1：固化迁移基线与 Capability API
 
-- [ ] 将现有 Go/Eino Agent 固化为行为基线，建立事件、回复、Tool 轨迹和权限评测集。
-- [ ] 删除 Agent 对 GORM repository 的直接依赖，读取和动作统一进入版本化 Capability API。
-- [ ] 引入由认证系统生成的 `ExecutionContext`，模型不能设置 principal、tenant、权限和审计身份。
-- [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
-- [ ] 增加 `agent.mode=embedded|shadow|remote|off`，保留 Eino 回滚窗口。
+- [x] 将现有 Go/Eino Agent 固化为行为基线，以语言中立 v1 数据集覆盖事件、回复、Tool 轨迹和权限评测。
+- [x] 引入由认证触发链生成的 `ExecutionContext`，模型不能设置 principal、Agent 身份和关联审计 ID，所有 Embedded Tool 缺失上下文时 fail closed。
+- [x] 删除 Agent ContextBuilder/Tool 对数据库 repository-shaped port 的直接依赖，读取和动作统一进入 `dipole.agent.capability.v1`；本地 adapter 复用 Core、Conversation 与 Message application 边界。
+- [x] 在 Capability API 中补充 `AgentPolicyV1`：tenant、委托身份、细粒度 permission、`read|write|destructive` 风险和 approval 语义，并在 Tool/adapter 双层授权。
+- [x] 将 permission grant 与 approval 持久化到版本化 Agent Definition 和 AgentTask，支持 scope、过期、撤销及 arguments hash 重校验（`AD-027`）。
+  - [x] migration v16 与 `AgentPolicyStoreV1` 已持久化不可变 Definition grant、固定版本 Task、scope/arguments/nonce 绑定 Approval，并以条件更新保证一次性消费。
+  - [x] Embedded trigger 从持久 Task policy snapshot 解析 Invocation；`ai.policy_mode=persistent` 默认启用，`static` 保留显式回滚，Tool/Capability/Command 按 resource scope fail closed。
+  - [x] migration v17 将 Agent policy 身份列 expand-only 扩至 24 字符，覆盖默认 21 字符 Assistant UUID；真实 MySQL 8.4 验证 Definition 初始化、Task 固定版本和完成迁移。
+- [x] Agent 回复通过版本化 `dipole.agent.command.v1` 进入 Message Service：可信 Invocation 固定 sender/target，稳定 Command ID 映射到 Message 幂等键并保留 correlation；普通回复和系统 Tool 均不直接写消息库。
+- [x] 增加 `ai.runtime_mode=off|embedded|shadow|remote`，兼容旧 `ai.enabled`；shadow 保留 Go 权威写入，remote 停止注册 Embedded consumer，为 Eino 回滚和 TS 切流建立开关。
 
 **验收：** Capability contract test 通过；Embedded 基线可重复评测；Agent 停机不影响传统 IM。
 
@@ -308,10 +370,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ## 10. 持续轨道：Pencil 前端设计
 
-- [ ] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
-- [ ] F2：覆盖 Contact、Group、File、Search、Sync、Device 与 Settings 的完整页面和异常状态。
+- [ ] F1：已建立 `design/dipole-ui.pen`、首组 design tokens 与 Search 核心组件；Login/Chat desktop/mobile 待完成。
+- [ ] F2：Search 四态及 Vue 工作区已完成；Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成，Contact、Group、File、Device 与 Settings 待完成。
 - [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
-- [ ] F4：建立 Pencil 增量更新、设计日志、Vue token 映射、Playwright E2E 与视觉回归流程。
+- [ ] F4：已建立 Pencil 增量更新、设计日志、Vitest 组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
 设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
 
@@ -326,7 +388,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | Migration | 回填、双轨比较、影子读、灰度切换、回滚和重放 |
 | Failure | 节点宕机、超时、重复事件、乱序、Kafka lag、存储不可用 |
 | Performance | 普通群/热群吞吐、P95/P99 延迟、成员级写放大、搜索和 Agent 延迟 |
-| Data access | SQL migration、sqlc 生成漂移、GORM/sqlc contract、真实 MySQL 事务 |
+| Data access | SQL migration、sqlc 生成漂移、Repository contract、真实 MySQL 事务 |
 | Frontend | Vue 类型检查、组件、Playwright E2E、视觉回归、响应式和可访问性 |
 
 每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
@@ -337,11 +399,14 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | --- | --- | --- |
 | `message.transport` | `local / grpc` | Message Service 进程抽离回切 |
 | `message.read_store` | `mysql / shadow / cassandra` | Cassandra 读流量灰度 |
+| `message.mysql_write_mode` | `full / metadata_only` | A5/A6 门禁完成后的 MySQL 正文退役；初始固定为 `full` |
+| `message.inbox_write_mode` | `atomic / projector` | Inbox 写责任迁移；`atomic` 是默认回滚路径 |
+| `message.timeline_notify_mode` | `off / shadow` | Gateway 轻量 Timeline 通知；`off` 立即停止附加通知且保留完整消息投递 |
+| `VITE_TIMELINE_NOTIFY_MODE` | `off / shadow` | Web Timeline 通知验证；未设置或 `off` 时完全忽略该通知 |
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
-| `data.mysql_adapter` | `gorm / sqlc` | Repository 分批迁移期间回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
 
@@ -351,6 +416,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - 暂不让 Gateway 直接访问 MySQL、Cassandra 或 Elasticsearch。
 - 暂不使用 Redis 保存 Durable Inbox、设备 Cursor 或消息事实。
 - 暂不在应用事务中直接双写 MySQL 和 Cassandra。
+- 暂不在 AD-019 的 Sync、幂等、文件授权、备份和回放门禁完成前启用 MySQL `metadata_only` 写入。
 - 暂不在 Capability 契约与 Eino 基线评测完成前让 TypeScript Runtime 执行生产写操作。
 - 暂不因技术栈覆盖直接替换 Go Gateway；C++ 替换必须先通过独立基准和 shadow 对比。
 - 暂不移除 `/messages/offline`、`after_id` 和 `UnreadCount` 兼容层。

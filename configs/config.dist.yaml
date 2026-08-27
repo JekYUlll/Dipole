@@ -12,8 +12,19 @@ server:
   host: 0.0.0.0
   port: 8080
 
+gateway:
+  # Gateway owns public HTTP/WS; non-WS HTTP is proxied to the Core HTTP process during M5.
+  # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/gateway.
+  mode: embedded
+  core_http_target: http://127.0.0.1:8081
+
 tls:
   enabled: false
+
+metrics:
+  # Bind to loopback by default. Container deployments may bind the private service network.
+  enabled: false
+  address: 127.0.0.1:9100
 
 auth:
   token_ttl_hours: 168
@@ -28,10 +39,36 @@ mysql:
   dbname: dipole
 
 redis:
+  mode: single
   host: redis
   port: 6379
   password: ""
   db: 0
+  sentinel_master_name: ""
+  sentinel_addresses: []
+  sentinel_password: ""
+
+cassandra:
+  # Shadow projector remains off until its schema and Kafka consumer are deployed independently.
+  enabled: false
+  hosts:
+    - 127.0.0.1:19042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+  connect_timeout_seconds: 5
+
+elasticsearch:
+  # Search Indexer owns this connection; Core, Message and Gateway keep it disabled.
+  enabled: false
+  address: http://127.0.0.1:19200
+  index_prefix: dipole
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 10
+  username: ""
+  password: ""
+  api_key: ""
 
 kafka:
   enabled: true
@@ -41,10 +78,97 @@ kafka:
   topic_prefix: dipole
   topic_partitions: 6
   topic_replication_factor: 1
+  topic_min_insync_replicas: 1
+  topic_retention_hours: 168
+  required_acks: one
   dial_timeout_seconds: 5
   write_timeout_seconds: 5
   consume_retry_max_attempts: 3
   consume_retry_backoff_ms: 500
+  consumer_group_balancer: roundrobin
+  consumer_heartbeat_seconds: 3
+  consumer_session_timeout_seconds: 30
+  consumer_rebalance_timeout_seconds: 30
+
+message:
+  # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
+  transport: local
+  # cmd/message-service: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
+  runtime_mode: owner
+  # Query-only comparison; send commands always execute on the selected primary exactly once.
+  shadow_queries: false
+  # Compare Message Store history pages with Cassandra asynchronously; MySQL remains the response source.
+  cassandra_shadow_reads: false
+  # Deterministic conversation cohort for Cassandra Seq-cursor reads; 0 is the emergency rollback.
+  cassandra_read_percentage: 0
+  # Synchronously compare this percentage of conversation-operation cohorts with MySQL using the same Seq cursor.
+  cassandra_read_verify_percentage: 0
+  # Hydrate duplicate-send responses by Metadata locator from Cassandra, with MySQL fallback.
+  cassandra_duplicate_hydration: false
+  # Require a table-scoped MySQL account before accepting Message RPC traffic.
+  enforce_db_permissions: false
+  # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.
+  inbox_write_mode: atomic
+  # off sends only existing realtime frames; shadow appends body-free sync.item.notify.v1 locators.
+  timeline_notify_mode: off
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+sync:
+  # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.
+  transport: local
+  # Compare read-only Sync calls; checkpoint advances always execute on the selected primary once.
+  shadow_queries: false
+  # Consume message.created into the durable Inbox; keep disabled until dual-run verification passes.
+  projector_enabled: false
+  # Fail startup when the Sync account can modify Message-owned state or read Core-owned data.
+  enforce_db_permissions: false
+  # Compare MySQL-hydrated Sync payloads with Cassandra asynchronously; MySQL remains primary.
+  cassandra_shadow_hydration: false
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+search:
+  # Gateway registers the public Search route only after the independent Search RPC is deployed.
+  enabled: false
+  # Empty values inherit global MySQL; production maintenance commands use a dedicated account.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+internal_rpc:
+  # Keep disabled until Core and Message are deployed as separate processes.
+  enabled: false
+  shared_secret: ""  # set with DIPOLE_INTERNAL_RPC_SHARED_SECRET
+  core_listen_address: 127.0.0.1:9091
+  core_target: 127.0.0.1:9091
+  message_listen_address: 127.0.0.1:9092
+  message_target: 127.0.0.1:9092
+  search_listen_address: 127.0.0.1:9093
+  search_target: 127.0.0.1:9093
+  sync_listen_address: 127.0.0.1:9094
+  sync_target: 127.0.0.1:9094
+  dial_timeout_seconds: 5
+  shutdown_timeout_seconds: 15
+  # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.
+  tls_enabled: false
+  tls_cert_file: ""
+  tls_key_file: ""
+  tls_ca_file: ""
+  tls_server_name: ""
 
 storage:
   enabled: true
@@ -55,6 +179,10 @@ storage:
   secret_key: dipoleminiopass
   use_ssl: false
   bucket: dipole-files
+  search_archive_bucket: dipole-search-archives
+  search_archive_retention_days: 30
+  message_archive_bucket: dipole-message-archives
+  message_archive_retention_days: 30
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
   multipart_chunk_size_mb: 5
@@ -85,6 +213,8 @@ hot_group:
 
 ai:
   enabled: true
+  runtime_mode: embedded
+  policy_mode: persistent  # set static for an explicit rollback to code-defined grants
   provider: openai
   model: deepseek-chat
   api_key: ""  # set via DIPOLE_AI_API_KEY in .env or environment

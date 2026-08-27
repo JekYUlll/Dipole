@@ -28,10 +28,20 @@ type Server struct {
 	Port int    `mapstructure:"port"`
 }
 
+type Gateway struct {
+	Mode           string `mapstructure:"mode"`
+	CoreHTTPTarget string `mapstructure:"core_http_target"`
+}
+
 type TLS struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	CertFile string `mapstructure:"cert_file"`
 	KeyFile  string `mapstructure:"key_file"`
+}
+
+type Metrics struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Address string `mapstructure:"address"`
 }
 
 type MySQL struct {
@@ -43,10 +53,35 @@ type MySQL struct {
 }
 
 type Redis struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
+	Mode               string   `mapstructure:"mode"`
+	Host               string   `mapstructure:"host"`
+	Port               int      `mapstructure:"port"`
+	Password           string   `mapstructure:"password"`
+	DB                 int      `mapstructure:"db"`
+	SentinelMasterName string   `mapstructure:"sentinel_master_name"`
+	SentinelAddresses  []string `mapstructure:"sentinel_addresses"`
+	SentinelPassword   string   `mapstructure:"sentinel_password"`
+}
+
+type Cassandra struct {
+	Enabled               bool     `mapstructure:"enabled"`
+	Hosts                 []string `mapstructure:"hosts"`
+	Keyspace              string   `mapstructure:"keyspace"`
+	LocalDatacenter       string   `mapstructure:"local_datacenter"`
+	TimelineBucketSize    uint64   `mapstructure:"timeline_bucket_size"`
+	ConnectTimeoutSeconds int      `mapstructure:"connect_timeout_seconds"`
+}
+
+type Elasticsearch struct {
+	Enabled               bool   `mapstructure:"enabled"`
+	Address               string `mapstructure:"address"`
+	IndexPrefix           string `mapstructure:"index_prefix"`
+	Shards                int    `mapstructure:"shards"`
+	Replicas              int    `mapstructure:"replicas"`
+	RequestTimeoutSeconds int    `mapstructure:"request_timeout_seconds"`
+	Username              string `mapstructure:"username"`
+	Password              string `mapstructure:"password"`
+	APIKey                string `mapstructure:"api_key"`
 }
 
 type Auth struct {
@@ -56,32 +91,88 @@ type Auth struct {
 }
 
 type Kafka struct {
-	Enabled                 bool     `mapstructure:"enabled"`
-	Brokers                 []string `mapstructure:"brokers"`
-	ClientID                string   `mapstructure:"client_id"`
-	TopicPrefix             string   `mapstructure:"topic_prefix"`
-	TopicPartitions         int      `mapstructure:"topic_partitions"`
-	TopicReplicationFactor  int      `mapstructure:"topic_replication_factor"`
-	DialTimeoutSeconds      int      `mapstructure:"dial_timeout_seconds"`
-	WriteTimeoutSeconds     int      `mapstructure:"write_timeout_seconds"`
-	ConsumeRetryMaxAttempts int      `mapstructure:"consume_retry_max_attempts"`
-	ConsumeRetryBackoffMS   int      `mapstructure:"consume_retry_backoff_ms"`
+	Enabled                         bool     `mapstructure:"enabled"`
+	Brokers                         []string `mapstructure:"brokers"`
+	ClientID                        string   `mapstructure:"client_id"`
+	TopicPrefix                     string   `mapstructure:"topic_prefix"`
+	TopicPartitions                 int      `mapstructure:"topic_partitions"`
+	TopicReplicationFactor          int      `mapstructure:"topic_replication_factor"`
+	TopicMinInSyncReplicas          int      `mapstructure:"topic_min_insync_replicas"`
+	TopicRetentionHours             int      `mapstructure:"topic_retention_hours"`
+	RequiredAcks                    string   `mapstructure:"required_acks"`
+	DialTimeoutSeconds              int      `mapstructure:"dial_timeout_seconds"`
+	WriteTimeoutSeconds             int      `mapstructure:"write_timeout_seconds"`
+	ConsumeRetryMaxAttempts         int      `mapstructure:"consume_retry_max_attempts"`
+	ConsumeRetryBackoffMS           int      `mapstructure:"consume_retry_backoff_ms"`
+	ConsumerGroupBalancer           string   `mapstructure:"consumer_group_balancer"`
+	ConsumerHeartbeatSeconds        int      `mapstructure:"consumer_heartbeat_seconds"`
+	ConsumerSessionTimeoutSeconds   int      `mapstructure:"consumer_session_timeout_seconds"`
+	ConsumerRebalanceTimeoutSeconds int      `mapstructure:"consumer_rebalance_timeout_seconds"`
+}
+
+type Message struct {
+	Transport                   string `mapstructure:"transport"`
+	RuntimeMode                 string `mapstructure:"runtime_mode"`
+	ShadowQueries               bool   `mapstructure:"shadow_queries"`
+	CassandraShadowReads        bool   `mapstructure:"cassandra_shadow_reads"`
+	CassandraReadPercent        int    `mapstructure:"cassandra_read_percentage"`
+	CassandraReadVerifyPercent  int    `mapstructure:"cassandra_read_verify_percentage"`
+	CassandraDuplicateHydration bool   `mapstructure:"cassandra_duplicate_hydration"`
+	EnforceDBPermissions        bool   `mapstructure:"enforce_db_permissions"`
+	InboxWriteMode              string `mapstructure:"inbox_write_mode"`
+	TimelineNotifyMode          string `mapstructure:"timeline_notify_mode"`
+}
+
+type Search struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+type Sync struct {
+	Transport                string `mapstructure:"transport"`
+	ShadowQueries            bool   `mapstructure:"shadow_queries"`
+	ProjectorEnabled         bool   `mapstructure:"projector_enabled"`
+	EnforceDBPermissions     bool   `mapstructure:"enforce_db_permissions"`
+	CassandraShadowHydration bool   `mapstructure:"cassandra_shadow_hydration"`
+}
+
+type InternalRPC struct {
+	Enabled                bool   `mapstructure:"enabled"`
+	SharedSecret           string `mapstructure:"shared_secret"`
+	CoreListenAddress      string `mapstructure:"core_listen_address"`
+	CoreTarget             string `mapstructure:"core_target"`
+	MessageListenAddress   string `mapstructure:"message_listen_address"`
+	MessageTarget          string `mapstructure:"message_target"`
+	SearchListenAddress    string `mapstructure:"search_listen_address"`
+	SearchTarget           string `mapstructure:"search_target"`
+	SyncListenAddress      string `mapstructure:"sync_listen_address"`
+	SyncTarget             string `mapstructure:"sync_target"`
+	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled             bool   `mapstructure:"tls_enabled"`
+	TLSCertFile            string `mapstructure:"tls_cert_file"`
+	TLSKeyFile             string `mapstructure:"tls_key_file"`
+	TLSCAFile              string `mapstructure:"tls_ca_file"`
+	TLSServerName          string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
-	Enabled                bool   `mapstructure:"enabled"`
-	Provider               string `mapstructure:"provider"`
-	Endpoint               string `mapstructure:"endpoint"`
-	PresignEndpoint        string `mapstructure:"presign_endpoint"`
-	AccessKey              string `mapstructure:"access_key"`
-	SecretKey              string `mapstructure:"secret_key"`
-	UseSSL                 bool   `mapstructure:"use_ssl"`
-	Bucket                 string `mapstructure:"bucket"`
-	PublicBaseURL          string `mapstructure:"public_base_url"`
-	FileMaxSizeMB          int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB   int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin int    `mapstructure:"multipart_session_ttl_minutes"`
-	DownloadURLTTLMinutes  int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                     bool   `mapstructure:"enabled"`
+	Provider                    string `mapstructure:"provider"`
+	Endpoint                    string `mapstructure:"endpoint"`
+	PresignEndpoint             string `mapstructure:"presign_endpoint"`
+	AccessKey                   string `mapstructure:"access_key"`
+	SecretKey                   string `mapstructure:"secret_key"`
+	UseSSL                      bool   `mapstructure:"use_ssl"`
+	Bucket                      string `mapstructure:"bucket"`
+	SearchArchiveBucket         string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays  int    `mapstructure:"search_archive_retention_days"`
+	MessageArchiveBucket        string `mapstructure:"message_archive_bucket"`
+	MessageArchiveRetentionDays int    `mapstructure:"message_archive_retention_days"`
+	PublicBaseURL               string `mapstructure:"public_base_url"`
+	FileMaxSizeMB               int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB        int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin      int    `mapstructure:"multipart_session_ttl_minutes"`
+	DownloadURLTTLMinutes       int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -112,6 +203,8 @@ type HotGroup struct {
 
 type AI struct {
 	Enabled            bool   `mapstructure:"enabled"`
+	RuntimeMode        string `mapstructure:"runtime_mode"`
+	PolicyMode         string `mapstructure:"policy_mode"`
 	Provider           string `mapstructure:"provider"`
 	Model              string `mapstructure:"model"`
 	APIKey             string `mapstructure:"api_key"`
@@ -124,6 +217,52 @@ type AI struct {
 	AssistantEmail     string `mapstructure:"assistant_email"`
 	AssistantAvatar    string `mapstructure:"assistant_avatar"`
 	SystemPrompt       string `mapstructure:"system_prompt"`
+}
+
+const (
+	AIRuntimeOff       = "off"
+	AIRuntimeEmbedded  = "embedded"
+	AIRuntimeShadow    = "shadow"
+	AIRuntimeRemote    = "remote"
+	AIPolicyStatic     = "static"
+	AIPolicyPersistent = "persistent"
+)
+
+func (a AI) ResolvedRuntimeMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(a.RuntimeMode))
+	if mode == "" {
+		if a.Enabled {
+			return AIRuntimeEmbedded, nil
+		}
+		return AIRuntimeOff, nil
+	}
+	switch mode {
+	case AIRuntimeOff, AIRuntimeEmbedded, AIRuntimeShadow, AIRuntimeRemote:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("invalid AI runtime mode %q: expected off, embedded, shadow, or remote", a.RuntimeMode)
+	}
+}
+
+func (a AI) ResolvedPolicyMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(a.PolicyMode))
+	if mode == "" {
+		return AIPolicyPersistent, nil
+	}
+	switch mode {
+	case AIPolicyStatic, AIPolicyPersistent:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("invalid AI policy mode %q: expected static or persistent", a.PolicyMode)
+	}
+}
+
+func (a AI) RunsEmbeddedAgent() (bool, error) {
+	mode, err := a.ResolvedRuntimeMode()
+	if err != nil {
+		return false, err
+	}
+	return mode == AIRuntimeEmbedded || mode == AIRuntimeShadow, nil
 }
 
 type AIProvider struct {
@@ -164,22 +303,87 @@ func Load() error {
 		v.SetDefault("log.file_rotate_daily", true)
 		v.SetDefault("server.host", "0.0.0.0")
 		v.SetDefault("server.port", 8080)
+		v.SetDefault("gateway.mode", "embedded")
+		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
+		v.SetDefault("metrics.enabled", false)
+		v.SetDefault("metrics.address", "127.0.0.1:9100")
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
+		v.SetDefault("redis.mode", "single")
+		v.SetDefault("cassandra.enabled", false)
+		v.SetDefault("cassandra.hosts", []string{"127.0.0.1:19042"})
+		v.SetDefault("cassandra.keyspace", "dipole_message_shadow")
+		v.SetDefault("cassandra.local_datacenter", "datacenter1")
+		v.SetDefault("cassandra.timeline_bucket_size", 10000)
+		v.SetDefault("cassandra.connect_timeout_seconds", 5)
+		v.SetDefault("elasticsearch.enabled", false)
+		v.SetDefault("elasticsearch.address", "http://127.0.0.1:19200")
+		v.SetDefault("elasticsearch.index_prefix", "dipole")
+		v.SetDefault("elasticsearch.shards", 1)
+		v.SetDefault("elasticsearch.replicas", 0)
+		v.SetDefault("elasticsearch.request_timeout_seconds", 10)
+		v.SetDefault("elasticsearch.username", "")
+		v.SetDefault("elasticsearch.password", "")
+		v.SetDefault("elasticsearch.api_key", "")
 		v.SetDefault("kafka.enabled", false)
 		v.SetDefault("kafka.brokers", []string{"127.0.0.1:9092"})
 		v.SetDefault("kafka.client_id", "dipole")
 		v.SetDefault("kafka.topic_prefix", "dipole")
 		v.SetDefault("kafka.topic_partitions", 6)
 		v.SetDefault("kafka.topic_replication_factor", 1)
+		v.SetDefault("kafka.topic_min_insync_replicas", 1)
+		v.SetDefault("kafka.topic_retention_hours", 168)
+		v.SetDefault("kafka.required_acks", "one")
 		v.SetDefault("kafka.dial_timeout_seconds", 5)
 		v.SetDefault("kafka.write_timeout_seconds", 5)
 		v.SetDefault("kafka.consume_retry_max_attempts", 3)
 		v.SetDefault("kafka.consume_retry_backoff_ms", 500)
+		v.SetDefault("kafka.consumer_group_balancer", "roundrobin")
+		v.SetDefault("kafka.consumer_heartbeat_seconds", 3)
+		v.SetDefault("kafka.consumer_session_timeout_seconds", 30)
+		v.SetDefault("kafka.consumer_rebalance_timeout_seconds", 30)
+		v.SetDefault("message.transport", "local")
+		v.SetDefault("message.runtime_mode", "owner")
+		v.SetDefault("message.shadow_queries", false)
+		v.SetDefault("message.cassandra_shadow_reads", false)
+		v.SetDefault("message.cassandra_read_percentage", 0)
+		v.SetDefault("message.cassandra_read_verify_percentage", 0)
+		v.SetDefault("message.cassandra_duplicate_hydration", false)
+		v.SetDefault("message.enforce_db_permissions", false)
+		v.SetDefault("message.inbox_write_mode", "atomic")
+		v.SetDefault("message.timeline_notify_mode", "off")
+		v.SetDefault("message.mysql.host", "")
+		v.SetDefault("message.mysql.port", 0)
+		v.SetDefault("message.mysql.user", "")
+		v.SetDefault("message.mysql.password", "")
+		v.SetDefault("message.mysql.dbname", "")
+		v.SetDefault("search.enabled", false)
+		v.SetDefault("sync.transport", "local")
+		v.SetDefault("sync.shadow_queries", false)
+		v.SetDefault("sync.projector_enabled", false)
+		v.SetDefault("sync.enforce_db_permissions", false)
+		v.SetDefault("sync.cassandra_shadow_hydration", false)
+		v.SetDefault("internal_rpc.enabled", false)
+		v.SetDefault("internal_rpc.shared_secret", "")
+		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.core_target", "127.0.0.1:9091")
+		v.SetDefault("internal_rpc.message_listen_address", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.message_target", "127.0.0.1:9092")
+		v.SetDefault("internal_rpc.search_listen_address", "127.0.0.1:9093")
+		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
+		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
+		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
+		v.SetDefault("internal_rpc.tls_enabled", false)
+		v.SetDefault("internal_rpc.tls_cert_file", "")
+		v.SetDefault("internal_rpc.tls_key_file", "")
+		v.SetDefault("internal_rpc.tls_ca_file", "")
+		v.SetDefault("internal_rpc.tls_server_name", "")
 		v.SetDefault("storage.enabled", false)
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
@@ -188,6 +392,10 @@ func Load() error {
 		v.SetDefault("storage.secret_key", "dipoleminiopass")
 		v.SetDefault("storage.use_ssl", false)
 		v.SetDefault("storage.bucket", "dipole-files")
+		v.SetDefault("storage.search_archive_bucket", "dipole-search-archives")
+		v.SetDefault("storage.search_archive_retention_days", 30)
+		v.SetDefault("storage.message_archive_bucket", "dipole-message-archives")
+		v.SetDefault("storage.message_archive_retention_days", 30)
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -211,6 +419,8 @@ func Load() error {
 		v.SetDefault("hot_group.window_seconds", 60)
 		v.SetDefault("hot_group.cooling_seconds", 180)
 		v.SetDefault("ai.enabled", false)
+		v.SetDefault("ai.runtime_mode", "")
+		v.SetDefault("ai.policy_mode", AIPolicyPersistent)
 		v.SetDefault("ai.provider", "openai")
 		v.SetDefault("ai.model", "gpt-4o-mini")
 		v.SetDefault("ai.api_key", "")
@@ -234,9 +444,12 @@ func Load() error {
 			"log.file_rotate_daily",
 			"server.host",
 			"server.port",
+			"gateway.core_http_target",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
+			"metrics.enabled",
+			"metrics.address",
 			"auth.token_ttl_hours",
 			"auth.jwt_secret",
 			"auth.jwt_issuer",
@@ -249,6 +462,25 @@ func Load() error {
 			"redis.port",
 			"redis.password",
 			"redis.db",
+			"redis.mode",
+			"redis.sentinel_master_name",
+			"redis.sentinel_addresses",
+			"redis.sentinel_password",
+			"cassandra.enabled",
+			"cassandra.hosts",
+			"cassandra.keyspace",
+			"cassandra.local_datacenter",
+			"cassandra.timeline_bucket_size",
+			"cassandra.connect_timeout_seconds",
+			"elasticsearch.enabled",
+			"elasticsearch.address",
+			"elasticsearch.index_prefix",
+			"elasticsearch.shards",
+			"elasticsearch.replicas",
+			"elasticsearch.request_timeout_seconds",
+			"elasticsearch.username",
+			"elasticsearch.password",
+			"elasticsearch.api_key",
 			"kafka.enabled",
 			"kafka.brokers",
 			"kafka.client_id",
@@ -259,6 +491,54 @@ func Load() error {
 			"kafka.write_timeout_seconds",
 			"kafka.consume_retry_max_attempts",
 			"kafka.consume_retry_backoff_ms",
+			"message.transport",
+			"message.runtime_mode",
+			"message.shadow_queries",
+			"message.cassandra_shadow_reads",
+			"message.cassandra_read_percentage",
+			"message.cassandra_read_verify_percentage",
+			"message.cassandra_duplicate_hydration",
+			"message.enforce_db_permissions",
+			"message.inbox_write_mode",
+			"message.timeline_notify_mode",
+			"message.mysql.host",
+			"message.mysql.port",
+			"message.mysql.user",
+			"message.mysql.password",
+			"message.mysql.dbname",
+			"search.enabled",
+			"sync.transport",
+			"sync.shadow_queries",
+			"sync.projector_enabled",
+			"sync.enforce_db_permissions",
+			"sync.cassandra_shadow_hydration",
+			"sync.mysql.host",
+			"sync.mysql.port",
+			"sync.mysql.user",
+			"sync.mysql.password",
+			"sync.mysql.dbname",
+			"search.mysql.host",
+			"search.mysql.port",
+			"search.mysql.user",
+			"search.mysql.password",
+			"search.mysql.dbname",
+			"internal_rpc.enabled",
+			"internal_rpc.shared_secret",
+			"internal_rpc.core_listen_address",
+			"internal_rpc.core_target",
+			"internal_rpc.message_listen_address",
+			"internal_rpc.message_target",
+			"internal_rpc.search_listen_address",
+			"internal_rpc.search_target",
+			"internal_rpc.sync_listen_address",
+			"internal_rpc.sync_target",
+			"internal_rpc.dial_timeout_seconds",
+			"internal_rpc.shutdown_timeout_seconds",
+			"internal_rpc.tls_enabled",
+			"internal_rpc.tls_cert_file",
+			"internal_rpc.tls_key_file",
+			"internal_rpc.tls_ca_file",
+			"internal_rpc.tls_server_name",
 			"storage.enabled",
 			"storage.provider",
 			"storage.endpoint",
@@ -267,6 +547,10 @@ func Load() error {
 			"storage.secret_key",
 			"storage.use_ssl",
 			"storage.bucket",
+			"storage.search_archive_bucket",
+			"storage.search_archive_retention_days",
+			"storage.message_archive_bucket",
+			"storage.message_archive_retention_days",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -288,6 +572,8 @@ func Load() error {
 			"hot_group.window_seconds",
 			"hot_group.cooling_seconds",
 			"ai.enabled",
+			"ai.runtime_mode",
+			"ai.policy_mode",
 			"ai.provider",
 			"ai.model",
 			"ai.api_key",
@@ -359,6 +645,14 @@ func ServerConfig() Server {
 	return server
 }
 
+func GatewayConfig() Gateway {
+	MustLoad()
+	return Gateway{
+		Mode:           strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget: strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+	}
+}
+
 func MySQLConfig() MySQL {
 	MustLoad()
 
@@ -381,6 +675,14 @@ func TLSConfig() TLS {
 	return tlsConfig
 }
 
+func MetricsConfig() Metrics {
+	MustLoad()
+	return Metrics{
+		Enabled: cfg.GetBool("metrics.enabled"),
+		Address: strings.TrimSpace(cfg.GetString("metrics.address")),
+	}
+}
+
 func RedisConfig() Redis {
 	MustLoad()
 
@@ -390,6 +692,26 @@ func RedisConfig() Redis {
 	}
 
 	return redis
+}
+
+func CassandraConfig() Cassandra {
+	MustLoad()
+
+	var cassandra Cassandra
+	if err := cfg.UnmarshalKey("cassandra", &cassandra); err != nil {
+		panic(fmt.Errorf("unmarshal Cassandra config: %w", err))
+	}
+
+	return cassandra
+}
+
+func ElasticsearchConfig() Elasticsearch {
+	MustLoad()
+	var elasticsearch Elasticsearch
+	if err := cfg.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
+		panic(fmt.Errorf("unmarshal Elasticsearch config: %w", err))
+	}
+	return elasticsearch
 }
 
 func AuthConfig() Auth {
@@ -419,12 +741,124 @@ func KafkaConfig() Kafka {
 	kafkaConfig.TopicPrefix = cfg.GetString("kafka.topic_prefix")
 	kafkaConfig.TopicPartitions = cfg.GetInt("kafka.topic_partitions")
 	kafkaConfig.TopicReplicationFactor = cfg.GetInt("kafka.topic_replication_factor")
+	kafkaConfig.TopicMinInSyncReplicas = cfg.GetInt("kafka.topic_min_insync_replicas")
+	kafkaConfig.TopicRetentionHours = cfg.GetInt("kafka.topic_retention_hours")
+	kafkaConfig.RequiredAcks = strings.ToLower(strings.TrimSpace(cfg.GetString("kafka.required_acks")))
 	kafkaConfig.DialTimeoutSeconds = cfg.GetInt("kafka.dial_timeout_seconds")
 	kafkaConfig.WriteTimeoutSeconds = cfg.GetInt("kafka.write_timeout_seconds")
 	kafkaConfig.ConsumeRetryMaxAttempts = cfg.GetInt("kafka.consume_retry_max_attempts")
 	kafkaConfig.ConsumeRetryBackoffMS = cfg.GetInt("kafka.consume_retry_backoff_ms")
+	kafkaConfig.ConsumerGroupBalancer = strings.ToLower(strings.TrimSpace(cfg.GetString("kafka.consumer_group_balancer")))
+	kafkaConfig.ConsumerHeartbeatSeconds = cfg.GetInt("kafka.consumer_heartbeat_seconds")
+	kafkaConfig.ConsumerSessionTimeoutSeconds = cfg.GetInt("kafka.consumer_session_timeout_seconds")
+	kafkaConfig.ConsumerRebalanceTimeoutSeconds = cfg.GetInt("kafka.consumer_rebalance_timeout_seconds")
 
 	return kafkaConfig
+}
+
+func MessageConfig() Message {
+	MustLoad()
+
+	return Message{
+		Transport:                   strings.ToLower(strings.TrimSpace(cfg.GetString("message.transport"))),
+		RuntimeMode:                 strings.ToLower(strings.TrimSpace(cfg.GetString("message.runtime_mode"))),
+		ShadowQueries:               cfg.GetBool("message.shadow_queries"),
+		CassandraShadowReads:        cfg.GetBool("message.cassandra_shadow_reads"),
+		CassandraReadPercent:        cfg.GetInt("message.cassandra_read_percentage"),
+		CassandraReadVerifyPercent:  cfg.GetInt("message.cassandra_read_verify_percentage"),
+		CassandraDuplicateHydration: cfg.GetBool("message.cassandra_duplicate_hydration"),
+		EnforceDBPermissions:        cfg.GetBool("message.enforce_db_permissions"),
+		InboxWriteMode:              strings.ToLower(strings.TrimSpace(cfg.GetString("message.inbox_write_mode"))),
+		TimelineNotifyMode:          strings.ToLower(strings.TrimSpace(cfg.GetString("message.timeline_notify_mode"))),
+	}
+}
+
+func MessageMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("message.mysql.host"), Port: cfg.GetInt("message.mysql.port"),
+		User: cfg.GetString("message.mysql.user"), Password: cfg.GetString("message.mysql.password"),
+		DBName: cfg.GetString("message.mysql.dbname"),
+	})
+}
+
+func SearchConfig() Search {
+	MustLoad()
+	return Search{Enabled: cfg.GetBool("search.enabled")}
+}
+
+func SearchMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("search.mysql.host"), Port: cfg.GetInt("search.mysql.port"),
+		User: cfg.GetString("search.mysql.user"), Password: cfg.GetString("search.mysql.password"),
+		DBName: cfg.GetString("search.mysql.dbname"),
+	})
+}
+
+func SyncConfig() Sync {
+	MustLoad()
+	return Sync{
+		Transport:                strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
+		ShadowQueries:            cfg.GetBool("sync.shadow_queries"),
+		ProjectorEnabled:         cfg.GetBool("sync.projector_enabled"),
+		EnforceDBPermissions:     cfg.GetBool("sync.enforce_db_permissions"),
+		CassandraShadowHydration: cfg.GetBool("sync.cassandra_shadow_hydration"),
+	}
+}
+
+func SyncMySQLConfig() MySQL {
+	MustLoad()
+	return mergeMySQLConfig(MySQLConfig(), MySQL{
+		Host: cfg.GetString("sync.mysql.host"), Port: cfg.GetInt("sync.mysql.port"),
+		User: cfg.GetString("sync.mysql.user"), Password: cfg.GetString("sync.mysql.password"),
+		DBName: cfg.GetString("sync.mysql.dbname"),
+	})
+}
+
+func mergeMySQLConfig(result, override MySQL) MySQL {
+	if strings.TrimSpace(override.Host) != "" {
+		result.Host = override.Host
+	}
+	if override.Port != 0 {
+		result.Port = override.Port
+	}
+	if strings.TrimSpace(override.User) != "" {
+		result.User = override.User
+	}
+	if override.Password != "" {
+		result.Password = override.Password
+	}
+	if strings.TrimSpace(override.DBName) != "" {
+		result.DBName = override.DBName
+	}
+	return result
+}
+
+func InternalRPCConfig() InternalRPC {
+	MustLoad()
+
+	var internalRPC InternalRPC
+	if err := cfg.UnmarshalKey("internal_rpc", &internalRPC); err != nil {
+		panic(fmt.Errorf("unmarshal internal rpc config: %w", err))
+	}
+	internalRPC.Enabled = cfg.GetBool("internal_rpc.enabled")
+	internalRPC.SharedSecret = strings.TrimSpace(cfg.GetString("internal_rpc.shared_secret"))
+	internalRPC.CoreListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.core_listen_address"))
+	internalRPC.CoreTarget = strings.TrimSpace(cfg.GetString("internal_rpc.core_target"))
+	internalRPC.MessageListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.message_listen_address"))
+	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
+	internalRPC.SearchListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.search_listen_address"))
+	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
+	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
+	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
+	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")
+	internalRPC.TLSCertFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_cert_file"))
+	internalRPC.TLSKeyFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_key_file"))
+	internalRPC.TLSCAFile = strings.TrimSpace(cfg.GetString("internal_rpc.tls_ca_file"))
+	internalRPC.TLSServerName = strings.TrimSpace(cfg.GetString("internal_rpc.tls_server_name"))
+
+	return internalRPC
 }
 
 func StorageConfig() Storage {
@@ -442,6 +876,10 @@ func StorageConfig() Storage {
 	storageConfig.SecretKey = cfg.GetString("storage.secret_key")
 	storageConfig.UseSSL = cfg.GetBool("storage.use_ssl")
 	storageConfig.Bucket = cfg.GetString("storage.bucket")
+	storageConfig.SearchArchiveBucket = cfg.GetString("storage.search_archive_bucket")
+	storageConfig.SearchArchiveRetentionDays = cfg.GetInt("storage.search_archive_retention_days")
+	storageConfig.MessageArchiveBucket = cfg.GetString("storage.message_archive_bucket")
+	storageConfig.MessageArchiveRetentionDays = cfg.GetInt("storage.message_archive_retention_days")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")
@@ -507,6 +945,8 @@ func AIConfig() AI {
 		panic(fmt.Errorf("unmarshal ai config: %w", err))
 	}
 	aiConfig.Enabled = cfg.GetBool("ai.enabled")
+	aiConfig.RuntimeMode = cfg.GetString("ai.runtime_mode")
+	aiConfig.PolicyMode = cfg.GetString("ai.policy_mode")
 	aiConfig.Provider = cfg.GetString("ai.provider")
 	aiConfig.Model = cfg.GetString("ai.model")
 	aiConfig.APIKey = cfg.GetString("ai.api_key")
@@ -519,6 +959,13 @@ func AIConfig() AI {
 	aiConfig.AssistantEmail = cfg.GetString("ai.assistant_email")
 	aiConfig.AssistantAvatar = cfg.GetString("ai.assistant_avatar")
 	aiConfig.SystemPrompt = cfg.GetString("ai.system_prompt")
+	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
+		aiConfig.RuntimeMode = mode
+		aiConfig.Enabled = mode != AIRuntimeOff
+	}
+	if mode, err := aiConfig.ResolvedPolicyMode(); err == nil {
+		aiConfig.PolicyMode = mode
+	}
 
 	return aiConfig
 }

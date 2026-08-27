@@ -1,0 +1,38 @@
+rule_files:
+  - cassandra-read-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'dipole_message_read_verification_total{operation="before_seq",outcome="mismatch"}'
+        values: '0 0 0 0 1 1 1 1'
+      - series: 'dipole_message_read_verification_total{operation="after_seq",outcome="mysql_error"}'
+        values: '0 0 0 0 1 1 1 1'
+      - series: 'dipole_message_read_route_total{route="mysql_fallback",fallback_reason="incomplete_page"}'
+        values: '0 0 0 1 2 3 4 5'
+      - series: 'dipole_message_read_route_total{route="cassandra",fallback_reason=""}'
+        values: '0 10 20 30 40 50 60 70'
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: DipoleCassandraReadPayloadMismatch
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Cassandra primary-read verification found a payload mismatch
+      - eval_time: 7m
+        alertname: DipoleCassandraReadVerificationUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Cassandra primary-read verification could not query MySQL
+      - eval_time: 7m
+        alertname: DipoleCassandraReadFallbackRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Cassandra message-read fallback ratio remains above five percent

@@ -20,6 +20,7 @@ type stubConversationRepository struct {
 	getConversationErr    error
 	lastClearUserUUID     string
 	lastClearConversation string
+	lastReadThroughSeq    uint64
 	clearErr              error
 	lastRemarkUserUUID    string
 	lastRemarkKey         string
@@ -81,9 +82,10 @@ func (r *stubConversationRepository) GetByUserAndConversationKey(userUUID, conve
 	return r.conversationByKey, nil
 }
 
-func (r *stubConversationRepository) ClearUnreadByConversationKey(userUUID, conversationKey string) error {
+func (r *stubConversationRepository) MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error {
 	r.lastClearUserUUID = userUUID
 	r.lastClearConversation = conversationKey
+	r.lastReadThroughSeq = readThroughSeq
 	return r.clearErr
 }
 
@@ -326,6 +328,7 @@ func TestConversationServiceMarkDirectConversationReadPublishesReceipt(t *testin
 		conversationByKey: &model.Conversation{
 			ConversationKey: model.DirectConversationKey("U100", "U200"),
 			LastMessageUUID: "M100",
+			LastMessageSeq:  17,
 		},
 	}
 	events := &stubConversationEvents{}
@@ -339,7 +342,7 @@ func TestConversationServiceMarkDirectConversationReadPublishesReceipt(t *testin
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if receipt == nil || receipt.LastReadMessageUUID != "M100" {
+	if receipt == nil || receipt.LastReadMessageUUID != "M100" || receipt.LastReadSeq != 17 || repo.lastReadThroughSeq != 17 {
 		t.Fatalf("unexpected receipt: %+v", receipt)
 	}
 	if events.publishedTopic != "conversation.direct.read" {
@@ -353,7 +356,7 @@ func TestConversationServiceMarkDirectConversationReadPublishesReceipt(t *testin
 func TestConversationServiceMarkGroupConversationReadClearsUnread(t *testing.T) {
 	t.Parallel()
 
-	repo := &stubConversationRepository{}
+	repo := &stubConversationRepository{conversationByKey: &model.Conversation{LastMessageSeq: 9}}
 	groupRepo := &stubConversationGroupRepository{
 		groupsByUUID: map[string]*model.Group{
 			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
@@ -369,6 +372,9 @@ func TestConversationServiceMarkGroupConversationReadClearsUnread(t *testing.T) 
 	}
 	if repo.lastClearConversation != model.GroupConversationKey("G100") {
 		t.Fatalf("unexpected cleared conversation: %s", repo.lastClearConversation)
+	}
+	if repo.lastReadThroughSeq != 9 {
+		t.Fatalf("unexpected group read sequence: %d", repo.lastReadThroughSeq)
 	}
 }
 
@@ -402,6 +408,7 @@ func TestConversationServiceMarkDirectConversationReadNotifiesWithoutEvents(t *t
 		conversationByKey: &model.Conversation{
 			ConversationKey: model.DirectConversationKey("U100", "U200"),
 			LastMessageUUID: "M100",
+			LastMessageSeq:  18,
 		},
 	}
 	service := NewConversationService(repo, &stubConversationUserFinder{

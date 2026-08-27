@@ -19,37 +19,30 @@ const (
 )
 
 type Message struct {
-	ID              uint       `gorm:"primaryKey;index:idx_message_conversation_id,priority:2;index:idx_message_target_uuid_id,priority:3;index:idx_message_sender_id,priority:3" json:"id"`
-	UUID            string     `gorm:"size:24;uniqueIndex;not null" json:"uuid"`
-	ClientMessageID string     `gorm:"column:client_message_id;size:64;not null;uniqueIndex:idx_message_sender_client,priority:2" json:"-"`
-	ConversationKey string     `gorm:"size:64;index;index:idx_message_conversation_id,priority:1;not null" json:"-"`
-	SenderUUID      string     `gorm:"column:sender_uuid;size:24;index;index:idx_message_sender_id,priority:2;uniqueIndex:idx_message_sender_client,priority:1;not null" json:"sender_uuid"`
-	TargetType      int8       `gorm:"column:target_type;not null;default:0;index:idx_message_target_uuid_id,priority:1;index:idx_message_sender_id,priority:1" json:"target_type"`
-	TargetUUID      string     `gorm:"column:target_uuid;size:24;index;index:idx_message_target_uuid_id,priority:2;not null" json:"target_uuid"`
-	MessageType     int8       `gorm:"column:message_type;not null;default:0;index:idx_message_file_type_sent,priority:2" json:"message_type"`
-	Content         string     `gorm:"type:text;not null" json:"content"`
-	FileID          string     `gorm:"column:file_id;size:24;index;index:idx_message_file_type_sent,priority:1;not null;default:''" json:"file_id"`
-	FileName        string     `gorm:"column:file_name;size:255;not null;default:''" json:"file_name"`
-	FileSize        int64      `gorm:"column:file_size;not null;default:0" json:"file_size"`
-	FileURL         string     `gorm:"column:file_url;size:512;not null;default:''" json:"file_url"`
-	FileContentType string     `gorm:"column:file_content_type;size:255;not null;default:''" json:"file_content_type"`
-	FileExpiresAt   *time.Time `gorm:"column:file_expires_at;index" json:"file_expires_at,omitempty"`
-	SentAt          time.Time  `gorm:"not null;index;index:idx_message_file_type_sent,priority:3" json:"sent_at"`
+	ID              uint       `json:"id"`
+	UUID            string     `json:"uuid"`
+	ClientMessageID string     `json:"-"`
+	ConversationKey string     `json:"-"`
+	Seq             uint64     `json:"seq,omitempty"`
+	SenderUUID      string     `json:"sender_uuid"`
+	TargetType      int8       `json:"target_type"`
+	TargetUUID      string     `json:"target_uuid"`
+	MessageType     int8       `json:"message_type"`
+	Content         string     `json:"content"`
+	FileID          string     `json:"file_id"`
+	FileName        string     `json:"file_name"`
+	FileSize        int64      `json:"file_size"`
+	FileURL         string     `json:"file_url"`
+	FileContentType string     `json:"file_content_type"`
+	FileExpiresAt   *time.Time `json:"file_expires_at,omitempty"`
+	SentAt          time.Time  `json:"sent_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
-func (Message) TableName() string {
-	return "messages"
-}
-
 func DirectConversationKey(userOneUUID, userTwoUUID string) string {
-	users := []string{
-		strings.TrimSpace(userOneUUID),
-		strings.TrimSpace(userTwoUUID),
-	}
+	users := []string{strings.TrimSpace(userOneUUID), strings.TrimSpace(userTwoUUID)}
 	sort.Strings(users)
-
 	return "direct:" + users[0] + ":" + users[1]
 }
 

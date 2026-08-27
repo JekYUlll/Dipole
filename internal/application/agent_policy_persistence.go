@@ -1,0 +1,294 @@
+package application
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"sort"
+	"strings"
+	"time"
+)
+
+const AgentPolicyPersistenceVersionV1 = "dipole.agent.policy.persistence.v1"
+const AgentResourceScopeHashVersionV1 = "dipole.agent.scope.v1"
+
+var ErrAgentApprovalDenied = errors.New("agent approval denied")
+var ErrAgentPolicyInvalid = errors.New("agent policy record is invalid")
+
+type AgentDefinitionStatusV1 string
+
+const (
+	AgentDefinitionStatusActive  AgentDefinitionStatusV1 = "active"
+	AgentDefinitionStatusRevoked AgentDefinitionStatusV1 = "revoked"
+)
+
+type AgentTaskStatusV1 string
+
+const (
+	AgentTaskStatusCreated         AgentTaskStatusV1 = "created"
+	AgentTaskStatusRunning         AgentTaskStatusV1 = "running"
+	AgentTaskStatusWaitingApproval AgentTaskStatusV1 = "waiting_approval"
+	AgentTaskStatusCompleted       AgentTaskStatusV1 = "completed"
+	AgentTaskStatusFailed          AgentTaskStatusV1 = "failed"
+	AgentTaskStatusCancelled       AgentTaskStatusV1 = "cancelled"
+)
+
+type AgentApprovalStatusV1 string
+
+const (
+	AgentApprovalStatusPending  AgentApprovalStatusV1 = "pending"
+	AgentApprovalStatusApproved AgentApprovalStatusV1 = "approved"
+	AgentApprovalStatusConsumed AgentApprovalStatusV1 = "consumed"
+	AgentApprovalStatusRevoked  AgentApprovalStatusV1 = "revoked"
+)
+
+type AgentResourceScopeV1 struct {
+	ResourceType string   `json:"resource_type"`
+	ResourceID   string   `json:"resource_id"`
+	Actions      []string `json:"actions"`
+}
+
+type AgentDefinitionVersionV1 struct {
+	DefinitionUUID string                  `json:"definition_uuid"`
+	Version        uint64                  `json:"version"`
+	TenantID       string                  `json:"tenant_id"`
+	OwnerUUID      string                  `json:"owner_uuid"`
+	AgentUUID      string                  `json:"agent_uuid"`
+	Status         AgentDefinitionStatusV1 `json:"status"`
+	Permissions    []string                `json:"permissions"`
+	Scopes         []AgentResourceScopeV1  `json:"scopes"`
+	ValidFrom      time.Time               `json:"valid_from"`
+	ExpiresAt      *time.Time              `json:"expires_at,omitempty"`
+	RevokedAt      *time.Time              `json:"revoked_at,omitempty"`
+	CreatedAt      time.Time               `json:"created_at,omitempty"`
+	UpdatedAt      time.Time               `json:"updated_at,omitempty"`
+}
+
+type AgentTaskV1 struct {
+	TaskUUID          string            `json:"task_uuid"`
+	DefinitionUUID    string            `json:"definition_uuid"`
+	DefinitionVersion uint64            `json:"definition_version"`
+	TenantID          string            `json:"tenant_id"`
+	PrincipalUUID     string            `json:"principal_uuid"`
+	AgentUUID         string            `json:"agent_uuid"`
+	Status            AgentTaskStatusV1 `json:"status"`
+	TriggerType       string            `json:"trigger_type"`
+	TriggerRef        string            `json:"trigger_ref"`
+	Goal              string            `json:"goal"`
+	CreatedAt         time.Time         `json:"created_at,omitempty"`
+	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
+}
+
+type AgentApprovalV1 struct {
+	ApprovalUUID    string                `json:"approval_uuid"`
+	TaskUUID        string                `json:"task_uuid"`
+	CapabilityID    string                `json:"capability_id"`
+	ResourceScope   AgentResourceScopeV1  `json:"resource_scope"`
+	ScopeSHA256     string                `json:"scope_sha256"`
+	ArgumentsSHA256 string                `json:"arguments_sha256"`
+	NonceSHA256     string                `json:"nonce_sha256"`
+	Status          AgentApprovalStatusV1 `json:"status"`
+	ApprovedByUUID  string                `json:"approved_by_uuid"`
+	ExpiresAt       time.Time             `json:"expires_at"`
+	ConsumedAt      *time.Time            `json:"consumed_at,omitempty"`
+	RevokedAt       *time.Time            `json:"revoked_at,omitempty"`
+	CreatedAt       time.Time             `json:"created_at,omitempty"`
+	UpdatedAt       time.Time             `json:"updated_at,omitempty"`
+}
+
+type AgentApprovalClaimV1 struct {
+	TaskUUID        string `json:"task_uuid"`
+	CapabilityID    string `json:"capability_id"`
+	ScopeSHA256     string `json:"scope_sha256"`
+	ArgumentsSHA256 string `json:"arguments_sha256"`
+	NonceSHA256     string `json:"nonce_sha256"`
+}
+
+func (d AgentDefinitionVersionV1) Validate() error {
+	if anyBlank(d.DefinitionUUID, d.TenantID, d.OwnerUUID, d.AgentUUID) || d.Version == 0 || d.ValidFrom.IsZero() ||
+		(d.Status != AgentDefinitionStatusActive && d.Status != AgentDefinitionStatusRevoked) || len(d.Permissions) == 0 || len(d.Scopes) == 0 {
+		return ErrAgentPolicyInvalid
+	}
+	for _, permission := range d.Permissions {
+		if strings.TrimSpace(permission) == "" {
+			return ErrAgentPolicyInvalid
+		}
+	}
+	for _, scope := range d.Scopes {
+		if !validAgentResourceScopeV1(scope) {
+			return ErrAgentPolicyInvalid
+		}
+	}
+	if d.ExpiresAt != nil && !d.ValidFrom.Before(*d.ExpiresAt) {
+		return ErrAgentPolicyInvalid
+	}
+	if (d.Status == AgentDefinitionStatusRevoked) != (d.RevokedAt != nil) {
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
+func (t AgentTaskV1) Validate() error {
+	if anyBlank(t.TaskUUID, t.DefinitionUUID, t.TenantID, t.PrincipalUUID, t.AgentUUID, t.TriggerType, t.TriggerRef) || t.DefinitionVersion == 0 {
+		return ErrAgentPolicyInvalid
+	}
+	switch t.Status {
+	case AgentTaskStatusCreated, AgentTaskStatusRunning, AgentTaskStatusWaitingApproval, AgentTaskStatusCompleted, AgentTaskStatusFailed, AgentTaskStatusCancelled:
+		return nil
+	default:
+		return ErrAgentPolicyInvalid
+	}
+}
+
+func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
+	allowed := false
+	switch from {
+	case AgentTaskStatusCreated:
+		allowed = to == AgentTaskStatusRunning || to == AgentTaskStatusCancelled
+	case AgentTaskStatusRunning:
+		allowed = to == AgentTaskStatusWaitingApproval || to == AgentTaskStatusCompleted || to == AgentTaskStatusFailed || to == AgentTaskStatusCancelled
+	case AgentTaskStatusWaitingApproval:
+		allowed = to == AgentTaskStatusRunning || to == AgentTaskStatusFailed || to == AgentTaskStatusCancelled
+	}
+	if !allowed {
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
+func (a AgentApprovalV1) Validate() error {
+	if anyBlank(a.ApprovalUUID, a.TaskUUID, a.CapabilityID) || !validAgentResourceScopeV1(a.ResourceScope) ||
+		!validSHA256V1(a.ScopeSHA256) || !validSHA256V1(a.ArgumentsSHA256) || !validSHA256V1(a.NonceSHA256) || a.ExpiresAt.IsZero() {
+		return ErrAgentPolicyInvalid
+	}
+	scopeHash, err := AgentResourceScopeSHA256V1(a.ResourceScope)
+	if err != nil || scopeHash != strings.TrimSpace(a.ScopeSHA256) {
+		return ErrAgentPolicyInvalid
+	}
+	switch a.Status {
+	case AgentApprovalStatusPending:
+		if strings.TrimSpace(a.ApprovedByUUID) != "" || a.ConsumedAt != nil || a.RevokedAt != nil {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentApprovalStatusApproved:
+		if strings.TrimSpace(a.ApprovedByUUID) == "" || a.ConsumedAt != nil || a.RevokedAt != nil {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentApprovalStatusConsumed:
+		if strings.TrimSpace(a.ApprovedByUUID) == "" || a.ConsumedAt == nil || a.RevokedAt != nil {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentApprovalStatusRevoked:
+		if a.RevokedAt == nil || a.ConsumedAt != nil {
+			return ErrAgentPolicyInvalid
+		}
+	default:
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
+func (a AgentApprovalV1) Authorize(claim AgentApprovalClaimV1, at time.Time) error {
+	if err := a.Validate(); err != nil || claim.Validate() != nil || a.Status != AgentApprovalStatusApproved || a.ConsumedAt != nil || a.RevokedAt != nil {
+		return ErrAgentApprovalDenied
+	}
+	if a.ExpiresAt.IsZero() || !at.Before(a.ExpiresAt) {
+		return ErrAgentApprovalDenied
+	}
+	if !sameAgentApprovalBinding(a, claim) {
+		return ErrAgentApprovalDenied
+	}
+	return nil
+}
+
+func (c AgentApprovalClaimV1) Validate() error {
+	if anyBlank(c.TaskUUID, c.CapabilityID) || !validSHA256V1(c.ScopeSHA256) || !validSHA256V1(c.ArgumentsSHA256) || !validSHA256V1(c.NonceSHA256) {
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
+func AgentResourceScopeSHA256V1(scope AgentResourceScopeV1) (string, error) {
+	if !validAgentResourceScopeV1(scope) {
+		return "", ErrAgentPolicyInvalid
+	}
+	actions := make([]string, 0, len(scope.Actions))
+	seen := make(map[string]struct{}, len(scope.Actions))
+	for _, action := range scope.Actions {
+		action = strings.TrimSpace(action)
+		if _, exists := seen[action]; exists {
+			return "", ErrAgentPolicyInvalid
+		}
+		seen[action] = struct{}{}
+		actions = append(actions, action)
+	}
+	sort.Strings(actions)
+	canonical := AgentResourceScopeHashVersionV1 + "\n" + strings.TrimSpace(scope.ResourceType) + "\n" + strings.TrimSpace(scope.ResourceID) + "\n" + strings.Join(actions, "\n")
+	digest := sha256.Sum256([]byte(canonical))
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func validAgentResourceScopeV1(scope AgentResourceScopeV1) bool {
+	if anyBlank(scope.ResourceType, scope.ResourceID) || len(scope.Actions) == 0 {
+		return false
+	}
+	seen := make(map[string]struct{}, len(scope.Actions))
+	for _, action := range scope.Actions {
+		action = strings.TrimSpace(action)
+		if action == "" {
+			return false
+		}
+		if _, exists := seen[action]; exists {
+			return false
+		}
+		seen[action] = struct{}{}
+	}
+	return true
+}
+
+func validSHA256V1(value string) bool {
+	value = strings.TrimSpace(value)
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == 32 && value == strings.ToLower(value)
+}
+
+func anyBlank(values ...string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return true
+		}
+	}
+	return false
+}
+
+func sameAgentApprovalBinding(approval AgentApprovalV1, claim AgentApprovalClaimV1) bool {
+	values := []string{
+		approval.TaskUUID, approval.CapabilityID, approval.ScopeSHA256, approval.ArgumentsSHA256, approval.NonceSHA256,
+		claim.TaskUUID, claim.CapabilityID, claim.ScopeSHA256, claim.ArgumentsSHA256, claim.NonceSHA256,
+	}
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return strings.TrimSpace(approval.TaskUUID) == strings.TrimSpace(claim.TaskUUID) &&
+		strings.TrimSpace(approval.CapabilityID) == strings.TrimSpace(claim.CapabilityID) &&
+		strings.TrimSpace(approval.ScopeSHA256) == strings.TrimSpace(claim.ScopeSHA256) &&
+		strings.TrimSpace(approval.ArgumentsSHA256) == strings.TrimSpace(claim.ArgumentsSHA256) &&
+		strings.TrimSpace(approval.NonceSHA256) == strings.TrimSpace(claim.NonceSHA256)
+}
+
+type AgentPolicyStoreV1 interface {
+	CreateDefinitionVersion(ctx context.Context, definition AgentDefinitionVersionV1) error
+	GetLatestDefinition(ctx context.Context, tenantID, agentUUID string) (*AgentDefinitionVersionV1, error)
+	GetDefinitionVersion(ctx context.Context, definitionUUID string, version uint64) (*AgentDefinitionVersionV1, error)
+	RevokeDefinitionVersion(ctx context.Context, definitionUUID string, version uint64, revokedAt time.Time) error
+	CreateTask(ctx context.Context, task AgentTaskV1) (bool, error)
+	GetTask(ctx context.Context, taskUUID string) (*AgentTaskV1, error)
+	TransitionTaskStatus(ctx context.Context, taskUUID string, from, to AgentTaskStatusV1) (bool, error)
+	CreateApproval(ctx context.Context, approval AgentApprovalV1) error
+	ApproveApproval(ctx context.Context, approvalUUID, approvedByUUID string, approvedAt time.Time) (bool, error)
+	ConsumeApproval(ctx context.Context, approvalUUID string, claim AgentApprovalClaimV1, consumedAt time.Time) (bool, error)
+	RevokeApproval(ctx context.Context, approvalUUID string, revokedAt time.Time) error
+}

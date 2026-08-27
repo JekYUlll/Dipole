@@ -66,7 +66,6 @@ func (s *stubAuthLimiter) AllowLogin(identifier string) (bool, time.Duration) {
 
 func TestAuthHandlerRegisterSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		registerFn: func(input service.RegisterInput) (*service.AuthResult, error) {
@@ -107,7 +106,6 @@ func TestAuthHandlerRegisterSuccess(t *testing.T) {
 
 func TestAuthHandlerRegisterConflict(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		registerFn: func(input service.RegisterInput) (*service.AuthResult, error) {
@@ -129,7 +127,6 @@ func TestAuthHandlerRegisterConflict(t *testing.T) {
 
 func TestAuthHandlerLoginUnauthorized(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		loginFn: func(input service.LoginInput) (*service.AuthResult, error) {
@@ -151,7 +148,6 @@ func TestAuthHandlerLoginUnauthorized(t *testing.T) {
 
 func TestAuthHandlerLoginRateLimited(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		loginFn: func(input service.LoginInput) (*service.AuthResult, error) {
@@ -189,7 +185,6 @@ func TestAuthHandlerLoginRateLimited(t *testing.T) {
 
 func TestAuthHandlerLogoutSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		logoutFn: func(token string) error {
@@ -214,7 +209,6 @@ func TestAuthHandlerLogoutSuccess(t *testing.T) {
 
 func TestAuthHandlerLogoutFailure(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAuthHandler(&stubAuthService{
 		logoutFn: func(token string) error {

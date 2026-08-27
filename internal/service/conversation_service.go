@@ -23,7 +23,7 @@ type conversationRepository interface {
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
-	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
 }
 
@@ -61,6 +61,7 @@ type ConversationReadReceipt struct {
 	TargetType          int8      `json:"target_type"`
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	LastReadSeq         uint64    `json:"last_read_seq"`
 	ReadAt              time.Time `json:"read_at"`
 }
 
@@ -72,6 +73,13 @@ func NewConversationService(repo conversationRepository, userFinder conversation
 		notifier:   notifier,
 		events:     events,
 	}
+}
+
+func (s *ConversationService) WithNotifier(notifier conversationNotifier) *ConversationService {
+	if s != nil {
+		s.notifier = notifier
+	}
+	return s
 }
 
 func (s *ConversationService) UpdateDirectConversations(message *model.Message) error {
@@ -155,6 +163,31 @@ func (s *ConversationService) ListForUser(userUUID string, limit int) ([]*Conver
 	return result, nil
 }
 
+func (s *ConversationService) ListForAgent(userUUID string, limit int) ([]*model.Conversation, error) {
+	conversations, err := s.repo.ListByUserUUID(strings.TrimSpace(userUUID), normalizeConversationListLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list conversations for Agent: %w", err)
+	}
+	return conversations, nil
+}
+
+func (s *ConversationService) FindForUser(userUUID, targetUUID string) (*model.Conversation, error) {
+	userUUID = strings.TrimSpace(userUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	if userUUID == "" || targetUUID == "" {
+		return nil, ErrConversationTargetRequired
+	}
+	conversationKey := model.DirectConversationKey(userUUID, targetUUID)
+	if strings.HasPrefix(targetUUID, "G") {
+		conversationKey = model.GroupConversationKey(targetUUID)
+	}
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return nil, fmt.Errorf("find conversation for user: %w", err)
+	}
+	return conversation, nil
+}
+
 func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*ConversationReadReceipt, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {
@@ -174,7 +207,11 @@ func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID st
 	if err != nil {
 		return nil, fmt.Errorf("get direct conversation before mark read: %w", err)
 	}
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, conversationKey); err != nil {
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return nil, fmt.Errorf("mark direct conversation read: %w", err)
 	}
 
@@ -210,7 +247,16 @@ func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID stri
 		return ErrConversationPermissionDenied
 	}
 
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, model.GroupConversationKey(groupUUID)); err != nil {
+	conversationKey := model.GroupConversationKey(groupUUID)
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return fmt.Errorf("get group conversation before mark read: %w", err)
+	}
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return fmt.Errorf("mark group conversation read: %w", err)
 	}
 
@@ -268,6 +314,7 @@ func buildConversationReadReceipt(readerUUID, targetUUID string, targetType int8
 		TargetType:          targetType,
 		ConversationKey:     conversation.ConversationKey,
 		LastReadMessageUUID: conversation.LastMessageUUID,
+		LastReadSeq:         conversation.LastMessageSeq,
 		ReadAt:              time.Now().UTC(),
 	}
 }

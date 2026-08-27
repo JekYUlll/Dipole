@@ -97,6 +97,8 @@ interface AgentCapability<I, O> {
 
 Policy Engine 在执行前完成授权、预算、限流、审批和审计。写操作携带幂等键；破坏性操作默认要求人工审批。
 
+G1 已实现 `AgentPolicyV1`：Invocation 携带 tenant、principal、Agent、delegator、permissions、resource scopes、approved capabilities 与 correlation IDs；descriptor 固定 capability ID、`read|write|destructive`、required permission 和 approval flag。Embedded Tool 先快速拒绝，本地 Capability/Command adapter 再按 `resource_type/resource_id/action` 执行同一策略，远程 server 必须复用该授权函数或等价 contract。Definition grant、Task snapshot 与 Approval 已通过 v16 Store 持久化，`AD-027` 已关闭。
+
 ### Agent Task
 
 ```text
@@ -139,15 +141,17 @@ Context Compiler 根据 token 预算组合系统策略、Agent 身份、任务�
 
 首期包含：
 
-- `agent_definitions`：所有者、指令、模型策略、版本和状态。
+- `agent_definition_versions`：所有者、Agent、permission、resource scope、有效期、版本和撤销状态；grant 内容按版本追加，Task 始终固定精确版本。
 - `agent_subscriptions`：事件、资源、过滤器和策略。
-- `agent_tasks`：目标、触发来源、主体、状态和 Workflow ID。
+- `agent_tasks`：目标、触发来源、主体、状态和固定 Definition version；v16 先提供 compare-and-set 状态迁移，后续追加 Temporal Workflow ID。
 - `agent_runs` / `agent_steps`：模型、Token、延迟、输入输出摘要和执行轨迹。
-- `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态。
+- `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态；v16 Approval 已绑定 capability、canonical scope hash、arguments hash、nonce 和有效期，并通过条件更新完成一次性消费。
 - `agent_artifacts`：类型、URI、版本、来源和元数据。
 - `agent_memories`：作用域、类型、来源、置信度和过期时间。
 
 敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
+
+当前 `dipole.agent.policy.persistence.v1`、migration v16 和 sqlc Store 已落地 Definition/Task/Approval 的最小持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
 
 ## 8. 可观测性与评测
 
@@ -163,9 +167,28 @@ Eval Harness 同时评估：
 
 模型、Prompt、Tool Schema 和 Memory Policy 升级先跑离线数据集，再进入 shadow，最后按 Agent 或用户灰度。
 
+当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个原 `AD-008` case 持续提交恶意身份参数，并要求资料读取和系统消息目标使用服务端派生 principal；TypeScript Runtime 必须通过同一契约后才能获得流量。
+
+Embedded Runtime 的 `ExecutionContext` 由 Service 从触发 Message、持久 Task policy snapshot 与 correlation context 共同派生 principal、Agent、会话、permission/resource scope 和 request/trace/event ID。Tool schema 不暴露身份字段，缺少可信上下文或资源授权时拒绝执行。
+
+进程内 Capability 基线位于 `contracts/agent-capabilities/v1/schema.json` 与 `application.AgentCapabilityV1`。五项 operation 覆盖受限用户资料、Agent 直聊消息、会话列表、授权会话读取和系统消息命令；`app.LocalAgentCapabilityV1` 组合 Core Capability、Conversation Service 与 Message Application。Embedded ContextBuilder/Tool 仅依赖该端口，远程 gRPC/Connect adapter 后续复用同一 contract。
+
+G1 使用 `ai.runtime_mode` 控制迁移：
+
+| 模式 | Go/Eino consumer | TS Runtime | 写入权 |
+| --- | --- | --- | --- |
+| `off` | 关闭 | 关闭 | 无 |
+| `embedded` | 权威执行 | 关闭 | Go |
+| `shadow` | 权威执行 | 独立 consumer group 旁路评测 | 仅 Go |
+| `remote` | 关闭 | 权威执行 | TS 经 Capability/Command API |
+
+未配置 mode 时，`ai.enabled=true|false` 兼容映射为 `embedded|off`。显式 mode 优先，非法值阻止 Kafka handler 注册。TS Runtime、远程 Capability 与写入审批门禁完成前，生产环境不能切换 `remote`。
+
+Embedded policy 另由 `ai.policy_mode=persistent|static` 控制。默认 `persistent` 使用 MySQL Task snapshot；`static` 使用同一 Invocation/resource scope 授权链回滚到代码内基线，不改变 Runtime 流量模式。
+
 ## 9. 渐进路线
 
-1. 固化 Go/Eino 行为基线、事件契约和评测集，建立 Capability API 与 Agent Command API。
+1. 固化 Go/Eino 行为基线、可信 ExecutionContext、事件契约和评测集，建立 Capability API 与 Agent Command API。
 2. 建立 TS Runtime 骨架，实现 ExecutionContext、Capability Registry、Kafka shadow consumer 和执行审计。
 3. 引入 Temporal AgentTask，支持等待输入、审批、重试、取消和恢复。
 4. 实现 Context Compiler、分层 Memory、Event Subscription 和 Artifact。
