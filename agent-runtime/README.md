@@ -44,6 +44,8 @@ DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
 
 Gateway 对 MCP GET/POST 使用 Redis principal 额度，默认每 60 秒 60 次，可通过 `DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT` 和 `DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS` 调整。该门禁独立于旧 `DIPOLE_RATE_LIMIT_ENABLED`；Redis 不可用或值小于等于零时返回 429/`Retry-After`。DELETE 始终允许认证用户清理 Session。需要紧急回滚时关闭 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED`，不要通过关闭限流开放无界入口。
 
+外部 MCP Client foundation 对每个 allowlisted Tool 强制配置 egress policy：策略必须与 Tool allowlist 完全匹配，声明允许的顶层参数名和 2 B 到 64 KiB 的请求上限；调用前先规范化为 JSON，拒绝未声明参数、超过 16 层的对象以及 password、token、authorization、cookie、credential、private key 等常见凭据字段。该门禁用于阻止常见误传和无界请求；内容值级 DLP、租户凭据托管与完整 egress 审计完成前，外部 Server 继续保持未启用。
+
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
 
 ## Temporal G3 foundation
@@ -101,6 +103,8 @@ npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
 ```
 
 报告绑定 candidate version 与 canonical Suite SHA-256，按 outcome、trajectory、permission、retrieval、cost 输出低敏结果。合法且全部通过返回 0，合法但有失败返回 2，输入错误返回 1。新候选应把完整报告写入 `dipole.agent.shadow-promotion-evidence.v2`；`promotion:check` 自动分派 v1/v2，v2 要求五类报告全部通过。当前样例属于 synthetic Harness 证据，不能代表真实 Agent 效果。
+
+结构性安全回归位于 `src/evals/agent-security-regression.test.ts`，使用 `contracts/agent-evals/v1/security-suite.json` 串联真实 ContextCompiler、Capability Registry、EventLedger/Shadow Processor 和 MCP Client/Server。测试要求 Prompt Injection 内容保留 `untrusted` provenance、越权和敏感外发在副作用前拒绝、重复事件只规划一次、同源循环在 Ledger 前抑制。
 
 确认 Temporal 证据后，操作员可生成短时效修复候选 Artifact：
 

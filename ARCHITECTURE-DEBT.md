@@ -18,8 +18,8 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布
-- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。首份 Suite 使用稳定 ID 与 synthetic observation，验证 evaluator、脱敏和晋级链。
-- **风险：** synthetic fixture 只能证明 Harness 语义。缺少真实 Shadow Task adapter、人工标注 outcome/evidence、权限攻击 corpus、检索相关性集合和按模型/场景校准的成本阈值时，`eligible` 无法证明产品效果或生产成本满足目标。
+- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。首份通用 Suite 使用稳定 ID 与 synthetic observation；security suite 进一步串联真实 Context、Policy/Capability、EventLedger/lineage 和 MCP 结构边界。
+- **风险：** 当前证据可证明 Harness 与结构性门禁语义。缺少真实 Shadow Task adapter、人工标注 outcome/evidence、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本阈值时，`eligible` 无法证明产品效果或生产成本满足目标。
 - **建议方向：** 从持久 Task/Run/Step/Tool/Artifact/Model audit 生成只读 observation adapter，建立版本化 Project Guardian corpus 和 reviewer agreement；按场景统计 precision/recall、trajectory 差异和成本分位数，报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 
@@ -29,8 +29,8 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Runtime、MCP Client/Server、Gateway/OAuth、Capability Policy、外部数据流
-- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。migration v30 与 sqlc Store 为每次调用持久化权威 tenant/principal/Agent/Task/Run、参数/结果 SHA-256、字节数、耗时和稳定终态；TS Runtime 在执行前完成 durable begin，并通过 OpenTelemetry API 创建不含正文的 ToolCall span。Gateway 还使用 Redis 固定窗口按 JWT principal 对 GET/POST 统一限流，跨 Task/Run 和 Gateway 实例共享额度；超限返回 429/`Retry-After`，Redis 缺失或配置非法时 fail closed，DELETE 保留 Session 清理能力。未配置 OTel SDK/exporter 时 API 保持 no-op。外部 MCP Server、write/destructive Tool 均未启用。
-- **风险：** 当前 JWT 入口尚未实现标准 OAuth resource indicator、MCP 专用 scope/consent 和外部 Server 凭据生命周期；OTel exporter、指标、告警与 trace/audit 联查尚未装配。外部 Tool 返回内容可能包含 Prompt Injection 或敏感数据。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
+- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。migration v30 与 sqlc Store 为每次调用持久化权威 tenant/principal/Agent/Task/Run、参数/结果 SHA-256、字节数、耗时和稳定终态；TS Runtime 在执行前完成 durable begin，并通过 OpenTelemetry API 创建不含正文的 ToolCall span。Gateway 还使用 Redis 固定窗口按 JWT principal 对 GET/POST 统一限流，跨 Task/Run 和 Gateway 实例共享额度；超限返回 429/`Retry-After`，Redis 缺失或配置非法时 fail closed，DELETE 保留 Session 清理能力。外部 Client foundation 已要求每个 Tool 配置参数 allowlist、请求大小上限，并在发送前拒绝深层对象和常见凭据字段。未配置 OTel SDK/exporter 时 API 保持 no-op。外部 MCP Server、write/destructive Tool 均未启用。
+- **风险：** 当前 JWT 入口尚未实现标准 OAuth resource indicator、MCP 专用 scope/consent 和外部 Server 凭据生命周期；OTel exporter、指标、告警与 trace/audit 联查尚未装配。结构化 egress guard 无法识别被改名、编码或嵌入普通文本的敏感值，外部 Tool 返回内容也可能包含 Prompt Injection。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
 - **建议方向：** 在共享环境启用前补充 OAuth resource server 或等价 token audience/scope 门禁、取消与超时，并接入受控 OTel SDK/exporter 和审计告警。外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment；write Tool 必须绑定现有 Approval 与 Agent lineage。
 - **处理门槛：** 任何共享环境 MCP 开关启用、外部 Server 连接或 write/destructive Tool 上线前完成。当前网络入口仅用于受控认证和授权边界验证。
 
