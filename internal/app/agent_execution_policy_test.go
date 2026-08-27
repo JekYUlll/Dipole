@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -454,7 +455,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	if _, err := admission.Admit(context.Background(), missingCandidate); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("active admission without candidate version error = %v, want policy denied", err)
 	}
-	authorizer.err = errors.New("promotion evidence unavailable")
+	authorizer.err = fmt.Errorf("promotion evidence unavailable: %w", application.ErrAgentExecutionPolicyDenied)
 	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("denied promotion error = %v, want policy denied", err)
 	}

@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加 durable Runtime promotion grant：migration v32 与 sqlc 持久绑定 tenant、Runtime candidate、pinned Definition、promotion v2、evidence SHA-256 和完整离线 Eval Suite SHA-256，并要求不同 grantor/reviewer 双人签署、生效窗口与可撤销状态。active Run 保存 candidate version；admission 和每次 persistent MCP context 解析都会重新校验 grant，撤销后已有 active Run 立即失去 context authority。生产 Bootstrap 未注入 authorizer，也没有 grant 签发 API、active admission 或 write Tool 注册。
 - Agent G4 建立 fail-closed active ExecutionContext promotion seam：`PersistentAgentRunAdmission` 只有在注入的 promotion authorizer 对 Runtime candidate、Task 和 pinned Definition 精确授权后才允许创建 active Run；缺少 authorizer、candidate version 或授权拒绝均不会创建 Task/Run。Core MCP context 现在返回持久 Run 的权威 `runtime_id/mode`，Go Server 与 TS Client 双重拒绝伪造 Runtime 或非法 mode。生产 Bootstrap 未注入 authorizer，公开 admission 继续固定 shadow，write Registry/executor 仍关闭。
 - Agent G4 增加 active-only MCP Approval grant resolution：sqlc 按 Task/Capability/Scope/Arguments 查询最多两条 approved、未消费、未撤销且未过期记录，应用层要求 active `dipole-agent` Run、运行中 Task、principal 审批人与唯一 exact binding；零匹配和多匹配统一拒绝。认证 RPC 只返回 Approval ID、Resource Scope、三个 SHA-256 摘要与过期时间，不消费审批。TS client 复算 scope/arguments 并校验响应，grant adapter 直接连接现有 write gate。`nonce_sha256` 明确作为一次性绑定摘要，避免依赖无法持久恢复的原始 nonce。生产 MCP context 继续为 shadow。
 - Agent G4 增加默认关闭的第一方 MCP Message write projection：显式 write executor 只接受 `mode=active`、`risk=write`、`approvalRequired=true` 且声明 Command kind 的 Capability。调用先校验 direct conversation，再由 Approval gate 消费精确绑定，Tool runner 生成同一个 Invocation ID 依次完成 audit begin、Message Command RPC 和带 action reference 的 audit finish；Command kind 或返回证据漂移会记录失败终态。现有生产 `index.ts` 未注册 write Capability、未注入 executor/grant resolver，Core MCP context 继续为 shadow。
@@ -302,6 +303,7 @@
 
 ### 迁移说明
 
+- 新增 MySQL migration v32：创建 `agent_runtime_promotion_grants`，并为 `agent_runs` 增加可空 `candidate_version`。现有 embedded/shadow Run 无需回填；历史 active Run 缺少 candidate 或 production authorizer 时会 fail closed，回滚会先移除 Run candidate 字段再删除 grant 表。
 - `ResolveApprovalGrant` 是 additive Agent Capability RPC，无数据迁移；先滚动 Core 和 sqlc 查询，再发布 TS Runtime。查询只在持久 active Run 中返回唯一 exact grant，旧 Runtime 不调用。回滚先保持生产 write Tool 未注册，再回退 Runtime/Core。该 RPC 可用不代表 active context 已晋级。
 - MCP Message write projection 没有数据迁移或生产开关。`createDipoleMcpServer` 只有同时收到 active ExecutionContext、审批必需的 write descriptor、Command kind 和显式 executor 才注册写 Tool；当前启动链不提供这些条件。未来启用前还需完成 active authority 晋级、UI 风险摘要，并演练 Command RPC 超时后通过 receipt 收敛 action lineage。
 - `ExecuteMcpMessageCommand` 是 additive Agent Capability RPC，无数据迁移。先滚动 Core，再发布 TS Runtime；旧 Runtime 不调用该方法。回滚时先保持生产 MCP write Tool 未注册或关闭，再回退 Runtime/Core。该 RPC 依赖 migration v31 的 Tool Invocation Approval 字段，不能在 v31 之前启用。
@@ -360,6 +362,7 @@
 
 ### 验证
 
+- Runtime promotion 测试覆盖 v2 policy、SHA-256、双人签署、candidate/Definition 漂移、有效期、撤销、冲突重放、active admission 与逐次 context 重查；真实 MySQL 8.4 验证 sqlc grant contract，以及完整 migration v1→v32→v1 和全部历史回填集成测试。
 - Approval grant 测试覆盖 active Run/Task、Core scope hash、唯一 exact binding、零/多匹配、过期/消费/撤销过滤、RPC 服务身份与 NotFound 收敛、TS scope/arguments/nonce 摘要复核及 write gate adapter；sqlc 查询固定 `LIMIT 2`，不静默选择候选。
 - MCP Message write projection 测试覆盖审批消费、Tool begin、同 Invocation ID 的 Command RPC、action finish 的严格顺序，以及 direct conversation、active mode、显式 executor、Command kind 和返回引用漂移的 fail-closed 行为；现有 read Tool 回归保持通过。
 - MCP Message Command 测试覆盖 Core 派生 Command ID、canonical 参数黄金向量、Tool/Approval/Task/Run/Capability/身份漂移、Agent event lineage、RPC 服务身份与 TS 返回证据复算；Tool runner 和 Approval gate 对同一参数使用统一排序 canonical JSON。
