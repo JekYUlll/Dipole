@@ -14,8 +14,10 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
+	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
@@ -38,6 +40,7 @@ const (
 	messageServiceName = "dipole-message"
 	searchServiceName  = "dipole-search"
 	syncServiceName    = "dipole-sync"
+	agentServiceName   = "dipole-agent"
 )
 
 type InternalRPCServer struct {
@@ -48,12 +51,31 @@ type InternalRPCServer struct {
 }
 
 func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*InternalRPCServer, error) {
+	return newCoreRPCServer(cfg, capability, nil)
+}
+
+func NewCoreRPCServerWithAgent(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServer(agentCapability, resolver, admission)
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
+	}
+	return newCoreRPCServer(cfg, capability, agentAdapter)
+}
+
+func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability, agentAdapter *agentgrpc.Server) (*InternalRPCServer, error) {
 	adapter, err := coregrpc.NewServer(capability)
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName, searchServiceName, syncServiceName}, func(server *grpc.Server) {
+	allowed := []string{messageServiceName, gatewayServiceName, searchServiceName, syncServiceName}
+	if agentAdapter != nil {
+		allowed = append(allowed, agentServiceName)
+	}
+	return newInternalRPCServer(cfg, cfg.CoreListenAddress, allowed, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
+		if agentAdapter != nil {
+			agentv1.RegisterAgentCapabilityServiceServer(server, agentAdapter)
+		}
 	}, restrictCoreServiceMethods)
 }
 
@@ -185,6 +207,13 @@ func dialSyncApplicationAs(ctx context.Context, cfg config.InternalRPC, callerSe
 
 func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	caller, _ := grpcauth.CallerService(ctx)
+	if caller == agentServiceName &&
+		info.FullMethod != agentv1.AgentCapabilityService_AdmitRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_CompleteRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
+		info.FullMethod != healthv1.Health_Check_FullMethodName {
+		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")
+	}
 	if caller == searchServiceName &&
 		info.FullMethod != corev1.CoreCapabilityService_ListSearchConversationKeys_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {

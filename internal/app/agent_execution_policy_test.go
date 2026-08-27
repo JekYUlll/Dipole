@@ -14,6 +14,7 @@ type agentPolicyStoreStub struct {
 	latest      *application.AgentDefinitionVersionV1
 	definitions map[string]*application.AgentDefinitionVersionV1
 	tasks       map[string]*application.AgentTaskV1
+	runs        map[string]*application.AgentRunV1
 	afterCreate func()
 }
 
@@ -75,6 +76,36 @@ func (s *agentPolicyStoreStub) TransitionTaskStatus(_ context.Context, uuid stri
 	return true, nil
 }
 
+func (s *agentPolicyStoreStub) CreateRun(_ context.Context, run application.AgentRunV1) (bool, error) {
+	if s.runs == nil {
+		s.runs = map[string]*application.AgentRunV1{}
+	}
+	if _, exists := s.runs[run.RunUUID]; exists {
+		return false, nil
+	}
+	copy := run
+	s.runs[run.RunUUID] = &copy
+	return true, nil
+}
+
+func (s *agentPolicyStoreStub) GetRun(_ context.Context, uuid string) (*application.AgentRunV1, error) {
+	run := s.runs[uuid]
+	if run == nil {
+		return nil, nil
+	}
+	copy := *run
+	return &copy, nil
+}
+
+func (s *agentPolicyStoreStub) TransitionRunStatus(_ context.Context, uuid string, from, to application.AgentRunStatusV1, lastError string) (bool, error) {
+	run := s.runs[uuid]
+	if run == nil || run.Status != from {
+		return false, nil
+	}
+	run.Status, run.LastError = to, lastError
+	return true, nil
+}
+
 func (*agentPolicyStoreStub) CreateApproval(context.Context, application.AgentApprovalV1) error {
 	return nil
 }
@@ -119,6 +150,9 @@ func TestPersistentAgentExecutionPolicyPinsDefinitionAndTransitionsTask(t *testi
 	if err := policy.Complete(context.Background(), *execution); err != nil || task.Status != application.AgentTaskStatusCompleted {
 		t.Fatalf("complete Task: status=%s err=%v", task.Status, err)
 	}
+	if err := policy.Complete(context.Background(), *execution); err != nil {
+		t.Fatalf("replay completed Task: %v", err)
+	}
 }
 
 func TestAgentTaskUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
@@ -128,6 +162,19 @@ func TestAgentTaskUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	const want = "task:e47647aaf491da8a27072ed94d6b69b87a025a1e211000cbef6a9aeb458"
 	if got != want {
 		t.Fatalf("Agent Task UUID = %q, want %q", got, want)
+	}
+}
+
+func TestAgentRunUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
+	t.Parallel()
+
+	got, err := application.AgentRunUUIDV1("task:e47647aaf491da8a27072ed94d6b69b87a025a1e211000cbef6a9aeb458", "dipole-agent", "shadow")
+	if err != nil {
+		t.Fatalf("derive Agent Run UUID: %v", err)
+	}
+	const want = "run:fe813966ff90ac9c0a32e5d7b6a55dadbba657f436ad3a3765e9466aba0b"
+	if got != want {
+		t.Fatalf("Agent Run UUID = %q, want %q", got, want)
 	}
 }
 
@@ -192,6 +239,120 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 	}
 	if store.latest.Version != 7 {
 		t.Fatalf("custom Definition was overwritten: %+v", store.latest)
+	}
+}
+
+func TestPersistentAgentInvocationResolverUsesPinnedTaskIdentity(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(3, now.Add(-time.Hour), []string{application.AgentPermissionConversationList})
+	store := policyStoreWithDefinitionV1(definition)
+	store.tasks = map[string]*application.AgentTaskV1{
+		"TASK-1": {
+			TaskUUID: "TASK-1", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
+			TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", Status: application.AgentTaskStatusRunning,
+			TriggerType: "message.direct.created", TriggerRef: "M100",
+		},
+	}
+	store.runs = map[string]*application.AgentRunV1{
+		"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning},
+	}
+	resolver := &PersistentAgentInvocationResolverV1{store: store, now: func() time.Time { return now }}
+
+	invocation, err := resolver.Resolve(context.Background(), "TASK-1", "RUN-1")
+	if err != nil {
+		t.Fatalf("resolve Invocation: %v", err)
+	}
+	if invocation.PrincipalUUID != "U100" || invocation.AgentUUID != "UAI" || len(invocation.Permissions) != 1 || invocation.Permissions[0] != application.AgentPermissionConversationList {
+		t.Fatalf("unexpected pinned Invocation: %+v", invocation)
+	}
+	store.tasks["TASK-1"].Status = application.AgentTaskStatusCompleted
+	if _, err := resolver.Resolve(context.Background(), "TASK-1", "RUN-1"); err != nil {
+		t.Fatalf("completed Task with running shadow Run should resolve: %v", err)
+	}
+	store.runs["RUN-1"].Status = application.AgentRunStatusCompleted
+	if _, err := resolver.Resolve(context.Background(), "TASK-1", "RUN-1"); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("completed Run should be denied, got %v", err)
+	}
+}
+
+func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationList})
+	store := policyStoreWithDefinitionV1(definition)
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: func() time.Time { return now }}
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+
+	first, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("admit first shadow Run: %v", err)
+	}
+	definitionV2 := definition
+	definitionV2.Version = 2
+	definitionV2.Permissions = []string{application.AgentPermissionMessageWrite}
+	store.latest = &definitionV2
+	store.definitions[definitionKeyV1(definitionV2.DefinitionUUID, definitionV2.Version)] = &definitionV2
+	second, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("replay shadow Run admission: %v", err)
+	}
+	if first.TaskUUID != second.TaskUUID || first.RunUUID != second.RunUUID || store.tasks[first.TaskUUID].Status != application.AgentTaskStatusRunning || store.runs[first.RunUUID].Status != application.AgentRunStatusRunning {
+		t.Fatalf("admission did not converge: first=%+v second=%+v", first, second)
+	}
+	if second.Invocation.Permissions[0] != application.AgentPermissionConversationList {
+		t.Fatalf("replay drifted from pinned Definition: %+v", second.Invocation)
+	}
+	store.tasks[first.TaskUUID].Status = application.AgentTaskStatusCompleted
+	if _, err := admission.Admit(context.Background(), request); err != nil {
+		t.Fatalf("completed authoritative Task should retain the running shadow Run: %v", err)
+	}
+	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "dipole-agent", "shadow"); err != nil {
+		t.Fatalf("complete shadow Run: %v", err)
+	}
+	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "dipole-agent", "shadow"); err != nil {
+		t.Fatalf("replay shadow Run completion: %v", err)
+	}
+	if store.runs[first.RunUUID].Status != application.AgentRunStatusCompleted {
+		t.Fatalf("shadow Run status = %s, want completed", store.runs[first.RunUUID].Status)
+	}
+	replayed, err := admission.Admit(context.Background(), request)
+	if err != nil || replayed.RunStatus != application.AgentRunStatusCompleted {
+		t.Fatalf("completed shadow Run admission should converge: replayed=%+v err=%v", replayed, err)
+	}
+	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "forged-runtime", "shadow"); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("forged Runtime completion should be denied, got %v", err)
+	}
+}
+
+func TestEmbeddedExecutionAdoptsTaskCreatedByShadowAdmission(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	store := policyStoreWithDefinitionV1(definition)
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: func() time.Time { return now }}
+	request := agentPolicyStartRequestV1()
+	shadow, err := admission.Admit(context.Background(), application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: request, RuntimeID: "dipole-agent", Mode: "shadow",
+	})
+	if err != nil {
+		t.Fatalf("admit shadow Run: %v", err)
+	}
+	policy, _ := newPersistentAgentExecutionPolicyV1(store, func() time.Time { return now })
+	embedded, err := policy.Start(context.Background(), request)
+	if err != nil {
+		t.Fatalf("start Embedded Run from shared Task: %v", err)
+	}
+	if embedded.TaskUUID != shadow.TaskUUID || embedded.RunUUID == shadow.RunUUID || len(store.runs) != 2 {
+		t.Fatalf("Task/Run separation did not converge: shadow=%+v embedded=%+v runs=%+v", shadow, embedded, store.runs)
+	}
+	if _, err := policy.Start(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("duplicate Embedded Run should be denied, got %v", err)
 	}
 }
 

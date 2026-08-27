@@ -1,6 +1,11 @@
 import { z } from "zod";
+import { readFileSync } from "node:fs";
+import * as grpc from "@grpc/grpc-js";
 import { createPool, type Pool } from "mysql2/promise";
 
+import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
+import { ConversationListCapability } from "../capabilities/conversation-list.js";
+import { CapabilityRegistry } from "../capabilities/registry.js";
 import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js";
 import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
@@ -15,6 +20,7 @@ import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
 import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
+import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -37,6 +43,19 @@ const shadowRuntimeConfigSchema = z.object({
     totalTimeoutMs: z.number().int().min(100).max(300_000),
     maxOutputTokensPerCall: z.number().int().min(1).max(32_768)
   }).strict(),
+  capabilityRpc: z.object({
+    enabled: z.boolean(),
+    target: z.string().trim(),
+    secret: z.string(),
+    timeoutMs: z.number().int().min(100).max(60_000),
+    tls: z.object({
+      enabled: z.boolean(),
+      caFile: z.string().trim(),
+      certFile: z.string().trim(),
+      keyFile: z.string().trim(),
+      serverName: z.string().trim()
+    }).strict()
+  }).strict(),
   mysql: z.object({
     host: z.string().trim(),
     port: z.number().int().min(1).max(65_535),
@@ -56,6 +75,19 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.modelMode === "ai_sdk" && config.ledgerMode !== "mysql") {
     refinement.addIssue({ code: "custom", message: "AI SDK mode requires the persistent MySQL model audit Store", path: ["ledgerMode"] });
+  }
+  if (config.enabled && config.capabilityRpc.enabled && (!config.capabilityRpc.target || !config.capabilityRpc.secret)) {
+    refinement.addIssue({ code: "custom", message: "Agent Capability RPC target and shared secret are required", path: ["capabilityRpc"] });
+  }
+  if (config.modelMode === "ai_sdk" && !config.capabilityRpc.enabled) {
+    refinement.addIssue({ code: "custom", message: "AI SDK mode requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
+  }
+  if (config.capabilityRpc.enabled && config.capabilityRpc.tls.enabled &&
+      (!config.capabilityRpc.tls.caFile || !config.capabilityRpc.tls.certFile || !config.capabilityRpc.tls.keyFile || !config.capabilityRpc.tls.serverName)) {
+    refinement.addIssue({ code: "custom", message: "Agent Capability RPC mTLS files and server name are required", path: ["capabilityRpc", "tls"] });
+  }
+  if (config.enabled && config.capabilityRpc.enabled && !config.capabilityRpc.tls.enabled && !isLoopbackTarget(config.capabilityRpc.target)) {
+    refinement.addIssue({ code: "custom", message: "Plaintext Agent Capability RPC is accepted only on loopback", path: ["capabilityRpc", "target"] });
   }
 });
 
@@ -82,6 +114,19 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
       totalTimeoutMs: Number.parseInt(env.DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS ?? "15000", 10),
       maxOutputTokensPerCall: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS ?? "512", 10)
+    },
+    capabilityRpc: {
+      enabled: (env.DIPOLE_AGENT_CAPABILITY_RPC_ENABLED ?? env.DIPOLE_INTERNAL_RPC_ENABLED)?.trim().toLowerCase() === "true",
+      target: env.DIPOLE_AGENT_CAPABILITY_RPC_TARGET ?? env.DIPOLE_INTERNAL_RPC_CORE_TARGET ?? "",
+      secret: env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "",
+      timeoutMs: Number.parseInt(env.DIPOLE_AGENT_CAPABILITY_RPC_TIMEOUT_MS ?? "2000", 10),
+      tls: {
+        enabled: env.DIPOLE_INTERNAL_RPC_TLS_ENABLED?.trim().toLowerCase() === "true",
+        caFile: env.DIPOLE_INTERNAL_RPC_TLS_CA_FILE ?? "",
+        certFile: env.DIPOLE_INTERNAL_RPC_TLS_CERT_FILE ?? "",
+        keyFile: env.DIPOLE_INTERNAL_RPC_TLS_KEY_FILE ?? "",
+        serverName: env.DIPOLE_INTERNAL_RPC_TLS_SERVER_NAME ?? ""
+      }
     },
     mysql: {
       host: env.DIPOLE_AGENT_MYSQL_HOST ?? "",
@@ -119,9 +164,12 @@ export function buildKafkaShadowRuntime(
   planner: ShadowPlanner = new MetadataShadowPlanner(),
   audit: ShadowAuditSink = new ConsoleShadowAuditSink(),
   ledger: EventLedger = new InMemoryEventLedger(),
-  failureRouter?: KafkaFailureRouter
+  failureRouter?: KafkaFailureRouter,
+  admission?: AgentCapabilityRPCClient,
+  registry?: CapabilityRegistry,
+  trajectory?: MySQLShadowAuditSink
 ): KafkaShadowConsumer {
-  const processor = new ShadowEventProcessor(planner, audit, ledger);
+  const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs);
   return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
     let decoded;
     try {
@@ -163,7 +211,17 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
     ), ["conversation.list"])
     : new MetadataShadowPlanner();
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
-  const consumer = buildKafkaShadowRuntime(config, factory, planner, audit, ledger, failureRouter);
+  const rpcTransport = config.capabilityRpc.enabled ? createAgentCapabilityRPC(config) : undefined;
+  let registry: CapabilityRegistry | undefined;
+  let trajectory: MySQLShadowAuditSink | undefined;
+  if (config.modelMode === "ai_sdk") {
+    registry = new CapabilityRegistry();
+    registry.register(new ConversationListCapability(rpcTransport!.client));
+    trajectory = audit as MySQLShadowAuditSink;
+  }
+  const consumer = buildKafkaShadowRuntime(
+    config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory
+  );
   const mainTopic = physicalTopic(config);
   return {
     start: async () => {
@@ -189,13 +247,42 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
         try {
           await failurePublisher.disconnect();
         } finally {
-          if (pool !== undefined) {
-            await pool.end();
+          try {
+            if (pool !== undefined) {
+              await pool.end();
+            }
+          } finally {
+            rpcTransport?.close();
           }
         }
       }
     }
   };
+}
+
+function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
+  const tls = config.capabilityRpc.tls;
+  const credentials = tls.enabled
+    ? grpc.credentials.createSsl(readFileSync(tls.caFile), readFileSync(tls.keyFile), readFileSync(tls.certFile))
+    : grpc.credentials.createInsecure();
+  const options: grpc.ClientOptions = tls.enabled ? {
+    "grpc.ssl_target_name_override": tls.serverName,
+    "grpc.default_authority": tls.serverName
+  } : {};
+  const transport = new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options);
+  return {
+    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs),
+    close: () => transport.close()
+  };
+}
+
+function isLoopbackTarget(target: string): boolean {
+  const endpoint = target.trim().replace(/^dns:\/\//, "").toLowerCase();
+  if (endpoint === "::1") return true;
+  const host = endpoint.startsWith("[")
+    ? endpoint.slice(1, endpoint.indexOf("]"))
+    : endpoint.slice(0, endpoint.lastIndexOf(":"));
+  return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
 function physicalTopic(config: ShadowRuntimeConfig): string {

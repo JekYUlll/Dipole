@@ -144,14 +144,15 @@ Context Compiler 根据 token 预算组合系统策略、Agent 身份、任务�
 - `agent_definition_versions`：所有者、Agent、permission、resource scope、有效期、版本和撤销状态；grant 内容按版本追加，Task 始终固定精确版本。
 - `agent_subscriptions`：事件、资源、过滤器和策略。
 - `agent_tasks`：目标、触发来源、主体、状态和固定 Definition version；v16 先提供 compare-and-set 状态迁移，后续追加 Temporal Workflow ID。
-- `agent_runs` / `agent_steps`：模型、Token、延迟、输入输出摘要和执行轨迹。
+- `agent_runs`：v21 按 Task、runtime 和 mode 保存独立 `running/completed/failed/cancelled` 生命周期；同一 Task 可同时拥有 Embedded、Shadow 和未来 Active Run。
+- `agent_shadow_steps`：v20-v21 保存不可变 capability/input、attempt、lease/token 和 result/error；Step owner 只能用精确 token 在租约内完成，重领后旧 owner 无法覆盖。
 - `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态；v16 Approval 已绑定 capability、canonical scope hash、arguments hash、nonce 和有效期，并通过条件更新完成一次性消费。
 - `agent_artifacts`：类型、URI、版本、来源和元数据。
 - `agent_memories`：作用域、类型、来源、置信度和过期时间。
 
 敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
 
-当前 `dipole.agent.policy.persistence.v1`、migration v16 和 sqlc Store 已落地 Definition/Task/Approval 的最小持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
+当前 `dipole.agent.policy.persistence.v1`、migration v16-v21 和 sqlc Store 已落地 Definition/Task/Approval/Run 的持久边界。Embedded Go/Eino 默认使用 persistent policy：触发事件创建确定性 Task、固定并重新读取精确 Definition version、校验有效期与撤销状态、恢复 permission/resource scope，再以 CAS 进入终态。TS Runtime 使用同一 Task ID，经受认证 admission 创建独立 Shadow Run；已完成 Run 的 admission 与 completion 均幂等收敛。`ai.policy_mode=static` 仅作为显式回滚；v17 以 expand-only 方式将 policy 身份列扩到 24 字符。
 
 ## 8. 可观测性与评测
 
@@ -202,4 +203,4 @@ Project Guardian 订阅一个项目群，每日维护决策、任务和风险；
 
 首期避免引入无明确职责的多 Agent 编排，也避免每条消息直接调用高成本模型。
 
-G2 foundation 已建立在 `agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2 与 mysql2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连。migration v18 与 MySQL EventLedger 通过 Event/Task 双唯一、事务 claim、lease 和精确 token 提供跨进程幂等，Compose 使用 Agent 专用最小权限账号。物理 main/retry/dead topic 在 readiness 前显式创建并校验；永久错误直达 dead，瞬时错误有界重试，失败转移成功后才完成源 handler（`AD-028` 已关闭）。provider-neutral ModelRouter 已支持有序降级、总 deadline 与单次输出 Token 上限；AI SDK adapter 使用 Zod structured output 并关闭内部 retry。migration v19 与 MySQL ModelAuditStore 固定 Task 唯一 Run、预算快照、原子 call slot 和 completed/failed/abandoned 轨迹，Router 每次 provider 调用均先占用 slot，跨 Kafka 重投共享上限（`AD-029` 已关闭）。migration v20 将结构化模型输出保存为 Task 唯一、SHA-256 固定的 Shadow Plan，并原子写入有序 `planned` Step；并发 Kafka 重放和绑定漂移均 fail closed。模型模式默认 `metadata`，显式 `ai_sdk` 强制持久 Store并保持只读 shadow；受认证远程 Capability adapter 完成前不执行 Step（`AD-030`）。
+G2 foundation 已建立在 `agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2 与 mysql2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task/Run ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连。migration v18 与 MySQL EventLedger 通过 Event/Task 双唯一、事务 claim、lease 和精确 token 提供跨进程幂等，Compose 使用 Agent 专用最小权限账号。物理 main/retry/dead topic 在 readiness 前显式创建并校验；永久错误直达 dead，瞬时错误有界重试，失败转移成功后才完成源 handler（`AD-028` 已关闭）。provider-neutral ModelRouter 已支持有序降级、总 deadline 与单次输出 Token 上限；AI SDK adapter 使用 Zod structured output 并关闭内部 retry。migration v19 与 MySQL ModelAuditStore 固定预算快照、原子 call slot 和 completed/failed/abandoned 轨迹，Router 每次 provider 调用均先占用 slot，跨 Kafka 重投共享上限（`AD-029` 已关闭）。migration v20-v21 保存不可变 Shadow Plan、有序 Step、独立 Runtime Run 与 lease/token 终态。受认证 `dipole.agent.v1` gRPC 通过 mTLS `dipole-agent` 身份完成 Task admission、持久 policy 解析和首个 `conversation.list` 执行，principal 只来自服务端 Task，静态 protobuf client 与最小 RPC allowlist 已关闭 `AD-030`。模型模式默认 `metadata`，显式 `ai_sdk` 强制 MySQL Store、Capability RPC 和只读 shadow；write capability 继续关闭。

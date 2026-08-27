@@ -27,6 +27,20 @@ type AgentDefinitionVersion struct {
 	AgentUuid       string
 }
 
+type AgentRun struct {
+	ID          uint64
+	RunUuid     string
+	TaskUuid    string
+	RuntimeID   string
+	Mode        string
+	Status      string
+	StartedAt   time.Time
+	CompletedAt sql.NullTime
+	LastError   sql.NullString
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type AgentTask struct {
 	ID                uint64
 	TaskUuid          string

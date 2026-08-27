@@ -15,13 +15,13 @@
 ### AD-030：TypeScript Agent 尚缺受认证的远程 Capability 传输
 
 - **优先级：** P1
-- **状态：** 处理中
+- **状态：** 已解决
 - **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
 - **影响范围：** `agent-runtime`、Core/Message/Conversation 边界、可信身份、只读 Step 执行
-- **现状：** `dipole.agent.capability.v1` 已固定语言中立操作、可信 Invocation、permission/resource scope 和风险描述；Go 侧仅有进程内 `LocalAgentCapabilityV1`。TS Runtime 已具备 Policy Engine、Capability Registry 及 migration v20 的结构化 Plan/Step 审计，当前 Step 只进入 `planned`，不会绕过服务边界调用公开 HTTP。
-- **风险：** 在受认证的内部 RPC adapter 完成前，TS Runtime 无法执行 `conversation.list/read`；若临时复用客户端 HTTP token 或允许模型提交 principal，会破坏可信 ExecutionContext 和最小权限边界。
-- **建议方向：** 新增独立 Agent Capability v1 gRPC/Connect transport，服务端从 mTLS/service identity 与持久 Task policy 构造 Invocation，先只开放 `conversation.list`；TS adapter 通过 Capability Registry 执行并持久化 Step claim/result/error，write capability 继续关闭。
-- **处理门槛：** 通过跨语言 contract、伪造 principal 拒绝、resource scope、Kafka retry 幂等、真实内部身份和 rollback 测试后，才允许首个 Step 从 `planned` 进入执行状态。
+- **解决方式：** migration v21 增加与 Task 分离的 `agent_runs` 和 Step claim token/lease；受认证 `dipole-agent` 先通过 admission 固定 Task、Definition version 与 runtime Run，再以 Task/Run 调用 `conversation.list`。Core 服务端从持久 Task 解析 principal、permission 和 resource scope，拒绝 protobuf `RequestContext` 中的模型可控 principal。TS 使用 canonical proto 静态生成 grpc-js client，通过 Capability Registry 执行并持久化 Step result/error；Run completion 支持幂等网络重试。Agent mTLS 身份仅获 Admit/Complete/List 与 health 方法。
+- **验证：** Go/TS Task/Run 黄金向量一致；伪造 principal、Runtime binding 和 Agent 调用其他 Core RPC 均被拒绝。真实 MySQL 8.4 覆盖 Run create/replay/CAS、Step 并发 claim、失败重领、旧 token 拒绝和完成 no-op；migration v21 完成 `up→down→up`。真实 Go Core 与 Node grpc-js 通过 loopback 共享密钥完成 admission/list/complete/replay，replay 返回同一 completed Run。
+- **长期约束：** 当前远程能力保持只读 shadow，公开 HTTP 旁路继续禁止。新增 Capability 必须先完成 descriptor、服务端持久策略解析、最小 RPC allowlist、Step 轨迹和真实权限测试；write/destructive 能力等待 Approval 与 Temporal 状态机。
 
 ### AD-029：Agent 模型预算与调用轨迹尚未跨重试持久化
 
@@ -162,7 +162,7 @@
 - **状态：** 暂缓
 - **发现日期：** 2026-08-26
 - **影响范围：** `ai_call_logs`、长任务、审批、失败恢复和评测
-- **现状：** 当前记录 trigger、response、Token 和 latency，执行仍以单次 Kafka handler 和模型调用为中心。
+- **现状：** migration v16-v21 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan 和带 lease 的 Step 终态；Kafka 重投可以恢复同一 Task/Run 并重领未完成 Step。等待输入/审批、Timer、取消和跨天恢复仍未接入 Temporal Workflow。
 - **风险：** 服务重启、等待用户输入或审批、Tool 重试和多步骤 Artifact 无法形成可恢复、可审计的统一状态。
 - **基线证据：** Go/Eino v1 评测集只能从测试 adapter 还原单次 trigger、Agent、Tool 和消息动作轨迹；生产持久层仍仅记录调用开始、成功/失败、Token 与响应消息 ID。
 - **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。

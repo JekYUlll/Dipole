@@ -5,8 +5,8 @@ const outputUrl = new URL("../agent-runtime/src/events/mysql-shadow-audit-querie
 const source = await readFile(sourceUrl, "utf8");
 const entries = [...source.matchAll(/^-- name: (\w+) :\w+\n([\s\S]*?)(?=^-- name:|(?![\s\S]))/gm)];
 
-if (entries.length !== 4) {
-  throw new Error(`expected 4 Agent Shadow trajectory queries, found ${entries.length}`);
+if (entries.length !== 8) {
+  throw new Error(`expected 8 Agent Shadow trajectory queries, found ${entries.length}`);
 }
 
 const output = [

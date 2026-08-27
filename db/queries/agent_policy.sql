@@ -35,6 +35,19 @@ UPDATE agent_tasks
 SET status = ?, updated_at = NOW(3)
 WHERE task_uuid = ? AND status = ?;
 
+-- name: InsertAgentRun :execrows
+INSERT INTO agent_runs (
+    run_uuid, task_uuid, runtime_id, mode, status, started_at
+) VALUES (?, ?, ?, ?, 'running', UTC_TIMESTAMP());
+
+-- name: GetAgentRun :one
+SELECT * FROM agent_runs WHERE run_uuid = ? LIMIT 1;
+
+-- name: TransitionAgentRunStatus :execrows
+UPDATE agent_runs
+SET status = ?, completed_at = UTC_TIMESTAMP(), last_error = ?
+WHERE run_uuid = ? AND status = ?;
+
 -- name: InsertAgentApproval :exec
 INSERT INTO agent_approvals (
     approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256,

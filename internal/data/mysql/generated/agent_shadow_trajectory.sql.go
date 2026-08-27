@@ -11,6 +11,89 @@ import (
 	"encoding/json"
 )
 
+const claimAgentShadowStep = `-- name: ClaimAgentShadowStep :execrows
+UPDATE agent_shadow_steps
+SET status = 'running', claim_token = ?, attempt_count = attempt_count + 1,
+    started_at = UTC_TIMESTAMP(), lease_expires_at = TIMESTAMPADD(MICROSECOND, ?, UTC_TIMESTAMP()),
+    finished_at = NULL, last_error = NULL
+WHERE task_uuid = ? AND step_no = ? AND (
+    status IN ('planned', 'failed') OR
+    (status = 'running' AND lease_expires_at < UTC_TIMESTAMP())
+)
+`
+
+type ClaimAgentShadowStepParams struct {
+	ClaimToken   sql.NullString
+	TIMESTAMPADD int32
+	TaskUuid     string
+	StepNo       uint16
+}
+
+func (q *Queries) ClaimAgentShadowStep(ctx context.Context, arg ClaimAgentShadowStepParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, claimAgentShadowStep,
+		arg.ClaimToken,
+		arg.TIMESTAMPADD,
+		arg.TaskUuid,
+		arg.StepNo,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const completeAgentShadowStep = `-- name: CompleteAgentShadowStep :execrows
+UPDATE agent_shadow_steps
+SET status = 'completed', output_json = ?, finished_at = UTC_TIMESTAMP(), lease_expires_at = UTC_TIMESTAMP(), last_error = NULL
+WHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running' AND lease_expires_at >= UTC_TIMESTAMP()
+`
+
+type CompleteAgentShadowStepParams struct {
+	OutputJson json.RawMessage
+	TaskUuid   string
+	StepNo     uint16
+	ClaimToken sql.NullString
+}
+
+func (q *Queries) CompleteAgentShadowStep(ctx context.Context, arg CompleteAgentShadowStepParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, completeAgentShadowStep,
+		arg.OutputJson,
+		arg.TaskUuid,
+		arg.StepNo,
+		arg.ClaimToken,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const failAgentShadowStep = `-- name: FailAgentShadowStep :execrows
+UPDATE agent_shadow_steps
+SET status = 'failed', finished_at = UTC_TIMESTAMP(), lease_expires_at = UTC_TIMESTAMP(), last_error = ?
+WHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running'
+`
+
+type FailAgentShadowStepParams struct {
+	LastError  sql.NullString
+	TaskUuid   string
+	StepNo     uint16
+	ClaimToken sql.NullString
+}
+
+func (q *Queries) FailAgentShadowStep(ctx context.Context, arg FailAgentShadowStepParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failAgentShadowStep,
+		arg.LastError,
+		arg.TaskUuid,
+		arg.StepNo,
+		arg.ClaimToken,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAgentShadowPlan = `-- name: GetAgentShadowPlan :one
 SELECT task_uuid, event_id, event_type, plan_sha256
 FROM agent_shadow_plans
@@ -34,6 +117,27 @@ func (q *Queries) GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetA
 		&i.EventType,
 		&i.PlanSha256,
 	)
+	return i, err
+}
+
+const getAgentShadowStep = `-- name: GetAgentShadowStep :one
+SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1
+`
+
+type GetAgentShadowStepParams struct {
+	TaskUuid string
+	StepNo   uint16
+}
+
+type GetAgentShadowStepRow struct {
+	Status     string
+	ClaimToken sql.NullString
+}
+
+func (q *Queries) GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error) {
+	row := q.db.QueryRowContext(ctx, getAgentShadowStep, arg.TaskUuid, arg.StepNo)
+	var i GetAgentShadowStepRow
+	err := row.Scan(&i.Status, &i.ClaimToken)
 	return i, err
 }
 

@@ -14,6 +14,7 @@ export const executionContextSchema = z.object({
   agentUuid: z.string().trim().min(1),
   delegatedByUuid: z.string().trim().min(1).optional(),
   taskId: z.string().trim().min(1),
+  runId: z.string().trim().min(1),
   mode: z.enum(["shadow", "active"]),
   permissions: z.array(z.string().trim().min(1)).min(1).refine(uniqueStrings, "permissions must be unique"),
   resourceScopes: z.array(resourceScopeSchema).min(1),

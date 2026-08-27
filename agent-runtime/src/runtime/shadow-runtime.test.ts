@@ -8,7 +8,8 @@ import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runti
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
-      enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata"
+      enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
+      capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(loadShadowRuntimeConfig({
@@ -33,6 +34,9 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_LEDGER_MODE: "mysql",
       DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
       DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+      DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret",
       DIPOLE_AGENT_MODEL_MAX_CALLS: "2",
       DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "12000",
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "256"
@@ -41,6 +45,11 @@ describe("shadow runtime composition", () => {
       modelRoutes: ["openai/gpt-5-mini", "anthropic/claude-sonnet-4.5"],
       modelBudget: { maxCalls: 2, totalTimeoutMs: 12000, maxOutputTokensPerCall: 256 }
     });
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "core:9091",
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+    })).toThrow(/loopback/);
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {

@@ -22,6 +22,10 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 10, multipleStatements: true });
     const migration = await readFile(new URL("../../../db/migrations/000020_agent_shadow_trajectory.up.sql", import.meta.url), "utf8");
     await pool.query(migration);
+    const runMigration = await readFile(new URL("../../../db/migrations/000021_agent_runs.up.sql", import.meta.url), "utf8");
+    await pool.query("SET FOREIGN_KEY_CHECKS=0");
+    await pool.query(runMigration);
+    await pool.query("SET FOREIGN_KEY_CHECKS=1");
   });
 
   afterAll(async () => {
@@ -72,5 +76,26 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
 
     await expect(sink.append({ ...base, plan: { ...base.plan, summary: "changed" } })).rejects.toThrow(/plan conflict/);
     await expect(sink.append({ ...base, eventType: "message.group.created" })).rejects.toThrow(/plan conflict/);
+  });
+
+  it("claims, retries, and terminates a Step with exact ownership", async () => {
+    const sink = new MySQLShadowAuditSink(pool);
+    const record = {
+      eventId: "E-STEP-1", taskId: "TASK-STEP-1", eventType: "message.direct.created",
+      plan: { summary: "list", steps: [{ capabilityId: "conversation.list", input: { limit: 20 } }] }
+    } as const;
+    await sink.append(record);
+
+    const first = await sink.claimStep(record.taskId, 1, 60_000);
+    expect(first.outcome).toBe("claimed");
+    await expect(sink.claimStep(record.taskId, 1, 60_000)).resolves.toEqual({ outcome: "busy" });
+    if (first.outcome !== "claimed") throw new Error("expected first Step owner");
+    await sink.failStep(record.taskId, 1, first.token, new Error("temporary"));
+
+    const retry = await sink.claimStep(record.taskId, 1, 60_000);
+    if (retry.outcome !== "claimed") throw new Error("expected retry Step owner");
+    await expect(sink.completeStep(record.taskId, 1, first.token, { stale: true })).rejects.toThrow(/stale/);
+    await sink.completeStep(record.taskId, 1, retry.token, { conversations: [] });
+    await expect(sink.claimStep(record.taskId, 1, 60_000)).resolves.toEqual({ outcome: "completed" });
   });
 });

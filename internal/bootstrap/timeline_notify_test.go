@@ -110,7 +110,7 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 			}
 			if test.hot {
 				deadline := time.Now().Add(time.Second)
-				for len(sender.snapshot()) == 0 && time.Now().Before(deadline) {
+				for len(sender.snapshot()) < len(test.wantTypes) && time.Now().Before(deadline) {
 					time.Sleep(time.Millisecond)
 				}
 			}

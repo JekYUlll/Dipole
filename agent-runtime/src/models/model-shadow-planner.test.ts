@@ -45,7 +45,7 @@ function event(): AgentEvent {
 
 function context(): ExecutionContext {
   return {
-    tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", mode: "shadow",
+    tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
     permissions: ["conversation.read"],
     resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
     approvedCapabilities: [], eventId: "E1"

@@ -151,7 +151,27 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
-		coreRPC, err = NewCoreRPCServer(rpcCfg, appComposition.NewLocalCoreCapability(repos))
+		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
+		}
+		agentCommands, composeErr := appComposition.NewLocalAgentCommandV1(localMessaging.Messages)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose remote Agent Command: %w", composeErr)
+		}
+		agentCapability, composeErr := appComposition.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
+		}
+		resolver, composeErr := appComposition.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
+		}
+		admission, composeErr := appComposition.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
+		}
+		coreRPC, err = NewCoreRPCServerWithAgent(rpcCfg, localMessaging.Core, agentCapability, resolver, admission)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)
 		}

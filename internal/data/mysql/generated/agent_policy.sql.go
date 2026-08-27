@@ -112,6 +112,29 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 	return i, err
 }
 
+const getAgentRun = `-- name: GetAgentRun :one
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at FROM agent_runs WHERE run_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error) {
+	row := q.db.QueryRowContext(ctx, getAgentRun, runUuid)
+	var i AgentRun
+	err := row.Scan(
+		&i.ID,
+		&i.RunUuid,
+		&i.TaskUuid,
+		&i.RuntimeID,
+		&i.Mode,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAgentTask = `-- name: GetAgentTask :one
 SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid FROM agent_tasks WHERE task_uuid = ? LIMIT 1
 `
@@ -251,6 +274,32 @@ func (q *Queries) InsertAgentDefinitionVersion(ctx context.Context, arg InsertAg
 	return err
 }
 
+const insertAgentRun = `-- name: InsertAgentRun :execrows
+INSERT INTO agent_runs (
+    run_uuid, task_uuid, runtime_id, mode, status, started_at
+) VALUES (?, ?, ?, ?, 'running', UTC_TIMESTAMP())
+`
+
+type InsertAgentRunParams struct {
+	RunUuid   string
+	TaskUuid  string
+	RuntimeID string
+	Mode      string
+}
+
+func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentRun,
+		arg.RunUuid,
+		arg.TaskUuid,
+		arg.RuntimeID,
+		arg.Mode,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertAgentTask = `-- name: InsertAgentTask :execrows
 INSERT IGNORE INTO agent_tasks (
     task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid,
@@ -323,6 +372,32 @@ type RevokeAgentDefinitionVersionParams struct {
 
 func (q *Queries) RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentDefinitionVersion, arg.RevokedAt, arg.DefinitionUuid, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const transitionAgentRunStatus = `-- name: TransitionAgentRunStatus :execrows
+UPDATE agent_runs
+SET status = ?, completed_at = UTC_TIMESTAMP(), last_error = ?
+WHERE run_uuid = ? AND status = ?
+`
+
+type TransitionAgentRunStatusParams struct {
+	Status    string
+	LastError sql.NullString
+	RunUuid   string
+	Status_2  string
+}
+
+func (q *Queries) TransitionAgentRunStatus(ctx context.Context, arg TransitionAgentRunStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, transitionAgentRunStatus,
+		arg.Status,
+		arg.LastError,
+		arg.RunUuid,
+		arg.Status_2,
+	)
 	if err != nil {
 		return 0, err
 	}
