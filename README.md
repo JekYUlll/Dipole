@@ -49,6 +49,19 @@ scripts/check-sqlc.sh
 
 生产数据访问统一使用 `database/sql + sqlc`，查询定义位于 `db/queries`，生成代码位于 `internal/data/mysql/generated`。
 
+前端工具链固定使用 Node.js 22.12+ LTS、Vite 8 和 Vitest 4：
+
+```bash
+cd frontend
+nvm use
+npm ci
+npm run test:toolchain
+npm test
+npm run build
+```
+
+`test:toolchain` 验证 `/app/` 静态资源基路径、生产输出边界及 HTTP/WebSocket 开发代理。代理默认目标为 `http://localhost:80`，隔离验收可通过 `DIPOLE_WEB_PROXY_TARGET` 覆盖。
+
 Kafka Envelope、schema version、重试和死信规则见 [Kafka 事件契约](KAFKA-EVENT-CONTRACT.md)。
 Kafka 三节点开发基线与故障验收见 [Kafka Cluster 文档](KAFKA-CLUSTER.md)。
 MySQL InnoDB Cluster、Router writer 路由与主切换验收见 [MySQL Cluster 文档](MYSQL-CLUSTER.md)。
