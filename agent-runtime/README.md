@@ -7,6 +7,7 @@ npm ci
 npm test
 npm run typecheck
 npm run build
+npm run generate:sql
 ```
 
 运行独立 Kafka shadow consumer：
@@ -42,6 +43,6 @@ AI_GATEWAY_API_KEY=... \
 npm start
 ```
 
-Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并把 route、attempt、input/output Token 计入 shadow audit。当前证据仍随 Console audit 输出，生产启用前需完成 `AD-029` 的持久 Run/Step 审计。
+Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并把 route、attempt、input/output Token 计入 shadow audit。migration v19 与 ModelAuditStore 已提供 Task 级原子 slot 和调用终态，但 Router 尚未接线；生产启用前仍需完成 `AD-029`。
 
 微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，只连接 Kafka 与 Agent 自有 MySQL ledger，不连接 Redis 或 Go 内部 RPC。

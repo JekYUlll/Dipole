@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	AbandonAgentModelCalls(ctx context.Context, arg AbandonAgentModelCallsParams) (int64, error)
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
 	AdvanceCassandraBackfillJob(ctx context.Context, arg AdvanceCassandraBackfillJobParams) (sql.Result, error)
@@ -24,6 +25,8 @@ type Querier interface {
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
 	CompleteAgentEvent(ctx context.Context, arg CompleteAgentEventParams) (int64, error)
+	CompleteAgentModelCall(ctx context.Context, arg CompleteAgentModelCallParams) (int64, error)
+	CompleteAgentModelRun(ctx context.Context, runUuid string) (int64, error)
 	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CompleteSearchBackfillJob(ctx context.Context, arg CompleteSearchBackfillJobParams) (sql.Result, error)
 	CompleteSyncReplayJob(ctx context.Context, arg CompleteSyncReplayJobParams) (sql.Result, error)
@@ -51,6 +54,8 @@ type Querier interface {
 	EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error
 	EnsureSyncReplayJob(ctx context.Context, arg EnsureSyncReplayJobParams) error
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
+	FailAgentModelCall(ctx context.Context, arg FailAgentModelCallParams) (int64, error)
+	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)
 	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
@@ -87,11 +92,14 @@ type Querier interface {
 	GetUserByTelephone(ctx context.Context, telephone string) (User, error)
 	GetUserByUUID(ctx context.Context, uuid string) (User, error)
 	HasConversationMessages(ctx context.Context, conversationKey string) (bool, error)
+	IncrementAgentModelRunCalls(ctx context.Context, runUuid string) (int64, error)
 	InitGroupConversation(ctx context.Context, arg InitGroupConversationParams) (sql.Result, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	InsertAgentApproval(ctx context.Context, arg InsertAgentApprovalParams) error
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
+	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
+	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
@@ -118,6 +126,7 @@ type Querier interface {
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
 	LockAgentEventClaim(ctx context.Context, arg LockAgentEventClaimParams) ([]LockAgentEventClaimRow, error)
+	LockAgentModelRun(ctx context.Context, taskUuid string) (LockAgentModelRunRow, error)
 	LockCassandraBackfillJob(ctx context.Context, jobName string) (LockCassandraBackfillJobRow, error)
 	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	LockSearchBackfillJob(ctx context.Context, jobName string) (LockSearchBackfillJobRow, error)
@@ -130,6 +139,7 @@ type Querier interface {
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
 	ProbeAgentEventLedger(ctx context.Context) ([]string, error)
+	ProbeAgentModelRuns(ctx context.Context) ([]string, error)
 	ReclaimAgentEvent(ctx context.Context, arg ReclaimAgentEventParams) (int64, error)
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
