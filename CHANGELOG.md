@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加外部 MCP Result-to-Context adapter：只接收成功、可 JSON 序列化且默认不超过 64 KiB（1 KiB 至 128 KiB 可配）的 Tool 结果，生成固定 `section=evidence`、`trust=untrusted` 的可选 Context fragment，并用 Profile/Server/Tool/Invocation 绑定 provenance。完整正文保留为不可变 JSON 快照；compact 版本只包含 Server、Tool、content type 集合和 structured-content 标记，不复制可能含 Prompt Injection 的外部文本。该 adapter 尚未接入生产外部调用链，外部网络继续关闭。
 - Agent G4 增加默认关闭的外部 MCP Network Guard：每个 SDK HTTP 请求都重新校验 Profile 的 exact HTTPS Host/Port/TLS ServerName，使用 2 秒默认 DNS deadline（100 ms 至 60 秒可配），要求 1 至 32 个解析结果全部为合法公网地址且无重复。批准地址集合和 opaque CA ref 被交给 pinned Dispatcher，返回后复核实际 peer；混合私网答案、DNS rebinding、非批准 peer、跨边界 URL 和任何重定向均以固定脱敏错误 fail closed。当前只有 Resolver/Dispatcher 接口与测试实现，生产 DNS/TLS Dispatcher、CA Secret backend 和外部连接开关继续关闭。
 - Agent G4 增加 provider-neutral 外部 MCP `AuthProvider` adapter：官方 SDK 每次请求前按 exact Credential binding 调用 Secret Provider，默认 2 秒超时（100 ms 至 60 秒可配）和 4 KiB 上限（16 B 至 8 KiB 可配），只接受严格 UTF-8 与 RFC 6750 Bearer 字符。Provider failure、timeout、非法内容分别收敛为 `secret_unavailable`、`secret_timeout`、`secret_invalid`，不携带底层异常或 credential 标识；成功、校验失败及超时后迟到的 fresh byte buffer 均被覆盖。Adapter 不缓存 token 且不实现 `onUnauthorized`，避免 SDK 自动刷新；JavaScript token/Header 字符串仍由 GC 管理，生产 Secret backend 与外部网络继续关闭。
 - Agent G4 增加外部 MCP Credential Catalog 的受约束文件源：只接受规范绝对路径，要求 canonical、root/预期 Runtime owner 且 group/other 不可写的父目录，并在每次解析时以 `O_NOFOLLOW` 重新打开 single-link regular file；文件 owner/mode 同样受检，配置上限为 32 B 至 1 MiB（默认 256 KiB）。固定缓冲读取可阻断检查后增长绕过，原子 rename 后下一次建连立即使用新 lifecycle manifest；任意路径 symlink、目录、错误 owner/mode、超限和畸形 JSON 均 fail closed，旧 Catalog 不缓存。该 source 尚未装配到生产启动链，也不包含 secret material。
@@ -293,6 +294,7 @@
 
 ### 迁移说明
 
+- 外部 MCP Client 的原始 `CallToolResult` 不得直接拼接到 system/trusted prompt、Memory 或 Agent instruction。未来接入必须先通过 `externalMcpResultToContextFragment`，保留 `trust=untrusted` 与 provenance；若结果要形成 Artifact 或 Memory，需继续携带原始 Invocation lineage，不能因人工摘要或模型改写提升信任等级。
 - Network Guard 尚未装配生产 Resolver/Dispatcher。后续 Dispatcher 必须用守卫提供的某一个批准地址直接建连，使用 Profile `tlsServerName` 做 SNI/证书主机校验、通过 `caBundleRef` 从可信 Secret backend 取 CA，并返回 socket 实际 peer；禁止在 Dispatcher 内再次按 hostname 自由解析或自动跟随重定向。当前接口存在不代表可启用 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`。
 - Secret Provider adapter 没有生产 backend 或启动配置。未来 Provider 必须为每次 `read` 返回独占、可写的 fresh `Uint8Array`，遵守 AbortSignal 且不得把 secret 写入异常；复用共享 buffer 会在首次请求后被 adapter 清零。SDK 所需 token string 无法强零化，部署时应使用短期、最小权限凭据并依靠 Catalog 版本/吊销和 Server 端失效控制暴露窗口。
 - Catalog file source 没有默认路径或启动装配。后续受控环境使用时必须挂载 root/Runtime UID 拥有、group/other 不可写的 regular file；默认 Kubernetes ConfigMap/Secret projected volume 使用 symlink，会被 `O_NOFOLLOW` 拒绝，可由受信 init/sidecar 写入私有 tmpfs regular file 并以同目录原子 rename 更新。不要降低 symlink/mode 校验来迁就挂载方式。

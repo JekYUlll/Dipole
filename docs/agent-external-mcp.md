@@ -62,6 +62,14 @@ Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；
 
 当前仓库没有真实 DNS Resolver、TLS pinned Dispatcher 或 CA Secret backend。该模块只固定可测试的 SSRF/DNS rebinding 边界，生产开关仍然 fail closed。后续实现需要把 SDK request timeout/AbortSignal 传播到 DNS、socket connect、TLS handshake 和 response body，并通过真实双栈 DNS、证书不匹配、连接 peer 偏移及超时故障演练。
 
+## Result 信任边界
+
+外部 MCP Server 返回的文本、结构化内容、Resource 和链接全部属于不可信数据。`externalMcpResultToContextFragment` 只接受成功、可 JSON 序列化且有界的 `CallToolResult`，并固定生成 `section=evidence`、`trust=untrusted` 的可选 fragment；provenance 同时绑定 Profile、Server、Tool 和 Invocation，原始对象在入口处转成不可变 JSON 快照。
+
+预算不足时使用的 compact 内容只保留 Server、Tool、content type 与 structured-content 存在性，不摘要、不复述外部正文，避免未经审计的摘要把指令性文本隐式升级。完整结果进入模型时仍可能触发 Prompt Injection，`trust=untrusted` 需要与 system policy、Capability allowlist、Approval、trajectory Eval 和输出 lineage 一起使用。
+
+当前外部 Client 尚未进入生产执行链。后续调用代码不得把原始 `CallToolResult` 直接拼接到 system/trusted prompt；结果转为 Artifact 或 Memory 时也必须保留 Invocation provenance 与 untrusted 来源，模型改写不能自动提升信任等级。
+
 ## 后续实现门槛
 
 生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。
