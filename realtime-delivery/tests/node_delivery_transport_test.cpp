@@ -74,10 +74,32 @@ class ObservationService final : public dipole::delivery::v1::NodeDeliveryServic
     return grpc::Status::OK;
   }
 
+  grpc::Status DeliverNodeBatch(
+      grpc::ServerContext* context,
+      const dipole::delivery::v1::NodeDeliveryBatch* batch,
+      dipole::delivery::v1::DeliveryAck* acknowledgement) override {
+    const auto& metadata = context->client_metadata();
+    const auto caller = metadata.find("x-dipole-caller-service");
+    const auto token = metadata.find("x-dipole-service-token");
+    delivery_metadata_valid = caller != metadata.end() && caller->second == "dipole-realtime" &&
+                              token != metadata.end() && token->second == "test-secret";
+    acknowledgement->set_contract_version("v1");
+    acknowledgement->set_batch_id(batch->batch_id());
+    acknowledgement->set_status(dipole::delivery::v1::DELIVERY_ACK_STATUS_ACCEPTED);
+    *acknowledgement->mutable_acknowledged_at() =
+        google::protobuf::util::TimeUtil::GetCurrentTime();
+    auto* result = acknowledgement->add_results();
+    result->set_delivery_id(batch->items(0).delivery_id());
+    result->set_status(dipole::delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED);
+    result->set_accepted_connections(1);
+    return grpc::Status::OK;
+  }
+
   dipole::delivery::v1::NodeObservationStatus status =
       dipole::delivery::v1::NODE_OBSERVATION_STATUS_OBSERVED;
   bool duplicate = false;
   bool metadata_valid = false;
+  bool delivery_metadata_valid = false;
 };
 
 struct TestServer {
@@ -161,6 +183,13 @@ void TestGrpcTransportObservesWithAuthenticatedMetadata() {
   server.service.status = dipole::delivery::v1::NODE_OBSERVATION_STATUS_BACKPRESSURED;
   Check(transport->Observe({Batch()}, &stats).has_value() && stats.backpressured == 1,
         "backpressure remains retryable transport failure");
+
+  std::vector<dipole::delivery::v1::DeliveryAck> acknowledgements;
+  Check(!transport->Deliver({Batch()}, &acknowledgements) && acknowledgements.size() == 1 &&
+            acknowledgements[0].status() ==
+                dipole::delivery::v1::DELIVERY_ACK_STATUS_ACCEPTED &&
+            server.service.delivery_metadata_valid,
+        "primary delivery validates authenticated acknowledgement without changing shadow mode");
 }
 
 }  // namespace

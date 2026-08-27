@@ -50,6 +50,8 @@ class GrpcNodeBatchTransport final : public NodeBatchTransport {
 
   ValidationError Observe(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
                           NodeTransportStats* stats) override;
+  ValidationError Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                          std::vector<delivery::v1::DeliveryAck>* acknowledgements);
 
  private:
   GrpcNodeBatchTransport() = default;
