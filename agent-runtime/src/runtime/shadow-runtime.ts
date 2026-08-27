@@ -8,6 +8,9 @@ import { decodeMessageCreatedEvent } from "../events/message-event.js";
 import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner } from "../events/shadow-processor.js";
+import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
+import { ModelRouter } from "../models/model-router.js";
+import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -23,6 +26,13 @@ const shadowRuntimeConfigSchema = z.object({
   agentUuid: z.string().trim().min(1),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
+  modelMode: z.enum(["metadata", "ai_sdk"]),
+  modelRoutes: z.array(z.string().trim().min(1)),
+  modelBudget: z.object({
+    maxCalls: z.number().int().min(1).max(10),
+    totalTimeoutMs: z.number().int().min(100).max(300_000),
+    maxOutputTokensPerCall: z.number().int().min(1).max(32_768)
+  }).strict(),
   mysql: z.object({
     host: z.string().trim(),
     port: z.number().int().min(1).max(65_535),
@@ -36,6 +46,9 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.enabled && config.ledgerMode === "mysql" && (!config.mysql.host || !config.mysql.user || !config.mysql.password || !config.mysql.database)) {
     refinement.addIssue({ code: "custom", message: "Agent MySQL configuration is required for persistent ledger mode", path: ["mysql"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.modelRoutes.length === 0) {
+    refinement.addIssue({ code: "custom", message: "Agent model routes are required in AI SDK mode", path: ["modelRoutes"] });
   }
 });
 
@@ -56,6 +69,13 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
+    modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
+    modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
+    modelBudget: {
+      maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
+      totalTimeoutMs: Number.parseInt(env.DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS ?? "15000", 10),
+      maxOutputTokensPerCall: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS ?? "512", 10)
+    },
     mysql: {
       host: env.DIPOLE_AGENT_MYSQL_HOST ?? "",
       port: Number.parseInt(env.DIPOLE_AGENT_MYSQL_PORT ?? "3306", 10),
@@ -130,7 +150,10 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   const factory = new KafkaJSConsumerFactory(config.clientId, config.brokers);
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
-  const consumer = buildKafkaShadowRuntime(config, factory, undefined, undefined, ledger, failureRouter);
+  const planner = config.modelMode === "ai_sdk"
+    ? new ModelShadowPlanner(new ModelRouter(new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget), ["conversation.read"])
+    : new MetadataShadowPlanner();
+  const consumer = buildKafkaShadowRuntime(config, factory, planner, undefined, ledger, failureRouter);
   const mainTopic = physicalTopic(config);
   return {
     start: async () => {
