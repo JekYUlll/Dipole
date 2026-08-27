@@ -278,6 +278,7 @@
 ### 修复
 
 - 修复 canonical Go gate 在干净 checkout 中隐式依赖被忽略的 `configs/config.yaml`：配置加载器支持显式 `DIPOLE_CONFIG_FILE`，`scripts/check-go.sh` 默认使用跟踪的 `configs/config.dist.yaml`，调用方仍可覆盖；未设置环境变量的生产/本地启动继续沿用原有 `config.yaml` 搜索行为。
+- 修复分布式与微服务 Compose 在干净 checkout 中强制依赖未跟踪 `.env`：本地 env file 改为 optional，关键内部 RPC secret 的 `${VAR:?}` 校验保持不变；新增 `scripts/check-compose.sh` 对全部 Compose 文件执行统一静态解析。
 - migration v17 将 Agent Definition、Task 与 Approval 的身份列从 20 字符 expand-only 扩至 24 字符，修复默认 21 字符 `assistant_uuid` 无法初始化 persistent policy 的启动失败。
 - HTTP Handler 测试在包级 `TestMain` 统一初始化 Gin TestMode，移除并行测试中的重复全局写入，使整包 `go test -race ./internal/handler/http` 可作为稳定门禁。
 - 修正 MySQL migration 集成测试仍将已存在的 v10 当作未来版本的问题，并将真实上下迁移与并发 owner 门禁推进到 v11。

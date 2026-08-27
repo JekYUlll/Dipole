@@ -2,7 +2,8 @@ x-dipole-service: &dipole-service
   image: ${DIPOLE_IMAGE:-dipole-server:latest}
   restart: unless-stopped
   env_file:
-    - .env
+    - path: .env
+      required: false
   volumes:
     - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
 

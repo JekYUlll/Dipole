@@ -166,7 +166,8 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node1   # 跨节点路由依赖此 ID，对应 Redis channel ws:node:node1
       DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
@@ -199,7 +200,8 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node2   # 对应 Redis channel ws:node:node2
       DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
@@ -232,7 +234,8 @@ services:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ./certs:/app/certs:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DIPOLE_PRESENCE_NODE_ID: node3
       DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD: "${DIPOLE_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-200}"
