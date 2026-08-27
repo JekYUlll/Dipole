@@ -109,4 +109,12 @@ v2 的 `MODEL_CONTEXT_PROFILES` 是可选严格 JSON 数组。每个 route 可�
 
 `src/context/token-estimator.test.ts` 中的中英文、代码、Emoji 与 Tool schema 语料用于确定性回归，只代表工程夹具。生产 profile 需要使用对应 route 的可复现 tokenizer 或 provider usage 单独校准；Runtime 不会根据单次调用结果自动调整估算值。
 
+离线校准证据遵循 `contracts/agent-context-calibration/v1`。evidence 必须标记 `dataClassification=synthetic`，每个 route 都要包含中英文、代码、Emoji 与 Tool schema 五类 case，并记录 reference Token 的 provider、model 和 tokenizer/usage revision。执行：
+
+```bash
+npm run context:calibrate -- --evidence=../contracts/agent-context-calibration/v1/examples/eligible-evidence.json
+```
+
+命令不访问 provider 或网络。报告不回显 case 正文，只保存正文 SHA-256、UTF-8 字节数、逐 route 估算误差、fallback route 和双重证据哈希；零低估且所有 route 均有显式 profile 时退出 0，合法但不足的校准退出 2，输入错误退出 1。`eligible` 只用于候选评审，不能修改 Runtime 配置或自动启用 Compiler v2。
+
 微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。
