@@ -335,6 +335,8 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | Group size | {parameters.get('group_size', 'N/A')} |
 | Senders | {parameters.get('sender_count', 'N/A')} |
 | Messages per sender | {parameters.get('messages_per_sender', 'N/A')} |
+| Receiver connection window | {parameters.get('receiver_conn_ms', 'N/A')} ms |
+| Sender connection window | {parameters.get('sender_conn_ms', 'N/A')} ms |
 | Hot-group warm-up messages | {parameters.get('hot_group_warmup_messages', 'N/A')} |
 | Hot-group thresholds | members={parameters.get('hot_group_member_count_threshold', 'N/A')}, messages={parameters.get('hot_group_message_threshold', 'N/A')} |
 | Phone namespace | `{parameters.get('phone_prefix', 'N/A')}` |

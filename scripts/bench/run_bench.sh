@@ -184,6 +184,8 @@ jq -n \
   --argjson send_count "${SEND_COUNT}" \
   --argjson direct_send_count "${DIRECT_SEND_COUNT}" \
   --argjson concurrent_send_count "${CONCURRENT_SEND_COUNT}" \
+  --argjson receiver_conn_ms "${RECEIVER_CONN_MS}" \
+  --argjson sender_conn_ms "${SENDER_CONN_MS}" \
   --argjson hot_group_warmup_messages "${HOT_GROUP_WARMUP_MESSAGES}" \
   --arg hot_group_member_count_threshold "${HOT_GROUP_MEMBER_COUNT_THRESHOLD}" \
   --arg hot_group_message_threshold "${HOT_GROUP_MESSAGE_THRESHOLD}" \
@@ -218,6 +220,8 @@ jq -n \
         else $send_count
         end
       ),
+      receiver_conn_ms: $receiver_conn_ms,
+      sender_conn_ms: $sender_conn_ms,
       hot_group_warmup_messages: $hot_group_warmup_messages,
       hot_group_member_count_threshold: ($hot_group_member_count_threshold | if length == 0 then null else tonumber end),
       hot_group_message_threshold: ($hot_group_message_threshold | if length == 0 then null else tonumber end)

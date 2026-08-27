@@ -32,6 +32,8 @@ class BaselineReportTest(unittest.TestCase):
                 "phone_prefix": "137",
                 "sender_count": 10,
                 "messages_per_sender": 5,
+                "receiver_conn_ms": 15000,
+                "sender_conn_ms": 15000,
                 "hot_group_warmup_messages": 0,
                 "hot_group_member_count_threshold": 200,
                 "hot_group_message_threshold": 50,
@@ -92,6 +94,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertEqual(report["workload"]["throughput_per_second"], 40)
         self.assertEqual(report["delivery"]["rate"], 0.966667)
         self.assertEqual(report["parameters"]["group_size"], 20)
+        self.assertEqual(report["parameters"]["receiver_conn_ms"], 15000)
         self.assertEqual(report["latency_ms"]["p50"], 14.0)
         self.assertEqual(report["latency_ms"]["p95"], 42.5)
         self.assertEqual(report["storage"]["direct"]["inbox_write_amplification"], 1.0)
@@ -195,6 +198,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("Conversation writes / observed message | 20.00", markdown)
         self.assertIn("Group message | 200 | 0 | 10.00 ms | 25.00 ms", markdown)
         self.assertIn("Messages per sender | 5", markdown)
+        self.assertIn("Receiver connection window | 15000 ms", markdown)
         self.assertIn("Hot-group thresholds | members=200, messages=50", markdown)
         self.assertIn("该报告只描述本次环境", markdown)
 
