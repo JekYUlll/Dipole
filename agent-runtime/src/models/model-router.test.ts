@@ -97,10 +97,34 @@ describe("ModelRouter", () => {
       output: { summary: "persisted" }, route: "primary"
     });
     expect(audit.completeCall).toHaveBeenCalledWith(
-      expect.objectContaining({ callId: "CALL-1" }), { inputTokens: 12, outputTokens: 4 }, "stop", 0
+      expect.objectContaining({ callId: "CALL-1" }), { summary: "persisted" },
+      { inputTokens: 12, outputTokens: 4 }, "stop", 0
     );
     expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
     expect(audit.failCall).not.toHaveBeenCalled();
+  });
+
+  it("replays a validated completed call without invoking the provider again", async () => {
+    const generate: StructuredModelClient["generate"] = vi.fn();
+    const audit = auditStore();
+    vi.mocked(audit.recover).mockResolvedValue({
+      runId: "RUN-1", callId: "CALL-1", callNo: 1, route: "primary",
+      output: { summary: "recovered" }, usage: { inputTokens: 12, outputTokens: 4 }
+    });
+    const router = new ModelRouter({ generate }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await expect(router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" })).resolves.toEqual({
+      output: { summary: "recovered" }, route: "primary", attempts: 1,
+      usage: { inputTokens: 12, outputTokens: 4 }
+    });
+    expect(generate).not.toHaveBeenCalled();
+    expect(audit.recover).toHaveBeenCalledWith("TASK-1", {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    });
+    expect(audit.reserve).not.toHaveBeenCalled();
+    expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
   });
 
   it("records provider failure before reserving the fallback", async () => {
@@ -118,7 +142,10 @@ describe("ModelRouter", () => {
     await router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" });
 
     expect(audit.failCall).toHaveBeenCalledWith(expect.objectContaining({ callId: "CALL-1" }), expect.any(Error), 0);
-    expect(audit.completeCall).toHaveBeenCalledWith(expect.objectContaining({ callId: "CALL-2" }), expect.anything(), "stop", 0);
+    expect(audit.completeCall).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: "CALL-2" }), { summary: "fallback" },
+      { inputTokens: 8, outputTokens: 3 }, "stop", 0
+    );
   });
 
   it("does not call a provider when the durable Task budget has no slot", async () => {
@@ -139,7 +166,7 @@ describe("ModelRouter", () => {
 
 function auditStore(): ModelAuditStore {
   return {
-    reserve: vi.fn(), completeCall: vi.fn(async () => undefined), failCall: vi.fn(async () => undefined),
+    recover: vi.fn(async () => undefined), reserve: vi.fn(), completeCall: vi.fn(async () => undefined), failCall: vi.fn(async () => undefined),
     completeRun: vi.fn(async () => undefined), failRun: vi.fn(async () => undefined), failTask: vi.fn(async () => undefined)
   };
 }

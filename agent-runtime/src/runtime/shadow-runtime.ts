@@ -14,13 +14,15 @@ import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { MySQLShadowAuditSink } from "../events/mysql-shadow-audit-sink.js";
 import { PROBE_AGENT_SHADOW_PLANS } from "../events/mysql-shadow-audit-queries.js";
-import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner } from "../events/shadow-processor.js";
+import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner, type ShadowTaskDispatcher } from "../events/shadow-processor.js";
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
 import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
+import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
+import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -143,6 +145,13 @@ export interface ShadowRuntime {
   stop(): Promise<void>;
 }
 
+export interface TemporalReadActivityResources {
+  readonly activities: AgentTaskActivities;
+  readonly client: AgentCapabilityRPCClient;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+}
+
 export class MetadataShadowPlanner implements ShadowPlanner {
   async plan(event: Parameters<ShadowPlanner["plan"]>[0]): ReturnType<ShadowPlanner["plan"]> {
     return {
@@ -167,9 +176,10 @@ export function buildKafkaShadowRuntime(
   failureRouter?: KafkaFailureRouter,
   admission?: AgentCapabilityRPCClient,
   registry?: CapabilityRegistry,
-  trajectory?: MySQLShadowAuditSink
+  trajectory?: MySQLShadowAuditSink,
+  dispatcher?: ShadowTaskDispatcher
 ): KafkaShadowConsumer {
-  const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs);
+  const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
   return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
     let decoded;
     try {
@@ -190,7 +200,7 @@ export function buildKafkaShadowRuntime(
   }, failureRouter);
 }
 
-export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRuntime {
+export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher?: ShadowTaskDispatcher): ShadowRuntime {
   let pool: Pool | undefined;
   let ledger: EventLedger;
   if (config.ledgerMode === "mysql") {
@@ -205,22 +215,22 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   const factory = new KafkaJSConsumerFactory(config.clientId, config.brokers);
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
-  const planner = config.modelMode === "ai_sdk"
+  const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
     ), ["conversation.list"])
     : new MetadataShadowPlanner();
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
-  const rpcTransport = config.capabilityRpc.enabled ? createAgentCapabilityRPC(config) : undefined;
+  const rpcTransport = config.capabilityRpc.enabled && dispatcher === undefined ? createAgentCapabilityRPC(config) : undefined;
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
-  if (config.modelMode === "ai_sdk") {
+  if (config.modelMode === "ai_sdk" && dispatcher === undefined) {
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
     trajectory = audit as MySQLShadowAuditSink;
   }
   const consumer = buildKafkaShadowRuntime(
-    config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory
+    config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory, dispatcher
   );
   const mainTopic = physicalTopic(config);
   return {
@@ -228,7 +238,7 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
       if (pool !== undefined) {
         await pool.query(PROBE_AGENT_EVENT_LEDGER);
         await pool.query(PROBE_AGENT_SHADOW_PLANS);
-        if (config.modelMode === "ai_sdk") {
+        if (config.modelMode === "ai_sdk" && dispatcher === undefined) {
           await pool.query(PROBE_AGENT_MODEL_RUNS);
         }
       }
@@ -255,6 +265,42 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
             rpcTransport?.close();
           }
         }
+      }
+    }
+  };
+}
+
+export function createTemporalReadActivityResources(config: ShadowRuntimeConfig): TemporalReadActivityResources {
+  if (config.ledgerMode !== "mysql" || config.modelMode !== "ai_sdk" || !config.capabilityRpc.enabled) {
+    throw new Error("Temporal read shadow requires MySQL ledger, AI SDK model, and Agent Capability RPC");
+  }
+  const rpc = createAgentCapabilityRPC(config);
+  const pool = createPool({
+    host: config.mysql.host, port: config.mysql.port, user: config.mysql.user, password: config.mysql.password,
+    database: config.mysql.database, timezone: "Z", connectionLimit: 10
+  });
+  const audit = new MySQLShadowAuditSink(pool);
+  const registry = new CapabilityRegistry();
+  registry.register(new ConversationListCapability(rpc.client));
+  const planner = new ModelShadowPlanner(new ModelRouter(
+    new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool)
+  ), ["conversation.list"]);
+  const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
+  return {
+    activities: createTemporalReadStepActivities({
+      planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
+      busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 }
+    }),
+    client: rpc.client,
+    start: async () => {
+      await pool.query(PROBE_AGENT_SHADOW_PLANS);
+      await pool.query(PROBE_AGENT_MODEL_RUNS);
+    },
+    stop: async () => {
+      try {
+        await pool.end();
+      } finally {
+        rpc.close();
       }
     }
   };

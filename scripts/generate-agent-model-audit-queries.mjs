@@ -5,8 +5,8 @@ const outputUrl = new URL("../agent-runtime/src/models/mysql-model-audit-queries
 const source = await readFile(sourceUrl, "utf8");
 const entries = [...source.matchAll(/^-- name: (\w+) :\w+\n([\s\S]*?)(?=^-- name:|(?![\s\S]))/gm)];
 
-if (entries.length !== 11) {
-  throw new Error(`expected 11 Agent Model Audit queries, found ${entries.length}`);
+if (entries.length !== 13) {
+  throw new Error(`expected 13 Agent Model Audit queries, found ${entries.length}`);
 }
 
 const output = [

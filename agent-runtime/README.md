@@ -46,6 +46,8 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list` 在 Temporal Activity 中执行。该模式同时要求 migration v23、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，Activity 重试先恢复并重新校验该输出，已完成 Step 也不会再次执行。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
+
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 
 真实 Temporal dev server 契约默认不进入快速测试，可显式运行：
@@ -68,6 +70,6 @@ AI_GATEWAY_API_KEY=... \
 npm start
 ```
 
-Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 migration v19 ModelAuditStore 预留 Task slot，并持久化 route、attempt、input/output Token、latency 与终态；Kafka 重投不能刷新预算。
+Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 
-微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，只连接 Kafka 与 Agent 自有 MySQL ledger，不连接 Redis 或 Go 内部 RPC。
+微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。

@@ -41,9 +41,15 @@ export interface ModelCallReservation {
   readonly route: string;
 }
 
+export interface ModelCallRecovery extends ModelCallReservation {
+  readonly output: unknown;
+  readonly usage: ModelUsage;
+}
+
 export interface ModelAuditStore {
+  recover(taskId: string, policy: ModelRunBudgetPolicy): Promise<ModelCallRecovery | undefined>;
   reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined>;
-  completeCall(reservation: ModelCallReservation, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
+  completeCall(reservation: ModelCallReservation, output: unknown, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
   failCall(reservation: ModelCallReservation, error: unknown, latencyMs: number): Promise<void>;
   completeRun(runId: string): Promise<void>;
   failRun(runId: string, error: unknown): Promise<void>;
@@ -84,6 +90,19 @@ export class ModelRouter {
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");
     }
+    if (this.audit !== undefined) {
+      const recovered = await this.audit.recover(input.taskId!, this.#policy);
+      if (recovered !== undefined) {
+        const output = input.schema.parse(recovered.output);
+        await this.audit.completeRun(recovered.runId);
+        return {
+          output,
+          route: recovered.route,
+          attempts: recovered.callNo,
+          usage: recovered.usage
+        };
+      }
+    }
     const startedAt = this.now();
     const errors: unknown[] = [];
     let attempts = 0;
@@ -122,7 +141,7 @@ export class ModelRouter {
       }
       if (reservation !== undefined) {
         await this.audit!.completeCall(
-          reservation, response.usage, response.finishReason ?? "unknown", elapsed(this.now(), callStartedAt)
+          reservation, response.output, response.usage, response.finishReason ?? "unknown", elapsed(this.now(), callStartedAt)
         );
         await this.audit!.completeRun(reservation.runId);
       }

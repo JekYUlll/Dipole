@@ -21,8 +21,23 @@ INSERT INTO agent_model_calls (
 
 -- name: CompleteAgentModelCall :execrows
 UPDATE agent_model_calls
-SET status = 'completed', input_tokens = ?, output_tokens = ?, finish_reason = ?, latency_ms = ?, finished_at = UTC_TIMESTAMP(), last_error = NULL
+SET status = 'completed', output_json = ?, input_tokens = ?, output_tokens = ?, finish_reason = ?, latency_ms = ?, finished_at = UTC_TIMESTAMP(), last_error = NULL
 WHERE call_uuid = ? AND run_uuid = ? AND call_no = ? AND status = 'reserved';
+
+-- name: GetCompletedAgentModelCall :one
+SELECT c.run_uuid, c.call_uuid, c.call_no, c.route, c.output_json, c.input_tokens, c.output_tokens,
+       r.max_calls, r.total_timeout_ms, r.max_output_tokens_per_call
+FROM agent_model_calls c
+JOIN agent_model_runs r ON r.run_uuid = c.run_uuid
+WHERE r.task_uuid = ? AND c.status = 'completed'
+ORDER BY c.call_no DESC
+LIMIT 1;
+
+-- name: GetAgentModelRunStatus :one
+SELECT status
+FROM agent_model_runs
+WHERE run_uuid = ?
+LIMIT 1;
 
 -- name: FailAgentModelCall :execrows
 UPDATE agent_model_calls

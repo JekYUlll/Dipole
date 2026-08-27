@@ -4,6 +4,12 @@ import { Worker } from "@temporalio/worker";
 
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import { TemporalTaskClient } from "./temporal-task-client.js";
+import { CapabilityRegistry } from "../capabilities/registry.js";
+import { ConversationListCapability } from "../capabilities/conversation-list.js";
+import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
+import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
+import { ModelRouter, type ModelAuditStore, type ModelCallRecovery } from "../models/model-router.js";
+import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
 
@@ -137,6 +143,92 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       runStatus: "failed",
       lastError: "Agent Task exceeded the 2 Activity step limit"
     })]);
+  }, 120_000);
+
+  it("replays a completed model result and Step after an Activity post-effect failure", async () => {
+    const taskQueue = `dipole-agent-task-read-${Date.now()}`;
+    const event: AgentEvent = {
+      eventId: "E-TEMPORAL-RECOVERY", eventType: "message.direct.created", aggregateId: "M-TEMPORAL-RECOVERY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "untrusted evidence" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    let providerCalls = 0;
+    let capabilityCalls = 0;
+    let completedModel: ModelCallRecovery | undefined;
+    const modelAudit: ModelAuditStore = {
+      recover: async () => completedModel,
+      reserve: async () => ({ runId: "MODEL-RUN-1", callId: "MODEL-CALL-1", callNo: 1, route: "primary" }),
+      completeCall: async (reservation, output, usage) => {
+        completedModel = { ...reservation, output, usage };
+      },
+      failCall: async () => undefined,
+      completeRun: async () => undefined,
+      failRun: async () => undefined,
+      failTask: async () => undefined
+    };
+    const router = new ModelRouter({
+      generate: async () => {
+        providerCalls += 1;
+        return {
+          output: { summary: "read", steps: [{ capabilityId: "conversation.list", input: { limit: 10 } }] },
+          usage: { inputTokens: 20, outputTokens: 8 }, finishReason: "stop"
+        };
+      }
+    }, ["primary"], { maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 128 }, undefined, modelAudit);
+    const registry = new CapabilityRegistry();
+    registry.register(new ConversationListCapability({
+      listConversations: async () => {
+        capabilityCalls += 1;
+        return [];
+      }
+    }));
+    let stepCompleted = false;
+    const trajectory = {
+      append: async () => undefined,
+      claimStep: async () => stepCompleted
+        ? { outcome: "completed" as const }
+        : { outcome: "claimed" as const, token: "TOKEN-1" },
+      completeStep: async () => { stepCompleted = true; },
+      failStep: async () => undefined
+    };
+    const read = createTemporalReadStepActivities({
+      planner: new ModelShadowPlanner(router, ["conversation.list"]),
+      audit: trajectory, registry, trajectory, stepLeaseMs: 60_000
+    });
+    let activityAttempts = 0;
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: agentRunId(input.taskId), runStatus: "running" };
+      },
+      async finishAgentTask() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep(input) {
+        activityAttempts += 1;
+        const result = await read.executeAgentTaskStep(input);
+        if (activityAttempts === 1) {
+          throw new Error("lost Activity completion acknowledgement");
+        }
+        return result;
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const result = await worker.runUntil(() => env.client.workflow.execute("agentTaskWorkflow", {
+      taskQueue,
+      workflowId: `dipole-agent-task/${taskId}`,
+      args: [{
+        taskId, goal: "observe", shadowEvent: event,
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+        }
+      }]
+    })) as { status: string; output?: unknown };
+
+    expect(result).toMatchObject({ status: "completed", output: { summary: "read", stepCount: 1 } });
+    expect(activityAttempts).toBe(2);
+    expect(providerCalls).toBe(1);
+    expect(capabilityCalls).toBe(1);
   }, 120_000);
 });
 
