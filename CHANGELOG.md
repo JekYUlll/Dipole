@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 增加 hiredis 1.2 Presence 只读 adapter：支持 direct 或 Sentinel master discovery、AUTH/SELECT、批量 `HGETALL` pipeline、命令失败后断连重发现，以及 Go Hash 兼容解析；真实 Redis 隔离 fixture 验证通过，尚未注入 Kafka ShadowRunner。
 - C2 增加 C++ Presence 纯投影边界：兼容解析 Go Presence Hash JSON/RFC3339 时间，将连接快照按 TTL 过滤后确定性分组为 `NodeDeliveryBatch`，显式统计 malformed/observed/eligible/stale/offline，并对用户身份漂移和跨节点重复 connection 所有权 fail closed；当前尚未连接 Redis 或写 Gateway。
 - C2 增加可独立运行的 C++ Kafka shadow：`shadow` 命令在 canonical golden 校验后启动 consumer worker 与动态健康面，只有实际 partition assignment 且最近一次 evidence-before-commit 链健康时 ready；broker 不可达时 live 保持 200、ready 返回 503，SIGTERM 有界退出。`sync_fanout=false` 可在无 Redis 阶段选择热群通知，进程仍不写 Gateway/客户端且未进入生产 Compose。
 - C2 增加 Ubuntu 24.04 多阶段 Realtime Delivery 镜像：builder 显式安装 C++/Protobuf/nlohmann-json/librdkafka 并运行全部 CTest，runtime 只保留二进制、共享库与 Delivery golden contracts，同时写入 OCI revision/created/dirty 标签；镜像尚未加入生产 Compose。

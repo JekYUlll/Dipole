@@ -33,6 +33,7 @@ cmake --build "${build_dir}" --parallel
   "${root_dir}/realtime-delivery/src/contract_validator.cpp" \
   "${root_dir}/realtime-delivery/src/event_projection.cpp" \
   "${root_dir}/realtime-delivery/src/health_server.cpp" \
+  "${root_dir}/realtime-delivery/src/hiredis_presence_reader.cpp" \
   "${root_dir}/realtime-delivery/src/librdkafka_consumer.cpp" \
   "${root_dir}/realtime-delivery/src/main.cpp" \
   "${root_dir}/realtime-delivery/src/presence_projection.cpp" \
@@ -41,6 +42,7 @@ cmake --build "${build_dir}" --parallel
   "${root_dir}/realtime-delivery/src/shadow_runtime.cpp" \
   "${root_dir}/realtime-delivery/tests/contract_test.cpp" \
   "${root_dir}/realtime-delivery/tests/event_projection_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/hiredis_presence_reader_test.cpp" \
   "${root_dir}/realtime-delivery/tests/librdkafka_consumer_test.cpp" \
   "${root_dir}/realtime-delivery/tests/presence_projection_test.cpp" \
   "${root_dir}/realtime-delivery/tests/shadow_evidence_test.cpp" \

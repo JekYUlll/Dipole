@@ -71,6 +71,8 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 Presence 路由先落为纯投影：输入已解析的用户连接快照与明确的 `now/ttl`，过滤过期连接后按 node 稳定排序生成 `NodeDeliveryBatch`，并统计 observed、eligible、stale 与 offline。用户身份漂移、空 node/connection 和重复 connection 所有权会 fail closed。该边界尚未读取 Redis；后续 adapter 会同时记录 Go 原始 Hash 视图与 TTL 过滤视图，以量化旧连接随用户 Hash 续期而残留的兼容差异。
 
+hiredis adapter 只执行 Presence `HGETALL`，支持 direct 与 Sentinel master discovery、Redis/Sentinel 密码、DB 选择和批量 pipeline。网络、协议或认证失败会关闭连接，使下一轮重新发现 master；坏 Hash 记录按计数隔离。当前 adapter 已通过真实单节点 Redis fixture，尚未注入 Kafka runner，Sentinel 切主演练仍待完成。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。

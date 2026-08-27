@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(PkgConfig REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
 pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET "protobuf>=3.21")
+pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET "hiredis>=1.2")
 find_program(PROTOC_EXECUTABLE protoc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 
 set(DIPOLE_RDKAFKA_ROOT "" CACHE PATH "Optional extracted librdkafka package root")
@@ -50,6 +51,7 @@ add_library(delivery_contract
   src/contract_validator.cpp
   src/event_projection.cpp
   src/health_server.cpp
+  src/hiredis_presence_reader.cpp
   src/librdkafka_consumer.cpp
   src/presence_projection.cpp
   src/shadow_evidence.cpp
@@ -63,6 +65,7 @@ target_include_directories(delivery_contract PUBLIC
 )
 target_link_libraries(delivery_contract PUBLIC
   PkgConfig::PROTOBUF
+  PkgConfig::HIREDIS
   RDKAFKA::rdkafka
   nlohmann_json::nlohmann_json
 )
@@ -106,6 +109,11 @@ if(BUILD_TESTING)
   target_link_libraries(delivery_presence_projection_test PRIVATE delivery_contract)
   target_compile_options(delivery_presence_projection_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME delivery_presence_projection_test COMMAND delivery_presence_projection_test)
+
+  add_executable(delivery_hiredis_presence_reader_test tests/hiredis_presence_reader_test.cpp)
+  target_link_libraries(delivery_hiredis_presence_reader_test PRIVATE delivery_contract)
+  target_compile_options(delivery_hiredis_presence_reader_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_hiredis_presence_reader_test COMMAND delivery_hiredis_presence_reader_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"
