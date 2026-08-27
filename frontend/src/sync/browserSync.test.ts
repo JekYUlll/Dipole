@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { post } = vi.hoisted(() => ({ post: vi.fn() }))
+const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
 
-vi.mock('@/api', () => ({ default: { post } }))
+vi.mock('@/api', () => ({ default: { get, post } }))
 
-import { reportBrowserSyncFailure } from './browserSync'
+import { createBrowserTimelineNotifyVerifier, reportBrowserSyncFailure, timelineNotificationPath } from './browserSync'
 
 describe('browser Sync failure telemetry', () => {
   beforeEach(() => post.mockReset().mockResolvedValue({}))
@@ -31,5 +31,43 @@ describe('browser Sync failure telemetry', () => {
       storage_full: 0,
       sync_error: 1,
     }))
+  })
+})
+
+describe('browser Timeline notification shadow adapter', () => {
+  beforeEach(() => {
+    get.mockReset()
+    post.mockReset().mockResolvedValue({})
+  })
+
+  it('pulls a direct Timeline by peer and reports only a bounded outcome', async () => {
+    get.mockResolvedValueOnce([{ message_id: 'M42', message_seq: 42 }])
+    const verifier = createBrowserTimelineNotifyVerifier('U2')
+
+    await verifier.observe({
+      schema_version: 'v1', event_id: 'E42', message_uuid: 'M42',
+      conversation_key: 'direct:U1:U2', message_seq: 42, target_type: 0, target_uuid: 'U2',
+    })
+
+    expect(get).toHaveBeenCalledWith('/api/v1/messages/direct/U1?after_seq=41&limit=100')
+    expect(post).toHaveBeenCalledWith('/api/v1/sync/comparison', {
+      timeline_match: 1,
+      timeline_missing: 0,
+      timeline_mismatch: 0,
+      timeline_error: 0,
+      timeline_invalid: 0,
+    })
+  })
+
+  it('builds a group path and rejects a forged direct recipient', () => {
+    expect(timelineNotificationPath('U2', {
+      schema_version: 'v1', event_id: 'EG', message_uuid: 'MG',
+      conversation_key: 'group:G1', message_seq: 8, target_type: 1, target_uuid: 'G1',
+    }, 7, 20)).toBe('/api/v1/messages/group/G1?after_seq=7&limit=20')
+
+    expect(() => timelineNotificationPath('U3', {
+      schema_version: 'v1', event_id: 'E42', message_uuid: 'M42',
+      conversation_key: 'direct:U1:U2', message_seq: 42, target_type: 0, target_uuid: 'U2',
+    }, 41, 100)).toThrow('locator is invalid')
   })
 })

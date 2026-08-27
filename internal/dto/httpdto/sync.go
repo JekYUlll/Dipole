@@ -18,14 +18,19 @@ type AdvanceSyncCheckpointRequest struct {
 }
 
 type ClientSyncComparisonRequest struct {
-	Baseline    bool `json:"baseline"`
-	Match       int  `json:"match"`
-	Pending     int  `json:"pending"`
-	LegacyOnly  int  `json:"legacy_only"`
-	SyncOnly    int  `json:"sync_only"`
-	Overflow    int  `json:"overflow"`
-	StorageFull int  `json:"storage_full"`
-	SyncError   int  `json:"sync_error"`
+	Baseline         bool `json:"baseline"`
+	Match            int  `json:"match"`
+	Pending          int  `json:"pending"`
+	LegacyOnly       int  `json:"legacy_only"`
+	SyncOnly         int  `json:"sync_only"`
+	Overflow         int  `json:"overflow"`
+	StorageFull      int  `json:"storage_full"`
+	SyncError        int  `json:"sync_error"`
+	TimelineMatch    int  `json:"timeline_match"`
+	TimelineMissing  int  `json:"timeline_missing"`
+	TimelineMismatch int  `json:"timeline_mismatch"`
+	TimelineError    int  `json:"timeline_error"`
+	TimelineInvalid  int  `json:"timeline_invalid"`
 }
 
 type DeviceSyncCheckpointResponse struct {

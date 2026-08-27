@@ -95,3 +95,36 @@ ALERTS{alertname=~"DipoleWebSync(ShadowDivergence|ShadowOverflow|StorageFull|Cli
 sum by (outcome) (increase(dipole_web_sync_comparison_total{scope="incoming_direct"}[24h]))
 sum by (outcome) (increase(dipole_web_sync_client_errors_total[24h]))
 ```
+
+## 8. Timeline Notification Shadow
+
+该链路验证轻量在线通知能否可靠定位 Direct/普通群 Timeline，同时继续由现有 `chat.message` 正文驱动界面。热群不发送 `sync.item.notify.v1`，继续使用聚合 `group.message.notify` 后按 Seq 补拉。
+
+部署时需要同时启用服务端与候选 Web 构建；任一侧未启用都不会改变现有投递：
+
+```bash
+export DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE=shadow
+VITE_TIMELINE_NOTIFY_MODE=shadow npm run build
+```
+
+通知仅包含 `schema_version=1`、`event_id`、`message_uuid`、`conversation_key`、`message_seq` 和目标 locator。Web 按会话串行执行 `after_seq` 拉取；重复或过期 event 由有界 event-ID 集合过滤，通知间隔中的 Seq 缺口由下一次补拉恢复。shadow 校验不得替换、延迟或阻断完整消息展示。
+
+Prometheus 使用独立有界指标与 recording rules：
+
+```promql
+sum by (outcome) (increase(dipole_web_timeline_notify_shadow_total[24h]))
+dipole:web_timeline_notify_shadow:window_complete
+dipole:web_timeline_notify_shadow:promotion_ready
+ALERTS{alertname=~"DipoleWebTimelineNotify(Divergence|VerifierErrors)",alertstate="firing"}
+```
+
+晋级评审要求同一候选版本连续运行满 24 小时，`match >= 100`，且 `missing + mismatch + error + invalid == 0`。规则测试通过只确认表达式语义；真实 Prometheus 快照、构建版本、窗口时间和告警状态需要另行归档。达到门槛后仍需单独评审 primary 路由，当前运行时只接受 `off|shadow`。
+
+回滚同时关闭两个开关并重新发布候选 Web bundle：
+
+```text
+DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE=off
+VITE_TIMELINE_NOTIFY_MODE=off
+```
+
+回滚不涉及数据迁移；完整 WS 消息、旧 Offline、IndexedDB Sync 和热群 notify + pull 均保持原路径。

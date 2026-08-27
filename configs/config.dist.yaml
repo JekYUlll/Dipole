@@ -109,6 +109,8 @@ message:
   enforce_db_permissions: false
   # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.
   inbox_write_mode: atomic
+  # off sends only existing realtime frames; shadow appends body-free sync.item.notify.v1 locators.
+  timeline_notify_mode: off
   # Empty values inherit the global mysql block for backward-compatible local development.
   mysql:
     host: ""

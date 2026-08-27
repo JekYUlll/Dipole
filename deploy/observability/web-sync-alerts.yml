@@ -47,3 +47,32 @@ groups:
           severity: warning
         annotations:
           summary: Web Sync client recovery errors are increasing
+
+      - record: dipole:web_timeline_notify_shadow:matches_24h
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome="match"}[24h]))
+
+      - record: dipole:web_timeline_notify_shadow:failures_24h
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"missing|mismatch|error|invalid"}[24h]))
+
+      - record: dipole:web_timeline_notify_shadow:window_complete
+        expr: (count(dipole_web_timeline_notify_shadow_total{outcome="match"} offset 24h) or vector(0)) > bool 0
+
+      - record: dipole:web_timeline_notify_shadow:promotion_ready
+        expr: |
+          dipole:web_timeline_notify_shadow:window_complete
+          * (dipole:web_timeline_notify_shadow:matches_24h >= bool 100)
+          * (dipole:web_timeline_notify_shadow:failures_24h == bool 0)
+
+      - alert: DipoleWebTimelineNotifyDivergence
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"missing|mismatch"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Timeline notification shadow pull diverged from its message locator
+
+      - alert: DipoleWebTimelineNotifyVerifierErrors
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"error|invalid"}[5m])) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: Web Timeline notification shadow verification errors are increasing

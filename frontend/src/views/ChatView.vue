@@ -587,8 +587,9 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
-import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult } from '@/types'
+import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
+import { observeBrowserTimelineNotification } from '@/sync/browserSync'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1723,6 +1724,11 @@ const handleWsPacket = async (packet: WsPacket) => {
       if (chat.activeKey === key && groupUUID) {
         scheduleHotGroupPull(groupUUID)
       }
+      break
+    }
+    case 'sync.item.notify.v1': {
+      const userUUID = auth.currentUser?.uuid || ''
+      void observeBrowserTimelineNotification(userUUID, data as unknown as SyncItemNotify)
       break
     }
     case 'contact.friend_deleted': {

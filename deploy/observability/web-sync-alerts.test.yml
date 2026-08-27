@@ -149,3 +149,57 @@ tests:
               severity: warning
             exp_annotations:
               summary: Web Sync client recovery errors are increasing
+
+  - name: clean Timeline notification shadow window becomes promotion ready
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="missing"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="error"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="invalid"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_timeline_notify_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_timeline_notify_shadow:promotion_ready"}'
+            value: 1
+
+  - name: Timeline notification mismatch alerts and blocks promotion
+    interval: 1h
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="match"}'
+        values: '0 10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200 210 220 230 240 250'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="missing"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0+0x23 1 1'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="error"}'
+        values: '0+0x25'
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="invalid"}'
+        values: '0+0x25'
+    promql_expr_test:
+      - expr: dipole:web_timeline_notify_shadow:promotion_ready
+        eval_time: 24h
+        exp_samples:
+          - labels: '{__name__="dipole:web_timeline_notify_shadow:promotion_ready"}'
+            value: 0
+
+  - name: Timeline notification mismatch alerts within five minutes
+    interval: 1m
+    input_series:
+      - series: 'dipole_web_timeline_notify_shadow_total{outcome="mismatch"}'
+        values: '0 0 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleWebTimelineNotifyDivergence
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Web Timeline notification shadow pull diverged from its message locator

@@ -34,6 +34,9 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	gatewayCfg := config.GatewayConfig()
 	kafkaCfg := config.KafkaConfig()
+	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+		return nil, err
+	}
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("gateway requires internal_rpc.enabled")
 	}

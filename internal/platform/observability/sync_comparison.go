@@ -14,10 +14,12 @@ var clientSyncComparisonOutcomes = []string{
 }
 
 var clientSyncErrorOutcomes = []string{"storage_full", "sync_error"}
+var timelineNotifyShadowOutcomes = []string{"match", "missing", "mismatch", "error", "invalid"}
 
 type ClientSyncComparisonCollector struct {
 	outcomes *prometheus.CounterVec
 	errors   *prometheus.CounterVec
+	timeline *prometheus.CounterVec
 }
 
 func NewClientSyncComparisonCollector() *ClientSyncComparisonCollector {
@@ -29,11 +31,18 @@ func NewClientSyncComparisonCollector() *ClientSyncComparisonCollector {
 		Name: "dipole_web_sync_client_errors_total",
 		Help: "Web Sync client recovery failures by bounded outcome.",
 	}, []string{"outcome"})
+	collector.timeline = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "dipole_web_timeline_notify_shadow_total",
+		Help: "Web Timeline notification shadow verification observations by bounded outcome.",
+	}, []string{"outcome"})
 	for _, outcome := range clientSyncComparisonOutcomes {
 		collector.outcomes.WithLabelValues(clientSyncComparisonScope, outcome).Add(0)
 	}
 	for _, outcome := range clientSyncErrorOutcomes {
 		collector.errors.WithLabelValues(outcome).Add(0)
+	}
+	for _, outcome := range timelineNotifyShadowOutcomes {
+		collector.timeline.WithLabelValues(outcome).Add(0)
 	}
 	return collector
 }
@@ -48,7 +57,25 @@ func (c *ClientSyncComparisonCollector) ObserveClientSyncComparison(outcome stri
 	}
 	if isClientSyncErrorOutcome(outcome) && c.errors != nil {
 		c.errors.WithLabelValues(outcome).Add(float64(count))
+		return
 	}
+	if timelineOutcome, ok := timelineNotifyShadowOutcome(outcome); ok && c.timeline != nil {
+		c.timeline.WithLabelValues(timelineOutcome).Add(float64(count))
+	}
+}
+
+func timelineNotifyShadowOutcome(candidate string) (string, bool) {
+	const prefix = "timeline_"
+	if len(candidate) <= len(prefix) || candidate[:len(prefix)] != prefix {
+		return "", false
+	}
+	outcome := candidate[len(prefix):]
+	for _, allowed := range timelineNotifyShadowOutcomes {
+		if outcome == allowed {
+			return outcome, true
+		}
+	}
+	return "", false
 }
 
 func isClientSyncErrorOutcome(candidate string) bool {
@@ -76,6 +103,9 @@ func (c *ClientSyncComparisonCollector) Describe(ch chan<- *prometheus.Desc) {
 	if c != nil && c.errors != nil {
 		c.errors.Describe(ch)
 	}
+	if c != nil && c.timeline != nil {
+		c.timeline.Describe(ch)
+	}
 }
 
 func (c *ClientSyncComparisonCollector) Collect(ch chan<- prometheus.Metric) {
@@ -84,5 +114,8 @@ func (c *ClientSyncComparisonCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	if c != nil && c.errors != nil {
 		c.errors.Collect(ch)
+	}
+	if c != nil && c.timeline != nil {
+		c.timeline.Collect(ch)
 	}
 }

@@ -114,7 +114,9 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if !config.KafkaConfig().Enabled {
 		conversationUpdater = messaging.Conversations
 	}
-	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).WithLimiter(requestLimiter)
+	wsDispatcher := wsTransport.NewDispatcher(wsHub, messageApplication, conversationUpdater, !config.KafkaConfig().Enabled).
+		WithTimelineNotifyMode(config.MessageConfig().TimelineNotifyMode).
+		WithLimiter(requestLimiter)
 	authHandler := httpHandler.NewAuthHandler(authService).WithLimiter(requestLimiter)
 	adminHandler := httpHandler.NewAdminHandler(adminService)
 	conversationHandler := httpHandler.NewConversationHandler(messaging.Conversations)

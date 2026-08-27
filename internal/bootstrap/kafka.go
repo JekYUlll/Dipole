@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,8 +113,9 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
 			MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
 		}
 	}))
-	platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub))
-	platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroups, notifier))
+	timelineNotifyMode := config.MessageConfig().TimelineNotifyMode
+	platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub, timelineNotifyMode))
+	platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode))
 	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
 	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{
@@ -234,7 +236,7 @@ func updateConversationHandler(updater kafkaConversationUpdater, isGroup bool) p
 	}
 }
 
-func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
+func deliverDirectMessageHandler(hub kafkaWSEventSender, timelineNotifyMode string) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
@@ -255,12 +257,15 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			File:        payloadToWSFile(payload),
 			SentAt:      payload.SentAt,
 		})
+		if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
+			hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeSyncItemNotifyV1, notify)
+		}
 
 		return nil
 	}
 }
 
-func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *hotGroupNotifyAggregator) platformKafka.Handler {
+func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *hotGroupNotifyAggregator, timelineNotifyMode string) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 
@@ -314,6 +319,9 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 			go func(uuid string) {
 				defer wg.Done()
 				hub.SendEventToUser(uuid, wsTransport.TypeChatMessage, eventData)
+				if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
+					hub.SendEventToUser(uuid, wsTransport.TypeSyncItemNotifyV1, notify)
+				}
 			}(recipientUUID)
 		}
 		wg.Wait()
@@ -334,6 +342,21 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 
 		return nil
 	}
+}
+
+func timelineNotifyData(envelope *platformKafka.Envelope, payload service.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
+	if mode != wsTransport.TimelineNotifyShadow || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
+		return wsTransport.SyncItemNotifyData{}, false
+	}
+	eventID := payload.MessageID
+	if envelope != nil && strings.TrimSpace(envelope.EventID) != "" {
+		eventID = strings.TrimSpace(envelope.EventID)
+	}
+	return wsTransport.SyncItemNotifyData{
+		SchemaVersion: "v1", EventID: eventID, MessageUUID: payload.MessageID,
+		ConversationKey: payload.ConversationKey, MessageSeq: payload.MessageSeq,
+		TargetType: payload.TargetType, TargetUUID: payload.TargetUUID,
+	}, true
 }
 
 func messagePreview(payload service.MessageEventPayload) string {

@@ -33,6 +33,12 @@ type Dispatcher struct {
 	conversationUpdater conversationUpdater
 	syncDispatch        bool
 	limiter             messageRateLimiter
+	timelineNotifyMode  string
+}
+
+func (d *Dispatcher) WithTimelineNotifyMode(mode string) *Dispatcher {
+	d.timelineNotifyMode = mode
+	return d
 }
 
 func NewDispatcher(hub *Hub, messageService applicationPort.MessageCommand, conversationUpdater conversationUpdater, syncDispatch bool) *Dispatcher {
@@ -178,6 +184,7 @@ func (d *Dispatcher) dispatchDirect(client *Client, message *model.Message) {
 	deliveredCount := 0
 	if d.syncDispatch {
 		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+		d.sendTimelineNotification(message.TargetUUID, message)
 		if message.TargetUUID == client.sessionUser.UUID {
 			deliveredCount = max(deliveredCount-1, 0)
 		}
@@ -211,6 +218,7 @@ func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recip
 				continue
 			}
 			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
+			d.sendTimelineNotification(recipientUUID, message)
 		}
 	}
 	ack := ChatSentData{
@@ -221,6 +229,17 @@ func (d *Dispatcher) dispatchGroup(client *Client, message *model.Message, recip
 	if err := client.SendEvent(TypeChatSent, ack); err != nil && !errors.Is(err, ErrClientClosed) {
 		client.log.Warn("send websocket group chat ack failed", zap.Error(err))
 	}
+}
+
+func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) {
+	if d.timelineNotifyMode != TimelineNotifyShadow || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
+		return
+	}
+	d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
+		SchemaVersion: "v1", EventID: message.UUID, MessageUUID: message.UUID,
+		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
+		TargetType: message.TargetType, TargetUUID: message.TargetUUID,
+	})
 }
 
 func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string, clientMessageID string) {

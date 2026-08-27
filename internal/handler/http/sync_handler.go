@@ -183,13 +183,18 @@ func (h *SyncHandler) ReportComparison(c *gin.Context) {
 		return
 	}
 	counts := map[string]int{
-		"match":        request.Match,
-		"pending":      request.Pending,
-		"legacy_only":  request.LegacyOnly,
-		"sync_only":    request.SyncOnly,
-		"overflow":     request.Overflow,
-		"storage_full": request.StorageFull,
-		"sync_error":   request.SyncError,
+		"match":             request.Match,
+		"pending":           request.Pending,
+		"legacy_only":       request.LegacyOnly,
+		"sync_only":         request.SyncOnly,
+		"overflow":          request.Overflow,
+		"storage_full":      request.StorageFull,
+		"sync_error":        request.SyncError,
+		"timeline_match":    request.TimelineMatch,
+		"timeline_missing":  request.TimelineMissing,
+		"timeline_mismatch": request.TimelineMismatch,
+		"timeline_error":    request.TimelineError,
+		"timeline_invalid":  request.TimelineInvalid,
 	}
 	for _, count := range counts {
 		if count < 0 || count > 10000 {
