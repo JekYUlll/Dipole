@@ -405,6 +405,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### C2：C++ Realtime Delivery Shadow
 
+- [x] 建立独立 C++20 contract-only foundation，在 build 目录生成 canonical Protobuf 类型，共用 golden vectors，并提供 fail-closed 配置与健康端点；暂不接入运行拓扑。
 - [ ] 实现 Kafka 消费、Redis Presence 查询、节点级批处理、有界队列、背压和 QoS。
 - [ ] 与 Go Delivery 并行消费 shadow 流量，比较目标节点、收件人、顺序和延迟，不重复投递客户端。
 - [ ] 通过压测与故障注入证明收益；收益不足时保留 Go 实现并停止替换。
