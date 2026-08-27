@@ -91,6 +91,20 @@ type AgentRuntimePromotionControlServiceV1 interface {
 	Revoke(context.Context, string, string, string, string) (*AgentRuntimePromotionGrantV1, error)
 }
 
+type AgentRuntimePromotionEvidenceReviewV1 struct {
+	Proposal *AgentRuntimePromotionProposalV1
+	Artifact *AgentArtifactV1
+	Content  []byte
+}
+
+type AgentRuntimePromotionEvidenceReaderV1 interface {
+	ReadPromotionEvidence(context.Context, string, string) (*AgentArtifactV1, []byte, error)
+}
+
+type AgentRuntimePromotionEvidenceReviewServiceV1 interface {
+	Get(context.Context, string, string, string) (*AgentRuntimePromotionEvidenceReviewV1, error)
+}
+
 func NewAgentRuntimePromotionProposalV1(operatorUUID string, request AgentRuntimePromotionProposalRequestV1) (*AgentRuntimePromotionProposalV1, error) {
 	operatorUUID = strings.TrimSpace(operatorUUID)
 	request.TenantID, request.RuntimeID = strings.TrimSpace(request.TenantID), strings.TrimSpace(request.RuntimeID)

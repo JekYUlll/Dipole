@@ -654,17 +654,40 @@ func TestWorkflowRepairRPCRejectsUnauthenticatedDirectAndAgentCalls(t *testing.T
 
 func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
 	controls := &runtimePromotionControlServiceStub{proposal: &application.AgentRuntimePromotionProposalV1{ProposalUUID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionUUID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactUUID: strings.Repeat("1", 64), EvidenceSHA256: strings.Repeat("2", 64), EvalSuiteSHA256: strings.Repeat("3", 64), ProposerUUID: "U-OPS", Status: application.AgentRuntimePromotionProposalProposed, ProposedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0), GrantValidFrom: time.Unix(1, 0), GrantExpiresAt: time.Unix(3, 0)}}
+	evidence := &runtimePromotionEvidenceServiceStub{review: &application.AgentRuntimePromotionEvidenceReviewV1{
+		Proposal: controls.proposal,
+		Artifact: &application.AgentArtifactV1{ArtifactUUID: controls.proposal.EvidenceArtifactUUID, SchemaVersion: application.AgentArtifactSchemaVersionV1, TaskUUID: "TASK-1", RunUUID: "RUN-1", ArtifactType: "promotion_evaluation", Version: 1, Title: "Agent Runtime promotion evaluation", MediaType: "application/json", ContentSHA256: controls.proposal.EvidenceSHA256, SizeBytes: 2, Metadata: []byte(`{}`)},
+		Content:  []byte(`{}`),
+	}}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	server, _ = server.WithPromotionControls(controls)
+	server, _ = server.WithPromotionEvidence(evidence)
 	request := &agentv1.GetRuntimePromotionRequest{Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), TenantId: "dipole", ProposalId: controls.proposal.ProposalUUID}
 	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) })
 	if err != nil || response.(*agentv1.RuntimePromotionProposalResponse).GetProposalId() != controls.proposal.ProposalUUID || controls.operator != "U-OPS" {
 		t.Fatalf("response=%+v operator=%s err=%v", response, controls.operator, err)
 	}
+	evidenceResponse, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.GetRuntimePromotionEvidence(ctx, &agentv1.GetRuntimePromotionEvidenceRequest{Context: request.Context, TenantId: "dipole", ProposalId: controls.proposal.ProposalUUID})
+	})
+	resolved := evidenceResponse.(*agentv1.RuntimePromotionEvidenceResponse)
+	if err != nil || resolved.GetProposal().GetProposalId() != controls.proposal.ProposalUUID || resolved.GetArtifact().GetArtifactId() != controls.proposal.EvidenceArtifactUUID || string(resolved.GetContent()) != `{}` || evidence.operator != "U-OPS" {
+		t.Fatalf("evidence response=%+v operator=%s err=%v", resolved, evidence.operator, err)
+	}
 	request.Context.CallerService = "dipole-agent"
 	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) }); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent Runtime control code = %s", status.Code(err))
 	}
+}
+
+type runtimePromotionEvidenceServiceStub struct {
+	review   *application.AgentRuntimePromotionEvidenceReviewV1
+	operator string
+}
+
+func (s *runtimePromotionEvidenceServiceStub) Get(_ context.Context, operator, _, _ string) (*application.AgentRuntimePromotionEvidenceReviewV1, error) {
+	s.operator = operator
+	return s.review, nil
 }
 
 type runtimePromotionControlServiceStub struct {

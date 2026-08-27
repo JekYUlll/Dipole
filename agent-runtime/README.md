@@ -130,7 +130,7 @@ DIPOLE_INTERNAL_RPC_SHARED_SECRET=change-me \
 npm run promotion:publish -- --input=/path/to/publication.json
 ```
 
-命令复用 Agent Runtime 的受认证 Capability RPC/mTLS 配置，将完整证据和决策写入 content-addressed `promotion_evaluation` Artifact，只向标准输出返回 `contracts/agent-promotion/v2/receipt.schema.json` 定义的低敏收据。普通 Artifact 仍要求 running Shadow Run；该类型只能在 completed Shadow Run 上首次发布。收据可供 Gateway 控制面提案引用，发布本身不会创建 Proposal、Grant、active Run 或注册 write Tool。
+命令复用 Agent Runtime 的受认证 Capability RPC/mTLS 配置，将完整证据和决策写入 content-addressed `promotion_evaluation` Artifact，只向标准输出返回 `contracts/agent-promotion/v2/receipt.schema.json` 定义的低敏收据。普通 Artifact 仍要求 running Shadow Run；该类型只能在 completed Shadow Run 上首次发布。收据可供 Gateway 控制面提案引用，发布本身不会创建 Proposal、Grant、active Run 或注册 write Tool。提案创建后，已获 tenant-scoped operator Grant 的 reviewer 可通过 Gateway-only `GetRuntimePromotionEvidence` 读取 Proposal 精确绑定且重新验哈希的 Artifact 正文；该方法未挂载公共 HTTP，也不复用普通 Task-principal 下载授权。
 
 结构性安全回归位于 `src/evals/agent-security-regression.test.ts`，使用 `contracts/agent-evals/v1/security-suite.json` 串联真实 ContextCompiler、Capability Registry、EventLedger/Shadow Processor 和 MCP Client/Server。测试要求 Prompt Injection 内容保留 `untrusted` provenance、越权和敏感外发在副作用前拒绝、重复事件只规划一次、同源循环在 Ledger 前抑制。
 

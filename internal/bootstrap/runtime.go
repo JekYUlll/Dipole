@@ -214,6 +214,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}
 		var artifactService applicationPort.AgentArtifactServiceV1
+		var promotionEvidence applicationPort.AgentRuntimePromotionEvidenceReviewServiceV1
 		if storageCfg.ArtifactEnabled {
 			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
 				Enabled: storageCfg.ArtifactEnabled, Endpoint: storageCfg.ArtifactEndpoint,
@@ -224,13 +225,19 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
 			}
-			artifactService, artifactErr = appComposition.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			persistentArtifacts, serviceErr := appComposition.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			artifactErr = serviceErr
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
 			}
+			artifactService = persistentArtifacts
+			promotionEvidence, artifactErr = appComposition.NewAgentRuntimePromotionEvidenceReviewServiceV1(promotionControls, persistentArtifacts)
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Runtime promotion evidence review: %w", artifactErr)
+			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, messageCommands, approvalGrants, promotionControls, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, messageCommands, approvalGrants, promotionControls, promotionEvidence, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)
