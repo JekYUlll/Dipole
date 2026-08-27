@@ -3,6 +3,7 @@ package messagegrpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ type Client struct {
 }
 
 var _ application.MessageApplication = (*Client)(nil)
+var _ application.MessageCommandReceiptQuery = (*Client)(nil)
 
 func NewClient(rpc messagev1.MessageServiceClient) (*Client, error) {
 	return NewClientForService(rpc, "dipole-gateway")
@@ -44,6 +46,36 @@ func NewClientForService(rpc messagev1.MessageServiceClient, callerService strin
 
 func (c *Client) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	return c.SendDirectMessageContext(context.Background(), senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (c *Client) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	return c.GetMessageCommandReceiptContext(context.Background(), senderUUID, clientMessageID)
+}
+
+func (c *Client) GetMessageCommandReceiptContext(parent context.Context, senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	ctx, cancel := context.WithTimeout(parent, queryTimeout)
+	defer cancel()
+	response, err := c.rpc.GetMessageCommandReceipt(ctx, &messagev1.GetMessageCommandReceiptRequest{
+		Context: c.invocation(ctx, senderUUID), ClientMessageId: clientMessageID,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	switch response.GetStatus() {
+	case messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_ABSENT:
+		if response.GetMessage() != nil {
+			return nil, errors.New("Message Command receipt returned conflicting absent state")
+		}
+		return &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusAbsent}, nil
+	case messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_COMMITTED:
+		message := grpcmapping.MessageFromProto(response.GetMessage())
+		if message == nil || strings.TrimSpace(message.SenderUUID) != strings.TrimSpace(senderUUID) || strings.TrimSpace(message.ClientMessageID) != strings.TrimSpace(clientMessageID) {
+			return nil, errors.New("Message Command receipt returned conflicting committed binding")
+		}
+		return &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusCommitted, Message: message}, nil
+	default:
+		return nil, fmt.Errorf("Message Command receipt returned unknown status %d", response.GetStatus())
+	}
 }
 
 func (c *Client) SendDirectMessageContext(parent context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -286,6 +318,8 @@ func errorForReason(reason messagev1.ErrorReason) error {
 		return application.ErrMessageFileUnavailable
 	case messagev1.ErrorReason_ERROR_REASON_IDEMPOTENCY_CONFLICT:
 		return application.ErrMessageIdempotencyConflict
+	case messagev1.ErrorReason_ERROR_REASON_CLIENT_MESSAGE_ID_INVALID:
+		return application.ErrMessageClientMessageIDInvalid
 	default:
 		return nil
 	}

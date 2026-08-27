@@ -27,6 +27,14 @@ type stubMessageApplication struct {
 	listGroup           func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
 	listGroupBeforeSeq  func(currentUserUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	commandContext      correlation.IDs
+	receipt             func(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error)
+}
+
+func (s *stubMessageApplication) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
+	if s.receipt == nil {
+		return &applicationPort.MessageCommandReceipt{Status: applicationPort.MessageCommandReceiptStatusAbsent}, nil
+	}
+	return s.receipt(senderUUID, clientMessageID)
 }
 
 func (s *stubMessageApplication) SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -135,6 +143,55 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	}
 	if application.commandContext.RequestID != "grpc-request-1" || application.commandContext.TraceID != "grpc-trace-1" {
 		t.Fatalf("unexpected command context: %+v", application.commandContext)
+	}
+}
+
+func TestServerGetsSenderScopedMessageCommandReceipt(t *testing.T) {
+	t.Parallel()
+
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+		receipt: func(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
+			if senderUUID != "U100" || clientMessageID != "C100" {
+				t.Fatalf("unexpected receipt query sender=%q client=%q", senderUUID, clientMessageID)
+			}
+			return &applicationPort.MessageCommandReceipt{
+				Status:  applicationPort.MessageCommandReceiptStatusCommitted,
+				Message: &model.Message{UUID: "M100", SenderUUID: senderUUID, ClientMessageID: clientMessageID, Content: "hello"},
+			}, nil
+		},
+	}
+	client := newBufconnClient(t, application)
+	response, err := client.GetMessageCommandReceipt(context.Background(), &messagev1.GetMessageCommandReceiptRequest{
+		Context: grpccommon.RequestContext(" U100 ", "dipole-agent"), ClientMessageId: " C100 ",
+	})
+	if err != nil || response.GetStatus() != messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_COMMITTED || response.GetMessage().GetServerMessageId() != "M100" {
+		t.Fatalf("receipt response=%+v err=%v", response, err)
+	}
+}
+
+func TestServerRejectsInvalidMessageCommandReceiptQuery(t *testing.T) {
+	t.Parallel()
+
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+		receipt: func(string, string) (*applicationPort.MessageCommandReceipt, error) {
+			t.Fatal("invalid receipt query reached application")
+			return nil, nil
+		},
+	}
+	client := newBufconnClient(t, application)
+	_, err := client.GetMessageCommandReceipt(context.Background(), &messagev1.GetMessageCommandReceiptRequest{
+		Context: grpccommon.RequestContext("U100", "dipole-agent"),
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("blank client message ID code=%s err=%v", status.Code(err), err)
+	}
+	_, err = client.GetMessageCommandReceipt(context.Background(), &messagev1.GetMessageCommandReceiptRequest{ClientMessageId: "C100"})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("missing principal code=%s err=%v", status.Code(err), err)
 	}
 }
 
@@ -277,6 +334,32 @@ func TestClientPreservesDomainErrorAcrossRPC(t *testing.T) {
 	_, err = remote.SendDirectMessage("U100", "U200", "hello", "C100")
 	if !errors.Is(err, applicationPort.ErrMessageFriendRequired) {
 		t.Fatalf("expected friendship domain error, got %v", err)
+	}
+}
+
+func TestClientGetsMessageCommandReceiptAcrossRPC(t *testing.T) {
+	t.Parallel()
+
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+		receipt: func(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
+			return &applicationPort.MessageCommandReceipt{
+				Status:  applicationPort.MessageCommandReceiptStatusCommitted,
+				Message: &model.Message{UUID: "M100", SenderUUID: senderUUID, ClientMessageID: clientMessageID},
+			}, nil
+		},
+	}
+	remote, err := NewClientForService(newBufconnClient(t, application), "dipole-agent")
+	if err != nil {
+		t.Fatalf("new remote client: %v", err)
+	}
+	receipt, err := remote.GetMessageCommandReceipt("U100", "C100")
+	if err != nil || receipt.Status != applicationPort.MessageCommandReceiptStatusCommitted || receipt.Message.UUID != "M100" {
+		t.Fatalf("remote receipt=%+v err=%v", receipt, err)
+	}
+	if _, err := remote.GetMessageCommandReceipt("U100", " "); !errors.Is(err, applicationPort.ErrMessageClientMessageIDInvalid) {
+		t.Fatalf("remote invalid receipt query error=%v", err)
 	}
 }
 

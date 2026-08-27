@@ -12,23 +12,56 @@ import (
 )
 
 type agentCommandMessagesStub struct {
-	kind            application.AgentMessageCommandKindV1
-	sender          string
-	target          string
-	content         string
-	clientMessageID string
-	ids             correlation.IDs
-	lineage         eventlineage.Lineage
+	kind              application.AgentMessageCommandKindV1
+	sender            string
+	target            string
+	content           string
+	clientMessageID   string
+	ids               correlation.IDs
+	lineage           eventlineage.Lineage
+	sendErr           error
+	receipt           *application.MessageCommandReceipt
+	receiptErr        error
+	receiptSender     string
+	receiptClientID   string
+	receiptContextErr error
+	sendMessage       *model.Message
 }
 
 func (s *agentCommandMessagesStub) SendAssistantTextMessageContext(ctx context.Context, sender, target, content, clientMessageID string) (*model.Message, error) {
 	s.record(ctx, application.AgentMessageCommandAssistantReplyV1, sender, target, content, clientMessageID)
-	return &model.Message{UUID: "M-REPLY", ClientMessageID: clientMessageID, MessageType: model.MessageTypeAIText}, nil
+	if s.sendErr != nil {
+		return nil, s.sendErr
+	}
+	if s.sendMessage != nil {
+		return s.sendMessage, nil
+	}
+	return commandStubMessage("M-REPLY", sender, target, content, clientMessageID, model.MessageTypeAIText), nil
 }
 
 func (s *agentCommandMessagesStub) SendSystemDirectMessageCommandContext(ctx context.Context, sender, target, content, clientMessageID string) (*model.Message, error) {
 	s.record(ctx, application.AgentMessageCommandSystemMessageV1, sender, target, content, clientMessageID)
-	return &model.Message{UUID: "M-SYSTEM", ClientMessageID: clientMessageID, MessageType: model.MessageTypeSystem}, nil
+	if s.sendErr != nil {
+		return nil, s.sendErr
+	}
+	if s.sendMessage != nil {
+		return s.sendMessage, nil
+	}
+	return commandStubMessage("M-SYSTEM", sender, target, content, clientMessageID, model.MessageTypeSystem), nil
+}
+
+func (s *agentCommandMessagesStub) GetMessageCommandReceiptContext(ctx context.Context, sender, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	s.receiptSender, s.receiptClientID = sender, clientMessageID
+	s.receiptContextErr = ctx.Err()
+	return s.receipt, s.receiptErr
+}
+
+func commandStubMessage(uuid, sender, target, content, clientMessageID string, messageType int8) *model.Message {
+	return &model.Message{
+		UUID: uuid, SenderUUID: sender, TargetUUID: target, TargetType: model.MessageTargetDirect,
+		ConversationKey: model.DirectConversationKey(sender, target), Content: content,
+		ClientMessageID: clientMessageID, MessageType: messageType,
+	}
 }
 
 func (s *agentCommandMessagesStub) record(ctx context.Context, kind application.AgentMessageCommandKindV1, sender, target, content, clientMessageID string) {
@@ -104,6 +137,95 @@ func TestLocalAgentCommandV1UsesStableIdempotencyKey(t *testing.T) {
 	}
 	if first.ClientMessageID == "" || first.ClientMessageID != second.ClientMessageID {
 		t.Fatalf("command replay changed idempotency key: first=%q second=%q", first.ClientMessageID, second.ClientMessageID)
+	}
+}
+
+func TestLocalAgentCommandV1RecoversCommittedReceiptAfterUncertainSend(t *testing.T) {
+	t.Parallel()
+
+	sendErr := context.DeadlineExceeded
+	messages := &agentCommandMessagesStub{sendErr: sendErr}
+	commands, err := NewLocalAgentCommandV1(messages)
+	if err != nil {
+		t.Fatalf("new Agent Command: %v", err)
+	}
+	command := application.AgentMessageCommandV1{
+		CommandID: "trigger:M100:assistant-reply", Kind: application.AgentMessageCommandAssistantReplyV1,
+		Invocation: agentCapabilityTestInvocation(), Content: "hello",
+	}
+	clientMessageID := agentCommandClientMessageIDV1(command.Kind, command.CommandID)
+	messages.receipt = &application.MessageCommandReceipt{
+		Status:  application.MessageCommandReceiptStatusCommitted,
+		Message: commandStubMessage("M-RECOVERED", command.Invocation.AgentUUID, command.Invocation.PrincipalUUID, command.Content, clientMessageID, model.MessageTypeAIText),
+	}
+
+	parent, cancel := context.WithCancel(context.Background())
+	cancel()
+	message, err := commands.SendMessage(parent, command)
+	if err != nil || message.UUID != "M-RECOVERED" || messages.receiptSender != command.Invocation.AgentUUID || messages.receiptClientID != clientMessageID || messages.receiptContextErr != nil {
+		t.Fatalf("recovered message=%+v sender=%q client=%q receipt_ctx=%v err=%v", message, messages.receiptSender, messages.receiptClientID, messages.receiptContextErr, err)
+	}
+}
+
+func TestLocalAgentCommandV1RejectsAbsentOrConflictingReceipt(t *testing.T) {
+	t.Parallel()
+
+	command := application.AgentMessageCommandV1{
+		CommandID: "trigger:M100:system-message", Kind: application.AgentMessageCommandSystemMessageV1,
+		Invocation: agentCapabilityTestInvocation(), Content: "notice",
+	}
+	clientMessageID := agentCommandClientMessageIDV1(command.Kind, command.CommandID)
+	for _, test := range []struct {
+		name    string
+		receipt *application.MessageCommandReceipt
+		wantErr error
+	}{
+		{name: "absent", receipt: &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusAbsent}, wantErr: context.DeadlineExceeded},
+		{name: "content drift", receipt: &application.MessageCommandReceipt{
+			Status:  application.MessageCommandReceiptStatusCommitted,
+			Message: commandStubMessage("M-CONFLICT", command.Invocation.AgentUUID, command.Invocation.PrincipalUUID, "different", clientMessageID, model.MessageTypeSystem),
+		}, wantErr: application.ErrAgentCommandConflict},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			messages := &agentCommandMessagesStub{sendErr: context.DeadlineExceeded, receipt: test.receipt}
+			commands, err := NewLocalAgentCommandV1(messages)
+			if err != nil {
+				t.Fatalf("new Agent Command: %v", err)
+			}
+			if _, err := commands.SendMessage(context.Background(), command); !errors.Is(err, test.wantErr) {
+				t.Fatalf("receipt error=%v want=%v", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestLocalAgentCommandV1PreservesReceiptFailureAndRejectsSendBindingDrift(t *testing.T) {
+	t.Parallel()
+
+	command := application.AgentMessageCommandV1{
+		CommandID: "trigger:M100:assistant-reply", Kind: application.AgentMessageCommandAssistantReplyV1,
+		Invocation: agentCapabilityTestInvocation(), Content: "hello",
+	}
+	receiptErr := errors.New("receipt backend unavailable")
+	messages := &agentCommandMessagesStub{sendErr: context.DeadlineExceeded, receiptErr: receiptErr}
+	commands, err := NewLocalAgentCommandV1(messages)
+	if err != nil {
+		t.Fatalf("new Agent Command: %v", err)
+	}
+	if _, err := commands.SendMessage(context.Background(), command); !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, receiptErr) {
+		t.Fatalf("joined recovery error=%v", err)
+	}
+
+	messages = &agentCommandMessagesStub{sendMessage: commandStubMessage(
+		"M-WRONG", command.Invocation.AgentUUID, command.Invocation.PrincipalUUID, "different",
+		agentCommandClientMessageIDV1(command.Kind, command.CommandID), model.MessageTypeAIText,
+	)}
+	commands, err = NewLocalAgentCommandV1(messages)
+	if err != nil {
+		t.Fatalf("new Agent Command for drift: %v", err)
+	}
+	if _, err := commands.SendMessage(context.Background(), command); !errors.Is(err, application.ErrAgentCommandConflict) {
+		t.Fatalf("send binding drift error=%v", err)
 	}
 }
 

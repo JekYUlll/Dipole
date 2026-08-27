@@ -3,6 +3,7 @@ package messagegrpc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -98,6 +99,46 @@ func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroup
 		return nil, rpcError(err)
 	}
 	return sendResponse(message, recipients), nil
+}
+
+func (s *Server) GetMessageCommandReceipt(ctx context.Context, request *messagev1.GetMessageCommandReceiptRequest) (*messagev1.GetMessageCommandReceiptResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	principal, err := principalFrom(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	clientMessageID := strings.TrimSpace(request.GetClientMessageId())
+	if clientMessageID == "" {
+		return nil, rpcError(application.ErrMessageClientMessageIDInvalid)
+	}
+	query, ok := s.application.(application.MessageCommandReceiptQuery)
+	if !ok {
+		return nil, status.Error(codes.Internal, "Message Command receipt query is unavailable")
+	}
+	receipt, err := query.GetMessageCommandReceipt(principal, clientMessageID)
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	if receipt == nil {
+		return nil, status.Error(codes.Internal, "Message Command receipt is unavailable")
+	}
+	switch receipt.Status {
+	case application.MessageCommandReceiptStatusAbsent:
+		if receipt.Message != nil {
+			return nil, status.Error(codes.Internal, "Message Command receipt has conflicting state")
+		}
+		return &messagev1.GetMessageCommandReceiptResponse{Status: messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_ABSENT}, nil
+	case application.MessageCommandReceiptStatusCommitted:
+		if receipt.Message == nil || strings.TrimSpace(receipt.Message.SenderUUID) != principal || strings.TrimSpace(receipt.Message.ClientMessageID) != clientMessageID {
+			return nil, status.Error(codes.Internal, "Message Command receipt has conflicting binding")
+		}
+		return &messagev1.GetMessageCommandReceiptResponse{
+			Status:  messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_COMMITTED,
+			Message: grpcmapping.MessageToProto(receipt.Message),
+		}, nil
+	default:
+		return nil, status.Error(codes.Internal, "Message Command receipt has unknown state")
+	}
 }
 
 func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListDirectHistoryRequest) (*messagev1.ListMessagesResponse, error) {
@@ -235,6 +276,8 @@ func rpcError(err error) error {
 		return statusWithReason(codes.PermissionDenied, err, messagev1.ErrorReason_ERROR_REASON_GROUP_FORBIDDEN)
 	case errors.Is(err, application.ErrMessageIdempotencyConflict):
 		return statusWithReason(codes.AlreadyExists, err, messagev1.ErrorReason_ERROR_REASON_IDEMPOTENCY_CONFLICT)
+	case errors.Is(err, application.ErrMessageClientMessageIDInvalid):
+		return statusWithReason(codes.InvalidArgument, err, messagev1.ErrorReason_ERROR_REASON_CLIENT_MESSAGE_ID_INVALID)
 	case errors.Is(err, application.ErrMessageTargetUnavailable):
 		return statusWithReason(codes.FailedPrecondition, err, messagev1.ErrorReason_ERROR_REASON_TARGET_UNAVAILABLE)
 	case errors.Is(err, application.ErrMessageFileUnavailable):
