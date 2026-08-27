@@ -42,8 +42,13 @@ type TLS struct {
 }
 
 type Metrics struct {
-	Enabled bool   `mapstructure:"enabled"`
-	Address string `mapstructure:"address"`
+	Enabled                        bool   `mapstructure:"enabled"`
+	Address                        string `mapstructure:"address"`
+	DependencyProbesEnabled        bool   `mapstructure:"dependency_probes_enabled"`
+	DependencyProbeIntervalSeconds int    `mapstructure:"dependency_probe_interval_seconds"`
+	DependencyProbeTimeoutMS       int    `mapstructure:"dependency_probe_timeout_ms"`
+	DependencyFailureThreshold     int    `mapstructure:"dependency_failure_threshold"`
+	DependencySuccessThreshold     int    `mapstructure:"dependency_success_threshold"`
 }
 
 type MySQL struct {
@@ -324,6 +329,11 @@ func Load() error {
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
 		v.SetDefault("metrics.enabled", false)
 		v.SetDefault("metrics.address", "127.0.0.1:9100")
+		v.SetDefault("metrics.dependency_probes_enabled", false)
+		v.SetDefault("metrics.dependency_probe_interval_seconds", 5)
+		v.SetDefault("metrics.dependency_probe_timeout_ms", 1000)
+		v.SetDefault("metrics.dependency_failure_threshold", 3)
+		v.SetDefault("metrics.dependency_success_threshold", 2)
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
@@ -716,8 +726,13 @@ func TLSConfig() TLS {
 func MetricsConfig() Metrics {
 	MustLoad()
 	return Metrics{
-		Enabled: cfg.GetBool("metrics.enabled"),
-		Address: strings.TrimSpace(cfg.GetString("metrics.address")),
+		Enabled:                        cfg.GetBool("metrics.enabled"),
+		Address:                        strings.TrimSpace(cfg.GetString("metrics.address")),
+		DependencyProbesEnabled:        cfg.GetBool("metrics.dependency_probes_enabled"),
+		DependencyProbeIntervalSeconds: cfg.GetInt("metrics.dependency_probe_interval_seconds"),
+		DependencyProbeTimeoutMS:       cfg.GetInt("metrics.dependency_probe_timeout_ms"),
+		DependencyFailureThreshold:     cfg.GetInt("metrics.dependency_failure_threshold"),
+		DependencySuccessThreshold:     cfg.GetInt("metrics.dependency_success_threshold"),
 	}
 }
 
@@ -745,10 +760,23 @@ func CassandraConfig() Cassandra {
 
 func ElasticsearchConfig() Elasticsearch {
 	MustLoad()
+	return elasticsearchConfig(cfg)
+}
+
+func elasticsearchConfig(source *viper.Viper) Elasticsearch {
 	var elasticsearch Elasticsearch
-	if err := cfg.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
+	if err := source.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
 		panic(fmt.Errorf("unmarshal Elasticsearch config: %w", err))
 	}
+	elasticsearch.Enabled = source.GetBool("elasticsearch.enabled")
+	elasticsearch.Address = source.GetString("elasticsearch.address")
+	elasticsearch.IndexPrefix = source.GetString("elasticsearch.index_prefix")
+	elasticsearch.Shards = source.GetInt("elasticsearch.shards")
+	elasticsearch.Replicas = source.GetInt("elasticsearch.replicas")
+	elasticsearch.RequestTimeoutSeconds = source.GetInt("elasticsearch.request_timeout_seconds")
+	elasticsearch.Username = source.GetString("elasticsearch.username")
+	elasticsearch.Password = source.GetString("elasticsearch.password")
+	elasticsearch.APIKey = source.GetString("elasticsearch.api_key")
 	return elasticsearch
 }
 

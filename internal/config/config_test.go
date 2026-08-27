@@ -11,6 +11,41 @@ import (
 	"github.com/spf13/viper"
 )
 
+func TestConfigDistDeclaresSafeDependencyReadinessDefaults(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("metrics.dependency_probes_enabled") {
+		t.Fatal("dependency probes must remain opt-in outside deployment overlays")
+	}
+	if v.GetInt("metrics.dependency_probe_interval_seconds") != 5 ||
+		v.GetInt("metrics.dependency_probe_timeout_ms") != 1000 ||
+		v.GetInt("metrics.dependency_failure_threshold") != 3 ||
+		v.GetInt("metrics.dependency_success_threshold") != 2 {
+		t.Fatal("dependency readiness defaults drifted")
+	}
+}
+
+func TestElasticsearchConfigLoadsEnvironmentOverrides(t *testing.T) {
+	t.Setenv("DIPOLE_ELASTICSEARCH_ENABLED", "true")
+	t.Setenv("DIPOLE_ELASTICSEARCH_ADDRESS", "http://search.example:9200")
+	v := viper.New()
+	v.SetEnvPrefix("DIPOLE")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	for _, key := range []string{"elasticsearch.enabled", "elasticsearch.address"} {
+		if err := v.BindEnv(key); err != nil {
+			t.Fatalf("bind %s: %v", key, err)
+		}
+	}
+	elasticsearch := elasticsearchConfig(v)
+	if !elasticsearch.Enabled || elasticsearch.Address != "http://search.example:9200" {
+		t.Fatalf("Elasticsearch environment override = %+v", elasticsearch)
+	}
+}
+
 func TestConfigDistDeclaresDisabledIsolatedAgentArtifactStorage(t *testing.T) {
 	v := viper.New()
 	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))

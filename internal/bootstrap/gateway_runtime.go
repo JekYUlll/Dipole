@@ -129,6 +129,15 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
 	}
+	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(),
+		redisReadinessProbe("redis", runtime.redis),
+		grpcReadinessProbe("core-rpc", runtime.coreConn),
+		grpcReadinessProbe("message-rpc", runtime.messageConn),
+		kafkaReadinessProbe("kafka", platformKafka.Client),
+	); err != nil {
+		cleanup()
+		return nil, fmt.Errorf("configure Gateway dependency readiness: %w", err)
+	}
 	if runtime.metrics != nil {
 		markRuntimeReady(runtime.metrics)
 	}

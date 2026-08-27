@@ -163,12 +163,24 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		runtime.Close()
 		return nil, fmt.Errorf("start message metrics: %w", err)
 	}
+	readinessProbes := []platformObservability.DependencyProbe{
+		mysqlReadinessProbe("mysql", store.SQLDB),
+		grpcReadinessProbe("core-rpc", runtime.coreConn),
+	}
+	if messageCfg.RuntimeMode == "owner" {
+		readinessProbes = append(readinessProbes, kafkaReadinessProbe("kafka", platformKafka.Client))
+	}
+	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
+		runtime.Close()
+		return nil, fmt.Errorf("configure Message dependency readiness: %w", err)
+	}
 	runtime.rpc, err = NewMessageRPCServer(rpcCfg, servedMessages)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
+		bindRPCReadiness(runtime.metrics, runtime.rpc)
 		markRuntimeReady(runtime.metrics)
 	}
 	return runtime, nil

@@ -29,6 +29,11 @@ metrics:
   # Bind to loopback by default. Container deployments may bind the private service network.
   enabled: false
   address: 127.0.0.1:9100
+  dependency_probes_enabled: false
+  dependency_probe_interval_seconds: 5
+  dependency_probe_timeout_ms: 1000
+  dependency_failure_threshold: 3
+  dependency_success_threshold: 2
 
 auth:
   token_ttl_hours: 168

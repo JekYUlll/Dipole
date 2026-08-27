@@ -69,12 +69,19 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		runtime.Close()
 		return nil, fmt.Errorf("start Search Service metrics: %w", err)
 	}
+	if err := configureRuntimeDependencyReadiness(runtime.metrics, metricsCfg,
+		elasticsearchReadinessProbe("elasticsearch", index), grpcReadinessProbe("core-rpc", runtime.coreConn),
+	); err != nil {
+		runtime.Close()
+		return nil, fmt.Errorf("configure Search dependency readiness: %w", err)
+	}
 	runtime.rpc, err = NewSearchRPCServer(rpcCfg, search)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Search rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
+		bindRPCReadiness(runtime.metrics, runtime.rpc)
 		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Search Service runtime initialized", zap.String("read_alias", index.ReadAlias()))
@@ -92,6 +99,10 @@ func (r *SearchRuntime) Close() {
 	if r == nil {
 		return
 	}
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("Search Service metrics close failed", zap.Error(err))
+	}
+	r.metrics = nil
 	shutdownSec := r.shutdownSec
 	if shutdownSec <= 0 {
 		shutdownSec = 15
@@ -106,10 +117,6 @@ func (r *SearchRuntime) Close() {
 		_ = r.coreConn.Close()
 		r.coreConn = nil
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
-		logger.Warn("Search Service metrics close failed", zap.Error(err))
-	}
-	r.metrics = nil
 	if r.httpClient != nil {
 		r.httpClient.CloseIdleConnections()
 		r.httpClient = nil
