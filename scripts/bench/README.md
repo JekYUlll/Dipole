@@ -11,7 +11,7 @@
 - 宿主端口：`18080/18443`、`18081..18083` 和独立基础设施端口
 - Docker 网段：`10.201.0.0/24`
 - Named volumes：归属于候选 Compose project
-- Fresh MySQL：one-shot `dipole-migrate` 完成后节点才启动
+- Fresh MySQL：候选脚本以 one-shot `dipole-migrate` 命令完成迁移后再启动节点
 - Agent：基准期间固定 `runtime_mode=off`，避免外部模型依赖污染实时数据面
 
 默认 `docker-compose.dist.yml` 仍使用 `dipole-*`、原宿主端口、`10.200.0.0/24` 和 `dipole-server:latest`。

@@ -9,8 +9,8 @@ class CandidateTopologyContractTest(unittest.TestCase):
     def test_dist_compose_exposes_isolation_controls_with_legacy_defaults(self):
         compose = (ROOT / "docker-compose.dist.yml").read_text(encoding="utf-8")
 
-        self.assertEqual(compose.count("image: ${DIPOLE_IMAGE:-dipole-server:latest}"), 4)
-        for suffix in ("mysql", "redis", "kafka", "kafdrop", "minio", "minio-init", "migrate", "node1", "node2", "node3", "nginx"):
+        self.assertEqual(compose.count("image: ${DIPOLE_IMAGE:-dipole-server:latest}"), 3)
+        for suffix in ("mysql", "redis", "kafka", "kafdrop", "minio", "minio-init", "node1", "node2", "node3", "nginx"):
             self.assertIn(f"container_name: ${{DIPOLE_CONTAINER_PREFIX:-dipole}}-{suffix}", compose)
         for variable in (
             "DIPOLE_MYSQL_PORT",
@@ -24,8 +24,6 @@ class CandidateTopologyContractTest(unittest.TestCase):
             "DIPOLE_NETWORK_SUBNET",
         ):
             self.assertIn(variable, compose)
-        self.assertIn('entrypoint: ["/app/dipole-migrate"]', compose)
-        self.assertGreaterEqual(compose.count("condition: service_completed_successfully"), 3)
 
     def test_candidate_script_pins_image_and_has_non_destructive_rollback(self):
         script = (ROOT / "scripts/bench/candidate_topology.sh").read_text(encoding="utf-8")
@@ -39,6 +37,9 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("io.dipole.source.dirty", script)
         self.assertIn('DIPOLE_IMAGE="${image_id}"', script)
         self.assertIn("DIPOLE_AI_RUNTIME_MODE=off", script)
+        self.assertIn("/app/dipole-migrate", script)
+        self.assertIn("--wait-timeout", script)
+        self.assertLess(script.index("/app/dipole-migrate"), script.index("dipole-node1 dipole-node2"))
         self.assertIn("docker compose", script)
         self.assertNotIn("down --volumes", script)
 

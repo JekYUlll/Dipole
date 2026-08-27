@@ -146,21 +146,6 @@ services:
       mc admin policy attach local dipole-agent-artifact-maintenance-inspect --user \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY\"
       "
 
-  migrate:
-    image: ${DIPOLE_IMAGE:-dipole-server:latest}
-    container_name: ${DIPOLE_CONTAINER_PREFIX:-dipole}-migrate
-    restart: "no"
-    entrypoint: ["/app/dipole-migrate"]
-    command: ["-direction", "up"]
-    depends_on:
-      mysql:
-        condition: service_healthy
-    volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-    env_file:
-      - path: .env
-        required: false
-
   # ── 应用节点 ────────────────────────────────────────────────────────────────
   # 三个节点共享同一镜像，通过环境变量区分 node_id。
   # 环境变量使用 DIPOLE_ 前缀，viper 自动映射到对应配置键（. → _）。
@@ -170,8 +155,6 @@ services:
     container_name: ${DIPOLE_CONTAINER_PREFIX:-dipole}-node1
     restart: unless-stopped
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       mysql:
         condition: service_healthy
       redis:
@@ -208,8 +191,6 @@ services:
     container_name: ${DIPOLE_CONTAINER_PREFIX:-dipole}-node2
     restart: unless-stopped
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       mysql:
         condition: service_healthy
       redis:
@@ -245,8 +226,6 @@ services:
     container_name: ${DIPOLE_CONTAINER_PREFIX:-dipole}-node3
     restart: unless-stopped
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       mysql:
         condition: service_healthy
       redis:

@@ -100,7 +100,10 @@ case "${1:-}" in
   up)
     require_command curl
     verify_candidate_image "${2:-${C1_IMAGE:-}}"
-    compose up -d
+    compose up -d --wait --wait-timeout "${C1_READY_TIMEOUT_SECONDS}" mysql redis kafka minio
+    compose up --no-deps minio-init
+    compose run --rm --no-deps --entrypoint /app/dipole-migrate dipole-node1 -direction up
+    compose up -d kafdrop dipole-node1 dipole-node2 dipole-node3 nginx
     wait_ready
     compose ps
     ;;

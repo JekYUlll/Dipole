@@ -17,7 +17,8 @@
 
 ### 新增
 
-- C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖，fresh MySQL 先执行 one-shot migration；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA 并关闭 embedded Agent 后启动独立 project，`down` 保留候选卷。canonical Compose gate 同时验证默认和候选渲染。
+- C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA、关闭 embedded Agent，并依次等待基础设施、执行 MinIO 初始化和 one-shot migration 后启动独立 project，`down` 保留候选卷。迁移编排不进入基础 Compose 服务依赖，既有共享拓扑继续支持 `compose start`。canonical Compose gate 同时验证默认和候选渲染。
+- C1 归档同一候选镜像下 20/50/100 并发连接、每连接 2 条消息的 Go 实时数据面梯度证据：三档接收、持久化和投递率均为 100%，Kafka lag 最终归零；吞吐从 2.51 增至 4.85 msg/s 的同时 P95 从 1.07s 增至 8.08s，提示下一步需用故障恢复和分段剖析定位等待/串行化路径。
 - C1 基准健康检查支持自定义节点 URL，operations/baseline v4 归档无凭据的 API 与 WebSocket 实际端点，避免隔离端口与报告环境描述漂移。
 - C1 为 Go 实时数据面基准增加运行镜像来源门禁：Docker 镜像写入 OCI revision/created 与 source dirty 标签，`run_bench.sh` 从运行容器解析不可变 container/image ID，并要求被测服务、采集器和干净源码树绑定同一完整 Git revision；operations/baseline v4 归档逐服务来源证据，缺标签、dirty 构建、提交偏差或重复容器绑定均在负载启动前 fail closed。
 - C1 增加 Go 实时数据面资源基准采集：`process_metrics.py` 从固定服务 PID 的 `/proc` 多点采样 CPU、RSS、线程与 context switch，`run_bench.sh` 将结果绑定到 operations/baseline v4；进程重启、服务集合漂移和计数异常 fail closed，v1-v3 历史报告继续可读并显式标记资源证据不可用。真实连接梯度与故障基线仍待独立归档。

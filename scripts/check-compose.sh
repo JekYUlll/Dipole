@@ -37,8 +37,6 @@ jq -e '
   and .services["dipole-node1"].ports[0].published == "18081"
   and .services["dipole-node2"].ports[0].published == "18082"
   and .services["dipole-node3"].ports[0].published == "18083"
-  and .services.migrate.entrypoint == ["/app/dipole-migrate"]
-  and .services["dipole-node1"].depends_on.migrate.condition == "service_completed_successfully"
   and .services["dipole-node1"].environment.DIPOLE_AI_RUNTIME_MODE == "off"
   and .services.nginx.ports[0].published == "18080"
   and .networks.default.ipam.config[0].subnet == "10.201.0.0/24"
