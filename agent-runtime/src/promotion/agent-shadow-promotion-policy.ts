@@ -1,4 +1,5 @@
 import type { AgentTaskProjectionReconcileReport } from "../reconcile/agent-task-projection-reconciler.js";
+import { offlineEvalCategories, parseOfflineEvalReport, type OfflineEvalReport } from "../evals/offline-evaluator.js";
 import { z } from "zod";
 
 const hourMs = 60 * 60 * 1000;
@@ -11,6 +12,12 @@ export const agentShadowPromotionPolicy = {
   requiredProjectionEvalCases: 6,
   requiredAgentEvals: ["outcome", "trajectory", "permission"] as const
 };
+
+export const agentShadowPromotionPolicyV2 = {
+  ...agentShadowPromotionPolicy,
+  schemaVersion: "dipole.agent.shadow-promotion-policy.v2",
+  requiredAgentEvals: offlineEvalCategories
+} as const;
 
 export interface AgentShadowPromotionEvidence {
   schemaVersion: "dipole.agent.shadow-promotion-evidence.v1";
@@ -41,6 +48,27 @@ export interface AgentShadowPromotionDecision {
   scannedTasks: number;
 }
 
+export interface AgentShadowPromotionEvidenceV2 {
+  schemaVersion: "dipole.agent.shadow-promotion-evidence.v2";
+  candidateVersion: string;
+  windowStartedAt: string;
+  windowEndedAt: string;
+  observations: AgentShadowPromotionEvidence["observations"];
+  projectionEvals: { passed: number; total: number };
+  offlineEvalReport: OfflineEvalReport;
+}
+
+export interface AgentShadowPromotionDecisionV2 {
+  schemaVersion: "dipole.agent.shadow-promotion-decision.v2";
+  candidateVersion: string;
+  decision: "eligible" | "blocked";
+  reasons: string[];
+  observedHours: number;
+  observations: number;
+  scannedTasks: number;
+  offlineEvalSuiteSha256: string;
+}
+
 const outcomeSchema = z.object({
   match: z.number().int().nonnegative(), missing: z.number().int().nonnegative(),
   stale: z.number().int().nonnegative(), ahead: z.number().int().nonnegative(),
@@ -67,8 +95,23 @@ const promotionEvidenceSchema = z.object({
   }).strict()
 }).strict();
 
+const promotionEvidenceV2Schema = z.object({
+  schemaVersion: z.literal("dipole.agent.shadow-promotion-evidence.v2"),
+  candidateVersion: z.string().trim().min(1),
+  windowStartedAt: z.string().datetime(),
+  windowEndedAt: z.string().datetime(),
+  observations: promotionEvidenceSchema.shape.observations,
+  projectionEvals: z.object({ passed: z.number().int().nonnegative(), total: z.number().int().nonnegative() }).strict(),
+  offlineEvalReport: z.unknown()
+}).strict();
+
 export function parseAgentShadowPromotionEvidence(value: unknown): AgentShadowPromotionEvidence {
   return promotionEvidenceSchema.parse(value) as AgentShadowPromotionEvidence;
+}
+
+export function parseAgentShadowPromotionEvidenceV2(value: unknown): AgentShadowPromotionEvidenceV2 {
+  const parsed = promotionEvidenceV2Schema.parse(value);
+  return { ...parsed, offlineEvalReport: parseOfflineEvalReport(parsed.offlineEvalReport) } as AgentShadowPromotionEvidenceV2;
 }
 
 export function evaluateAgentShadowPromotion(evidence: AgentShadowPromotionEvidence): AgentShadowPromotionDecision {
@@ -118,6 +161,44 @@ export function evaluateAgentShadowPromotion(evidence: AgentShadowPromotionEvide
     observedHours,
     observations: evidence.observations.length,
     scannedTasks
+  };
+}
+
+export function evaluateAgentShadowPromotionV2(evidence: AgentShadowPromotionEvidenceV2): AgentShadowPromotionDecisionV2 {
+  const report = parseOfflineEvalReport(evidence.offlineEvalReport);
+  if (report.candidateVersion !== evidence.candidateVersion) {
+    throw new Error("Agent shadow promotion offline evaluation candidate version does not match evidence candidate version");
+  }
+  const legacyEvidence: AgentShadowPromotionEvidence = {
+    schemaVersion: "dipole.agent.shadow-promotion-evidence.v1",
+    candidateVersion: evidence.candidateVersion,
+    windowStartedAt: evidence.windowStartedAt,
+    windowEndedAt: evidence.windowEndedAt,
+    observations: evidence.observations,
+    evals: {
+      projectionPassed: evidence.projectionEvals.passed,
+      projectionTotal: evidence.projectionEvals.total,
+      outcome: true,
+      trajectory: true,
+      permission: true
+    }
+  };
+  const legacyDecision = evaluateAgentShadowPromotion(legacyEvidence);
+  const reasons = new Set(legacyDecision.reasons);
+  if (!report.passed) reasons.add("offline_eval_failed");
+  for (const category of offlineEvalCategories) {
+    const summary = report.summary.categories[category];
+    if (summary.passed !== summary.total) reasons.add(`${category}_eval_failed`);
+  }
+  return {
+    schemaVersion: "dipole.agent.shadow-promotion-decision.v2",
+    candidateVersion: evidence.candidateVersion,
+    decision: reasons.size === 0 ? "eligible" : "blocked",
+    reasons: [...reasons].sort(),
+    observedHours: legacyDecision.observedHours,
+    observations: legacyDecision.observations,
+    scannedTasks: legacyDecision.scannedTasks,
+    offlineEvalSuiteSha256: report.suiteSha256
   };
 }
 

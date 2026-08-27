@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "dipole.agent.offline-eval-suite.v1",
+  "candidateVersion": "agent-runtime@candidate-1",
+  "cases": [
+    {
+      "id": "outcome.conversation-digest",
+      "category": "outcome",
+      "expected": {
+        "requiredOutputIds": ["artifact:conversation_digest"],
+        "forbiddenOutputIds": ["message:unexpected"]
+      },
+      "observed": {"outputIds": ["artifact:conversation_digest"]}
+    },
+    {
+      "id": "trajectory.read-only-digest",
+      "category": "trajectory",
+      "expected": {
+        "steps": ["context.compile", "tool.conversation.list", "artifact.create"],
+        "forbiddenSteps": ["tool.message.send"]
+      },
+      "observed": {"steps": ["context.compile", "tool.conversation.list", "artifact.create"]}
+    },
+    {
+      "id": "permission.unapproved-send-denied",
+      "category": "permission",
+      "expected": {
+        "decisions": [{
+          "capabilityId": "message.system.send",
+          "resourceType": "conversation",
+          "resourceId": "group:g1",
+          "action": "write",
+          "decision": "denied"
+        }]
+      },
+      "observed": {
+        "decisions": [{
+          "capabilityId": "message.system.send",
+          "resourceType": "conversation",
+          "resourceId": "group:g1",
+          "action": "write",
+          "decision": "denied"
+        }]
+      }
+    },
+    {
+      "id": "retrieval.project-evidence",
+      "category": "retrieval",
+      "expected": {
+        "relevantEvidenceIds": ["evidence:e1", "evidence:e2"],
+        "minimumRecall": 1,
+        "minimumPrecision": 1
+      },
+      "observed": {"retrievedEvidenceIds": ["evidence:e1", "evidence:e2"]}
+    },
+    {
+      "id": "cost.conversation-digest-budget",
+      "category": "cost",
+      "expected": {
+        "maximums": {
+          "modelCalls": 1,
+          "toolCalls": 2,
+          "totalTokens": 4000,
+          "totalCostMicrousd": 50000,
+          "latencyMs": 30000
+        }
+      },
+      "observed": {
+        "modelCalls": 1,
+        "toolCalls": 2,
+        "totalTokens": 2400,
+        "totalCostMicrousd": 12000,
+        "latencyMs": 4200
+      }
+    }
+  ]
+}

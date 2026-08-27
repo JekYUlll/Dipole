@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布
+- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。首份 Suite 使用稳定 ID 与 synthetic observation，验证 evaluator、脱敏和晋级链。
+- **风险：** synthetic fixture 只能证明 Harness 语义。缺少真实 Shadow Task adapter、人工标注 outcome/evidence、权限攻击 corpus、检索相关性集合和按模型/场景校准的成本阈值时，`eligible` 无法证明产品效果或生产成本满足目标。
+- **建议方向：** 从持久 Task/Run/Step/Tool/Artifact/Model audit 生成只读 observation adapter，建立版本化 Project Guardian corpus 和 reviewer agreement；按场景统计 precision/recall、trajectory 差异和成本分位数，报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
+- **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
+
 ### AD-037：MCP 网络入口尚缺 OAuth、共享流量治理与写能力门禁
 
 - **优先级：** P1

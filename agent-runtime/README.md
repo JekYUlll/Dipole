@@ -94,6 +94,14 @@ npm run promotion:check -- --evidence=/path/to/evidence.json
 
 策略要求连续 24 小时、至少 24 个观察点、最大间隔 90 分钟、累计至少 100 个 Task、零 projection 异常与 unavailable，并要求 projection/outcome/trajectory/permission Eval 全通过。eligible 只用于人工评审，命令不修改配置或运行时权威。
 
+G4 五类 deterministic 离线评测使用语言中立 Suite：
+
+```bash
+npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
+```
+
+报告绑定 candidate version 与 canonical Suite SHA-256，按 outcome、trajectory、permission、retrieval、cost 输出低敏结果。合法且全部通过返回 0，合法但有失败返回 2，输入错误返回 1。新候选应把完整报告写入 `dipole.agent.shadow-promotion-evidence.v2`；`promotion:check` 自动分派 v1/v2，v2 要求五类报告全部通过。当前样例属于 synthetic Harness 证据，不能代表真实 Agent 效果。
+
 确认 Temporal 证据后，操作员可生成短时效修复候选 Artifact：
 
 ```bash
