@@ -59,7 +59,7 @@ OTEL_TRACES_SAMPLER_ARG=0.1 \
 npm start
 ```
 
-Runtime 拒绝非 HTTP endpoint、嵌入 URL 的凭据、非 protobuf 协议和越界采样/超时。SDK 在业务 Runtime 创建前注册，并在进程逆序关闭的最后阶段 flush；span 仅包含设计文档列出的低敏属性。Collector、保留策略和告警尚未纳入默认 Compose profile，启用前需按 `AD-037` 完成环境验收。
+Runtime 拒绝非 HTTP endpoint、嵌入 URL 的凭据、非 protobuf 协议和越界采样/超时。SDK 在业务 Runtime 创建前注册，并在进程逆序关闭的最后阶段 flush；span 仅包含设计文档列出的低敏属性。默认关闭的 `observability` profile 提供 24 小时 local Tempo、Collector 指标和 Prometheus 告警，配置与真实 trace 可分别通过 `scripts/check-agent-otel-observability.sh`、`scripts/smoke-agent-otel.sh` 验证。完整启用、联查与回滚步骤见 `docs/agent-otel-operations.md`；生产对象存储和通知链仍由 `AD-037` 跟踪。
 
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
 

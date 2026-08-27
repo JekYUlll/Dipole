@@ -476,9 +476,36 @@ services:
     ports:
       - "9090:9090"
 
+  tempo:
+    profiles: ["observability"]
+    image: grafana/tempo:2.10.5
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./deploy/observability/tempo.yml:/etc/tempo/config.yml:ro
+      - tempo_trace_data:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+
+  otel-collector:
+    profiles: ["observability"]
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.159.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    volumes:
+      - ./deploy/observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    ports:
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
+      - "127.0.0.1:8888:8888"
+    depends_on:
+      tempo:
+        condition: service_started
+
 volumes:
   mysql_microservices_data:
   redis_microservices_data:
   kafka_microservices_data:
   minio_microservices_data:
   elasticsearch_microservices_data:
+  tempo_trace_data:
