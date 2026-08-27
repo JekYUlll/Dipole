@@ -379,8 +379,8 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			return err
 		}
 
-		var payload service.ConversationReadReceipt
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		payload, err := service.DecodeConversationReadReceipt(envelope.EventType, envelope.Payload)
+		if err != nil {
 			logger.Warn("decode direct read payload failed", zap.Error(err))
 			return err
 		}
@@ -501,8 +501,8 @@ func deliverContactFriendDeletedHandler(hub kafkaWSEventSender) platformKafka.Ha
 			return err
 		}
 
-		var payload service.ContactFriendDeletedPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		payload, err := service.DecodeContactFriendDeletedPayload(envelope.EventType, envelope.Payload)
+		if err != nil {
 			logger.Warn("decode contact friend deleted payload failed", zap.Error(err))
 			return err
 		}
@@ -536,8 +536,8 @@ func decodeGroupEventPayload(event platformKafka.Event) (service.GroupEventPaylo
 		return service.GroupEventPayload{}, err
 	}
 
-	var payload service.GroupEventPayload
-	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+	payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+	if err != nil {
 		return service.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
 	}
 
@@ -550,8 +550,8 @@ func decodeSessionKickPayload(event platformKafka.Event) (service.SessionKickEve
 		return service.SessionKickEventPayload{}, err
 	}
 
-	var payload service.SessionKickEventPayload
-	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+	payload, err := service.DecodeSessionKickEventPayload(envelope.EventType, envelope.Payload)
+	if err != nil {
 		return service.SessionKickEventPayload{}, fmt.Errorf("unmarshal session kick payload: %w", err)
 	}
 
