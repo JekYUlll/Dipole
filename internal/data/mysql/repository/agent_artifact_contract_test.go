@@ -75,7 +75,7 @@ func TestAgentArtifactMySQLImmutableConcurrencyContract(t *testing.T) {
 	if exists, err := artifacts.ExistsByObjectKey(context.Background(), artifact.ObjectBucket, artifact.ObjectKey+"-missing"); err != nil || exists {
 		t.Fatalf("missing Artifact object lookup=%t err=%v", exists, err)
 	}
-	if err := runner.Down(context.Background(), 1); err != nil {
+	if err := runner.Down(context.Background(), 2); err != nil {
 		t.Fatalf("rollback migration v26: %v", err)
 	}
 	var tableCount int
@@ -85,7 +85,7 @@ func TestAgentArtifactMySQLImmutableConcurrencyContract(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("reapply migration v26: %v", err)
 	}
-	if version, err := runner.CurrentVersion(context.Background()); err != nil || version != 26 {
+	if version, err := runner.CurrentVersion(context.Background()); err != nil || version != 27 {
 		t.Fatalf("migration version after reapply: version=%d err=%v", version, err)
 	}
 }
