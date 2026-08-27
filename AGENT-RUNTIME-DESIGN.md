@@ -186,7 +186,7 @@ Eval Harness 同时评估：
 
 G4 使用 `dipole.agent.offline-eval-suite.v1` 固定五类 deterministic case，并生成绑定 candidate version 与 canonical Suite SHA-256 的低敏报告。Outcome 检查必要/禁止输出 ID，Trajectory 检查精确 Step 与禁止动作，Permission 比较 capability/resource/action 决策，Retrieval 计算 precision/recall，Cost 对模型调用、Tool 调用、Token、微美元与延迟执行硬预算。Harness 不调用 LLM judge，避免评测自身产生随机性和未审计成本。
 
-Shadow 晋级 v2 将完整五类报告作为证据，任一类别缺失或失败均阻断；v1 保留历史兼容。当前语言中立 fixture 只验证 Harness 与版本迁移，真实 Task adapter、人工标注语料、生产 retrieval relevance 和成本阈值需要在切流前独立采证（`AD-038`）。
+Shadow 晋级 v2 将完整五类报告作为证据，任一类别缺失或失败均阻断；v1 保留历史兼容。G4 真实 Task adapter 使用 sqlc/TS 共享查询只读提取 Task/Run、Context provenance、Step、Artifact、ModelCall 与 ToolCall，并与人工评审 manifest 合成五类 Suite；Task/Run 摘要进入 case ID，Suite SHA-256 因此绑定来源执行且报告不暴露内部 ID。模型路由单价必须显式版本化，缺失终态或指标时 fail closed。真实 Project Guardian corpus、reviewer agreement、生产 retrieval relevance 和成本分位阈值仍需在切流前独立采证（`AD-038`）。
 
 G4 security suite 复用五类 Harness 串联实际 Runtime 边界：ContextCompiler 保留系统策略顺序并标记外部事件为 `untrusted`，Capability Registry 在执行前拒绝越权资源，EventLedger 收敛重复事件，lineage 在 Ledger/模型前抑制同源循环，MCP Client 在网络发送前执行 Tool 级 egress policy。Egress policy 采用显式顶层参数 allowlist、请求大小/深度上限和常见凭据字段拒绝；值级 DLP、外部凭据托管和模型语义攻击仍属于切流前门禁。
 

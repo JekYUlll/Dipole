@@ -18,9 +18,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布
-- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。首份通用 Suite 使用稳定 ID 与 synthetic observation；security suite 进一步串联真实 Context、Policy/Capability、EventLedger/lineage 和 MCP 结构边界。
-- **风险：** 当前证据可证明 Harness 与结构性门禁语义。缺少真实 Shadow Task adapter、人工标注 outcome/evidence、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本阈值时，`eligible` 无法证明产品效果或生产成本满足目标。
-- **建议方向：** 从持久 Task/Run/Step/Tool/Artifact/Model audit 生成只读 observation adapter，建立版本化 Project Guardian corpus 和 reviewer agreement；按场景统计 precision/recall、trajectory 差异和成本分位数，报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
+- **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。security suite 串联真实结构边界。真实 Shadow adapter 现通过 sqlc/TS 共享只读查询提取 Task/Run/Context/Step/Artifact/ModelCall/ToolCall，将数据库 observation 与版本化评审 manifest 合成五类 Suite；Task/Run 摘要绑定 case ID，独立 MySQL 账号仅具八张审计表 SELECT。缺失终态、指标或路由价格时 fail closed。
+- **风险：** 当前证据可证明 Harness、结构性门禁和真实持久执行转换语义。缺少人工标注的 Project Guardian outcome/evidence、reviewer agreement、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本分位阈值时，`eligible` 仍无法证明产品效果或生产成本满足目标。Step 表仅保存最后一次 attempt 的时间，真实 adapter 会拒绝 `attempt_count != 1`，逐 attempt 成本审计仍待补充。
+- **建议方向：** 建立版本化 Project Guardian corpus 和双评审 agreement，使用真实 adapter 按场景统计 precision/recall、trajectory 差异和成本分位数；报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 
 ### AD-037：MCP 网络入口尚缺 OAuth、共享流量治理与写能力门禁
