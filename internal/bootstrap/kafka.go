@@ -87,7 +87,12 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		})
 	}
 	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
-	if config.AIConfig().Enabled {
+	aiConfig := config.AIConfig()
+	runsEmbeddedAgent, err := aiConfig.RunsEmbeddedAgent()
+	if err != nil {
+		return fmt.Errorf("resolve AI runtime mode: %w", err)
+	}
+	if runsEmbeddedAgent {
 		agentCapability, err := appComposition.NewLocalAgentCapabilityV1(
 			messaging.Core,
 			messaging.Messages,
@@ -96,7 +101,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return fmt.Errorf("compose Agent Capability v1: %w", err)
 		}
-		if aiService, err := newAIService(repos.AICallLogs, messaging.Messages, agentCapability); err != nil {
+		if aiService, err := newAIService(aiConfig, repos.AICallLogs, messaging.Messages, agentCapability); err != nil {
 			return err
 		} else if aiService != nil {
 			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
@@ -425,9 +430,12 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(logs applicationPort.AICallLogStore, messageService *appComposition.LocalMessageApplication, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
-	aiConfig := config.AIConfig()
-	if !aiConfig.Enabled {
+func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, messageService *appComposition.LocalMessageApplication, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
+	runsEmbeddedAgent, err := aiConfig.RunsEmbeddedAgent()
+	if err != nil {
+		return nil, fmt.Errorf("resolve AI runtime mode: %w", err)
+	}
+	if !runsEmbeddedAgent {
 		return nil, nil
 	}
 	if capability == nil {

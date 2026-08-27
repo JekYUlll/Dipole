@@ -169,6 +169,17 @@ Embedded Runtime 已完成第一层 `ExecutionContext`：Service 从触发 Messa
 
 进程内 Capability 基线位于 `contracts/agent-capabilities/v1/schema.json` 与 `application.AgentCapabilityV1`。五项 operation 覆盖受限用户资料、Agent 直聊消息、会话列表、授权会话读取和系统消息命令；`app.LocalAgentCapabilityV1` 组合 Core Capability、Conversation Service 与 Message Application。Embedded ContextBuilder/Tool 仅依赖该端口，远程 gRPC/Connect adapter 后续复用同一 contract。
 
+G1 使用 `ai.runtime_mode` 控制迁移：
+
+| 模式 | Go/Eino consumer | TS Runtime | 写入权 |
+| --- | --- | --- | --- |
+| `off` | 关闭 | 关闭 | 无 |
+| `embedded` | 权威执行 | 关闭 | Go |
+| `shadow` | 权威执行 | 独立 consumer group 旁路评测 | 仅 Go |
+| `remote` | 关闭 | 权威执行 | TS 经 Capability/Command API |
+
+未配置 mode 时，`ai.enabled=true|false` 兼容映射为 `embedded|off`。显式 mode 优先，非法值阻止 Kafka handler 注册。TS Runtime、远程 Capability 与写入审批门禁完成前，生产环境不能切换 `remote`。
+
 ## 9. 渐进路线
 
 1. 固化 Go/Eino 行为基线、可信 ExecutionContext、事件契约和评测集，建立 Capability API 与 Agent Command API。
