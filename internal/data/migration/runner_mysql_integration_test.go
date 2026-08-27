@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 33
+const currentMigrationVersion = 34
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -45,15 +45,22 @@ func TestMySQLBaselineMigration(t *testing.T) {
 			t.Fatalf("repeat migration: %v", err)
 		}
 		assertMigrationCount(t, db, currentMigrationVersion)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (34, 'future_expand')"); err != nil {
+		futureVersion := currentMigrationVersion + 1
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (?, 'future_expand')", futureVersion); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 34"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Event Subscription control migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 33)
+		assertTableCount(t, db, 45)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Runtime promotion control migration: %v", err)
 		}
@@ -360,9 +367,9 @@ func TestAgentEventSubscriptionMigrationEnforcesBindings(t *testing.T) {
 	}
 	if _, err := db.Exec(`INSERT INTO agent_event_subscriptions (
 		subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
-		status, event_type, resource_type, resource_id, filter_kind, filter_json
+		status, event_type, resource_type, resource_id, filter_kind, filter_json, created_by_uuid
 	) VALUES ('SUB-EVENT', 'DEF-EVENT', 1, 'dipole', ?, 'active',
-		'message.direct.created', 'conversation', '*', 'all', '{}')`, agentUUID); err != nil {
+		'message.direct.created', 'conversation', '*', 'all', '{}', 'U100')`, agentUUID); err != nil {
 		t.Fatalf("insert Event Subscription with default Agent UUID: %v", err)
 	}
 	if _, err := db.Exec(`INSERT INTO agent_tasks (
@@ -380,9 +387,9 @@ func TestAgentEventSubscriptionMigrationEnforcesBindings(t *testing.T) {
 	} {
 		if _, err := db.Exec(`INSERT INTO agent_event_subscriptions (
 			subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
-			status, event_type, resource_type, resource_id, filter_kind, filter_json
+			status, event_type, resource_type, resource_id, filter_kind, filter_json, created_by_uuid
 		) VALUES (?, 'DEF-EVENT', 1, 'dipole', ?, ?,
-			'message.direct.created', 'conversation', '*', ?, '{}')`, invalid.uuid, agentUUID, invalid.status, invalid.filter); err == nil {
+			'message.direct.created', 'conversation', '*', ?, '{}', 'U100')`, invalid.uuid, agentUUID, invalid.status, invalid.filter); err == nil {
 			t.Fatalf("expected subscription status/filter constraint for %+v", invalid)
 		}
 	}

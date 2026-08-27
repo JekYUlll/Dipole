@@ -43,6 +43,34 @@ type eventSubscriptionResolverStub struct {
 	err     error
 }
 
+type eventSubscriptionControlStub struct {
+	principal string
+	created   application.AgentEventSubscriptionCreateRequestV1
+	listed    application.AgentEventSubscriptionListRequestV1
+	revoked   application.AgentEventSubscriptionRevokeRequestV1
+	item      application.AgentEventSubscriptionV1
+}
+
+func (s *eventSubscriptionControlStub) Create(_ context.Context, principal string, request application.AgentEventSubscriptionCreateRequestV1) (*application.AgentEventSubscriptionV1, error) {
+	s.principal, s.created = principal, request
+	copy := s.item
+	return &copy, nil
+}
+
+func (s *eventSubscriptionControlStub) List(_ context.Context, principal string, request application.AgentEventSubscriptionListRequestV1) (*application.AgentEventSubscriptionPageV1, error) {
+	s.principal, s.listed = principal, request
+	return &application.AgentEventSubscriptionPageV1{Subscriptions: []application.AgentEventSubscriptionV1{s.item}, NextCursor: "NEXT"}, nil
+}
+
+func (s *eventSubscriptionControlStub) Revoke(_ context.Context, principal string, request application.AgentEventSubscriptionRevokeRequestV1) (*application.AgentEventSubscriptionV1, error) {
+	s.principal, s.revoked = principal, request
+	copy := s.item
+	copy.Status = application.AgentSubscriptionStatusRevoked
+	now := time.Unix(3, 0)
+	copy.RevokedAt, copy.UpdatedAt, copy.RevokedByUUID, copy.RevokeReason = &now, now, principal, request.Reason
+	return &copy, nil
+}
+
 type agentMemoryResolverStub struct {
 	taskUUID, runUUID, resourceType, resourceID string
 	limit                                       int
@@ -438,7 +466,7 @@ func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 2,
 		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
 		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
-		FilterKind: application.AgentSubscriptionFilterMessageContainsAny, FilterJSON: []byte(`{"terms":["incident"]}`),
+		FilterKind: application.AgentSubscriptionFilterMessageContainsAny, FilterJSON: []byte(`{"terms":["incident"]}`), CreatedByUUID: "U100",
 	}}}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	server, _ = server.WithEventSubscriptions(resolver)
@@ -463,6 +491,47 @@ func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func TestEventSubscriptionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
+	control := &eventSubscriptionControlStub{item: application.AgentEventSubscriptionV1{
+		SubscriptionUUID: strings.Repeat("a", 64), DefinitionUUID: "DEF-1", DefinitionVersion: 2,
+		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: "U100",
+		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithEventSubscriptionControls(control)
+	requestContext := grpccommon.RequestContext("U100", "dipole-gateway")
+	created, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.CreateEventSubscription(ctx, &agentv1.CreateEventSubscriptionRequest{
+			Context: requestContext, TenantId: "dipole", DefinitionId: "DEF-1", DefinitionVersion: 2,
+			EventType: "message.direct.created", ResourceType: "conversation", ResourceId: "group:G1",
+			FilterKind: "all", FilterJson: []byte(`{}`),
+		})
+	})
+	if err != nil || created.(*agentv1.AgentEventSubscription).GetCreatedById() != "U100" || control.principal != "U100" || control.created.DefinitionVersion != 2 {
+		t.Fatalf("create response=%+v control=%+v err=%v", created, control, err)
+	}
+	listed, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListEventSubscriptions(ctx, &agentv1.ListEventSubscriptionsRequest{Context: requestContext, TenantId: "dipole", Limit: 20})
+	})
+	if err != nil || len(listed.(*agentv1.ListEventSubscriptionsResponse).GetSubscriptions()) != 1 || listed.(*agentv1.ListEventSubscriptionsResponse).GetNextCursor() != "NEXT" || control.listed.Limit != 20 {
+		t.Fatalf("list response=%+v control=%+v err=%v", listed, control, err)
+	}
+	revoked, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.RevokeEventSubscription(ctx, &agentv1.RevokeEventSubscriptionRequest{Context: requestContext, TenantId: "dipole", SubscriptionId: control.item.SubscriptionUUID, Reason: "retired"})
+	})
+	if err != nil || revoked.(*agentv1.AgentEventSubscription).GetRevokeReason() != "retired" || control.revoked.SubscriptionUUID != control.item.SubscriptionUUID {
+		t.Fatalf("revoke response=%+v control=%+v err=%v", revoked, control, err)
+	}
+	requestContext.CallerService = "dipole-agent"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListEventSubscriptions(ctx, &agentv1.ListEventSubscriptionsRequest{Context: requestContext, TenantId: "dipole"})
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent data-plane management code = %s", status.Code(err))
 	}
 }
 

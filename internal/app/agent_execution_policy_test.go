@@ -378,7 +378,7 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 			SubscriptionUUID: "SUB-1", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
 			TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
 			EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
-			FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`),
+			FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: definition.OwnerUUID,
 		},
 	}
 

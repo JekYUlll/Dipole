@@ -13,7 +13,7 @@ func TestAgentEventSubscriptionV1ValidatesDeterministicFilters(t *testing.T) {
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
 		TenantID: "dipole", AgentUUID: "UAI", Status: AgentSubscriptionStatusActive,
 		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
-		FilterKind: AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`),
+		FilterKind: AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`), CreatedByUUID: "U100",
 	}
 	if err := base.Validate(); err != nil {
 		t.Fatalf("valid all subscription: %v", err)
@@ -32,7 +32,7 @@ func TestAgentEventSubscriptionV1RejectsUnsafeOrAmbiguousPolicies(t *testing.T) 
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
 		TenantID: "dipole", AgentUUID: "UAI", Status: AgentSubscriptionStatusActive,
 		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
-		FilterKind: AgentSubscriptionFilterMessageContainsAny,
+		FilterKind: AgentSubscriptionFilterMessageContainsAny, CreatedByUUID: "U100",
 	}
 	for _, filter := range []string{`{}`, `{"terms":[]}`, `{"terms":["ok"],"model":"gpt"}`, `{"terms":["bad\nterm"]}`} {
 		candidate := base

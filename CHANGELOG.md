@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加 Gateway-only Event Subscription 管理控制面：migration v34 为 v28 订阅补充 creator/revoker、撤销原因与更新时间，并从绑定的不可变 Definition owner 回填历史审计。认证 `dipole-gateway` 从 RequestContext 派生 owner，可创建、分页查看和撤销精确 Definition version 订阅；Core 重新校验 tenant、Agent、有效期、`conversation.read` 与 resource scope。`message_contains_any` 以 trim/lowercase/去重/排序生成规范 JSON 和稳定 SHA-256 Subscription ID，等价创建及同原因撤销可安全重放，漂移返回冲突。未增加公开 HTTP/Pencil 页面、语义预筛或生产触发切换。
 - Agent G4 增加 Gateway-only 晋升证据 review projection：已获 tenant-scoped promotion operator 权限的 reviewer 可按 Proposal ID 读取其精确绑定的 `promotion_evaluation` Artifact 元数据和正文；应用层先复用控制面 `Get` 授权，再校验 Artifact ID/type/version/media/content SHA-256 并从专用对象存储复算正文证据。未授权调用不会触达 Artifact reader，普通 Task-principal 下载权限不变，专用存储未装配时 RPC unavailable；当前未暴露公共 HTTP、active authority 或 write Tool。
 - Agent G4 补齐真实 Shadow 晋升证据发布链：`promotion:publish` 只接受语言中立 v1 publication 输入，重新解析完整 promotion v2 证据并要求决策为 `eligible`，随后以 canonical JSON 创建 completed Shadow Run 绑定的不可变 `promotion_evaluation` Artifact。Core 对该终态例外严格校验固定类型/版本/媒体类型、pinned Definition、candidate、Suite SHA-256、正文 envelope 与 metadata 一致性；普通 Artifact 继续仅允许 running Shadow Run。CLI 只输出 Artifact/content/Suite hash 绑定的低敏收据，不自动创建 Proposal、Grant、active Run 或 write Tool。
 - Agent G4 增加默认关闭的 approved Capability projection：Core 只在 durable promotion authorizer 已通过的 active admission/context resolve 后，从 pinned Definition 的 `message.write` 与 conversation/write scope 投影显式 allowlist 中唯一的 `message.system.send`；shadow、未知 ID、重复项及 Registry 后增 Tool 均无法扩权。Go RPC 出口与 TS ExecutionContext 双重校验，TS write Policy 仍要求同一 Capability，后续还需精确 Approval consumption、Tool audit 和 Message Command。生产 Bootstrap 未注入 authorizer，Runtime 入口未注册 write projection/executor。
@@ -307,6 +308,7 @@
 
 ### 迁移说明
 
+- migration v34 为 `agent_event_subscriptions` 增加 owner/revocation 审计列和一致性约束。先迁移 Core，再滚动发布 additive Go/TS Proto；迁移会从固定 Definition version 回填 creator，历史 revoked 行使用 `legacy_v28_migration` 标明来源。回滚前停止新的管理 RPC 写入；v34 Down 只删除新增审计列，保留 v28 订阅与 Task 绑定。生产 `subscription` 模式仍需完成 AD-034 的前端管理与语义基线门禁。
 - 数据库新增 migration v33：创建 `agent_runtime_promotion_operator_grants`、`agent_runtime_promotion_proposals`、`agent_runtime_promotion_reviews` 和 `agent_runtime_promotion_revocations`。升级不会自动创建 operator Grant；部署者需通过受控运维流程预置 tenant-scoped proposer/reviewer/revoker，且应保持职责分离。回滚 v33 会删除控制面提案、复核和撤销审计表，不影响 v32 durable Grant 表，但应先停用控制 API 并归档审计证据。
 
 - 新增 MySQL migration v32：创建 `agent_runtime_promotion_grants`，并为 `agent_runs` 增加可空 `candidate_version`。现有 embedded/shadow Run 无需回填；历史 active Run 缺少 candidate 或 production authorizer 时会 fail closed，回滚会先移除 Run candidate 字段再删除 grant 表。
@@ -368,6 +370,7 @@
 
 ### 验证
 
+- Agent Event Subscription 控制测试覆盖大小写无关集合规范化、稳定 ID、等价创建重放、owner/tenant/Definition/scope 越权、分页隔离、撤销审计与冲突重放、Gateway/Agent 服务身份分离；真实 MySQL 8.4 验证 migration v1→v34、v33→v34 历史回填、sqlc owner 查询、创建/revoke CAS 和显式回到 v27 后重建。
 - Runtime promotion 测试覆盖 v2 policy、SHA-256、双人签署、candidate/Definition 漂移、有效期、撤销、冲突重放、active admission 与逐次 context 重查；真实 MySQL 8.4 验证 sqlc grant contract，以及完整 migration v1→v32→v1 和全部历史回填集成测试。
 - Approval grant 测试覆盖 active Run/Task、Core scope hash、唯一 exact binding、零/多匹配、过期/消费/撤销过滤、RPC 服务身份与 NotFound 收敛、TS scope/arguments/nonce 摘要复核及 write gate adapter；sqlc 查询固定 `LIMIT 2`，不静默选择候选。
 - MCP Message write projection 测试覆盖审批消费、Tool begin、同 Invocation ID 的 Command RPC、action finish 的严格顺序，以及 direct conversation、active mode、显式 executor、Command kind 和返回引用漂移的 fail-closed 行为；现有 read Tool 回归保持通过。
@@ -463,7 +466,7 @@
 ### 已知问题
 
 - Memory v1 仅提供受控 Store 和运行时读取链，尚无自动写入/纠正/删除 API、压缩反思 Worker、置信度与版本冲突策略、混合/向量召回和用户 UI；共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
-- Event Subscription v1 尚无用户/Gateway 管理 API，也未接入小模型、embedding 或向量召回；共享环境继续固定 `direct_target`。管理入口完成认证、版本化变更、撤销审计和 UI 前，不启用 `subscription` 流量模式，详见 `AD-034`。
+- Event Subscription 已具备 Gateway-only 内部 owner 管理与撤销审计，尚无公开 HTTP/Pencil 页面，也未接入小模型、embedding 或向量召回；共享环境继续固定 `direct_target`。完成用户界面和真实事件语义基线前不启用 `subscription` 流量模式，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。

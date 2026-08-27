@@ -464,10 +464,48 @@ message AgentEventSubscription {
   string resource_id = 8;
   string filter_kind = 9;
   bytes filter_json = 10;
+  string status = 11;
+  string created_by_id = 12;
+  string revoked_by_id = 13;
+  string revoke_reason = 14;
+  int64 created_at_unix_ms = 15;
+  int64 updated_at_unix_ms = 16;
+  int64 revoked_at_unix_ms = 17;
 }
 
 message MatchEventSubscriptionsResponse {
   repeated AgentEventSubscription subscriptions = 1;
+}
+
+message CreateEventSubscriptionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string definition_id = 3;
+  uint64 definition_version = 4;
+  string event_type = 5;
+  string resource_type = 6;
+  string resource_id = 7;
+  string filter_kind = 8;
+  bytes filter_json = 9;
+}
+
+message ListEventSubscriptionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string after_subscription_id = 3;
+  uint32 limit = 4;
+}
+
+message ListEventSubscriptionsResponse {
+  repeated AgentEventSubscription subscriptions = 1;
+  string next_cursor = 2;
+}
+
+message RevokeEventSubscriptionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string subscription_id = 3;
+  string reason = 4;
 }
 
 message ListContextMemoriesRequest {
@@ -501,6 +539,9 @@ message ListContextMemoriesResponse {
 
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
+  rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
+  rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);

@@ -20,6 +20,9 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AgentCapabilityService_MatchEventSubscriptions_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/MatchEventSubscriptions"
+	AgentCapabilityService_CreateEventSubscription_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/CreateEventSubscription"
+	AgentCapabilityService_ListEventSubscriptions_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ListEventSubscriptions"
+	AgentCapabilityService_RevokeEventSubscription_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/RevokeEventSubscription"
 	AgentCapabilityService_ListContextMemories_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
 	AgentCapabilityService_AdmitRun_FullMethodName                            = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
@@ -53,6 +56,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AgentCapabilityServiceClient interface {
 	MatchEventSubscriptions(ctx context.Context, in *MatchEventSubscriptionsRequest, opts ...grpc.CallOption) (*MatchEventSubscriptionsResponse, error)
+	CreateEventSubscription(ctx context.Context, in *CreateEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
+	ListEventSubscriptions(ctx context.Context, in *ListEventSubscriptionsRequest, opts ...grpc.CallOption) (*ListEventSubscriptionsResponse, error)
+	RevokeEventSubscription(ctx context.Context, in *RevokeEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
 	ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
@@ -93,6 +99,36 @@ func (c *agentCapabilityServiceClient) MatchEventSubscriptions(ctx context.Conte
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchEventSubscriptionsResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_MatchEventSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) CreateEventSubscription(ctx context.Context, in *CreateEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentEventSubscription)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CreateEventSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListEventSubscriptions(ctx context.Context, in *ListEventSubscriptionsRequest, opts ...grpc.CallOption) (*ListEventSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListEventSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListEventSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RevokeEventSubscription(ctx context.Context, in *RevokeEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentEventSubscription)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RevokeEventSubscription_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -364,6 +400,9 @@ func (c *agentCapabilityServiceClient) GetArtifact(ctx context.Context, in *GetA
 // for forward compatibility.
 type AgentCapabilityServiceServer interface {
 	MatchEventSubscriptions(context.Context, *MatchEventSubscriptionsRequest) (*MatchEventSubscriptionsResponse, error)
+	CreateEventSubscription(context.Context, *CreateEventSubscriptionRequest) (*AgentEventSubscription, error)
+	ListEventSubscriptions(context.Context, *ListEventSubscriptionsRequest) (*ListEventSubscriptionsResponse, error)
+	RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error)
 	ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
@@ -402,6 +441,15 @@ type UnimplementedAgentCapabilityServiceServer struct{}
 
 func (UnimplementedAgentCapabilityServiceServer) MatchEventSubscriptions(context.Context, *MatchEventSubscriptionsRequest) (*MatchEventSubscriptionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MatchEventSubscriptions not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) CreateEventSubscription(context.Context, *CreateEventSubscriptionRequest) (*AgentEventSubscription, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateEventSubscription not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListEventSubscriptions(context.Context, *ListEventSubscriptionsRequest) (*ListEventSubscriptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListEventSubscriptions not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeEventSubscription not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContextMemories not implemented")
@@ -517,6 +565,60 @@ func _AgentCapabilityService_MatchEventSubscriptions_Handler(srv interface{}, ct
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).MatchEventSubscriptions(ctx, req.(*MatchEventSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_CreateEventSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateEventSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CreateEventSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CreateEventSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CreateEventSubscription(ctx, req.(*CreateEventSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListEventSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEventSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListEventSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListEventSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListEventSubscriptions(ctx, req.(*ListEventSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RevokeEventSubscription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeEventSubscriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RevokeEventSubscription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RevokeEventSubscription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RevokeEventSubscription(ctx, req.(*RevokeEventSubscriptionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -999,6 +1101,18 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MatchEventSubscriptions",
 			Handler:    _AgentCapabilityService_MatchEventSubscriptions_Handler,
+		},
+		{
+			MethodName: "CreateEventSubscription",
+			Handler:    _AgentCapabilityService_CreateEventSubscription_Handler,
+		},
+		{
+			MethodName: "ListEventSubscriptions",
+			Handler:    _AgentCapabilityService_ListEventSubscriptions_Handler,
+		},
+		{
+			MethodName: "RevokeEventSubscription",
+			Handler:    _AgentCapabilityService_RevokeEventSubscription_Handler,
 		},
 		{
 			MethodName: "ListContextMemories",

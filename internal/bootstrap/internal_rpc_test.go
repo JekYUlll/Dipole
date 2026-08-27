@@ -60,7 +60,7 @@ func (rpcAgentSubscriptionStub) MatchEventSubscriptions(_ context.Context, reque
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
 		TenantID: request.TenantID, AgentUUID: request.AgentUUID, Status: application.AgentSubscriptionStatusActive,
 		EventType: request.EventType, ResourceType: request.ResourceType, ResourceID: request.ResourceID,
-		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`),
+		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: "U100",
 	}}, nil
 }
 
@@ -395,7 +395,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
+	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, artifacts, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}

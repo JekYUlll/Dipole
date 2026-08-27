@@ -132,7 +132,7 @@ type Querier interface {
 	InsertAgentArtifact(ctx context.Context, arg InsertAgentArtifactParams) (int64, error)
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
-	InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) error
+	InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) (int64, error)
 	InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
@@ -171,6 +171,7 @@ type Querier interface {
 	ListMessagesForCassandraBackfill(ctx context.Context, arg ListMessagesForCassandraBackfillParams) ([]Message, error)
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
+	ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
 	ListSyncInboxBaselineEntries(ctx context.Context, jobName string) ([]ListSyncInboxBaselineEntriesRow, error)
 	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)

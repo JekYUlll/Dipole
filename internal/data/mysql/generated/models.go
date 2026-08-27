@@ -165,6 +165,10 @@ type AgentEventSubscription struct {
 	FilterJson        json.RawMessage
 	CreatedAt         time.Time
 	RevokedAt         sql.NullTime
+	RevokedByUuid     sql.NullString
+	RevokeReason      sql.NullString
+	UpdatedAt         time.Time
+	CreatedByUuid     string
 }
 
 type AgentMemory struct {
