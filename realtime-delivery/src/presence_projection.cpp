@@ -7,6 +7,10 @@
 #include <utility>
 #include <vector>
 
+#include <google/protobuf/timestamp.pb.h>
+#include <google/protobuf/util/time_util.h>
+#include <nlohmann/json.hpp>
+
 namespace dipole::realtime {
 namespace {
 
@@ -40,6 +44,45 @@ void AddItem(const DeliveryItem& source, std::vector<std::string> connection_ids
 }
 
 }  // namespace
+
+ValidationError ParsePresenceHash(
+    const std::string& user_id,
+    const std::vector<std::pair<std::string, std::string>>& fields,
+    std::vector<PresenceConnection>* connections, PresenceHashParseStats* stats) {
+  if (user_id.empty() || connections == nullptr || stats == nullptr) {
+    return "presence hash user and outputs are required";
+  }
+  connections->clear();
+  *stats = {};
+  connections->reserve(fields.size());
+
+  for (const auto& [field_connection_id, raw] : fields) {
+    ++stats->observed_records;
+    try {
+      const auto record = nlohmann::json::parse(raw);
+      const auto connection_id = record.value("connection_id", std::string{});
+      const auto record_user_id = record.value("user_uuid", std::string{});
+      const auto node_id = record.value("node_id", std::string{});
+      const auto last_seen_at = record.value("last_seen_at", std::string{});
+      google::protobuf::Timestamp timestamp;
+      if (field_connection_id.empty() || connection_id != field_connection_id ||
+          record_user_id != user_id || node_id.empty() ||
+          !google::protobuf::util::TimeUtil::FromString(last_seen_at, &timestamp)) {
+        ++stats->malformed_records;
+        continue;
+      }
+      connections->push_back({.connection_id = connection_id,
+                              .user_id = record_user_id,
+                              .node_id = node_id,
+                              .last_seen_unix_ms = timestamp.seconds() * 1000 +
+                                                   timestamp.nanos() / 1'000'000});
+      ++stats->parsed_records;
+    } catch (const nlohmann::json::exception&) {
+      ++stats->malformed_records;
+    }
+  }
+  return std::nullopt;
+}
 
 ValidationError ProjectPresence(const delivery::v1::DeliveryEnvelope& envelope,
                                 const PresenceByUser& presence,

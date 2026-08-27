@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "contract_validator.hpp"
@@ -30,6 +31,17 @@ struct PresenceProjectionStats {
   std::size_t stale_connections = 0;
   std::size_t offline_items = 0;
 };
+
+struct PresenceHashParseStats {
+  std::size_t observed_records = 0;
+  std::size_t parsed_records = 0;
+  std::size_t malformed_records = 0;
+};
+
+ValidationError ParsePresenceHash(
+    const std::string& user_id,
+    const std::vector<std::pair<std::string, std::string>>& fields,
+    std::vector<PresenceConnection>* connections, PresenceHashParseStats* stats);
 
 ValidationError ProjectPresence(const delivery::v1::DeliveryEnvelope& envelope,
                                 const PresenceByUser& presence,

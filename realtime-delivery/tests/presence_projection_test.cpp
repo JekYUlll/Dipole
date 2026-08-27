@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 
@@ -99,11 +100,34 @@ int TestRejectsIdentityAndConnectionDrift() {
   return failures;
 }
 
+int TestParsesGoPresenceHashAndCountsMalformedRecords() {
+  const std::vector<std::pair<std::string, std::string>> fields{
+      {"C1",
+       R"({"connection_id":"C1","user_uuid":"U1","node_id":"node-a","last_seen_at":"2023-11-14T22:13:19.900Z"})"},
+      {"C2", R"({"connection_id":"drift","user_uuid":"U1","node_id":"node-b","last_seen_at":"2023-11-14T22:13:19Z"})"},
+      {"C3", "{"},
+  };
+  std::vector<PresenceConnection> connections;
+  dipole::realtime::PresenceHashParseStats stats;
+  const auto error = dipole::realtime::ParsePresenceHash("U1", fields, &connections, &stats);
+
+  int failures = 0;
+  failures += Expect(!error.has_value(), "expected malformed records to be isolated");
+  failures += Expect(connections.size() == 1 && connections[0].connection_id == "C1" &&
+                         connections[0].last_seen_unix_ms == 1'699'999'999'900,
+                     "expected Go presence JSON and RFC3339 timestamp parsing");
+  failures += Expect(stats.observed_records == 3 && stats.parsed_records == 1 &&
+                         stats.malformed_records == 2,
+                     "expected malformed Presence counters");
+  return failures;
+}
+
 }  // namespace
 
 int main() {
   int failures = 0;
   failures += TestGroupsEligibleConnectionsDeterministically();
   failures += TestRejectsIdentityAndConnectionDrift();
+  failures += TestParsesGoPresenceHashAndCountsMalformedRecords();
   return failures == 0 ? 0 : 1;
 }
