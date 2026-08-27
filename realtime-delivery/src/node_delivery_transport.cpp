@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
 
 #include <arpa/inet.h>
@@ -84,6 +85,66 @@ ValidationError ValidateGrpcNodeTransportConfig(const GrpcNodeTransportConfig& c
        config.tls_server_name.empty())) {
     return "node transport mTLS material and server name are required";
   }
+  return std::nullopt;
+}
+
+ValidationError ClassifyPrimaryAcknowledgements(
+    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+    const std::vector<delivery::v1::DeliveryAck>& acknowledgements,
+    PrimaryDeliveryStats* stats) {
+  if (stats == nullptr) return "primary delivery stats destination is required";
+  *stats = {};
+  stats->requested = batches.size();
+  if (batches.empty() || batches.size() != acknowledgements.size()) {
+    return "primary delivery batch and acknowledgement counts drifted";
+  }
+
+  bool terminal = true;
+  for (std::size_t index = 0; index < batches.size(); ++index) {
+    const auto& batch = batches[index];
+    const auto& acknowledgement = acknowledgements[index];
+    if (const auto error = ValidateNodeBatch(batch); error) return error;
+    if (const auto error = ValidateAck(acknowledgement); error) return error;
+    if (acknowledgement.batch_id() != batch.batch_id()) {
+      return "primary delivery acknowledgement identity drifted";
+    }
+
+    std::unordered_set<std::string> expected;
+    expected.reserve(static_cast<std::size_t>(batch.items_size()));
+    for (const auto& item : batch.items()) expected.insert(item.delivery_id());
+    for (const auto& result : acknowledgement.results()) {
+      if (expected.erase(result.delivery_id()) != 1) {
+        return "primary delivery result identity drifted";
+      }
+      switch (result.status()) {
+        case delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED:
+          stats->enqueued += result.accepted_connections();
+          break;
+        case delivery::v1::DELIVERY_RESULT_STATUS_OFFLINE:
+          ++stats->offline;
+          break;
+        case delivery::v1::DELIVERY_RESULT_STATUS_BACKPRESSURED:
+          ++stats->backpressured;
+          terminal = false;
+          break;
+        case delivery::v1::DELIVERY_RESULT_STATUS_REJECTED:
+          ++stats->rejected;
+          terminal = false;
+          break;
+        case delivery::v1::DELIVERY_RESULT_STATUS_FAILED:
+          ++stats->failed;
+          terminal = false;
+          break;
+        default:
+          return "primary delivery result status is invalid";
+      }
+    }
+    if (!expected.empty()) return "primary delivery result set is incomplete";
+    if (acknowledgement.status() != delivery::v1::DELIVERY_ACK_STATUS_ACCEPTED) {
+      terminal = false;
+    }
+  }
+  stats->decision = terminal ? PrimaryOffsetDecision::kCommit : PrimaryOffsetDecision::kRetain;
   return std::nullopt;
 }
 
@@ -195,7 +256,8 @@ ValidationError GrpcNodeBatchTransport::Deliver(
     }
     acknowledgements->push_back(std::move(acknowledgement));
   }
-  return std::nullopt;
+  PrimaryDeliveryStats stats;
+  return ClassifyPrimaryAcknowledgements(batches, *acknowledgements, &stats);
 }
 
 }  // namespace dipole::realtime

@@ -175,7 +175,7 @@
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
 - **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零。`AD-039` 已关闭。默认关闭的 primary seam 现提供 connection 定向入队、逐项 ACK、部分成功 connection 重试、有界 Gateway replay state 与 additive WebSocket delivery ID；Web 通过账户隔离的 IndexedDB v4 原子 claim 跨页面重载去重，并以有界内存集合覆盖当前会话。C++ one-shot probe 经 mTLS 实际投递到隔离 Gateway：在线连接返回 `ENQUEUED(1)`，相同批次重放无第二个客户端帧，Redis TTL 中的 stale connection 返回 `OFFLINE`；证据归档到 `benchmarks/c2-primary-delivery-seam-2026-08-28/`。ShadowRunner 仍只调用 Observe，当前 Go Redis Pub/Sub 流量语义未切换。
-- **后续方向：** 继续运行 C++ probe 触发的真实部分 queue saturation，并在显式 primary runtime 中验证 Kafka consume-to-ACK offset 提交和崩溃重放，再评审 C++ primary mode。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
+- **后续方向：** C++ 已固定只有完整 terminal `ENQUEUED|OFFLINE` ACK 集合才允许 Kafka commit，partial/rejected/failed 与身份漂移保留 offset。下一步将该决策接入显式 primary runner，运行 C++ probe 触发的真实部分 queue saturation以及 consume-to-ACK offset 提交和崩溃重放，再评审 C++ primary mode。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
 ### AD-015：Message Service 数据库账号尚未收敛表级权限

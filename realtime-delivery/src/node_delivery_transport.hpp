@@ -2,6 +2,7 @@
 #define DIPOLE_REALTIME_DELIVERY_NODE_DELIVERY_TRANSPORT_HPP_
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -19,6 +20,23 @@ struct NodeTransportStats {
   std::size_t rejected = 0;
   std::size_t backpressured = 0;
 };
+
+enum class PrimaryOffsetDecision : std::uint8_t { kCommit, kRetain };
+
+struct PrimaryDeliveryStats {
+  std::size_t requested = 0;
+  std::size_t enqueued = 0;
+  std::size_t offline = 0;
+  std::size_t backpressured = 0;
+  std::size_t rejected = 0;
+  std::size_t failed = 0;
+  PrimaryOffsetDecision decision = PrimaryOffsetDecision::kRetain;
+};
+
+ValidationError ClassifyPrimaryAcknowledgements(
+    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+    const std::vector<delivery::v1::DeliveryAck>& acknowledgements,
+    PrimaryDeliveryStats* stats);
 
 class NodeBatchTransport {
  public:

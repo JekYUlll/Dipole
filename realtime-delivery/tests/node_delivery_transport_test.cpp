@@ -40,6 +40,23 @@ dipole::delivery::v1::NodeDeliveryBatch Batch() {
   return batch;
 }
 
+dipole::delivery::v1::DeliveryAck AcceptedAck(
+    dipole::delivery::v1::DeliveryResultStatus status) {
+  dipole::delivery::v1::DeliveryAck acknowledgement;
+  acknowledgement.set_contract_version("v1");
+  acknowledgement.set_batch_id("NB1");
+  acknowledgement.set_status(dipole::delivery::v1::DELIVERY_ACK_STATUS_ACCEPTED);
+  *acknowledgement.mutable_acknowledged_at() =
+      google::protobuf::util::TimeUtil::GetCurrentTime();
+  auto* result = acknowledgement.add_results();
+  result->set_delivery_id("D1");
+  result->set_status(status);
+  if (status == dipole::delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED) {
+    result->set_accepted_connections(1);
+  }
+  return acknowledgement;
+}
+
 class ObservationService final : public dipole::delivery::v1::NodeDeliveryService::Service {
  public:
   grpc::Status ObserveNodeBatch(
@@ -192,10 +209,58 @@ void TestGrpcTransportObservesWithAuthenticatedMetadata() {
         "primary delivery validates authenticated acknowledgement without changing shadow mode");
 }
 
+void TestPrimaryAcknowledgementCommitBoundary() {
+  const auto batch = Batch();
+  auto accepted = AcceptedAck(dipole::delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED);
+  dipole::realtime::PrimaryDeliveryStats stats;
+  Check(!dipole::realtime::ClassifyPrimaryAcknowledgements({batch}, {accepted}, &stats) &&
+            stats.decision == dipole::realtime::PrimaryOffsetDecision::kCommit &&
+            stats.enqueued == 1 && stats.offline == 0 && stats.backpressured == 0,
+        "terminal enqueued acknowledgement permits Kafka commit");
+
+  auto offline = AcceptedAck(dipole::delivery::v1::DELIVERY_RESULT_STATUS_OFFLINE);
+  Check(!dipole::realtime::ClassifyPrimaryAcknowledgements({batch}, {offline}, &stats) &&
+            stats.decision == dipole::realtime::PrimaryOffsetDecision::kCommit &&
+            stats.enqueued == 0 && stats.offline == 1,
+        "terminal offline acknowledgement permits Kafka commit");
+
+  auto partial = AcceptedAck(dipole::delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED);
+  partial.set_status(dipole::delivery::v1::DELIVERY_ACK_STATUS_PARTIAL);
+  auto* partial_result = partial.mutable_results(0);
+  partial_result->set_status(dipole::delivery::v1::DELIVERY_RESULT_STATUS_BACKPRESSURED);
+  partial_result->set_accepted_connections(0);
+  partial_result->set_retry_after_ms(25);
+  partial_result->set_error_code(dipole::delivery::v1::DELIVERY_ERROR_CODE_QUEUE_FULL);
+  auto* pressure = partial.mutable_pressure();
+  pressure->set_depth(16);
+  pressure->set_capacity(16);
+  pressure->set_retry_after_ms(25);
+  Check(!dipole::realtime::ClassifyPrimaryAcknowledgements({batch}, {partial}, &stats) &&
+            stats.decision == dipole::realtime::PrimaryOffsetDecision::kRetain &&
+            stats.backpressured == 1,
+        "partial backpressure retains Kafka offset");
+
+  auto rejected = AcceptedAck(dipole::delivery::v1::DELIVERY_RESULT_STATUS_ENQUEUED);
+  rejected.set_status(dipole::delivery::v1::DELIVERY_ACK_STATUS_REJECTED);
+  auto* rejected_result = rejected.mutable_results(0);
+  rejected_result->set_status(dipole::delivery::v1::DELIVERY_RESULT_STATUS_REJECTED);
+  rejected_result->set_accepted_connections(0);
+  rejected_result->set_error_code(dipole::delivery::v1::DELIVERY_ERROR_CODE_INVALID_ITEM);
+  Check(!dipole::realtime::ClassifyPrimaryAcknowledgements({batch}, {rejected}, &stats) &&
+            stats.decision == dipole::realtime::PrimaryOffsetDecision::kRetain &&
+            stats.rejected == 1,
+        "rejected acknowledgement retains Kafka offset for operator handling");
+
+  accepted.set_batch_id("drifted");
+  Check(dipole::realtime::ClassifyPrimaryAcknowledgements({batch}, {accepted}, &stats).has_value(),
+        "acknowledgement identity drift cannot permit Kafka commit");
+}
+
 }  // namespace
 
 int main() {
   TestTargetParsingAndConfigValidation();
   TestGrpcTransportObservesWithAuthenticatedMetadata();
+  TestPrimaryAcknowledgementCommitBoundary();
   return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
