@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/web-sync-observation/v1/session.schema.json",
+  "title": "Dipole Web Sync observation session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "session_id", "candidate", "prometheus_url", "started_at", "minimum_end_at", "initial_snapshot"],
+  "properties": {
+    "schema_version": { "const": "dipole.web-sync.observation-session.v1" },
+    "session_id": { "type": "string", "pattern": "^web-sync:[a-f0-9]{64}$" },
+    "candidate": { "$ref": "#/$defs/candidate" },
+    "prometheus_url": { "type": "string", "pattern": "^https?://[^?#]+$" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "minimum_end_at": { "type": "string", "format": "date-time" },
+    "initial_snapshot": { "$ref": "#/$defs/snapshot" }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "git_commit", "bundle_path", "bundle_sha256"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "git_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "bundle_path": { "type": "string", "minLength": 1 },
+        "bundle_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captured_at", "values", "raw"],
+      "properties": {
+        "captured_at": { "type": "string", "format": "date-time" },
+        "values": { "type": "object", "additionalProperties": { "type": ["number", "null"] } },
+        "raw": { "type": "object", "additionalProperties": true }
+      }
+    }
+  }
+}
