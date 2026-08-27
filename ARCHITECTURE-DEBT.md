@@ -44,17 +44,6 @@
 - **建议方向：** 在独立前端工具链分支升级 Vite/Vitest，验证 Node LTS、生产 bundle、代理 WebSocket、测试和静态资源基路径后再合并。
 - **处理门槛：** 前端开发服务器需要暴露到共享网络前完成；当前仅绑定可信本机开发环境。
 
-### AD-025：Web 本地消息库清理与容量策略需真实浏览器验收
-
-- **优先级：** P1
-- **状态：** 处理中
-- **发现日期：** 2026-08-27
-- **影响范围：** IndexedDB Sync Engine、共享设备隐私、浏览器配额、401/强制下线
-- **现状：** Sync Engine 按用户隔离消息与游标；显式退出、HTTP 401、WS kick 和账号切换进入统一 Session Termination。凭据与运行时消息先同步撤销，在途 Sync 收敛并删除账号 IndexedDB 后才跳转登录页，避免导航中止清理；并发终止复用 singleflight，快速重登等待旧清理完成。IndexedDB v2 增加逐用户 `message_count/compacted` manifest、5000/4000 默认高低水位和按会话保底淘汰；单页消息、淘汰和完整 `next_seq` 在同一事务提交，配额失败映射为 `storage_full`。Playwright 已在 Chromium、Firefox、WebKit 验证真实 IndexedDB 淘汰、重开、账号隔离、延迟清理和页面中断事务原子性；独立 Chromium persistent profile 进一步在 `commitPage` pending 时触发完整主进程 crash，同一 profile 重启后 Message、manifest 与安全 Cursor 保持整页提交或整页回滚。专用脚本在无特权 128 MiB tmpfs 中保留 24 MiB reserve，以随机不可压缩正文触发真实容量拒绝；释放 reserve 后确认失败页未推进 Cursor，现有 `storage_full` 分类有效。`storage_full/sync_error` 进入独立有界错误指标及告警。
-- **风险：** IndexedDB 删除失败或浏览器进程强退时，共享设备仍可能保留本地消息；浏览器总配额还会受其他站点数据和实现差异影响。极端会话数超过低水位时，为满足硬上限会淘汰部分会话的最后一条本地缓存，历史仍可从服务端重新拉取。
-- **建议方向：** 完整浏览器进程强退和受限文件系统容量拒绝已经通过真实 Chromium 验收；继续执行共享设备 401/kick 端到端验收，并记录浏览器清站点数据说明。CDP quota override 继续只作为兼容探针，受限 tmpfs 专用脚本作为可重复容量门禁。
-- **处理门槛：** `VITE_SYNC_ENGINE_MODE` 计划从 `off/shadow` 改为默认 `primary` 前完成真实浏览器容量压测、共享设备和进程强退验收；当前单元测试与 Pencil 交互基线只完成实现门禁。
-
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **优先级：** P2
@@ -167,6 +156,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-025：Web 本地消息库清理与容量策略需真实浏览器验收
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
+- **影响范围：** IndexedDB Sync Engine、共享设备隐私、浏览器配额、401/强制下线
+- **解决方式：** IndexedDB 按用户隔离 Message、manifest 与 Cursor，并在同一事务执行整页提交和高低水位淘汰；显式退出、HTTP 401、WS kick 和账号切换统一进入 Session Terminator，先撤销凭据与运行时状态，再清理当前账号并跳转。增加真实浏览器重开/中断、独立 Chromium 主进程 crash、无特权 128 MiB tmpfs 容量拒绝，以及共享 profile 双账号 HTTP/WS 被动失效验收。
+- **验证：** Chromium、Firefox、WebKit 均验证 U1 被 401 或 `session.kicked` 后凭据清空、U1 IndexedDB 归零且 U2 Seq/Message 保留；Chromium 在 `commitPage` pending 时主进程 crash 后保持整页原子性；专用 quota 脚本触发真实容量错误，释放 reserve 后失败页未推进安全 Cursor。`storage_full/sync_error` 有界指标和告警继续作为运行门禁。
+- **长期约束：** 公共设备应使用显式退出；若浏览器在清理完成前被强制终止，操作人员或用户需从浏览器设置中清除 Dipole 站点数据。新增本地 store、账号 key 或会话终止入口时必须扩展三浏览器共享 profile 验收。
 
 ### AD-023：Sync Service 数据库账号与 Message 写权限尚未分离
 
