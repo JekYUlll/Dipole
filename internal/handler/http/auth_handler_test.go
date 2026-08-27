@@ -21,6 +21,14 @@ type stubAuthService struct {
 	registerFn func(input service.RegisterInput) (*service.AuthResult, error)
 	loginFn    func(input service.LoginInput) (*service.AuthResult, error)
 	logoutFn   func(token string) error
+	mcpGrantFn func(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error)
+}
+
+func (s *stubAuthService) IssueAgentMCPGrant(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+	if s.mcpGrantFn == nil {
+		return nil, nil
+	}
+	return s.mcpGrantFn(input)
 }
 
 type stubAuthLimiter struct {
@@ -225,5 +233,48 @@ func TestAuthHandlerLogoutFailure(t *testing.T) {
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status 500, got %d", recorder.Code)
+	}
+}
+
+func TestAuthHandlerIssuesAgentMCPGrantFromAuthenticatedPrincipal(t *testing.T) {
+	t.Parallel()
+	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+		if input.UserUUID != "U100" || input.Resource != service.AgentMCPResource || len(input.Scopes) != 1 || input.Scopes[0] != service.AgentMCPReadScope || !input.Consent {
+			t.Fatalf("unexpected grant input: %+v", input)
+		}
+		return &service.AgentMCPGrantResult{
+			AccessToken: "MCP_TOKEN", TokenType: "Bearer", ExpiresIn: 900,
+			Resource: service.AgentMCPResource, Scope: service.AgentMCPReadScope,
+		}, nil
+	}})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/agent-mcp/token", strings.NewReader(
+		`{"resource":"https://dipole.local/api/v1/agent/mcp","scopes":["dipole.agent.mcp.read"],"consent":true,"user_uuid":"U999"}`,
+	))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.IssueAgentMCPGrant(context)
+	if recorder.Code != http.StatusOK || recorder.Header().Get("Cache-Control") != "no-store" || !strings.Contains(recorder.Body.String(), `"access_token":"MCP_TOKEN"`) {
+		t.Fatalf("unexpected grant response: code=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestAuthHandlerRejectsAgentMCPGrantWithoutConsent(t *testing.T) {
+	t.Parallel()
+	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+		t.Fatal("grant service must not run without consent")
+		return nil, nil
+	}})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/agent-mcp/token", strings.NewReader(
+		`{"resource":"https://dipole.local/api/v1/agent/mcp","scopes":["dipole.agent.mcp.read"],"consent":false}`,
+	))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.IssueAgentMCPGrant(context)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }

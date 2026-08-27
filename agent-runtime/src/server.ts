@@ -26,6 +26,7 @@ export interface AgentMcpHttpHandler {
 
 export interface AgentMcpHTTPOptions {
   secret: string;
+  resource: string;
   handler: AgentMcpHttpHandler;
 }
 
@@ -108,7 +109,7 @@ export function buildServer(
       url: "/internal/v1/agent/tasks/:taskId/runs/:runId/mcp",
       bodyLimit: 256 * 1024,
       handler: async (request, reply) => {
-        const identity = trustedMcpIdentity(request.headers, request.params.taskId, request.params.runId, mcp.secret);
+        const identity = trustedMcpIdentity(request.headers, request.params.taskId, request.params.runId, mcp.secret, mcp.resource);
         if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent MCP authentication failed" });
 
         const headers = new Headers();
@@ -125,8 +126,9 @@ export function buildServer(
           authInfo: {
             token: "gateway-authenticated",
             clientId: identity.principalUserId,
-            scopes: ["dipole.agent.mcp"],
+            scopes: [identity.scope],
             extra: {
+              resource: identity.resource,
               taskId: identity.taskId,
               runId: identity.runId,
               ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
@@ -148,24 +150,32 @@ export function buildServer(
 
 interface TrustedMcpIdentity extends AgentTaskControlIdentity {
   runId: string;
+  resource: string;
+  scope: string;
 }
+
+const AGENT_MCP_READ_SCOPE = "dipole.agent.mcp.read";
 
 function trustedMcpIdentity(
   headers: Record<string, string | string[] | undefined>,
   taskId: string,
   runId: string,
-  secret: string
+  secret: string,
+  expectedResource: string
 ): TrustedMcpIdentity | undefined {
   const base = trustedControlIdentity(headers, taskId, secret);
   const normalizedRunId = runId.trim();
-  if (base === undefined || !validIdentifier(normalizedRunId)) return undefined;
-  return { ...base, runId: normalizedRunId };
+  const resource = header(headers, "x-dipole-oauth-resource");
+  const scope = header(headers, "x-dipole-oauth-scope");
+  if (base === undefined || !validIdentifier(normalizedRunId) || resource !== expectedResource || scope !== AGENT_MCP_READ_SCOPE) return undefined;
+  return { ...base, runId: normalizedRunId, resource, scope };
 }
 
 function privateForwardHeader(name: string): boolean {
   const normalized = name.toLowerCase();
   return normalized === "authorization" || normalized === "cookie" || normalized === "x-dipole-caller-service" ||
     normalized === "x-dipole-service-token" || normalized === "x-dipole-principal-user-id" ||
+    normalized === "x-dipole-oauth-resource" || normalized === "x-dipole-oauth-scope" ||
     normalized === "content-length" || normalized === "transfer-encoding" || normalized === "connection" || normalized === "host";
 }
 

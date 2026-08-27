@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加默认关闭的第一方 MCP 授权交换与资源边界：受认证 session 需对唯一 canonical resource 和 `dipole.agent.mcp.read` 显式 consent，才能取得 15 分钟专用 JWT；令牌以 `aud`、`scope`、`token_use` 防止跨资源和 session/MCP 混用。Gateway 验证后剥离客户端凭据，仅向 Runtime 传递可信 principal/resource/scope，Runtime 再构造只读 `AuthInfo`。Compose 支持统一覆盖 canonical URI，发布与回滚见 `docs/agent-mcp-authorization.md`；通用 OAuth 2.1 discovery/PKCE/客户端注册继续由 `AD-037` 跟踪。
 - Agent G4 增加默认关闭的 OpenTelemetry 运维 profile：Collector `0.159.0` 通过 128 MiB memory limiter、有界 batch/queue 和重试向 Tempo `2.10.5` 写入 trace，Tempo local backend 固定 24 小时保留且端口只绑定 localhost；Prometheus 新增 Collector down、export failure 和 refused span 三类低基数告警。配置 gate 验证 Collector 与规则，真实 smoke 生成 Agent span、核对 accepted/sent 指标并按 trace ID 从 Tempo 查询；运维说明补充 Task/Run 审计联查和回滚。生产对象存储与通知链继续由 `AD-037` 跟踪。
 - Agent G4 增加默认关闭的生产 OpenTelemetry 装配：Node trace SDK 通过 OTLP/HTTP protobuf 导出既有低敏 span，复用标准 `OTEL_*` endpoint、protocol、ParentBased trace-id ratio sampler 与超时参数，限制单 span 属性/事件/link 数量，并在 Runtime 逆序关闭末尾 flush。关闭 `DIPOLE_AGENT_OTEL_ENABLED` 时不实例化 SDK且忽略残留 OTel 配置；Collector、保留和告警继续由 `AD-037` 跟踪。
 - Agent G4 增加统一低敏 OpenTelemetry 全链路：Foundation Event Processor 记录 Task/Run，Durable Activity 记录 Task admission/finish、Run、Approval 和 Artifact，Context Compiler 记录版本与预算统计，Model Router 为每个真实 provider attempt 记录 ModelCall，native Capability 与 MCP 均记录 ToolCall。Temporal Workflow 保持确定性；span 禁止 Prompt、消息、Memory、Tool/Artifact 正文和底层异常文本，SDK/exporter 装配由后一里程碑承接。

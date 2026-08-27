@@ -80,6 +80,8 @@ describe("agent runtime MCP HTTP API", () => {
     "x-dipole-caller-service": "dipole-gateway",
     "x-dipole-service-token": "mcp-secret",
     "x-dipole-principal-user-id": "U100",
+    "x-dipole-oauth-resource": "https://dipole.local/api/v1/agent/mcp",
+    "x-dipole-oauth-scope": "dipole.agent.mcp.read",
     "x-request-id": "R1",
     "x-trace-id": "T1"
   };
@@ -90,11 +92,17 @@ describe("agent runtime MCP HTTP API", () => {
     expect((await disabled.inject({ method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", payload: {} })).statusCode).toBe(404);
     await disabled.close();
 
-    const server = buildServer({ isReady: () => true }, undefined, { secret: "mcp-secret", handler: { fetch } });
+    const server = buildServer({ isReady: () => true }, undefined, {
+      secret: "mcp-secret", resource: "https://dipole.local/api/v1/agent/mcp", handler: { fetch }
+    });
     expect((await server.inject({ method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", payload: {} })).statusCode).toBe(401);
     expect((await server.inject({
       method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp",
       headers: { ...headers, "x-dipole-service-token": "wrong" }, payload: {}
+    })).statusCode).toBe(401);
+    expect((await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp",
+      headers: { ...headers, "x-dipole-oauth-scope": "dipole.agent.mcp.write" }, payload: {}
     })).statusCode).toBe(401);
     expect(fetch).not.toHaveBeenCalled();
     for (const method of ["GET", "DELETE"] as const) {
@@ -112,14 +120,19 @@ describe("agent runtime MCP HTTP API", () => {
       expect(request.headers.get("content-length")).toBeNull();
       expect(options?.parsedBody).toEqual({ jsonrpc: "2.0", id: 1, method: "tools/list", principalUserId: "U999" });
       expect(options?.authInfo).toEqual({
-        token: "gateway-authenticated", clientId: "U100", scopes: ["dipole.agent.mcp"],
-        extra: { taskId: "TASK-1", runId: "RUN-1", requestId: "R1", traceId: "T1" }
+        token: "gateway-authenticated", clientId: "U100", scopes: ["dipole.agent.mcp.read"],
+        extra: {
+          resource: "https://dipole.local/api/v1/agent/mcp",
+          taskId: "TASK-1", runId: "RUN-1", requestId: "R1", traceId: "T1"
+        }
       });
       return new Response("event: message\ndata: accepted\n\n", {
         status: 202, headers: { "content-type": "text/event-stream", "mcp-session-id": "S1" }
       });
     });
-    const server = buildServer({ isReady: () => true }, undefined, { secret: "mcp-secret", handler: { fetch } });
+    const server = buildServer({ isReady: () => true }, undefined, {
+      secret: "mcp-secret", resource: "https://dipole.local/api/v1/agent/mcp", handler: { fetch }
+    });
     const response = await server.inject({
       method: "POST", url: "/internal/v1/agent/tasks/TASK-1/runs/RUN-1/mcp", headers,
       payload: { jsonrpc: "2.0", id: 1, method: "tools/list", principalUserId: "U999" }

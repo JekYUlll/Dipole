@@ -45,6 +45,7 @@ type stubTokenIssuer struct {
 	issueErr    error
 	revoked     string
 	revokeErr   error
+	mcpInput    AgentMCPGrantInput
 }
 
 func (s *stubTokenIssuer) Issue(user *model.User) (string, error) {
@@ -55,6 +56,11 @@ func (s *stubTokenIssuer) Issue(user *model.User) (string, error) {
 		s.issuedToken = "TOKEN123"
 	}
 	return s.issuedToken, nil
+}
+
+func (s *stubTokenIssuer) IssueAgentMCPAccessToken(userUUID, resource string, scopes []string, consent bool) (string, error) {
+	s.mcpInput = AgentMCPGrantInput{UserUUID: userUUID, Resource: resource, Scopes: scopes, Consent: consent}
+	return "MCP_TOKEN", nil
 }
 
 func (s *stubTokenIssuer) Revoke(token string) error {
@@ -196,5 +202,20 @@ func TestAuthServiceLogoutRevokesToken(t *testing.T) {
 	}
 	if tokenIssuer.revoked != "TOKEN123" {
 		t.Fatalf("expected revoked token TOKEN123, got %s", tokenIssuer.revoked)
+	}
+}
+
+func TestAuthServiceIssuesAgentMCPGrantForAuthenticatedPrincipal(t *testing.T) {
+	t.Parallel()
+	tokens := &stubTokenIssuer{}
+	auth := NewAuthService(&stubAuthRepository{}, tokens)
+	result, err := auth.IssueAgentMCPGrant(AgentMCPGrantInput{
+		UserUUID: "U100", Resource: AgentMCPResource, Scopes: []string{AgentMCPReadScope}, Consent: true,
+	})
+	if err != nil {
+		t.Fatalf("issue Agent MCP grant: %v", err)
+	}
+	if result.AccessToken != "MCP_TOKEN" || result.ExpiresIn != 900 || tokens.mcpInput.UserUUID != "U100" || !tokens.mcpInput.Consent {
+		t.Fatalf("unexpected Agent MCP grant: result=%+v input=%+v", result, tokens.mcpInput)
 	}
 }

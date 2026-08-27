@@ -334,9 +334,20 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthorized MCP code=%d", unauthorized.Code)
 	}
-	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	sessionToken, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
+	}
+	confusedRequest := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"jsonrpc":"2.0"}`))
+	confusedRequest.Header.Set("Authorization", "Bearer "+sessionToken)
+	confusedResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(confusedResponse, confusedRequest)
+	if confusedResponse.Code != http.StatusUnauthorized || mcp.calls != 0 {
+		t.Fatalf("ordinary session token reached MCP: code=%d calls=%d", confusedResponse.Code, mcp.calls)
+	}
+	token, err := service.NewTokenService().IssueAgentMCPAccessToken("U100", service.AgentMCPResource, []string{service.AgentMCPReadScope}, true)
+	if err != nil {
+		t.Fatalf("issue Agent MCP token: %v", err)
 	}
 	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"jsonrpc":"2.0","principal_user_id":"U999"}`))
 	request.Header.Set("Authorization", "Bearer "+token)
@@ -370,7 +381,10 @@ func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup
 	if err != nil {
 		t.Fatalf("new gateway: %v", err)
 	}
-	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, err := service.NewTokenService().IssueAgentMCPAccessToken("U100", service.AgentMCPResource, []string{service.AgentMCPReadScope}, true)
+	if err != nil {
+		t.Fatalf("issue Agent MCP token: %v", err)
+	}
 	firstPath := "/api/v1/agent/tasks/TASK-1/runs/RUN-1/mcp"
 	firstPost := httptest.NewRequest(http.MethodPost, firstPath, strings.NewReader(`{"jsonrpc":"2.0"}`))
 	firstPost.Header.Set("Authorization", "Bearer "+token)

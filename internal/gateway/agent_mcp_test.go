@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *testing.T) {
@@ -15,7 +17,9 @@ func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *test
 		}
 		if request.Header.Get("X-Dipole-Caller-Service") != "dipole-gateway" ||
 			request.Header.Get("X-Dipole-Service-Token") != "mcp-secret" ||
-			request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
+			request.Header.Get("X-Dipole-Principal-User-ID") != "U100" ||
+			request.Header.Get("X-Dipole-OAuth-Resource") != "https://dipole.local/api/v1/agent/mcp" ||
+			request.Header.Get("X-Dipole-OAuth-Scope") != "dipole.agent.mcp.read" {
 			t.Fatalf("untrusted upstream identity headers: %v", request.Header)
 		}
 		if request.Header.Get("Authorization") != "" || request.Header.Get("Cookie") != "" {
@@ -28,7 +32,7 @@ func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *test
 	}))
 	defer upstream.Close()
 
-	proxy, err := NewAgentMCPProxy(upstream.URL, "mcp-secret")
+	proxy, err := NewAgentMCPProxy(upstream.URL, "mcp-secret", service.AgentMCPResource)
 	if err != nil {
 		t.Fatalf("new Agent MCP proxy: %v", err)
 	}
@@ -49,13 +53,16 @@ func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *test
 }
 
 func TestAgentMCPProxyRejectsInvalidConfigurationAndIdentifiers(t *testing.T) {
-	if _, err := NewAgentMCPProxy("ftp://agent", "secret"); err == nil {
+	if _, err := NewAgentMCPProxy("ftp://agent", "secret", service.AgentMCPResource); err == nil {
 		t.Fatal("expected invalid target rejection")
 	}
-	if _, err := NewAgentMCPProxy("http://agent:8091", ""); err == nil {
+	if _, err := NewAgentMCPProxy("http://agent:8091", "", service.AgentMCPResource); err == nil {
 		t.Fatal("expected missing secret rejection")
 	}
-	proxy, _ := NewAgentMCPProxy("http://agent:8091", "secret")
+	if _, err := NewAgentMCPProxy("http://agent:8091", "secret", "mcp.example.com"); err == nil {
+		t.Fatal("expected invalid resource rejection")
+	}
+	proxy, _ := NewAgentMCPProxy("http://agent:8091", "secret", service.AgentMCPResource)
 	response := httptest.NewRecorder()
 	proxy.ServeMCP(response, httptest.NewRequest(http.MethodPost, "/public", nil), "U100", "bad/task", "RUN-1")
 	if response.Code != http.StatusBadRequest {

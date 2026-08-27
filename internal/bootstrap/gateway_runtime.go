@@ -13,6 +13,7 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/redis/go-redis/v9"
@@ -92,7 +93,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentMCP gateway.AgentMCPApplication
 	if gatewayCfg.AgentMCPEnabled {
-		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret)
+		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, service.AgentMCPResourceIdentifier())
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)

@@ -278,4 +278,7 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	if v.GetInt("rate_limit.agent_mcp_limit") <= 0 || v.GetInt("rate_limit.agent_mcp_window_seconds") <= 0 {
 		t.Fatal("Gateway Agent MCP rate limit must remain bounded when the route is enabled")
 	}
+	if v.GetString("auth.agent_mcp_resource") != "https://dipole.local/api/v1/agent/mcp" {
+		t.Fatal("Agent MCP canonical resource default is missing")
+	}
 }

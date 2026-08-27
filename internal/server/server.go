@@ -154,6 +154,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 		protected.Use(authRequired)
 		{
 			protected.POST("/auth/logout", authHandler.Logout)
+			protected.POST("/auth/agent-mcp/token", authHandler.IssueAgentMCPGrant)
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)
 			protected.PATCH("/conversations/group/:group_uuid/read", conversationHandler.MarkGroupRead)
