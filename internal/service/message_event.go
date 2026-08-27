@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,7 +23,46 @@ var (
 	ErrMessageMutationRevisionRequired = errors.New("message mutation revision is required")
 	ErrMessageMutationRevisionInvalid  = errors.New("message mutation revision is invalid")
 	ErrMessageMutationActorRequired    = errors.New("message mutation actor is required")
+	ErrMessageEventChannelMismatch     = errors.New("message event channel does not match target type")
+	ErrUnsupportedMessageEventType     = errors.New("unsupported message event type")
 )
+
+// DecodeMessageEventPayload is the shared v1 consumer boundary. Unknown JSON
+// fields remain accepted so minor schema additions can roll out producer-first.
+func DecodeMessageEventPayload(eventType string, raw json.RawMessage) (MessageEventPayload, error) {
+	expectedTarget, err := MessageEventTargetType(eventType)
+	if err != nil {
+		return MessageEventPayload{}, err
+	}
+
+	var payload MessageEventPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return MessageEventPayload{}, fmt.Errorf("decode message event payload: %w", err)
+	}
+	if _, mutation := messageMutationTypeFromEvent(eventType); mutation {
+		if err := NormalizeMessageMutation(eventType, &payload); err != nil {
+			return MessageEventPayload{}, err
+		}
+	}
+	if payload.TargetType != expectedTarget {
+		return MessageEventPayload{}, fmt.Errorf("%w: event=%s target_type=%d", ErrMessageEventChannelMismatch, eventType, payload.TargetType)
+	}
+	return payload, nil
+}
+
+func MessageEventTargetType(eventType string) (int8, error) {
+	parts := strings.Split(strings.TrimSpace(eventType), ".")
+	if len(parts) != 3 || parts[0] != "message" || (parts[1] != "direct" && parts[1] != "group") {
+		return 0, fmt.Errorf("%w: %q", ErrUnsupportedMessageEventType, eventType)
+	}
+	if _, mutation := messageMutationTypeFromEvent(eventType); !mutation && parts[2] != "send_requested" {
+		return 0, fmt.Errorf("%w: %q", ErrUnsupportedMessageEventType, eventType)
+	}
+	if parts[1] == "direct" {
+		return model.MessageTargetDirect, nil
+	}
+	return model.MessageTargetGroup, nil
+}
 
 // NormalizeMessageMutation keeps legacy created events readable while making
 // future mutation facts carry an explicit type, revision, and actor.

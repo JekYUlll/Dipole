@@ -2,7 +2,6 @@ package searchprojector
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -48,8 +47,8 @@ func mutationFromEvent(event platformKafka.Event) (*model.MessageSearchMutation,
 	if event.Envelope == nil {
 		return nil, errors.New("Kafka envelope is required")
 	}
-	var payload service.MessageEventPayload
-	if err := json.Unmarshal(event.Envelope.Payload, &payload); err != nil {
+	payload, err := service.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
+	if err != nil {
 		return nil, fmt.Errorf("decode Search projection payload: %w", err)
 	}
 	return service.MessageSearchMutation(event.Envelope.EventType, payload)
