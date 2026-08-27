@@ -3,6 +3,11 @@ import argparse
 import json
 from pathlib import Path
 
+try:
+    from scripts.bench.runtime_provenance import build_report as build_runtime_provenance
+except ModuleNotFoundError:
+    from runtime_provenance import build_report as build_runtime_provenance
+
 
 SCHEMA_VERSION = "dipole.performance.baseline.v4"
 OPERATIONS_SCHEMA_VERSIONS = {
@@ -71,6 +76,15 @@ def _unavailable_process_resources():
         "duration_seconds": None,
         "services": None,
         "counter_source": None,
+    }
+
+
+def _unavailable_runtime_provenance():
+    return {
+        "available": False,
+        "expected_revision": None,
+        "source_aligned": None,
+        "services": None,
     }
 
 
@@ -269,6 +283,36 @@ def _process_resources_section(operations, source_schema_version):
     }
 
 
+def _runtime_provenance_section(operations, source_schema_version):
+    values = operations.get("runtime_provenance")
+    if source_schema_version != "dipole.performance.operations.v4":
+        return _unavailable_runtime_provenance()
+    if not isinstance(values, dict):
+        raise ValueError("operations v4 requires runtime_provenance")
+    if set(values) != {"schema_version", "expected_revision", "source_aligned", "services"}:
+        raise ValueError("runtime_provenance fields do not match provenance v1")
+    if values["schema_version"] != "dipole.performance.runtime-provenance.v1":
+        raise ValueError("unsupported runtime_provenance schema_version")
+    if values["source_aligned"] is not True:
+        raise ValueError("runtime_provenance must be source aligned")
+    raw_services = values["services"]
+    if not isinstance(raw_services, dict) or not raw_services:
+        raise ValueError("runtime_provenance.services must not be empty")
+    normalized = build_runtime_provenance(
+        values["expected_revision"],
+        [dict(service, name=name) for name, service in raw_services.items()],
+    )
+    collector_revision = operations.get("environment", {}).get("git_commit")
+    if collector_revision != normalized["expected_revision"]:
+        raise ValueError("runtime_provenance expected_revision must match environment.git_commit")
+    return {
+        "available": True,
+        "expected_revision": normalized["expected_revision"],
+        "source_aligned": normalized["source_aligned"],
+        "services": normalized["services"],
+    }
+
+
 def build_report(summary, operations):
     source_schema_version = operations.get("schema_version")
     if source_schema_version not in OPERATIONS_SCHEMA_VERSIONS:
@@ -339,6 +383,7 @@ def build_report(summary, operations):
             "settled_lag": lag_samples[-1] if lag_samples else None,
         },
         "process_resources": _process_resources_section(operations, source_schema_version),
+        "runtime_provenance": _runtime_provenance_section(operations, source_schema_version),
     }
 
 
@@ -397,6 +442,7 @@ def render_markdown(report):
     delivery = report["delivery"]
     workload = report["workload"]
     process_resources = report["process_resources"]
+    runtime_provenance = report["runtime_provenance"]
     timing = conversation_state["timing"]
     timing_rows = "Timing evidence unavailable for this source schema."
     if timing is not None:
@@ -421,6 +467,13 @@ def render_markdown(report):
             f"{values['thread_peak']} | {values['voluntary_context_switches']} | "
             f"{values['involuntary_context_switches']} |"
             for name, values in process_resources["services"].items()
+        )
+    provenance_rows = "| Evidence unavailable | N/A | N/A | N/A |"
+    if runtime_provenance["services"] is not None:
+        provenance_rows = "\n".join(
+            f"| {name.replace('-', ' ').title()} | `{values['image_id'][7:19]}` | "
+            f"`{values['revision'][:12]}` | {'dirty' if values['source_dirty'] else 'clean'} |"
+            for name, values in runtime_provenance["services"].items()
         )
 
     return f"""# Dipole Performance Baseline
@@ -448,6 +501,16 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | Hot-group warm-up messages | {parameters.get('hot_group_warmup_messages', 'N/A')} |
 | Hot-group thresholds | members={parameters.get('hot_group_member_count_threshold', 'N/A')}, messages={parameters.get('hot_group_message_threshold', 'N/A')} |
 | Phone namespace | `{parameters.get('phone_prefix', 'N/A')}` |
+
+### Runtime Provenance
+
+Expected revision: `{runtime_provenance['expected_revision'] or 'N/A'}`
+
+Source aligned: {'yes' if runtime_provenance['source_aligned'] else 'no' if runtime_provenance['source_aligned'] is not None else 'N/A'}
+
+| Service | Image ID | Revision | Source tree |
+| --- | --- | --- | --- |
+{provenance_rows}
 
 ## Workload
 

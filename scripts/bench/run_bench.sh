@@ -43,8 +43,10 @@ LAG_FILE="${RESULTS_DIR}/${RUN_ID}.lag"
 CONVERSATION_METRICS_JSON="${RESULTS_DIR}/${RUN_ID}.conversation-metrics.json"
 PROCESS_SAMPLES_JSONL="${RESULTS_DIR}/${RUN_ID}.process-samples.jsonl"
 PROCESS_RESOURCES_JSON="${RESULTS_DIR}/${RUN_ID}.process-resources.json"
+RUNTIME_PROVENANCE_JSON="${RESULTS_DIR}/${RUN_ID}.runtime-provenance.json"
 CONVERSATION_METRIC_ARGS=()
 PROCESS_METRIC_ARGS=()
+RUNTIME_PROVENANCE_SERVICE_ARGS=()
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -53,9 +55,15 @@ require_command() {
   }
 }
 
-for command in docker curl k6 jq python3; do
+for command in docker curl git k6 jq python3; do
   require_command "${command}"
 done
+
+git_commit="$(git rev-parse HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "benchmark source tree has tracked changes; commit them before collecting a baseline" >&2
+  exit 1
+fi
 
 if [[ ! "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "RUN_ID may contain only letters, numbers, dot, underscore, and hyphen" >&2
@@ -106,7 +114,7 @@ capture_conversation_metrics() {
 }
 
 resolve_process_metric_bindings() {
-  local service container_id host_pid
+  local service container_id host_pid image_id revision created source_dirty service_json
   for service in ${PROCESS_METRICS_SERVICES}; do
     container_id="$(docker compose -f "${COMPOSE_FILE}" ps -q "${service}")"
     if [[ -z "${container_id}" ]]; then
@@ -119,7 +127,30 @@ resolve_process_metric_bindings() {
       exit 1
     fi
     PROCESS_METRIC_ARGS+=(--service "${service}=${host_pid}")
+
+    image_id="$(docker inspect --format '{{.Image}}' "${container_id}")"
+    revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${image_id}")"
+    created="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' "${image_id}")"
+    source_dirty="$(docker image inspect --format '{{index .Config.Labels "io.dipole.source.dirty"}}' "${image_id}")"
+    if [[ "${source_dirty}" != "true" && "${source_dirty}" != "false" ]]; then
+      echo "runtime image has no valid source dirty label: ${service} (${image_id})" >&2
+      exit 1
+    fi
+    service_json="$(jq -cn \
+      --arg name "${service}" \
+      --arg container_id "${container_id}" \
+      --arg image_id "${image_id}" \
+      --arg revision "${revision}" \
+      --arg created "${created}" \
+      --argjson source_dirty "${source_dirty}" \
+      '{name: $name, container_id: $container_id, image_id: $image_id, revision: $revision, created: $created, source_dirty: $source_dirty}')"
+    RUNTIME_PROVENANCE_SERVICE_ARGS+=(--service-json "${service_json}")
   done
+
+  python3 scripts/bench/runtime_provenance.py \
+    --expected-revision "${git_commit}" \
+    "${RUNTIME_PROVENANCE_SERVICE_ARGS[@]}" \
+    --output "${RUNTIME_PROVENANCE_JSON}"
 }
 
 capture_process_metrics() {
@@ -183,6 +214,7 @@ python3 scripts/bench/process_metrics.py summarize \
   --input "${PROCESS_SAMPLES_JSONL}" \
   --output "${PROCESS_RESOURCES_JSON}"
 process_resources="$(cat "${PROCESS_RESOURCES_JSON}")"
+runtime_provenance="$(cat "${RUNTIME_PROVENANCE_JSON}")"
 
 if [[ ! -s "${SUMMARY_JSON}" ]]; then
   echo "k6 did not produce ${SUMMARY_JSON}" >&2
@@ -204,8 +236,6 @@ read -r direct_messages direct_inbox group_messages group_inbox conversation_mes
 
 lag_samples="$(jq --raw-input --slurp 'split("\n") | map(select(length > 0) | tonumber)' "${LAG_FILE}")"
 cpu_model="$(awk -F ': ' '/model name/ { print $2; exit }' /proc/cpuinfo)"
-git_commit="$(git rev-parse HEAD)"
-
 jq -n \
   --arg run_id "${RUN_ID}" \
   --arg scenario "${SCENARIO}" \
@@ -234,6 +264,7 @@ jq -n \
   --argjson conversation_messages "${conversation_messages}" \
   --argjson conversation_metrics "${conversation_metrics}" \
   --argjson process_resources "${process_resources}" \
+  --argjson runtime_provenance "${runtime_provenance}" \
   '{
     schema_version: "dipole.performance.operations.v4",
     run_id: $run_id,
@@ -272,7 +303,8 @@ jq -n \
       })
     },
     kafka_lag_samples: $kafka_lag_samples,
-    process_resources: $process_resources
+    process_resources: $process_resources,
+    runtime_provenance: $runtime_provenance
   }' >"${OPERATIONS_JSON}"
 
 report_args=(
