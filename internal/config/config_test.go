@@ -1,11 +1,100 @@
 package config
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
 )
+
+func TestConfigDistDeclaresDisabledIsolatedAgentArtifactStorage(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("storage.artifact_enabled") {
+		t.Fatal("Agent Artifact storage must remain opt-in outside deployment overlays")
+	}
+	for _, key := range []string{
+		"storage.artifact_endpoint",
+		"storage.artifact_access_key",
+		"storage.artifact_secret_key",
+		"storage.artifact_use_ssl",
+		"storage.artifact_bucket",
+	} {
+		if !v.IsSet(key) {
+			t.Fatalf("missing isolated Agent Artifact storage key %s", key)
+		}
+	}
+	if v.GetString("storage.artifact_access_key") == v.GetString("storage.access_key") ||
+		v.GetString("storage.artifact_secret_key") == v.GetString("storage.secret_key") ||
+		v.GetString("storage.artifact_bucket") == v.GetString("storage.bucket") {
+		t.Fatal("Agent Artifact storage must not inherit the general file identity or bucket")
+	}
+}
+
+func TestAgentArtifactMinIOPolicyAllowsOnlyRequiredPrefixOperations(t *testing.T) {
+	type statement struct {
+		Effect   string   `json:"Effect"`
+		Action   []string `json:"Action"`
+		Resource []string `json:"Resource"`
+	}
+	var policy struct {
+		Statement []statement `json:"Statement"`
+	}
+	body, err := os.ReadFile(filepath.Join("..", "..", "configs", "minio", "agent-artifact-policy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(body, &policy); err != nil {
+		t.Fatal(err)
+	}
+	var actions, resources []string
+	for _, item := range policy.Statement {
+		if item.Effect != "Allow" {
+			t.Fatalf("unexpected policy effect %q", item.Effect)
+		}
+		actions = append(actions, item.Action...)
+		resources = append(resources, item.Resource...)
+	}
+	for _, required := range []string{"s3:GetBucketLocation", "s3:ListBucket", "s3:GetObject", "s3:PutObject"} {
+		if !slices.Contains(actions, required) {
+			t.Fatalf("missing required action %s", required)
+		}
+	}
+	for _, forbidden := range []string{"s3:DeleteObject", "s3:*"} {
+		if slices.Contains(actions, forbidden) {
+			t.Fatalf("forbidden Artifact runtime action %s", forbidden)
+		}
+	}
+	for _, resource := range resources {
+		if resource != "arn:aws:s3:::dipole-agent-artifacts" && resource != "arn:aws:s3:::dipole-agent-artifacts/agent-artifacts/v1/*" {
+			t.Fatalf("policy escapes dedicated Artifact storage: %s", resource)
+		}
+	}
+}
+
+func TestPlatformMinIOPolicyCannotReachAgentArtifacts(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "configs", "minio", "platform-storage-policy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) == "" {
+		t.Fatal("platform storage policy is empty")
+	}
+	if strings.Contains(string(body), "arn:aws:s3:::dipole-agent-artifacts") {
+		t.Fatal("platform storage identity must not receive Agent Artifact resources")
+	}
+	var policy map[string]any
+	if err := json.Unmarshal(body, &policy); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestSyncConfigLoadsCassandraShadowHydrationFromEnvironment(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))

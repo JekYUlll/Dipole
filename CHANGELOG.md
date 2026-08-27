@@ -244,6 +244,7 @@
 
 ### 安全
 
+- Agent Artifact 改用独立 `dipole-agent-artifacts` bucket 与专用 Core 身份，policy 仅允许 bucket 定位/列举和 `agent-artifacts/v1/*` 的 Get/Put，明确不授予删除权限；通用文件/归档身份同步从 MinIO root 降为限定三个既有 bucket 的 `dipoleplatform` 用户，两个运行时身份无法跨 bucket 写入。TS Agent Runtime 不接收对象存储凭据。
 - Message atomic/projector 账号仅保留 sqlc 实际使用的表操作；显式拒绝 Message UPDATE/DELETE、Outbox DELETE、migration 写入、Core 表访问，以及 projector 模式的 Inbox 权限，关闭 AD-015。
 - Sync 与 projector-mode Message 账号按表和操作拆分；启动时拒绝 Sync 修改 Message/Outbox/群高水位或读取 Core 数据，也拒绝 Message projector 访问 Inbox 状态。
 - 更新前端生产依赖锁定版本，修复 Axios、form-data、nanoid 和 PostCSS 的高危公告；生产依赖审计恢复为零漏洞。
@@ -255,6 +256,7 @@
 
 ### 迁移说明
 
+- 通用存储默认凭据由 MinIO root 改为 `dipoleplatform`，Artifact 存储通过 `storage.artifact_*` 独立配置且默认关闭；更新后的 `minio-init` 会幂等创建两个受限用户、policy 和专用 bucket。微服务 Compose 显式启用 Artifact 存储；自定义部署需先创建等价 policy，再设置独立 access key/secret，回滚时关闭 `storage.artifact_enabled` 即可停止 Artifact blob 装配，现有元数据与对象保持不变。
 - 启用 `read_shadow` 前先执行 migration v23，并同时配置 MySQL ledger、`ai_sdk` model routes、Agent Capability RPC 与 Temporal；启动顺序为 Store 探针、Worker、Temporal dispatcher、Kafka consumer。回滚先将 Activity mode 恢复为 `persistent_shadow`/`foundation` 或关闭 Temporal，再回滚 v23；v23 仅增加 nullable `agent_model_calls.output_json`，旧 Runtime 可继续运行。
 - `FinishRun`、`RequestApproval` 和 `ResolveApproval` 是 Agent Capability v1 的 additive RPC，旧 Runtime 可继续调用 `CompleteRun`。持久 shadow Worker 需同时显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow`、启用 Agent Capability RPC 并配置既有共享密钥或 mTLS；回滚时先恢复 `foundation` 或关闭 Temporal Worker，无需数据迁移。
 - Agent 镜像新增精确锁定的 Temporal TypeScript SDK `1.23.0`，构建和运行基底由 Node 22 Alpine 切换为 Node 22 Bookworm slim，以满足 Temporal Native Core 的 glibc ABI。现有部署无需启动 Temporal Server；`DIPOLE_AGENT_TEMPORAL_ENABLED` 默认为 `false`，仅在独立 foundation 验证环境设置为 `true`，并配置 address、namespace 与 task queue。
@@ -293,6 +295,7 @@
 
 ### 验证
 
+- 真实 tmpfs MinIO 验证 Artifact 专用身份可幂等 Put/Get，无法删除、写入通用文件 bucket 或逃逸对象前缀；`dipoleplatform` 可正常写入/清理文件对象且无法写 Artifact bucket。三份 Compose 配置渲染和两次连续 `minio-init` 均通过，Go 全量包 test/vet、定向 race、TS 90 项测试、typecheck/build、sqlc/Go+TS Proto 漂移及 19 个当前源码后端二进制镜像构建门禁通过。
 - 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 read Activity 在模型、Plan 与 Capability 完成后丢失 ACK 并重试时，provider 和 Capability 均只执行一次；真实 MySQL 8.4 验证结构化输出恢复、持久预算漂移拒绝、已完成 Run 精确重放，以及完整 migration v23 `up→down` 链。TypeScript 绑定测试覆盖 Kafka 仅启动稳定 Workflow、inline planner 不再执行和伪造 Task/Run/event 拒绝。
 - 真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 Approval 在 Worker 替换前仅持久创建一次、恢复后保持同一等待点、精确 Signal 只解析一次且解析完成后才继续 Step；真实 MySQL 8.4 验证 pending 精确创建重放、绑定冲突拒绝、16 路并发批准收敛、approve/deny 竞争仅一个 CAS 获胜、终态重放和伪造 principal/cross-Task 拒绝。
 - Temporal 状态机、稳定 Workflow ID、重复启动策略、默认关闭配置和 Worker 启停单测通过；真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 admission 仅执行一次、Step 两次失败后第三次成功、替换 Worker 从历史恢复审批等待、Signal 后完成、terminal Activity 失败后重试，以及超步数精确写入 failed。真实 MySQL 8.4 验证 failed/cancelled Run 首次提交、精确重放、持久读取与冲突终态拒绝；Agent 全量为 62 passed / 13 skipped，TypeScript typecheck/build 和 Proto drift 门禁通过。

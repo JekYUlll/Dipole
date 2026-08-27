@@ -179,14 +179,21 @@ storage:
   provider: minio
   endpoint: minio:9000
   presign_endpoint: 192.168.1.8:9000
-  access_key: dipoleminio
-  secret_key: dipoleminiopass
+  access_key: dipoleplatform
+  secret_key: dipoleplatformpass
   use_ssl: false
   bucket: dipole-files
   search_archive_bucket: dipole-search-archives
   search_archive_retention_days: 30
   message_archive_bucket: dipole-message-archives
   message_archive_retention_days: 30
+  # Artifact storage is opt-in and uses a dedicated identity; do not reuse file credentials.
+  artifact_enabled: false
+  artifact_endpoint: 127.0.0.1:9000
+  artifact_access_key: ""
+  artifact_secret_key: ""
+  artifact_use_ssl: false
+  artifact_bucket: dipole-agent-artifacts
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
   multipart_chunk_size_mb: 5

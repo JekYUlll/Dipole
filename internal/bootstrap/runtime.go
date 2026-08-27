@@ -188,8 +188,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
 		var artifactService applicationPort.AgentArtifactServiceV1
-		if platformStorage.Client != nil {
-			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStore(platformStorage.Client)
+		if storageCfg.ArtifactEnabled {
+			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
+				Enabled: storageCfg.ArtifactEnabled, Endpoint: storageCfg.ArtifactEndpoint,
+				AccessKey: storageCfg.ArtifactAccessKey, SecretKey: storageCfg.ArtifactSecretKey,
+				UseSSL: storageCfg.ArtifactUseSSL, Bucket: storageCfg.ArtifactBucket,
+				GeneralAccessKey: storageCfg.AccessKey, GeneralBucket: storageCfg.Bucket,
+			})
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
 			}

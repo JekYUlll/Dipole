@@ -31,6 +31,22 @@ func TestAgentArtifactBlobStoreIsContentAddressedAndBucketBound(t *testing.T) {
 	}
 }
 
+func TestNewAgentArtifactBlobStoreRequiresDedicatedConfiguration(t *testing.T) {
+	for name, cfg := range map[string]AgentArtifactStorageConfigV1{
+		"disabled":        {},
+		"missing key":     {Enabled: true, Endpoint: "minio:9000", SecretKey: "secret", Bucket: "dipole-agent-artifacts"},
+		"missing secret":  {Enabled: true, Endpoint: "minio:9000", AccessKey: "artifact", Bucket: "dipole-agent-artifacts"},
+		"shared identity": {Enabled: true, Endpoint: "minio:9000", AccessKey: "shared", SecretKey: "secret", Bucket: "artifacts", GeneralAccessKey: "shared", GeneralBucket: "files"},
+		"shared bucket":   {Enabled: true, Endpoint: "minio:9000", AccessKey: "artifact", SecretKey: "secret", Bucket: "shared", GeneralAccessKey: "files", GeneralBucket: "shared"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := NewAgentArtifactBlobStoreFromConfig(context.Background(), cfg); err == nil {
+				t.Fatal("expected isolated Agent Artifact configuration to be rejected")
+			}
+		})
+	}
+}
+
 type agentArtifactObjectClientStubV1 struct {
 	objects map[string][]byte
 	puts    int
