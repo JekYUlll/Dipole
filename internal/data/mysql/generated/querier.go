@@ -70,6 +70,7 @@ type Querier interface {
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
 	FinishAgentToolInvocation(ctx context.Context, arg FinishAgentToolInvocationParams) (int64, error)
+	GetActiveAgentRuntimePromotionGrant(ctx context.Context, arg GetActiveAgentRuntimePromotionGrantParams) (AgentRuntimePromotionGrant, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error)
 	GetAgentArtifact(ctx context.Context, artifactUuid string) (AgentArtifact, error)
@@ -79,6 +80,7 @@ type Querier interface {
 	GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
+	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)
 	GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error)
 	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
@@ -128,6 +130,7 @@ type Querier interface {
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
+	InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error)
 	InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error)
 	InsertAgentShadowStep(ctx context.Context, arg InsertAgentShadowStepParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
@@ -191,6 +194,7 @@ type Querier interface {
 	RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error)
 	RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error)
 	RevokeAgentMemory(ctx context.Context, arg RevokeAgentMemoryParams) (int64, error)
+	RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)

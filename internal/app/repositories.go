@@ -25,6 +25,7 @@ type Repositories struct {
 	AICallLogs          application.AICallLogStore
 	AgentPolicy         application.AgentPolicyStoreV1
 	AgentApprovalGrants application.AgentApprovalGrantStoreV1
+	AgentPromotions     application.AgentRuntimePromotionGrantStoreV1
 	AgentSubscriptions  application.AgentEventSubscriptionStoreV1
 	AgentRepairs        application.AgentWorkflowRepairAuditStoreV1
 	AgentArtifacts      application.AgentArtifactStoreV1
@@ -116,6 +117,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	}
 	repos.AgentPolicy = agentPolicy
 	repos.AgentApprovalGrants = agentPolicy
+	repos.AgentPromotions = agentPolicy
 	repos.AgentSubscriptions = agentPolicy
 	repos.AgentRepairs = agentPolicy
 	agentArtifacts, err := sqlcRepository.NewAgentArtifactRepository(generated.New(db))

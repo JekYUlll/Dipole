@@ -21,6 +21,31 @@ UPDATE agent_definition_versions
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
 WHERE definition_uuid = ? AND version = ? AND revoked_at IS NULL;
 
+-- name: InsertAgentRuntimePromotionGrant :execrows
+INSERT IGNORE INTO agent_runtime_promotion_grants (
+    grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid,
+    definition_version, policy_version, evidence_sha256, eval_suite_sha256,
+    granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at,
+    created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
+
+-- name: GetActiveAgentRuntimePromotionGrant :one
+SELECT * FROM agent_runtime_promotion_grants
+WHERE tenant_id = ? AND runtime_id = ? AND candidate_version = ?
+  AND definition_uuid = ? AND definition_version = ?
+  AND valid_from <= ? AND expires_at > ? AND revoked_at IS NULL
+LIMIT 1;
+
+-- name: GetAgentRuntimePromotionGrant :one
+SELECT * FROM agent_runtime_promotion_grants
+WHERE grant_uuid = ?
+LIMIT 1;
+
+-- name: RevokeAgentRuntimePromotionGrant :execrows
+UPDATE agent_runtime_promotion_grants
+SET revoked_at = ?, updated_at = NOW(3)
+WHERE grant_uuid = ? AND revoked_at IS NULL;
+
 -- name: InsertAgentEventSubscription :exec
 INSERT INTO agent_event_subscriptions (
     subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
@@ -82,8 +107,8 @@ LIMIT ?;
 
 -- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, mode, status, started_at
-) VALUES (?, ?, ?, ?, 'running', UTC_TIMESTAMP());
+    run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at
+) VALUES (?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP());
 
 -- name: GetAgentRun :one
 SELECT * FROM agent_runs WHERE run_uuid = ? LIMIT 1;

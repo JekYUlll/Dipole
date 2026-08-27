@@ -142,14 +142,15 @@ type AgentTaskWorkflowProjectionPageV1 struct {
 }
 
 type AgentRunV1 struct {
-	RunUUID     string           `json:"run_uuid"`
-	TaskUUID    string           `json:"task_uuid"`
-	RuntimeID   string           `json:"runtime_id"`
-	Mode        string           `json:"mode"`
-	Status      AgentRunStatusV1 `json:"status"`
-	StartedAt   time.Time        `json:"started_at,omitempty"`
-	CompletedAt *time.Time       `json:"completed_at,omitempty"`
-	LastError   string           `json:"last_error,omitempty"`
+	RunUUID          string           `json:"run_uuid"`
+	TaskUUID         string           `json:"task_uuid"`
+	RuntimeID        string           `json:"runtime_id"`
+	CandidateVersion string           `json:"candidate_version,omitempty"`
+	Mode             string           `json:"mode"`
+	Status           AgentRunStatusV1 `json:"status"`
+	StartedAt        time.Time        `json:"started_at,omitempty"`
+	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
+	LastError        string           `json:"last_error,omitempty"`
 }
 
 type AgentApprovalV1 struct {
@@ -264,6 +265,9 @@ func (r AgentRunV1) Validate() error {
 	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
 		return ErrAgentPolicyInvalid
 	}
+	if (r.Mode == "active") != (strings.TrimSpace(r.CandidateVersion) != "") || len(r.CandidateVersion) > 128 {
+		return ErrAgentPolicyInvalid
+	}
 	switch r.Status {
 	case AgentRunStatusRunning, AgentRunStatusCompleted, AgentRunStatusFailed, AgentRunStatusCancelled:
 		return nil
@@ -274,9 +278,8 @@ func (r AgentRunV1) Validate() error {
 
 func AgentRunUUIDV1(taskUUID, runtimeID, mode string) (string, error) {
 	taskUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
-	run := AgentRunV1{RunUUID: "pending", TaskUUID: taskUUID, RuntimeID: runtimeID, Mode: mode, Status: AgentRunStatusRunning}
-	if err := run.Validate(); err != nil {
-		return "", err
+	if taskUUID == "" || runtimeID == "" || (mode != "embedded" && mode != "shadow" && mode != "active") {
+		return "", ErrAgentPolicyInvalid
 	}
 	digest := sha256.Sum256([]byte(AgentRunIDVersionV1 + "\n" + taskUUID + "\n" + runtimeID + "\n" + mode))
 	return "run:" + hex.EncodeToString(digest[:])[:60], nil

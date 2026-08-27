@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 31
+const currentMigrationVersion = 32
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,21 +39,27 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 40)
+		assertTableCount(t, db, 41)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
 		assertMigrationCount(t, db, currentMigrationVersion)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (32, 'future_expand')"); err != nil {
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (33, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 32"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 33"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Runtime promotion grant migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 31)
+		assertTableCount(t, db, 40)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Tool action lineage migration: %v", err)
 		}
@@ -260,7 +266,7 @@ func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) 
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	if err := runner.Down(ctx, 2); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-26); err != nil {
 		t.Fatalf("roll back User status contract migration: %v", err)
 	}
 
@@ -308,7 +314,7 @@ func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) 
 		t.Fatalf("v1 default status = %d, want 1", status)
 	}
 
-	if err := runner.Down(ctx, 2); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-26); err != nil {
 		t.Fatalf("roll back User status contract migration: %v", err)
 	}
 	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-legacy'").Scan(&status); err != nil {
@@ -374,7 +380,7 @@ func TestAgentEventSubscriptionMigrationEnforcesBindings(t *testing.T) {
 			t.Fatalf("expected subscription status/filter constraint for %+v", invalid)
 		}
 	}
-	if err := runner.Down(ctx, 1); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-27); err != nil {
 		t.Fatalf("roll back Agent Event Subscription migration: %v", err)
 	}
 	var tableCount, columnCount int
@@ -425,7 +431,7 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 			t.Fatalf("expected Agent Memory constraint for %+v", invalid)
 		}
 	}
-	if err := runner.Down(ctx, 1); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-28); err != nil {
 		t.Fatalf("roll back Agent Memory migration: %v", err)
 	}
 	var tableCount int
@@ -438,7 +444,7 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("reapply Agent Memory migration: %v", err)
 	}
-	if version, err := runner.CurrentVersion(ctx); err != nil || version != 29 {
+	if version, err := runner.CurrentVersion(ctx); err != nil || version != currentMigrationVersion {
 		t.Fatalf("Agent Memory version=%d err=%v", version, err)
 	}
 }
@@ -560,7 +566,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 27)
+	assertMigrationCount(t, db, currentMigrationVersion)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {

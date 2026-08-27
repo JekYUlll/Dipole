@@ -104,17 +104,37 @@ type AgentMemory struct {
 }
 
 type AgentRun struct {
-	ID          uint64
-	RunUuid     string
-	TaskUuid    string
-	RuntimeID   string
-	Mode        string
-	Status      string
-	StartedAt   time.Time
-	CompletedAt sql.NullTime
-	LastError   sql.NullString
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID               uint64
+	RunUuid          string
+	TaskUuid         string
+	RuntimeID        string
+	Mode             string
+	Status           string
+	StartedAt        time.Time
+	CompletedAt      sql.NullTime
+	LastError        sql.NullString
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	CandidateVersion sql.NullString
+}
+
+type AgentRuntimePromotionGrant struct {
+	GrantUuid         string
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	PolicyVersion     string
+	EvidenceSha256    string
+	EvalSuiteSha256   string
+	GrantedByUuid     string
+	ReviewedByUuid    string
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+	RevokedAt         sql.NullTime
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type AgentTask struct {

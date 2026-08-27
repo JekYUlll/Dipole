@@ -36,7 +36,8 @@ func TestAgentApprovalGrantRepositoryContract(t *testing.T) {
 		t.Fatalf("create task: created=%v err=%v", created, createErr)
 	}
 	if created, createErr := store.CreateRun(context.Background(), application.AgentRunV1{
-		RunUUID: "RUN-GRANT", TaskUUID: task.TaskUUID, RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning,
+		RunUUID: "RUN-GRANT", TaskUUID: task.TaskUUID, RuntimeID: "dipole-agent", CandidateVersion: "grant-contract-v1",
+		Mode: "active", Status: application.AgentRunStatusRunning,
 	}); createErr != nil || !created {
 		t.Fatalf("create run: created=%v err=%v", created, createErr)
 	}

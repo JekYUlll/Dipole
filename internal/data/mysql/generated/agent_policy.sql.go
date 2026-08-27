@@ -148,6 +148,56 @@ func (q *Queries) ExpireAgentWorkflowRepairProposal(ctx context.Context, proposa
 	return result.RowsAffected()
 }
 
+const getActiveAgentRuntimePromotionGrant = `-- name: GetActiveAgentRuntimePromotionGrant :one
+SELECT grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_runtime_promotion_grants
+WHERE tenant_id = ? AND runtime_id = ? AND candidate_version = ?
+  AND definition_uuid = ? AND definition_version = ?
+  AND valid_from <= ? AND expires_at > ? AND revoked_at IS NULL
+LIMIT 1
+`
+
+type GetActiveAgentRuntimePromotionGrantParams struct {
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+}
+
+func (q *Queries) GetActiveAgentRuntimePromotionGrant(ctx context.Context, arg GetActiveAgentRuntimePromotionGrantParams) (AgentRuntimePromotionGrant, error) {
+	row := q.db.QueryRowContext(ctx, getActiveAgentRuntimePromotionGrant,
+		arg.TenantID,
+		arg.RuntimeID,
+		arg.CandidateVersion,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.ValidFrom,
+		arg.ExpiresAt,
+	)
+	var i AgentRuntimePromotionGrant
+	err := row.Scan(
+		&i.GrantUuid,
+		&i.TenantID,
+		&i.RuntimeID,
+		&i.CandidateVersion,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.PolicyVersion,
+		&i.EvidenceSha256,
+		&i.EvalSuiteSha256,
+		&i.GrantedByUuid,
+		&i.ReviewedByUuid,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAgentApproval = `-- name: GetAgentApproval :one
 SELECT id, approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256, arguments_sha256, nonce_sha256, status, expires_at, consumed_at, revoked_at, created_at, updated_at, approved_by_uuid FROM agent_approvals WHERE approval_uuid = ? LIMIT 1
 `
@@ -237,7 +287,7 @@ func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUui
 }
 
 const getAgentRun = `-- name: GetAgentRun :one
-SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at FROM agent_runs WHERE run_uuid = ? LIMIT 1
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version FROM agent_runs WHERE run_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error) {
@@ -253,6 +303,37 @@ func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, er
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CandidateVersion,
+	)
+	return i, err
+}
+
+const getAgentRuntimePromotionGrant = `-- name: GetAgentRuntimePromotionGrant :one
+SELECT grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_runtime_promotion_grants
+WHERE grant_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error) {
+	row := q.db.QueryRowContext(ctx, getAgentRuntimePromotionGrant, grantUuid)
+	var i AgentRuntimePromotionGrant
+	err := row.Scan(
+		&i.GrantUuid,
+		&i.TenantID,
+		&i.RuntimeID,
+		&i.CandidateVersion,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.PolicyVersion,
+		&i.EvidenceSha256,
+		&i.EvalSuiteSha256,
+		&i.GrantedByUuid,
+		&i.ReviewedByUuid,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -519,15 +600,16 @@ func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAg
 
 const insertAgentRun = `-- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, mode, status, started_at
-) VALUES (?, ?, ?, ?, 'running', UTC_TIMESTAMP())
+    run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at
+) VALUES (?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
 `
 
 type InsertAgentRunParams struct {
-	RunUuid   string
-	TaskUuid  string
-	RuntimeID string
-	Mode      string
+	RunUuid          string
+	TaskUuid         string
+	RuntimeID        string
+	CandidateVersion sql.NullString
+	Mode             string
 }
 
 func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error) {
@@ -535,7 +617,57 @@ func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) 
 		arg.RunUuid,
 		arg.TaskUuid,
 		arg.RuntimeID,
+		arg.CandidateVersion,
 		arg.Mode,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentRuntimePromotionGrant = `-- name: InsertAgentRuntimePromotionGrant :execrows
+INSERT IGNORE INTO agent_runtime_promotion_grants (
+    grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid,
+    definition_version, policy_version, evidence_sha256, eval_suite_sha256,
+    granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at,
+    created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+`
+
+type InsertAgentRuntimePromotionGrantParams struct {
+	GrantUuid         string
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	PolicyVersion     string
+	EvidenceSha256    string
+	EvalSuiteSha256   string
+	GrantedByUuid     string
+	ReviewedByUuid    string
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+	RevokedAt         sql.NullTime
+}
+
+func (q *Queries) InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentRuntimePromotionGrant,
+		arg.GrantUuid,
+		arg.TenantID,
+		arg.RuntimeID,
+		arg.CandidateVersion,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.PolicyVersion,
+		arg.EvidenceSha256,
+		arg.EvalSuiteSha256,
+		arg.GrantedByUuid,
+		arg.ReviewedByUuid,
+		arg.ValidFrom,
+		arg.ExpiresAt,
+		arg.RevokedAt,
 	)
 	if err != nil {
 		return 0, err
@@ -955,6 +1087,25 @@ type RevokeAgentEventSubscriptionParams struct {
 
 func (q *Queries) RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentEventSubscription, arg.RevokedAt, arg.SubscriptionUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAgentRuntimePromotionGrant = `-- name: RevokeAgentRuntimePromotionGrant :execrows
+UPDATE agent_runtime_promotion_grants
+SET revoked_at = ?, updated_at = NOW(3)
+WHERE grant_uuid = ? AND revoked_at IS NULL
+`
+
+type RevokeAgentRuntimePromotionGrantParams struct {
+	RevokedAt sql.NullTime
+	GrantUuid string
+}
+
+func (q *Queries) RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeAgentRuntimePromotionGrant, arg.RevokedAt, arg.GrantUuid)
 	if err != nil {
 		return 0, err
 	}

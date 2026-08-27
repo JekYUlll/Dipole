@@ -23,6 +23,7 @@ type AgentPolicyRepository struct {
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentApprovalGrantStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentRuntimePromotionGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentEventSubscriptionStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentWorkflowRepairAuditStoreV1 = (*AgentPolicyRepository)(nil)
 
@@ -107,6 +108,93 @@ func (r *AgentPolicyRepository) RevokeDefinitionVersion(ctx context.Context, def
 		return fmt.Errorf("revoke Agent Definition version: %w", err)
 	}
 	return nil
+}
+
+func (r *AgentPolicyRepository) CreateRuntimePromotionGrant(ctx context.Context, grant application.AgentRuntimePromotionGrantV1) (bool, error) {
+	if grant.Validate() != nil || grant.RevokedAt != nil {
+		return false, fmt.Errorf("validate Agent Runtime promotion grant: %w", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.InsertAgentRuntimePromotionGrant(ctx, generated.InsertAgentRuntimePromotionGrantParams{
+		GrantUuid: grant.GrantUUID, TenantID: grant.TenantID, RuntimeID: grant.RuntimeID, CandidateVersion: grant.CandidateVersion,
+		DefinitionUuid: grant.DefinitionUUID, DefinitionVersion: grant.DefinitionVersion, PolicyVersion: grant.PolicyVersion,
+		EvidenceSha256: grant.EvidenceSHA256, EvalSuiteSha256: grant.EvalSuiteSHA256, GrantedByUuid: grant.GrantedByUUID,
+		ReviewedByUuid: grant.ReviewedByUUID, ValidFrom: grant.ValidFrom, ExpiresAt: grant.ExpiresAt,
+	})
+	if err != nil {
+		return false, fmt.Errorf("create Agent Runtime promotion grant: %w", err)
+	}
+	if rows > 0 {
+		return true, nil
+	}
+	row, err := r.queries.GetAgentRuntimePromotionGrant(ctx, grant.GrantUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("%w: Runtime promotion binding is already occupied", ErrAgentPolicyConflict)
+	}
+	if err != nil {
+		return false, fmt.Errorf("verify Agent Runtime promotion grant replay: %w", err)
+	}
+	existing, err := mapAgentRuntimePromotionGrant(row)
+	if err != nil {
+		return false, err
+	}
+	if !sameAgentRuntimePromotionGrant(*existing, grant) {
+		return false, fmt.Errorf("%w: promotion grant UUID=%s", ErrAgentPolicyConflict, grant.GrantUUID)
+	}
+	return false, nil
+}
+
+func (r *AgentPolicyRepository) GetActiveRuntimePromotionGrant(ctx context.Context, lookup application.AgentRuntimePromotionGrantLookupV1) (*application.AgentRuntimePromotionGrantV1, error) {
+	if strings.TrimSpace(lookup.TenantID) == "" || strings.TrimSpace(lookup.RuntimeID) == "" || strings.TrimSpace(lookup.CandidateVersion) == "" ||
+		strings.TrimSpace(lookup.DefinitionUUID) == "" || lookup.DefinitionVersion == 0 || lookup.At.IsZero() {
+		return nil, fmt.Errorf("validate Agent Runtime promotion lookup: %w", application.ErrAgentPolicyInvalid)
+	}
+	row, err := r.queries.GetActiveAgentRuntimePromotionGrant(ctx, generated.GetActiveAgentRuntimePromotionGrantParams{
+		TenantID: lookup.TenantID, RuntimeID: lookup.RuntimeID, CandidateVersion: lookup.CandidateVersion,
+		DefinitionUuid: lookup.DefinitionUUID, DefinitionVersion: lookup.DefinitionVersion, ValidFrom: lookup.At, ExpiresAt: lookup.At,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get active Agent Runtime promotion grant: %w", err)
+	}
+	return mapAgentRuntimePromotionGrant(row)
+}
+
+func mapAgentRuntimePromotionGrant(row generated.AgentRuntimePromotionGrant) (*application.AgentRuntimePromotionGrantV1, error) {
+	grant := &application.AgentRuntimePromotionGrantV1{
+		GrantUUID: row.GrantUuid, TenantID: row.TenantID, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion,
+		DefinitionUUID: row.DefinitionUuid, DefinitionVersion: row.DefinitionVersion, PolicyVersion: row.PolicyVersion,
+		EvidenceSHA256: row.EvidenceSha256, EvalSuiteSHA256: row.EvalSuiteSha256, GrantedByUUID: row.GrantedByUuid,
+		ReviewedByUUID: row.ReviewedByUuid, ValidFrom: row.ValidFrom, ExpiresAt: row.ExpiresAt,
+		RevokedAt: timePointer(row.RevokedAt), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+	if err := grant.Validate(); err != nil {
+		return nil, fmt.Errorf("decode Agent Runtime promotion grant: %w", err)
+	}
+	return grant, nil
+}
+
+func sameAgentRuntimePromotionGrant(left, right application.AgentRuntimePromotionGrantV1) bool {
+	return left.GrantUUID == right.GrantUUID && left.TenantID == right.TenantID && left.RuntimeID == right.RuntimeID &&
+		left.CandidateVersion == right.CandidateVersion && left.DefinitionUUID == right.DefinitionUUID &&
+		left.DefinitionVersion == right.DefinitionVersion && left.PolicyVersion == right.PolicyVersion &&
+		left.EvidenceSHA256 == right.EvidenceSHA256 && left.EvalSuiteSHA256 == right.EvalSuiteSHA256 &&
+		left.GrantedByUUID == right.GrantedByUUID && left.ReviewedByUUID == right.ReviewedByUUID &&
+		left.ValidFrom.Equal(right.ValidFrom) && left.ExpiresAt.Equal(right.ExpiresAt) && left.RevokedAt == nil && right.RevokedAt == nil
+}
+
+func (r *AgentPolicyRepository) RevokeRuntimePromotionGrant(ctx context.Context, grantUUID string, revokedAt time.Time) (bool, error) {
+	if strings.TrimSpace(grantUUID) == "" || revokedAt.IsZero() {
+		return false, fmt.Errorf("validate Agent Runtime promotion revocation: %w", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.RevokeAgentRuntimePromotionGrant(ctx, generated.RevokeAgentRuntimePromotionGrantParams{
+		RevokedAt: nullableTime(&revokedAt), GrantUuid: strings.TrimSpace(grantUUID),
+	})
+	if err != nil {
+		return false, fmt.Errorf("revoke Agent Runtime promotion grant: %w", err)
+	}
+	return rows > 0, nil
 }
 
 func (r *AgentPolicyRepository) CreateEventSubscription(ctx context.Context, subscription application.AgentEventSubscriptionV1) error {
@@ -294,7 +382,8 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 		return false, fmt.Errorf("validate Agent Run: %w", err)
 	}
 	_, err := r.queries.InsertAgentRun(ctx, generated.InsertAgentRunParams{
-		RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID, Mode: run.Mode,
+		RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
+		CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""}, Mode: run.Mode,
 	})
 	if err == nil {
 		return true, nil
@@ -307,7 +396,7 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 	if lookupErr != nil {
 		return false, lookupErr
 	}
-	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.Mode != run.Mode {
+	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.CandidateVersion != run.CandidateVersion || existing.Mode != run.Mode {
 		return false, fmt.Errorf("%w: run_uuid=%s", ErrAgentPolicyConflict, run.RunUUID)
 	}
 	return false, nil
@@ -322,7 +411,7 @@ func (r *AgentPolicyRepository) GetRun(ctx context.Context, runUUID string) (*ap
 		return nil, fmt.Errorf("get Agent Run: %w", err)
 	}
 	return &application.AgentRunV1{
-		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, Mode: row.Mode,
+		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion.String, Mode: row.Mode,
 		Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
 		CompletedAt: timePointer(row.CompletedAt), LastError: row.LastError.String,
 	}, nil
