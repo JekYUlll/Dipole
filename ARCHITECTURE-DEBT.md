@@ -18,7 +18,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Human-in-the-loop、Web 客户端、MCP 集成、凭据与第三方授权
-- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验和大小上限；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点。当前仅提供 API 与 Workflow 能力，未交付 Pencil 设计稿和前端渲染。
+- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验、大小上限和绝对截止时间；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点和 Timer，到期自动以 `input_expired` 取消。当前仅提供 API 与 Workflow 能力，未交付 Pencil 设计稿和前端渲染。
 - **风险：** 缺少 UI 时用户无法在产品内完成 durable input；将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；直接映射 MCP Elicitation 还可能引入 URL 跳转、来源和取消语义差异。
 - **建议方向：** Pencil MCP transport 恢复后先维护完整 desktop/mobile 表单、错误、取消和过期状态，再实现 schema 驱动前端；普通 Form 明确禁止敏感字段。第三方授权采用独立 URL mode、短期 challenge 与回调绑定，MCP adapter 需固定来源、progress/cancel 和版本映射，并增加审计与端到端测试。
 - **处理门槛：** Project Guardian 面向用户演示前完成普通 Form UI；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成敏感输入隔离与威胁建模。
@@ -195,7 +195,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v26 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态、附加 Workflow projection、版本化 Artifact，以及默认空授权的 repair proposal/双人审批审计。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter、只读 Capability Step 和内容寻址 Artifact 创建。Message v1 Envelope 已通过可选 lineage 传播 Agent 根来源、直接 causation 和根 Task，TS Runtime 在 EventLedger/Temporal/model 前阻断同源 Agent 因果链。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API；repair 审计 RPC 只接受 Gateway principal，Agent 服务身份无权调用。离线对账输出六类版本化证据；Shadow 晋级策略要求连续 24 小时、24 个观察点、累计 100 个 Task、零异常和完整 Eval，并且只生成 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
+- **现状：** migration v16-v29 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态、附加 Workflow projection、版本化 Artifact、Subscription 与 scoped Memory。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态、Approval/Input Signal 和 deadline Timer；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter、只读 Capability Step 和内容寻址 Artifact 创建。Message v1 Envelope 已通过可选 lineage传播根 Task，TS Runtime 在高成本处理前阻断同源 Agent 因果链。Gateway 已提供默认关闭的 JWT Task query/cancel/approval/input API；repair 审计 RPC 只接受 Gateway principal。离线对账与 Shadow 晋级保持只生成证据和 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
 - **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory、真实任务终态 outcome Eval 或 repair 审批前端。v25 的 `approved` 只保存审计结论；execution plan v1 仅允许带 CAS/回滚证据的 dry-run，执行器和 projection 修改命令保持缺席。操作员授权当前需要受控 SQL 配置。Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v25 全链升降级、16 路同审批人重放仅一票、两位独立审批后批准，以及原 projection 并发与 shadow cohort keyset 契约。TypeScript/Go canonical evidence SHA-256 使用黄金向量对齐；gRPC 测试验证 Gateway principal 绑定和 Agent 最小权限拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
 - **建议方向：** 下一步使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面，并设计显式、可回滚、再次授权的 repair executor；完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。

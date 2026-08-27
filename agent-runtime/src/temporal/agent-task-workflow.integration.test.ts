@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
-import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
+import type { AgentTaskFinishInput, AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import { TemporalTaskClient, TemporalTaskControlClient, TemporalTaskWorkflowInspector } from "./temporal-task-client.js";
 import { AgentTaskProjectionReconciler } from "../reconcile/agent-task-projection-reconciler.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
@@ -151,7 +151,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
       async executeAgentTaskStep() {
-        return { kind: "wait_input", requestId: "INPUT-1", prompt: "choose scope", form: {
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "choose scope", expiresAtUnixMs: Date.now() + 60_000, form: {
           schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today", "week"] }]
         } };
       }
@@ -193,7 +193,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       async executeAgentTaskStep(input) {
         calls += 1;
         if (input.resume?.kind === "input") return { kind: "complete", output: { scope: input.resume.value.scope } };
-        return { kind: "wait_input", requestId: "INPUT-1", prompt: "Choose scope", form: {
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "Choose scope", expiresAtUnixMs: Date.now() + 60_000, form: {
           schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today", "week"] }]
         } };
       }
@@ -219,6 +219,34 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(calls).toBe(2);
     workerTwo.shutdown();
     await workerTwoRun;
+  }, 120_000);
+
+  it("cancels an unanswered durable input after its recorded deadline", async () => {
+    const taskQueue = `dipole-agent-task-input-timeout-${Date.now()}`;
+    const finishes: AgentTaskFinishInput[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId: "run-input-timeout-1", runStatus: "running" }; },
+      async finishAgentTask(input) { finishes.push(input); },
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep() {
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "Choose scope", expiresAtUnixMs: Date.now() + 150, form: {
+          schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today"] }]
+        } };
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const started = await tasks.start({ taskId: "task-input-timeout-1", goal: "choose scope" });
+    await expect(env.client.workflow.getHandle(started.workflowId).result()).resolves.toMatchObject({
+      status: "cancelled", cancellation: { reason: "input_expired", requestId: "INPUT-1" }
+    });
+    expect(finishes).toHaveLength(1);
+    expect(finishes[0]).toMatchObject({ runStatus: "cancelled", lastError: "input_expired" });
+    worker.shutdown();
+    await workerRun;
   }, 120_000);
 
   it("fails a Task after its bounded Activity step budget", async () => {
