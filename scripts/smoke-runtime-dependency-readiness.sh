@@ -5,6 +5,11 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 compose_file="${root_dir}/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-readiness-${RANDOM}-$$}"
+cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-readiness-certs.XXXXXX)}"
+remove_cert_dir=0
+if [[ -z "${DIPOLE_INTERNAL_CERT_DIR:-}" ]]; then
+  remove_cert_dir=1
+fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   image_name="${IMAGE_NAME:-dipole-server}"
@@ -16,6 +21,7 @@ fi
 : "${DIPOLE_IMAGE:=dipole-server:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
+export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_SEARCH_ENABLED=true
 
 compose() {
@@ -26,8 +32,11 @@ cleanup() {
   local exit_code=$?
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     compose down --volumes --remove-orphans >/dev/null 2>&1 || true
+    if [[ "${remove_cert_dir}" == "1" ]]; then
+      rm -rf "${cert_dir}"
+    fi
   else
-    printf 'Runtime readiness stack retained: project=%s\n' "${project_name}"
+	printf 'Runtime readiness stack retained: project=%s cert_dir=%s\n' "${project_name}" "${cert_dir}"
   fi
   exit "${exit_code}"
 }
@@ -77,7 +86,7 @@ assert_container_ids_unchanged() {
   done
 }
 
-"${script_dir}/generate-internal-certs.sh"
+INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh"
 compose config --quiet
 compose up -d \
   mysql redis kafka minio minio-init elasticsearch migrate mysql-permissions \
