@@ -176,6 +176,10 @@ func (c coreGroupChecker) ListMembers(groupUUID string) ([]*model.GroupMember, e
 }
 
 func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	return s.SendDirectMessageContext(context.Background(), senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *MessageService) SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	content = strings.TrimSpace(content)
 	if targetUUID == "" {
@@ -201,7 +205,7 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content, clie
 		}
 	}
 
-	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, clientMessageID, model.MessageTypeText)
+	return s.buildAndDispatchDirect(ctx, senderUUID, targetUUID, content, clientMessageID, model.MessageTypeText)
 }
 
 func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
@@ -231,7 +235,7 @@ func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, con
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	return s.buildAndDispatchDirect(assistantUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeAIText)
+	return s.buildAndDispatchDirect(context.Background(), assistantUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeAIText)
 }
 
 func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
@@ -261,7 +265,7 @@ func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	return s.buildAndDispatchDirect(senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
+	return s.buildAndDispatchDirect(context.Background(), senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
 }
 
 // SendSystemGroupMessage sends a system message to a group without any permission checks.
@@ -299,7 +303,7 @@ func (s *MessageService) SendSystemGroupMessage(groupUUID, content string) error
 }
 
 // buildAndDispatchDirect persists synchronously or publishes a send_requested event.
-func (s *MessageService) buildAndDispatchDirect(senderUUID, targetUUID, content, clientMessageID string, msgType int8) (*model.Message, error) {
+func (s *MessageService) buildAndDispatchDirect(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string, msgType int8) (*model.Message, error) {
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ClientMessageID: normalizeClientMessageID(clientMessageID),
@@ -316,7 +320,7 @@ func (s *MessageService) buildAndDispatchDirect(senderUUID, targetUUID, content,
 		return s.persistLocalMessage(message, "persist direct message", directSyncRecipients(message))
 	}
 
-	if err := s.publishMessageRequested("message.direct.send_requested", message, nil, true); err != nil {
+	if err := s.publishMessageRequestedContext(ctx, "message.direct.send_requested", message, nil, true); err != nil {
 		return nil, err
 	}
 
@@ -409,6 +413,10 @@ func (s *MessageService) ListDirectMessagesAfterSeq(currentUserUUID, targetUUID 
 }
 
 func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupMessageContext(context.Background(), senderUUID, groupUUID, content, clientMessageID)
+}
+
+func (s *MessageService) SendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	content = strings.TrimSpace(content)
 	if groupUUID == "" {
@@ -452,7 +460,7 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content, client
 		return persisted, recipientUUIDs, nil
 	}
 
-	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs, syncFanout); err != nil {
+	if err := s.publishMessageRequestedContext(ctx, "message.group.send_requested", message, recipientUUIDs, syncFanout); err != nil {
 		return nil, nil, err
 	}
 	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
@@ -461,6 +469,10 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content, client
 }
 
 func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
+	return s.SendDirectFileMessageContext(context.Background(), senderUUID, targetUUID, fileUUID, clientMessageID)
+}
+
+func (s *MessageService) SendDirectFileMessageContext(ctx context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	fileUUID = strings.TrimSpace(fileUUID)
 	if targetUUID == "" {
@@ -490,7 +502,7 @@ func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID,
 	if s.events == nil {
 		return s.persistLocalMessage(message, "persist direct file message", directSyncRecipients(message))
 	}
-	if err := s.publishMessageRequested("message.direct.send_requested", message, nil, true); err != nil {
+	if err := s.publishMessageRequestedContext(ctx, "message.direct.send_requested", message, nil, true); err != nil {
 		return nil, err
 	}
 
@@ -498,6 +510,10 @@ func (s *MessageService) SendDirectFileMessage(senderUUID, targetUUID, fileUUID,
 }
 
 func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupFileMessageContext(context.Background(), senderUUID, groupUUID, fileUUID, clientMessageID)
+}
+
+func (s *MessageService) SendGroupFileMessageContext(ctx context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	fileUUID = strings.TrimSpace(fileUUID)
 	if groupUUID == "" {
@@ -528,7 +544,7 @@ func (s *MessageService) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, c
 		s.observeGroupHeat(groupUUID, len(recipientUUIDs))
 		return persisted, recipientUUIDs, nil
 	}
-	if err := s.publishMessageRequested("message.group.send_requested", message, recipientUUIDs, syncFanout); err != nil {
+	if err := s.publishMessageRequestedContext(ctx, "message.group.send_requested", message, recipientUUIDs, syncFanout); err != nil {
 		return nil, nil, err
 	}
 	s.observeGroupHeat(groupUUID, len(recipientUUIDs))
@@ -694,6 +710,10 @@ func (s *MessageService) ListOfflineMessages(currentUserUUID string, afterID uin
 }
 
 func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*model.Message, error) {
+	return s.PersistRequestedMessageContext(context.Background(), payload)
+}
+
+func (s *MessageService) PersistRequestedMessageContext(ctx context.Context, payload MessageEventPayload) (*model.Message, error) {
 	message := payloadToMessage(payload)
 	if message == nil {
 		return nil, fmt.Errorf("message payload is nil")
@@ -702,7 +722,7 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 	syncFanout := syncFanoutEnabled(payload.SyncFanout)
 	recipients := syncRecipientsForPayload(message, payload)
 	buildOutbox := func(stored *model.Message) (*model.OutboxEvent, error) {
-		return buildMessageCreatedOutboxEvent(stored, payload.RecipientUUIDs, syncFanout)
+		return buildMessageCreatedOutboxEventContext(ctx, stored, payload.RecipientUUIDs, syncFanout)
 	}
 	if err := s.repo.StoreWithOutboxAndSync(message, buildOutbox, recipients); err != nil {
 		if !isDuplicateMessageError(err) {
@@ -721,7 +741,7 @@ func (s *MessageService) PersistRequestedMessage(payload MessageEventPayload) (*
 		}
 		message = existing
 		recipients = syncRecipientsForPayload(message, payload)
-		outboxEvent, err := buildMessageCreatedOutboxEvent(message, payload.RecipientUUIDs, syncFanout)
+		outboxEvent, err := buildMessageCreatedOutboxEventContext(ctx, message, payload.RecipientUUIDs, syncFanout)
 		if err != nil {
 			return nil, fmt.Errorf("rebuild message created outbox event: %w", err)
 		}
@@ -840,12 +860,16 @@ func findExistingMetadataForDuplicate(repo applicationPort.MessageMetadataStore,
 }
 
 func (s *MessageService) publishMessageRequested(topic string, message *model.Message, recipientUUIDs []string, syncFanout bool) error {
+	return s.publishMessageRequestedContext(context.Background(), topic, message, recipientUUIDs, syncFanout)
+}
+
+func (s *MessageService) publishMessageRequestedContext(ctx context.Context, topic string, message *model.Message, recipientUUIDs []string, syncFanout bool) error {
 	if s.events == nil || message == nil {
 		return nil
 	}
 
 	payload := messageToEventPayload(message, recipientUUIDs, syncFanout)
-	if err := s.events.PublishEvent(context.Background(), topic, kafkaMessageRoutingKey(message), topic, payload, nil); err != nil {
+	if err := s.events.PublishEvent(ctx, topic, kafkaMessageRoutingKey(message), topic, payload, nil); err != nil {
 		return fmt.Errorf("publish requested message event: %w", err)
 	}
 
@@ -902,6 +926,10 @@ func messageToEventPayload(message *model.Message, recipientUUIDs []string, sync
 }
 
 func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []string, syncFanout bool) (*model.OutboxEvent, error) {
+	return buildMessageCreatedOutboxEventContext(context.Background(), message, recipientUUIDs, syncFanout)
+}
+
+func buildMessageCreatedOutboxEventContext(ctx context.Context, message *model.Message, recipientUUIDs []string, syncFanout bool) (*model.OutboxEvent, error) {
 	if message == nil {
 		return nil, nil
 	}
@@ -919,7 +947,7 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 	if err != nil {
 		return nil, err
 	}
-	envelope, err := platformKafka.NewEnvelope(eventType, payload)
+	envelope, err := platformKafka.NewEnvelopeContext(ctx, eventType, payload)
 	if err != nil {
 		return nil, fmt.Errorf("create message created envelope: %w", err)
 	}
@@ -929,13 +957,20 @@ func buildMessageCreatedOutboxEvent(message *model.Message, recipientUUIDs []str
 		return nil, fmt.Errorf("marshal message created envelope: %w", err)
 	}
 
-	headers, err := json.Marshal(map[string]string{
+	headersMap := map[string]string{
 		"event_type":     envelope.EventType,
 		"version":        envelope.Version,
 		"schema_version": envelope.Version,
 		"source":         envelope.Source,
 		"event_id":       envelope.EventID,
-	})
+	}
+	if envelope.RequestID != "" {
+		headersMap["request_id"] = envelope.RequestID
+	}
+	if envelope.TraceID != "" {
+		headersMap["trace_id"] = envelope.TraceID
+	}
+	headers, err := json.Marshal(headersMap)
 	if err != nil {
 		return nil, fmt.Errorf("marshal outbox headers: %w", err)
 	}

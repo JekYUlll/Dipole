@@ -42,13 +42,18 @@ const (
 )
 
 type InboundEnvelope struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Type      string          `json:"type"`
+	RequestID string          `json:"request_id,omitempty"`
+	TraceID   string          `json:"trace_id,omitempty"`
+	Data      json.RawMessage `json:"data,omitempty"`
 }
 
 type OutboundEvent struct {
-	Type string `json:"type"`
-	Data any    `json:"data,omitempty"`
+	Type      string `json:"type"`
+	RequestID string `json:"request_id,omitempty"`
+	TraceID   string `json:"trace_id,omitempty"`
+	EventID   string `json:"event_id,omitempty"`
+	Data      any    `json:"data,omitempty"`
 }
 
 type ConnectedEventData struct {

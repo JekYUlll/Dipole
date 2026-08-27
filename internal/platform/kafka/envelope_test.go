@@ -1,9 +1,24 @@
 package kafka
 
 import (
+	"context"
 	"errors"
 	"testing"
+
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
+
+func TestNewEnvelopeContextCarriesCorrelation(t *testing.T) {
+	t.Parallel()
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1"})
+	envelope, err := NewEnvelopeContext(ctx, "message.created", map[string]string{"message_id": "M1"})
+	if err != nil {
+		t.Fatalf("new envelope: %v", err)
+	}
+	if envelope.RequestID != "R1" || envelope.TraceID != "T1" || envelope.EventID == "" {
+		t.Fatalf("unexpected correlation: %+v", envelope)
+	}
+}
 
 func TestNewEnvelopeUsesCurrentSchemaVersion(t *testing.T) {
 	t.Parallel()

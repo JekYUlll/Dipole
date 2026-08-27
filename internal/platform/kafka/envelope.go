@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 const (
@@ -20,6 +23,8 @@ var ErrUnsupportedEventVersion = errors.New("unsupported kafka event schema vers
 
 type Envelope struct {
 	EventID    string          `json:"event_id"`
+	RequestID  string          `json:"request_id,omitempty"`
+	TraceID    string          `json:"trace_id,omitempty"`
 	EventType  string          `json:"event_type"`
 	Version    string          `json:"version"`
 	Source     string          `json:"source"`
@@ -28,13 +33,20 @@ type Envelope struct {
 }
 
 func NewEnvelope(eventType string, payload any) (*Envelope, error) {
+	return NewEnvelopeContext(context.Background(), eventType, payload)
+}
+
+func NewEnvelopeContext(ctx context.Context, eventType string, payload any) (*Envelope, error) {
 	rawPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal event payload: %w", err)
 	}
 
+	ids := correlation.FromContext(ctx)
 	return &Envelope{
 		EventID:    generateEventID(),
+		RequestID:  ids.RequestID,
+		TraceID:    ids.TraceID,
 		EventType:  strings.TrimSpace(eventType),
 		Version:    DefaultEventVersion,
 		Source:     "dipole",
