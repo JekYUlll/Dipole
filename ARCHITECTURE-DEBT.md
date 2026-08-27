@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-028：Agent Shadow EventLedger 仅具备进程内幂等
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** `agent-runtime`、Kafka 重放、Agent Task、Runtime 多副本与故障恢复
+- **现状：** TS Runtime 以独立 `dipole-agent-shadow-*` consumer group 消费兼容 v1 Message 事件，使用稳定 Event ID 派生 Task ID，并由 `InMemoryEventLedger` 在计划前 claim、审计成功后 complete、失败时 release。并发单测要求 16 个 claim 只有一个成功，真实 Kafka 3.9 重放相同事件只输出一条 shadow plan。
+- **风险：** Runtime 重启会清空 completed 记录；多个副本各自持有 ledger 时可能同时处理同一事件。无效 envelope 当前依赖 KafkaJS handler 重试，尚无有界 retry/DLQ，poison event 可能阻塞分区。当前输出只有只读 metadata audit，因此不会修改 IM 状态；接入模型、Tool 或写 Capability 后会造成重复成本、重复审批或重复动作。
+- **建议方向：** G2 引入持久 Event/Task ledger，以 Event ID 唯一约束和 Task ID 绑定执行原子 claim/complete/release；Kafka offset 只在持久状态与审计提交后推进，并增加版本化 retry/DLQ。Temporal 接入后复用 Task ID 作为 Workflow ID。
+- **处理门槛：** 启用模型调用、Tool 轨迹、多个 Runtime 副本或 `ai.runtime_mode=remote` 前完成，并通过进程 crash、consumer rebalance、重复事件和并发 claim 的真实存储测试。
+
 ### AD-026：Readiness 尚未持续感知运行期依赖退化
 
 - **优先级：** P2
