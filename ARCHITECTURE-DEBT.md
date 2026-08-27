@@ -15,13 +15,13 @@
 ### AD-029：Agent 模型预算与调用轨迹尚未跨重试持久化
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 已解决
 - **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
 - **影响范围：** `agent-runtime`、模型成本、Kafka retry、Run/Step 审计与故障恢复
-- **现状：** provider-neutral ModelRouter 已限制进程内 Run 最大调用数、总 deadline 和单次输出 Token，AI SDK 内部 retry 固定关闭。migration v19 与 MySQL ModelAuditStore 已通过 Task 唯一 Run、固定预算快照和事务 call-slot 预留持久化调用上限；完成/失败记录 usage、latency、route 与 finish reason，崩溃 reservation 保留成本并可收敛为 `abandoned`。真实 MySQL 8.4 连续三轮 16 路并发均只授予 3 个 slot，策略漂移和旧终态更新被拒绝；最小账号仍无法读取 `users`。模型模式默认 `metadata`，Router 尚未接入该 Store。
-- **风险：** 当前 `ai_sdk` 组合仍使用进程内预算与 Console audit；在接线完成前，多次 transport retry 会分别获得预算，运行时也无法从持久记录汇总 Task 总调用数和 provider trajectory。
-- **建议方向：** 将 ModelRouter 每次调用绑定 Task ID，在调用 provider 前通过 ModelAuditStore 预留 slot，并在所有成功/失败路径写终态；Runtime readiness 探测 v19 表。后续 Step/Tool/Approval/Artifact 继续使用独立持久轨迹模型，避免把所有状态塞入模型调用表。
-- **处理门槛：** 生产启用 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、Tool trajectory 或 `ai.runtime_mode=remote` 前完成，并验证并发预留、进程崩溃、Kafka retry、provider fallback 和预算耗尽恢复。
+- **解决方式：** migration v19 与 MySQL ModelAuditStore 以 Task 唯一 Run 固定预算快照，provider 调用前事务预留 slot，成功/失败写入 route、usage、finish reason、latency 与错误，Run 终止时将遗留 reservation 收敛为 `abandoned`。ModelRouter 已在每条 provider 路径调用 Store，持久写失败禁止 fallback；AI SDK 模式强制 MySQL Store并在 readiness 前探测 v19。无 slot 重试按 Task 条件收敛仍在 running 的 Run。
+- **验证：** 真实 MySQL 8.4 连续三轮 16 路并发均只授予 3 个 slot；策略漂移、旧终态更新和越权 Core 表访问被拒绝。两个独立 Router 模拟同一 Kafka Task 重投时 provider 总调用固定为 2，第二次重投获得 0 slot，Run 保留 `calls_reserved=2` 并进入 failed。43 项常规 TS 和 5 项真实 Store 测试通过。
+- **长期约束：** AI SDK 内部 retry 保持为 0；所有新增模型调用入口必须先预留持久 slot。Temporal 接入后复用同一 Task/Run，不另建可绕过预算的 Workflow retry 计数器；Tool/Approval/Artifact 使用独立 Step 轨迹扩展。
 
 ### AD-028：Agent Kafka 失败转移尚未接入 retry/DLQ
 

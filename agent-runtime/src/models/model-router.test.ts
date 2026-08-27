@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { ModelRouter, ModelRoutingError, type StructuredModelClient } from "./model-router.js";
+import { ModelRouter, ModelRoutingError, type ModelAuditStore, type StructuredModelClient } from "./model-router.js";
 
 const outputSchema = z.object({ summary: z.string() });
 
@@ -82,4 +82,64 @@ describe("ModelRouter", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 100 }));
   });
+
+  it("persists the call and Run lifecycle around a successful provider call", async () => {
+    const generate: StructuredModelClient["generate"] = vi.fn(async () => ({
+      output: { summary: "persisted" }, usage: { inputTokens: 12, outputTokens: 4 }, finishReason: "stop"
+    }));
+    const audit = auditStore();
+    vi.mocked(audit.reserve).mockResolvedValue({ runId: "RUN-1", callId: "CALL-1", callNo: 1, route: "primary" });
+    const router = new ModelRouter({ generate }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await expect(router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" })).resolves.toMatchObject({
+      output: { summary: "persisted" }, route: "primary"
+    });
+    expect(audit.completeCall).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: "CALL-1" }), { inputTokens: 12, outputTokens: 4 }, "stop", 0
+    );
+    expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
+    expect(audit.failCall).not.toHaveBeenCalled();
+  });
+
+  it("records provider failure before reserving the fallback", async () => {
+    const generate: StructuredModelClient["generate"] = vi.fn()
+      .mockRejectedValueOnce(new Error("primary failed"))
+      .mockResolvedValueOnce({ output: { summary: "fallback" }, usage: { inputTokens: 8, outputTokens: 3 }, finishReason: "stop" });
+    const audit = auditStore();
+    vi.mocked(audit.reserve)
+      .mockResolvedValueOnce({ runId: "RUN-1", callId: "CALL-1", callNo: 1, route: "primary" })
+      .mockResolvedValueOnce({ runId: "RUN-1", callId: "CALL-2", callNo: 2, route: "fallback" });
+    const router = new ModelRouter({ generate }, ["primary", "fallback"], {
+      maxCalls: 2, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" });
+
+    expect(audit.failCall).toHaveBeenCalledWith(expect.objectContaining({ callId: "CALL-1" }), expect.any(Error), 0);
+    expect(audit.completeCall).toHaveBeenCalledWith(expect.objectContaining({ callId: "CALL-2" }), expect.anything(), "stop", 0);
+  });
+
+  it("does not call a provider when the durable Task budget has no slot", async () => {
+    const generate: StructuredModelClient["generate"] = vi.fn();
+    const audit = auditStore();
+    vi.mocked(audit.reserve).mockResolvedValue(undefined);
+    const router = new ModelRouter({ generate }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await expect(router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" })).rejects.toMatchObject({
+      attempts: 0, exhaustedBudget: true
+    });
+    expect(generate).not.toHaveBeenCalled();
+    expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError));
+  });
 });
+
+function auditStore(): ModelAuditStore {
+  return {
+    reserve: vi.fn(), completeCall: vi.fn(async () => undefined), failCall: vi.fn(async () => undefined),
+    completeRun: vi.fn(async () => undefined), failRun: vi.fn(async () => undefined), failTask: vi.fn(async () => undefined)
+  };
+}

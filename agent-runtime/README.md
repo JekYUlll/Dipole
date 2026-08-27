@@ -43,6 +43,6 @@ AI_GATEWAY_API_KEY=... \
 npm start
 ```
 
-Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并把 route、attempt、input/output Token 计入 shadow audit。migration v19 与 ModelAuditStore 已提供 Task 级原子 slot 和调用终态，但 Router 尚未接线；生产启用前仍需完成 `AD-029`。
+Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 migration v19 ModelAuditStore 预留 Task slot，并持久化 route、attempt、input/output Token、latency 与终态；Kafka 重投不能刷新预算。
 
 微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，只连接 Kafka 与 Agent 自有 MySQL ledger，不连接 Redis 或 Go 内部 RPC。

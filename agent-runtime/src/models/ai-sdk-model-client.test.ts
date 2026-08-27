@@ -28,7 +28,8 @@ describe("AISDKStructuredModelClient", () => {
 
     expect(result).toEqual({
       output: { summary: "observe E1", capabilityIds: [] },
-      usage: { inputTokens: 21, outputTokens: 7 }
+      usage: { inputTokens: 21, outputTokens: 7 },
+      finishReason: "stop"
     });
     expect(model.doGenerateCalls).toHaveLength(1);
     expect(model.doGenerateCalls[0]).toMatchObject({ maxOutputTokens: 96 });

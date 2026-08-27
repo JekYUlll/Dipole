@@ -2,13 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
-import type { ModelRunBudgetPolicy, ModelUsage } from "./model-router.js";
+import type { ModelAuditStore, ModelCallReservation, ModelRunBudgetPolicy, ModelUsage } from "./model-router.js";
 import {
   ABANDON_AGENT_MODEL_CALLS,
   COMPLETE_AGENT_MODEL_CALL,
   COMPLETE_AGENT_MODEL_RUN,
   FAIL_AGENT_MODEL_CALL,
   FAIL_AGENT_MODEL_RUN,
+  FAIL_AGENT_MODEL_RUN_BY_TASK,
   INCREMENT_AGENT_MODEL_RUN_CALLS,
   INSERT_AGENT_MODEL_CALL,
   INSERT_AGENT_MODEL_RUN,
@@ -25,14 +26,7 @@ interface ModelRunRow extends RowDataPacket {
   calls_reserved: number;
 }
 
-export interface ModelCallReservation {
-  readonly runId: string;
-  readonly callId: string;
-  readonly callNo: number;
-  readonly route: string;
-}
-
-export class MySQLModelAuditStore {
+export class MySQLModelAuditStore implements ModelAuditStore {
   constructor(private readonly pool: Pool) {}
 
   async reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined> {
@@ -104,6 +98,11 @@ export class MySQLModelAuditStore {
 
   async failRun(runId: string, error: unknown): Promise<void> {
     await this.finishRun(runId, "failed", errorText(error));
+  }
+
+  async failTask(taskId: string, error: unknown): Promise<void> {
+    taskId = required(taskId, "Task ID", 64);
+    await this.pool.execute(FAIL_AGENT_MODEL_RUN_BY_TASK, [errorText(error), taskId]);
   }
 
   private async finishRun(runId: string, status: "completed" | "failed", error: string | null = null): Promise<void> {

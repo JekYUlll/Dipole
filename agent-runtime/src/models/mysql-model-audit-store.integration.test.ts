@@ -3,8 +3,10 @@ import { readFile } from "node:fs/promises";
 
 import { createPool, type Pool, type RowDataPacket } from "mysql2/promise";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { MySQLModelAuditStore } from "./mysql-model-audit-store.js";
+import { ModelRouter, type StructuredModelClient } from "./model-router.js";
 
 const adminUrl = process.env.DIPOLE_TEST_AGENT_MYSQL_URL;
 const integration = describe.skipIf(adminUrl === undefined);
@@ -91,5 +93,29 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
       expect.objectContaining({ call_no: 1, status: "abandoned" }),
       expect.objectContaining({ call_no: 2, status: "completed" })
     ]);
+  });
+
+  it("caps provider calls across independent Kafka retry attempts", async () => {
+    const store = new MySQLModelAuditStore(pool);
+    let providerCalls = 0;
+    const client: StructuredModelClient = {
+      generate: async () => {
+        providerCalls += 1;
+        throw new Error("provider unavailable");
+      }
+    };
+    const retryPolicy = { ...policy, maxCalls: 2 };
+    const routes = ["gateway/primary", "gateway/fallback"];
+    const firstAttempt = new ModelRouter(client, routes, retryPolicy, undefined, store);
+    const kafkaRetry = new ModelRouter(client, routes, retryPolicy, undefined, store);
+    const request = { taskId: "TASK-KAFKA-RETRY", prompt: "plan", schema: z.object({ summary: z.string() }) };
+
+    await expect(firstAttempt.generate(request)).rejects.toThrow(/budget exhausted/);
+    await expect(kafkaRetry.generate(request)).rejects.toMatchObject({ attempts: 0, exhaustedBudget: true });
+    expect(providerCalls).toBe(2);
+    const [runs] = await pool.query<Array<RowDataPacket & { status: string; calls_reserved: number }>>(
+      "SELECT status, calls_reserved FROM agent_model_runs WHERE task_uuid = 'TASK-KAFKA-RETRY'"
+    );
+    expect(runs[0]).toMatchObject({ status: "failed", calls_reserved: 2 });
   });
 });
