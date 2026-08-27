@@ -167,16 +167,16 @@
 - **验证：** `dipole.agent.eval.v1` 保留两条恶意 `U999` 覆盖用例，结果改为 `identity.execution_context` 与 `principal_enforced`；单元测试覆盖全部 Tool 缺少上下文拒绝、schema 身份字段扫描、发送 Agent 不匹配和 Service 派生链。
 - **后续边界：** tenant、委托身份和细粒度权限继续由 G1 Capability API 承担，不能重新加入模型可控身份参数。
 
-### AD-009：Agent 仅有调用级日志，缺少持久任务生命周期
+### AD-009：Agent 持久任务生命周期尚未完成生产接管
 
 - **优先级：** P2
-- **状态：** 暂缓
+- **状态：** 处理中
 - **发现日期：** 2026-08-26
-- **影响范围：** `ai_call_logs`、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v21 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan 和带 lease 的 Step 终态；Kafka 重投可以恢复同一 Task/Run 并重领未完成 Step。等待输入/审批、Timer、取消和跨天恢复仍未接入 Temporal Workflow。
-- **风险：** 服务重启、等待用户输入或审批、Tool 重试和多步骤 Artifact 无法形成可恢复、可审计的统一状态。
-- **基线证据：** Go/Eino v1 评测集只能从测试 adapter 还原单次 trigger、Agent、Tool 和消息动作轨迹；生产持久层仍仅记录调用开始、成功/失败、Token 与响应消息 ID。
-- **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
+- **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
+- **现状：** migration v16-v22 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal G3 foundation 已增加稳定 Workflow ID、waiting_input/waiting_approval/终态状态机、Signal/Query、Activity 三次有界重试和 Worker 历史恢复；Worker 默认关闭，foundation Activity 只返回受控失败，Kafka Shadow 尚未切流。
+- **风险：** Temporal Workflow 状态尚未与 MySQL AgentTask/Run/Step 形成单一提交协议，生产 Activity 尚未接入 ContextCompiler、ModelRouter、Capability 与 Approval Store。此时提前切流会产生双状态源、重复预算或审批结果漂移。
+- **基线证据：** 真实 Temporal Server 已验证两次 Activity 失败后重试成功、运行中重复启动收敛、Worker 替换后恢复审批等待、Signal 完成和终态重放拒绝；现有 Kafka Shadow 与 Go/Eino 权威路径保持不变。
+- **建议方向：** 先实现 MySQL Task/Run 与 Workflow 的幂等 admission/terminal Activity，随后接入持久 Approval Signal、ContextCompiler/ModelRouter/Capability Step，最后通过 shadow trajectory 比较和显式 runtime mode 完成切流。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
 ### AD-012：用户状态常量与 schema 默认值偏移

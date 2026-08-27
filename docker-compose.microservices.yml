@@ -110,6 +110,7 @@ services:
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/agent.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
       DIPOLE_AGENT_MODEL_MODE: metadata
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "false"
       DIPOLE_AGENT_MYSQL_HOST: mysql
       DIPOLE_AGENT_MYSQL_PORT: "3306"
       DIPOLE_AGENT_MYSQL_USER: ${DIPOLE_AGENT_MYSQL_USER:-dipole_agent}

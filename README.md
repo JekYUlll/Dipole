@@ -31,6 +31,14 @@ go run ./cmd/server
 
 服务启动只校验 migration 版本，不修改 schema。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
 
+多语言仓库的 Go 全量门禁使用：
+
+```bash
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu scripts/check-go.sh
+```
+
+该脚本覆盖 `cmd`、`db`、`docs/swagger` 和 `internal` 下的全部 Go package，并依次执行 test 与 vet。Temporal npm 包携带上游 SDK 源树，安装 `agent-runtime/node_modules` 后不再使用根级 `go test ./...`，避免把第三方源码误识别为本项目 package。
+
 sqlc 生成固定使用 `v1.31.1`：
 
 ```bash
