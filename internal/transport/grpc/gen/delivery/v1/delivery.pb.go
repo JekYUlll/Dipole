@@ -1141,9 +1141,10 @@ const file_dipole_delivery_v1_delivery_proto_rawDesc = "" +
 	"\x1eDELIVERY_ERROR_CODE_QUEUE_FULL\x10\x01\x12$\n" +
 	" DELIVERY_ERROR_CODE_INVALID_ITEM\x10\x02\x12(\n" +
 	"$DELIVERY_ERROR_CODE_NODE_UNAVAILABLE\x10\x03\x12 \n" +
-	"\x1cDELIVERY_ERROR_CODE_INTERNAL\x10\x042}\n" +
+	"\x1cDELIVERY_ERROR_CODE_INTERNAL\x10\x042\xd9\x01\n" +
 	"\x13NodeDeliveryService\x12f\n" +
-	"\x10ObserveNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a+.dipole.delivery.v1.NodeDeliveryObservationBOZMgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1b\x06proto3"
+	"\x10ObserveNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a+.dipole.delivery.v1.NodeDeliveryObservation\x12Z\n" +
+	"\x10DeliverNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a\x1f.dipole.delivery.v1.DeliveryAckBOZMgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1b\x06proto3"
 
 var (
 	file_dipole_delivery_v1_delivery_proto_rawDescOnce sync.Once
@@ -1193,9 +1194,11 @@ var file_dipole_delivery_v1_delivery_proto_depIdxs = []int32{
 	1,  // 14: dipole.delivery.v1.DeliveryResult.status:type_name -> dipole.delivery.v1.DeliveryResultStatus
 	4,  // 15: dipole.delivery.v1.DeliveryResult.error_code:type_name -> dipole.delivery.v1.DeliveryErrorCode
 	7,  // 16: dipole.delivery.v1.NodeDeliveryService.ObserveNodeBatch:input_type -> dipole.delivery.v1.NodeDeliveryBatch
-	10, // 17: dipole.delivery.v1.NodeDeliveryService.ObserveNodeBatch:output_type -> dipole.delivery.v1.NodeDeliveryObservation
-	17, // [17:18] is the sub-list for method output_type
-	16, // [16:17] is the sub-list for method input_type
+	7,  // 17: dipole.delivery.v1.NodeDeliveryService.DeliverNodeBatch:input_type -> dipole.delivery.v1.NodeDeliveryBatch
+	10, // 18: dipole.delivery.v1.NodeDeliveryService.ObserveNodeBatch:output_type -> dipole.delivery.v1.NodeDeliveryObservation
+	9,  // 19: dipole.delivery.v1.NodeDeliveryService.DeliverNodeBatch:output_type -> dipole.delivery.v1.DeliveryAck
+	18, // [18:20] is the sub-list for method output_type
+	16, // [16:18] is the sub-list for method input_type
 	16, // [16:16] is the sub-list for extension type_name
 	16, // [16:16] is the sub-list for extension extendee
 	0,  // [0:16] is the sub-list for field type_name

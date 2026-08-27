@@ -1,0 +1,22 @@
+{
+  "container_id": "ad060d7b0a8424d7949965771f80140d673b87eee04995801027f87bf606af80",
+  "image_id": "sha256:e9cbffa396cfe2ec13da738adf738a4bc974c9c69e03de4ecc1bc65708703724",
+  "image": "dipole-server:c2-primary-9589bbc",
+  "created": "2026-08-27T22:55:34.218833862Z",
+  "started_at": "2026-08-27T22:56:20.929726456Z",
+  "health": "healthy",
+  "ports": {
+    "8080/tcp": [
+      {
+        "HostIp": "127.0.0.1",
+        "HostPort": "18088"
+      }
+    ],
+    "9095/tcp": [
+      {
+        "HostIp": "127.0.0.1",
+        "HostPort": "19095"
+      }
+    ]
+  }
+}

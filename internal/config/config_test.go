@@ -44,6 +44,12 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 		v.GetInt("internal_rpc.delivery_observation_retry_after_ms") != 25 {
 		t.Fatal("delivery observation queue defaults drifted")
 	}
+	if v.GetBool("internal_rpc.delivery_primary_enabled") {
+		t.Fatal("C2 primary delivery must remain opt-in")
+	}
+	if v.GetInt("internal_rpc.delivery_primary_replay_capacity") != 8192 {
+		t.Fatal("primary delivery replay capacity drifted")
+	}
 }
 
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {

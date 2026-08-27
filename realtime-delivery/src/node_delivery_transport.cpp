@@ -165,4 +165,37 @@ ValidationError GrpcNodeBatchTransport::Observe(
   return std::nullopt;
 }
 
+ValidationError GrpcNodeBatchTransport::Deliver(
+    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+    std::vector<delivery::v1::DeliveryAck>* acknowledgements) {
+  if (acknowledgements == nullptr) return "node delivery acknowledgements are required";
+  acknowledgements->clear();
+  acknowledgements->reserve(batches.size());
+  for (const auto& batch : batches) {
+    if (const auto error = ValidateNodeBatch(batch); error) return error;
+    const auto found = stubs_.find(batch.target_node_id());
+    if (found == stubs_.end()) return "node transport target is unavailable";
+    grpc::ClientContext context;
+    context.set_deadline(std::chrono::system_clock::now() +
+                         std::chrono::milliseconds(config_.timeout_ms));
+    context.AddMetadata("x-dipole-caller-service", std::string(kCallerService));
+    context.AddMetadata("x-dipole-service-token", config_.shared_secret);
+    if (!batch.request_id().empty()) context.AddMetadata("x-request-id", batch.request_id());
+    if (!batch.trace_id().empty()) context.AddMetadata("x-trace-id", batch.trace_id());
+
+    delivery::v1::DeliveryAck acknowledgement;
+    const auto status = found->second->DeliverNodeBatch(&context, batch, &acknowledgement);
+    if (!status.ok()) {
+      return "node delivery RPC failed with code " +
+             std::to_string(static_cast<int>(status.error_code()));
+    }
+    if (const auto error = ValidateAck(acknowledgement); error) return error;
+    if (acknowledgement.batch_id() != batch.batch_id()) {
+      return "node delivery acknowledgement identity drifted";
+    }
+    acknowledgements->push_back(std::move(acknowledgement));
+  }
+  return std::nullopt;
+}
+
 }  // namespace dipole::realtime

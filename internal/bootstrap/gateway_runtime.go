@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -40,6 +41,35 @@ type gatewayObservationSink struct {
 	batches     atomic.Uint64
 	items       atomic.Uint64
 	connections atomic.Uint64
+}
+
+type gatewayPrimaryDeliverySink struct {
+	hub *wsTransport.Hub
+}
+
+func (s *gatewayPrimaryDeliverySink) Enqueue(ctx context.Context, request deliverygrpc.ConnectionDeliveryRequest) ([]deliverygrpc.ConnectionDeliveryOutcome, error) {
+	results, err := s.hub.EnqueueEventToConnectionsContext(
+		ctx, request.RecipientUserID, request.ConnectionIDs, request.DeliveryID,
+		request.EventType, json.RawMessage(request.PayloadJSON),
+	)
+	if err != nil {
+		return nil, err
+	}
+	outcomes := make([]deliverygrpc.ConnectionDeliveryOutcome, 0, len(results))
+	for _, result := range results {
+		status := deliverygrpc.ConnectionDeliveryStatusOffline
+		switch result.Status {
+		case wsTransport.ConnectionEnqueueStatusEnqueued:
+			status = deliverygrpc.ConnectionDeliveryStatusEnqueued
+		case wsTransport.ConnectionEnqueueStatusBackpressured:
+			status = deliverygrpc.ConnectionDeliveryStatusBackpressured
+		}
+		outcomes = append(outcomes, deliverygrpc.ConnectionDeliveryOutcome{
+			ConnectionID: result.ConnectionID, Status: status,
+			QueueDepth: result.QueueDepth, QueueCapacity: result.QueueCapacity,
+		})
+	}
+	return outcomes, nil
 }
 
 func (s *gatewayObservationSink) Observe(batch *deliveryv1.NodeDeliveryBatch) {
@@ -135,7 +165,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, fmt.Errorf("initialize gateway server: %w", err)
 	}
 	runtime.server = srv
-	if rpcCfg.DeliveryObservationEnabled {
+	if rpcCfg.DeliveryObservationEnabled || rpcCfg.DeliveryPrimaryEnabled {
 		if presence == nil || presence.NodeID() == "" {
 			cleanup()
 			return nil, fmt.Errorf("delivery observation requires Redis Presence node identity")
@@ -148,6 +178,21 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize delivery observation receiver: %w", err)
+		}
+		if rpcCfg.DeliveryPrimaryEnabled {
+			primary, primaryErr := deliverygrpc.NewPrimaryDispatcher(
+				presence.NodeID(), rpcCfg.DeliveryPrimaryReplayCapacity,
+				time.Duration(rpcCfg.DeliveryObservationRetryAfterMS)*time.Millisecond,
+				&gatewayPrimaryDeliverySink{hub: srv.WSHub()},
+			)
+			if primaryErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("initialize primary delivery dispatcher: %w", primaryErr)
+			}
+			if primaryErr = runtime.deliveryObserver.EnablePrimary(primary); primaryErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("enable primary delivery dispatcher: %w", primaryErr)
+			}
 		}
 		runtime.deliveryObservationRPC, err = NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
 		if err != nil {

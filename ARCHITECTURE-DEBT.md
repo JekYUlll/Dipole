@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-28
+- **影响范围：** Gateway HTTP 访问日志、日志聚合与保留、WebSocket session JWT
+- **现状：** WebSocket 使用 `?token=` 建立连接，Gin 完成日志记录原始 request path。C2 primary seam 演练在未提交日志中检出完整 JWT，归档前已替换为 `token=REDACTED` 并重新执行低敏扫描和校验和。
+- **风险：** 具备日志读取权限的主体可能在令牌有效期内重放 session；集中日志、备份和工单会扩大凭据暴露面。
+- **建议方向：** 在结构化访问日志入口统一清除敏感 query 参数，WebSocket 后续评审短期 ticket、Cookie 或 `Sec-WebSocket-Protocol` 认证方案；增加日志 capture 测试，拒绝 JWT、共享密钥和授权 Header 进入日志正文。
+- **处理门槛：** 任何 Gateway 日志进入共享日志系统前完成脱敏；认证传输方案变化需保留旧客户端兼容窗口和重放威胁测试。
+
 ### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
 
 - **优先级：** P1
@@ -163,8 +174,8 @@
 - **现状：** go-redis 会在 Sentinel 选出新 master 后重连命令与 Pub/Sub 连接；连接中断期间已经发布的 Pub/Sub 消息无法补读。Gateway 的 Kafka handler 当前将跨节点 Pub/Sub 视为实时通知通道。
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
-- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零；Gateway sink 不持有 Hub/Client，当前 Go Redis Pub/Sub 流量语义未切换。
-- **后续方向：** 评审 connection 定向投递、逐项客户端 ACK、稳定 delivery ID 去重和 Kafka offset 提交边界；同时先处理 `AD-039` 的 Gateway assignment readiness，避免切流门禁把未加入消费组误判为就绪。保留 Sync Timeline 作为最终补偿路径。
+- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零。`AD-039` 已关闭。默认关闭的 primary seam 现提供 connection 定向入队、逐项 ACK、部分成功 connection 重试、有界 Gateway replay state 与 additive WebSocket delivery ID；Web 通过账户隔离的 IndexedDB v4 原子 claim 跨页面重载去重，并以有界内存集合覆盖当前会话。C++ one-shot probe 经 mTLS 实际投递到隔离 Gateway：在线连接返回 `ENQUEUED(1)`，相同批次重放无第二个客户端帧，Redis TTL 中的 stale connection 返回 `OFFLINE`；证据归档到 `benchmarks/c2-primary-delivery-seam-2026-08-28/`。ShadowRunner 仍只调用 Observe，当前 Go Redis Pub/Sub 流量语义未切换。
+- **后续方向：** 继续运行 C++ probe 触发的真实部分 queue saturation，并在显式 primary runtime 中验证 Kafka consume-to-ACK offset 提交和崩溃重放，再评审 C++ primary mode。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
 ### AD-015：Message Service 数据库账号尚未收敛表级权限

@@ -180,6 +180,9 @@ internal_rpc:
   delivery_observation_listen_address: 127.0.0.1:9095
   delivery_observation_capacity: 1024
   delivery_observation_retry_after_ms: 25
+  # C2 primary edge remains disabled until replay and client-dedup evidence pass.
+  delivery_primary_enabled: false
+  delivery_primary_replay_capacity: 8192
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
   # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.

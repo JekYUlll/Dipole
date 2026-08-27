@@ -176,15 +176,47 @@ func TestShadowServerRejectsUnsafeConfiguration(t *testing.T) {
 	}
 }
 
+func TestShadowServerKeepsPrimaryDeliveryDisabledUntilInjected(t *testing.T) {
+	server, err := NewShadowServer("gateway-1", 4, 25*time.Millisecond, &recordingSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(server.Close)
+	if _, err := server.DeliverNodeBatch(context.Background(), validNodeBatch("disabled", "gateway-1")); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("disabled primary delivery error = %v", err)
+	}
+
+	sink := &scriptedPrimarySink{statuses: map[string][]ConnectionDeliveryStatus{
+		"C1": {ConnectionDeliveryStatusEnqueued}, "C2": {ConnectionDeliveryStatusEnqueued},
+	}}
+	dispatcher, err := NewPrimaryDispatcher("gateway-1", 64, 25*time.Millisecond, sink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.EnablePrimary(dispatcher); err != nil {
+		t.Fatal(err)
+	}
+	ack, err := server.DeliverNodeBatch(context.Background(), validNodeBatch("enabled", "gateway-1"))
+	if err != nil || ack.Status != deliveryv1.DeliveryAckStatus_DELIVERY_ACK_STATUS_ACCEPTED {
+		t.Fatalf("enabled primary delivery ack=%+v error=%v", ack, err)
+	}
+}
+
 func TestShadowServerRequiresRealtimeServiceAuthentication(t *testing.T) {
 	authorized := newObservationClient(t, grpcauth.Credentials{Service: "dipole-realtime", Secret: "test-secret"})
 	if _, err := authorized.ObserveNodeBatch(context.Background(), validNodeBatch("authorized", "gateway-1")); err != nil {
 		t.Fatalf("authorized observation: %v", err)
 	}
+	if _, err := authorized.DeliverNodeBatch(context.Background(), validNodeBatch("primary-disabled", "gateway-1")); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("primary delivery must stay disabled, got %v", err)
+	}
 
 	denied := newObservationClient(t, grpcauth.Credentials{Service: "dipole-message", Secret: "test-secret"})
 	if _, err := denied.ObserveNodeBatch(context.Background(), validNodeBatch("denied", "gateway-1")); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected caller rejection, got %v", err)
+	}
+	if _, err := denied.DeliverNodeBatch(context.Background(), validNodeBatch("primary-denied", "gateway-1")); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected primary caller rejection, got %v", err)
 	}
 }
 

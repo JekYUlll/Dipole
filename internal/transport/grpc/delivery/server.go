@@ -33,6 +33,42 @@ type ShadowServer struct {
 	closed         atomic.Bool
 	closeOnce      sync.Once
 	workerDone     chan struct{}
+	primary        *PrimaryDispatcher
+}
+
+func (s *ShadowServer) EnablePrimary(dispatcher *PrimaryDispatcher) error {
+	if s == nil || dispatcher == nil {
+		return errors.New("primary delivery dispatcher is required")
+	}
+	if dispatcher.nodeID != s.nodeID {
+		return errors.New("primary delivery dispatcher node does not match receiver")
+	}
+	s.dedupeMu.Lock()
+	defer s.dedupeMu.Unlock()
+	if s.closed.Load() {
+		return errors.New("node delivery receiver is closed")
+	}
+	if s.primary != nil {
+		return errors.New("primary delivery dispatcher is already enabled")
+	}
+	s.primary = dispatcher
+	return nil
+}
+
+func (s *ShadowServer) DeliverNodeBatch(ctx context.Context, batch *deliveryv1.NodeDeliveryBatch) (*deliveryv1.DeliveryAck, error) {
+	if s == nil {
+		return nil, status.Error(codes.Unavailable, "node delivery receiver is closed")
+	}
+	s.dedupeMu.Lock()
+	defer s.dedupeMu.Unlock()
+	if s.closed.Load() {
+		return nil, status.Error(codes.Unavailable, "node delivery receiver is closed")
+	}
+	primary := s.primary
+	if primary == nil {
+		return nil, status.Error(codes.FailedPrecondition, "primary node delivery is disabled")
+	}
+	return primary.DeliverNodeBatch(ctx, batch)
 }
 
 func NewShadowServer(nodeID string, capacity int, retryAfter time.Duration, sink ObservationSink) (*ShadowServer, error) {

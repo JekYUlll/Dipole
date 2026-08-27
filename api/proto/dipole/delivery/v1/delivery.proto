@@ -138,4 +138,5 @@ message QueuePressure {
 
 service NodeDeliveryService {
   rpc ObserveNodeBatch(NodeDeliveryBatch) returns (NodeDeliveryObservation);
+  rpc DeliverNodeBatch(NodeDeliveryBatch) returns (DeliveryAck);
 }

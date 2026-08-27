@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	NodeDeliveryService_ObserveNodeBatch_FullMethodName = "/dipole.delivery.v1.NodeDeliveryService/ObserveNodeBatch"
+	NodeDeliveryService_DeliverNodeBatch_FullMethodName = "/dipole.delivery.v1.NodeDeliveryService/DeliverNodeBatch"
 )
 
 // NodeDeliveryServiceClient is the client API for NodeDeliveryService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeDeliveryServiceClient interface {
 	ObserveNodeBatch(ctx context.Context, in *NodeDeliveryBatch, opts ...grpc.CallOption) (*NodeDeliveryObservation, error)
+	DeliverNodeBatch(ctx context.Context, in *NodeDeliveryBatch, opts ...grpc.CallOption) (*DeliveryAck, error)
 }
 
 type nodeDeliveryServiceClient struct {
@@ -47,11 +49,22 @@ func (c *nodeDeliveryServiceClient) ObserveNodeBatch(ctx context.Context, in *No
 	return out, nil
 }
 
+func (c *nodeDeliveryServiceClient) DeliverNodeBatch(ctx context.Context, in *NodeDeliveryBatch, opts ...grpc.CallOption) (*DeliveryAck, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeliveryAck)
+	err := c.cc.Invoke(ctx, NodeDeliveryService_DeliverNodeBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NodeDeliveryServiceServer is the server API for NodeDeliveryService service.
 // All implementations must embed UnimplementedNodeDeliveryServiceServer
 // for forward compatibility.
 type NodeDeliveryServiceServer interface {
 	ObserveNodeBatch(context.Context, *NodeDeliveryBatch) (*NodeDeliveryObservation, error)
+	DeliverNodeBatch(context.Context, *NodeDeliveryBatch) (*DeliveryAck, error)
 	mustEmbedUnimplementedNodeDeliveryServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedNodeDeliveryServiceServer struct{}
 
 func (UnimplementedNodeDeliveryServiceServer) ObserveNodeBatch(context.Context, *NodeDeliveryBatch) (*NodeDeliveryObservation, error) {
 	return nil, status.Error(codes.Unimplemented, "method ObserveNodeBatch not implemented")
+}
+func (UnimplementedNodeDeliveryServiceServer) DeliverNodeBatch(context.Context, *NodeDeliveryBatch) (*DeliveryAck, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeliverNodeBatch not implemented")
 }
 func (UnimplementedNodeDeliveryServiceServer) mustEmbedUnimplementedNodeDeliveryServiceServer() {}
 func (UnimplementedNodeDeliveryServiceServer) testEmbeddedByValue()                             {}
@@ -104,6 +120,24 @@ func _NodeDeliveryService_ObserveNodeBatch_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NodeDeliveryService_DeliverNodeBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeDeliveryBatch)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NodeDeliveryServiceServer).DeliverNodeBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NodeDeliveryService_DeliverNodeBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NodeDeliveryServiceServer).DeliverNodeBatch(ctx, req.(*NodeDeliveryBatch))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NodeDeliveryService_ServiceDesc is the grpc.ServiceDesc for NodeDeliveryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var NodeDeliveryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ObserveNodeBatch",
 			Handler:    _NodeDeliveryService_ObserveNodeBatch_Handler,
+		},
+		{
+			MethodName: "DeliverNodeBatch",
+			Handler:    _NodeDeliveryService_DeliverNodeBatch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

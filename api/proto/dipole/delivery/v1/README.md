@@ -10,6 +10,7 @@
 - `DeliveryMode` distinguishes full events, Timeline notifications, and hot-group pull notifications.
 - `DeliveryAck` reports each item independently. `BACKPRESSURED` includes a bounded retry hint and `QUEUE_FULL`; `OFFLINE` is a successful routing decision and does not require immediate retry. Error codes use a finite protobuf enum to keep metrics and retry policy consistent across languages.
 - `NodeDeliveryService.ObserveNodeBatch` admits a node batch into the default-off, no-client-write shadow receiver and returns `NodeDeliveryObservation`; observation status stays separate from enqueue/offline delivery ACK semantics.
+- `NodeDeliveryService.DeliverNodeBatch` is the additive primary edge method. Generated servers keep it unimplemented until an explicitly enabled Gateway dispatcher provides connection-targeted enqueue, stable delivery identity, bounded replay state, and per-item ACK evidence.
 - A v1 envelope or node batch contains at most 4096 items. Producers split larger fanout sets into independently replayable batches.
 
 The Go legacy adapter is a compatibility implementation. C++ shadow and primary implementations must pass the same golden-vector and validation gates before traffic promotion.

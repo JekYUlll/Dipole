@@ -1,0 +1,173 @@
+# HELP dipole_dependency_probe_failures_total Total failed critical dependency probes.
+# TYPE dipole_dependency_probe_failures_total counter
+dipole_dependency_probe_failures_total{dependency="core-rpc",service="dipole-gateway"} 0
+dipole_dependency_probe_failures_total{dependency="kafka",service="dipole-gateway"} 0
+dipole_dependency_probe_failures_total{dependency="kafka-assignment",service="dipole-gateway"} 2
+dipole_dependency_probe_failures_total{dependency="message-rpc",service="dipole-gateway"} 0
+dipole_dependency_probe_failures_total{dependency="redis",service="dipole-gateway"} 0
+# HELP dipole_dependency_ready Whether a critical runtime dependency is currently healthy after hysteresis.
+# TYPE dipole_dependency_ready gauge
+dipole_dependency_ready{dependency="core-rpc",service="dipole-gateway"} 1
+dipole_dependency_ready{dependency="kafka",service="dipole-gateway"} 1
+dipole_dependency_ready{dependency="kafka-assignment",service="dipole-gateway"} 1
+dipole_dependency_ready{dependency="message-rpc",service="dipole-gateway"} 1
+dipole_dependency_ready{dependency="redis",service="dipole-gateway"} 1
+# HELP dipole_kafka_consumer_commit_errors_total Kafka offset commit errors observed by this process.
+# TYPE dipole_kafka_consumer_commit_errors_total counter
+dipole_kafka_consumer_commit_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_committed_total Kafka offsets committed by this process.
+# TYPE dipole_kafka_consumer_committed_total counter
+dipole_kafka_consumer_committed_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_dead_letter_published_total Messages published to dead-letter topics.
+# TYPE dipole_kafka_consumer_dead_letter_published_total counter
+dipole_kafka_consumer_dead_letter_published_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_fetch_errors_total Kafka fetch errors observed by this process.
+# TYPE dipole_kafka_consumer_fetch_errors_total counter
+dipole_kafka_consumer_fetch_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_fetched_total Kafka messages fetched by this process.
+# TYPE dipole_kafka_consumer_fetched_total counter
+dipole_kafka_consumer_fetched_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_handled_total Kafka messages handled or transferred to retry/dead-letter.
+# TYPE dipole_kafka_consumer_handled_total counter
+dipole_kafka_consumer_handled_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_kafka_consumer_reader_bytes_total Bytes reported by kafka-go readers.
+# TYPE dipole_kafka_consumer_reader_bytes_total counter
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 0
+dipole_kafka_consumer_reader_bytes_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 0
+# HELP dipole_kafka_consumer_reader_errors_total Errors reported by kafka-go readers.
+# TYPE dipole_kafka_consumer_reader_errors_total counter
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 3
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 2
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 6
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 5
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 5
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 5
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 4
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 4
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 4
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 6
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 4
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 6
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 5
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 4
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 22
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 21
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 17
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 21
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 7
+dipole_kafka_consumer_reader_errors_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 4
+# HELP dipole_kafka_consumer_reader_messages_total Messages reported by kafka-go readers.
+# TYPE dipole_kafka_consumer_reader_messages_total counter
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 0
+dipole_kafka_consumer_reader_messages_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 0
+# HELP dipole_kafka_consumer_reader_queue_length Current kafka-go reader queue length.
+# TYPE dipole_kafka_consumer_reader_queue_length gauge
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 0
+dipole_kafka_consumer_reader_queue_length{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 0
+# HELP dipole_kafka_consumer_reader_rebalances_total Rebalances reported by kafka-go readers.
+# TYPE dipole_kafka_consumer_reader_rebalances_total counter
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 1
+dipole_kafka_consumer_reader_rebalances_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 1
+# HELP dipole_kafka_consumer_reader_timeouts_total Timeouts reported by kafka-go readers.
+# TYPE dipole_kafka_consumer_reader_timeouts_total counter
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted"} 32766
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.contact.friend.deleted.retry"} 32706
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read"} 32695
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.conversation.direct.read.retry"} 32289
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created"} 32454
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.created.retry"} 32644
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed"} 32626
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.dismissed.retry"} 32648
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added"} 32554
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.added.retry"} 32632
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed"} 32675
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.members.removed.retry"} 32685
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated"} 32533
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.group.updated.retry"} 32643
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created"} 196001
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.direct.created.retry"} 195642
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created"} 196419
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.message.group.created.retry"} 195363
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout"} 32571
+dipole_kafka_consumer_reader_timeouts_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer",topic="dipole.session.force_logout.retry"} 32805
+# HELP dipole_kafka_consumer_retry_published_total Messages published to retry topics.
+# TYPE dipole_kafka_consumer_retry_published_total counter
+dipole_kafka_consumer_retry_published_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 0
+# HELP dipole_service_info Static identity of a running Dipole service.
+# TYPE dipole_service_info gauge
+dipole_service_info{service="dipole-gateway"} 1
+# HELP dipole_service_ready Whether the Dipole service currently accepts traffic.
+# TYPE dipole_service_ready gauge
+dipole_service_ready{service="dipole-gateway"} 1

@@ -4,6 +4,7 @@
 
 #include "contract_validator.hpp"
 #include "health_server.hpp"
+#include "primary_probe.hpp"
 #include "shadow_runtime.hpp"
 
 namespace {
@@ -56,6 +57,13 @@ int main(int argc, char** argv) {
     std::signal(SIGTERM, Stop);
     return dipole::realtime::RunShadow(config, running);
   }
-  std::cerr << "usage: dipole-realtime-delivery <validate|serve|shadow> <testdata-dir>\n";
+  if (argc == 4 && std::string(argv[1]) == "deliver_probe") {
+    if (ValidateGoldens(argv[2]) != 0) {
+      return 1;
+    }
+    return dipole::realtime::RunPrimaryProbe(argv[3]);
+  }
+  std::cerr << "usage: dipole-realtime-delivery <validate|serve|shadow> <testdata-dir>\n"
+            << "       dipole-realtime-delivery deliver_probe <testdata-dir> <batch-json>\n";
   return 2;
 }
