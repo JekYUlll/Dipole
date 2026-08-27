@@ -83,6 +83,8 @@ C++ shadow 阶段遵守以下门禁：
 
 当前主机具备 nlohmann/json 3.11.3；librdkafka 2.3.0 通过 Ubuntu Noble 包无特权解压到临时 sysroot 完成编译与测试，未修改系统包。发布构建必须把 librdkafka 版本写入构建镜像和运行证据，禁止依赖开发机隐式库。
 
+2026-08-28 的首轮真实 Kafka 证据位于 `benchmarks/c2-cpp-shadow-2026-08-28/`：205 条 retained group event 与 1 条注入 poison event 均形成 evidence，最终 lag 为 0；两实例 rebalance 和单实例接管期间 readiness 保持 200。direct topic 当时为空，节点路由和性能对照仍未完成。
+
 ## 进程与数据所有权
 
 C++ Delivery 可读取 Kafka 事件与 Redis Presence/热点状态，可向 Gateway 节点发送批次并输出指标。它不得连接 MySQL、Cassandra、Elasticsearch、Agent Runtime 或对象存储，也不得重新执行成员权限、消息持久化和 Conversation/Inbox 投影。
