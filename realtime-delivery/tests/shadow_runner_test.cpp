@@ -108,6 +108,22 @@ class FakeEvidenceSink final : public dipole::realtime::ShadowEvidenceSink {
   dipole::realtime::ValidationError append_error;
 };
 
+class FakePresenceReader final : public dipole::realtime::PresenceReader {
+ public:
+  dipole::realtime::ValidationError ReadUsers(
+      const std::vector<std::string>& user_ids,
+      dipole::realtime::PresenceReadResult* result) override {
+    requested_users = user_ids;
+    if (read_error) return read_error;
+    *result = read_result;
+    return std::nullopt;
+  }
+
+  std::vector<std::string> requested_users;
+  dipole::realtime::PresenceReadResult read_result;
+  dipole::realtime::ValidationError read_error;
+};
+
 void TestProjectedRecordCommitsAfterEvidence() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -154,6 +170,67 @@ void TestPoisonRecordWritesEvidenceAndCommits() {
         "poison evidence excludes body and unstable diagnostics");
   const auto stats = runner.Stats();
   Check(stats.rejected == 1 && stats.committed == 1, "poison stats advance");
+}
+
+void TestPresenceProjectionAddsBoundedEvidence() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_result.by_user["U2"] = {
+      {.connection_id = "C1", .user_id = "U2", .node_id = "node-a", .last_seen_unix_ms = 9'900},
+      {.connection_id = "C2", .user_id = "U2", .node_id = "node-b", .last_seen_unix_ms = 1'000},
+  };
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence);
+
+  const auto error = runner.RunOnce({}, dipole::realtime::PresenceProjectionPolicy{
+                                            .now_unix_ms = 10'000, .ttl_ms = 1'000});
+  Check(!error, "Presence projection succeeds");
+  Check(presence.requested_users == std::vector<std::string>{"U2"},
+        "Presence reads unique projected recipient");
+  Check(sink.entries.size() == 1 && sink.entries[0].node_batch_count == 1 &&
+            sink.entries[0].presence_observed == 2 && sink.entries[0].presence_eligible == 1 &&
+            sink.entries[0].presence_stale == 1 && sink.entries[0].offline_item_count == 0,
+        "Presence evidence contains aggregate routing counts");
+  Check(consumer.commit_attempts == std::vector<std::int64_t>{99},
+        "Presence evidence precedes commit");
+}
+
+void TestPresenceReadFailureKeepsOffsetUncommitted() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_error = "Redis unavailable";
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence);
+
+  const auto error = runner.RunOnce({}, dipole::realtime::PresenceProjectionPolicy{
+                                            .now_unix_ms = 10'000, .ttl_ms = 1'000});
+  Check(error.has_value() && error->find("Presence") != std::string::npos,
+        "Presence read error reaches caller");
+  Check(sink.entries.empty() && consumer.commit_attempts.empty(),
+        "Presence read failure has no evidence or commit");
+  Check(runner.Stats().presence_read_errors == 1 && !runner.Ready(),
+        "Presence read failure removes readiness");
+}
+
+void TestInvalidPresenceWritesEvidenceAndCommits() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakePresenceReader presence;
+  presence.read_result.by_user["U2"] = {
+      {.connection_id = "C1", .user_id = "U-drift", .node_id = "node-a", .last_seen_unix_ms = 9'900}};
+  dipole::realtime::ShadowRunner runner(&consumer, &sink, 100, &presence);
+
+  const auto error = runner.RunOnce({}, dipole::realtime::PresenceProjectionPolicy{
+                                            .now_unix_ms = 10'000, .ttl_ms = 1'000});
+  Check(!error, "invalid Presence is isolated after evidence");
+  Check(sink.entries.size() == 1 && sink.entries[0].error_code == "invalid_presence" &&
+            sink.entries[0].outcome == dipole::realtime::ShadowOutcome::kRejected,
+        "invalid Presence uses fixed low-sensitive category");
+  Check(consumer.commit_attempts == std::vector<std::int64_t>{99},
+        "invalid Presence commits after evidence");
 }
 
 void TestEvidenceFailureKeepsOffsetUncommitted() {
@@ -218,6 +295,9 @@ int main() {
   try {
     TestProjectedRecordCommitsAfterEvidence();
     TestPoisonRecordWritesEvidenceAndCommits();
+    TestPresenceProjectionAddsBoundedEvidence();
+    TestPresenceReadFailureKeepsOffsetUncommitted();
+    TestInvalidPresenceWritesEvidenceAndCommits();
     TestEvidenceFailureKeepsOffsetUncommitted();
     TestCommitFailureReachesCaller();
     TestTimeoutAndPollError();

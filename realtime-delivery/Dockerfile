@@ -7,6 +7,7 @@ RUN apt-get update \
       cmake \
       curl \
       g++ \
+      libhiredis-dev \
       librdkafka-dev \
       libprotobuf-dev \
       ninja-build \
@@ -43,6 +44,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
       ca-certificates \
+      libhiredis1.1.0 \
       librdkafka1 \
       libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*

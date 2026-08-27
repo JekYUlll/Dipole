@@ -1,14 +1,21 @@
 #include "shadow_runner.hpp"
 
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace dipole::realtime {
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink,
-                           int poll_timeout_ms)
-    : consumer_(consumer), evidence_sink_(evidence_sink), poll_timeout_ms_(poll_timeout_ms) {}
+                           int poll_timeout_ms, PresenceReader* presence_reader)
+    : consumer_(consumer),
+      evidence_sink_(evidence_sink),
+      poll_timeout_ms_(poll_timeout_ms),
+      presence_reader_(presence_reader) {}
 
-ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy) {
+ValidationError ShadowRunner::RunOnce(
+    const ProjectionPolicy& policy,
+    const std::optional<PresenceProjectionPolicy>& presence_policy) {
   if (consumer_ == nullptr) {
     healthy_.store(false);
     return "shadow consumer is required";
@@ -47,8 +54,42 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy) {
     evidence.source_event_id = envelope.source_event_id();
     evidence.batch_id = envelope.batch_id();
     evidence.item_count = static_cast<std::size_t>(envelope.items_size());
-    evidence.outcome = ShadowOutcome::kProjected;
-    ++stats_.projected;
+    if (presence_reader_ != nullptr) {
+      if (!presence_policy) {
+        healthy_.store(false);
+        return "presence projection policy is required";
+      }
+      std::unordered_set<std::string> unique_recipients;
+      for (const auto& item : envelope.items()) unique_recipients.insert(item.recipient_user_id());
+      std::vector<std::string> recipients(unique_recipients.begin(), unique_recipients.end());
+      PresenceReadResult read_result;
+      if (const auto read_error = presence_reader_->ReadUsers(recipients, &read_result); read_error) {
+        ++stats_.presence_read_errors;
+        healthy_.store(false);
+        return "shadow Presence read failed: " + *read_error;
+      }
+      std::vector<delivery::v1::NodeDeliveryBatch> batches;
+      PresenceProjectionStats presence_stats;
+      const auto presence_error =
+          ProjectPresence(envelope, read_result.by_user, *presence_policy, &batches, &presence_stats);
+      evidence.node_batch_count = batches.size();
+      evidence.presence_observed = presence_stats.observed_connections;
+      evidence.presence_eligible = presence_stats.eligible_connections;
+      evidence.presence_stale = presence_stats.stale_connections;
+      evidence.presence_malformed = read_result.parse_stats.malformed_records;
+      evidence.offline_item_count = presence_stats.offline_items;
+      if (presence_error) {
+        evidence.outcome = ShadowOutcome::kRejected;
+        evidence.error_code = "invalid_presence";
+        ++stats_.rejected;
+      } else {
+        evidence.outcome = ShadowOutcome::kProjected;
+        ++stats_.projected;
+      }
+    } else {
+      evidence.outcome = ShadowOutcome::kProjected;
+      ++stats_.projected;
+    }
   }
 
   if (const auto evidence_error = evidence_sink_->Append(evidence); evidence_error) {

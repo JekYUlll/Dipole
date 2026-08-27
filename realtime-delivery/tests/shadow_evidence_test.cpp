@@ -34,7 +34,7 @@ void TestProjectedEvidence() {
   Check(!sink.Append(evidence), "write projected evidence");
   const auto decoded = nlohmann::json::parse(output.str());
   Check(decoded == nlohmann::json({
-                       {"schema_version", "dipole.realtime.shadow-evidence.v1"},
+                       {"schema_version", "dipole.realtime.shadow-evidence.v2"},
                        {"topic", "dipole.message.direct.created"},
                        {"partition", 2},
                        {"offset", 41},
@@ -43,6 +43,12 @@ void TestProjectedEvidence() {
                        {"batch_id", "shadow:E1:2:41"},
                        {"item_count", 2},
                        {"error_code", ""},
+                       {"node_batch_count", 0},
+                       {"presence_observed", 0},
+                       {"presence_eligible", 0},
+                       {"presence_stale", 0},
+                       {"presence_malformed", 0},
+                       {"offline_item_count", 0},
                    }),
         "projected evidence schema is stable");
   Check(output.str().find("body must not enter evidence") == std::string::npos,

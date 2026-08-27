@@ -17,6 +17,10 @@
 
 ### 新增
 
+- C2 归档 Presence Shadow 与 Sentinel 恢复证据到 `benchmarks/c2-cpp-presence-2026-08-28/`：同一 hiredis reader 在停止当前 master 后完成 80 次读取中的 75 次成功、5 次有界错误，并自动从 `redis-2` 恢复到 `redis-3`，无需进程重启；隔离项目、网络和卷已清理。
+- C2 将 Presence 注入 Kafka ShadowRunner，并升级低敏证据为 `shadow-evidence.v2`：记录节点批次及 malformed/observed/eligible/stale/offline 聚合计数；Redis 读取失败不提交 offset，身份漂移记录 `invalid_presence` 后提交。真实联合回放 206 条，205 projected、1 poison rejected、20 个非空节点批次，最终 lag 为 0。
+- C2 增加 hiredis 1.2 Presence 只读 adapter：支持 direct 或 Sentinel master discovery、AUTH/SELECT、批量 `HGETALL` pipeline、命令失败后断连重发现，以及 Go Hash 兼容解析；真实 Redis 隔离 fixture 验证通过，尚未注入 Kafka ShadowRunner。
+- C2 增加 C++ Presence 纯投影边界：兼容解析 Go Presence Hash JSON/RFC3339 时间，将连接快照按 TTL 过滤后确定性分组为 `NodeDeliveryBatch`，显式统计 malformed/observed/eligible/stale/offline，并对用户身份漂移和跨节点重复 connection 所有权 fail closed；当前尚未连接 Redis 或写 Gateway。
 - C2 增加可独立运行的 C++ Kafka shadow：`shadow` 命令在 canonical golden 校验后启动 consumer worker 与动态健康面，只有实际 partition assignment 且最近一次 evidence-before-commit 链健康时 ready；broker 不可达时 live 保持 200、ready 返回 503，SIGTERM 有界退出。`sync_fanout=false` 可在无 Redis 阶段选择热群通知，进程仍不写 Gateway/客户端且未进入生产 Compose。
 - C2 增加 Ubuntu 24.04 多阶段 Realtime Delivery 镜像：builder 显式安装 C++/Protobuf/nlohmann-json/librdkafka 并运行全部 CTest，runtime 只保留二进制、共享库与 Delivery golden contracts，同时写入 OCI revision/created/dirty 标签；镜像尚未加入生产 Compose。
 - C2 增加 C++ Kafka shadow 消费边界：librdkafka C API 强制独立 `dipole-realtime-shadow-*` group、earliest、手动 offset 与 round-robin assignment；runner 仅在低敏 NDJSON evidence 刷盘后同步提交 offset，poison event 记录固定类别，evidence/commit/poll 失败撤销 readiness。

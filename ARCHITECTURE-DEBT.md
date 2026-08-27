@@ -163,7 +163,7 @@
 - **现状：** go-redis 会在 Sentinel 选出新 master 后重连命令与 Pub/Sub 连接；连接中断期间已经发布的 Pub/Sub 消息无法补读。Gateway 的 Kafka handler 当前将跨节点 Pub/Sub 视为实时通知通道。
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
-- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、确定性投影、低敏 evidence 与 assignment readiness，仍不读取 Redis、不写 Gateway，当前 Go Redis Pub/Sub 流量语义未切换。
+- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v2 与 assignment readiness。真实 Kafka+Redis 回放已量化 stale sibling，Sentinel 演练证明同一 reader 可经有界错误窗口自动发现新 master；仍不写 Gateway，当前 Go Redis Pub/Sub 流量语义未切换。
 - **后续方向：** C++ Realtime Delivery shadow 实现节点级有界队列、稳定 delivery ID 去重和 Kafka offset 提交边界；保留 Sync Timeline 作为最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 

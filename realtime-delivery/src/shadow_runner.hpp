@@ -1,11 +1,13 @@
 #ifndef DIPOLE_REALTIME_DELIVERY_SHADOW_RUNNER_HPP_
 #define DIPOLE_REALTIME_DELIVERY_SHADOW_RUNNER_HPP_
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
 #include "event_projection.hpp"
+#include "presence_projection.hpp"
 
 namespace dipole::realtime {
 
@@ -38,6 +40,12 @@ struct ShadowEvidence {
   std::size_t item_count = 0;
   ShadowOutcome outcome = ShadowOutcome::kRejected;
   std::string error_code;
+  std::size_t node_batch_count = 0;
+  std::size_t presence_observed = 0;
+  std::size_t presence_eligible = 0;
+  std::size_t presence_stale = 0;
+  std::size_t presence_malformed = 0;
+  std::size_t offline_item_count = 0;
 };
 
 class ShadowEvidenceSink {
@@ -55,13 +63,17 @@ struct ShadowRunnerStats {
   std::uint64_t poll_errors = 0;
   std::uint64_t evidence_errors = 0;
   std::uint64_t commit_errors = 0;
+  std::uint64_t presence_read_errors = 0;
 };
 
 class ShadowRunner {
  public:
-  ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms);
+  ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
+               PresenceReader* presence_reader = nullptr);
 
-  ValidationError RunOnce(const ProjectionPolicy& policy);
+  ValidationError RunOnce(
+      const ProjectionPolicy& policy,
+      const std::optional<PresenceProjectionPolicy>& presence_policy = std::nullopt);
   [[nodiscard]] bool Ready() const;
   [[nodiscard]] ShadowRunnerStats Stats() const;
 
@@ -69,6 +81,7 @@ class ShadowRunner {
   ShadowRecordConsumer* consumer_;
   ShadowEvidenceSink* evidence_sink_;
   int poll_timeout_ms_;
+  PresenceReader* presence_reader_;
   std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;
 };
@@ -76,4 +89,3 @@ class ShadowRunner {
 }  // namespace dipole::realtime
 
 #endif  // DIPOLE_REALTIME_DELIVERY_SHADOW_RUNNER_HPP_
-#include <atomic>
