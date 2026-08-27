@@ -166,6 +166,24 @@ void TestHotGroupProjection() {
         "hot group payload matches Go WS shape");
 }
 
+void TestHotGroupProjectionFromDurableFanoutFact() {
+  const nlohmann::json payload = {{"recipient_uuids", {"U1", "U2"}},
+                                  {"sync_fanout", false}};
+  dipole::delivery::v1::DeliveryEnvelope output;
+  const auto error = dipole::realtime::ProjectMessageEvent(
+      Record(Event("message.group.created", 1, payload)), {}, &output);
+  Check(!error && output.items_size() == 2, "sync_fanout=false selects hot-group projection");
+  if (output.items_size() == 2) {
+    Check(output.items(0).mode() ==
+                  dipole::delivery::v1::DELIVERY_MODE_HOT_GROUP_NOTIFY &&
+              output.items(1).mode() ==
+                  dipole::delivery::v1::DELIVERY_MODE_HOT_GROUP_NOTIFY,
+          "durable fanout fact suppresses full messages");
+    Check(Payload(output.items(0)).at("recent_message_count") == 0,
+          "Redis-free hot projection uses bounded unknown count");
+  }
+}
+
 void TestFileProjection() {
   const nlohmann::json file = {{"message_type", 1},
                                {"content", ""},
@@ -259,6 +277,7 @@ int main() {
     TestDirectTimelineProjection();
     TestGroupProjection();
     TestHotGroupProjection();
+    TestHotGroupProjectionFromDurableFanoutFact();
     TestFileProjection();
     TestLegacyCreatedProjection();
     TestInvalidEvents();

@@ -17,6 +17,9 @@
 
 ### 新增
 
+- C2 增加可独立运行的 C++ Kafka shadow：`shadow` 命令在 canonical golden 校验后启动 consumer worker 与动态健康面，只有实际 partition assignment 且最近一次 evidence-before-commit 链健康时 ready；broker 不可达时 live 保持 200、ready 返回 503，SIGTERM 有界退出。`sync_fanout=false` 可在无 Redis 阶段选择热群通知，进程仍不写 Gateway/客户端且未进入生产 Compose。
+- C2 增加 Ubuntu 24.04 多阶段 Realtime Delivery 镜像：builder 显式安装 C++/Protobuf/nlohmann-json/librdkafka 并运行全部 CTest，runtime 只保留二进制、共享库与 Delivery golden contracts，同时写入 OCI revision/created/dirty 标签；镜像尚未加入生产 Compose。
+- C2 增加 C++ Kafka shadow 消费边界：librdkafka C API 强制独立 `dipole-realtime-shadow-*` group、earliest、手动 offset 与 round-robin assignment；runner 仅在低敏 NDJSON evidence 刷盘后同步提交 offset，poison event 记录固定类别，evidence/commit/poll 失败撤销 readiness。
 - C2 增加 C++ Kafka message-created 纯投影层：严格解码 v1/minor-additive envelope，将 direct、普通群、热群、Timeline shadow 和文件消息映射为 canonical `DeliveryEnvelope`，固定稳定 batch/delivery ID、Kafka source coordinates、用户 ordering key 与 Go WebSocket payload 形状；兼容缺少 mutation/revision/actor/Seq 的 legacy created 完整消息，重复 recipient、channel/target 漂移和未知 major version fail closed。当前 executable 仍为 `contract_only`，未连接 broker、Redis、Gateway 或客户端。
 - C2 增加首个独立 C++20 Realtime Delivery foundation：CMake 在 build 目录从 canonical `dipole.delivery.v1` 生成 C++ Protobuf 类型，手写 validator 与 Go 共用三组 golden vectors，并以 `contract_only` CLI/进程验证 envelope、节点批次和背压 ACK。进程启动前完成契约校验，只暴露 `/livez`、`/readyz`、`/health`，host/port/mode 非法时 fail closed；当前未消费 Kafka、查询 Redis、写客户端或进入 Compose。统一门禁使用系统 GCC 13、Protobuf 3.21、`-Werror`、clang-tidy 和 CTest。
 - C2 建立语言无关的 `dipole.delivery.v1` 实时投递契约：`DeliveryEnvelope` 固定 Kafka source coordinates 与用户级投递项，`NodeDeliveryBatch` 固定 Presence 解析后的节点/connection 批次，逐项 ACK 覆盖 enqueued、offline、backpressured、rejected 和 failed，并用饱和队列 retry hint 表达背压。三个 Protobuf JSON golden vectors 与 Go fail-closed validator 约束枚举、时间戳、批次上限、ID 唯一性和 ACK 一致性；legacy adapter 可映射现有 Go Hub 返回值但暂不接管流量，默认仍为 Go Delivery。
@@ -385,6 +388,7 @@
 
 ### 验证
 
+- C2 C++ shadow 在 Kafka 3.9/librdkafka 2.3.0 上完成首次真实 earliest replay：205 条合法 group event、1 条 poison event 均在 evidence 后提交，最终 lag=0；双实例分担 12 个 partition，停止一例后另一例完成接管并保持 ready=200。归档明确 direct topic 当时为空，尚未证明 direct broker 样本、节点路由或性能收益。
 - C1 node2 恢复演练保留一组 fail-closed 与一组 passing 证据：首轮 `f657100` 在 HTTP 恢复后立即负载，40 条 accepted 消息均未持久化，暴露 consumer group 尚未稳定及旧 lag 零值误判；修复后 `ce4b600` 在 fresh project 中验证 PID `887973→898410`、72 members 前后稳定、完整 readiness 13.53s，恢复后 40/40 持久化与投递、峰值 lag 4、settled lag 0。原始证据和 SHA-256 清单归档于 `benchmarks/c1-go-recovery-2026-08-28/`。
 - Subscription rollout gate 测试覆盖源证据重算、同 corpus 绑定、review/candidate 独立阻断、hash 漂移、CLI 三态退出码和低敏输出。synthetic 三件套得到 `eligible`，绑定 candidate evidence SHA-256 `2809bbcc5318cb41af6b86f09625abf9ccf05b0f178507459c47ef2e2afbbae3`；完整 Agent Runtime 为 291 passed / 19 expected skipped，该结果只验证 Harness。
 - Subscription corpus review 测试覆盖双 reviewer 身份/Review ID 分离、完整 case 绑定、第三方精确裁决、最终标签漂移、review 顺序规范化、黄金哈希、CLI 退出码与正文/身份不回显。synthetic 示例达到 10000 bps agreement；完整 Agent Runtime 为 286 passed / 19 expected skipped，真实 Project Guardian review 仍待受控归档。

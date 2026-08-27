@@ -4,13 +4,17 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cxx_compiler="${CXX:-/usr/bin/g++}"
 compiler_id="$(basename "${cxx_compiler}" | tr -cd '[:alnum:]_.+-')"
+compiler_path="${DIPOLE_CPP_COMPILER_PATH:-$(dirname "${cxx_compiler}")}"
 build_dir="${DIPOLE_CPP_BUILD_DIR:-/tmp/dipole-cpp-realtime-build-${compiler_id}}"
 clang_tidy="${CLANG_TIDY_BIN:-$(command -v clang-tidy || true)}"
+rdkafka_root="${DIPOLE_RDKAFKA_ROOT:-}"
 
 if [[ -z "${clang_tidy}" ]]; then
   echo "clang-tidy is required; set CLANG_TIDY_BIN when it is outside PATH" >&2
   exit 1
 fi
+
+export COMPILER_PATH="${compiler_path}"
 
 cmake \
   -S "${root_dir}/realtime-delivery" \
@@ -18,6 +22,7 @@ cmake \
   -G Ninja \
   -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DDIPOLE_RDKAFKA_ROOT="${rdkafka_root}" \
   -DBUILD_TESTING=ON
 cmake --build "${build_dir}" --parallel
 "${clang_tidy}" \
@@ -28,7 +33,17 @@ cmake --build "${build_dir}" --parallel
   "${root_dir}/realtime-delivery/src/contract_validator.cpp" \
   "${root_dir}/realtime-delivery/src/event_projection.cpp" \
   "${root_dir}/realtime-delivery/src/health_server.cpp" \
+  "${root_dir}/realtime-delivery/src/librdkafka_consumer.cpp" \
   "${root_dir}/realtime-delivery/src/main.cpp" \
+  "${root_dir}/realtime-delivery/src/shadow_evidence.cpp" \
+  "${root_dir}/realtime-delivery/src/shadow_runner.cpp" \
+  "${root_dir}/realtime-delivery/src/shadow_runtime.cpp" \
   "${root_dir}/realtime-delivery/tests/contract_test.cpp" \
-  "${root_dir}/realtime-delivery/tests/event_projection_test.cpp"
+  "${root_dir}/realtime-delivery/tests/event_projection_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/librdkafka_consumer_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/shadow_evidence_test.cpp" \
+  "${root_dir}/realtime-delivery/tests/shadow_runner_test.cpp"
+if [[ -n "${rdkafka_root}" ]]; then
+  export LD_LIBRARY_PATH="${rdkafka_root}/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
 ctest --test-dir "${build_dir}" --output-on-failure

@@ -1,0 +1,10 @@
+
+Consumer group 'dipole-realtime-shadow-live-v2' has no active members.
+
+GROUP                          TOPIC                        PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+dipole-realtime-shadow-live-v2 dipole.message.group.created 1          35              35              0               -               -               -
+dipole-realtime-shadow-live-v2 dipole.message.group.created 2          34              34              0               -               -               -
+dipole-realtime-shadow-live-v2 dipole.message.group.created 0          37              37              0               -               -               -
+dipole-realtime-shadow-live-v2 dipole.message.group.created 5          23              23              0               -               -               -
+dipole-realtime-shadow-live-v2 dipole.message.group.created 3          40              40              0               -               -               -
+dipole-realtime-shadow-live-v2 dipole.message.group.created 4          37              37              0               -               -               -

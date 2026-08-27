@@ -2,6 +2,12 @@
 
 本文档滚动记录可重复的性能基线。微基准用于比较协议与实现开销，端到端基准用于固定消息接受、持久化、投递、Kafka lag 与 Inbox 写放大行为。
 
+## 2026-08-28：C2 C++ Kafka Shadow Replay
+
+候选提交 `ef763a4b9fa090b9ba14c1f43e78ca723f9e2ef6` 使用 librdkafka 2.3.0 和独立 earliest group 回放现有 Kafka 3.9 retained 数据。205 条合法 group created event 全部生成 projected evidence；注入的 1 条无效 JSON 生成 `invalid_event` 后安全推进 offset。双实例共同 ready 并分担 12 个 partition，停止一例后存活实例接管全部 partition 且保持 ready，最终六个有数据 partition lag 全为 0。
+
+本次 direct topic log end 为 0，尚未形成真实 direct broker 样本；证据也不覆盖 Redis Presence、节点批次、Gateway ACK 或吞吐收益。低敏 NDJSON、最终 offset、机器报告和 SHA-256 位于 `benchmarks/c2-cpp-shadow-2026-08-28/`。
+
 ## 2026-08-28：C1 Go Realtime Connection Gradient
 
 候选提交 `a6f367fd67d79ace95c730388a5bd95ac70bcb1d` 在隔离 `dipole-c1` project 中以同一不可变镜像完成 20/50/100 个 WebSocket 连接、每连接 2 条 direct message 的梯度。三档 acceptance、persistence 和 delivery 均为 100%，HTTP failure 为 0，Kafka settled lag 均为 0。

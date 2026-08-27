@@ -42,6 +42,8 @@ struct MessageEvent {
   std::string content;
   std::string sent_at;
   std::vector<std::string> recipients;
+  bool has_sync_fanout = false;
+  bool sync_fanout = true;
   Json payload;
 };
 
@@ -311,6 +313,10 @@ ValidationError DecodeEvent(const KafkaRecord& record, MessageEvent* output) {
   if (auto error = ValidateOptionalPayloadFields(*payload); error) {
     return error;
   }
+  if (const auto sync_fanout = payload->find("sync_fanout"); sync_fanout != payload->end()) {
+    output->has_sync_fanout = true;
+    output->sync_fanout = sync_fanout->get<bool>();
+  }
 
   const auto recipients = payload->find("recipient_uuids");
   if (recipients != payload->end()) {
@@ -499,7 +505,11 @@ ValidationError ProjectMessageEvent(const KafkaRecord& record, const ProjectionP
   if (auto error = DecodeEvent(record, &event); error) {
     return error;
   }
-  if (policy.hot_group && event.target_type != kGroupTarget) {
+  ProjectionPolicy effective_policy = policy;
+  if (event.target_type == kGroupTarget && event.has_sync_fanout && !event.sync_fanout) {
+    effective_policy.hot_group = true;
+  }
+  if (effective_policy.hot_group && event.target_type != kGroupTarget) {
     return "hot-group policy requires a group event";
   }
 
@@ -519,9 +529,9 @@ ValidationError ProjectMessageEvent(const KafkaRecord& record, const ProjectionP
 
   ValidationError error;
   if (event.target_type == kDirectTarget) {
-    error = ProjectDirect(event, policy, output);
+    error = ProjectDirect(event, effective_policy, output);
   } else {
-    error = ProjectGroup(event, policy, output);
+    error = ProjectGroup(event, effective_policy, output);
   }
   if (error) {
     output->Clear();
