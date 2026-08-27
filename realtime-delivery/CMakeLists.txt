@@ -12,6 +12,22 @@ find_package(nlohmann_json 3.11 REQUIRED)
 pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET "protobuf>=3.21")
 find_program(PROTOC_EXECUTABLE protoc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 
+set(DIPOLE_RDKAFKA_ROOT "" CACHE PATH "Optional extracted librdkafka package root")
+if(DIPOLE_RDKAFKA_ROOT)
+  find_path(RDKAFKA_INCLUDE_DIR librdkafka/rdkafka.h
+    PATHS "${DIPOLE_RDKAFKA_ROOT}/usr/include" NO_DEFAULT_PATH REQUIRED)
+  find_library(RDKAFKA_LIBRARY rdkafka
+    PATHS "${DIPOLE_RDKAFKA_ROOT}/usr/lib/x86_64-linux-gnu" NO_DEFAULT_PATH REQUIRED)
+  add_library(RDKAFKA::rdkafka UNKNOWN IMPORTED)
+  set_target_properties(RDKAFKA::rdkafka PROPERTIES
+    IMPORTED_LOCATION "${RDKAFKA_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${RDKAFKA_INCLUDE_DIR}"
+  )
+else()
+  pkg_check_modules(RDKAFKA REQUIRED IMPORTED_TARGET "rdkafka>=2.3")
+  add_library(RDKAFKA::rdkafka ALIAS PkgConfig::RDKAFKA)
+endif()
+
 set(DIPOLE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(PROTO_ROOT "${DIPOLE_ROOT}/api/proto")
 set(DELIVERY_PROTO "${PROTO_ROOT}/dipole/delivery/v1/delivery.proto")
@@ -34,13 +50,20 @@ add_library(delivery_contract
   src/contract_validator.cpp
   src/event_projection.cpp
   src/health_server.cpp
+  src/librdkafka_consumer.cpp
+  src/shadow_evidence.cpp
+  src/shadow_runner.cpp
   "${DELIVERY_PROTO_CC}"
 )
 target_include_directories(delivery_contract PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
   "${GENERATED_ROOT}"
 )
-target_link_libraries(delivery_contract PUBLIC PkgConfig::PROTOBUF nlohmann_json::nlohmann_json)
+target_link_libraries(delivery_contract PUBLIC
+  PkgConfig::PROTOBUF
+  RDKAFKA::rdkafka
+  nlohmann_json::nlohmann_json
+)
 target_compile_options(delivery_contract PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(dipole-realtime-delivery src/main.cpp)
@@ -61,6 +84,21 @@ if(BUILD_TESTING)
   target_link_libraries(delivery_projection_test PRIVATE delivery_contract)
   target_compile_options(delivery_projection_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
   add_test(NAME delivery_projection_test COMMAND delivery_projection_test)
+
+  add_executable(delivery_shadow_runner_test tests/shadow_runner_test.cpp)
+  target_link_libraries(delivery_shadow_runner_test PRIVATE delivery_contract)
+  target_compile_options(delivery_shadow_runner_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_shadow_runner_test COMMAND delivery_shadow_runner_test)
+
+  add_executable(delivery_librdkafka_consumer_test tests/librdkafka_consumer_test.cpp)
+  target_link_libraries(delivery_librdkafka_consumer_test PRIVATE delivery_contract)
+  target_compile_options(delivery_librdkafka_consumer_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_librdkafka_consumer_test COMMAND delivery_librdkafka_consumer_test)
+
+  add_executable(delivery_shadow_evidence_test tests/shadow_evidence_test.cpp)
+  target_link_libraries(delivery_shadow_evidence_test PRIVATE delivery_contract)
+  target_compile_options(delivery_shadow_evidence_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_shadow_evidence_test COMMAND delivery_shadow_evidence_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"

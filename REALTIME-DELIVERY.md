@@ -59,6 +59,14 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 该投影尚未被 `serve` 调用。后续 librdkafka adapter 只负责 poll、record ownership、重平衡和 commit；Redis 热群分类与对照证据也保持在投影之外，避免 broker 生命周期改变业务映射。
 
+## Kafka shadow 消费边界
+
+`LibrdkafkaConsumer` 固定订阅 `dipole.message.direct.created` 与 `dipole.message.group.created`，group ID 必须使用 `dipole-realtime-shadow-*` 前缀。配置强制 `earliest`、关闭 auto commit/offset store、使用 round-robin assignment，并以 rebalance callback 的实际 partition 数作为 readiness 输入。poll 后立即复制 record，销毁 librdkafka message ownership；同步 commit 明确提交当前 `offset + 1`。
+
+`ShadowRunner` 的顺序固定为 `poll -> project/reject -> append evidence -> commit`。NDJSON evidence v1 只保存 topic/partition/offset、event/batch ID、item count、projected/rejected 和固定错误类别，不保存 recipient、消息正文或原始异常。evidence 写失败与 commit 失败都会撤销 runner readiness；poison event 在记录 `invalid_event` 后允许独立 shadow group 前进。
+
+这些组件目前只有 fake-adapter 和配置/序列化测试，尚未由 executable 组合，也尚未执行真实 broker replay/rebalance/poison 验证。`contract_only` 仍是唯一可启动模式。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
@@ -71,7 +79,7 @@ C++ shadow 阶段遵守以下门禁：
 4. primary 阶段提交 offset 前必须收到节点 ACK 或写入可重放的持久边界；稳定 delivery ID 配合 Gateway 去重后才能开启自动重试。
 5. `OFFLINE` 可提交，消息事实与 Inbox 已持久化；客户端重连后从 Sync Timeline 恢复。
 
-当前主机具备 nlohmann/json 3.11.3；Ubuntu Noble 可提供 librdkafka 2.3.0 开发包，但本里程碑未安装或链接该依赖。真实 consumer 接入时必须把 librdkafka 版本写入构建镜像和运行证据，禁止依赖开发机隐式库。
+当前主机具备 nlohmann/json 3.11.3；librdkafka 2.3.0 通过 Ubuntu Noble 包无特权解压到临时 sysroot 完成编译与测试，未修改系统包。发布构建必须把 librdkafka 版本写入构建镜像和运行证据，禁止依赖开发机隐式库。
 
 ## 进程与数据所有权
 

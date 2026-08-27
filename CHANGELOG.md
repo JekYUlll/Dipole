@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 增加 C++ Kafka shadow 消费边界：librdkafka C API 强制独立 `dipole-realtime-shadow-*` group、earliest、手动 offset 与 round-robin assignment；runner 仅在低敏 NDJSON evidence 刷盘后同步提交 offset，poison event 记录固定类别，evidence/commit/poll 失败撤销 readiness。当前仅提供 library 与测试，executable 仍固定 `contract_only`，尚未真实消费 broker 或写入 Gateway。
 - C2 增加 C++ Kafka message-created 纯投影层：严格解码 v1/minor-additive envelope，将 direct、普通群、热群、Timeline shadow 和文件消息映射为 canonical `DeliveryEnvelope`，固定稳定 batch/delivery ID、Kafka source coordinates、用户 ordering key 与 Go WebSocket payload 形状；兼容缺少 mutation/revision/actor/Seq 的 legacy created 完整消息，重复 recipient、channel/target 漂移和未知 major version fail closed。当前 executable 仍为 `contract_only`，未连接 broker、Redis、Gateway 或客户端。
 - C2 增加首个独立 C++20 Realtime Delivery foundation：CMake 在 build 目录从 canonical `dipole.delivery.v1` 生成 C++ Protobuf 类型，手写 validator 与 Go 共用三组 golden vectors，并以 `contract_only` CLI/进程验证 envelope、节点批次和背压 ACK。进程启动前完成契约校验，只暴露 `/livez`、`/readyz`、`/health`，host/port/mode 非法时 fail closed；当前未消费 Kafka、查询 Redis、写客户端或进入 Compose。统一门禁使用系统 GCC 13、Protobuf 3.21、`-Werror`、clang-tidy 和 CTest。
 - C2 建立语言无关的 `dipole.delivery.v1` 实时投递契约：`DeliveryEnvelope` 固定 Kafka source coordinates 与用户级投递项，`NodeDeliveryBatch` 固定 Presence 解析后的节点/connection 批次，逐项 ACK 覆盖 enqueued、offline、backpressured、rejected 和 failed，并用饱和队列 retry hint 表达背压。三个 Protobuf JSON golden vectors 与 Go fail-closed validator 约束枚举、时间戳、批次上限、ID 唯一性和 ACK 一致性；legacy adapter 可映射现有 Go Hub 返回值但暂不接管流量，默认仍为 Go Delivery。
