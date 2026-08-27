@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 27
+const currentMigrationVersion = 28
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -35,25 +35,31 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 27)
+		assertCurrentVersion(t, runner, 28)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 37)
+		assertTableCount(t, db, 38)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 27)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (28, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 28)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (29, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 28"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 29"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Event Subscription migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 27)
+		assertTableCount(t, db, 37)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back User status contract migration: %v", err)
 		}
@@ -236,7 +242,7 @@ func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) 
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	if err := runner.Down(ctx, 1); err != nil {
+	if err := runner.Down(ctx, 2); err != nil {
 		t.Fatalf("roll back User status contract migration: %v", err)
 	}
 
@@ -284,7 +290,7 @@ func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) 
 		t.Fatalf("v1 default status = %d, want 1", status)
 	}
 
-	if err := runner.Down(ctx, 1); err != nil {
+	if err := runner.Down(ctx, 2); err != nil {
 		t.Fatalf("roll back User status contract migration: %v", err)
 	}
 	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-legacy'").Scan(&status); err != nil {
@@ -296,6 +302,71 @@ func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) 
 	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash, status)
 		VALUES ('U-status-unconstrained', 'unconstrained', '13000000004', 'hash', 3)`); err != nil {
 		t.Fatalf("rollback did not remove User status constraint: %v", err)
+	}
+}
+
+func TestAgentEventSubscriptionMigrationEnforcesBindings(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db := openTemporaryDatabase(t, adminDSN, "agent_event_subscription")
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	ctx := context.Background()
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	const agentUUID = "UAI000000000000000001"
+	if _, err := db.Exec(`INSERT INTO agent_definition_versions (
+		definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status,
+		permissions_json, scopes_json, valid_from, created_at, updated_at
+	) VALUES ('DEF-EVENT', 1, 'dipole', 'U100', ?, 'active',
+		'["conversation.read"]', '[{"resource_type":"conversation","resource_id":"*","actions":["read"]}]',
+		UTC_TIMESTAMP(), UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`, agentUUID); err != nil {
+		t.Fatalf("seed Agent Definition: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_event_subscriptions (
+		subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
+		status, event_type, resource_type, resource_id, filter_kind, filter_json
+	) VALUES ('SUB-EVENT', 'DEF-EVENT', 1, 'dipole', ?, 'active',
+		'message.direct.created', 'conversation', '*', 'all', '{}')`, agentUUID); err != nil {
+		t.Fatalf("insert Event Subscription with default Agent UUID: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_tasks (
+		task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid,
+		status, trigger_type, trigger_ref, trigger_subscription_uuid, goal
+	) VALUES ('TASK-EVENT', 'DEF-EVENT', 1, 'dipole', 'U100', ?, 'created',
+		'message.direct.created', 'M-EVENT', 'SUB-EVENT', 'observe')`, agentUUID); err != nil {
+		t.Fatalf("bind Event Subscription to Task: %v", err)
+	}
+	for _, invalid := range []struct {
+		uuid, status, filter string
+	}{
+		{uuid: "SUB-BAD-STATUS", status: "pending", filter: "all"},
+		{uuid: "SUB-BAD-FILTER", status: "active", filter: "model"},
+	} {
+		if _, err := db.Exec(`INSERT INTO agent_event_subscriptions (
+			subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
+			status, event_type, resource_type, resource_id, filter_kind, filter_json
+		) VALUES (?, 'DEF-EVENT', 1, 'dipole', ?, ?,
+			'message.direct.created', 'conversation', '*', ?, '{}')`, invalid.uuid, agentUUID, invalid.status, invalid.filter); err == nil {
+			t.Fatalf("expected subscription status/filter constraint for %+v", invalid)
+		}
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Event Subscription migration: %v", err)
+	}
+	var tableCount, columnCount int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_event_subscriptions'`).Scan(&tableCount)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agent_tasks' AND column_name = 'trigger_subscription_uuid'`).Scan(&columnCount)
+	if tableCount != 0 || columnCount != 0 {
+		t.Fatalf("Event Subscription rollback left schema objects: table=%d column=%d", tableCount, columnCount)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("reapply Agent Event Subscription migration: %v", err)
 	}
 }
 

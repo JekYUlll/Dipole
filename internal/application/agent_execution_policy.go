@@ -8,15 +8,16 @@ import (
 var ErrAgentExecutionPolicyDenied = errors.New("agent execution policy denied")
 
 type AgentExecutionPolicyStartV1 struct {
-	TenantID        string
-	PrincipalUUID   string
-	AgentUUID       string
-	DelegatedByUUID string
-	TriggerType     string
-	TriggerRef      string
-	RequestID       string
-	TraceID         string
-	EventID         string
+	TenantID         string
+	PrincipalUUID    string
+	AgentUUID        string
+	DelegatedByUUID  string
+	TriggerType      string
+	TriggerRef       string
+	RequestID        string
+	TraceID          string
+	EventID          string
+	SubscriptionUUID string
 }
 
 type AgentPolicyExecutionV1 struct {

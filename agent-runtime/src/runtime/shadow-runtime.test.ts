@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { KafkaConsumerFactoryPort, KafkaConsumerPort, KafkaInboundPayload } from "../events/kafka-shadow-consumer.js";
-import type { AgentEvent } from "../events/shadow-processor.js";
+import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
+import type { AgentEventSubscription } from "../events/event-subscription.js";
 import type { ExecutionContext } from "./execution-context.js";
 import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runtime.js";
 
@@ -9,7 +10,7 @@ describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
-      contextCompilerVersion: "v1", capabilityRpc: { enabled: false }
+      contextCompilerVersion: "v1", triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(loadShadowRuntimeConfig({
@@ -74,6 +75,10 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "core:9091",
       DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
     })).toThrow(/loopback/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_TRIGGER_MODE: "subscription"
+    })).toThrow(/subscription.*Capability RPC/i);
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {
@@ -122,7 +127,103 @@ describe("shadow runtime composition", () => {
     expect(planner.plan).not.toHaveBeenCalled();
     expect(audit.append).not.toHaveBeenCalled();
   });
+
+  it("stops before the ledger and planner when no deterministic subscription matches", async () => {
+    const fixture = runtimeFixture();
+    const subscriptions = subscriptionAdmission([
+      subscription("SUB-1", "message_contains_any", { terms: ["incident"] })
+    ]);
+    const config = subscriptionConfig();
+    const runtime = buildKafkaShadowRuntime(
+      config, fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U200")));
+
+    expect(subscriptions.matchEventSubscriptions).toHaveBeenCalledOnce();
+    expect(fixture.ledger.claim).not.toHaveBeenCalled();
+    expect(fixture.planner.plan).not.toHaveBeenCalled();
+    expect(fixture.audit.append).not.toHaveBeenCalled();
+  });
+
+  it("pins the stable matching subscription before task admission", async () => {
+    const fixture = runtimeFixture();
+    const subscriptions = subscriptionAdmission([
+      subscription("SUB-B", "all", {}),
+      subscription("SUB-A", "message_contains_any", { terms: ["hello"] })
+    ]);
+    const runtime = buildKafkaShadowRuntime(
+      subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U200")));
+
+    expect(subscriptions.admit).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: "E1", subscriptionId: "SUB-A" }),
+      expect.objectContaining({ agentUuid: "UAI" })
+    );
+    expect(fixture.planner.plan).toHaveBeenCalledOnce();
+  });
 });
+
+function subscriptionConfig() {
+  return loadShadowRuntimeConfig({
+    DIPOLE_AGENT_KAFKA_ENABLED: "true",
+    DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+    DIPOLE_AGENT_UUID: "UAI",
+    DIPOLE_AGENT_TRIGGER_MODE: "subscription",
+    DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+    DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+    DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+  });
+}
+
+function runtimeFixture() {
+  let handler: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+  const consumer: KafkaConsumerPort = {
+    connect: async () => undefined,
+    subscribe: async () => undefined,
+    run: async (config) => { handler = config.eachMessage; },
+    disconnect: async () => undefined
+  };
+  return {
+    factory: { create: () => consumer } satisfies KafkaConsumerFactoryPort,
+    eachMessage: () => handler!,
+    planner: { plan: vi.fn(async () => ({ summary: "observe", steps: [] })) },
+    audit: { append: vi.fn(async () => undefined) },
+    ledger: {
+      claim: vi.fn(async (eventId: string, taskId: string) => ({ eventId, taskId, token: "lease" })),
+      complete: vi.fn(async () => undefined),
+      release: vi.fn(async () => undefined)
+    }
+  };
+}
+
+function subscriptionAdmission(candidates: readonly AgentEventSubscription[]) {
+  return {
+    matchEventSubscriptions: vi.fn(async () => [...candidates]),
+    admit: vi.fn(async (event: AgentEvent, identity: { tenantId: string; agentUuid: string }) => {
+      const taskId = agentTaskId({
+        tenantId: identity.tenantId,
+        agentUuid: identity.agentUuid,
+        triggerType: event.eventType,
+        triggerRef: event.aggregateId
+      });
+      return { taskId, runId: agentRunId(taskId), runStatus: "running" as const };
+    }),
+    complete: vi.fn(async () => undefined)
+  };
+}
+
+function subscription(subscriptionId: string, filterKind: "all" | "message_contains_any", filter: unknown): AgentEventSubscription {
+  return {
+    subscriptionId, definitionId: "DEF-1", definitionVersion: 1,
+    tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+    resourceType: "conversation", resourceId: "direct:U100:UAI", filterKind, filter
+  };
+}
 
 function messageEnvelope(targetUuid = "UAI"): object {
   return {

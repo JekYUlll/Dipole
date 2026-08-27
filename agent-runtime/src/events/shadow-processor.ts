@@ -29,7 +29,8 @@ export const agentEventSchema = z.object({
   aggregateId: z.string().trim().min(1),
   occurredAt: z.iso.datetime(),
   payload: z.record(z.string(), z.unknown()),
-  lineage: eventLineageSchema.optional()
+  lineage: eventLineageSchema.optional(),
+  subscriptionId: z.string().trim().min(1).max(64).optional()
 }).strict();
 
 export type AgentEvent = z.infer<typeof agentEventSchema>;

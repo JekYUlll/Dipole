@@ -12,12 +12,22 @@ import (
 )
 
 type agentPolicyStoreStub struct {
-	latest      *application.AgentDefinitionVersionV1
-	definitions map[string]*application.AgentDefinitionVersionV1
-	tasks       map[string]*application.AgentTaskV1
-	runs        map[string]*application.AgentRunV1
-	approvals   map[string]*application.AgentApprovalV1
-	afterCreate func()
+	latest        *application.AgentDefinitionVersionV1
+	definitions   map[string]*application.AgentDefinitionVersionV1
+	tasks         map[string]*application.AgentTaskV1
+	runs          map[string]*application.AgentRunV1
+	approvals     map[string]*application.AgentApprovalV1
+	subscriptions map[string]*application.AgentEventSubscriptionV1
+	afterCreate   func()
+}
+
+func (s *agentPolicyStoreStub) GetEventSubscription(_ context.Context, uuid string) (*application.AgentEventSubscriptionV1, error) {
+	subscription := s.subscriptions[uuid]
+	if subscription == nil {
+		return nil, nil
+	}
+	copy := *subscription
+	return &copy, nil
 }
 
 func (s *agentPolicyStoreStub) CreateDefinitionVersion(_ context.Context, definition application.AgentDefinitionVersionV1) error {
@@ -348,11 +358,22 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
-	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationList})
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{
+		application.AgentPermissionConversationList, application.AgentPermissionConversationRead,
+	})
 	store := policyStoreWithDefinitionV1(definition)
 	admission := &PersistentAgentRunAdmissionV1{store: store, now: func() time.Time { return now }}
 	request := application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+	request.SubscriptionUUID = "SUB-1"
+	store.subscriptions = map[string]*application.AgentEventSubscriptionV1{
+		"SUB-1": {
+			SubscriptionUUID: "SUB-1", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
+			TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+			EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
+			FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`),
+		},
 	}
 
 	first, err := admission.Admit(context.Background(), request)
@@ -374,6 +395,14 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	if second.Invocation.Permissions[0] != application.AgentPermissionConversationList {
 		t.Fatalf("replay drifted from pinned Definition: %+v", second.Invocation)
 	}
+	if store.tasks[first.TaskUUID].TriggerSubscriptionUUID != "SUB-1" {
+		t.Fatalf("Task did not pin trigger Subscription: %+v", store.tasks[first.TaskUUID])
+	}
+	conflictingSubscription := request
+	conflictingSubscription.SubscriptionUUID = "SUB-2"
+	if _, err := admission.Admit(context.Background(), conflictingSubscription); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("conflicting Subscription replay should be denied, got %v", err)
+	}
 	store.tasks[first.TaskUUID].Status = application.AgentTaskStatusCompleted
 	if _, err := admission.Admit(context.Background(), request); err != nil {
 		t.Fatalf("completed authoritative Task should retain the running shadow Run: %v", err)
@@ -393,6 +422,30 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	}
 	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "forged-runtime", "shadow"); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("forged Runtime completion should be denied, got %v", err)
+	}
+}
+
+func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	store := policyStoreWithDefinitionV1(definition)
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: func() time.Time { return now }}
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+	request.SubscriptionUUID = "SUB-UNKNOWN"
+
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("unknown trigger Subscription should be denied, got %v", err)
+	}
+	if len(store.tasks) != 0 {
+		t.Fatalf("denied Subscription created a Task: %+v", store.tasks)
+	}
+	policy := &PersistentAgentExecutionPolicyV1{store: store, now: func() time.Time { return now }}
+	if _, err := policy.Start(context.Background(), request.AgentExecutionPolicyStartV1); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("Embedded policy should deny unknown trigger Subscription, got %v", err)
 	}
 }
 

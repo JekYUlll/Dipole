@@ -74,6 +74,7 @@ type Querier interface {
 	GetAgentArtifact(ctx context.Context, artifactUuid string) (AgentArtifact, error)
 	GetAgentArtifactByTaskTypeVersion(ctx context.Context, arg GetAgentArtifactByTaskTypeVersionParams) (AgentArtifact, error)
 	GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDefinitionVersionParams) (AgentDefinitionVersion, error)
+	GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)
@@ -119,6 +120,7 @@ type Querier interface {
 	InsertAgentArtifact(ctx context.Context, arg InsertAgentArtifactParams) (int64, error)
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
+	InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
@@ -136,6 +138,7 @@ type Querier interface {
 	ListLatestSearchMutationsForBackfill(ctx context.Context, arg ListLatestSearchMutationsForBackfillParams) ([]ListLatestSearchMutationsForBackfillRow, error)
 	ListLegacySyncInbox(ctx context.Context) ([]ListLegacySyncInboxRow, error)
 	ListLegacySyncInboxThrough(ctx context.Context, throughSyncSeq uint64) ([]ListLegacySyncInboxThroughRow, error)
+	ListMatchingAgentEventSubscriptions(ctx context.Context, arg ListMatchingAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListMessagesByConversationAfter(ctx context.Context, arg ListMessagesByConversationAfterParams) ([]Message, error)
 	ListMessagesByConversationBefore(ctx context.Context, arg ListMessagesByConversationBeforeParams) ([]Message, error)
 	ListMessagesByConversationSeqAfter(ctx context.Context, arg ListMessagesByConversationSeqAfterParams) ([]Message, error)
@@ -175,6 +178,7 @@ type Querier interface {
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
 	RevokeAgentApproval(ctx context.Context, arg RevokeAgentApprovalParams) (int64, error)
 	RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error)
+	RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)

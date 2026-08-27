@@ -21,11 +21,39 @@ UPDATE agent_definition_versions
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
 WHERE definition_uuid = ? AND version = ? AND revoked_at IS NULL;
 
+-- name: InsertAgentEventSubscription :exec
+INSERT INTO agent_event_subscriptions (
+    subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
+    status, event_type, resource_type, resource_id, filter_kind, filter_json,
+    created_at, revoked_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), ?);
+
+-- name: ListMatchingAgentEventSubscriptions :many
+SELECT s.*
+FROM agent_event_subscriptions AS s
+JOIN agent_definition_versions AS d
+  ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
+WHERE s.tenant_id = ? AND s.agent_uuid = ? AND s.event_type = ?
+  AND s.resource_type = ? AND (s.resource_id = ? OR s.resource_id = '*')
+  AND s.status = 'active' AND s.revoked_at IS NULL
+  AND d.status = 'active' AND d.revoked_at IS NULL
+ORDER BY s.subscription_uuid ASC;
+
+-- name: GetAgentEventSubscription :one
+SELECT * FROM agent_event_subscriptions
+WHERE subscription_uuid = ?
+LIMIT 1;
+
+-- name: RevokeAgentEventSubscription :execrows
+UPDATE agent_event_subscriptions
+SET status = 'revoked', revoked_at = ?
+WHERE subscription_uuid = ? AND status = 'active' AND revoked_at IS NULL;
+
 -- name: InsertAgentTask :execrows
 INSERT IGNORE INTO agent_tasks (
     task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid,
-    agent_uuid, status, trigger_type, trigger_ref, goal, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
+    agent_uuid, status, trigger_type, trigger_ref, trigger_subscription_uuid, goal, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
 
 -- name: GetAgentTask :one
 SELECT * FROM agent_tasks WHERE task_uuid = ? LIMIT 1;

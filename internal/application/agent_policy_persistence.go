@@ -90,19 +90,20 @@ type AgentDefinitionVersionV1 struct {
 }
 
 type AgentTaskV1 struct {
-	TaskUUID          string                         `json:"task_uuid"`
-	DefinitionUUID    string                         `json:"definition_uuid"`
-	DefinitionVersion uint64                         `json:"definition_version"`
-	TenantID          string                         `json:"tenant_id"`
-	PrincipalUUID     string                         `json:"principal_uuid"`
-	AgentUUID         string                         `json:"agent_uuid"`
-	Status            AgentTaskStatusV1              `json:"status"`
-	TriggerType       string                         `json:"trigger_type"`
-	TriggerRef        string                         `json:"trigger_ref"`
-	Goal              string                         `json:"goal"`
-	Workflow          *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
-	CreatedAt         time.Time                      `json:"created_at,omitempty"`
-	UpdatedAt         time.Time                      `json:"updated_at,omitempty"`
+	TaskUUID                string                         `json:"task_uuid"`
+	DefinitionUUID          string                         `json:"definition_uuid"`
+	DefinitionVersion       uint64                         `json:"definition_version"`
+	TenantID                string                         `json:"tenant_id"`
+	PrincipalUUID           string                         `json:"principal_uuid"`
+	AgentUUID               string                         `json:"agent_uuid"`
+	Status                  AgentTaskStatusV1              `json:"status"`
+	TriggerType             string                         `json:"trigger_type"`
+	TriggerRef              string                         `json:"trigger_ref"`
+	TriggerSubscriptionUUID string                         `json:"trigger_subscription_uuid,omitempty"`
+	Goal                    string                         `json:"goal"`
+	Workflow                *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
+	CreatedAt               time.Time                      `json:"created_at,omitempty"`
+	UpdatedAt               time.Time                      `json:"updated_at,omitempty"`
 }
 
 type AgentTaskWorkflowProjectionV1 struct {

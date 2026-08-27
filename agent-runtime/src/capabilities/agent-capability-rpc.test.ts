@@ -18,6 +18,21 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { runStatus: "completed" });
       return {};
     });
+    const matchEventSubscriptions = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({
+        tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+        resourceType: "conversation", resourceId: "direct:U100:UAI"
+      });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { subscriptions: [{
+        subscriptionId: "SUB-1", definitionId: "DEF-1", definitionVersion: 2n,
+        tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+        resourceType: "conversation", resourceId: "direct:U100:UAI",
+        filterKind: "message_contains_any", filterJson: Buffer.from(JSON.stringify({ terms: ["hello"] }))
+      }] });
+      return {};
+    });
     const finishRun = vi.fn((input, metadata, _options, callback) => {
       expect(input).toMatchObject({
         taskId: "TASK-1",
@@ -94,11 +109,24 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
-    const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
+    const event = {
+      eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { conversation_key: "direct:U100:UAI" },
+      subscriptionId: "SUB-1"
+    };
 
     await expect(client.admit(event, identity)).resolves.toEqual({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
+    expect(admitRun).toHaveBeenCalledWith(
+      expect.objectContaining({ subscriptionId: "SUB-1" }), expect.anything(), expect.anything(), expect.any(Function)
+    );
+    await expect(client.matchEventSubscriptions(event, identity)).resolves.toEqual([{
+      subscriptionId: "SUB-1", definitionId: "DEF-1", definitionVersion: 2,
+      tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+      resourceType: "conversation", resourceId: "direct:U100:UAI",
+      filterKind: "message_contains_any", filter: { terms: ["hello"] }
+    }]);
     await expect(client.listConversations({
       ...identity, taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
       permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }],

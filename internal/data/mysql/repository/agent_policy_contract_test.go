@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -62,11 +63,31 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil || latest.Status != application.AgentDefinitionStatusRevoked || latest.RevokedAt == nil {
 		t.Fatalf("revoked definition: %+v err=%v", latest, err)
 	}
+	subscription := application.AgentEventSubscriptionV1{
+		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
+		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "direct:U100:UAI",
+		FilterKind: application.AgentSubscriptionFilterMessageContainsAny, FilterJSON: []byte(`{"terms":["incident"]}`),
+	}
+	if err := store.CreateEventSubscription(context.Background(), subscription); err != nil {
+		t.Fatalf("create Event Subscription: %v", err)
+	}
+	loadedSubscription, err := store.GetEventSubscription(context.Background(), subscription.SubscriptionUUID)
+	if err != nil || loadedSubscription == nil || loadedSubscription.SubscriptionUUID != subscription.SubscriptionUUID || !containsSubscriptionTerm(t, loadedSubscription.FilterJSON, "incident") {
+		t.Fatalf("get Event Subscription: item=%+v err=%v", loadedSubscription, err)
+	}
+	matched, err := store.ListMatchingEventSubscriptions(context.Background(), application.AgentEventSubscriptionMatchRequestV1{
+		TenantID: "dipole", AgentUUID: "UAI", EventType: "message.direct.created",
+		ResourceType: "conversation", ResourceID: "direct:U100:UAI",
+	})
+	if err != nil || len(matched) != 1 || matched[0].SubscriptionUUID != "SUB-1" || !containsSubscriptionTerm(t, matched[0].FilterJSON, "incident") {
+		t.Fatalf("list Event Subscriptions: items=%+v err=%v", matched, err)
+	}
 
 	task := application.AgentTaskV1{
 		TaskUUID: "TASK-1", DefinitionUUID: "DEF-1", DefinitionVersion: 2, TenantID: "dipole",
 		PrincipalUUID: "U100", AgentUUID: "UAI", Status: application.AgentTaskStatusCreated,
-		TriggerType: "message.direct.created", TriggerRef: "M100", Goal: "reply",
+		TriggerType: "message.direct.created", TriggerRef: "M100", TriggerSubscriptionUUID: "SUB-1", Goal: "reply",
 	}
 	if created, err := store.CreateTask(context.Background(), task); err != nil || !created {
 		t.Fatalf("create task: created=%v err=%v", created, err)
@@ -78,6 +99,20 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	conflict.PrincipalUUID = "U999"
 	if _, err := store.CreateTask(context.Background(), conflict); !errors.Is(err, sqlcRepository.ErrAgentPolicyConflict) {
 		t.Fatalf("expected task conflict, got %v", err)
+	}
+	loadedSubscriptionTask, err := store.GetTask(context.Background(), task.TaskUUID)
+	if err != nil || loadedSubscriptionTask == nil || loadedSubscriptionTask.TriggerSubscriptionUUID != "SUB-1" {
+		t.Fatalf("Task Subscription binding: task=%+v err=%v", loadedSubscriptionTask, err)
+	}
+	if err := store.RevokeEventSubscription(context.Background(), subscription.SubscriptionUUID, now.Add(2*time.Minute)); err != nil {
+		t.Fatalf("revoke Event Subscription: %v", err)
+	}
+	matched, err = store.ListMatchingEventSubscriptions(context.Background(), application.AgentEventSubscriptionMatchRequestV1{
+		TenantID: "dipole", AgentUUID: "UAI", EventType: "message.direct.created",
+		ResourceType: "conversation", ResourceID: "direct:U100:UAI",
+	})
+	if err != nil || len(matched) != 0 {
+		t.Fatalf("revoked Event Subscription remained visible: items=%+v err=%v", matched, err)
 	}
 	if changed, err := store.TransitionTaskStatus(context.Background(), task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning); err != nil || !changed {
 		t.Fatalf("start task: changed=%v err=%v", changed, err)
@@ -417,6 +452,36 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if resolved, err := approvalService.Resolve(context.Background(), resolution); err != nil || resolved.ApprovedByUUID != persistentPrincipalUUID {
 		t.Fatalf("replay durable Approval resolution: approval=%+v err=%v", resolved, err)
 	}
+	if err := runner.Down(context.Background(), 1); err != nil {
+		t.Fatalf("rollback Event Subscription migration: %v", err)
+	}
+	var subscriptionTableCount, subscriptionColumnCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_event_subscriptions'`).Scan(&subscriptionTableCount); err != nil {
+		t.Fatalf("inspect rolled back Event Subscription table: %v", err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agent_tasks' AND column_name = 'trigger_subscription_uuid'`).Scan(&subscriptionColumnCount); err != nil {
+		t.Fatalf("inspect rolled back Task Subscription column: %v", err)
+	}
+	if subscriptionTableCount != 0 || subscriptionColumnCount != 0 {
+		t.Fatalf("Event Subscription rollback left schema objects: table=%d column=%d", subscriptionTableCount, subscriptionColumnCount)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("reapply Event Subscription migration: %v", err)
+	}
+	if version, err := runner.CurrentVersion(context.Background()); err != nil || version != 28 {
+		t.Fatalf("Event Subscription migration version after reapply: version=%d err=%v", version, err)
+	}
+}
+
+func containsSubscriptionTerm(t *testing.T, raw json.RawMessage, expected string) bool {
+	t.Helper()
+	var filter struct {
+		Terms []string `json:"terms"`
+	}
+	if err := json.Unmarshal(raw, &filter); err != nil {
+		t.Fatalf("decode Event Subscription filter: %v", err)
+	}
+	return len(filter.Terms) == 1 && filter.Terms[0] == expected
 }
 
 const embeddedAgentDefinitionVersionForContract uint64 = 1

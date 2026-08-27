@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	AgentCapabilityService_MatchEventSubscriptions_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/MatchEventSubscriptions"
 	AgentCapabilityService_AdmitRun_FullMethodName                            = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
 	AgentCapabilityService_FinishRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
@@ -39,6 +40,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AgentCapabilityServiceClient interface {
+	MatchEventSubscriptions(ctx context.Context, in *MatchEventSubscriptionsRequest, opts ...grpc.CallOption) (*MatchEventSubscriptionsResponse, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -61,6 +63,16 @@ type agentCapabilityServiceClient struct {
 
 func NewAgentCapabilityServiceClient(cc grpc.ClientConnInterface) AgentCapabilityServiceClient {
 	return &agentCapabilityServiceClient{cc}
+}
+
+func (c *agentCapabilityServiceClient) MatchEventSubscriptions(ctx context.Context, in *MatchEventSubscriptionsRequest, opts ...grpc.CallOption) (*MatchEventSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MatchEventSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_MatchEventSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *agentCapabilityServiceClient) AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error) {
@@ -207,6 +219,7 @@ func (c *agentCapabilityServiceClient) GetArtifact(ctx context.Context, in *GetA
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
 type AgentCapabilityServiceServer interface {
+	MatchEventSubscriptions(context.Context, *MatchEventSubscriptionsRequest) (*MatchEventSubscriptionsResponse, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -231,6 +244,9 @@ type AgentCapabilityServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAgentCapabilityServiceServer struct{}
 
+func (UnimplementedAgentCapabilityServiceServer) MatchEventSubscriptions(context.Context, *MatchEventSubscriptionsRequest) (*MatchEventSubscriptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MatchEventSubscriptions not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdmitRun not implemented")
 }
@@ -293,6 +309,24 @@ func RegisterAgentCapabilityServiceServer(s grpc.ServiceRegistrar, srv AgentCapa
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AgentCapabilityService_ServiceDesc, srv)
+}
+
+func _AgentCapabilityService_MatchEventSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MatchEventSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).MatchEventSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_MatchEventSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).MatchEventSubscriptions(ctx, req.(*MatchEventSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AgentCapabilityService_AdmitRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -554,6 +588,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "dipole.agent.v1.AgentCapabilityService",
 	HandlerType: (*AgentCapabilityServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "MatchEventSubscriptions",
+			Handler:    _AgentCapabilityService_MatchEventSubscriptions_Handler,
+		},
 		{
 			MethodName: "AdmitRun",
 			Handler:    _AgentCapabilityService_AdmitRun_Handler,

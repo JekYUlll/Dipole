@@ -63,6 +63,23 @@ type AgentDefinitionVersion struct {
 	AgentUuid       string
 }
 
+type AgentEventSubscription struct {
+	ID                uint64
+	SubscriptionUuid  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	TenantID          string
+	AgentUuid         string
+	Status            string
+	EventType         string
+	ResourceType      string
+	ResourceID        string
+	FilterKind        string
+	FilterJson        json.RawMessage
+	CreatedAt         time.Time
+	RevokedAt         sql.NullTime
+}
+
 type AgentRun struct {
 	ID          uint64
 	RunUuid     string
@@ -78,24 +95,25 @@ type AgentRun struct {
 }
 
 type AgentTask struct {
-	ID                uint64
-	TaskUuid          string
-	DefinitionUuid    string
-	DefinitionVersion uint64
-	TenantID          string
-	Status            string
-	TriggerType       string
-	TriggerRef        string
-	Goal              string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	PrincipalUuid     string
-	AgentUuid         string
-	WorkflowID        sql.NullString
-	WorkflowRunID     sql.NullString
-	WorkflowStatus    sql.NullString
-	WorkflowRevision  sql.NullInt64
-	WorkflowUpdatedAt sql.NullTime
+	ID                      uint64
+	TaskUuid                string
+	DefinitionUuid          string
+	DefinitionVersion       uint64
+	TenantID                string
+	Status                  string
+	TriggerType             string
+	TriggerRef              string
+	Goal                    string
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	PrincipalUuid           string
+	AgentUuid               string
+	WorkflowID              sql.NullString
+	WorkflowRunID           sql.NullString
+	WorkflowStatus          sql.NullString
+	WorkflowRevision        sql.NullInt64
+	WorkflowUpdatedAt       sql.NullTime
+	TriggerSubscriptionUuid sql.NullString
 }
 
 type AgentWorkflowRepairDecision struct {
