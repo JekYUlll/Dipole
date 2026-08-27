@@ -15,6 +15,7 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 var Subscriber *Consumer
@@ -347,6 +348,7 @@ func (c *Consumer) handleWithRetry(ctx context.Context, event Event, handlers []
 }
 
 func (c *Consumer) handleAll(ctx context.Context, event Event, handlers []Handler) error {
+	ctx = correlationContext(ctx, event)
 	for _, handler := range handlers {
 		if handler == nil {
 			continue
@@ -357,6 +359,25 @@ func (c *Consumer) handleAll(ctx context.Context, event Event, handlers []Handle
 	}
 
 	return nil
+}
+
+func correlationContext(ctx context.Context, event Event) context.Context {
+	requestID := event.Headers[correlation.RequestEventHeader]
+	traceID := event.Headers[correlation.TraceEventHeader]
+	eventID := event.Headers[correlation.EventHeader]
+	if event.Envelope != nil {
+		if event.Envelope.RequestID != "" {
+			requestID = event.Envelope.RequestID
+		}
+		if event.Envelope.TraceID != "" {
+			traceID = event.Envelope.TraceID
+		}
+		if event.Envelope.EventID != "" {
+			eventID = event.Envelope.EventID
+		}
+	}
+	ctx, _ = correlation.Ensure(ctx, requestID, traceID)
+	return correlation.WithEventID(ctx, eventID)
 }
 
 func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {

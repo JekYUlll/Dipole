@@ -52,6 +52,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	}
 
 	engine := gin.New()
+	engine.Use(middleware.Correlation())
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
 	mountWebApp(engine)

@@ -6,8 +6,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	kafkago "github.com/segmentio/kafka-go"
 )
+
+func TestHandleAllRestoresEnvelopeCorrelation(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{}
+	event := Event{Envelope: &Envelope{EventID: "E1", RequestID: "R1", TraceID: "T1"}}
+	err := consumer.handleAll(context.Background(), event, []Handler{func(ctx context.Context, _ Event) error {
+		if got := correlation.FromContext(ctx); got != (correlation.IDs{RequestID: "R1", TraceID: "T1", EventID: "E1"}) {
+			t.Fatalf("unexpected handler correlation: %+v", got)
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+}
 
 func TestConsumerStartDoesNotDeadlockWhenRegisteringReaders(t *testing.T) {
 	t.Parallel()

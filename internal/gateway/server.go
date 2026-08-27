@@ -55,7 +55,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	}
 
 	engine := gin.New()
-	engine.Use(logger.GinLogger(), logger.GinRecovery(), cors.Default())
+	engine.Use(middleware.Correlation(), logger.GinLogger(), logger.GinRecovery(), cors.Default())
 	hub := wsTransport.NewHub(wsTransport.WithPresenceTracker(dependencies.Presence))
 	tokenService := service.NewTokenService()
 	userFinder := coreUserFinder{core: dependencies.Core}

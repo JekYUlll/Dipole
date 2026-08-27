@@ -15,6 +15,13 @@ type MessageCommand interface {
 	SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
 }
 
+type MessageCommandContext interface {
+	SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	SendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
+	SendDirectFileMessageContext(ctx context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
+	SendGroupFileMessageContext(ctx context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
+}
+
 type MessageQuery interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error)

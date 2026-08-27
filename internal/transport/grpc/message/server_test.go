@@ -9,7 +9,9 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
+	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,6 +26,24 @@ type stubMessageApplication struct {
 	listDirectAfterSeq  func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	listGroup           func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
 	listGroupBeforeSeq  func(currentUserUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error)
+	commandContext      correlation.IDs
+}
+
+func (s *stubMessageApplication) SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	s.commandContext = correlation.FromContext(ctx)
+	return s.SendDirectMessage(senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *stubMessageApplication) SendGroupMessageContext(_ context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupMessage(senderUUID, groupUUID, content, clientMessageID)
+}
+
+func (s *stubMessageApplication) SendDirectFileMessageContext(_ context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
+	return s.SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID)
+}
+
+func (s *stubMessageApplication) SendGroupFileMessageContext(_ context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID)
 }
 
 func (s *stubMessageApplication) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -97,7 +117,9 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	client := newBufconnClient(t, application)
 
 	response, err := client.SendDirectText(context.Background(), &messagev1.SendDirectTextRequest{
-		Context:         grpccommon.RequestContext(" U100 ", "dipole-gateway"),
+		Context: &commonv1.RequestContext{
+			PrincipalUserId: " U100 ", CallerService: "dipole-gateway", RequestId: "grpc-request-1", TraceId: "grpc-trace-1",
+		},
 		TargetUserId:    "U200",
 		Content:         "hello",
 		ClientMessageId: "C100",
@@ -110,6 +132,9 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	}
 	if !response.GetMessage().GetSentAt().AsTime().Equal(sentAt) {
 		t.Fatalf("unexpected sent_at: %v", response.GetMessage().GetSentAt())
+	}
+	if application.commandContext.RequestID != "grpc-request-1" || application.commandContext.TraceID != "grpc-trace-1" {
+		t.Fatalf("unexpected command context: %+v", application.commandContext)
 	}
 }
 

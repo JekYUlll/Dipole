@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 func GinLogger() gin.HandlerFunc {
@@ -30,6 +32,11 @@ func GinLogger() gin.HandlerFunc {
 			zap.Duration("latency", time.Since(start)),
 			zap.Int("body_size", c.Writer.Size()),
 		}
+		ids := correlation.FromContext(c.Request.Context())
+		fields = append(fields,
+			zap.String("request_id", ids.RequestID),
+			zap.String("trace_id", ids.TraceID),
+		)
 		if len(c.Errors) > 0 {
 			fields = append(fields, zap.String("errors", c.Errors.String()))
 		}
@@ -48,11 +55,14 @@ func GinLogger() gin.HandlerFunc {
 
 func GinRecovery() gin.HandlerFunc {
 	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
+		ids := correlation.FromContext(c.Request.Context())
 		L().Named("http").Error("panic recovered",
 			zap.Any("panic", recovered),
 			zap.String("method", c.Request.Method),
 			zap.String("path", c.Request.URL.Path),
 			zap.String("client_ip", c.ClientIP()),
+			zap.String("request_id", ids.RequestID),
+			zap.String("trace_id", ids.TraceID),
 			zap.ByteString("stack", debug.Stack()),
 		)
 

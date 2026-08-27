@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	"github.com/JekYUlll/Dipole/internal/service"
@@ -18,6 +19,7 @@ type recordedWSEvent struct {
 	userUUID  string
 	eventType string
 	data      any
+	ids       correlation.IDs
 }
 
 type recordingWSEventSender struct {
@@ -29,9 +31,13 @@ func (*recordingWSEventSender) DisconnectConnections(string, []string, string) i
 func (*recordingWSEventSender) DisconnectAllConnections(string, string) int        { return 0 }
 
 func (s *recordingWSEventSender) SendEventToUser(userUUID, eventType string, data any) int {
+	return s.SendEventToUserContext(context.Background(), userUUID, eventType, data)
+}
+
+func (s *recordingWSEventSender) SendEventToUserContext(ctx context.Context, userUUID, eventType string, data any) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.events = append(s.events, recordedWSEvent{userUUID: userUUID, eventType: eventType, data: data})
+	s.events = append(s.events, recordedWSEvent{userUUID: userUUID, eventType: eventType, data: data, ids: correlation.FromContext(ctx)})
 	return 1
 }
 
@@ -53,7 +59,8 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
 			event := directCreatedEvent(t, 42)
-			if err := deliverDirectMessageHandler(sender, test.mode)(context.Background(), event); err != nil {
+			ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R42", TraceID: "T42", EventID: "E42"})
+			if err := deliverDirectMessageHandler(sender, test.mode)(ctx, event); err != nil {
 				t.Fatalf("deliver direct event: %v", err)
 			}
 			if len(sender.events) != len(test.wantTypes) {
@@ -62,6 +69,9 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 			for index, wantType := range test.wantTypes {
 				if sender.events[index].eventType != wantType || sender.events[index].userUUID != "U2" {
 					t.Fatalf("event[%d]=%+v want type=%s user=U2", index, sender.events[index], wantType)
+				}
+				if sender.events[index].ids != (correlation.IDs{RequestID: "R42", TraceID: "T42", EventID: "E42"}) {
+					t.Fatalf("event[%d] correlation=%+v", index, sender.events[index].ids)
 				}
 			}
 			if test.mode == wsTransport.TimelineNotifyShadow {

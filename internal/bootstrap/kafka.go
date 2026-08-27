@@ -30,10 +30,25 @@ type kafkaMessagePersister interface {
 	PersistRequestedMessage(payload service.MessageEventPayload) (*model.Message, error)
 }
 
+type kafkaMessagePersisterContext interface {
+	PersistRequestedMessageContext(ctx context.Context, payload service.MessageEventPayload) (*model.Message, error)
+}
+
 type kafkaWSEventSender interface {
 	SendEventToUser(userUUID, eventType string, data any) int
 	DisconnectConnections(userUUID string, connectionIDs []string, reason string) int
 	DisconnectAllConnections(userUUID string, reason string) int
+}
+
+type kafkaWSContextEventSender interface {
+	SendEventToUserContext(ctx context.Context, userUUID, eventType string, data any) int
+}
+
+func sendEventToUser(ctx context.Context, hub kafkaWSEventSender, userUUID, eventType string, data any) int {
+	if contextual, ok := hub.(kafkaWSContextEventSender); ok {
+		return contextual.SendEventToUserContext(ctx, userUUID, eventType, data)
+	}
+	return hub.SendEventToUser(userUUID, eventType, data)
 }
 
 type kafkaGroupConversationIniter interface {
@@ -185,15 +200,18 @@ func logKafkaEventHandler(topic string) platformKafka.Handler {
 
 func persistMessageHandler(persister kafkaMessagePersister, label string) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
 		payload, err := decodeMessageEventPayload(event)
 		if err != nil {
 			logger.Warn("decode "+label+" message requested payload failed", zap.Error(err))
 			return err
 		}
 
-		if _, err := persister.PersistRequestedMessage(payload); err != nil {
+		if contextual, ok := persister.(kafkaMessagePersisterContext); ok {
+			_, err = contextual.PersistRequestedMessageContext(ctx, payload)
+		} else {
+			_, err = persister.PersistRequestedMessage(payload)
+		}
+		if err != nil {
 			logger.Warn("persist "+label+" message from kafka failed", zap.Error(err))
 			return err
 		}
@@ -208,8 +226,6 @@ func persistMessageHandler(persister kafkaMessagePersister, label string) platfo
 
 func updateConversationHandler(updater kafkaConversationUpdater, isGroup bool) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
 		payload, err := decodeMessageEventPayload(event)
 		if err != nil {
 			logger.Warn("decode message kafka event failed", zap.Error(err))
@@ -246,7 +262,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender, timelineNotifyMode stri
 			return err
 		}
 
-		hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeChatMessage, wsTransport.ChatMessageData{
+		sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatMessage, wsTransport.ChatMessageData{
 			MessageID:   payload.MessageID,
 			MessageSeq:  payload.MessageSeq,
 			FromUUID:    payload.SenderUUID,
@@ -258,7 +274,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender, timelineNotifyMode stri
 			SentAt:      payload.SentAt,
 		})
 		if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
-			hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeSyncItemNotifyV1, notify)
+			sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeSyncItemNotifyV1, notify)
 		}
 
 		return nil
@@ -318,9 +334,9 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 			wg.Add(1)
 			go func(uuid string) {
 				defer wg.Done()
-				hub.SendEventToUser(uuid, wsTransport.TypeChatMessage, eventData)
+				sendEventToUser(ctx, hub, uuid, wsTransport.TypeChatMessage, eventData)
 				if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
-					hub.SendEventToUser(uuid, wsTransport.TypeSyncItemNotifyV1, notify)
+					sendEventToUser(ctx, hub, uuid, wsTransport.TypeSyncItemNotifyV1, notify)
 				}
 			}(recipientUUID)
 		}
@@ -385,7 +401,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 			return err
 		}
 
-		hub.SendEventToUser(payload.TargetUUID, wsTransport.TypeChatRead, wsTransport.ChatReadData{
+		sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatRead, wsTransport.ChatReadData{
 			ReaderUUID:          payload.ReaderUUID,
 			TargetUUID:          payload.TargetUUID,
 			TargetType:          payload.TargetType,
@@ -465,7 +481,7 @@ func deliverGroupEventHandler[T any](
 
 		data := buildData(payload)
 		for _, recipientUUID := range payload.RecipientUUIDs {
-			hub.SendEventToUser(recipientUUID, eventType, data)
+			sendEventToUser(ctx, hub, recipientUUID, eventType, data)
 		}
 
 		return nil
@@ -507,7 +523,7 @@ func deliverContactFriendDeletedHandler(hub kafkaWSEventSender) platformKafka.Ha
 			return err
 		}
 
-		hub.SendEventToUser(payload.UserUUID, wsTransport.TypeContactFriendDeleted, wsTransport.ContactFriendDeletedEventData{
+		sendEventToUser(ctx, hub, payload.UserUUID, wsTransport.TypeContactFriendDeleted, wsTransport.ContactFriendDeletedEventData{
 			UserUUID:   payload.UserUUID,
 			FriendUUID: payload.FriendUUID,
 			OccurredAt: payload.OccurredAt,

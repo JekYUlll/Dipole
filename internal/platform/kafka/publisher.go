@@ -13,6 +13,7 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 var Client *Publisher
@@ -177,7 +178,7 @@ func (p *Publisher) PublishJSON(ctx context.Context, topic string, key string, p
 }
 
 func (p *Publisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
-	envelope, err := NewEnvelope(eventType, payload)
+	envelope, err := NewEnvelopeContext(ctx, eventType, payload)
 	if err != nil {
 		return fmt.Errorf("create kafka event envelope for %s: %w", topic, err)
 	}
@@ -188,6 +189,12 @@ func (p *Publisher) PublishEvent(ctx context.Context, topic string, key string, 
 	headers["schema_version"] = envelope.Version
 	headers["source"] = envelope.Source
 	headers["event_id"] = envelope.EventID
+	if envelope.RequestID != "" {
+		headers[correlation.RequestEventHeader] = envelope.RequestID
+	}
+	if envelope.TraceID != "" {
+		headers[correlation.TraceEventHeader] = envelope.TraceID
+	}
 
 	return p.PublishJSON(ctx, topic, key, envelope, headers)
 }

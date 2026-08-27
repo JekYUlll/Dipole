@@ -43,10 +43,14 @@ func NewClientForService(rpc messagev1.MessageServiceClient, callerService strin
 }
 
 func (c *Client) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	return c.SendDirectMessageContext(context.Background(), senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (c *Client) SendDirectMessageContext(parent context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	response, err := c.rpc.SendDirectText(ctx, &messagev1.SendDirectTextRequest{
-		Context:         c.invocation(senderUUID),
+		Context:         c.invocation(ctx, senderUUID),
 		TargetUserId:    targetUUID,
 		Content:         content,
 		ClientMessageId: clientMessageID,
@@ -58,10 +62,14 @@ func (c *Client) SendDirectMessage(senderUUID, targetUUID, content, clientMessag
 }
 
 func (c *Client) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	return c.SendGroupMessageContext(context.Background(), senderUUID, groupUUID, content, clientMessageID)
+}
+
+func (c *Client) SendGroupMessageContext(parent context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	response, err := c.rpc.SendGroupText(ctx, &messagev1.SendGroupTextRequest{
-		Context:         c.invocation(senderUUID),
+		Context:         c.invocation(ctx, senderUUID),
 		GroupId:         groupUUID,
 		Content:         content,
 		ClientMessageId: clientMessageID,
@@ -73,10 +81,14 @@ func (c *Client) SendGroupMessage(senderUUID, groupUUID, content, clientMessageI
 }
 
 func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	return c.SendDirectFileMessageContext(context.Background(), senderUUID, targetUUID, fileUUID, clientMessageID)
+}
+
+func (c *Client) SendDirectFileMessageContext(parent context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	response, err := c.rpc.SendDirectFile(ctx, &messagev1.SendDirectFileRequest{
-		Context:         c.invocation(senderUUID),
+		Context:         c.invocation(ctx, senderUUID),
 		TargetUserId:    targetUUID,
 		FileId:          fileUUID,
 		ClientMessageId: clientMessageID,
@@ -88,10 +100,14 @@ func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientM
 }
 
 func (c *Client) SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	return c.SendGroupFileMessageContext(context.Background(), senderUUID, groupUUID, fileUUID, clientMessageID)
+}
+
+func (c *Client) SendGroupFileMessageContext(parent context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	response, err := c.rpc.SendGroupFile(ctx, &messagev1.SendGroupFileRequest{
-		Context:         c.invocation(senderUUID),
+		Context:         c.invocation(ctx, senderUUID),
 		GroupId:         groupUUID,
 		FileId:          fileUUID,
 		ClientMessageId: clientMessageID,
@@ -106,7 +122,7 @@ func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListDirectHistory(ctx, &messagev1.ListDirectHistoryRequest{
-		Context:      c.invocation(currentUserUUID),
+		Context:      c.invocation(ctx, currentUserUUID),
 		TargetUserId: targetUUID,
 		BeforeId:     uint64(beforeID),
 		PageSize:     requestPageSize(limit),
@@ -121,7 +137,7 @@ func (c *Client) ListDirectMessagesBeforeSeq(currentUserUUID, targetUUID string,
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListDirectHistory(ctx, &messagev1.ListDirectHistoryRequest{
-		Context: c.invocation(currentUserUUID), TargetUserId: targetUUID,
+		Context: c.invocation(ctx, currentUserUUID), TargetUserId: targetUUID,
 		BeforeSequence: &beforeSeq, PageSize: requestPageSize(limit),
 	})
 	if err != nil {
@@ -134,7 +150,7 @@ func (c *Client) ListDirectMessagesAfterSeq(currentUserUUID, targetUUID string, 
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListDirectHistory(ctx, &messagev1.ListDirectHistoryRequest{
-		Context: c.invocation(currentUserUUID), TargetUserId: targetUUID,
+		Context: c.invocation(ctx, currentUserUUID), TargetUserId: targetUUID,
 		AfterSequence: &afterSeq, PageSize: requestPageSize(limit),
 	})
 	if err != nil {
@@ -147,7 +163,7 @@ func (c *Client) ListGroupMessages(currentUserUUID, groupUUID string, beforeID u
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	request := &messagev1.ListGroupHistoryRequest{
-		Context:  c.invocation(currentUserUUID),
+		Context:  c.invocation(ctx, currentUserUUID),
 		GroupId:  groupUUID,
 		PageSize: requestPageSize(limit),
 	}
@@ -165,7 +181,7 @@ func (c *Client) ListGroupMessagesBeforeSeq(currentUserUUID, groupUUID string, b
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListGroupHistory(ctx, &messagev1.ListGroupHistoryRequest{
-		Context: c.invocation(currentUserUUID), GroupId: groupUUID,
+		Context: c.invocation(ctx, currentUserUUID), GroupId: groupUUID,
 		Cursor: &messagev1.ListGroupHistoryRequest_BeforeSequence{BeforeSequence: beforeSeq}, PageSize: requestPageSize(limit),
 	})
 	if err != nil {
@@ -178,7 +194,7 @@ func (c *Client) ListGroupMessagesAfter(currentUserUUID, groupUUID string, after
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListGroupHistory(ctx, &messagev1.ListGroupHistoryRequest{
-		Context:  c.invocation(currentUserUUID),
+		Context:  c.invocation(ctx, currentUserUUID),
 		GroupId:  groupUUID,
 		Cursor:   &messagev1.ListGroupHistoryRequest_AfterId{AfterId: uint64(afterID)},
 		PageSize: requestPageSize(limit),
@@ -193,7 +209,7 @@ func (c *Client) ListGroupMessagesAfterSeq(currentUserUUID, groupUUID string, af
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListGroupHistory(ctx, &messagev1.ListGroupHistoryRequest{
-		Context: c.invocation(currentUserUUID), GroupId: groupUUID,
+		Context: c.invocation(ctx, currentUserUUID), GroupId: groupUUID,
 		Cursor: &messagev1.ListGroupHistoryRequest_AfterSequence{AfterSequence: afterSeq}, PageSize: requestPageSize(limit),
 	})
 	if err != nil {
@@ -206,7 +222,7 @@ func (c *Client) ListOfflineMessages(currentUserUUID string, afterID uint, limit
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
 	response, err := c.rpc.ListOfflineMessages(ctx, &messagev1.ListOfflineMessagesRequest{
-		Context:  c.invocation(currentUserUUID),
+		Context:  c.invocation(ctx, currentUserUUID),
 		AfterId:  uint64(afterID),
 		PageSize: requestPageSize(limit),
 	})
@@ -216,8 +232,8 @@ func (c *Client) ListOfflineMessages(currentUserUUID string, afterID uint, limit
 	return messagesFromProto(response.GetMessages()), nil
 }
 
-func (c *Client) invocation(principal string) *commonv1.RequestContext {
-	return grpccommon.RequestContext(principal, c.callerService)
+func (c *Client) invocation(ctx context.Context, principal string) *commonv1.RequestContext {
+	return grpccommon.RequestContextFrom(ctx, principal, c.callerService)
 }
 
 func requestPageSize(limit int) int32 {

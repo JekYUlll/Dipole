@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -39,10 +40,13 @@ func NewUnaryClientInterceptor(credentials Credentials) (grpc.UnaryClientInterce
 	}
 
 	return func(ctx context.Context, method string, request, reply any, connection *grpc.ClientConn, invoke grpc.UnaryInvoker, options ...grpc.CallOption) error {
+		ctx, ids := correlation.Ensure(ctx, correlation.FromContext(ctx).RequestID, correlation.FromContext(ctx).TraceID)
 		ctx = metadata.AppendToOutgoingContext(
 			ctx,
 			serviceMetadataKey, credentials.Service,
 			secretMetadataKey, credentials.Secret,
+			correlation.RequestMetadataKey, ids.RequestID,
+			correlation.TraceMetadataKey, ids.TraceID,
 		)
 		return invoke(ctx, method, request, reply, connection, options...)
 	}, nil
@@ -78,8 +82,17 @@ func NewUnaryServerInterceptor(secret string, allowedCallers ...string) (grpc.Un
 		if err := verifyTLSCaller(ctx, strings.TrimSpace(callers[0])); err != nil {
 			return nil, err
 		}
+		ctx, _ = correlation.Ensure(ctx, firstMetadata(incoming, correlation.RequestMetadataKey), firstMetadata(incoming, correlation.TraceMetadataKey))
 		return handler(context.WithValue(ctx, callerContextKey{}, strings.TrimSpace(callers[0])), request)
 	}, nil
+}
+
+func firstMetadata(values metadata.MD, key string) string {
+	items := values.Get(key)
+	if len(items) != 1 {
+		return ""
+	}
+	return items[0]
 }
 
 func verifyTLSCaller(ctx context.Context, caller string) error {

@@ -27,11 +27,17 @@ func NewServer(application application.MessageApplication) (*Server, error) {
 }
 
 func (s *Server) SendDirectText(ctx context.Context, request *messagev1.SendDirectTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, err := s.application.SendDirectMessage(principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	var message *model.Message
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, err = contextual.SendDirectMessageContext(ctx, principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	} else {
+		message, err = s.application.SendDirectMessage(principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -39,11 +45,18 @@ func (s *Server) SendDirectText(ctx context.Context, request *messagev1.SendDire
 }
 
 func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroupTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, recipients, err := s.application.SendGroupMessage(principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	var message *model.Message
+	var recipients []string
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupMessageContext(ctx, principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	} else {
+		message, recipients, err = s.application.SendGroupMessage(principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -51,11 +64,17 @@ func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroup
 }
 
 func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDirectFileRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, err := s.application.SendDirectFileMessage(principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	var message *model.Message
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, err = contextual.SendDirectFileMessageContext(ctx, principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	} else {
+		message, err = s.application.SendDirectFileMessage(principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -63,11 +82,18 @@ func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDire
 }
 
 func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroupFileRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, recipients, err := s.application.SendGroupFileMessage(principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	var message *model.Message
+	var recipients []string
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupFileMessageContext(ctx, principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	} else {
+		message, recipients, err = s.application.SendGroupFileMessage(principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}

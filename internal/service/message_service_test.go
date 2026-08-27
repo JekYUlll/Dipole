@@ -11,7 +11,9 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
+	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/alicebob/miniredis/v2"
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -368,6 +370,7 @@ type stubEventPublisher struct {
 	keys       []string
 	eventTypes []string
 	payloads   []any
+	contexts   []correlation.IDs
 }
 
 type stubHotGroupObserver struct {
@@ -387,21 +390,40 @@ func (o *stubHotGroupObserver) Status(groupUUID string, memberCount int) (platfo
 	return o.status, o.err
 }
 
-func (p *stubEventPublisher) PublishJSON(_ context.Context, topic string, key string, payload any, headers map[string]string) error {
+func (p *stubEventPublisher) PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
 	p.payloads = append(p.payloads, payload)
+	p.contexts = append(p.contexts, correlation.FromContext(ctx))
 	_ = headers
 	return nil
 }
 
-func (p *stubEventPublisher) PublishEvent(_ context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
+func (p *stubEventPublisher) PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error {
 	p.topics = append(p.topics, topic)
 	p.keys = append(p.keys, key)
 	p.eventTypes = append(p.eventTypes, eventType)
 	p.payloads = append(p.payloads, payload)
+	p.contexts = append(p.contexts, correlation.FromContext(ctx))
 	_ = headers
 	return nil
+}
+
+func TestMessageServiceCommandContextReachesRequestedEvent(t *testing.T) {
+	t.Parallel()
+	publisher := &stubEventPublisher{}
+	messageService := NewMessageService(
+		&stubMessageRepository{},
+		&stubMessageUserFinder{users: map[string]*model.User{"U200": {UUID: "U200"}}},
+		&stubFriendshipChecker{friendships: map[string]map[string]bool{"U100": {"U200": true}}}, nil, nil, publisher, nil,
+	)
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1"})
+	if _, err := messageService.SendDirectMessageContext(ctx, "U100", "U200", "hello", "C1"); err != nil {
+		t.Fatalf("send direct message: %v", err)
+	}
+	if len(publisher.contexts) != 1 || publisher.contexts[0].RequestID != "R1" || publisher.contexts[0].TraceID != "T1" {
+		t.Fatalf("unexpected event context: %+v", publisher.contexts)
+	}
 }
 
 func TestMessageServiceSendDirectMessageSuccess(t *testing.T) {
@@ -1384,6 +1406,38 @@ func TestMessageServicePersistRequestedLegacyDirectEventStillWritesSyncInbox(t *
 	}
 	if len(repo.syncRecipients) != 2 || repo.syncRecipients[0] != "U100" || repo.syncRecipients[1] != "U200" {
 		t.Fatalf("expected legacy direct event to sync both participants, got %+v", repo.syncRecipients)
+	}
+}
+
+func TestMessageServicePersistRequestedContextStoresCorrelationInOutbox(t *testing.T) {
+	t.Parallel()
+	repo := &stubMessageRepository{}
+	messageService := NewMessageService(repo, &stubMessageUserFinder{}, &stubFriendshipChecker{}, nil, nil, &stubEventPublisher{}, nil)
+	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1", EventID: "requested-event"})
+	_, err := messageService.PersistRequestedMessageContext(ctx, MessageEventPayload{
+		MessageID: "M-context", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello", SyncFanout: boolFlag(true),
+	})
+	if err != nil {
+		t.Fatalf("persist requested message: %v", err)
+	}
+	if len(repo.outboxEvents) != 1 {
+		t.Fatalf("outbox events = %d, want 1", len(repo.outboxEvents))
+	}
+	var headers map[string]string
+	if err := json.Unmarshal(repo.outboxEvents[0].HeadersJSON, &headers); err != nil {
+		t.Fatalf("decode headers: %v", err)
+	}
+	if headers["request_id"] != "R1" || headers["trace_id"] != "T1" || headers["event_id"] == "" || headers["event_id"] == "requested-event" {
+		t.Fatalf("unexpected outbox correlation: %+v", headers)
+	}
+	var envelope platformKafka.Envelope
+	if err := json.Unmarshal(repo.outboxEvents[0].Value, &envelope); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if envelope.RequestID != "R1" || envelope.TraceID != "T1" || envelope.EventID != headers["event_id"] {
+		t.Fatalf("envelope/header mismatch: envelope=%+v headers=%+v", envelope, headers)
 	}
 }
 
