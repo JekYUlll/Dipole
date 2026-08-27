@@ -1,10 +1,19 @@
-import { readFile } from "node:fs/promises";
-import { describe, expect, it } from "vitest";
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ReloadingExternalMcpCredentialCatalog,
+  createFileExternalMcpCredentialCatalog,
   externalMcpCredentialCatalogSchemaVersion
 } from "./external-mcp-credential-catalog.js";
+
+const temporaryDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map(path => rm(path, { recursive: true, force: true })));
+});
 
 const activeBinding = {
   tenant_id: "dipole",
@@ -139,4 +148,79 @@ describe("external MCP credential lifecycle catalog", () => {
     await expect(catalog.resolve(request)).rejects.toThrow(/unavailable/);
     await expect(catalog.resolve(request)).resolves.toMatchObject({ providerId: "vault-prod" });
   });
+
+  it("loads a bounded operator-managed file and observes atomic replacement", async () => {
+    const { directory, path } = await catalogFile(manifest());
+    const catalog = createFileExternalMcpCredentialCatalog(path);
+    const request = {
+      tenantId: "dipole",
+      credentialRef: activeBinding.credential_ref,
+      credentialVersion: 3,
+      now: new Date("2026-08-27T12:00:00Z")
+    };
+    await expect(catalog.resolve(request)).resolves.toMatchObject({ providerId: "vault-prod" });
+
+    const replacement = join(directory, "catalog.next.json");
+    await writeFile(replacement, JSON.stringify(manifest([{
+      ...activeBinding,
+      status: "revoked",
+      revoked_at: "2026-08-27T12:01:00Z"
+    }])));
+    await chmod(replacement, 0o600);
+    await rename(replacement, path);
+    await expect(catalog.resolve({ ...request, now: new Date("2026-08-27T12:02:00Z") })).rejects.toThrow(/revoked/i);
+  });
+
+  it("rejects relative paths before reading", () => {
+    expect(() => createFileExternalMcpCredentialCatalog("catalog.json")).toThrow(/absolute/i);
+  });
+
+  it("rejects symlinks and non-regular files", async () => {
+    const { directory, path } = await catalogFile(manifest());
+    const link = join(directory, "catalog-link.json");
+    await symlink(path, link);
+    await expect(createFileExternalMcpCredentialCatalog(link).resolve(resolveRequest())).rejects.toThrow();
+    const nonRegular = join(directory, "catalog-directory");
+    await mkdir(nonRegular, { mode: 0o700 });
+    await expect(createFileExternalMcpCredentialCatalog(nonRegular).resolve(resolveRequest())).rejects.toThrow(/regular file/i);
+
+    const linkedParent = `${directory}-link`;
+    temporaryDirectories.push(linkedParent);
+    await symlink(directory, linkedParent);
+    await expect(createFileExternalMcpCredentialCatalog(join(linkedParent, "catalog.json")).resolve(resolveRequest())).rejects.toThrow(/canonical/i);
+  });
+
+  it("rejects unsafe ownership, writable modes, oversized and malformed files", async () => {
+    const owned = await catalogFile(manifest());
+    await expect(createFileExternalMcpCredentialCatalog(owned.path, {
+      expectedOwnerUid: (process.getuid?.() ?? 1000) + 1
+    }).resolve(resolveRequest())).rejects.toThrow(/owner/i);
+
+    await chmod(owned.path, 0o622);
+    await expect(createFileExternalMcpCredentialCatalog(owned.path).resolve(resolveRequest())).rejects.toThrow(/writable/i);
+
+    const oversized = await catalogFile(manifest());
+    await expect(createFileExternalMcpCredentialCatalog(oversized.path, { maximumBytes: 32 }).resolve(resolveRequest())).rejects.toThrow(/size/i);
+
+    const malformed = await catalogFile("not-json");
+    await expect(createFileExternalMcpCredentialCatalog(malformed.path).resolve(resolveRequest())).rejects.toThrow(/JSON/i);
+  });
 });
+
+function resolveRequest() {
+  return {
+    tenantId: "dipole",
+    credentialRef: activeBinding.credential_ref,
+    credentialVersion: 3,
+    now: new Date("2026-08-27T12:00:00Z")
+  };
+}
+
+async function catalogFile(value: unknown): Promise<{ directory: string; path: string }> {
+  const directory = await mkdtemp(join(tmpdir(), "dipole-mcp-catalog-"));
+  temporaryDirectories.push(directory);
+  const path = join(directory, "catalog.json");
+  await writeFile(path, typeof value === "string" ? value : JSON.stringify(value));
+  await chmod(path, 0o600);
+  return { directory, path };
+}
