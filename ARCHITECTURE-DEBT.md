@@ -15,13 +15,13 @@
 ### AD-028：Agent Kafka 失败转移尚未接入 retry/DLQ
 
 - **优先级：** P1
-- **状态：** 处理中
+- **状态：** 已解决
 - **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
 - **影响范围：** `agent-runtime`、Kafka poison event、失败重试、offset 提交与故障恢复
-- **现状：** migration v18 增加 `agent_event_ledger`，Event ID 与 Task ID 双唯一，claim token、lease、attempt 和终态均持久化。TS MySQL adapter 在事务中完成 claim、过期重领和绑定冲突检测；Compose 默认使用最小权限 `dipole_agent`，`memory` 仅保留显式本地回滚。真实 MySQL 8.4 验证 16 路并发单 owner、release/reclaim、crash lease 恢复和旧 token 拒绝；真实 Kafka 验证 Runtime 重启后重放不生成第二条 plan。
-- **风险：** 无效 envelope 和 planner 错误当前仍依赖 KafkaJS handler 重试，尚无有界 retry/DLQ，poison event 可能阻塞分区。当前输出只有只读 metadata audit；接入模型、Tool 或写 Capability 后会放大重复成本和分区阻塞影响。
-- **建议方向：** 复用 `<topic>.retry/.dead` 契约、诊断 headers 与原始 key/value；DLQ 发布成功后才允许提交原 offset，发布失败必须保留原消息。Temporal 接入后复用已持久化 Task ID 作为 Workflow ID。
-- **处理门槛：** 启用模型调用、Tool 轨迹或 `ai.runtime_mode=remote` 前完成，并通过 poison event、publisher 失败、consumer rebalance 与 retry→dead 的真实 Kafka 测试。
+- **解决方式：** Agent Runtime 使用 `<prefix>.<topic>`、`.retry`、`.dead` 三个显式 topic；无效 envelope 与 tombstone 直接进入 dead，处理错误按 `retry_attempt` 有界转移，达到上限后以 `handler_failed` 终止。转移保留原始 key/value/header，并增加 `original_topic`、`last_error`、`dead_reason` 和时间诊断。只有失败消息发布成功后 KafkaJS handler 才返回；publisher 异常向上抛出，保留源消息的未完成语义。启动时仅创建缺失 topic，并在 readiness 前验证分区数和副本数。
+- **验证：** 31 项 TypeScript 测试覆盖永久失败、tombstone、重试上限、原始 metadata 和 publisher reject。真实 Kafka 3.9 验证 poison event 直达 dead，ledger 绑定冲突经过两次 retry 后以 `retry_attempt=2` 进入 dead；两副本加入/退出触发 rebalance 后 partition 4 均继续消费到 LAG 0。Compose 使用 6 分区和可配置副本数。
+- **长期约束：** retry/dead topic 必须与主 topic 使用相同分区数和副本数；新增事件类型需先分类永久/瞬时错误。Temporal 接入后复用持久 Task ID 作为 Workflow ID，不另建重复幂等键。
 
 ### AD-026：Readiness 尚未持续感知运行期依赖退化
 

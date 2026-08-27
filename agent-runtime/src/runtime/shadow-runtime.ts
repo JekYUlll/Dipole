@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createPool, type Pool } from "mysql2/promise";
 
 import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js";
+import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
 import { decodeMessageCreatedEvent } from "../events/message-event.js";
 import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
@@ -14,6 +15,10 @@ const shadowRuntimeConfigSchema = z.object({
   clientId: z.string().trim().min(1),
   groupId: z.string().trim().min(1),
   topic: z.string().trim().min(1),
+  topicPrefix: z.string().trim(),
+  failureMaxAttempts: z.number().int().min(1).max(100),
+  topicPartitions: z.number().int().min(1),
+  topicReplicationFactor: z.number().int().min(1),
   tenantId: z.string().trim().min(1),
   agentUuid: z.string().trim().min(1),
   ledgerMode: z.enum(["memory", "mysql"]),
@@ -43,6 +48,10 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     clientId: env.DIPOLE_AGENT_KAFKA_CLIENT_ID ?? "dipole-agent",
     groupId: env.DIPOLE_AGENT_KAFKA_GROUP_ID ?? "dipole-agent-shadow-v1",
     topic: env.DIPOLE_AGENT_KAFKA_TOPIC ?? "message.direct.created",
+    topicPrefix: env.DIPOLE_AGENT_KAFKA_TOPIC_PREFIX ?? "dipole",
+    failureMaxAttempts: Number.parseInt(env.DIPOLE_AGENT_KAFKA_FAILURE_MAX_ATTEMPTS ?? "3", 10),
+    topicPartitions: Number.parseInt(env.DIPOLE_AGENT_KAFKA_TOPIC_PARTITIONS ?? "6", 10),
+    topicReplicationFactor: Number.parseInt(env.DIPOLE_AGENT_KAFKA_TOPIC_REPLICATION_FACTOR ?? "1", 10),
     tenantId: env.DIPOLE_AGENT_TENANT_ID ?? "dipole",
     agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
@@ -82,11 +91,17 @@ export function buildKafkaShadowRuntime(
   factory: KafkaConsumerFactoryPort,
   planner: ShadowPlanner = new MetadataShadowPlanner(),
   audit: ShadowAuditSink = new ConsoleShadowAuditSink(),
-  ledger: EventLedger = new InMemoryEventLedger()
+  ledger: EventLedger = new InMemoryEventLedger(),
+  failureRouter?: KafkaFailureRouter
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger);
-  return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: config.topic }, async (raw) => {
-    const decoded = decodeMessageCreatedEvent(raw);
+  return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
+    let decoded;
+    try {
+      decoded = decodeMessageCreatedEvent(raw);
+    } catch (error) {
+      throw new PermanentKafkaEventError(error);
+    }
     if (decoded.targetUuid !== config.agentUuid) {
       return;
     }
@@ -97,7 +112,7 @@ export function buildKafkaShadowRuntime(
       ...(decoded.requestId === undefined ? {} : { requestId: decoded.requestId }),
       ...(decoded.traceId === undefined ? {} : { traceId: decoded.traceId })
     });
-  });
+  }, failureRouter);
 }
 
 export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRuntime {
@@ -112,22 +127,40 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   } else {
     ledger = new InMemoryEventLedger();
   }
-  const consumer = buildKafkaShadowRuntime(config, new KafkaJSConsumerFactory(config.clientId, config.brokers), undefined, undefined, ledger);
+  const factory = new KafkaJSConsumerFactory(config.clientId, config.brokers);
+  const failurePublisher = factory.createFailurePublisher();
+  const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
+  const consumer = buildKafkaShadowRuntime(config, factory, undefined, undefined, ledger, failureRouter);
+  const mainTopic = physicalTopic(config);
   return {
     start: async () => {
       if (pool !== undefined) {
         await pool.query(PROBE_AGENT_EVENT_LEDGER);
       }
+      await factory.ensureTopics(
+        [mainTopic, `${mainTopic}.retry`, `${mainTopic}.dead`],
+        config.topicPartitions,
+        config.topicReplicationFactor
+      );
+      await failurePublisher.connect();
       await consumer.start();
     },
     stop: async () => {
       try {
         await consumer.stop();
       } finally {
-        if (pool !== undefined) {
-          await pool.end();
+        try {
+          await failurePublisher.disconnect();
+        } finally {
+          if (pool !== undefined) {
+            await pool.end();
+          }
         }
       }
     }
   };
+}
+
+function physicalTopic(config: ShadowRuntimeConfig): string {
+  return config.topicPrefix ? `${config.topicPrefix}.${config.topic}` : config.topic;
 }

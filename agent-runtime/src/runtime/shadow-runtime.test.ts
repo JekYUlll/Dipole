@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { KafkaConsumerFactoryPort, KafkaConsumerPort } from "../events/kafka-shadow-consumer.js";
+import type { KafkaConsumerFactoryPort, KafkaConsumerPort, KafkaInboundPayload } from "../events/kafka-shadow-consumer.js";
 import type { AgentEvent } from "../events/shadow-processor.js";
 import type { ExecutionContext } from "./execution-context.js";
 import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runtime.js";
@@ -24,7 +24,7 @@ describe("shadow runtime composition", () => {
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {
-    let eachMessage: ((payload: { message: { value: Buffer | null } }) => Promise<void>) | undefined;
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
     const consumer: KafkaConsumerPort = {
       connect: async () => undefined,
       subscribe: async () => undefined,
@@ -39,7 +39,7 @@ describe("shadow runtime composition", () => {
     });
     const runtime = buildKafkaShadowRuntime(config, factory, planner, audit);
     await runtime.start();
-    await eachMessage!({ message: { value: Buffer.from(JSON.stringify(messageEnvelope())) } });
+    await eachMessage!(payload(messageEnvelope()));
 
     expect(planner).toHaveProperty("plan");
     expect(planner.plan.mock.calls[0]?.[1]).toMatchObject({
@@ -49,7 +49,7 @@ describe("shadow runtime composition", () => {
   });
 
   it("ignores direct messages addressed to another Agent", async () => {
-    let eachMessage: ((payload: { message: { value: Buffer | null } }) => Promise<void>) | undefined;
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
     const consumer: KafkaConsumerPort = {
       connect: async () => undefined,
       subscribe: async () => undefined,
@@ -64,7 +64,7 @@ describe("shadow runtime composition", () => {
     const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, planner, audit);
 
     await runtime.start();
-    await eachMessage!({ message: { value: Buffer.from(JSON.stringify(messageEnvelope("OTHER"))) } });
+    await eachMessage!(payload(messageEnvelope("OTHER")));
 
     expect(planner.plan).not.toHaveBeenCalled();
     expect(audit.append).not.toHaveBeenCalled();
@@ -81,5 +81,12 @@ function messageEnvelope(targetUuid = "UAI"): object {
       conversation_key: "direct:U100:UAI", message_seq: 1, sender_uuid: "U100", target_uuid: targetUuid,
       target_type: 0, message_type: 0, content: "hello", sent_at: "2026-08-27T08:00:00.000Z"
     }
+  };
+}
+
+function payload(envelope: object): KafkaInboundPayload {
+  return {
+    topic: "message.direct.created",
+    message: { key: Buffer.from("M100"), value: Buffer.from(JSON.stringify(envelope)) }
   };
 }
