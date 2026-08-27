@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent Runtime 增加有界 Kafka 失败转移：`dipole.<topic>.retry/.dead` 显式创建并校验拓扑，无效 envelope/tombstone 直接死信，处理错误最多尝试三次且保留原始 key/value/header；publisher 失败时 handler 拒绝完成。真实 Kafka 3.9 已验证 poison、retry→dead、offset LAG 归零和双副本 rebalance。
 - Agent Runtime 增加 migration v18 与 MySQL EventLedger：Event ID/Task ID 双唯一、事务 claim、lease crash recovery、attempt 和精确 token 终态；微服务默认使用最小权限 `dipole_agent`，真实 MySQL 8.4 与 Kafka 3.9 验证并发单 owner、失败重领、旧 owner 拒绝及 Runtime 重启后重复事件收敛。
 - TypeScript Agent Runtime 增加 `message.direct.created` v1 decoder、KafkaJS 独立 shadow consumer、稳定 Task ID 和 EventLedger port；冷启动 metadata 未收敛时会断开旧客户端并有界重连，微服务 Compose 可独立启动只读 Agent，真实 Kafka 3.9 重放同一事件只产生一条 metadata plan。
 - 增加独立 `agent-runtime/` TypeScript foundation：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2，提供 trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine、shadow 写隔离和 `/livez`/`/readyz`；模型路由与持久审计留待 G2 后续切片。
