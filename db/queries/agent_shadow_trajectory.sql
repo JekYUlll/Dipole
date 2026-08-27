@@ -1,8 +1,9 @@
 -- name: InsertAgentShadowPlan :execrows
 INSERT INTO agent_shadow_plans (
     task_uuid, event_id, event_type, summary, plan_sha256, model_route,
-    model_attempts, model_input_tokens, model_output_tokens
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    model_attempts, model_input_tokens, model_output_tokens, context_compiler_version,
+    context_estimated_tokens, context_manifest_json
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetAgentShadowPlan :one
 SELECT task_uuid, event_id, event_type, plan_sha256

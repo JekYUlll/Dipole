@@ -115,6 +115,8 @@ Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Appro
 
 Context Compiler 根据 token 预算组合系统策略、Agent 身份、任务状态、相关会话、检索结果、Memory 和可用 Tool。它负责检索、裁剪、摘要、证据引用和预算分配，避免固定截取最近消息。
 
+G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority、required、full/compact representation 与 provenance；编译器按语义 section 和稳定 ID 排序，在全局及 section 预算内选择内容。必需 fragment 无可用 representation 时 fail closed，不可信事件始终作为 JSON data record。migration v22 在 `agent_shadow_plans` 保存 compiler version、估算 Token 及 selected/omitted provenance manifest，Plan hash同时绑定编译结果；上下文正文不额外复制到审计列。当前 UTF-8 byte/4 估算限制由 `AD-031` 跟踪。
+
 ### Memory Policy
 
 - Working Memory：当前任务计划、临时事实和执行进度。

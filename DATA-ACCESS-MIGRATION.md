@@ -72,6 +72,8 @@ Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sq
 
 TypeScript Agent Runtime 的 EventLedger、Model Audit 和 Shadow Trajectory 查询分别以 `db/queries/agent_event_ledger.sql`、`db/queries/agent_model_audit.sql` 与 `db/queries/agent_shadow_trajectory.sql` 为唯一来源：sqlc 校验 MySQL schema 与命名查询并生成 Go 契约，对应生成器从相同文件产出 mysql2 使用的 TypeScript 常量。Task/Definition/Run 继续由 Go sqlc `AgentPolicyStoreV1` 独占写入，TS 经受认证 Agent gRPC admission/lifecycle 访问，避免跨语言共享业务表写权限。TS adapter 不维护第二份手写 SQL；其账号仅访问 Agent 自有 ledger、模型审计和 Shadow 轨迹表。
 
+`000022_agent_context_manifest` 在现有 Shadow Plan 上追加 nullable compiler version、估算 Token 和 provenance manifest。旧 Runtime 可继续写 NULL；新 Runtime 将 manifest 与 Plan 一起原子插入，sqlc 与 TS mysql2 常量继续由同一命名查询生成。
+
 `000002_conversation_sequence` 为历史消息按 `conversation_key + id` 回填连续序号，并创建 `conversation_sequences` 高水位表。新消息在 Message、Inbox 与 Outbox 的同一事务内锁定会话行并分配 `seq`；事务回滚会同时回滚高水位，旧 `before_id`/`after_id` 查询在兼容期继续保留。
 
 `000003_read_and_device_checkpoints` 为 Conversation 投影回填 `last_message_seq/read_seq`，继续维护 `unread_count` 兼容字段，并增加独立 `device_sync_checkpoints`。已读操作只推进到调用方当时可见的 Seq；设备 checkpoint 通过显式 ACK 单调推进，超过当前用户 Inbox 最大 Seq 的请求会被拒绝。

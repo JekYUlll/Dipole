@@ -144,20 +144,24 @@ func (q *Queries) GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStep
 const insertAgentShadowPlan = `-- name: InsertAgentShadowPlan :execrows
 INSERT INTO agent_shadow_plans (
     task_uuid, event_id, event_type, summary, plan_sha256, model_route,
-    model_attempts, model_input_tokens, model_output_tokens
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    model_attempts, model_input_tokens, model_output_tokens, context_compiler_version,
+    context_estimated_tokens, context_manifest_json
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAgentShadowPlanParams struct {
-	TaskUuid          string
-	EventID           string
-	EventType         string
-	Summary           string
-	PlanSha256        string
-	ModelRoute        sql.NullString
-	ModelAttempts     sql.NullInt16
-	ModelInputTokens  sql.NullInt32
-	ModelOutputTokens sql.NullInt32
+	TaskUuid               string
+	EventID                string
+	EventType              string
+	Summary                string
+	PlanSha256             string
+	ModelRoute             sql.NullString
+	ModelAttempts          sql.NullInt16
+	ModelInputTokens       sql.NullInt32
+	ModelOutputTokens      sql.NullInt32
+	ContextCompilerVersion sql.NullString
+	ContextEstimatedTokens sql.NullInt32
+	ContextManifestJson    json.RawMessage
 }
 
 func (q *Queries) InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error) {
@@ -171,6 +175,9 @@ func (q *Queries) InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShad
 		arg.ModelAttempts,
 		arg.ModelInputTokens,
 		arg.ModelOutputTokens,
+		arg.ContextCompilerVersion,
+		arg.ContextEstimatedTokens,
+		arg.ContextManifestJson,
 	)
 	if err != nil {
 		return 0, err

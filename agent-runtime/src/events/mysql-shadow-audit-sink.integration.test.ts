@@ -26,6 +26,8 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
     await pool.query("SET FOREIGN_KEY_CHECKS=0");
     await pool.query(runMigration);
     await pool.query("SET FOREIGN_KEY_CHECKS=1");
+    const contextMigration = await readFile(new URL("../../../db/migrations/000022_agent_context_manifest.up.sql", import.meta.url), "utf8");
+    await pool.query(contextMigration);
   });
 
   afterAll(async () => {
@@ -46,19 +48,37 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
           { capabilityId: "conversation.list", input: { limit: 20 } },
           { capabilityId: "conversation.read", input: { conversationId: "group:G1", limit: 50 } }
         ],
-        model: { route: "gateway/primary", attempts: 1, inputTokens: 30, outputTokens: 12 }
+        model: {
+          route: "gateway/primary", attempts: 1, inputTokens: 30, outputTokens: 12,
+          context: {
+            compilerVersion: "v1" as const, estimatedTokens: 120,
+            selected: [{
+              id: "event:E-PLAN-1", representation: "full" as const,
+              provenance: { sourceType: "kafka_event", sourceId: "E-PLAN-1" }
+            }],
+            omitted: []
+          }
+        }
       }
     } as const;
 
     await Promise.all(Array.from({ length: 8 }, () => sink.append(record)));
 
-    const [plans] = await pool.query<Array<RowDataPacket & { summary: string; model_route: string; model_attempts: number }>>(
-      "SELECT summary, model_route, model_attempts FROM agent_shadow_plans WHERE task_uuid = ?", [record.taskId]
+    const [plans] = await pool.query<Array<RowDataPacket & {
+      summary: string; model_route: string; model_attempts: number; context_compiler_version: string;
+      context_estimated_tokens: number; context_manifest_json: { selected: unknown[]; omitted: unknown[] };
+    }>>(
+      "SELECT summary, model_route, model_attempts, context_compiler_version, context_estimated_tokens, context_manifest_json FROM agent_shadow_plans WHERE task_uuid = ?",
+      [record.taskId]
     );
     const [steps] = await pool.query<Array<RowDataPacket & { step_no: number; capability_id: string; status: string; input_json: unknown }>>(
       "SELECT step_no, capability_id, status, input_json FROM agent_shadow_steps WHERE task_uuid = ? ORDER BY step_no", [record.taskId]
     );
-    expect(plans).toEqual([expect.objectContaining({ summary: record.plan.summary, model_route: "gateway/primary", model_attempts: 1 })]);
+    expect(plans).toEqual([expect.objectContaining({
+      summary: record.plan.summary, model_route: "gateway/primary", model_attempts: 1,
+      context_compiler_version: "v1", context_estimated_tokens: 120,
+      context_manifest_json: { selected: record.plan.model.context.selected, omitted: [] }
+    })]);
     expect(steps).toEqual([
       expect.objectContaining({ step_no: 1, capability_id: "conversation.list", status: "planned" }),
       expect.objectContaining({ step_no: 2, capability_id: "conversation.read", status: "planned" })
