@@ -2,6 +2,21 @@
 
 本文档滚动记录可重复的性能基线。微基准用于比较协议与实现开销，端到端基准用于固定消息接受、持久化、投递、Kafka lag 与 Inbox 写放大行为。
 
+## 2026-08-27：AD-005 Conversation Projection Timing
+
+候选提交 `4343684011a02112eb3e9233e7c4279bf64a4ee9` 在 Service-to-Repository 窄边界记录 `projection × success|error` Histogram。operations/baseline v3 逐节点保存前后快照，先检测 Counter 回退，再聚合成功次数、累计耗时、平均耗时和 P95 桶上界；v1/v2 报告继续可读并明确标记 timing unavailable。
+
+| Scenario | Members | Group-message calls | Average call | P95 bucket upper bound | Inbox writes/message | Delivery | End-to-end P95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Regular | 20 | 400 | 14.07 ms | 50 ms | 20 | 380/380 | 693.45 ms |
+| Hot | 20 | 420 | 12.43 ms | 25 ms | 0 | 380/380 | 329.60 ms |
+| Regular | 100 | 1000 | 23.07 ms | 50 ms | 100 | 990/990 | 8189.00 ms |
+| Hot | 100 | 1100 | 21.97 ms | 50 ms | 0 | 990/990 | 1346.00 ms |
+
+四组成功 Counter 与 Histogram 次数一致、错误为 0、Kafka settled lag 为 0。普通与热群的单次 Conversation 调用分布接近，同规模端到端差异仍很大；Inbox/投递路径是模式差异的重要来源。Conversation 的成员级串行调用累计耗时仍随群规模增长，AD-005 保持处理中，下一步在 1000 人固定 workload 或候选批处理/读扩散方案上评估收益和回滚语义。
+
+100 人场景显式使用 22 秒 receiver window，20 人场景为 15 秒，均受 25 秒 k6 场景上限约束。两次 15 秒的 100 人普通群样本因 receipt 不完整被门禁拒绝，没有进入归档。规范化报告、operations、k6 summary、Kafka lag、派生 timing、24 份逐节点原始 Prometheus 快照和 SHA-256 位于 `benchmarks/ad005-projection-timing-2026-08-27/`；节点已恢复默认热群阈值 `200/50`。
+
 ## 2026-08-27：AD-005 Conversation Projection Amplification
 
 候选提交 `2202f1f5dd022a27603656d32a205ed9939de9cf` 增加 `dipole_conversation_projection_writes_total`，三个 Core 节点分别按 `direct_message|group_message|group_init` 计数成功 SQL upsert。基准脚本在 workload 前后求和取差值，并以同一 run namespace 的全部消息作为分母。

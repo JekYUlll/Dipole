@@ -17,7 +17,7 @@
 
 ### 新增
 
-- Conversation State 增加 `dipole_conversation_projection_writes_total{projection}` 低基数指标，区分 direct message、group message 与 group init 的成功 SQL upsert；端到端基准升级为向后兼容的 operations/baseline v2，三节点前后采样可记录触达会话、消息投影写数与每消息放大。20/100 人普通群和热群对照归档于 `benchmarks/ad005-2026-08-27/`，确认热群 Inbox 扩散归零时 Conversation 写扩散仍与成员数线性增长。
+- Conversation State 增加低基数成功写 Counter 和 `dipole_conversation_projection_write_duration_seconds{projection,outcome}` Histogram，区分 direct message、group message 与 group init 的 Repository 调用耗时和错误；端到端基准升级为兼容 v1/v2 的 operations/baseline v3，逐节点保存前后 Prometheus 快照并拒绝 Counter 回退或成功次数漂移。20/100 人普通群和热群写放大证据位于 `benchmarks/ad005-2026-08-27/`，projection timing 与原始快照位于 `benchmarks/ad005-projection-timing-2026-08-27/`。
 - Go 长运行服务增加缓存型动态依赖 readiness：按服务关键依赖矩阵周期探测 MySQL、Redis、Kafka、内部 gRPC、Elasticsearch 与 Cassandra，使用超时和失败/恢复双阈值避免瞬时抖动；HTTP readiness 与 gRPC health 同步摘流和恢复，Prometheus 可按服务/依赖告警。微服务 Compose 默认启用，Elasticsearch 隔离演练验证 Search 局部摘流且应用容器不发生级联重启。
 - Agent Context 校准增加语言中立的 evidence/report v1 与离线 `context:calibrate` 命令：输入仅接受 synthetic corpus，要求每个 model route 覆盖中英文、代码、Emoji 与 Tool schema 五类语料，并绑定候选提交、provider/model/tokenizer revision 和 reference Token；报告逐 route 输出正文 SHA-256、估算误差、fallback 与 underestimate，原文不回显，evidence/report 均可复算哈希。完整 profile 且零低估返回 0，校准阻断返回 2，契约错误返回 1；命令不访问模型、网络或运行时配置。
 - TypeScript Agent Context Compiler 增加显式启用的 route-aware Token estimator v1：候选模型 route 可声明 context window、UTF-8 bytes/token 校准值和 basis-point 安全余量，编译前按全部 fallback route 取最大 Token 估算与最小窗口；缺少声明时使用固定 `8192 / 2 bytes / 25%` 保守 fallback。Compiler v2 将配置导出的 SHA-256 estimator ID 写入不可变 Context manifest，窗口无法容纳固定 4096 输入预算与单次最大输出时在配置阶段 fail closed；默认与 Compose 继续固定 Compiler v1，避免在途不可变 Plan 重放发生哈希漂移，模型路由和流量权威不变。
