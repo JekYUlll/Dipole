@@ -52,7 +52,7 @@ export class McpToolInvocationRunner {
     tool: { name: string; capabilityId: string; approvalId?: string },
     rawArguments: unknown,
     context: ExecutionContext,
-    operation: (signal: AbortSignal) => Promise<unknown>,
+    operation: (signal: AbortSignal, invocationId: string) => Promise<unknown>,
     actionReference?: (result: unknown) => McpToolActionReference
   ): Promise<string> {
     if ((tool.approvalId === undefined) !== (actionReference === undefined)) {
@@ -79,7 +79,7 @@ export class McpToolInvocationRunner {
       try {
         let rawResult: unknown;
         try {
-          rawResult = await operationWithTimeout(operation, this.timeoutMs);
+          rawResult = await operationWithTimeout(signal => operation(signal, invocationId), this.timeoutMs);
         } catch (error) {
           await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
           throw new ToolInvocationFailure();

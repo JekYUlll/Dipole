@@ -37,6 +37,13 @@ export interface McpWriteApprovalConsumePort {
   }): Promise<void>;
 }
 
+export interface McpAuthorizedWrite {
+  readonly approvalId: string;
+  readonly capabilityId: string;
+  readonly input: unknown;
+  execute(): Promise<unknown>;
+}
+
 export class McpWriteApprovalGate {
   constructor(
     private readonly registry: CapabilityRegistry,
@@ -45,6 +52,10 @@ export class McpWriteApprovalGate {
   ) {}
 
   async execute(capabilityId: string, rawArguments: unknown, context: ExecutionContext): Promise<unknown> {
+    return (await this.authorize(capabilityId, rawArguments, context)).execute();
+  }
+
+  async authorize(capabilityId: string, rawArguments: unknown, context: ExecutionContext): Promise<McpAuthorizedWrite> {
     if (context.mode !== "active") throw new Error("MCP write execution requires active mode");
     const prepared = this.registry.prepare(capabilityId, rawArguments, context);
     if (prepared.descriptor.risk === "read" || prepared.descriptor.approvalRequired !== true) {
@@ -89,7 +100,12 @@ export class McpWriteApprovalGate {
     } catch {
       throw new Error("MCP write Approval is unavailable or already consumed");
     }
-    return prepared.execute();
+    return {
+      approvalId: grant.approvalId,
+      capabilityId: prepared.descriptor.id,
+      input: prepared.input,
+      execute: prepared.execute
+    };
   }
 }
 
