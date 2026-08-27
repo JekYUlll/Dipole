@@ -51,6 +51,28 @@ describe("McpToolInvocationRunner", () => {
     expect(span.end).toHaveBeenCalledOnce();
   });
 
+  it("binds an approved write to its Message Command result", async () => {
+    const begin = vi.fn(async () => undefined);
+    const finish = vi.fn(async () => undefined);
+    const runner = new McpToolInvocationRunner({ begin, finish }, tracerFixture().tracer, () => "INV-W", monotonicClock(20, 29));
+    const value = { messageId: "MSG-1" };
+    const result = await runner.execute(
+      { name: "dipole_message_send", capabilityId: "message.system.send", approvalId: "APR-1" },
+      { conversationId: "direct:U100:UAI", content: "notice" }, context, async () => value,
+      output => ({ resourceType: "message", resourceId: (output as typeof value).messageId, commandKind: "system_message", commandId: "CMD-1" })
+    );
+
+    expect(begin).toHaveBeenCalledWith(expect.objectContaining({ invocationId: "INV-W", approvalId: "APR-1" }));
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({
+      invocationId: "INV-W", status: "completed",
+      actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: "system_message", commandId: "CMD-1" }
+    }));
+    expect(result).toBe(JSON.stringify(value));
+    expect(() => runner.execute(
+      { name: "dipole_message_send", capabilityId: "message.system.send", approvalId: "APR-1" }, {}, context, async () => value
+    )).toThrow(/Approval/);
+  });
+
   it("does not execute without a durable begin and fails closed on oversized results", async () => {
     const execute = vi.fn(async () => ({ ok: true }));
     const begin = vi.fn(async () => { throw new Error("audit unavailable"); });

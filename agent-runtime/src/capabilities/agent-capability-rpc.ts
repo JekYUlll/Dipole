@@ -124,6 +124,14 @@ export interface AgentToolInvocationBegin {
   readonly argumentsSha256: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly approvalId?: string;
+}
+
+export interface AgentToolActionReference {
+  readonly resourceType: "message";
+  readonly resourceId: string;
+  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandId: string;
 }
 
 export type AgentToolInvocationFinish = {
@@ -131,7 +139,7 @@ export type AgentToolInvocationFinish = {
   readonly taskId: string;
   readonly runId: string;
   readonly latencyMs: number;
-} & ({ readonly status: "completed"; readonly resultSha256: string; readonly resultBytes: number } | { readonly status: "failed"; readonly errorCode: string });
+} & ({ readonly status: "completed"; readonly resultSha256: string; readonly resultBytes: number; readonly actionReference?: AgentToolActionReference } | { readonly status: "failed"; readonly errorCode: string });
 
 export class AgentCapabilityRPCClient {
   constructor(
@@ -443,7 +451,7 @@ export class AgentCapabilityRPCClient {
       this.rpc.beginMcpToolInvocation({
         context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
         invocationId: input.invocationId, toolName: input.toolName, capabilityId: input.capabilityId,
-        argumentsSha256: input.argumentsSha256
+        argumentsSha256: input.argumentsSha256, approvalId: input.approvalId ?? ""
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation begin returned no response"));
         if (response.invocationId !== input.invocationId || response.status !== "running") return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
@@ -459,7 +467,11 @@ export class AgentCapabilityRPCClient {
         context: this.requestContext(), taskId: input.taskId, runId: input.runId, invocationId: input.invocationId,
         status: input.status, resultSha256: input.status === "completed" ? input.resultSha256 : "",
         resultBytes: BigInt(input.status === "completed" ? input.resultBytes : 0), latencyMs: BigInt(input.latencyMs),
-        errorCode: input.status === "failed" ? input.errorCode : ""
+        errorCode: input.status === "failed" ? input.errorCode : "",
+        ...(input.status === "completed" && input.actionReference !== undefined ? { actionReference: {
+          resourceType: input.actionReference.resourceType, resourceId: input.actionReference.resourceId,
+          commandKind: input.actionReference.commandKind, commandId: input.actionReference.commandId
+        } } : {})
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation finish returned no response"));
         if (response.invocationId !== input.invocationId || response.status !== input.status) return reject(new Error("Agent Tool invocation finish returned conflicting evidence"));

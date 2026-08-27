@@ -153,7 +153,7 @@ func TestLocalAgentCommandV1RecoversCommittedReceiptAfterUncertainSend(t *testin
 		CommandID: "trigger:M100:assistant-reply", Kind: application.AgentMessageCommandAssistantReplyV1,
 		Invocation: agentCapabilityTestInvocation(), Content: "hello",
 	}
-	clientMessageID := agentCommandClientMessageIDV1(command.Kind, command.CommandID)
+	clientMessageID := mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID)
 	messages.receipt = &application.MessageCommandReceipt{
 		Status:  application.MessageCommandReceiptStatusCommitted,
 		Message: commandStubMessage("M-RECOVERED", command.Invocation.AgentUUID, command.Invocation.PrincipalUUID, command.Content, clientMessageID, model.MessageTypeAIText),
@@ -174,7 +174,7 @@ func TestLocalAgentCommandV1RejectsAbsentOrConflictingReceipt(t *testing.T) {
 		CommandID: "trigger:M100:system-message", Kind: application.AgentMessageCommandSystemMessageV1,
 		Invocation: agentCapabilityTestInvocation(), Content: "notice",
 	}
-	clientMessageID := agentCommandClientMessageIDV1(command.Kind, command.CommandID)
+	clientMessageID := mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID)
 	for _, test := range []struct {
 		name    string
 		receipt *application.MessageCommandReceipt
@@ -218,7 +218,7 @@ func TestLocalAgentCommandV1PreservesReceiptFailureAndRejectsSendBindingDrift(t 
 
 	messages = &agentCommandMessagesStub{sendMessage: commandStubMessage(
 		"M-WRONG", command.Invocation.AgentUUID, command.Invocation.PrincipalUUID, "different",
-		agentCommandClientMessageIDV1(command.Kind, command.CommandID), model.MessageTypeAIText,
+		mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID), model.MessageTypeAIText,
 	)}
 	commands, err = NewLocalAgentCommandV1(messages)
 	if err != nil {
@@ -232,14 +232,26 @@ func TestLocalAgentCommandV1PreservesReceiptFailureAndRejectsSendBindingDrift(t 
 func TestAgentCommandV1ClientMessageIDMatchesLanguageNeutralGoldenVector(t *testing.T) {
 	t.Parallel()
 
-	got := agentCommandClientMessageIDV1(
+	got, err := application.AgentCommandClientMessageIDV1(
 		application.AgentMessageCommandAssistantReplyV1,
 		"trigger:M100:assistant-reply",
 	)
+	if err != nil {
+		t.Fatalf("derive Agent Command client message ID: %v", err)
+	}
 	const want = "15ad8e7f820975681dee493f2ad1f98c1db80f3a43adbe6d6a46680b8e5a6922"
 	if got != want {
 		t.Fatalf("Agent Command client message ID = %q, want %q", got, want)
 	}
+}
+
+func mustAgentCommandClientMessageIDV1(t *testing.T, kind application.AgentMessageCommandKindV1, commandID string) string {
+	t.Helper()
+	clientMessageID, err := application.AgentCommandClientMessageIDV1(kind, commandID)
+	if err != nil {
+		t.Fatalf("derive Agent Command client message ID: %v", err)
+	}
+	return clientMessageID
 }
 
 func TestLocalAgentCommandV1FailsClosed(t *testing.T) {

@@ -2,8 +2,6 @@ package app
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -63,7 +61,10 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 		TraceID:   strings.TrimSpace(command.Invocation.TraceID),
 		EventID:   strings.TrimSpace(command.Invocation.EventID),
 	})
-	clientMessageID := agentCommandClientMessageIDV1(command.Kind, commandID)
+	clientMessageID, err := application.AgentCommandClientMessageIDV1(command.Kind, commandID)
+	if err != nil {
+		return nil, err
+	}
 
 	var message *model.Message
 	switch command.Kind {
@@ -120,10 +121,4 @@ func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (str
 	default:
 		return "", application.ErrAgentCommandDenied
 	}
-}
-
-func agentCommandClientMessageIDV1(kind application.AgentMessageCommandKindV1, commandID string) string {
-	canonical := application.AgentCommandVersionV1 + "\n" + string(kind) + "\n" + strings.TrimSpace(commandID)
-	digest := sha256.Sum256([]byte(canonical))
-	return hex.EncodeToString(digest[:])
 }

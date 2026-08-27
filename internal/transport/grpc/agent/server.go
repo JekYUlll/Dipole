@@ -418,7 +418,7 @@ func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.Be
 	record, err := s.toolAudits.Begin(grpccommon.Correlation(ctx, request.GetContext()), application.AgentToolInvocationBeginV1{
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Transport: application.AgentToolTransportMCP, ToolName: request.GetToolName(), CapabilityID: request.GetCapabilityId(),
-		ArgumentsSHA256: request.GetArgumentsSha256(), RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(),
+		ArgumentsSHA256: request.GetArgumentsSha256(), RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), ApprovalUUID: request.GetApprovalId(),
 	})
 	if err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
@@ -437,6 +437,12 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Status: application.AgentToolInvocationStatusV1(request.GetStatus()), ResultSHA256: request.GetResultSha256(),
 		ResultBytes: request.GetResultBytes(), LatencyMS: request.GetLatencyMs(), ErrorCode: request.GetErrorCode(),
+	}
+	if reference := request.GetActionReference(); reference != nil {
+		finish.ActionReference = &application.AgentToolActionReferenceV1{
+			ResourceType: application.AgentToolActionResourceTypeV1(reference.GetResourceType()), ResourceUUID: reference.GetResourceId(),
+			CommandKind: application.AgentMessageCommandKindV1(reference.GetCommandKind()), CommandID: reference.GetCommandId(),
+		}
 	}
 	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)

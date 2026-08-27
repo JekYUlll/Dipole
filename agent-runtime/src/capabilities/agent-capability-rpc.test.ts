@@ -142,7 +142,7 @@ describe("AgentCapabilityRPCClient", () => {
     });
     const beginMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
-      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", capabilityId: "conversation.list" });
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
       callback(null, { invocationId: input.invocationId, status: "running" });
       return {};
@@ -216,6 +216,19 @@ describe("AgentCapabilityRPCClient", () => {
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
       resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12
     })).resolves.toBeUndefined();
+    await expect(client.begin({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "dipole_message_send",
+      capabilityId: "message.system.send", argumentsSha256: "a".repeat(64), approvalId: "APR-1"
+    })).resolves.toBeUndefined();
+    expect(beginMcpToolInvocation.mock.calls.at(-1)?.[0]).toMatchObject({ approvalId: "APR-1" });
+    await expect(client.finishToolInvocation({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
+      resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12,
+      actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: "system_message", commandId: "CMD-1" }
+    })).resolves.toBeUndefined();
+    expect(finishMcpToolInvocation.mock.calls.at(-1)?.[0]).toMatchObject({
+      actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: "system_message", commandId: "CMD-1" }
+    });
     await expect(client.projectTaskWorkflowState({
       taskId: "TASK-1", runId: "RUN-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
       workflowStatus: "waiting_approval", workflowRevision: 2

@@ -500,6 +500,10 @@ export interface BeginMcpToolInvocationRequest {
      * @generated from protobuf field: string arguments_sha256 = 7
      */
     argumentsSha256: string;
+    /**
+     * @generated from protobuf field: string approval_id = 8
+     */
+    approvalId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationResponse
@@ -513,6 +517,27 @@ export interface BeginMcpToolInvocationResponse {
      * @generated from protobuf field: string status = 2
      */
     status: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentToolActionReference
+ */
+export interface AgentToolActionReference {
+    /**
+     * @generated from protobuf field: string resource_type = 1
+     */
+    resourceType: string;
+    /**
+     * @generated from protobuf field: string resource_id = 2
+     */
+    resourceId: string;
+    /**
+     * @generated from protobuf field: string command_kind = 3
+     */
+    commandKind: string;
+    /**
+     * @generated from protobuf field: string command_id = 4
+     */
+    commandId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationRequest
@@ -554,6 +579,10 @@ export interface FinishMcpToolInvocationRequest {
      * @generated from protobuf field: string error_code = 9
      */
     errorCode: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentToolActionReference action_reference = 10
+     */
+    actionReference?: AgentToolActionReference;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationResponse
@@ -2603,7 +2632,8 @@ class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocat
             { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "tool_name", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 6, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 7, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 7, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<BeginMcpToolInvocationRequest>): BeginMcpToolInvocationRequest {
@@ -2614,6 +2644,7 @@ class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocat
         message.toolName = "";
         message.capabilityId = "";
         message.argumentsSha256 = "";
+        message.approvalId = "";
         if (value !== undefined)
             reflectionMergePartial<BeginMcpToolInvocationRequest>(this, message, value);
         return message;
@@ -2643,6 +2674,9 @@ class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocat
                     break;
                 case /* string arguments_sha256 */ 7:
                     message.argumentsSha256 = reader.string();
+                    break;
+                case /* string approval_id */ 8:
+                    message.approvalId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -2677,6 +2711,9 @@ class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocat
         /* string arguments_sha256 = 7; */
         if (message.argumentsSha256 !== "")
             writer.tag(7, WireType.LengthDelimited).string(message.argumentsSha256);
+        /* string approval_id = 8; */
+        if (message.approvalId !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.approvalId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -2743,6 +2780,77 @@ class BeginMcpToolInvocationResponse$Type extends MessageType<BeginMcpToolInvoca
  */
 export const BeginMcpToolInvocationResponse = new BeginMcpToolInvocationResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class AgentToolActionReference$Type extends MessageType<AgentToolActionReference> {
+    constructor() {
+        super("dipole.agent.v1.AgentToolActionReference", [
+            { no: 1, name: "resource_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "resource_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "command_kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "command_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentToolActionReference>): AgentToolActionReference {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.resourceType = "";
+        message.resourceId = "";
+        message.commandKind = "";
+        message.commandId = "";
+        if (value !== undefined)
+            reflectionMergePartial<AgentToolActionReference>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentToolActionReference): AgentToolActionReference {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string resource_type */ 1:
+                    message.resourceType = reader.string();
+                    break;
+                case /* string resource_id */ 2:
+                    message.resourceId = reader.string();
+                    break;
+                case /* string command_kind */ 3:
+                    message.commandKind = reader.string();
+                    break;
+                case /* string command_id */ 4:
+                    message.commandId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentToolActionReference, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string resource_type = 1; */
+        if (message.resourceType !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.resourceType);
+        /* string resource_id = 2; */
+        if (message.resourceId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.resourceId);
+        /* string command_kind = 3; */
+        if (message.commandKind !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.commandKind);
+        /* string command_id = 4; */
+        if (message.commandId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.commandId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentToolActionReference
+ */
+export const AgentToolActionReference = new AgentToolActionReference$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class FinishMcpToolInvocationRequest$Type extends MessageType<FinishMcpToolInvocationRequest> {
     constructor() {
         super("dipole.agent.v1.FinishMcpToolInvocationRequest", [
@@ -2754,7 +2862,8 @@ class FinishMcpToolInvocationRequest$Type extends MessageType<FinishMcpToolInvoc
             { no: 6, name: "result_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 7, name: "result_bytes", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
             { no: 8, name: "latency_ms", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
-            { no: 9, name: "error_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 9, name: "error_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "action_reference", kind: "message", T: () => AgentToolActionReference }
         ]);
     }
     create(value?: PartialMessage<FinishMcpToolInvocationRequest>): FinishMcpToolInvocationRequest {
@@ -2803,6 +2912,9 @@ class FinishMcpToolInvocationRequest$Type extends MessageType<FinishMcpToolInvoc
                 case /* string error_code */ 9:
                     message.errorCode = reader.string();
                     break;
+                case /* dipole.agent.v1.AgentToolActionReference action_reference */ 10:
+                    message.actionReference = AgentToolActionReference.internalBinaryRead(reader, reader.uint32(), options, message.actionReference);
+                    break;
                 default:
                     let u = options.readUnknownField;
                     if (u === "throw")
@@ -2842,6 +2954,9 @@ class FinishMcpToolInvocationRequest$Type extends MessageType<FinishMcpToolInvoc
         /* string error_code = 9; */
         if (message.errorCode !== "")
             writer.tag(9, WireType.LengthDelimited).string(message.errorCode);
+        /* dipole.agent.v1.AgentToolActionReference action_reference = 10; */
+        if (message.actionReference)
+            AgentToolActionReference.internalBinaryWrite(message.actionReference, writer.tag(10, WireType.LengthDelimited).fork(), options).join();
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

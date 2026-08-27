@@ -82,6 +82,7 @@ type Querier interface {
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)
 	GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error)
 	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
+	GetAgentToolInvocation(ctx context.Context, invocationUuid string) (AgentToolInvocation, error)
 	GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAgentWorkflowRepairDecisionParams) (AgentWorkflowRepairDecision, error)
 	GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userUuid string) (AgentWorkflowRepairOperatorGrant, error)
 	GetAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (AgentWorkflowRepairProposal, error)

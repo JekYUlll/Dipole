@@ -12,6 +12,14 @@ export interface McpToolInvocationBegin {
   argumentsSha256: string;
   requestId?: string;
   traceId?: string;
+  approvalId?: string;
+}
+
+export interface McpToolActionReference {
+  readonly resourceType: "message";
+  readonly resourceId: string;
+  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandId: string;
 }
 
 export type McpToolInvocationFinish = {
@@ -19,7 +27,7 @@ export type McpToolInvocationFinish = {
   taskId: string;
   runId: string;
   latencyMs: number;
-} & ({ status: "completed"; resultSha256: string; resultBytes: number } | { status: "failed"; errorCode: string });
+} & ({ status: "completed"; resultSha256: string; resultBytes: number; actionReference?: McpToolActionReference } | { status: "failed"; errorCode: string });
 
 export interface McpToolInvocationAuditPort {
   begin(input: McpToolInvocationBegin): Promise<void>;
@@ -40,11 +48,15 @@ export class McpToolInvocationRunner {
   }
 
   execute(
-    tool: { name: string; capabilityId: string },
+    tool: { name: string; capabilityId: string; approvalId?: string },
     rawArguments: unknown,
     context: ExecutionContext,
-    operation: (signal: AbortSignal) => Promise<unknown>
+    operation: (signal: AbortSignal) => Promise<unknown>,
+    actionReference?: (result: unknown) => McpToolActionReference
   ): Promise<string> {
+    if ((tool.approvalId === undefined) !== (actionReference === undefined)) {
+      throw new Error("MCP write audit requires both Approval and action reference binding");
+    }
     return this.tracer.startActiveSpan("agent.tool.call", {}, async (span) => {
       const invocationId = this.idGenerator();
       const startedAt = this.now();
@@ -54,7 +66,8 @@ export class McpToolInvocationRunner {
           invocationId, taskId: context.taskId, runId: context.runId, toolName: tool.name,
           capabilityId: tool.capabilityId, argumentsSha256: sha256(canonicalJSON(rawArguments)),
           ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
-          ...(context.traceId === undefined ? {} : { traceId: context.traceId })
+          ...(context.traceId === undefined ? {} : { traceId: context.traceId }),
+          ...(tool.approvalId === undefined ? {} : { approvalId: tool.approvalId })
         });
       } catch (error) {
         this.failSpan(span, error);
@@ -76,9 +89,11 @@ export class McpToolInvocationRunner {
           await this.finishFailed(invocationId, context, startedAt, "result_too_large");
           throw new ToolInvocationFailure("result_too_large");
         }
+        const reference = actionReference?.(rawResult);
         await this.audit.finish({
           invocationId, taskId: context.taskId, runId: context.runId, status: "completed",
-          resultSha256: sha256(result), resultBytes, latencyMs: elapsedMilliseconds(startedAt, this.now())
+          resultSha256: sha256(result), resultBytes, latencyMs: elapsedMilliseconds(startedAt, this.now()),
+          ...(reference === undefined ? {} : { actionReference: reference })
         });
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
