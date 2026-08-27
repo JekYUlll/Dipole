@@ -101,13 +101,14 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 
 	presence := platformPresence.NewRedisPresence()
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages:   messages,
-		Core:       core,
-		Search:     search,
-		AgentTasks: agentTasks,
-		AgentMCP:   agentMCP,
-		Presence:   wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:    platformRateLimit.NewLimiter(),
+		Messages:        messages,
+		Core:            core,
+		Search:          search,
+		AgentTasks:      agentTasks,
+		AgentMCP:        agentMCP,
+		Presence:        wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:         platformRateLimit.NewLimiter(),
+		AgentMCPLimiter: platformRateLimit.NewLimiter(),
 	})
 	if err != nil {
 		cleanup()

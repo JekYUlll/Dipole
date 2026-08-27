@@ -275,4 +275,7 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	if v.GetString("gateway.agent_mcp_target") == "" {
 		t.Fatal("Gateway Agent MCP target is missing")
 	}
+	if v.GetInt("rate_limit.agent_mcp_limit") <= 0 || v.GetInt("rate_limit.agent_mcp_window_seconds") <= 0 {
+		t.Fatal("Gateway Agent MCP rate limit must remain bounded when the route is enabled")
+	}
 }

@@ -82,14 +82,27 @@ type gatewayAgentMCPStub struct {
 	principal string
 	taskID    string
 	runID     string
+	calls     int
 }
 
 func (s *gatewayAgentMCPStub) ServeMCP(writer http.ResponseWriter, _ *http.Request, principalUUID, taskUUID, runUUID string) {
 	s.principal, s.taskID, s.runID = principalUUID, taskUUID, runUUID
+	s.calls++
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Mcp-Session-Id", "S1")
 	writer.WriteHeader(http.StatusAccepted)
 	_, _ = writer.Write([]byte("event: message\ndata: accepted\n\n"))
+}
+
+type gatewayAgentMCPLimiterStub struct {
+	allowedCalls int
+	retryAfter   time.Duration
+	principals   []string
+}
+
+func (s *gatewayAgentMCPLimiterStub) AllowAgentMCP(principalUUID string) (bool, time.Duration) {
+	s.principals = append(s.principals, principalUUID)
+	return len(s.principals) <= s.allowedCalls, s.retryAfter
 }
 
 func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
@@ -333,5 +346,52 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 	if response.Code != http.StatusAccepted || response.Header().Get("Mcp-Session-Id") != "S1" ||
 		mcp.principal != "U100" || mcp.taskID != "TASK-1" || mcp.runID != "RUN-1" {
 		t.Fatalf("MCP route: code=%d headers=%v binding=%+v body=%s", response.Code, response.Header(), mcp, response.Body.String())
+	}
+}
+
+func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }))
+	defer core.Close()
+	mcp := &gatewayAgentMCPStub{}
+	limiter := &gatewayAgentMCPLimiterStub{allowedCalls: 1, retryAfter: 1500 * time.Millisecond}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMCP: mcp,
+		Limiter: gatewayLimiterStub{}, AgentMCPLimiter: limiter,
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	firstPath := "/api/v1/agent/tasks/TASK-1/runs/RUN-1/mcp"
+	firstPost := httptest.NewRequest(http.MethodPost, firstPath, strings.NewReader(`{"jsonrpc":"2.0"}`))
+	firstPost.Header.Set("Authorization", "Bearer "+token)
+	firstResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(firstResponse, firstPost)
+	if firstResponse.Code != http.StatusAccepted || mcp.calls != 1 {
+		t.Fatalf("first MCP request: code=%d calls=%d", firstResponse.Code, mcp.calls)
+	}
+	path := "/api/v1/agent/tasks/TASK-2/runs/RUN-2/mcp"
+	post := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"jsonrpc":"2.0"}`))
+	post.Header.Set("Authorization", "Bearer "+token)
+	postResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(postResponse, post)
+	if postResponse.Code != http.StatusTooManyRequests || postResponse.Header().Get("Retry-After") != "2" || mcp.calls != 1 || len(limiter.principals) != 2 || limiter.principals[0] != "U100" || limiter.principals[1] != "U100" {
+		t.Fatalf("limited MCP: code=%d retry=%q calls=%d principals=%v body=%s", postResponse.Code, postResponse.Header().Get("Retry-After"), mcp.calls, limiter.principals, postResponse.Body.String())
+	}
+	deleteRequest := httptest.NewRequest(http.MethodDelete, path, nil)
+	deleteRequest.Header.Set("Authorization", "Bearer "+token)
+	deleteResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(deleteResponse, deleteRequest)
+	if deleteResponse.Code != http.StatusAccepted || mcp.calls != 2 || len(limiter.principals) != 2 {
+		t.Fatalf("MCP cleanup: code=%d calls=%d principals=%v", deleteResponse.Code, mcp.calls, limiter.principals)
 	}
 }

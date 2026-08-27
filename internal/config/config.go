@@ -204,6 +204,8 @@ type RateLimit struct {
 	MessageWindowSeconds    int  `mapstructure:"message_window_seconds"`
 	FileUploadLimit         int  `mapstructure:"file_upload_limit"`
 	FileUploadWindowSeconds int  `mapstructure:"file_upload_window_seconds"`
+	AgentMCPLimit           int  `mapstructure:"agent_mcp_limit"`
+	AgentMCPWindowSeconds   int  `mapstructure:"agent_mcp_window_seconds"`
 }
 
 type Presence struct {
@@ -448,6 +450,8 @@ func Load() error {
 		v.SetDefault("rate_limit.message_window_seconds", 60)
 		v.SetDefault("rate_limit.file_upload_limit", 10)
 		v.SetDefault("rate_limit.file_upload_window_seconds", 300)
+		v.SetDefault("rate_limit.agent_mcp_limit", 60)
+		v.SetDefault("rate_limit.agent_mcp_window_seconds", 60)
 		v.SetDefault("presence.enabled", true)
 		v.SetDefault("presence.node_id", "")
 		v.SetDefault("presence.ttl_seconds", 120)
@@ -615,6 +619,8 @@ func Load() error {
 			"rate_limit.message_window_seconds",
 			"rate_limit.file_upload_limit",
 			"rate_limit.file_upload_window_seconds",
+			"rate_limit.agent_mcp_limit",
+			"rate_limit.agent_mcp_window_seconds",
 			"presence.enabled",
 			"presence.node_id",
 			"presence.ttl_seconds",
@@ -987,6 +993,8 @@ func RateLimitConfig() RateLimit {
 	rateLimitConfig.MessageWindowSeconds = cfg.GetInt("rate_limit.message_window_seconds")
 	rateLimitConfig.FileUploadLimit = cfg.GetInt("rate_limit.file_upload_limit")
 	rateLimitConfig.FileUploadWindowSeconds = cfg.GetInt("rate_limit.file_upload_window_seconds")
+	rateLimitConfig.AgentMCPLimit = cfg.GetInt("rate_limit.agent_mcp_limit")
+	rateLimitConfig.AgentMCPWindowSeconds = cfg.GetInt("rate_limit.agent_mcp_window_seconds")
 
 	return rateLimitConfig
 }
