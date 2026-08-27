@@ -244,6 +244,60 @@ export interface ApprovalResponse {
     approvedByUserId: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ConsumeApprovalRequest
+ */
+export interface ConsumeApprovalRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string approval_id = 4
+     */
+    approvalId: string;
+    /**
+     * @generated from protobuf field: string capability_id = 5
+     */
+    capabilityId: string;
+    /**
+     * @generated from protobuf field: string scope_sha256 = 6
+     */
+    scopeSha256: string;
+    /**
+     * @generated from protobuf field: string arguments_sha256 = 7
+     */
+    argumentsSha256: string;
+    /**
+     * @generated from protobuf field: string nonce_sha256 = 8
+     */
+    nonceSha256: string;
+    /**
+     * @generated from protobuf field: string mode = 9
+     */
+    mode: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ConsumeApprovalResponse
+ */
+export interface ConsumeApprovalResponse {
+    /**
+     * @generated from protobuf field: string approval_id = 1
+     */
+    approvalId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListConversationsRequest
  */
 export interface ListConversationsRequest {
@@ -1832,6 +1886,171 @@ class ApprovalResponse$Type extends MessageType<ApprovalResponse> {
  * @generated MessageType for protobuf message dipole.agent.v1.ApprovalResponse
  */
 export const ApprovalResponse = new ApprovalResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ConsumeApprovalRequest$Type extends MessageType<ConsumeApprovalRequest> {
+    constructor() {
+        super("dipole.agent.v1.ConsumeApprovalRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "scope_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "nonce_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ConsumeApprovalRequest>): ConsumeApprovalRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.approvalId = "";
+        message.capabilityId = "";
+        message.scopeSha256 = "";
+        message.argumentsSha256 = "";
+        message.nonceSha256 = "";
+        message.mode = "";
+        if (value !== undefined)
+            reflectionMergePartial<ConsumeApprovalRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ConsumeApprovalRequest): ConsumeApprovalRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string approval_id */ 4:
+                    message.approvalId = reader.string();
+                    break;
+                case /* string capability_id */ 5:
+                    message.capabilityId = reader.string();
+                    break;
+                case /* string scope_sha256 */ 6:
+                    message.scopeSha256 = reader.string();
+                    break;
+                case /* string arguments_sha256 */ 7:
+                    message.argumentsSha256 = reader.string();
+                    break;
+                case /* string nonce_sha256 */ 8:
+                    message.nonceSha256 = reader.string();
+                    break;
+                case /* string mode */ 9:
+                    message.mode = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ConsumeApprovalRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string approval_id = 4; */
+        if (message.approvalId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.approvalId);
+        /* string capability_id = 5; */
+        if (message.capabilityId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.capabilityId);
+        /* string scope_sha256 = 6; */
+        if (message.scopeSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.scopeSha256);
+        /* string arguments_sha256 = 7; */
+        if (message.argumentsSha256 !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.argumentsSha256);
+        /* string nonce_sha256 = 8; */
+        if (message.nonceSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.nonceSha256);
+        /* string mode = 9; */
+        if (message.mode !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.mode);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ConsumeApprovalRequest
+ */
+export const ConsumeApprovalRequest = new ConsumeApprovalRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ConsumeApprovalResponse$Type extends MessageType<ConsumeApprovalResponse> {
+    constructor() {
+        super("dipole.agent.v1.ConsumeApprovalResponse", [
+            { no: 1, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ConsumeApprovalResponse>): ConsumeApprovalResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.approvalId = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<ConsumeApprovalResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ConsumeApprovalResponse): ConsumeApprovalResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string approval_id */ 1:
+                    message.approvalId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ConsumeApprovalResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string approval_id = 1; */
+        if (message.approvalId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.approvalId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ConsumeApprovalResponse
+ */
+export const ConsumeApprovalResponse = new ConsumeApprovalResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ListConversationsRequest$Type extends MessageType<ListConversationsRequest> {
     constructor() {
@@ -4469,6 +4688,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },
     { name: "RequestApproval", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
+    { name: "ConsumeApproval", options: {}, I: ConsumeApprovalRequest, O: ConsumeApprovalResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },

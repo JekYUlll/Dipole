@@ -99,6 +99,24 @@ func (s *PersistentAgentApprovalServiceV1) Resolve(ctx context.Context, resoluti
 	return resolved, nil
 }
 
+func (s *PersistentAgentApprovalServiceV1) Consume(ctx context.Context, consumption application.AgentApprovalConsumptionV1) error {
+	if _, err := s.boundTask(ctx, consumption.TaskUUID, consumption.RunUUID, consumption.RuntimeID, consumption.Mode); err != nil {
+		return err
+	}
+	approvalUUID := strings.TrimSpace(consumption.ApprovalUUID)
+	if approvalUUID == "" || strings.TrimSpace(consumption.Claim.TaskUUID) != strings.TrimSpace(consumption.TaskUUID) || consumption.Claim.Validate() != nil {
+		return fmt.Errorf("%w: invalid Approval consumption", application.ErrAgentApprovalDenied)
+	}
+	consumed, err := s.store.ConsumeApproval(ctx, approvalUUID, consumption.Claim, s.now())
+	if err != nil {
+		return fmt.Errorf("consume Agent Approval: %w", err)
+	}
+	if !consumed {
+		return fmt.Errorf("%w: Approval is unavailable or binding changed", application.ErrAgentApprovalDenied)
+	}
+	return nil
+}
+
 func (s *PersistentAgentApprovalServiceV1) boundTask(ctx context.Context, taskUUID, runUUID, runtimeID, mode string) (*application.AgentTaskV1, error) {
 	run, err := s.store.GetRun(ctx, strings.TrimSpace(runUUID))
 	if err != nil {

@@ -125,6 +125,9 @@ func (rpcAgentApprovalStub) Request(_ context.Context, request application.Agent
 func (rpcAgentApprovalStub) Resolve(_ context.Context, resolution application.AgentApprovalResolutionV1) (*application.AgentApprovalV1, error) {
 	return &application.AgentApprovalV1{ApprovalUUID: resolution.ApprovalUUID, Status: application.AgentApprovalStatusApproved, ApprovedByUUID: resolution.ActorUUID}, nil
 }
+func (rpcAgentApprovalStub) Consume(context.Context, application.AgentApprovalConsumptionV1) error {
+	return nil
+}
 
 func (rpcAgentAdmissionStub) Admit(context.Context, application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
 	return &application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}, nil

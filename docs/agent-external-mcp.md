@@ -70,6 +70,14 @@ Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；
 
 当前外部 Client 尚未进入生产执行链。后续调用代码不得把原始 `CallToolResult` 直接拼接到 system/trusted prompt；结果转为 Artifact 或 Memory 时也必须保留 Invocation provenance 与 untrusted 来源，模型改写不能自动提升信任等级。
 
+## Write Approval 边界
+
+Core `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 `mode=active`，并通过 MySQL/sqlc 原子条件更新消费已批准且未过期的记录。claim 精确包含 Task、Run 绑定、Capability、Resource Scope SHA-256、canonical Arguments SHA-256 与 host-owned nonce SHA-256；重放、吊销、过期和任一字段漂移都无法消费。
+
+`McpWriteApprovalGate` 持有 Capability Registry，先执行 schema parse、Policy authorize 与 Resource resolve，再从受信 grant resolver 读取当前 approval binding。scope hash 使用与 Go 相同的 `dipole.agent.scope.v1`，参数使用递归排序键的 canonical JSON。grant 精确匹配并且 Core 原子消费成功后，gate 才调用 Capability operation。resolver、consume 或 binding 失败均不会触达副作用。
+
+消费发生在 operation 前，因此语义为安全优先的 at-most-once。operation 失败后审批保持 consumed，重试需要新审批；未来 Message Command 投影还要绑定稳定业务幂等键与 Agent lineage，并提供提交状态查询。当前 `createDipoleMcpServer` 继续硬性拒绝 write/destructive descriptor，且 MCP context 仍为 shadow，生产 write Tool 没有启用。
+
 ## 后续实现门槛
 
 生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。

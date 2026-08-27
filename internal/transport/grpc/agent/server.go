@@ -565,6 +565,30 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 	return approvalResponse(approval), nil
 }
 
+func (s *Server) ConsumeApproval(ctx context.Context, request *agentv1.ConsumeApprovalRequest) (*agentv1.ConsumeApprovalResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" {
+		return nil, status.Error(codes.PermissionDenied, "Agent Approval consumption caller is not allowed")
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetMode() != "active" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Approval consumption is invalid")
+	}
+	err = s.approvals.Consume(ctx, application.AgentApprovalConsumptionV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: request.GetMode(), ApprovalUUID: request.GetApprovalId(),
+		Claim: application.AgentApprovalClaimV1{
+			TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(), ScopeSHA256: request.GetScopeSha256(),
+			ArgumentsSHA256: request.GetArgumentsSha256(), NonceSHA256: request.GetNonceSha256(),
+		},
+	})
+	if err != nil {
+		return nil, mapApprovalError(err)
+	}
+	return &agentv1.ConsumeApprovalResponse{ApprovalId: request.GetApprovalId(), Status: string(application.AgentApprovalStatusConsumed)}, nil
+}
+
 func approvalResponse(approval *application.AgentApprovalV1) *agentv1.ApprovalResponse {
 	return &agentv1.ApprovalResponse{ApprovalId: approval.ApprovalUUID, Status: string(approval.Status), ApprovedByUserId: approval.ApprovedByUUID}
 }

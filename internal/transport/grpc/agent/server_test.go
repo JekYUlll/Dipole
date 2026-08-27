@@ -98,6 +98,7 @@ type capabilityStub struct {
 type approvalServiceStub struct {
 	requested application.AgentApprovalRequestV1
 	resolved  application.AgentApprovalResolutionV1
+	consumed  application.AgentApprovalConsumptionV1
 }
 
 type taskControlAuthorizerStub struct {
@@ -149,6 +150,11 @@ func (s *approvalServiceStub) Resolve(_ context.Context, resolution application.
 		status, actor = application.AgentApprovalStatusApproved, resolution.ActorUUID
 	}
 	return &application.AgentApprovalV1{ApprovalUUID: resolution.ApprovalUUID, Status: status, ApprovedByUUID: actor}, nil
+}
+
+func (s *approvalServiceStub) Consume(_ context.Context, consumption application.AgentApprovalConsumptionV1) error {
+	s.consumed = consumption
+	return nil
 }
 
 func (s *capabilityStub) ListConversations(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Conversation, error) {
@@ -492,6 +498,30 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	})
 	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
+	}
+}
+
+func TestConsumeApprovalRPCRequiresActiveModeAndExactClaim(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	request := &agentv1.ConsumeApprovalRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
+		CapabilityId: "message.system.send", ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64),
+		NonceSha256: strings.Repeat("c", 64), Mode: "active",
+	}
+	response, err := server.ConsumeApproval(context.Background(), request)
+	if err != nil || response.GetStatus() != "consumed" || approvals.consumed.RuntimeID != "dipole-agent" || approvals.consumed.Mode != "active" ||
+		approvals.consumed.Claim.ArgumentsSHA256 != strings.Repeat("b", 64) {
+		t.Fatalf("consume Approval response=%+v consumption=%+v err=%v", response, approvals.consumed, err)
+	}
+	request.Mode = "shadow"
+	if _, err := server.ConsumeApproval(context.Background(), request); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("shadow Approval consumption code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+	request.Mode = "active"
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := server.ConsumeApproval(context.Background(), request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged caller Approval consumption code = %s, want %s", status.Code(err), codes.PermissionDenied)
 	}
 }
 
