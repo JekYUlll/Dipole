@@ -88,22 +88,6 @@ func (c *stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, err
 	return nil, nil
 }
 
-func (r *stubMessageRepository) Create(message *model.Message) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.createErr != nil {
-		return r.createErr
-	}
-
-	r.createdMessages = append(r.createdMessages, message)
-	if r.messagesByUUID == nil {
-		r.messagesByUUID = make(map[string]*model.Message)
-	}
-	r.messagesByUUID[message.UUID] = message
-	return nil
-}
-
 func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -158,10 +142,6 @@ func (r *stubMessageRepository) HasConversationMessages(conversationKey string) 
 	return r.hasConversation, nil
 }
 
-func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
-	return r.StoreWithOutboxAndSync(message, func(*model.Message) (*model.OutboxEvent, error) { return event, nil }, nil)
-}
-
 func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -188,12 +168,17 @@ func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, b
 }
 
 func (r *stubMessageRepository) CreateWithSync(message *model.Message, recipientUUIDs []string) error {
-	if err := r.Create(message); err != nil {
-		return err
-	}
 	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.createErr != nil {
+		return r.createErr
+	}
+	r.createdMessages = append(r.createdMessages, message)
+	if r.messagesByUUID == nil {
+		r.messagesByUUID = make(map[string]*model.Message)
+	}
+	r.messagesByUUID[message.UUID] = message
 	r.syncRecipients = append([]string(nil), recipientUUIDs...)
-	r.mu.Unlock()
 	return nil
 }
 
