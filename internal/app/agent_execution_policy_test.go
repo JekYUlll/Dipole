@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -326,6 +327,64 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	}
 	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "forged-runtime", "shadow"); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("forged Runtime completion should be denied, got %v", err)
+	}
+}
+
+func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *testing.T) {
+	t.Parallel()
+
+	for _, terminal := range []application.AgentRunStatusV1{
+		application.AgentRunStatusCompleted,
+		application.AgentRunStatusFailed,
+		application.AgentRunStatusCancelled,
+	} {
+		terminal := terminal
+		t.Run(string(terminal), func(t *testing.T) {
+			definition := activeAgentDefinitionV1(1, time.Now().Add(-time.Hour), []string{application.AgentPermissionConversationList})
+			store := policyStoreWithDefinitionV1(definition)
+			admission := &PersistentAgentRunAdmissionV1{store: store, now: time.Now}
+			run, err := admission.Admit(context.Background(), application.AgentRunAdmissionRequestV1{
+				AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+			})
+			if err != nil {
+				t.Fatalf("admit Run: %v", err)
+			}
+			lastError := ""
+			if terminal == application.AgentRunStatusFailed {
+				lastError = "Activity retries exhausted"
+			}
+			if err := admission.Finish(context.Background(), run.TaskUUID, run.RunUUID, "dipole-agent", "shadow", terminal, lastError); err != nil {
+				t.Fatalf("finish Run: %v", err)
+			}
+			if err := admission.Finish(context.Background(), run.TaskUUID, run.RunUUID, "dipole-agent", "shadow", terminal, lastError); err != nil {
+				t.Fatalf("replay terminal Run: %v", err)
+			}
+			if store.runs[run.RunUUID].Status != terminal || store.runs[run.RunUUID].LastError != lastError {
+				t.Fatalf("terminal Run = %+v, want status=%s error=%q", store.runs[run.RunUUID], terminal, lastError)
+			}
+			if err := admission.Finish(context.Background(), run.TaskUUID, run.RunUUID, "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); terminal != application.AgentRunStatusCompleted && !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+				t.Fatalf("conflicting terminal replay should be denied, got %v", err)
+			}
+		})
+	}
+}
+
+func TestPersistentAgentRunAdmissionRejectsInvalidTerminalEvidence(t *testing.T) {
+	t.Parallel()
+
+	admission := &PersistentAgentRunAdmissionV1{store: &agentPolicyStoreStub{}, now: time.Now}
+	for _, test := range []struct {
+		status    application.AgentRunStatusV1
+		lastError string
+	}{
+		{status: application.AgentRunStatusRunning},
+		{status: application.AgentRunStatusFailed},
+		{status: application.AgentRunStatusCompleted, lastError: "unexpected"},
+		{status: application.AgentRunStatusCancelled, lastError: strings.Repeat("x", 1025)},
+	} {
+		if err := admission.Finish(context.Background(), "TASK-1", "RUN-1", "dipole-agent", "shadow", test.status, test.lastError); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			t.Fatalf("Finish(%s, %q) error = %v, want policy denied", test.status, test.lastError, err)
+		}
 	}
 }
 

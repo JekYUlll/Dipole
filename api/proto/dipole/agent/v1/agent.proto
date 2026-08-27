@@ -34,6 +34,18 @@ message CompleteRunResponse {
   string run_status = 1;
 }
 
+message FinishRunRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string run_status = 4;
+  string last_error = 5;
+}
+
+message FinishRunResponse {
+  string run_status = 1;
+}
+
 message ListConversationsRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -60,5 +72,6 @@ message ListConversationsResponse {
 service AgentCapabilityService {
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
+  rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
 }

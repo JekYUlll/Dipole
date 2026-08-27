@@ -2,13 +2,14 @@ import { z } from "zod";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import type { AgentTaskActivities } from "./agent-task-activities.js";
+import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 
 const temporalRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
   address: z.string().trim().min(1),
   namespace: z.string().trim().min(1),
-  taskQueue: z.string().trim().min(1)
+  taskQueue: z.string().trim().min(1),
+  activityMode: z.enum(["foundation", "persistent_shadow"])
 }).strict();
 
 export type TemporalRuntimeConfig = z.infer<typeof temporalRuntimeConfigSchema>;
@@ -22,7 +23,7 @@ interface TemporalWorkerPort {
 }
 
 export interface TemporalWorkerFactoryPort {
-  create(config: TemporalRuntimeConfig, activities: AgentTaskActivities): Promise<{
+  create(config: TemporalRuntimeConfig, activities: AgentTaskWorkerActivities): Promise<{
     worker: TemporalWorkerPort;
     close(): Promise<void>;
   }>;
@@ -40,13 +41,14 @@ export function loadTemporalRuntimeConfig(env: NodeJS.ProcessEnv): TemporalRunti
     namespace: env.DIPOLE_AGENT_TEMPORAL_NAMESPACE === undefined ? "default" : env.DIPOLE_AGENT_TEMPORAL_NAMESPACE,
     taskQueue: env.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE === undefined
       ? "dipole-agent-task-v1"
-      : env.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE
+      : env.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE,
+    activityMode: env.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE?.trim().toLowerCase() || "foundation"
   });
 }
 
 export function createTemporalWorkerRuntime(
   config: TemporalRuntimeConfig,
-  activities: AgentTaskActivities,
+  activities: AgentTaskWorkerActivities,
   factory: TemporalWorkerFactoryPort = nativeTemporalWorkerFactory,
   onFailure: (error: unknown) => void = () => undefined
 ): TemporalWorkerRuntime {

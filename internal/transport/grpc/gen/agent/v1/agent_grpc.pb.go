@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AgentCapabilityService_AdmitRun_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName       = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
+	AgentCapabilityService_FinishRun_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
 	AgentCapabilityService_ListConversations_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 )
 
@@ -30,6 +31,7 @@ const (
 type AgentCapabilityServiceClient interface {
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
+	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 }
 
@@ -61,6 +63,16 @@ func (c *agentCapabilityServiceClient) CompleteRun(ctx context.Context, in *Comp
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishRunResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishRun_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListConversationsResponse)
@@ -77,6 +89,7 @@ func (c *agentCapabilityServiceClient) ListConversations(ctx context.Context, in
 type AgentCapabilityServiceServer interface {
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
+	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
@@ -93,6 +106,9 @@ func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *Admi
 }
 func (UnimplementedAgentCapabilityServiceServer) CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CompleteRun not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishRun not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListConversations not implemented")
@@ -155,6 +171,24 @@ func _AgentCapabilityService_CompleteRun_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_FinishRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishRunRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).FinishRun(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_FinishRun_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).FinishRun(ctx, req.(*FinishRunRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ListConversations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListConversationsRequest)
 	if err := dec(in); err != nil {
@@ -187,6 +221,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CompleteRun",
 			Handler:    _AgentCapabilityService_CompleteRun_Handler,
+		},
+		{
+			MethodName: "FinishRun",
+			Handler:    _AgentCapabilityService_FinishRun_Handler,
 		},
 		{
 			MethodName: "ListConversations",

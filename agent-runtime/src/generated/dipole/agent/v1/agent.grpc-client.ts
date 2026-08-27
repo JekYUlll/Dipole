@@ -7,6 +7,8 @@ import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
 import type { ListConversationsResponse } from "./agent.js";
 import type { ListConversationsRequest } from "./agent.js";
+import type { FinishRunResponse } from "./agent.js";
+import type { FinishRunRequest } from "./agent.js";
 import type { CompleteRunResponse } from "./agent.js";
 import type { CompleteRunRequest } from "./agent.js";
 import type { AdmitRunResponse } from "./agent.js";
@@ -30,6 +32,13 @@ export interface IAgentCapabilityServiceClient {
     completeRun(input: CompleteRunRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: CompleteRunResponse) => void): grpc.ClientUnaryCall;
     completeRun(input: CompleteRunRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: CompleteRunResponse) => void): grpc.ClientUnaryCall;
     completeRun(input: CompleteRunRequest, callback: (err: grpc.ServiceError | null, value?: CompleteRunResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: FinishRun
+     */
+    finishRun(input: FinishRunRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
+    finishRun(input: FinishRunRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
+    finishRun(input: FinishRunRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
+    finishRun(input: FinishRunRequest, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
     /**
      * @generated from protobuf rpc: ListConversations
      */
@@ -62,10 +71,17 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
         return this.makeUnaryRequest<CompleteRunRequest, CompleteRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CompleteRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): CompleteRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
+     * @generated from protobuf rpc: FinishRun
+     */
+    finishRun(input: FinishRunRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[2];
+        return this.makeUnaryRequest<FinishRunRequest, FinishRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: FinishRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): FinishRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
      * @generated from protobuf rpc: ListConversations
      */
     listConversations(input: ListConversationsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[2];
+        const method = AgentCapabilityService.methods[3];
         return this.makeUnaryRequest<ListConversationsRequest, ListConversationsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListConversationsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListConversationsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

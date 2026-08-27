@@ -294,6 +294,126 @@ func (x *CompleteRunResponse) GetRunStatus() string {
 	return ""
 }
 
+type FinishRunRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	RunStatus     string                 `protobuf:"bytes,4,opt,name=run_status,json=runStatus,proto3" json:"run_status,omitempty"`
+	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinishRunRequest) Reset() {
+	*x = FinishRunRequest{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinishRunRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinishRunRequest) ProtoMessage() {}
+
+func (x *FinishRunRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinishRunRequest.ProtoReflect.Descriptor instead.
+func (*FinishRunRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *FinishRunRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *FinishRunRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *FinishRunRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *FinishRunRequest) GetRunStatus() string {
+	if x != nil {
+		return x.RunStatus
+	}
+	return ""
+}
+
+func (x *FinishRunRequest) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+type FinishRunResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunStatus     string                 `protobuf:"bytes,1,opt,name=run_status,json=runStatus,proto3" json:"run_status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinishRunResponse) Reset() {
+	*x = FinishRunResponse{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinishRunResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinishRunResponse) ProtoMessage() {}
+
+func (x *FinishRunResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinishRunResponse.ProtoReflect.Descriptor instead.
+func (*FinishRunResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *FinishRunResponse) GetRunStatus() string {
+	if x != nil {
+		return x.RunStatus
+	}
+	return ""
+}
+
 type ListConversationsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
@@ -306,7 +426,7 @@ type ListConversationsRequest struct {
 
 func (x *ListConversationsRequest) Reset() {
 	*x = ListConversationsRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -318,7 +438,7 @@ func (x *ListConversationsRequest) String() string {
 func (*ListConversationsRequest) ProtoMessage() {}
 
 func (x *ListConversationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -331,7 +451,7 @@ func (x *ListConversationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConversationsRequest.ProtoReflect.Descriptor instead.
 func (*ListConversationsRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListConversationsRequest) GetContext() *v1.RequestContext {
@@ -379,7 +499,7 @@ type ConversationSnapshot struct {
 
 func (x *ConversationSnapshot) Reset() {
 	*x = ConversationSnapshot{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -391,7 +511,7 @@ func (x *ConversationSnapshot) String() string {
 func (*ConversationSnapshot) ProtoMessage() {}
 
 func (x *ConversationSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -404,7 +524,7 @@ func (x *ConversationSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConversationSnapshot.ProtoReflect.Descriptor instead.
 func (*ConversationSnapshot) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ConversationSnapshot) GetConversationKey() string {
@@ -479,7 +599,7 @@ type ListConversationsResponse struct {
 
 func (x *ListConversationsResponse) Reset() {
 	*x = ListConversationsResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +611,7 @@ func (x *ListConversationsResponse) String() string {
 func (*ListConversationsResponse) ProtoMessage() {}
 
 func (x *ListConversationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +624,7 @@ func (x *ListConversationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConversationsResponse.ProtoReflect.Descriptor instead.
 func (*ListConversationsResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{6}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListConversationsResponse) GetConversations() []*ConversationSnapshot {
@@ -542,6 +662,17 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\"4\n" +
 	"\x13CompleteRunResponse\x12\x1d\n" +
 	"\n" +
+	"run_status\x18\x01 \x01(\tR\trunStatus\"\xbc\x01\n" +
+	"\x10FinishRunRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12\x1d\n" +
+	"\n" +
+	"run_status\x18\x04 \x01(\tR\trunStatus\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x05 \x01(\tR\tlastError\"2\n" +
+	"\x11FinishRunResponse\x12\x1d\n" +
+	"\n" +
 	"run_status\x18\x01 \x01(\tR\trunStatus\"\x9c\x01\n" +
 	"\x18ListConversationsRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
@@ -560,10 +691,11 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\bread_seq\x18\b \x01(\x04R\areadSeq\x12!\n" +
 	"\funread_count\x18\t \x01(\x05R\vunreadCount\"h\n" +
 	"\x19ListConversationsResponse\x12K\n" +
-	"\rconversations\x18\x01 \x03(\v2%.dipole.agent.v1.ConversationSnapshotR\rconversations2\xaf\x02\n" +
+	"\rconversations\x18\x01 \x03(\v2%.dipole.agent.v1.ConversationSnapshotR\rconversations2\x83\x03\n" +
 	"\x16AgentCapabilityService\x12O\n" +
 	"\bAdmitRun\x12 .dipole.agent.v1.AdmitRunRequest\x1a!.dipole.agent.v1.AdmitRunResponse\x12X\n" +
-	"\vCompleteRun\x12#.dipole.agent.v1.CompleteRunRequest\x1a$.dipole.agent.v1.CompleteRunResponse\x12j\n" +
+	"\vCompleteRun\x12#.dipole.agent.v1.CompleteRunRequest\x1a$.dipole.agent.v1.CompleteRunResponse\x12R\n" +
+	"\tFinishRun\x12!.dipole.agent.v1.FinishRunRequest\x1a\".dipole.agent.v1.FinishRunResponse\x12j\n" +
 	"\x11ListConversations\x12).dipole.agent.v1.ListConversationsRequest\x1a*.dipole.agent.v1.ListConversationsResponseBIZGgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1b\x06proto3"
 
 var (
@@ -578,33 +710,38 @@ func file_dipole_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_dipole_agent_v1_agent_proto_rawDescData
 }
 
-var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_dipole_agent_v1_agent_proto_goTypes = []any{
 	(*AdmitRunRequest)(nil),           // 0: dipole.agent.v1.AdmitRunRequest
 	(*AdmitRunResponse)(nil),          // 1: dipole.agent.v1.AdmitRunResponse
 	(*CompleteRunRequest)(nil),        // 2: dipole.agent.v1.CompleteRunRequest
 	(*CompleteRunResponse)(nil),       // 3: dipole.agent.v1.CompleteRunResponse
-	(*ListConversationsRequest)(nil),  // 4: dipole.agent.v1.ListConversationsRequest
-	(*ConversationSnapshot)(nil),      // 5: dipole.agent.v1.ConversationSnapshot
-	(*ListConversationsResponse)(nil), // 6: dipole.agent.v1.ListConversationsResponse
-	(*v1.RequestContext)(nil),         // 7: dipole.common.v1.RequestContext
+	(*FinishRunRequest)(nil),          // 4: dipole.agent.v1.FinishRunRequest
+	(*FinishRunResponse)(nil),         // 5: dipole.agent.v1.FinishRunResponse
+	(*ListConversationsRequest)(nil),  // 6: dipole.agent.v1.ListConversationsRequest
+	(*ConversationSnapshot)(nil),      // 7: dipole.agent.v1.ConversationSnapshot
+	(*ListConversationsResponse)(nil), // 8: dipole.agent.v1.ListConversationsResponse
+	(*v1.RequestContext)(nil),         // 9: dipole.common.v1.RequestContext
 }
 var file_dipole_agent_v1_agent_proto_depIdxs = []int32{
-	7, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	7, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	7, // 2: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
-	5, // 3: dipole.agent.v1.ListConversationsResponse.conversations:type_name -> dipole.agent.v1.ConversationSnapshot
-	0, // 4: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
-	2, // 5: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
-	4, // 6: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
-	1, // 7: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
-	3, // 8: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
-	6, // 9: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	9, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	9, // 2: dipole.agent.v1.FinishRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	9, // 3: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
+	7, // 4: dipole.agent.v1.ListConversationsResponse.conversations:type_name -> dipole.agent.v1.ConversationSnapshot
+	0, // 5: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
+	2, // 6: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
+	4, // 7: dipole.agent.v1.AgentCapabilityService.FinishRun:input_type -> dipole.agent.v1.FinishRunRequest
+	6, // 8: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
+	1, // 9: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
+	3, // 10: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
+	5, // 11: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
+	8, // 12: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dipole_agent_v1_agent_proto_init() }
@@ -618,7 +755,7 @@ func file_dipole_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_agent_v1_agent_proto_rawDesc), len(file_dipole_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

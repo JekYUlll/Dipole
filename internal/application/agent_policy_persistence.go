@@ -203,6 +203,27 @@ func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
 	return nil
 }
 
+func ValidateAgentRunTerminalV1(status AgentRunStatusV1, lastError string) error {
+	lastError = strings.TrimSpace(lastError)
+	if len(lastError) > 1024 {
+		return ErrAgentPolicyInvalid
+	}
+	switch status {
+	case AgentRunStatusCompleted:
+		if lastError != "" {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentRunStatusFailed:
+		if lastError == "" {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentRunStatusCancelled:
+	default:
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
 func (a AgentApprovalV1) Validate() error {
 	if anyBlank(a.ApprovalUUID, a.TaskUUID, a.CapabilityID) || !validAgentResourceScopeV1(a.ResourceScope) ||
 		!validSHA256V1(a.ScopeSHA256) || !validSHA256V1(a.ArgumentsSHA256) || !validSHA256V1(a.NonceSHA256) || a.ExpiresAt.IsZero() {

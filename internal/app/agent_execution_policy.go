@@ -176,33 +176,44 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 }
 
 func (a *PersistentAgentRunAdmissionV1) Complete(ctx context.Context, taskUUID, runUUID, runtimeID, mode string) error {
+	return a.Finish(ctx, taskUUID, runUUID, runtimeID, mode, application.AgentRunStatusCompleted, "")
+}
+
+func (a *PersistentAgentRunAdmissionV1) Finish(ctx context.Context, taskUUID, runUUID, runtimeID, mode string, runStatus application.AgentRunStatusV1, lastError string) error {
 	taskUUID, runUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
+	lastError = strings.TrimSpace(lastError)
 	if taskUUID == "" || runUUID == "" || runtimeID == "" || mode == "" {
-		return fmt.Errorf("%w: Agent Run completion identity is required", application.ErrAgentExecutionPolicyDenied)
+		return fmt.Errorf("%w: Agent Run terminal identity is required", application.ErrAgentExecutionPolicyDenied)
+	}
+	if err := application.ValidateAgentRunTerminalV1(runStatus, lastError); err != nil {
+		return fmt.Errorf("%w: Agent Run terminal evidence is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
 	run, err := a.store.GetRun(ctx, runUUID)
 	if err != nil {
-		return fmt.Errorf("get Agent Run completion: %w", err)
+		return fmt.Errorf("get Agent Run terminal state: %w", err)
 	}
 	if run == nil || run.TaskUUID != taskUUID || run.RuntimeID != runtimeID || run.Mode != mode {
-		return fmt.Errorf("%w: Agent Run completion binding mismatch", application.ErrAgentExecutionPolicyDenied)
+		return fmt.Errorf("%w: Agent Run terminal binding mismatch", application.ErrAgentExecutionPolicyDenied)
 	}
-	if run.Status == application.AgentRunStatusCompleted {
-		return nil
+	if run.Status == runStatus {
+		if strings.TrimSpace(run.LastError) == lastError {
+			return nil
+		}
+		return fmt.Errorf("%w: Agent Run terminal evidence conflicts", application.ErrAgentExecutionPolicyDenied)
 	}
 	if run.Status != application.AgentRunStatusRunning {
-		return fmt.Errorf("%w: Agent Run cannot complete from terminal state", application.ErrAgentExecutionPolicyDenied)
+		return fmt.Errorf("%w: Agent Run has a conflicting terminal state", application.ErrAgentExecutionPolicyDenied)
 	}
-	changed, err := a.store.TransitionRunStatus(ctx, runUUID, application.AgentRunStatusRunning, application.AgentRunStatusCompleted, "")
+	changed, err := a.store.TransitionRunStatus(ctx, runUUID, application.AgentRunStatusRunning, runStatus, lastError)
 	if err != nil {
-		return fmt.Errorf("complete Agent Run: %w", err)
+		return fmt.Errorf("finish Agent Run: %w", err)
 	}
 	if !changed {
 		current, lookupErr := a.store.GetRun(ctx, runUUID)
-		if lookupErr == nil && current != nil && current.Status == application.AgentRunStatusCompleted {
+		if lookupErr == nil && current != nil && current.Status == runStatus && strings.TrimSpace(current.LastError) == lastError {
 			return nil
 		}
-		return fmt.Errorf("%w: Agent Run completion lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
+		return fmt.Errorf("%w: Agent Run terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
 	}
 	return nil
 }

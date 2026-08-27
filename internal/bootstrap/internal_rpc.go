@@ -210,6 +210,7 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 	if caller == agentServiceName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AdmitRun_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_CompleteRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishRun_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {
 		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")

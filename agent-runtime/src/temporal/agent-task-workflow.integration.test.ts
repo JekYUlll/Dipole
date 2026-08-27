@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
-import type { AgentTaskActivities } from "./agent-task-activities.js";
+import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import { TemporalTaskClient } from "./temporal-task-client.js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
@@ -21,7 +21,22 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
   it("retries Activities, converges duplicate starts, and resumes after Worker replacement", async () => {
     const taskQueue = `dipole-agent-task-test-${Date.now()}`;
     let calls = 0;
-    const activities: AgentTaskActivities = {
+    let admissions = 0;
+    let finishAttempts = 0;
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        admissions += 1;
+        return { taskId: input.taskId, runId: "run-recovery-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        finishAttempts += 1;
+        expect(input).toMatchObject({
+          taskId: "task-recovery-1", runId: "run-recovery-1", runStatus: "completed", lastError: ""
+        });
+        if (finishAttempts === 1) {
+          throw new Error("transient terminal write failure");
+        }
+      },
       async executeAgentTaskStep(input) {
         calls += 1;
         if (calls < 3) {
@@ -61,6 +76,8 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       output: { artifactId: "A1", checkpoint: { phase: "ready" } }
     });
     expect(calls).toBe(4);
+    expect(admissions).toBe(1);
+    expect(finishAttempts).toBe(2);
 
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
   }, 120_000);
@@ -68,7 +85,14 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
   it("fails a Task after its bounded Activity step budget", async () => {
     const taskQueue = `dipole-agent-task-limit-${Date.now()}`;
     let calls = 0;
-    const activities: AgentTaskActivities = {
+    const terminalWrites: unknown[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-step-limit-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        terminalWrites.push(input);
+      },
       async executeAgentTaskStep() {
         calls += 1;
         return { kind: "continue", checkpoint: { calls } };
@@ -85,13 +109,19 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(result).toMatchObject({
       status: "failed", failure: { message: "Agent Task exceeded the 2 Activity step limit" }
     });
+    expect(terminalWrites).toEqual([expect.objectContaining({
+      taskId: "task-step-limit-1",
+      runId: "run-step-limit-1",
+      runStatus: "failed",
+      lastError: "Agent Task exceeded the 2 Activity step limit"
+    })]);
   }, 120_000);
 });
 
 async function createWorker(
   env: TestWorkflowEnvironment,
   taskQueue: string,
-  activities: AgentTaskActivities
+  activities: AgentTaskWorkerActivities
 ): Promise<Worker> {
   return Worker.create({
     connection: env.nativeConnection,

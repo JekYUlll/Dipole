@@ -15,7 +15,8 @@ describe("Temporal runtime configuration", () => {
       enabled: false,
       address: "127.0.0.1:7233",
       namespace: "default",
-      taskQueue: "dipole-agent-task-v1"
+      taskQueue: "dipole-agent-task-v1",
+      activityMode: "foundation"
     });
   });
 
@@ -24,12 +25,14 @@ describe("Temporal runtime configuration", () => {
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
       DIPOLE_AGENT_TEMPORAL_ADDRESS: "temporal:7233",
       DIPOLE_AGENT_TEMPORAL_NAMESPACE: "dipole",
-      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: "dipole-agent-task-canary-v1"
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: "dipole-agent-task-canary-v1",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "persistent_shadow"
     })).toEqual({
       enabled: true,
       address: "temporal:7233",
       namespace: "dipole",
-      taskQueue: "dipole-agent-task-canary-v1"
+      taskQueue: "dipole-agent-task-canary-v1",
+      activityMode: "persistent_shadow"
     });
   });
 

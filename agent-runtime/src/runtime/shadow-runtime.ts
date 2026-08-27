@@ -260,7 +260,7 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRun
   };
 }
 
-function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
+export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
   const tls = config.capabilityRpc.tls;
   const credentials = tls.enabled
     ? grpc.credentials.createSsl(readFileSync(tls.caFile), readFileSync(tls.keyFile), readFileSync(tls.certFile))
