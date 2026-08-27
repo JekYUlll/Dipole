@@ -23,6 +23,7 @@ type Querier interface {
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
+	CompleteAgentEvent(ctx context.Context, arg CompleteAgentEventParams) (int64, error)
 	CompleteCassandraBackfillJob(ctx context.Context, arg CompleteCassandraBackfillJobParams) (sql.Result, error)
 	CompleteSearchBackfillJob(ctx context.Context, arg CompleteSearchBackfillJobParams) (sql.Result, error)
 	CompleteSyncReplayJob(ctx context.Context, arg CompleteSyncReplayJobParams) (sql.Result, error)
@@ -90,6 +91,7 @@ type Querier interface {
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	InsertAgentApproval(ctx context.Context, arg InsertAgentApprovalParams) error
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
+	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
@@ -115,6 +117,7 @@ type Querier interface {
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
+	LockAgentEventClaim(ctx context.Context, arg LockAgentEventClaimParams) ([]LockAgentEventClaimRow, error)
 	LockCassandraBackfillJob(ctx context.Context, jobName string) (LockCassandraBackfillJobRow, error)
 	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	LockSearchBackfillJob(ctx context.Context, jobName string) (LockSearchBackfillJobRow, error)
@@ -126,6 +129,9 @@ type Querier interface {
 	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
 	MarkOutboxRetry(ctx context.Context, arg MarkOutboxRetryParams) (sql.Result, error)
+	ProbeAgentEventLedger(ctx context.Context) ([]string, error)
+	ReclaimAgentEvent(ctx context.Context, arg ReclaimAgentEventParams) (int64, error)
+	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
 	RevokeAgentApproval(ctx context.Context, arg RevokeAgentApprovalParams) (int64, error)
 	RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error)

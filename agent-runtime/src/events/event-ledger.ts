@@ -7,9 +7,9 @@ export interface EventClaim {
 }
 
 export interface EventLedger {
-  claim(eventId: string, taskId: string): Promise<EventClaim | undefined>;
+  claim(eventId: string, taskId: string, eventType?: string): Promise<EventClaim | undefined>;
   complete(claim: EventClaim): Promise<void>;
-  release(claim: EventClaim): Promise<void>;
+  release(claim: EventClaim, error?: unknown): Promise<void>;
 }
 
 type LedgerEntry = { taskId: string; token: string; status: "claimed" | "completed" };
@@ -17,7 +17,7 @@ type LedgerEntry = { taskId: string; token: string; status: "claimed" | "complet
 export class InMemoryEventLedger implements EventLedger {
   readonly #entries = new Map<string, LedgerEntry>();
 
-  async claim(eventId: string, taskId: string): Promise<EventClaim | undefined> {
+  async claim(eventId: string, taskId: string, _eventType?: string): Promise<EventClaim | undefined> {
     eventId = eventId.trim();
     taskId = taskId.trim();
     if (!eventId || !taskId) {
@@ -40,7 +40,7 @@ export class InMemoryEventLedger implements EventLedger {
     entry.status = "completed";
   }
 
-  async release(claim: EventClaim): Promise<void> {
+  async release(claim: EventClaim, _error?: unknown): Promise<void> {
     this.requireExactClaim(claim);
     this.#entries.delete(claim.eventId);
   }

@@ -82,6 +82,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      mysql-permissions:
+        condition: service_completed_successfully
     environment:
       DIPOLE_AGENT_HOST: 0.0.0.0
       DIPOLE_AGENT_PORT: "8091"
@@ -92,6 +94,13 @@ services:
       DIPOLE_AGENT_KAFKA_TOPIC: message.direct.created
       DIPOLE_AGENT_TENANT_ID: dipole
       DIPOLE_AGENT_UUID: UAI000000000000000001
+      DIPOLE_AGENT_LEDGER_MODE: mysql
+      DIPOLE_AGENT_LEDGER_LEASE_MS: "60000"
+      DIPOLE_AGENT_MYSQL_HOST: mysql
+      DIPOLE_AGENT_MYSQL_PORT: "3306"
+      DIPOLE_AGENT_MYSQL_USER: ${DIPOLE_AGENT_MYSQL_USER:-dipole_agent}
+      DIPOLE_AGENT_MYSQL_PASSWORD: ${DIPOLE_AGENT_MYSQL_PASSWORD:-change-me}
+      DIPOLE_AGENT_MYSQL_DATABASE: dipole
     healthcheck:
       test:
         - CMD
@@ -170,12 +179,14 @@ services:
       - ./configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
       - ./configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
       - ./configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
+      - ./configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
         mysql -h mysql -uroot -proot123 < /grants/message-atomic.sql &&
         mysql -h mysql -uroot -proot123 < /grants/message-projector.sql &&
-        mysql -h mysql -uroot -proot123 < /grants/sync.sql
+        mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
+        mysql -h mysql -uroot -proot123 < /grants/agent.sql
 
   core:
     <<: *dipole-service

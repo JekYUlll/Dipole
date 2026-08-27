@@ -202,4 +202,4 @@ Project Guardian 订阅一个项目群，每日维护决策、任务和风险；
 
 首期避免引入无明确职责的多 Agent 编排，也避免每条消息直接调用高成本模型。
 
-G2 foundation 已建立在 `agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7 与 KafkaJS 2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连，微服务 Compose 可独立部署且不接触业务数据库。当前 processor 只输出 metadata plan，EventLedger 位于进程内；持久 ledger、AI SDK model adapter、Tool 轨迹与审计 Store 是后续门禁（`AD-028`）。
+G2 foundation 已建立在 `agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2 与 mysql2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连。migration v18 与 MySQL EventLedger 通过 Event/Task 双唯一、事务 claim、lease 和精确 token 提供跨进程幂等，Compose 使用 Agent 专用最小权限账号。当前 processor 只输出 metadata plan；Kafka retry/DLQ、AI SDK model adapter、Tool 轨迹与持久审计 Store 是后续门禁（`AD-028`）。

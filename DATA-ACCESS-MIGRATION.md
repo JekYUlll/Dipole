@@ -70,6 +70,8 @@ Composition Root 现在只接受 `*sql.DB` 并创建 sqlc adapters；迁移期�
 
 Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store。
 
+TypeScript Agent Runtime 的 EventLedger 查询同样以 `db/queries/agent_event_ledger.sql` 为唯一来源：sqlc 校验 MySQL schema 与命名查询并生成 Go 契约，`scripts/generate-agent-ledger-queries.mjs` 从同一文件生成 mysql2 使用的 TypeScript 常量。TS adapter 不维护第二份手写 SQL；其账号仅访问 Agent 自有 ledger 表。
+
 `000002_conversation_sequence` 为历史消息按 `conversation_key + id` 回填连续序号，并创建 `conversation_sequences` 高水位表。新消息在 Message、Inbox 与 Outbox 的同一事务内锁定会话行并分配 `seq`；事务回滚会同时回滚高水位，旧 `before_id`/`after_id` 查询在兼容期继续保留。
 
 `000003_read_and_device_checkpoints` 为 Conversation 投影回填 `last_message_seq/read_seq`，继续维护 `unread_count` 兼容字段，并增加独立 `device_sync_checkpoints`。已读操作只推进到调用方当时可见的 Seq；设备 checkpoint 通过显式 ACK 单调推进，超过当前用户 Inbox 最大 Seq 的请求会被拒绝。
