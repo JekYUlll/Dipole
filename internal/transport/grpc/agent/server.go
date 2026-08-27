@@ -18,21 +18,30 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability        application.AgentCapabilityV1
-	resolver          application.AgentInvocationResolverV1
-	admission         application.AgentRunAdmissionServiceV1
-	approvals         application.AgentApprovalServiceV1
-	approvalGrants    application.AgentApprovalGrantResolverV1
-	controls          application.AgentTaskControlAuthorizerV1
-	projections       application.AgentTaskWorkflowProjectionServiceV1
-	repairs           application.AgentWorkflowRepairAuditServiceV1
-	promotionControls application.AgentRuntimePromotionControlServiceV1
-	promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1
-	artifacts         application.AgentArtifactServiceV1
-	subscriptions     application.AgentEventSubscriptionResolverV1
-	memories          application.AgentMemoryContextResolverV1
-	toolAudits        application.AgentToolInvocationAuditServiceV1
-	messageCommands   application.AgentMessageCommandExecutionV1
+	capability           application.AgentCapabilityV1
+	resolver             application.AgentInvocationResolverV1
+	admission            application.AgentRunAdmissionServiceV1
+	approvals            application.AgentApprovalServiceV1
+	approvalGrants       application.AgentApprovalGrantResolverV1
+	controls             application.AgentTaskControlAuthorizerV1
+	projections          application.AgentTaskWorkflowProjectionServiceV1
+	repairs              application.AgentWorkflowRepairAuditServiceV1
+	promotionControls    application.AgentRuntimePromotionControlServiceV1
+	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
+	artifacts            application.AgentArtifactServiceV1
+	subscriptions        application.AgentEventSubscriptionResolverV1
+	subscriptionControls application.AgentEventSubscriptionControlServiceV1
+	memories             application.AgentMemoryContextResolverV1
+	toolAudits           application.AgentToolInvocationAuditServiceV1
+	messageCommands      application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSubscriptionControlServiceV1) (*Server, error) {
+	if s == nil || controls == nil {
+		return nil, errors.New("Agent Event Subscription control service is required")
+	}
+	s.subscriptionControls = controls
+	return s, nil
 }
 
 func (s *Server) WithPromotionEvidence(evidence application.AgentRuntimePromotionEvidenceReviewServiceV1) (*Server, error) {
@@ -147,13 +156,109 @@ func (s *Server) MatchEventSubscriptions(ctx context.Context, request *agentv1.M
 	}
 	response := &agentv1.MatchEventSubscriptionsResponse{Subscriptions: make([]*agentv1.AgentEventSubscription, 0, len(items))}
 	for _, item := range items {
-		response.Subscriptions = append(response.Subscriptions, &agentv1.AgentEventSubscription{
-			SubscriptionId: item.SubscriptionUUID, DefinitionId: item.DefinitionUUID, DefinitionVersion: item.DefinitionVersion,
-			TenantId: item.TenantID, AgentId: item.AgentUUID, EventType: item.EventType,
-			ResourceType: item.ResourceType, ResourceId: item.ResourceID, FilterKind: string(item.FilterKind), FilterJson: item.FilterJSON,
-		})
+		response.Subscriptions = append(response.Subscriptions, agentEventSubscriptionResponseV1(item))
 	}
 	return response, nil
+}
+
+func (s *Server) CreateEventSubscription(ctx context.Context, request *agentv1.CreateEventSubscriptionRequest) (*agentv1.AgentEventSubscription, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.subscriptionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription control is unavailable")
+	}
+	item, err := s.subscriptionControls.Create(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentEventSubscriptionCreateRequestV1{
+		TenantID: request.GetTenantId(), DefinitionUUID: request.GetDefinitionId(), DefinitionVersion: request.GetDefinitionVersion(),
+		EventType: request.GetEventType(), ResourceType: request.GetResourceType(), ResourceID: request.GetResourceId(),
+		FilterKind: application.AgentSubscriptionFilterKindV1(request.GetFilterKind()), FilterJSON: request.GetFilterJson(),
+	})
+	if err != nil {
+		return nil, eventSubscriptionControlErrorV1(err)
+	}
+	return agentEventSubscriptionResponseV1(*item), nil
+}
+
+func (s *Server) ListEventSubscriptions(ctx context.Context, request *agentv1.ListEventSubscriptionsRequest) (*agentv1.ListEventSubscriptionsResponse, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.subscriptionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription control is unavailable")
+	}
+	page, err := s.subscriptionControls.List(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentEventSubscriptionListRequestV1{
+		TenantID: request.GetTenantId(), AfterUUID: request.GetAfterSubscriptionId(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		return nil, eventSubscriptionControlErrorV1(err)
+	}
+	response := &agentv1.ListEventSubscriptionsResponse{Subscriptions: make([]*agentv1.AgentEventSubscription, 0, len(page.Subscriptions)), NextCursor: page.NextCursor}
+	for _, item := range page.Subscriptions {
+		response.Subscriptions = append(response.Subscriptions, agentEventSubscriptionResponseV1(item))
+	}
+	return response, nil
+}
+
+func (s *Server) RevokeEventSubscription(ctx context.Context, request *agentv1.RevokeEventSubscriptionRequest) (*agentv1.AgentEventSubscription, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.subscriptionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription control is unavailable")
+	}
+	item, err := s.subscriptionControls.Revoke(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentEventSubscriptionRevokeRequestV1{
+		TenantID: request.GetTenantId(), SubscriptionUUID: request.GetSubscriptionId(), Reason: request.GetReason(),
+	})
+	if err != nil {
+		return nil, eventSubscriptionControlErrorV1(err)
+	}
+	return agentEventSubscriptionResponseV1(*item), nil
+}
+
+func eventSubscriptionOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return "", status.Error(codes.PermissionDenied, "only the authenticated Gateway may manage Agent Event Subscriptions")
+	}
+	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
+		return "", err
+	}
+	return grpccommon.Principal(requestContext)
+}
+
+func eventSubscriptionControlErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentSubscriptionDenied):
+		return status.Error(codes.PermissionDenied, "Agent Event Subscription access denied")
+	case errors.Is(err, application.ErrAgentSubscriptionConflict):
+		return status.Error(codes.Aborted, "Agent Event Subscription changed concurrently")
+	case errors.Is(err, application.ErrAgentSubscriptionInvalid):
+		return status.Error(codes.FailedPrecondition, "Agent Event Subscription request is invalid")
+	default:
+		return status.Error(codes.Internal, "Agent Event Subscription control failed")
+	}
+}
+
+func agentEventSubscriptionResponseV1(item application.AgentEventSubscriptionV1) *agentv1.AgentEventSubscription {
+	response := &agentv1.AgentEventSubscription{
+		SubscriptionId: item.SubscriptionUUID, DefinitionId: item.DefinitionUUID, DefinitionVersion: item.DefinitionVersion,
+		TenantId: item.TenantID, AgentId: item.AgentUUID, EventType: item.EventType, ResourceType: item.ResourceType,
+		ResourceId: item.ResourceID, FilterKind: string(item.FilterKind), FilterJson: item.FilterJSON, Status: string(item.Status),
+		CreatedById: item.CreatedByUUID, RevokedById: item.RevokedByUUID, RevokeReason: item.RevokeReason,
+	}
+	if !item.CreatedAt.IsZero() {
+		response.CreatedAtUnixMs = item.CreatedAt.UnixMilli()
+	}
+	if !item.UpdatedAt.IsZero() {
+		response.UpdatedAtUnixMs = item.UpdatedAt.UnixMilli()
+	}
+	if item.RevokedAt != nil {
+		response.RevokedAtUnixMs = item.RevokedAt.UnixMilli()
+	}
+	return response
 }
 
 func (s *Server) WithArtifacts(artifacts application.AgentArtifactServiceV1) (*Server, error) {

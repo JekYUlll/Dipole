@@ -27,6 +27,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("migrate contract database: %v", err)
 	}
+	currentVersion, err := runner.CurrentVersion(context.Background())
+	if err != nil {
+		t.Fatalf("read current migration: %v", err)
+	}
 	store, err := sqlcRepository.NewAgentPolicyRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create Agent Policy repository: %v", err)
@@ -68,9 +72,13 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
 		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "direct:U100:UAI",
 		FilterKind: application.AgentSubscriptionFilterMessageContainsAny, FilterJSON: []byte(`{"terms":["incident"]}`),
+		CreatedByUUID: "U100",
 	}
-	if err := store.CreateEventSubscription(context.Background(), subscription); err != nil {
-		t.Fatalf("create Event Subscription: %v", err)
+	if created, err := store.CreateEventSubscription(context.Background(), subscription); err != nil || !created {
+		t.Fatalf("create Event Subscription: created=%v err=%v", created, err)
+	}
+	if created, err := store.CreateEventSubscription(context.Background(), subscription); err != nil || created {
+		t.Fatalf("replay Event Subscription: created=%v err=%v", created, err)
 	}
 	loadedSubscription, err := store.GetEventSubscription(context.Background(), subscription.SubscriptionUUID)
 	if err != nil || loadedSubscription == nil || loadedSubscription.SubscriptionUUID != subscription.SubscriptionUUID || !containsSubscriptionTerm(t, loadedSubscription.FilterJSON, "incident") {
@@ -82,6 +90,14 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	})
 	if err != nil || len(matched) != 1 || matched[0].SubscriptionUUID != "SUB-1" || !containsSubscriptionTerm(t, matched[0].FilterJSON, "incident") {
 		t.Fatalf("list Event Subscriptions: items=%+v err=%v", matched, err)
+	}
+	owned, err := store.ListOwnedEventSubscriptions(context.Background(), "dipole", "U100", "", 10)
+	if err != nil || len(owned) != 1 || owned[0].SubscriptionUUID != subscription.SubscriptionUUID {
+		t.Fatalf("list owned Event Subscriptions: items=%+v err=%v", owned, err)
+	}
+	foreignOwned, err := store.ListOwnedEventSubscriptions(context.Background(), "dipole", "U999", "", 10)
+	if err != nil || len(foreignOwned) != 0 {
+		t.Fatalf("foreign owner Event Subscriptions: items=%+v err=%v", foreignOwned, err)
 	}
 
 	task := application.AgentTaskV1{
@@ -104,8 +120,8 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil || loadedSubscriptionTask == nil || loadedSubscriptionTask.TriggerSubscriptionUUID != "SUB-1" {
 		t.Fatalf("Task Subscription binding: task=%+v err=%v", loadedSubscriptionTask, err)
 	}
-	if err := store.RevokeEventSubscription(context.Background(), subscription.SubscriptionUUID, now.Add(2*time.Minute)); err != nil {
-		t.Fatalf("revoke Event Subscription: %v", err)
+	if changed, err := store.RevokeEventSubscription(context.Background(), subscription.SubscriptionUUID, "U100", "contract cleanup", now.Add(2*time.Minute)); err != nil || !changed {
+		t.Fatalf("revoke Event Subscription: changed=%v err=%v", changed, err)
 	}
 	matched, err = store.ListMatchingEventSubscriptions(context.Background(), application.AgentEventSubscriptionMatchRequestV1{
 		TenantID: "dipole", AgentUUID: "UAI", EventType: "message.direct.created",
@@ -113,6 +129,9 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	})
 	if err != nil || len(matched) != 0 {
 		t.Fatalf("revoked Event Subscription remained visible: items=%+v err=%v", matched, err)
+	}
+	if changed, err := store.RevokeEventSubscription(context.Background(), subscription.SubscriptionUUID, "U100", "contract cleanup", now.Add(2*time.Minute)); err != nil || changed {
+		t.Fatalf("replay Event Subscription revocation: changed=%v err=%v", changed, err)
 	}
 	if changed, err := store.TransitionTaskStatus(context.Background(), task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning); err != nil || !changed {
 		t.Fatalf("start task: changed=%v err=%v", changed, err)
@@ -461,6 +480,16 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		t.Fatalf("replay durable Approval resolution: approval=%+v err=%v", resolved, err)
 	}
 	if err := runner.Down(context.Background(), 1); err != nil {
+		t.Fatalf("rollback Event Subscription control migration: %v", err)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("reapply Event Subscription control migration: %v", err)
+	}
+	backfilled, err := store.GetEventSubscription(context.Background(), subscription.SubscriptionUUID)
+	if err != nil || backfilled == nil || backfilled.CreatedByUUID != "U100" || backfilled.RevokedByUUID != "U100" || backfilled.RevokeReason != "legacy_v28_migration" {
+		t.Fatalf("backfilled Event Subscription audit: item=%+v err=%v", backfilled, err)
+	}
+	if err := runner.Down(context.Background(), int(currentVersion-27)); err != nil {
 		t.Fatalf("rollback Event Subscription migration: %v", err)
 	}
 	var subscriptionTableCount, subscriptionColumnCount int
@@ -476,7 +505,7 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("reapply Event Subscription migration: %v", err)
 	}
-	if version, err := runner.CurrentVersion(context.Background()); err != nil || version != 28 {
+	if version, err := runner.CurrentVersion(context.Background()); err != nil || version != currentVersion {
 		t.Fatalf("Event Subscription migration version after reapply: version=%d err=%v", version, err)
 	}
 }

@@ -52,6 +52,11 @@ import type { AdmitRunResponse } from "./agent.js";
 import type { AdmitRunRequest } from "./agent.js";
 import type { ListContextMemoriesResponse } from "./agent.js";
 import type { ListContextMemoriesRequest } from "./agent.js";
+import type { RevokeEventSubscriptionRequest } from "./agent.js";
+import type { ListEventSubscriptionsResponse } from "./agent.js";
+import type { ListEventSubscriptionsRequest } from "./agent.js";
+import type { AgentEventSubscription } from "./agent.js";
+import type { CreateEventSubscriptionRequest } from "./agent.js";
 import type { MatchEventSubscriptionsResponse } from "./agent.js";
 import type { MatchEventSubscriptionsRequest } from "./agent.js";
 import * as grpc from "@grpc/grpc-js";
@@ -66,6 +71,27 @@ export interface IAgentCapabilityServiceClient {
     matchEventSubscriptions(input: MatchEventSubscriptionsRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: MatchEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
     matchEventSubscriptions(input: MatchEventSubscriptionsRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: MatchEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
     matchEventSubscriptions(input: MatchEventSubscriptionsRequest, callback: (err: grpc.ServiceError | null, value?: MatchEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: CreateEventSubscription
+     */
+    createEventSubscription(input: CreateEventSubscriptionRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    createEventSubscription(input: CreateEventSubscriptionRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    createEventSubscription(input: CreateEventSubscriptionRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    createEventSubscription(input: CreateEventSubscriptionRequest, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ListEventSubscriptions
+     */
+    listEventSubscriptions(input: ListEventSubscriptionsRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
+    listEventSubscriptions(input: ListEventSubscriptionsRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
+    listEventSubscriptions(input: ListEventSubscriptionsRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
+    listEventSubscriptions(input: ListEventSubscriptionsRequest, callback: (err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: RevokeEventSubscription
+     */
+    revokeEventSubscription(input: RevokeEventSubscriptionRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    revokeEventSubscription(input: RevokeEventSubscriptionRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    revokeEventSubscription(input: RevokeEventSubscriptionRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
+    revokeEventSubscription(input: RevokeEventSubscriptionRequest, callback: (err: grpc.ServiceError | null, value?: AgentEventSubscription) => void): grpc.ClientUnaryCall;
     /**
      * @generated from protobuf rpc: ListContextMemories
      */
@@ -266,185 +292,206 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
         return this.makeUnaryRequest<MatchEventSubscriptionsRequest, MatchEventSubscriptionsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: MatchEventSubscriptionsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): MatchEventSubscriptionsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
+     * @generated from protobuf rpc: CreateEventSubscription
+     */
+    createEventSubscription(input: CreateEventSubscriptionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void), callback?: ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[1];
+        return this.makeUnaryRequest<CreateEventSubscriptionRequest, AgentEventSubscription>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CreateEventSubscriptionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AgentEventSubscription => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ListEventSubscriptions
+     */
+    listEventSubscriptions(input: ListEventSubscriptionsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListEventSubscriptionsResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[2];
+        return this.makeUnaryRequest<ListEventSubscriptionsRequest, ListEventSubscriptionsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListEventSubscriptionsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListEventSubscriptionsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: RevokeEventSubscription
+     */
+    revokeEventSubscription(input: RevokeEventSubscriptionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void), callback?: ((err: grpc.ServiceError | null, value?: AgentEventSubscription) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[3];
+        return this.makeUnaryRequest<RevokeEventSubscriptionRequest, AgentEventSubscription>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: RevokeEventSubscriptionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AgentEventSubscription => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
      * @generated from protobuf rpc: ListContextMemories
      */
     listContextMemories(input: ListContextMemoriesRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListContextMemoriesResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListContextMemoriesResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListContextMemoriesResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[1];
+        const method = AgentCapabilityService.methods[4];
         return this.makeUnaryRequest<ListContextMemoriesRequest, ListContextMemoriesResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListContextMemoriesRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListContextMemoriesResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: AdmitRun
      */
     admitRun(input: AdmitRunRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AdmitRunResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AdmitRunResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: AdmitRunResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[2];
+        const method = AgentCapabilityService.methods[5];
         return this.makeUnaryRequest<AdmitRunRequest, AdmitRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: AdmitRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AdmitRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: CompleteRun
      */
     completeRun(input: CompleteRunRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CompleteRunResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CompleteRunResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: CompleteRunResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[3];
+        const method = AgentCapabilityService.methods[6];
         return this.makeUnaryRequest<CompleteRunRequest, CompleteRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CompleteRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): CompleteRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: FinishRun
      */
     finishRun(input: FinishRunRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: FinishRunResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[4];
+        const method = AgentCapabilityService.methods[7];
         return this.makeUnaryRequest<FinishRunRequest, FinishRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: FinishRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): FinishRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: RequestApproval
      */
     requestApproval(input: RequestApprovalRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[5];
+        const method = AgentCapabilityService.methods[8];
         return this.makeUnaryRequest<RequestApprovalRequest, ApprovalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: RequestApprovalRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ApprovalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ResolveApproval
      */
     resolveApproval(input: ResolveApprovalRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[6];
+        const method = AgentCapabilityService.methods[9];
         return this.makeUnaryRequest<ResolveApprovalRequest, ApprovalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ResolveApprovalRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ApprovalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ConsumeApproval
      */
     consumeApproval(input: ConsumeApprovalRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ConsumeApprovalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ConsumeApprovalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ConsumeApprovalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[7];
+        const method = AgentCapabilityService.methods[10];
         return this.makeUnaryRequest<ConsumeApprovalRequest, ConsumeApprovalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ConsumeApprovalRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ConsumeApprovalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ResolveApprovalGrant
      */
     resolveApprovalGrant(input: ResolveApprovalGrantRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveApprovalGrantResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveApprovalGrantResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ResolveApprovalGrantResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[8];
+        const method = AgentCapabilityService.methods[11];
         return this.makeUnaryRequest<ResolveApprovalGrantRequest, ResolveApprovalGrantResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ResolveApprovalGrantRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ResolveApprovalGrantResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ListConversations
      */
     listConversations(input: ListConversationsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[9];
+        const method = AgentCapabilityService.methods[12];
         return this.makeUnaryRequest<ListConversationsRequest, ListConversationsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListConversationsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListConversationsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: AuthorizeTaskControl
      */
     authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[10];
+        const method = AgentCapabilityService.methods[13];
         return this.makeUnaryRequest<AuthorizeTaskControlRequest, AuthorizeTaskControlResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: AuthorizeTaskControlRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AuthorizeTaskControlResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ResolveMcpContext
      */
     resolveMcpContext(input: ResolveMcpContextRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveMcpContextResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveMcpContextResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ResolveMcpContextResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[11];
+        const method = AgentCapabilityService.methods[14];
         return this.makeUnaryRequest<ResolveMcpContextRequest, ResolveMcpContextResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ResolveMcpContextRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ResolveMcpContextResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: BeginMcpToolInvocation
      */
     beginMcpToolInvocation(input: BeginMcpToolInvocationRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: BeginMcpToolInvocationResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: BeginMcpToolInvocationResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: BeginMcpToolInvocationResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[12];
+        const method = AgentCapabilityService.methods[15];
         return this.makeUnaryRequest<BeginMcpToolInvocationRequest, BeginMcpToolInvocationResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: BeginMcpToolInvocationRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): BeginMcpToolInvocationResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: FinishMcpToolInvocation
      */
     finishMcpToolInvocation(input: FinishMcpToolInvocationRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishMcpToolInvocationResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: FinishMcpToolInvocationResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: FinishMcpToolInvocationResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[13];
+        const method = AgentCapabilityService.methods[16];
         return this.makeUnaryRequest<FinishMcpToolInvocationRequest, FinishMcpToolInvocationResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: FinishMcpToolInvocationRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): FinishMcpToolInvocationResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ExecuteMcpMessageCommand
      */
     executeMcpMessageCommand(input: ExecuteMcpMessageCommandRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ExecuteMcpMessageCommandResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ExecuteMcpMessageCommandResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ExecuteMcpMessageCommandResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[14];
+        const method = AgentCapabilityService.methods[17];
         return this.makeUnaryRequest<ExecuteMcpMessageCommandRequest, ExecuteMcpMessageCommandResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ExecuteMcpMessageCommandRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ExecuteMcpMessageCommandResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ProjectTaskWorkflowState
      */
     projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[15];
+        const method = AgentCapabilityService.methods[18];
         return this.makeUnaryRequest<ProjectTaskWorkflowStateRequest, ProjectTaskWorkflowStateResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProjectTaskWorkflowStateRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ProjectTaskWorkflowStateResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ListTaskWorkflowProjectionSnapshots
      */
     listTaskWorkflowProjectionSnapshots(input: ListTaskWorkflowProjectionSnapshotsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListTaskWorkflowProjectionSnapshotsResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[16];
+        const method = AgentCapabilityService.methods[19];
         return this.makeUnaryRequest<ListTaskWorkflowProjectionSnapshotsRequest, ListTaskWorkflowProjectionSnapshotsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListTaskWorkflowProjectionSnapshotsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListTaskWorkflowProjectionSnapshotsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ProposeWorkflowRepair
      */
     proposeWorkflowRepair(input: ProposeWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[17];
+        const method = AgentCapabilityService.methods[20];
         return this.makeUnaryRequest<ProposeWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProposeWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: DecideWorkflowRepair
      */
     decideWorkflowRepair(input: DecideWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[18];
+        const method = AgentCapabilityService.methods[21];
         return this.makeUnaryRequest<DecideWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: DecideWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetWorkflowRepair
      */
     getWorkflowRepair(input: GetWorkflowRepairRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: WorkflowRepairProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[19];
+        const method = AgentCapabilityService.methods[22];
         return this.makeUnaryRequest<GetWorkflowRepairRequest, WorkflowRepairProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetWorkflowRepairRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): WorkflowRepairProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ProposeRuntimePromotion
      */
     proposeRuntimePromotion(input: ProposeRuntimePromotionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[20];
+        const method = AgentCapabilityService.methods[23];
         return this.makeUnaryRequest<ProposeRuntimePromotionRequest, RuntimePromotionProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProposeRuntimePromotionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): RuntimePromotionProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ReviewRuntimePromotion
      */
     reviewRuntimePromotion(input: ReviewRuntimePromotionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[21];
+        const method = AgentCapabilityService.methods[24];
         return this.makeUnaryRequest<ReviewRuntimePromotionRequest, RuntimePromotionProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ReviewRuntimePromotionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): RuntimePromotionProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetRuntimePromotion
      */
     getRuntimePromotion(input: GetRuntimePromotionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: RuntimePromotionProposalResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[22];
+        const method = AgentCapabilityService.methods[25];
         return this.makeUnaryRequest<GetRuntimePromotionRequest, RuntimePromotionProposalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetRuntimePromotionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): RuntimePromotionProposalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetRuntimePromotionEvidence
      */
     getRuntimePromotionEvidence(input: GetRuntimePromotionEvidenceRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionEvidenceResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionEvidenceResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: RuntimePromotionEvidenceResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[23];
+        const method = AgentCapabilityService.methods[26];
         return this.makeUnaryRequest<GetRuntimePromotionEvidenceRequest, RuntimePromotionEvidenceResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetRuntimePromotionEvidenceRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): RuntimePromotionEvidenceResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: RevokeRuntimePromotion
      */
     revokeRuntimePromotion(input: RevokeRuntimePromotionRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionGrantResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: RuntimePromotionGrantResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: RuntimePromotionGrantResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[24];
+        const method = AgentCapabilityService.methods[27];
         return this.makeUnaryRequest<RevokeRuntimePromotionRequest, RuntimePromotionGrantResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: RevokeRuntimePromotionRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): RuntimePromotionGrantResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: CreateArtifact
      */
     createArtifact(input: CreateArtifactRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: CreateArtifactResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[25];
+        const method = AgentCapabilityService.methods[28];
         return this.makeUnaryRequest<CreateArtifactRequest, CreateArtifactResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CreateArtifactRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): CreateArtifactResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetArtifact
      */
     getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[26];
+        const method = AgentCapabilityService.methods[29];
         return this.makeUnaryRequest<GetArtifactRequest, GetArtifactResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetArtifactRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetArtifactResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

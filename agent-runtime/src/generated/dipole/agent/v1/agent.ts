@@ -1481,6 +1481,34 @@ export interface AgentEventSubscription {
      * @generated from protobuf field: bytes filter_json = 10
      */
     filterJson: Uint8Array;
+    /**
+     * @generated from protobuf field: string status = 11
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: string created_by_id = 12
+     */
+    createdById: string;
+    /**
+     * @generated from protobuf field: string revoked_by_id = 13
+     */
+    revokedById: string;
+    /**
+     * @generated from protobuf field: string revoke_reason = 14
+     */
+    revokeReason: string;
+    /**
+     * @generated from protobuf field: int64 created_at_unix_ms = 15
+     */
+    createdAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 updated_at_unix_ms = 16
+     */
+    updatedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 revoked_at_unix_ms = 17
+     */
+    revokedAtUnixMs: bigint;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.MatchEventSubscriptionsResponse
@@ -1490,6 +1518,102 @@ export interface MatchEventSubscriptionsResponse {
      * @generated from protobuf field: repeated dipole.agent.v1.AgentEventSubscription subscriptions = 1
      */
     subscriptions: AgentEventSubscription[];
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CreateEventSubscriptionRequest
+ */
+export interface CreateEventSubscriptionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string definition_id = 3
+     */
+    definitionId: string;
+    /**
+     * @generated from protobuf field: uint64 definition_version = 4
+     */
+    definitionVersion: bigint;
+    /**
+     * @generated from protobuf field: string event_type = 5
+     */
+    eventType: string;
+    /**
+     * @generated from protobuf field: string resource_type = 6
+     */
+    resourceType: string;
+    /**
+     * @generated from protobuf field: string resource_id = 7
+     */
+    resourceId: string;
+    /**
+     * @generated from protobuf field: string filter_kind = 8
+     */
+    filterKind: string;
+    /**
+     * @generated from protobuf field: bytes filter_json = 9
+     */
+    filterJson: Uint8Array;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListEventSubscriptionsRequest
+ */
+export interface ListEventSubscriptionsRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string after_subscription_id = 3
+     */
+    afterSubscriptionId: string;
+    /**
+     * @generated from protobuf field: uint32 limit = 4
+     */
+    limit: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListEventSubscriptionsResponse
+ */
+export interface ListEventSubscriptionsResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentEventSubscription subscriptions = 1
+     */
+    subscriptions: AgentEventSubscription[];
+    /**
+     * @generated from protobuf field: string next_cursor = 2
+     */
+    nextCursor: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RevokeEventSubscriptionRequest
+ */
+export interface RevokeEventSubscriptionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string subscription_id = 3
+     */
+    subscriptionId: string;
+    /**
+     * @generated from protobuf field: string reason = 4
+     */
+    reason: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ListContextMemoriesRequest
@@ -5909,7 +6033,14 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
             { no: 7, name: "resource_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "resource_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "filter_kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 10, name: "filter_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
+            { no: 10, name: "filter_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
+            { no: 11, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "created_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 13, name: "revoked_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 14, name: "revoke_reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 15, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 16, name: "updated_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 17, name: "revoked_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
         ]);
     }
     create(value?: PartialMessage<AgentEventSubscription>): AgentEventSubscription {
@@ -5924,6 +6055,13 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
         message.resourceId = "";
         message.filterKind = "";
         message.filterJson = new Uint8Array(0);
+        message.status = "";
+        message.createdById = "";
+        message.revokedById = "";
+        message.revokeReason = "";
+        message.createdAtUnixMs = 0n;
+        message.updatedAtUnixMs = 0n;
+        message.revokedAtUnixMs = 0n;
         if (value !== undefined)
             reflectionMergePartial<AgentEventSubscription>(this, message, value);
         return message;
@@ -5962,6 +6100,27 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
                     break;
                 case /* bytes filter_json */ 10:
                     message.filterJson = reader.bytes();
+                    break;
+                case /* string status */ 11:
+                    message.status = reader.string();
+                    break;
+                case /* string created_by_id */ 12:
+                    message.createdById = reader.string();
+                    break;
+                case /* string revoked_by_id */ 13:
+                    message.revokedById = reader.string();
+                    break;
+                case /* string revoke_reason */ 14:
+                    message.revokeReason = reader.string();
+                    break;
+                case /* int64 created_at_unix_ms */ 15:
+                    message.createdAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 updated_at_unix_ms */ 16:
+                    message.updatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 revoked_at_unix_ms */ 17:
+                    message.revokedAtUnixMs = reader.int64().toBigInt();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -6005,6 +6164,27 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
         /* bytes filter_json = 10; */
         if (message.filterJson.length)
             writer.tag(10, WireType.LengthDelimited).bytes(message.filterJson);
+        /* string status = 11; */
+        if (message.status !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.status);
+        /* string created_by_id = 12; */
+        if (message.createdById !== "")
+            writer.tag(12, WireType.LengthDelimited).string(message.createdById);
+        /* string revoked_by_id = 13; */
+        if (message.revokedById !== "")
+            writer.tag(13, WireType.LengthDelimited).string(message.revokedById);
+        /* string revoke_reason = 14; */
+        if (message.revokeReason !== "")
+            writer.tag(14, WireType.LengthDelimited).string(message.revokeReason);
+        /* int64 created_at_unix_ms = 15; */
+        if (message.createdAtUnixMs !== 0n)
+            writer.tag(15, WireType.Varint).int64(message.createdAtUnixMs);
+        /* int64 updated_at_unix_ms = 16; */
+        if (message.updatedAtUnixMs !== 0n)
+            writer.tag(16, WireType.Varint).int64(message.updatedAtUnixMs);
+        /* int64 revoked_at_unix_ms = 17; */
+        if (message.revokedAtUnixMs !== 0n)
+            writer.tag(17, WireType.Varint).int64(message.revokedAtUnixMs);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -6062,6 +6242,311 @@ class MatchEventSubscriptionsResponse$Type extends MessageType<MatchEventSubscri
  * @generated MessageType for protobuf message dipole.agent.v1.MatchEventSubscriptionsResponse
  */
 export const MatchEventSubscriptionsResponse = new MatchEventSubscriptionsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreateEventSubscriptionRequest$Type extends MessageType<CreateEventSubscriptionRequest> {
+    constructor() {
+        super("dipole.agent.v1.CreateEventSubscriptionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "definition_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "definition_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 5, name: "event_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "resource_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "resource_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "filter_kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "filter_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CreateEventSubscriptionRequest>): CreateEventSubscriptionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.definitionId = "";
+        message.definitionVersion = 0n;
+        message.eventType = "";
+        message.resourceType = "";
+        message.resourceId = "";
+        message.filterKind = "";
+        message.filterJson = new Uint8Array(0);
+        if (value !== undefined)
+            reflectionMergePartial<CreateEventSubscriptionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreateEventSubscriptionRequest): CreateEventSubscriptionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string definition_id */ 3:
+                    message.definitionId = reader.string();
+                    break;
+                case /* uint64 definition_version */ 4:
+                    message.definitionVersion = reader.uint64().toBigInt();
+                    break;
+                case /* string event_type */ 5:
+                    message.eventType = reader.string();
+                    break;
+                case /* string resource_type */ 6:
+                    message.resourceType = reader.string();
+                    break;
+                case /* string resource_id */ 7:
+                    message.resourceId = reader.string();
+                    break;
+                case /* string filter_kind */ 8:
+                    message.filterKind = reader.string();
+                    break;
+                case /* bytes filter_json */ 9:
+                    message.filterJson = reader.bytes();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreateEventSubscriptionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string definition_id = 3; */
+        if (message.definitionId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.definitionId);
+        /* uint64 definition_version = 4; */
+        if (message.definitionVersion !== 0n)
+            writer.tag(4, WireType.Varint).uint64(message.definitionVersion);
+        /* string event_type = 5; */
+        if (message.eventType !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.eventType);
+        /* string resource_type = 6; */
+        if (message.resourceType !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.resourceType);
+        /* string resource_id = 7; */
+        if (message.resourceId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.resourceId);
+        /* string filter_kind = 8; */
+        if (message.filterKind !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.filterKind);
+        /* bytes filter_json = 9; */
+        if (message.filterJson.length)
+            writer.tag(9, WireType.LengthDelimited).bytes(message.filterJson);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CreateEventSubscriptionRequest
+ */
+export const CreateEventSubscriptionRequest = new CreateEventSubscriptionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListEventSubscriptionsRequest$Type extends MessageType<ListEventSubscriptionsRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListEventSubscriptionsRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "after_subscription_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "limit", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListEventSubscriptionsRequest>): ListEventSubscriptionsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.afterSubscriptionId = "";
+        message.limit = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListEventSubscriptionsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListEventSubscriptionsRequest): ListEventSubscriptionsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string after_subscription_id */ 3:
+                    message.afterSubscriptionId = reader.string();
+                    break;
+                case /* uint32 limit */ 4:
+                    message.limit = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListEventSubscriptionsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string after_subscription_id = 3; */
+        if (message.afterSubscriptionId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.afterSubscriptionId);
+        /* uint32 limit = 4; */
+        if (message.limit !== 0)
+            writer.tag(4, WireType.Varint).uint32(message.limit);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListEventSubscriptionsRequest
+ */
+export const ListEventSubscriptionsRequest = new ListEventSubscriptionsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListEventSubscriptionsResponse$Type extends MessageType<ListEventSubscriptionsResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListEventSubscriptionsResponse", [
+            { no: 1, name: "subscriptions", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentEventSubscription },
+            { no: 2, name: "next_cursor", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListEventSubscriptionsResponse>): ListEventSubscriptionsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.subscriptions = [];
+        message.nextCursor = "";
+        if (value !== undefined)
+            reflectionMergePartial<ListEventSubscriptionsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListEventSubscriptionsResponse): ListEventSubscriptionsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.AgentEventSubscription subscriptions */ 1:
+                    message.subscriptions.push(AgentEventSubscription.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* string next_cursor */ 2:
+                    message.nextCursor = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListEventSubscriptionsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.AgentEventSubscription subscriptions = 1; */
+        for (let i = 0; i < message.subscriptions.length; i++)
+            AgentEventSubscription.internalBinaryWrite(message.subscriptions[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string next_cursor = 2; */
+        if (message.nextCursor !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.nextCursor);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListEventSubscriptionsResponse
+ */
+export const ListEventSubscriptionsResponse = new ListEventSubscriptionsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RevokeEventSubscriptionRequest$Type extends MessageType<RevokeEventSubscriptionRequest> {
+    constructor() {
+        super("dipole.agent.v1.RevokeEventSubscriptionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "subscription_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RevokeEventSubscriptionRequest>): RevokeEventSubscriptionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.subscriptionId = "";
+        message.reason = "";
+        if (value !== undefined)
+            reflectionMergePartial<RevokeEventSubscriptionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RevokeEventSubscriptionRequest): RevokeEventSubscriptionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string subscription_id */ 3:
+                    message.subscriptionId = reader.string();
+                    break;
+                case /* string reason */ 4:
+                    message.reason = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RevokeEventSubscriptionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string subscription_id = 3; */
+        if (message.subscriptionId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.subscriptionId);
+        /* string reason = 4; */
+        if (message.reason !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.reason);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RevokeEventSubscriptionRequest
+ */
+export const RevokeEventSubscriptionRequest = new RevokeEventSubscriptionRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ListContextMemoriesRequest$Type extends MessageType<ListContextMemoriesRequest> {
     constructor() {
@@ -6357,6 +6842,9 @@ export const ListContextMemoriesResponse = new ListContextMemoriesResponse$Type(
  */
 export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapabilityService", [
     { name: "MatchEventSubscriptions", options: {}, I: MatchEventSubscriptionsRequest, O: MatchEventSubscriptionsResponse },
+    { name: "CreateEventSubscription", options: {}, I: CreateEventSubscriptionRequest, O: AgentEventSubscription },
+    { name: "ListEventSubscriptions", options: {}, I: ListEventSubscriptionsRequest, O: ListEventSubscriptionsResponse },
+    { name: "RevokeEventSubscription", options: {}, I: RevokeEventSubscriptionRequest, O: AgentEventSubscription },
     { name: "ListContextMemories", options: {}, I: ListContextMemoriesRequest, O: ListContextMemoriesResponse },
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },

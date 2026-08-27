@@ -197,19 +197,22 @@ func (r *AgentPolicyRepository) RevokeRuntimePromotionGrant(ctx context.Context,
 	return rows > 0, nil
 }
 
-func (r *AgentPolicyRepository) CreateEventSubscription(ctx context.Context, subscription application.AgentEventSubscriptionV1) error {
+func (r *AgentPolicyRepository) CreateEventSubscription(ctx context.Context, subscription application.AgentEventSubscriptionV1) (bool, error) {
 	if err := subscription.Validate(); err != nil || subscription.Status != application.AgentSubscriptionStatusActive || subscription.RevokedAt != nil {
-		return fmt.Errorf("validate Agent Event Subscription: %w", application.ErrAgentSubscriptionInvalid)
+		return false, fmt.Errorf("validate Agent Event Subscription: %w", application.ErrAgentSubscriptionInvalid)
 	}
-	if err := r.queries.InsertAgentEventSubscription(ctx, generated.InsertAgentEventSubscriptionParams{
+	rows, err := r.queries.InsertAgentEventSubscription(ctx, generated.InsertAgentEventSubscriptionParams{
 		SubscriptionUuid: subscription.SubscriptionUUID, DefinitionUuid: subscription.DefinitionUUID,
 		DefinitionVersion: subscription.DefinitionVersion, TenantID: subscription.TenantID, AgentUuid: subscription.AgentUUID,
 		Status: string(subscription.Status), EventType: subscription.EventType, ResourceType: subscription.ResourceType,
 		ResourceID: subscription.ResourceID, FilterKind: string(subscription.FilterKind), FilterJson: subscription.FilterJSON,
-	}); err != nil {
-		return fmt.Errorf("create Agent Event Subscription: %w", err)
+		CreatedByUuid: subscription.CreatedByUUID, RevokedAt: nullableTime(subscription.RevokedAt),
+		RevokedByUuid: nullableString(subscription.RevokedByUUID), RevokeReason: nullableString(subscription.RevokeReason),
+	})
+	if err != nil {
+		return false, fmt.Errorf("create Agent Event Subscription: %w", err)
 	}
-	return nil
+	return rows > 0, nil
 }
 
 func (r *AgentPolicyRepository) GetEventSubscription(ctx context.Context, subscriptionUUID string) (*application.AgentEventSubscriptionV1, error) {
@@ -238,27 +241,44 @@ func (r *AgentPolicyRepository) ListMatchingEventSubscriptions(ctx context.Conte
 	return result, nil
 }
 
+func (r *AgentPolicyRepository) ListOwnedEventSubscriptions(ctx context.Context, tenantID, ownerUUID, afterUUID string, limit int) ([]application.AgentEventSubscriptionV1, error) {
+	if limit <= 0 || limit > 101 {
+		return nil, application.ErrAgentSubscriptionInvalid
+	}
+	rows, err := r.queries.ListOwnedAgentEventSubscriptions(ctx, generated.ListOwnedAgentEventSubscriptionsParams{
+		TenantID: strings.TrimSpace(tenantID), CreatedByUuid: strings.TrimSpace(ownerUUID), OwnerUuid: strings.TrimSpace(ownerUUID),
+		SubscriptionUuid: strings.TrimSpace(afterUUID), Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list owned Agent Event Subscriptions: %w", err)
+	}
+	result := make([]application.AgentEventSubscriptionV1, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, *mapAgentEventSubscription(row))
+	}
+	return result, nil
+}
+
 func mapAgentEventSubscription(row generated.AgentEventSubscription) *application.AgentEventSubscriptionV1 {
 	return &application.AgentEventSubscriptionV1{
 		SubscriptionUUID: row.SubscriptionUuid, DefinitionUUID: row.DefinitionUuid, DefinitionVersion: row.DefinitionVersion,
 		TenantID: row.TenantID, AgentUUID: row.AgentUuid, Status: application.AgentSubscriptionStatusV1(row.Status),
 		EventType: row.EventType, ResourceType: row.ResourceType, ResourceID: row.ResourceID,
 		FilterKind: application.AgentSubscriptionFilterKindV1(row.FilterKind), FilterJSON: row.FilterJson,
-		CreatedAt: row.CreatedAt, RevokedAt: timePointer(row.RevokedAt),
+		CreatedByUUID: row.CreatedByUuid, RevokedByUUID: row.RevokedByUuid.String, RevokeReason: row.RevokeReason.String,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, RevokedAt: timePointer(row.RevokedAt),
 	}
 }
 
-func (r *AgentPolicyRepository) RevokeEventSubscription(ctx context.Context, subscriptionUUID string, revokedAt time.Time) error {
+func (r *AgentPolicyRepository) RevokeEventSubscription(ctx context.Context, subscriptionUUID, revokedByUUID, reason string, revokedAt time.Time) (bool, error) {
 	rows, err := r.queries.RevokeAgentEventSubscription(ctx, generated.RevokeAgentEventSubscriptionParams{
-		RevokedAt: nullableTime(&revokedAt), SubscriptionUuid: strings.TrimSpace(subscriptionUUID),
+		RevokedAt: nullableTime(&revokedAt), RevokedByUuid: nullableString(revokedByUUID), RevokeReason: nullableString(reason),
+		UpdatedAt: revokedAt, SubscriptionUuid: strings.TrimSpace(subscriptionUUID),
 	})
 	if err != nil {
-		return fmt.Errorf("revoke Agent Event Subscription: %w", err)
+		return false, fmt.Errorf("revoke Agent Event Subscription: %w", err)
 	}
-	if rows == 0 {
-		return application.ErrAgentSubscriptionInvalid
-	}
-	return nil
+	return rows > 0, nil
 }
 
 func (r *AgentPolicyRepository) CreateTask(ctx context.Context, task application.AgentTaskV1) (bool, error) {

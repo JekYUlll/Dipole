@@ -56,16 +56,16 @@
 - **建议方向：** 先建立 Gateway principal 派生的查看/纠正/撤销 API、append-only 版本和删除审计，再增加离线 Observation/Reflection Worker；写入策略要求来源证据、置信度、TTL、幂等键和冲突合并。基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker，模型生成记录始终保持不可信数据边界。
 - **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回或向用户展示个性化结论前，完成管理/删除链和 permission/retrieval Eval；当前 foundation 只允许受控 seed 与 Shadow 读取。
 
-### AD-034：Event Subscription 缺少认证管理入口与语义预筛
+### AD-034：Event Subscription 缺少用户界面与语义预筛
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Trigger Engine、Definition 授权、模型成本、Gateway/前端配置与 Project Guardian 演示
-- **现状：** migration v28、sqlc Store、Core resolver 和受认证 Agent RPC 已持久化并解析绑定精确 Definition version 的订阅；TS Runtime 可显式使用 `all|message_contains_any` 在 EventLedger、Temporal 和模型前确定性过滤，并把稳定 Subscription ID 固定到 Task。Compose 与默认配置继续使用 `direct_target`。
-- **风险：** 当前仅能通过受控内部 Store 配置订阅，缺少面向用户的认证创建、版本化更新、撤销审计和 UI；确定性关键词无法覆盖语义等价表达。直接启用共享环境订阅模式会造成不可运维策略或相关事件漏触发。
-- **建议方向：** 先增加由 Gateway principal 派生 owner 的管理 API，固定 immutable version、Definition/scope 复核、撤销与审计，再用离线 Eval 比较规则、embedding、小模型分类器的 recall、precision、延迟和单事件成本；高成本 Agent 仍只接收预筛后的事件。
-- **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成管理与撤销链；语义预筛在确定性规则建立真实事件基线后评估，不能直接对每条消息调用大模型。
+- **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。创建重新校验 Definition/tenant/Agent/read scope，将大小写无关关键词集合规范化后生成稳定 ID，精确重放收敛。TS Runtime 可显式在 EventLedger、Temporal 和模型前确定性过滤；Compose 与默认配置继续使用 `direct_target`。
+- **风险：** 管理能力目前仅为 Gateway-only 内部 gRPC，尚无公开 HTTP/Pencil 用户界面；确定性关键词无法覆盖语义等价表达。直接启用共享环境订阅模式仍会造成难以运维的策略或相关事件漏触发。
+- **建议方向：** Pencil transport 恢复后增加 owner 管理页面和公开 Gateway adapter；再用离线 Eval 比较规则、embedding、小模型分类器的 recall、precision、延迟和单事件成本，高成本 Agent 只接收预筛后的事件。
+- **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成用户管理界面与真实事件基线；语义预筛需先离线评估，不能直接对每条消息调用大模型。
 
 ### AD-032：Artifact 对象写入后缺少孤儿清扫证据
 

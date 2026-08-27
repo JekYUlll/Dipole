@@ -259,7 +259,7 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 }
 
 const getAgentEventSubscription = `-- name: GetAgentEventSubscription :one
-SELECT id, subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid, status, event_type, resource_type, resource_id, filter_kind, filter_json, created_at, revoked_at FROM agent_event_subscriptions
+SELECT id, subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid, status, event_type, resource_type, resource_id, filter_kind, filter_json, created_at, revoked_at, revoked_by_uuid, revoke_reason, updated_at, created_by_uuid FROM agent_event_subscriptions
 WHERE subscription_uuid = ?
 LIMIT 1
 `
@@ -282,6 +282,10 @@ func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUui
 		&i.FilterJson,
 		&i.CreatedAt,
 		&i.RevokedAt,
+		&i.RevokedByUuid,
+		&i.RevokeReason,
+		&i.UpdatedAt,
+		&i.CreatedByUuid,
 	)
 	return i, err
 }
@@ -557,12 +561,12 @@ func (q *Queries) InsertAgentDefinitionVersion(ctx context.Context, arg InsertAg
 	return err
 }
 
-const insertAgentEventSubscription = `-- name: InsertAgentEventSubscription :exec
-INSERT INTO agent_event_subscriptions (
+const insertAgentEventSubscription = `-- name: InsertAgentEventSubscription :execrows
+INSERT IGNORE INTO agent_event_subscriptions (
     subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
-    status, event_type, resource_type, resource_id, filter_kind, filter_json,
-    created_at, revoked_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), ?)
+    status, event_type, resource_type, resource_id, filter_kind, filter_json, created_by_uuid,
+    created_at, updated_at, revoked_at, revoked_by_uuid, revoke_reason
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3), ?, ?, ?)
 `
 
 type InsertAgentEventSubscriptionParams struct {
@@ -577,11 +581,14 @@ type InsertAgentEventSubscriptionParams struct {
 	ResourceID        string
 	FilterKind        string
 	FilterJson        json.RawMessage
+	CreatedByUuid     string
 	RevokedAt         sql.NullTime
+	RevokedByUuid     sql.NullString
+	RevokeReason      sql.NullString
 }
 
-func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) error {
-	_, err := q.db.ExecContext(ctx, insertAgentEventSubscription,
+func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentEventSubscription,
 		arg.SubscriptionUuid,
 		arg.DefinitionUuid,
 		arg.DefinitionVersion,
@@ -593,9 +600,15 @@ func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAg
 		arg.ResourceID,
 		arg.FilterKind,
 		arg.FilterJson,
+		arg.CreatedByUuid,
 		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const insertAgentRun = `-- name: InsertAgentRun :execrows
@@ -920,7 +933,7 @@ func (q *Queries) ListApprovedAgentApprovalGrants(ctx context.Context, arg ListA
 }
 
 const listMatchingAgentEventSubscriptions = `-- name: ListMatchingAgentEventSubscriptions :many
-SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at
+SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at, s.revoked_by_uuid, s.revoke_reason, s.updated_at, s.created_by_uuid
 FROM agent_event_subscriptions AS s
 JOIN agent_definition_versions AS d
   ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
@@ -969,6 +982,77 @@ func (q *Queries) ListMatchingAgentEventSubscriptions(ctx context.Context, arg L
 			&i.FilterJson,
 			&i.CreatedAt,
 			&i.RevokedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+			&i.UpdatedAt,
+			&i.CreatedByUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnedAgentEventSubscriptions = `-- name: ListOwnedAgentEventSubscriptions :many
+SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at, s.revoked_by_uuid, s.revoke_reason, s.updated_at, s.created_by_uuid
+FROM agent_event_subscriptions AS s
+JOIN agent_definition_versions AS d
+  ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
+WHERE s.tenant_id = ? AND s.created_by_uuid = ? AND d.owner_uuid = ?
+  AND s.subscription_uuid > ?
+ORDER BY s.subscription_uuid ASC
+LIMIT ?
+`
+
+type ListOwnedAgentEventSubscriptionsParams struct {
+	TenantID         string
+	CreatedByUuid    string
+	OwnerUuid        string
+	SubscriptionUuid string
+	Limit            int32
+}
+
+func (q *Queries) ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentEventSubscriptions,
+		arg.TenantID,
+		arg.CreatedByUuid,
+		arg.OwnerUuid,
+		arg.SubscriptionUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentEventSubscription{}
+	for rows.Next() {
+		var i AgentEventSubscription
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionUuid,
+			&i.DefinitionUuid,
+			&i.DefinitionVersion,
+			&i.TenantID,
+			&i.AgentUuid,
+			&i.Status,
+			&i.EventType,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.FilterKind,
+			&i.FilterJson,
+			&i.CreatedAt,
+			&i.RevokedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+			&i.UpdatedAt,
+			&i.CreatedByUuid,
 		); err != nil {
 			return nil, err
 		}
@@ -1076,17 +1160,26 @@ func (q *Queries) RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAg
 
 const revokeAgentEventSubscription = `-- name: RevokeAgentEventSubscription :execrows
 UPDATE agent_event_subscriptions
-SET status = 'revoked', revoked_at = ?
+SET status = 'revoked', revoked_at = ?, revoked_by_uuid = ?, revoke_reason = ?, updated_at = ?
 WHERE subscription_uuid = ? AND status = 'active' AND revoked_at IS NULL
 `
 
 type RevokeAgentEventSubscriptionParams struct {
 	RevokedAt        sql.NullTime
+	RevokedByUuid    sql.NullString
+	RevokeReason     sql.NullString
+	UpdatedAt        time.Time
 	SubscriptionUuid string
 }
 
 func (q *Queries) RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, revokeAgentEventSubscription, arg.RevokedAt, arg.SubscriptionUuid)
+	result, err := q.db.ExecContext(ctx, revokeAgentEventSubscription,
+		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
+		arg.UpdatedAt,
+		arg.SubscriptionUuid,
+	)
 	if err != nil {
 		return 0, err
 	}
