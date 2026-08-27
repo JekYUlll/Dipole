@@ -24,7 +24,7 @@ class BaselineReportTest(unittest.TestCase):
             "schema_version": "dipole.performance.operations.v4",
             "run_id": "g0-20260827",
             "scenario": "mixed",
-            "environment": {"git_commit": "abc123", "cpu": "test cpu", "topology": "dist"},
+            "environment": {"git_commit": "a" * 40, "cpu": "test cpu", "topology": "dist"},
             "parameters": {
                 "user_count": 20,
                 "group_size": 20,
@@ -95,6 +95,20 @@ class BaselineReportTest(unittest.TestCase):
                     }
                 },
             },
+            "runtime_provenance": {
+                "schema_version": "dipole.performance.runtime-provenance.v1",
+                "expected_revision": "a" * 40,
+                "source_aligned": True,
+                "services": {
+                    "gateway": {
+                        "container_id": "1" * 64,
+                        "image_id": "sha256:" + "b" * 64,
+                        "revision": "a" * 40,
+                        "created": "2026-08-28T06:30:00Z",
+                        "source_dirty": False,
+                    }
+                },
+            },
         }
 
     def test_builds_normalized_report(self):
@@ -133,6 +147,8 @@ class BaselineReportTest(unittest.TestCase):
         self.assertEqual(report["process_resources"]["sample_count"], 4)
         self.assertEqual(report["process_resources"]["services"]["gateway"]["cpu_core_percent"], 37.5)
         self.assertEqual(report["process_resources"]["services"]["gateway"]["rss_peak_bytes"], 125_829_120)
+        self.assertTrue(report["runtime_provenance"]["source_aligned"])
+        self.assertEqual(report["runtime_provenance"]["services"]["gateway"]["revision"], "a" * 40)
 
     def test_missing_samples_remain_explicit(self):
         self.summary["metrics"].pop("msg_e2e_latency_ms")
@@ -202,6 +218,31 @@ class BaselineReportTest(unittest.TestCase):
 
         self.assertFalse(report["process_resources"]["available"])
         self.assertIsNone(report["process_resources"]["services"])
+        self.assertFalse(report["runtime_provenance"]["available"])
+
+    def test_v4_requires_aligned_runtime_provenance(self):
+        invalid_cases = []
+
+        missing = json.loads(json.dumps(self.operations))
+        missing.pop("runtime_provenance")
+        invalid_cases.append(missing)
+
+        mismatched = json.loads(json.dumps(self.operations))
+        mismatched["runtime_provenance"]["source_aligned"] = False
+        invalid_cases.append(mismatched)
+
+        dirty = json.loads(json.dumps(self.operations))
+        dirty["runtime_provenance"]["services"]["gateway"]["source_dirty"] = True
+        invalid_cases.append(dirty)
+
+        collector_mismatch = json.loads(json.dumps(self.operations))
+        collector_mismatch["environment"]["git_commit"] = "c" * 40
+        invalid_cases.append(collector_mismatch)
+
+        for operations in invalid_cases:
+            with self.subTest(operations=operations):
+                with self.assertRaises(ValueError):
+                    build_report(self.summary, operations)
 
     def test_v4_requires_consistent_process_resources(self):
         invalid_cases = []
@@ -261,6 +302,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("Receiver connection window | 15000 ms", markdown)
         self.assertIn("Hot-group thresholds | members=200, messages=50", markdown)
         self.assertIn("Gateway | 37.50% | 120.00 MiB | 18 | 240 | 12", markdown)
+        self.assertIn("Gateway | `bbbbbbbbbbbb` | `aaaaaaaaaaaa` | clean", markdown)
         self.assertIn("该报告只描述本次环境", markdown)
 
     def test_json_round_trip_is_stable(self):

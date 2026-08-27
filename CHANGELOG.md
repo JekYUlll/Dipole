@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C1 为 Go 实时数据面基准增加运行镜像来源门禁：Docker 镜像写入 OCI revision/created 与 source dirty 标签，`run_bench.sh` 从运行容器解析不可变 container/image ID，并要求被测服务、采集器和干净源码树绑定同一完整 Git revision；operations/baseline v4 归档逐服务来源证据，缺标签、dirty 构建、提交偏差或重复容器绑定均在负载启动前 fail closed。
 - C1 增加 Go 实时数据面资源基准采集：`process_metrics.py` 从固定服务 PID 的 `/proc` 多点采样 CPU、RSS、线程与 context switch，`run_bench.sh` 将结果绑定到 operations/baseline v4；进程重启、服务集合漂移和计数异常 fail closed，v1-v3 历史报告继续可读并显式标记资源证据不可用。真实连接梯度与故障基线仍待独立归档。
 - Agent G4 增加 Event Subscription rollout evidence gate：CLI 同时读取 corpus、双评审 review 和 candidate evidence，重新执行 review/prefilter evaluator 后才产出低敏 `eligible|blocked` 决策，避免信任调用方预聚合报告。决策绑定 corpus、review、final-label、candidate evidence/configuration 哈希与 agreement、precision/recall、p95、成本指标；任一门槛失败返回 2，哈希/结构/逐 case 绑定无效返回 1。该门禁不修改 Trigger/Runtime mode 或 Capability authority。
 - Agent G4 增加 Event Subscription corpus review v1：语言中立 review/report schema 将两个独立 reviewer 的完整逐 case 标签绑定到 prefilter corpus SHA-256；有分歧时要求第三个独立 adjudicator 精确裁决全部分歧 case。纯离线 evaluator 对身份复用、case 覆盖、裁决集合和最终 corpus 标签执行 fail-closed 校验，CLI 以 `0/2/1` 区分达标、未达标和无效输入。低敏报告只含 review/final-label 哈希、agreement bps、计数和异常 case ID，不回显消息正文或 reviewer 身份。
