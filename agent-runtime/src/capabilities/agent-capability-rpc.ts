@@ -48,6 +48,11 @@ export interface ConversationListItem {
   readonly unreadCount: number;
 }
 
+export interface AgentTaskControlAuthorization {
+  readonly taskId: string;
+  readonly taskStatus: string;
+}
+
 export class AgentCapabilityRPCClient {
   constructor(
     private readonly rpc: IAgentCapabilityServiceClient,
@@ -202,6 +207,25 @@ export class AgentCapabilityRPCClient {
           readSeq: item.readSeq.toString(),
           unreadCount: item.unreadCount
         })));
+      });
+    });
+  }
+
+  async authorizeTaskControl(taskId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskControlAuthorization> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.authorizeTaskControl({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, principalUserId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Task control authorization returned no response"));
+          return;
+        }
+        if (response.taskId !== taskId || response.taskStatus.trim().length === 0) {
+          reject(new Error("Agent Task control authorization returned a conflicting binding"));
+          return;
+        }
+        resolve({ taskId: response.taskId, taskStatus: response.taskStatus });
       });
     });
   }

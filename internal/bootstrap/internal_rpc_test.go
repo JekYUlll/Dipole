@@ -45,6 +45,14 @@ func (rpcAgentResolverStub) Resolve(context.Context, string, string) (applicatio
 
 type rpcAgentAdmissionStub struct{}
 type rpcAgentApprovalStub struct{}
+type rpcAgentTaskControlStub struct{}
+
+func (rpcAgentTaskControlStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
+	if taskUUID != "TASK-1" || principalUUID != "U100" {
+		return nil, application.ErrAgentExecutionPolicyDenied
+	}
+	return &application.AgentTaskControlAuthorizationV1{TaskUUID: taskUUID, Status: application.AgentTaskStatusWaitingApproval}, nil
+}
 
 func (rpcAgentApprovalStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
 	approval := request.Approval
@@ -211,6 +219,38 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent Core method code = %s, want permission denied", status.Code(err))
+	}
+}
+
+func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	server, err := NewCoreRPCServerWithAgentControl(
+		cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{},
+	)
+	if err != nil {
+		t.Fatalf("start Agent control rpc server: %v", err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+	interceptor, err := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	if err != nil {
+		t.Fatalf("create Agent rpc credentials: %v", err)
+	}
+	connection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor))
+	if err != nil {
+		t.Fatalf("dial Agent rpc: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	client := agentv1.NewAgentCapabilityServiceClient(connection)
+	response, err := client.AuthorizeTaskControl(context.Background(), &agentv1.AuthorizeTaskControlRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", PrincipalUserId: "U100",
+	})
+	if err != nil || response.GetTaskStatus() != "waiting_approval" {
+		t.Fatalf("authorize Agent Task control: response=%+v err=%v", response, err)
+	}
+	if _, err := corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent control channel accessed unrelated Core capability: %v", err)
 	}
 }
 

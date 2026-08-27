@@ -173,10 +173,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v23 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Compose 继续关闭 Temporal 并固定 `foundation`。
-- **风险：** 审批 Signal 入口尚未由 Gateway 的终端用户认证 API 发出，Workflow Task 状态尚未成为 MySQL `agent_tasks` 的权威状态；当前 `read_shadow` 只允许 `conversation.list`，也没有 Artifact、Memory 或 Eval 终态。提前转为 active 会产生双状态源并缺少用户可控恢复入口。
-- **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复和 Activity 丢失完成 ACK 后的模型/Step 重放，provider 与 Capability 各执行一次；真实 MySQL 8.4 已验证 Run、Approval、模型输出、预算 policy 和 migration v23 全链。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
-- **建议方向：** 下一步提供 Gateway authenticated approval/query/cancel API 与 Signal bridge，再建立 Workflow/MySQL Task 状态投影和 Eval 对照；满足 shadow 晋级证据后才转移权威 Task 与回复流量。
+- **现状：** migration v16-v23 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API，Runtime 经 Core/sqlc 所有权授权后执行 Query/Signal。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
+- **风险：** Workflow Task 状态尚未投影为 MySQL `agent_tasks` 的权威状态；当前 `read_shadow` 只允许 `conversation.list`，也没有 Artifact、Memory、Eval 终态或审批前端。提前转为 active 会产生双状态源，且缺少完整的产品恢复界面与晋级证据。
+- **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复和 Activity 丢失完成 ACK 后的模型/Step 重放，provider 与 Capability 各执行一次；真实 MySQL 8.4 已验证 Run、Approval、模型输出、预算 policy 和 migration v23 全链。Task 控制单元及真实 gRPC 通道验证 JWT 派生 principal、Task 所有权、RPC 最小权限、pending Approval 绑定和终态取消拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
+- **建议方向：** 下一步建立 Workflow/MySQL Task 状态投影和 Eval 对照，再使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面；满足 shadow 晋级证据后才转移权威 Task 与回复流量。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
 ### AD-012：用户状态常量与 schema 默认值偏移

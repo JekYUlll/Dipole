@@ -3,7 +3,7 @@ import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
-import { TemporalTaskClient } from "./temporal-task-client.js";
+import { TemporalTaskClient, TemporalTaskControlClient } from "./temporal-task-client.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
@@ -81,7 +81,12 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(duplicate.runId).toBe(first.runId);
 
     const handle = env.client.workflow.getHandle(first.workflowId);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
     await waitForStatus(env, handle, "waiting_approval");
+    await expect(controls.query("task-recovery-1")).resolves.toMatchObject({
+      taskId: "task-recovery-1", status: "waiting_approval",
+      pending: { kind: "approval", requestId: "approval-1", approvalId: "APR-1" }
+    });
     expect(calls).toBe(3);
 
     workerOne.shutdown();
@@ -90,7 +95,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     const workerTwo = await createWorker(env, taskQueue, activities);
     const workerTwoRun = workerTwo.run();
     await waitForStatus(env, handle, "waiting_approval");
-    await handle.signal("resolveTaskApproval", { requestId: "approval-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100" });
+    await controls.resolveApproval("task-recovery-1", {
+      requestId: "approval-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
+    });
     await waitForStatus(env, handle, "completed");
     const result = await handle.result();
     workerTwo.shutdown();
@@ -106,6 +113,42 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(approvalResolutions).toBe(1);
 
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
+  }, 120_000);
+
+  it("cancels a waiting Workflow through the stable Task control adapter", async () => {
+    const taskQueue = `dipole-agent-task-cancel-${Date.now()}`;
+    const terminalWrites: unknown[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-cancel-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        terminalWrites.push(input);
+      },
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep() {
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "choose scope" };
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+    const started = await tasks.start({ taskId: "task-cancel-1", goal: "wait for scope" });
+    const handle = env.client.workflow.getHandle(started.workflowId);
+    await waitForStatus(env, handle, "waiting_input");
+
+    await controls.cancel("task-cancel-1", "user_cancelled");
+    await waitForStatus(env, handle, "cancelled");
+    await expect(handle.result()).resolves.toMatchObject({
+      taskId: "task-cancel-1", status: "cancelled", cancellation: { reason: "user_cancelled" }
+    });
+    expect(terminalWrites).toEqual([expect.objectContaining({
+      taskId: "task-cancel-1", runId: "run-cancel-1", runStatus: "cancelled", lastError: "user_cancelled"
+    })]);
+    worker.shutdown();
+    await workerRun;
   }, 120_000);
 
   it("fails a Task after its bounded Activity step budget", async () => {

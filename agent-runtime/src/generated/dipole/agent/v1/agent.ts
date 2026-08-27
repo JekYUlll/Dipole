@@ -310,6 +310,36 @@ export interface ListConversationsResponse {
      */
     conversations: ConversationSnapshot[];
 }
+/**
+ * @generated from protobuf message dipole.agent.v1.AuthorizeTaskControlRequest
+ */
+export interface AuthorizeTaskControlRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string principal_user_id = 3
+     */
+    principalUserId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AuthorizeTaskControlResponse
+ */
+export interface AuthorizeTaskControlResponse {
+    /**
+     * @generated from protobuf field: string task_id = 1
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string task_status = 2
+     */
+    taskStatus: string;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
     constructor() {
@@ -1274,6 +1304,123 @@ class ListConversationsResponse$Type extends MessageType<ListConversationsRespon
  * @generated MessageType for protobuf message dipole.agent.v1.ListConversationsResponse
  */
 export const ListConversationsResponse = new ListConversationsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AuthorizeTaskControlRequest$Type extends MessageType<AuthorizeTaskControlRequest> {
+    constructor() {
+        super("dipole.agent.v1.AuthorizeTaskControlRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "principal_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AuthorizeTaskControlRequest>): AuthorizeTaskControlRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.principalUserId = "";
+        if (value !== undefined)
+            reflectionMergePartial<AuthorizeTaskControlRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AuthorizeTaskControlRequest): AuthorizeTaskControlRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string principal_user_id */ 3:
+                    message.principalUserId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AuthorizeTaskControlRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string principal_user_id = 3; */
+        if (message.principalUserId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.principalUserId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AuthorizeTaskControlRequest
+ */
+export const AuthorizeTaskControlRequest = new AuthorizeTaskControlRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControlResponse> {
+    constructor() {
+        super("dipole.agent.v1.AuthorizeTaskControlResponse", [
+            { no: 1, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "task_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AuthorizeTaskControlResponse>): AuthorizeTaskControlResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.taskStatus = "";
+        if (value !== undefined)
+            reflectionMergePartial<AuthorizeTaskControlResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AuthorizeTaskControlResponse): AuthorizeTaskControlResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string task_id */ 1:
+                    message.taskId = reader.string();
+                    break;
+                case /* string task_status */ 2:
+                    message.taskStatus = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AuthorizeTaskControlResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string task_id = 1; */
+        if (message.taskId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.taskId);
+        /* string task_status = 2; */
+        if (message.taskStatus !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskStatus);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AuthorizeTaskControlResponse
+ */
+export const AuthorizeTaskControlResponse = new AuthorizeTaskControlResponse$Type();
 /**
  * @generated ServiceType for protobuf service dipole.agent.v1.AgentCapabilityService
  */
@@ -1283,5 +1430,6 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },
     { name: "RequestApproval", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
-    { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse }
+    { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
+    { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse }
 ]);

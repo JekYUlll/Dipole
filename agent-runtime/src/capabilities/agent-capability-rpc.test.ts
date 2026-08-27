@@ -47,7 +47,14 @@ describe("AgentCapabilityRPCClient", () => {
       }] });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations } as unknown as IAgentCapabilityServiceClient, "secret");
+    const authorizeTaskControl = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", principalUserId: "U100" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { taskId: "TASK-1", taskStatus: "waiting_approval" });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
 
@@ -69,5 +76,8 @@ describe("AgentCapabilityRPCClient", () => {
     };
     await expect(client.requestApproval("TASK-1", "RUN-1", approval, identity)).resolves.toBeUndefined();
     await expect(client.resolveApproval("TASK-1", "RUN-1", "APR-1", "approved", "U100", identity)).resolves.toBeUndefined();
+    await expect(client.authorizeTaskControl("TASK-1", "U100", identity)).resolves.toEqual({
+      taskId: "TASK-1", taskStatus: "waiting_approval"
+    });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { agentTaskWorkflowId, TemporalShadowTaskDispatcher, TemporalTaskClient } from "./temporal-task-client.js";
+import { agentTaskWorkflowId, TemporalShadowTaskDispatcher, TemporalTaskClient, TemporalTaskControlClient } from "./temporal-task-client.js";
 
 describe("Temporal Task client", () => {
   it("derives one stable Workflow ID from the persistent Task ID", () => {
@@ -43,6 +43,28 @@ describe("TemporalShadowTaskDispatcher", () => {
         tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
         triggerType: "message.direct.created", triggerRef: "M1", eventId: "E1", requestId: "R1", traceId: "T1"
       }
+    });
+  });
+});
+
+describe("TemporalTaskControlClient", () => {
+  it("queries and Signals the stable Task Workflow", async () => {
+    const query = vi.fn(async () => ({ taskId: "TASK-1", status: "running", revision: 1 }));
+    const signal = vi.fn(async () => undefined);
+    const getHandle = vi.fn(() => ({ query, signal }));
+    const controls = new TemporalTaskControlClient({ getHandle });
+
+    await expect(controls.query("TASK-1")).resolves.toMatchObject({ taskId: "TASK-1", status: "running" });
+    await controls.cancel("TASK-1", "user_cancelled");
+    await controls.resolveApproval("TASK-1", {
+      requestId: "REQ-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
+    });
+
+    expect(getHandle).toHaveBeenCalledWith("dipole-agent-task/TASK-1");
+    expect(query).toHaveBeenCalledWith("taskState");
+    expect(signal).toHaveBeenCalledWith("cancelTask", { reason: "user_cancelled" });
+    expect(signal).toHaveBeenCalledWith("resolveTaskApproval", {
+      requestId: "REQ-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
     });
   });
 });

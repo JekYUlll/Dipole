@@ -35,6 +35,15 @@ type AgentInvocationResolverV1 interface {
 	Resolve(ctx context.Context, taskUUID, runUUID string) (AgentInvocationV1, error)
 }
 
+type AgentTaskControlAuthorizationV1 struct {
+	TaskUUID string
+	Status   AgentTaskStatusV1
+}
+
+type AgentTaskControlAuthorizerV1 interface {
+	AuthorizeTaskControl(ctx context.Context, taskUUID, principalUUID string) (*AgentTaskControlAuthorizationV1, error)
+}
+
 type AgentRunAdmissionRequestV1 struct {
 	AgentExecutionPolicyStartV1
 	RuntimeID string

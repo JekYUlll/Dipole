@@ -84,3 +84,17 @@ func TestConfigDistDeclaresMessageServiceMySQLOverride(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("gateway.agent_control_enabled") {
+		t.Fatal("Gateway Agent Task controls must remain default off")
+	}
+	if v.GetString("gateway.agent_control_target") == "" {
+		t.Fatal("Gateway Agent Task control target is missing")
+	}
+}

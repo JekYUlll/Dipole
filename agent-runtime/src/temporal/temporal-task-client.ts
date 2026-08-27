@@ -1,4 +1,6 @@
 import type { AgentEvent, AgentIdentity, ShadowTaskDispatcher } from "../events/shadow-processor.js";
+import type { AgentTaskWorkflowControlPort } from "../control/agent-task-control.js";
+import type { AgentTaskState } from "../task/agent-task-state.js";
 import type { Connection } from "@temporalio/client";
 
 export interface AgentTaskWorkflowInput {
@@ -41,6 +43,15 @@ interface TemporalWorkflowStartPort {
   }): Promise<TemporalWorkflowHandle>;
 }
 
+interface TemporalWorkflowControlHandle {
+  query(queryName: string): Promise<unknown>;
+  signal(signalName: string, payload: unknown): Promise<void>;
+}
+
+interface TemporalWorkflowControlClientPort {
+  getHandle(workflowId: string): TemporalWorkflowControlHandle;
+}
+
 export class TemporalTaskClient {
   constructor(
     private readonly workflow: TemporalWorkflowStartPort,
@@ -80,7 +91,27 @@ export class TemporalShadowTaskDispatcher implements ShadowTaskDispatcher {
   }
 }
 
-export interface TemporalTaskDispatchRuntime extends ShadowTaskDispatcher {
+export class TemporalTaskControlClient implements AgentTaskWorkflowControlPort {
+  constructor(private readonly workflow: TemporalWorkflowControlClientPort) {}
+
+  async query(taskId: string): Promise<AgentTaskState> {
+    return this.handle(taskId).query("taskState") as Promise<AgentTaskState>;
+  }
+
+  async cancel(taskId: string, reason: string): Promise<void> {
+    await this.handle(taskId).signal("cancelTask", { reason });
+  }
+
+  async resolveApproval(taskId: string, signal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string }): Promise<void> {
+    await this.handle(taskId).signal("resolveTaskApproval", signal);
+  }
+
+  private handle(taskId: string): TemporalWorkflowControlHandle {
+    return this.workflow.getHandle(agentTaskWorkflowId(taskId));
+  }
+}
+
+export interface TemporalTaskDispatchRuntime extends ShadowTaskDispatcher, AgentTaskWorkflowControlPort {
   start(): Promise<void>;
   stop(): Promise<void>;
 }
@@ -92,6 +123,7 @@ export function createTemporalTaskDispatchRuntime(config: {
 }): TemporalTaskDispatchRuntime {
   let connection: Connection | undefined;
   let dispatcher: TemporalShadowTaskDispatcher | undefined;
+  let controls: TemporalTaskControlClient | undefined;
   return {
     async start() {
       if (connection !== undefined) {
@@ -101,6 +133,7 @@ export function createTemporalTaskDispatchRuntime(config: {
       connection = await Connection.connect({ address: config.address });
       const client = new Client({ connection, namespace: config.namespace });
       dispatcher = new TemporalShadowTaskDispatcher(new TemporalTaskClient(client.workflow, config.taskQueue));
+      controls = new TemporalTaskControlClient(client.workflow);
     },
     async dispatch(event, identity, taskId) {
       if (dispatcher === undefined) {
@@ -108,8 +141,21 @@ export function createTemporalTaskDispatchRuntime(config: {
       }
       await dispatcher.dispatch(event, identity, taskId);
     },
+    async query(taskId) {
+      if (controls === undefined) throw new Error("Temporal Task controls are not started");
+      return controls.query(taskId);
+    },
+    async cancel(taskId, reason) {
+      if (controls === undefined) throw new Error("Temporal Task controls are not started");
+      await controls.cancel(taskId, reason);
+    },
+    async resolveApproval(taskId, signal) {
+      if (controls === undefined) throw new Error("Temporal Task controls are not started");
+      await controls.resolveApproval(taskId, signal);
+    },
     async stop() {
       dispatcher = undefined;
+      controls = undefined;
       try {
         await connection?.close();
       } finally {

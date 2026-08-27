@@ -5,6 +5,8 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { AuthorizeTaskControlResponse } from "./agent.js";
+import type { AuthorizeTaskControlRequest } from "./agent.js";
 import type { ListConversationsResponse } from "./agent.js";
 import type { ListConversationsRequest } from "./agent.js";
 import type { ResolveApprovalRequest } from "./agent.js";
@@ -63,6 +65,13 @@ export interface IAgentCapabilityServiceClient {
     listConversations(input: ListConversationsRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ListConversationsResponse) => void): grpc.ClientUnaryCall;
     listConversations(input: ListConversationsRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ListConversationsResponse) => void): grpc.ClientUnaryCall;
     listConversations(input: ListConversationsRequest, callback: (err: grpc.ServiceError | null, value?: ListConversationsResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: AuthorizeTaskControl
+     */
+    authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
+    authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
+    authorizeTaskControl(input: AuthorizeTaskControlRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
+    authorizeTaskControl(input: AuthorizeTaskControlRequest, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -114,5 +123,12 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     listConversations(input: ListConversationsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[5];
         return this.makeUnaryRequest<ListConversationsRequest, ListConversationsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListConversationsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListConversationsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: AuthorizeTaskControl
+     */
+    authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[6];
+        return this.makeUnaryRequest<AuthorizeTaskControlRequest, AuthorizeTaskControlResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: AuthorizeTaskControlRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AuthorizeTaskControlResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

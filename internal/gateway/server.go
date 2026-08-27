@@ -24,11 +24,12 @@ import (
 )
 
 type Dependencies struct {
-	Messages application.MessageApplication
-	Core     application.CoreCapability
-	Search   application.SearchApplication
-	Presence wsTransport.PresenceTracker
-	Limiter  MessageRateLimiter
+	Messages   application.MessageApplication
+	Core       application.CoreCapability
+	Search     application.SearchApplication
+	AgentTasks AgentTaskControlApplication
+	Presence   wsTransport.PresenceTracker
+	Limiter    MessageRateLimiter
 }
 
 type MessageRateLimiter interface {
@@ -75,6 +76,12 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
 		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
 	}
+	if dependencies.AgentTasks != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
+	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
 		logger.Warn("gateway core proxy failed", zap.Error(proxyErr))
@@ -85,6 +92,70 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		result, err := tasks.GetTask(c.Request.Context(), user.UUID, c.Param("task_id"))
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskCancelHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Reason string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		var body requestBody
+		if c.Request.ContentLength > 0 && c.ShouldBindJSON(&body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid cancellation request"})
+			return
+		}
+		result, err := tasks.CancelTask(c.Request.Context(), user.UUID, c.Param("task_id"), body.Reason)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskApprovalHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Decision string `json:"decision"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil || (body.Decision != "approved" && body.Decision != "denied") {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "approval decision must be approved or denied"})
+			return
+		}
+		result, err := tasks.ResolveApproval(c.Request.Context(), user.UUID, c.Param("task_id"), c.Param("approval_id"), body.Decision)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func writeAgentTaskControlResult(c *gin.Context, result *AgentTaskControlResult, err error) {
+	if err != nil || result == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"code": http.StatusBadGateway, "message": "Agent Task control runtime unavailable"})
+		return
+	}
+	contentType := result.ContentType
+	if contentType == "" {
+		contentType = "application/json; charset=utf-8"
+	}
+	c.Data(result.StatusCode, contentType, result.Body)
 }
 
 func (s *Server) Run(address string) error {

@@ -53,6 +53,21 @@ type approvalServiceStub struct {
 	resolved  application.AgentApprovalResolutionV1
 }
 
+type taskControlAuthorizerStub struct {
+	taskUUID      string
+	principalUUID string
+	result        application.AgentTaskControlAuthorizationV1
+	err           error
+}
+
+func (s *taskControlAuthorizerStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
+	s.taskUUID, s.principalUUID = taskUUID, principalUUID
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &s.result, nil
+}
+
 func (s *approvalServiceStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
 	s.requested = request
 	approval := request.Approval
@@ -98,6 +113,37 @@ func TestListConversationsRejectsClientPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
+	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval}}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.AuthorizeTaskControl(context.Background(), &agentv1.AuthorizeTaskControlRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100",
+	})
+	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
+		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
+	}
+}
+
+func TestAuthorizeTaskControlHidesForeignTaskAndRejectsContextPrincipal(t *testing.T) {
+	controls := &taskControlAuthorizerStub{err: application.ErrAgentExecutionPolicyDenied}
+	server, _ := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	for _, request := range []*agentv1.AuthorizeTaskControlRequest{
+		{Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U999"},
+		{Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100"},
+	} {
+		_, err := server.AuthorizeTaskControl(context.Background(), request)
+		if request.GetContext().GetPrincipalUserId() == "" && status.Code(err) != codes.NotFound {
+			t.Fatalf("foreign Task code = %s, want %s", status.Code(err), codes.NotFound)
+		}
+		if request.GetContext().GetPrincipalUserId() != "" && status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("context principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+		}
 	}
 }
 
