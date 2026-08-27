@@ -7,6 +7,7 @@
 - `report.schema.json` 只保存 corpus/evidence 哈希、候选身份、混淆矩阵、precision/recall、p95 延迟、平均/总成本和误判 case ID，不回显消息正文。
 - `review.schema.json` 保存两个独立 reviewer 的完整标签集；有分歧时，第三个独立 adjudicator 必须精确裁决全部分歧 case。
 - `review-report.schema.json` 只保存 corpus/review/final-label 哈希、agreement bps、计数和异常 case ID，不回显正文或 reviewer 身份。
+- `rollout-decision.schema.json` 绑定重算后的 review、final-label 和 candidate evidence 哈希，并只产出 `eligible|blocked` 及必要聚合指标。
 
 各语言实现除 JSON Schema 结构校验外还必须执行以下规范性语义：corpus case ID 与 evidence decision case ID 分别唯一；corpus 同时包含正、负样本；evidence 与 corpus SHA-256 一致且恰好覆盖每个 case 一次；`rule` 不携带 score/threshold；`embedding|small_model` 的每个 decision 均携带 score，且 `selected == (scoreBps >= decisionThresholdBps)`。违反任一约束均按无效证据处理。
 
@@ -41,6 +42,15 @@ npm run eval:prefilter -- --corpus=../path/corpus.json --evidence=../path/candid
 npm run eval:prefilter-review -- \
   --corpus=../contracts/agent-subscription-prefilter/v1/corpus.example.json \
   --review=../contracts/agent-subscription-prefilter/v1/review.example.json
+```
+
+完成受控 review 与 candidate evidence 后，统一重算 rollout decision：
+
+```bash
+npm run eval:subscription-rollout -- \
+  --corpus=../contracts/agent-subscription-prefilter/v1/corpus.example.json \
+  --review=../contracts/agent-subscription-prefilter/v1/review.example.json \
+  --evidence=../contracts/agent-subscription-prefilter/v1/evidence.example.json
 ```
 
 退出码 `0` 表示全部门槛通过，`2` 表示有效证据未达门槛，`1` 表示参数、schema、哈希或逐 case 绑定无效。通过报告只可作为现有五类 Agent Eval 的 retrieval/cost 输入，不能单独启用生产 `subscription` 模式。

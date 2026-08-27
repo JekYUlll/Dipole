@@ -147,6 +147,8 @@ G4 预筛评测使用独立 `dipole.agent.subscription-prefilter-*.v1` 合同。
 
 Corpus review v1 将同一 corpus SHA-256 绑定到两个独立 reviewer 的完整逐 case 标签。两个标签集有分歧时，第三个独立 adjudicator 必须精确裁决全部分歧 case；身份复用、缺失/多余 case、无分歧时的多余裁决和最终标签漂移均 fail closed。离线 CLI 输出 review/final-label SHA-256、向下取整 agreement bps、计数与异常 case ID，不回显事件正文或 reviewer 身份。该合同只提供评审 provenance；真实事件收集、脱敏和 reviewer 操作仍由受控流程负责。
 
+Subscription rollout gate 不信任调用方预先聚合的报告，而是从 corpus、review 与 candidate evidence 重新执行两个 evaluator。只有同一 corpus 的 review 和 candidate 均通过才输出 `eligible`，决策绑定 corpus/review/final-label/candidate evidence/configuration 哈希及 agreement、precision、recall、p95、成本指标。`eligible` 只进入 operator review，不修改 Runtime mode、Trigger mode 或 Capability authority。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact

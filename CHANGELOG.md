@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加 Event Subscription rollout evidence gate：CLI 同时读取 corpus、双评审 review 和 candidate evidence，重新执行 review/prefilter evaluator 后才产出低敏 `eligible|blocked` 决策，避免信任调用方预聚合报告。决策绑定 corpus、review、final-label、candidate evidence/configuration 哈希与 agreement、precision/recall、p95、成本指标；任一门槛失败返回 2，哈希/结构/逐 case 绑定无效返回 1。该门禁不修改 Trigger/Runtime mode 或 Capability authority。
 - Agent G4 增加 Event Subscription corpus review v1：语言中立 review/report schema 将两个独立 reviewer 的完整逐 case 标签绑定到 prefilter corpus SHA-256；有分歧时要求第三个独立 adjudicator 精确裁决全部分歧 case。纯离线 evaluator 对身份复用、case 覆盖、裁决集合和最终 corpus 标签执行 fail-closed 校验，CLI 以 `0/2/1` 区分达标、未达标和无效输入。低敏报告只含 review/final-label 哈希、agreement bps、计数和异常 case ID，不回显消息正文或 reviewer 身份。
 - Agent G4 增加 provider-neutral Event Subscription prefilter Eval v1：语言中立 corpus/evidence/report schema 将受控事件标签与 `rule|embedding|small_model` 候选决策分离，绑定 corpus、strategy revision 和 configuration SHA-256。纯 TypeScript evaluator 不访问模型、数据库或网络，输出低敏混淆矩阵、保守整数 precision/recall bps、nearest-rank p95、微美元平均/总成本及误判 case ID；缺失/重复 case、hash 漂移、分数/阈值决策漂移和单类 corpus fail closed。首个 rule adapter 直接复用生产 matcher，CLI 使用 `0/2/1` 区分达标、未达标和无效证据；生产仍固定 `direct_target`。
 - Agent G4 增加 Gateway-only Event Subscription 管理控制面：migration v34 为 v28 订阅补充 creator/revoker、撤销原因与更新时间，并从绑定的不可变 Definition owner 回填历史审计。认证 `dipole-gateway` 从 RequestContext 派生 owner，可创建、分页查看和撤销精确 Definition version 订阅；Core 重新校验 tenant、Agent、有效期、`conversation.read` 与 resource scope。`message_contains_any` 以 trim/lowercase/去重/排序生成规范 JSON 和稳定 SHA-256 Subscription ID，等价创建及同原因撤销可安全重放，漂移返回冲突。未增加公开 HTTP/Pencil 页面、语义预筛或生产触发切换。
@@ -372,6 +373,7 @@
 
 ### 验证
 
+- Subscription rollout gate 测试覆盖源证据重算、同 corpus 绑定、review/candidate 独立阻断、hash 漂移、CLI 三态退出码和低敏输出。synthetic 三件套得到 `eligible`，绑定 candidate evidence SHA-256 `2809bbcc5318cb41af6b86f09625abf9ccf05b0f178507459c47ef2e2afbbae3`；完整 Agent Runtime 为 291 passed / 19 expected skipped，该结果只验证 Harness。
 - Subscription corpus review 测试覆盖双 reviewer 身份/Review ID 分离、完整 case 绑定、第三方精确裁决、最终标签漂移、review 顺序规范化、黄金哈希、CLI 退出码与正文/身份不回显。synthetic 示例达到 10000 bps agreement；完整 Agent Runtime 为 286 passed / 19 expected skipped，真实 Project Guardian review 仍待受控归档。
 - Subscription prefilter Eval 测试覆盖 TP/TN/FP/FN、保守 basis-point 舍入、p95/成本门槛、候选 score/threshold 一致性、case 完整/唯一绑定、corpus hash 漂移、生产规则 matcher 复用、CLI 参数/退出码与正文不回显。synthetic 示例规则基线达到 10000 bps precision/recall、零成本，完整 Agent Runtime 为 280 passed / 19 expected skipped。
 - Agent Event Subscription 控制测试覆盖大小写无关集合规范化、稳定 ID、等价创建重放、owner/tenant/Definition/scope 越权、分页隔离、撤销审计与冲突重放、Gateway/Agent 服务身份分离；真实 MySQL 8.4 验证 migration v1→v34、v33→v34 历史回填、sqlc owner 查询、创建/revoke CAS 和显式回到 v27 后重建。
