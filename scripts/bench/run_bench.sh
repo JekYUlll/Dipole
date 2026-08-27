@@ -39,6 +39,8 @@ BASELINE_JSON="${RESULTS_DIR}/${RUN_ID}.baseline.json"
 BASELINE_MD="${RESULTS_DIR}/${RUN_ID}.baseline.md"
 RUN_LOG="${RESULTS_DIR}/${RUN_ID}.log"
 LAG_FILE="${RESULTS_DIR}/${RUN_ID}.lag"
+CONVERSATION_METRICS_JSON="${RESULTS_DIR}/${RUN_ID}.conversation-metrics.json"
+CONVERSATION_METRIC_ARGS=()
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -86,30 +88,19 @@ sample_kafka_lag() {
   printf '%s\n' "${LAST_KAFKA_LAG}" >>"${LAG_FILE}"
 }
 
-sample_conversation_writes() {
-  local projection="$1"
-  local total=0
-  local service metrics value
+capture_conversation_metrics() {
+  local phase="$1"
+  local option="--${phase}"
+  local service output
   for service in ${CONVERSATION_METRICS_SERVICES}; do
-    metrics="$(docker compose -f "${COMPOSE_FILE}" exec -T "${service}" \
-      wget -q -O - http://127.0.0.1:9100/metrics)"
-    value="$(printf '%s\n' "${metrics}" | awk -v projection="${projection}" '
-      $1 == "dipole_conversation_projection_writes_total{projection=\"" projection "\"}" {
-        total += $2
-        found = 1
-      }
-      END {
-        if (!found) exit 1
-        printf "%.0f", total
-      }')"
-    total=$((total + value))
+    output="${RESULTS_DIR}/${RUN_ID}.conversation-${service}.${phase}.prom"
+    docker compose -f "${COMPOSE_FILE}" exec -T "${service}" \
+      wget -q -O - http://127.0.0.1:9100/metrics >"${output}"
+    CONVERSATION_METRIC_ARGS+=("${option}" "${output}")
   done
-  printf '%s\n' "${total}"
 }
 
-conversation_direct_before="$(sample_conversation_writes direct_message)"
-conversation_group_before="$(sample_conversation_writes group_message)"
-conversation_init_before="$(sample_conversation_writes group_init)"
+capture_conversation_metrics before
 
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
@@ -151,21 +142,11 @@ while [[ "${LAST_KAFKA_LAG}" != "0" ]] && (( $(date +%s) - settle_started < LAG_
 done
 cat "${RUN_LOG}"
 
-conversation_direct_after="$(sample_conversation_writes direct_message)"
-conversation_group_after="$(sample_conversation_writes group_message)"
-conversation_init_after="$(sample_conversation_writes group_init)"
-for projection in direct group init; do
-  before_var="conversation_${projection}_before"
-  after_var="conversation_${projection}_after"
-  if (( ${!after_var} < ${!before_var} )); then
-    echo "conversation projection counter reset during benchmark: ${projection}" >&2
-    exit 1
-  fi
-done
-conversation_direct_writes=$((conversation_direct_after - conversation_direct_before))
-conversation_group_writes=$((conversation_group_after - conversation_group_before))
-conversation_init_writes=$((conversation_init_after - conversation_init_before))
-conversation_message_writes=$((conversation_direct_writes + conversation_group_writes))
+capture_conversation_metrics after
+python3 scripts/bench/conversation_metrics.py \
+  "${CONVERSATION_METRIC_ARGS[@]}" \
+  --output "${CONVERSATION_METRICS_JSON}"
+conversation_metrics="$(cat "${CONVERSATION_METRICS_JSON}")"
 
 if [[ ! -s "${SUMMARY_JSON}" ]]; then
   echo "k6 did not produce ${SUMMARY_JSON}" >&2
@@ -213,12 +194,9 @@ jq -n \
   --argjson kafka_lag_samples "${lag_samples}" \
   --argjson conversation_rows "${conversation_rows}" \
   --argjson conversation_messages "${conversation_messages}" \
-  --argjson conversation_message_writes "${conversation_message_writes}" \
-  --argjson conversation_direct_writes "${conversation_direct_writes}" \
-  --argjson conversation_group_writes "${conversation_group_writes}" \
-  --argjson conversation_init_writes "${conversation_init_writes}" \
+  --argjson conversation_metrics "${conversation_metrics}" \
   '{
-    schema_version: "dipole.performance.operations.v2",
+    schema_version: "dipole.performance.operations.v3",
     run_id: $run_id,
     scenario: $scenario,
     captured_at: $captured_at,
@@ -247,17 +225,10 @@ jq -n \
     storage: {
       direct: {messages: $direct_messages, inbox_rows: $direct_inbox},
       group: {messages: $group_messages, inbox_rows: $group_inbox},
-      conversation_state: {
+      conversation_state: ($conversation_metrics + {
         rows_touched: $conversation_rows,
-        messages_observed: $conversation_messages,
-        write_operations: $conversation_message_writes,
-        projection_writes: {
-          direct_message: $conversation_direct_writes,
-          group_message: $conversation_group_writes,
-          group_init: $conversation_init_writes
-        },
-        counter_source: "dipole_conversation_projection_writes_total"
-      }
+        messages_observed: $conversation_messages
+      })
     },
     kafka_lag_samples: $kafka_lag_samples
   }' >"${OPERATIONS_JSON}"
