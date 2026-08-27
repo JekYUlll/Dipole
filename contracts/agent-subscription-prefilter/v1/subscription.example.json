@@ -1,0 +1,12 @@
+{
+  "subscriptionId": "SUB-RULE-V1",
+  "definitionId": "DEF-GUARDIAN",
+  "definitionVersion": 1,
+  "tenantId": "dipole",
+  "agentId": "UAI",
+  "eventType": "message.direct.created",
+  "resourceType": "conversation",
+  "resourceId": "group:G1",
+  "filterKind": "message_contains_any",
+  "filter": {"terms": ["incident", "延期"]}
+}

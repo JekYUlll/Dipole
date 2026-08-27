@@ -29,6 +29,10 @@ const subscriptionSchema = z.object({
 
 export type AgentEventSubscription = z.infer<typeof subscriptionSchema>;
 
+export function parseAgentEventSubscription(value: unknown): AgentEventSubscription {
+  return subscriptionSchema.parse(value);
+}
+
 export function matchEventSubscriptions(event: AgentEvent, rawSubscriptions: readonly unknown[]): AgentEventSubscription[] {
   const subscriptions = rawSubscriptions.map((item) => subscriptionSchema.parse(item));
   const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
