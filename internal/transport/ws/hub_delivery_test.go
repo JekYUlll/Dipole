@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestHubEnqueueEventToConnectionsTargetsExactConnections(t *testing.T) {
 	hub.Register(second)
 
 	results, err := hub.EnqueueEventToConnectionsContext(
-		context.Background(), "U1", []string{"C1", "missing"}, "message.direct.created", map[string]string{"message_id": "M1"},
+		context.Background(), "U1", []string{"C1", "missing"}, "D1", "message.direct.created", map[string]string{"message_id": "M1"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -24,6 +25,10 @@ func TestHubEnqueueEventToConnectionsTargetsExactConnections(t *testing.T) {
 	}
 	if len(first.send) != 1 {
 		t.Fatalf("target queue depth = %d, want 1", len(first.send))
+	}
+	var event OutboundEvent
+	if err := json.Unmarshal(<-first.send, &event); err != nil || event.DeliveryID != "D1" {
+		t.Fatalf("targeted event delivery identity = %q, error = %v", event.DeliveryID, err)
 	}
 	if len(second.send) != 0 {
 		t.Fatalf("untargeted connection received %d messages", len(second.send))
@@ -37,7 +42,7 @@ func TestHubEnqueueEventToConnectionsReportsQueuePressure(t *testing.T) {
 	client.send <- []byte("occupied")
 
 	results, err := hub.EnqueueEventToConnectionsContext(
-		context.Background(), "U1", []string{"C1"}, "message.direct.created", map[string]string{"message_id": "M1"},
+		context.Background(), "U1", []string{"C1"}, "D1", "message.direct.created", map[string]string{"message_id": "M1"},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +57,7 @@ func TestHubEnqueueEventToConnectionsRejectsDuplicateTargets(t *testing.T) {
 	hub := NewHub()
 	hub.Register(deliveryTestClient("U1", "C1", 1))
 	if _, err := hub.EnqueueEventToConnectionsContext(
-		context.Background(), "U1", []string{"C1", "C1"}, "message.direct.created", map[string]string{"message_id": "M1"},
+		context.Background(), "U1", []string{"C1", "C1"}, "D1", "message.direct.created", map[string]string{"message_id": "M1"},
 	); err == nil {
 		t.Fatal("duplicate connection target must fail before enqueue")
 	}
