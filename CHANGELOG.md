@@ -15,6 +15,10 @@
 
 ## [Unreleased]
 
+### 安全
+
+- 修复内部开发证书生成脚本的权限覆盖顺序：公开证书保持 `0644`，CA 与服务私钥最终固定为 `0600`；新增临时目录回归测试，防止后续演练或本地部署生成可被其他用户读取的私钥。
+
 ### 新增
 
 - C3 增加默认 `go` 的 `realtime.delivery=go|shadow|cpp` 本地 authority 契约：Gateway 在启动副作用前校验 observation/primary 能力组合，并以有界 Prometheus 标签暴露当前 ownership；`go` 与 `shadow` 保留 Go 消息客户端写入，`cpp` 对消息 Topic 仅验证 v1 事件并推进原 Go consumer group checkpoint，继续处理踢下线、已读和群变更等非消息事件。C++ `shadow`/`primary` 命令分别要求 `shadow`/`cpp` authority，配置错配会在连接 Kafka 前 fail closed。该切片尚未提供跨副本共享 fencing、双 group 切换 receipt 或自动回切，`AD-041` 保持处理中且 tracked Compose 继续为 Go authority。

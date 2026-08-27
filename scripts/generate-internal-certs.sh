@@ -40,6 +40,6 @@ EOF
   rm "${csr}" "${extension}"
 done
 
-chmod 600 "${OUTPUT_DIR}"/*-key.pem
 chmod 644 "${OUTPUT_DIR}"/*.pem
+chmod 600 "${OUTPUT_DIR}"/*-key.pem
 echo "Internal development certificates written to ${OUTPUT_DIR}"
