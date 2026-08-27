@@ -56,17 +56,6 @@
 - **后续方向：** C++ Realtime Delivery 阶段评估节点级有界队列、投递 ACK 和 Kafka offset 提交边界；保留 Sync Timeline 作为最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
-### AD-016：HTTP Handler 测试并行修改 Gin 全局模式
-
-- **优先级：** P3
-- **状态：** 暂缓
-- **发现日期：** 2026-08-26
-- **影响范围：** `internal/handler/http/*_test.go`、整包 race 门禁
-- **现状：** 多个历史测试在并行执行期间调用 `gin.SetMode()`；普通测试稳定通过，整包 `go test -race` 会报告 Gin 全局变量读写竞争。本次 Sync Handler 定向 race 独立通过。
-- **风险：** HTTP handler 整包无法作为可靠 race 门禁，真实业务竞争可能被大量模式切换告警淹没。
-- **建议方向：** 在包级 `TestMain` 统一设置 Gin test mode，删除各测试内的重复全局写入，并保留 handler 并行执行。
-- **处理门槛：** 下一次集中治理 HTTP 测试基础设施时完成。
-
 ### AD-015：Message Service 数据库账号尚未收敛表级权限
 
 - **优先级：** P1
@@ -156,6 +145,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-016：HTTP Handler 测试并行修改 Gin 全局模式
+
+- **优先级：** P3
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **解决日期：** 2026-08-27
+- **影响范围：** `internal/handler/http/*_test.go`、整包 race 门禁
+- **解决方式：** 在包级 `TestMain` 进入并行测试前只调用一次 `gin.SetMode(gin.TestMode)`，删除各测试函数中的重复全局写入，同时保留原有 `t.Parallel()` 覆盖。
+- **验证：** 修复前 `go test -race ./internal/handler/http` 稳定报告 `gin.SetMode` 写写及与 `gin.New/CreateTestContext` 的读写竞争；修复后整包 race、普通测试和完整 Go 测试通过。
+- **长期约束：** Handler 测试不得在测试函数或并行子测试中修改 Gin 包级模式；新增全局测试配置应在 `TestMain` 中串行完成。
 
 ### AD-025：Web 本地消息库清理与容量策略需真实浏览器验收
 

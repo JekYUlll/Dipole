@@ -54,7 +54,6 @@ func (s *stubContactService) UpdateBlockStatus(currentUserUUID, friendUUID strin
 
 func TestContactHandlerApplySuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		applyFn: func(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
@@ -80,7 +79,6 @@ func TestContactHandlerApplySuccess(t *testing.T) {
 
 func TestContactHandlerApplyConflict(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		applyFn: func(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
@@ -111,7 +109,6 @@ func TestContactHandlerApplyConflict(t *testing.T) {
 
 func TestContactHandlerListApplicationsIncomingSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		listIncomingFn: func(currentUserUUID string) ([]*service.ContactApplicationView, error) {
@@ -136,7 +133,6 @@ func TestContactHandlerListApplicationsIncomingSuccess(t *testing.T) {
 
 func TestContactHandlerHandleApplicationForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		handleApplicationFn: func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
@@ -160,7 +156,6 @@ func TestContactHandlerHandleApplicationForbidden(t *testing.T) {
 
 func TestContactHandlerHandleApplicationExpired(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		handleApplicationFn: func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
@@ -192,7 +187,6 @@ func TestContactHandlerHandleApplicationExpired(t *testing.T) {
 
 func TestContactHandlerDeleteFriendNotFound(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		deleteFriendFn: func(currentUserUUID, friendUUID string) error {
@@ -215,7 +209,6 @@ func TestContactHandlerDeleteFriendNotFound(t *testing.T) {
 
 func TestContactHandlerUpdateRemarkSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		updateRemarkFn: func(currentUserUUID, friendUUID, remark string) (*model.Contact, error) {
@@ -239,7 +232,6 @@ func TestContactHandlerUpdateRemarkSuccess(t *testing.T) {
 
 func TestContactHandlerUpdateBlockStatusSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewContactHandler(&stubContactService{
 		updateBlockStatusFn: func(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error) {
