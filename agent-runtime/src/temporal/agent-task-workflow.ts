@@ -66,7 +66,11 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     if (state.status !== "waiting_input" || state.pending?.kind !== "input" || state.pending.requestId !== signal.requestId) {
       return;
     }
-    state = transitionAgentTask(state, { type: "provide_input", requestId: signal.requestId, value: signal.value });
+    try {
+      state = transitionAgentTask(state, { type: "provide_input", requestId: signal.requestId, value: signal.value });
+    } catch {
+      // Invalid or stale responses leave the durable request pending.
+    }
   });
   setHandler(resolveTaskApprovalSignal, (signal) => {
     if (approvalSignal !== undefined || state.status !== "waiting_approval" || state.pending?.kind !== "approval" || state.pending.requestId !== signal.requestId || state.pending.approvalId !== signal.approvalId) {
@@ -190,7 +194,7 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): A
         : { taskId: state.taskId, status: state.status, revision: state.revision };
     case "wait_input":
       return transitionAgentTask(state, {
-        type: "request_input", requestId: directive.requestId, prompt: directive.prompt
+        type: "request_input", requestId: directive.requestId, prompt: directive.prompt, form: directive.form
       });
     case "wait_approval":
       return transitionAgentTask(state, {

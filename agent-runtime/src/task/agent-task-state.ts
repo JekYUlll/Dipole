@@ -1,3 +1,5 @@
+import { validateElicitationForm, validateElicitationResponse, type AgentElicitationForm, type AgentElicitationValue } from "./agent-elicitation.js";
+
 export type AgentTaskStatus =
   | "created"
   | "running"
@@ -8,11 +10,11 @@ export type AgentTaskStatus =
   | "cancelled";
 
 export type AgentTaskPending =
-  | { kind: "input"; requestId: string; prompt: string }
+  | { kind: "input"; requestId: string; prompt: string; form: AgentElicitationForm }
   | { kind: "approval"; requestId: string; approvalId: string; summary: string };
 
 export type AgentTaskResume =
-  | { kind: "input"; requestId: string; value: unknown }
+  | { kind: "input"; requestId: string; value: AgentElicitationValue }
   | { kind: "approval"; requestId: string; approvalId: string; decision: "approved" };
 
 export interface AgentTaskState {
@@ -28,7 +30,7 @@ export interface AgentTaskState {
 
 export type AgentTaskTransition =
   | { type: "start" }
-  | { type: "request_input"; requestId: string; prompt: string }
+  | { type: "request_input"; requestId: string; prompt: string; form: AgentElicitationForm }
   | { type: "provide_input"; requestId: string; value: unknown }
   | { type: "request_approval"; requestId: string; approvalId: string; summary: string }
   | { type: "resolve_approval"; requestId: string; decision: "approved" | "denied" }
@@ -56,13 +58,14 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
       return next(state, "running");
     case "request_input":
       requireStatus(state, event.type, "running");
-      return { ...next(state, "waiting_input"), pending: { kind: "input", requestId: event.requestId, prompt: event.prompt } };
+      if (event.requestId.trim().length === 0 || event.requestId.length > 128 || event.prompt.trim().length === 0 || event.prompt.length > 2000) throw new Error("Agent Elicitation request identity or prompt is invalid");
+      return { ...next(state, "waiting_input"), pending: { kind: "input", requestId: event.requestId, prompt: event.prompt, form: validateElicitationForm(event.form) } };
     case "provide_input": {
       requireStatus(state, event.type, "waiting_input");
       const pending = requirePending(state, "input", event.requestId);
       return {
         ...next(state, "running"),
-        resume: { kind: "input", requestId: pending.requestId, value: event.value }
+        resume: { kind: "input", requestId: pending.requestId, value: validateElicitationResponse(pending.form, event.value) }
       };
     }
     case "request_approval":

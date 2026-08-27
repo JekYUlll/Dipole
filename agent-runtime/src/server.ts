@@ -11,6 +11,7 @@ export interface AgentTaskControlAPI {
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
   resolveApproval(input: AgentTaskControlIdentity & { approvalId: string; decision: "approved" | "denied" }): Promise<void>;
+  provideInput(input: AgentTaskControlIdentity & { requestId: string; value: unknown }): Promise<void>;
 }
 
 export interface AgentTaskControlHTTPOptions {
@@ -63,6 +64,18 @@ export function buildServer(readiness: RuntimeReadiness, control?: AgentTaskCont
       try {
         await control.service.resolveApproval({ ...identity, approvalId: request.params.approvalId, decision });
         return reply.code(202).send({ taskId: identity.taskId, approvalId: request.params.approvalId, status: "resolution_requested" });
+      } catch (error) {
+        return sendControlError(reply, error);
+      }
+    });
+    server.post<{ Params: { taskId: string; requestId: string }; Body?: { value?: unknown } }>("/internal/v1/agent/tasks/:taskId/inputs/:requestId", async (request, reply) => {
+      const identity = trustedControlIdentity(request.headers, request.params.taskId, control.secret);
+      if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Task control authentication failed" });
+      if (!validIdentifier(request.params.requestId)) return reply.code(400).send({ code: 400, message: "Agent Task input request ID is invalid" });
+      if (request.body?.value === undefined) return reply.code(400).send({ code: 400, message: "Agent Task input value is required" });
+      try {
+        await control.service.provideInput({ ...identity, requestId: request.params.requestId, value: request.body.value });
+        return reply.code(202).send({ taskId: identity.taskId, requestId: request.params.requestId, status: "input_accepted" });
       } catch (error) {
         return sendControlError(reply, error);
       }

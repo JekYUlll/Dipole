@@ -74,6 +74,8 @@ type gatewayAgentTaskStub struct {
 	approvalID string
 	decision   string
 	reason     string
+	requestID  string
+	input      any
 }
 
 func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
@@ -89,6 +91,11 @@ func (s *gatewayAgentTaskStub) CancelTask(_ context.Context, principalUUID, task
 func (s *gatewayAgentTaskStub) ResolveApproval(_ context.Context, principalUUID, taskUUID, approvalUUID, decision string) (*AgentTaskControlResult, error) {
 	s.principal, s.taskID, s.approvalID, s.decision = principalUUID, taskUUID, approvalUUID, decision
 	return agentControlJSON(http.StatusAccepted, map[string]any{"status": "resolution_requested"}), nil
+}
+
+func (s *gatewayAgentTaskStub) ProvideInput(_ context.Context, principalUUID, taskUUID, requestUUID string, value any) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID, s.requestID, s.input = principalUUID, taskUUID, requestUUID, value
+	return agentControlJSON(http.StatusAccepted, map[string]any{"status": "input_accepted"}), nil
 }
 
 func agentControlJSON(status int, value any) *AgentTaskControlResult {
@@ -263,5 +270,13 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	gateway.Engine().ServeHTTP(response, request)
 	if response.Code != http.StatusAccepted || proxied != 0 || tasks.principal != "U100" || tasks.taskID != "TASK-1" || tasks.approvalID != "APR-1" || tasks.decision != "approved" {
 		t.Fatalf("Agent control: code=%d proxied=%d tasks=%+v body=%s", response.Code, proxied, tasks, response.Body.String())
+	}
+	inputRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/tasks/TASK-1/inputs/INPUT-1", strings.NewReader(`{"value":{"scope":"today"},"principal_user_id":"U999"}`))
+	inputRequest.Header.Set("Authorization", "Bearer "+token)
+	inputRequest.Header.Set("Content-Type", "application/json")
+	inputResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(inputResponse, inputRequest)
+	if inputResponse.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.requestID != "INPUT-1" {
+		t.Fatalf("Agent input: code=%d tasks=%+v body=%s", inputResponse.Code, tasks, inputResponse.Body.String())
 	}
 }

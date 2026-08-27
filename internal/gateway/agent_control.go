@@ -27,6 +27,7 @@ type AgentTaskControlApplication interface {
 	GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error)
 	CancelTask(ctx context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error)
 	ResolveApproval(ctx context.Context, principalUUID, taskUUID, approvalUUID, decision string) (*AgentTaskControlResult, error)
+	ProvideInput(ctx context.Context, principalUUID, taskUUID, requestUUID string, value any) (*AgentTaskControlResult, error)
 }
 
 type AgentTaskControlClient struct {
@@ -59,6 +60,10 @@ func (c *AgentTaskControlClient) CancelTask(ctx context.Context, principalUUID, 
 
 func (c *AgentTaskControlClient) ResolveApproval(ctx context.Context, principalUUID, taskUUID, approvalUUID, decision string) (*AgentTaskControlResult, error) {
 	return c.request(ctx, http.MethodPost, principalUUID, "/internal/v1/agent/tasks/"+url.PathEscape(taskUUID)+"/approvals/"+url.PathEscape(approvalUUID), map[string]string{"decision": decision})
+}
+
+func (c *AgentTaskControlClient) ProvideInput(ctx context.Context, principalUUID, taskUUID, requestUUID string, value any) (*AgentTaskControlResult, error) {
+	return c.request(ctx, http.MethodPost, principalUUID, "/internal/v1/agent/tasks/"+url.PathEscape(taskUUID)+"/inputs/"+url.PathEscape(requestUUID), map[string]any{"value": value})
 }
 
 func (c *AgentTaskControlClient) request(ctx context.Context, method, principalUUID, path string, payload any) (*AgentTaskControlResult, error) {

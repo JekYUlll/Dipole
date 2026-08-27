@@ -27,7 +27,7 @@ describe("agent runtime Task control API", () => {
   it("requires the Gateway service identity and forwards only trusted principal headers", async () => {
     const getTask = vi.fn(async (input) => ({ taskId: input.taskId, status: "running" }));
     const server = buildServer({ isReady: () => true }, {
-      secret: "control-secret", service: { getTask, cancelTask: vi.fn(), resolveApproval: vi.fn() }
+      secret: "control-secret", service: { getTask, cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
     });
     expect((await server.inject({ method: "GET", url: "/internal/v1/agent/tasks/TASK-1" })).statusCode).toBe(401);
     expect((await server.inject({
@@ -40,11 +40,12 @@ describe("agent runtime Task control API", () => {
     await server.close();
   });
 
-  it("binds cancellation and approval to the authenticated principal", async () => {
+  it("binds cancellation, input, and approval to the authenticated principal", async () => {
     const cancelTask = vi.fn(async () => undefined);
     const resolveApproval = vi.fn(async () => undefined);
+    const provideInput = vi.fn(async () => undefined);
     const server = buildServer({ isReady: () => true }, {
-      secret: "control-secret", service: { getTask: vi.fn(), cancelTask, resolveApproval }
+      secret: "control-secret", service: { getTask: vi.fn(), cancelTask, resolveApproval, provideInput }
     });
     const cancellation = await server.inject({
       method: "POST", url: "/internal/v1/agent/tasks/TASK-1/cancel", headers,
@@ -52,6 +53,15 @@ describe("agent runtime Task control API", () => {
     });
     expect(cancellation.statusCode).toBe(202);
     expect(cancelTask).toHaveBeenCalledWith(expect.objectContaining({ taskId: "TASK-1", principalUserId: "U100", reason: "user_cancelled" }));
+
+    const input = await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks/TASK-1/inputs/INPUT-1", headers,
+      payload: { value: { scope: "today" }, principalUserId: "U999" }
+    });
+    expect(input.statusCode).toBe(202);
+    expect(provideInput).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: "TASK-1", principalUserId: "U100", requestId: "INPUT-1", value: { scope: "today" }
+    }));
 
     const approval = await server.inject({
       method: "POST", url: "/internal/v1/agent/tasks/TASK-1/approvals/APR-1", headers,

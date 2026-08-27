@@ -81,6 +81,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
@@ -142,6 +143,27 @@ func agentTaskApprovalHandler(tasks AgentTaskControlApplication) gin.HandlerFunc
 			return
 		}
 		result, err := tasks.ResolveApproval(c.Request.Context(), user.UUID, c.Param("task_id"), c.Param("approval_id"), body.Decision)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskInputHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Value any `json:"value" binding:"required"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Task input"})
+			return
+		}
+		result, err := tasks.ProvideInput(c.Request.Context(), user.UUID, c.Param("task_id"), c.Param("request_id"), body.Value)
 		writeAgentTaskControlResult(c, result, err)
 	}
 }
