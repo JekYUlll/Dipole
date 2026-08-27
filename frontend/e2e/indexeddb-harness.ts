@@ -40,6 +40,8 @@ async function deleteDatabase(name: string) {
   })
 }
 
+let interruptedWritePending = false
+
 const acceptance = {
   async lifecycle(databaseName: string) {
     const options = { highWaterMessages: 5, lowWaterMessages: 3, minimumMessagesPerConversation: 1 }
@@ -119,7 +121,14 @@ const acceptance = {
       conversation: `direct:U1:U${index % 4 + 2}`,
       content: 'x'.repeat(1_024),
     }))
-    void store.commitPage('U1', page(items, 2_001)).catch(() => undefined)
+    interruptedWritePending = true
+    void store.commitPage('U1', page(items, 2_001))
+      .catch(() => undefined)
+      .finally(() => { interruptedWritePending = false })
+  },
+
+  interruptedWritePending() {
+    return interruptedWritePending
   },
 
   async inspectInterruptedWrite(databaseName: string) {

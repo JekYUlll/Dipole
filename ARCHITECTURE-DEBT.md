@@ -50,9 +50,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** IndexedDB Sync Engine、共享设备隐私、浏览器配额、401/强制下线
-- **现状：** Sync Engine 按用户隔离消息与游标；显式退出、HTTP 401、WS kick 和账号切换进入统一 Session Termination。凭据与运行时消息先同步撤销，在途 Sync 收敛并删除账号 IndexedDB 后才跳转登录页，避免导航中止清理；并发终止复用 singleflight，快速重登等待旧清理完成。IndexedDB v2 增加逐用户 `message_count/compacted` manifest、5000/4000 默认高低水位和按会话保底淘汰；单页消息、淘汰和完整 `next_seq` 在同一事务提交，配额失败映射为 `storage_full`。Playwright 已在 Chromium、Firefox、WebKit 验证真实 IndexedDB 淘汰、重开、账号隔离、延迟清理和页面中断事务原子性；`storage_full/sync_error` 进入独立有界错误指标及告警。
+- **现状：** Sync Engine 按用户隔离消息与游标；显式退出、HTTP 401、WS kick 和账号切换进入统一 Session Termination。凭据与运行时消息先同步撤销，在途 Sync 收敛并删除账号 IndexedDB 后才跳转登录页，避免导航中止清理；并发终止复用 singleflight，快速重登等待旧清理完成。IndexedDB v2 增加逐用户 `message_count/compacted` manifest、5000/4000 默认高低水位和按会话保底淘汰；单页消息、淘汰和完整 `next_seq` 在同一事务提交，配额失败映射为 `storage_full`。Playwright 已在 Chromium、Firefox、WebKit 验证真实 IndexedDB 淘汰、重开、账号隔离、延迟清理和页面中断事务原子性；独立 Chromium persistent profile 进一步在 `commitPage` pending 时触发完整主进程 crash，同一 profile 重启后 Message、manifest 与安全 Cursor 保持整页提交或整页回滚。`storage_full/sync_error` 进入独立有界错误指标及告警。
 - **风险：** IndexedDB 删除失败或浏览器进程强退时，共享设备仍可能保留本地消息；浏览器总配额还会受其他站点数据和实现差异影响。极端会话数超过低水位时，为满足硬上限会淘汰部分会话的最后一条本地缓存，历史仍可从服务端重新拉取。
-- **建议方向：** 继续执行真实磁盘配额拒绝、完整浏览器进程强退与共享设备 401/kick 端到端验收。Chromium 151 的实验性 CDP quota override 虽报告 active，仍未拒绝 IndexedDB 写入，不能作为晋级证据；应使用受限 profile/文件系统或真实设备配额。记录浏览器清站点数据说明。
+- **建议方向：** 完整浏览器进程强退的事务原子性已经通过真实 Chromium 验收；继续执行真实磁盘配额拒绝与共享设备 401/kick 端到端验收。Chromium 151 的实验性 CDP quota override 虽报告 active，仍未拒绝 IndexedDB 写入，不能作为晋级证据；应使用受限 profile/文件系统或真实设备配额。记录浏览器清站点数据说明。
 - **处理门槛：** `VITE_SYNC_ENGINE_MODE` 计划从 `off/shadow` 改为默认 `primary` 前完成真实浏览器容量压测、共享设备和进程强退验收；当前单元测试与 Pencil 交互基线只完成实现门禁。
 
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
