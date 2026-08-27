@@ -167,6 +167,8 @@ Eval Harness 同时评估：
 
 Embedded Runtime 已完成第一层 `ExecutionContext`：Service 从触发 Message 与 correlation context 派生 principal、Agent、会话和 request/trace/event ID，Tool schema 不再暴露身份字段，缺少可信上下文时拒绝执行。tenant、委托身份、版本化 Capability 与审批策略留在 G1 后续切片。
 
+进程内 Capability 基线位于 `contracts/agent-capabilities/v1/schema.json` 与 `application.AgentCapabilityV1`。五项 operation 覆盖受限用户资料、Agent 直聊消息、会话列表、授权会话读取和系统消息命令；`app.LocalAgentCapabilityV1` 组合 Core Capability、Conversation Service 与 Message Application。Embedded ContextBuilder/Tool 仅依赖该端口，远程 gRPC/Connect adapter 后续复用同一 contract。
+
 ## 9. 渐进路线
 
 1. 固化 Go/Eino 行为基线、可信 ExecutionContext、事件契约和评测集，建立 Capability API 与 Agent Command API。

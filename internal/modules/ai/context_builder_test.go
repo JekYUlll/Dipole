@@ -1,44 +1,60 @@
 package ai
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
-type stubAIMessageReader struct {
-	messages []*model.Message
-	err      error
+type stubAgentCapability struct {
+	users            map[string]*model.User
+	messages         []*model.Message
+	conversations    []*model.Conversation
+	read             *application.AgentConversationReadV1
+	sentMessage      *model.Message
+	profileRequested string
+	directReads      int
+	senderUUID       string
+	targetUUID       string
+	content          string
+	err              error
 }
 
-func (s *stubAIMessageReader) ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error) {
+func (s *stubAgentCapability) GetUserProfile(_ context.Context, _, _, subjectUUID string) (*model.User, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
-
-	return s.messages, nil
+	s.profileRequested = subjectUUID
+	return s.users[subjectUUID], nil
 }
 
-type stubAIUserReader struct {
-	users map[string]*model.User
-	err   error
+func (s *stubAgentCapability) ListDirectMessages(context.Context, string, string, int) ([]*model.Message, error) {
+	s.directReads++
+	return s.messages, s.err
 }
 
-func (s *stubAIUserReader) GetByUUID(uuid string) (*model.User, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
+func (s *stubAgentCapability) ListConversations(context.Context, string, int) ([]*model.Conversation, error) {
+	return s.conversations, s.err
+}
 
-	return s.users[uuid], nil
+func (s *stubAgentCapability) ReadConversation(context.Context, string, string, int) (*application.AgentConversationReadV1, error) {
+	return s.read, s.err
+}
+
+func (s *stubAgentCapability) SendSystemMessage(_ context.Context, senderUUID, targetUUID, content string) (*model.Message, error) {
+	s.senderUUID, s.targetUUID, s.content = senderUUID, targetUUID, content
+	return s.sentMessage, s.err
 }
 
 func TestContextBuilderBuildDirectContext(t *testing.T) {
 	t.Parallel()
 
 	builder := NewContextBuilder(
-		&stubAIMessageReader{
+		&stubAgentCapability{
 			messages: []*model.Message{
 				{
 					UUID:        "M1",
@@ -62,8 +78,6 @@ func TestContextBuilderBuildDirectContext(t *testing.T) {
 					FileURL:         "http://example.com/hello.txt",
 				},
 			},
-		},
-		&stubAIUserReader{
 			users: map[string]*model.User{
 				"U100": {UUID: "U100", UserType: model.UserTypeNormal},
 				"UAI":  {UUID: "UAI", UserType: model.UserTypeAssistant},
@@ -72,7 +86,7 @@ func TestContextBuilderBuildDirectContext(t *testing.T) {
 		12,
 	)
 
-	context, err := builder.BuildDirectContext("U100", "UAI")
+	context, err := builder.BuildDirectContext(context.Background(), "U100", "UAI")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

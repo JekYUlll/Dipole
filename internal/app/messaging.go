@@ -27,6 +27,7 @@ type MessagingDependencies struct {
 }
 
 type MessagingServices struct {
+	Core          applicationPort.CoreCapability
 	Files         *service.FileService
 	Messages      *LocalMessageApplication
 	Conversations *service.ConversationService
@@ -53,6 +54,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 	)
 	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
 	return &MessagingServices{
+		Core:     core,
 		Files:    files,
 		Messages: &LocalMessageApplication{MessageService: messageService},
 		Conversations: service.NewConversationService(

@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
@@ -100,7 +101,7 @@ func TestAgentEvalSchemaIsVersionedJSON(t *testing.T) {
 type recordingEvalAgent struct {
 	mode       string
 	calls      int
-	toolSender *stubSystemMessageSender
+	toolSender *stubAgentCapability
 }
 
 func (a *recordingEvalAgent) Reply(ctx context.Context, _ []*schema.Message) (*schema.Message, error) {
@@ -113,38 +114,6 @@ func (a *recordingEvalAgent) Reply(ctx context.Context, _ []*schema.Message) (*s
 		return schema.AssistantMessage("", nil), nil
 	}
 	return schema.AssistantMessage("plain reply", nil), nil
-}
-
-type recordingEvalConversationReader struct {
-	conversation *model.Conversation
-	lookups      int
-}
-
-func (r *recordingEvalConversationReader) ListByUserUUID(string, int) ([]*model.Conversation, error) {
-	return nil, nil
-}
-
-func (r *recordingEvalConversationReader) GetByUserAndConversationKey(string, string) (*model.Conversation, error) {
-	r.lookups++
-	return r.conversation, nil
-}
-
-type recordingEvalMessageReader struct {
-	reads int
-}
-
-func (r *recordingEvalMessageReader) ListByConversationKey(string, uint, int) ([]*model.Message, error) {
-	r.reads++
-	return []*model.Message{{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "evidence"}}, nil
-}
-
-type recordingEvalUserReader struct {
-	requested string
-}
-
-func (r *recordingEvalUserReader) GetByUUID(uuid string) (*model.User, error) {
-	r.requested = uuid
-	return &model.User{UUID: uuid, Nickname: "baseline user"}, nil
 }
 
 func runBaselineEvalCase(t *testing.T, evalCase baselineEvalCase) baselineExpected {
@@ -171,7 +140,7 @@ func runHandleDirectMessageEval(t *testing.T, evalCase baselineEvalCase) baselin
 	mode := evalString(t, evalCase.Input, "mode")
 	logs := &stubCallLogRepository{beginReturn: mode != "duplicate"}
 	fallbackSender := &stubMessageSender{message: &model.Message{UUID: "M-REPLY"}}
-	toolSender := &stubSystemMessageSender{message: &model.Message{UUID: "M-TOOL", MessageType: model.MessageTypeSystem}}
+	toolSender := &stubAgentCapability{sentMessage: &model.Message{UUID: "M-TOOL", MessageType: model.MessageTypeSystem}}
 	agent := &recordingEvalAgent{mode: mode, toolSender: toolSender}
 	service := &Service{
 		config: config.AI{Enabled: true, AssistantUUID: "UAI"},
@@ -227,12 +196,16 @@ func runReadConversationEval(t *testing.T, evalCase baselineEvalCase) baselineEx
 	userUUID := evalString(t, evalCase.Input, "user_uuid")
 	targetUUID := evalString(t, evalCase.Input, "target_uuid")
 	allowed := evalBool(t, evalCase.Input, "allowed")
-	conversations := &recordingEvalConversationReader{}
+	capability := &stubAgentCapability{}
 	if allowed {
-		conversations.conversation = &model.Conversation{ConversationKey: model.DirectConversationKey(userUUID, targetUUID)}
+		capability.read = &application.AgentConversationReadV1{
+			Found: true, TargetUUID: targetUUID, TargetType: model.MessageTargetDirect,
+			Messages: []*model.Message{{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "evidence"}},
+		}
+	} else {
+		capability.read = &application.AgentConversationReadV1{Found: false}
 	}
-	messages := &recordingEvalMessageReader{}
-	tool := NewReadConversationTool(conversations, messages)
+	tool := NewReadConversationTool(capability)
 	arguments, _ := json.Marshal(map[string]any{"target_uuid": targetUUID})
 	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: userUUID, AgentUUID: "UAI"})
 	result, err := tool.(*readConversationTool).InvokableRun(ctx, string(arguments))
@@ -244,13 +217,13 @@ func runReadConversationEval(t *testing.T, evalCase baselineEvalCase) baselineEx
 		t.Fatalf("decode read_conversation baseline result: %v", err)
 	}
 	if allowed {
-		if !payload.Found || messages.reads != 1 {
-			t.Fatalf("allowed conversation was not read: payload=%+v reads=%d", payload, messages.reads)
+		if !payload.Found || len(payload.Messages) != 1 {
+			t.Fatalf("allowed conversation was not read: payload=%+v", payload)
 		}
 		return baselineExpected{Outcome: "found", Trajectory: []string{"tool.read_conversation", "conversation.authorized", "messages.read"}, Permission: "allowed"}
 	}
-	if payload.Found || messages.reads != 0 {
-		t.Fatalf("denied conversation reached Message Store: payload=%+v reads=%d", payload, messages.reads)
+	if payload.Found || len(payload.Messages) != 0 {
+		t.Fatalf("denied conversation returned messages: payload=%+v", payload)
 	}
 	return baselineExpected{Outcome: "not_found", Trajectory: []string{"tool.read_conversation", "conversation.denied"}, Permission: "denied"}
 }
@@ -258,17 +231,17 @@ func runReadConversationEval(t *testing.T, evalCase baselineEvalCase) baselineEx
 func runUserProfileEval(t *testing.T, evalCase baselineEvalCase) baselineExpected {
 	t.Helper()
 
-	reader := &recordingEvalUserReader{}
-	tool := NewUserProfileTool(reader)
 	principal := evalString(t, evalCase.Input, "principal_uuid")
+	capability := &stubAgentCapability{users: map[string]*model.User{principal: {UUID: principal, Nickname: "baseline user"}}}
+	tool := NewUserProfileTool(capability, "UAI")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
 	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
 	result, err := tool.(*userProfileTool).InvokableRun(ctx, `{"user_uuid":"`+argumentUser+`"}`)
 	if err != nil {
 		t.Fatalf("run get_user_profile baseline: %v", err)
 	}
-	if reader.requested != principal || reader.requested == argumentUser || result == "" {
-		t.Fatalf("execution principal was not enforced, requested=%q", reader.requested)
+	if capability.profileRequested != principal || capability.profileRequested == argumentUser || result == "" {
+		t.Fatalf("execution principal was not enforced, requested=%q", capability.profileRequested)
 	}
 	return baselineExpected{
 		Outcome: "found", Trajectory: []string{"tool.get_user_profile", "identity.execution_context", "user.read"},
@@ -279,8 +252,8 @@ func runUserProfileEval(t *testing.T, evalCase baselineEvalCase) baselineExpecte
 func runSystemMessageEval(t *testing.T, evalCase baselineEvalCase) baselineExpected {
 	t.Helper()
 
-	sender := &stubSystemMessageSender{message: &model.Message{UUID: "M-SYSTEM", MessageType: model.MessageTypeSystem}}
-	tool := NewSystemMessageTool(sender, "UAI")
+	capability := &stubAgentCapability{sentMessage: &model.Message{UUID: "M-SYSTEM", MessageType: model.MessageTypeSystem}}
+	tool := NewSystemMessageTool(capability, "UAI")
 	principal := evalString(t, evalCase.Input, "principal_uuid")
 	argumentUser := evalString(t, evalCase.Input, "argument_user_uuid")
 	ctx := withExecutionContext(context.Background(), ExecutionContext{PrincipalUserUUID: principal, AgentUUID: "UAI"})
@@ -288,8 +261,8 @@ func runSystemMessageEval(t *testing.T, evalCase baselineEvalCase) baselineExpec
 	if err != nil {
 		t.Fatalf("run send_system_message baseline: %v", err)
 	}
-	if sender.targetUUID != principal || sender.targetUUID == argumentUser {
-		t.Fatalf("execution principal was not enforced as message target, target=%q", sender.targetUUID)
+	if capability.targetUUID != principal || capability.targetUUID == argumentUser {
+		t.Fatalf("execution principal was not enforced as message target, target=%q", capability.targetUUID)
 	}
 	return baselineExpected{
 		Outcome: "sent", Trajectory: []string{"tool.send_system_message", "identity.execution_context", "message.send_system"},
