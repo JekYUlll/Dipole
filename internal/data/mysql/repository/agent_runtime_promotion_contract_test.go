@@ -97,7 +97,8 @@ func TestAgentRuntimePromotionGrantRepositoryContract(t *testing.T) {
 		},
 		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
 	})
-	if err != nil || admitted.Invocation.Mode != "active" || admitted.Invocation.RuntimeID != grant.RuntimeID {
+	if err != nil || admitted.Invocation.Mode != "active" || admitted.Invocation.RuntimeID != grant.RuntimeID ||
+		len(admitted.Invocation.ApprovedCapabilities) != 1 || admitted.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend {
 		t.Fatalf("admit active Run from persisted grant: admission=%+v err=%v", admitted, err)
 	}
 	failClosedResolver, err := appComposition.NewPersistentAgentInvocationResolverV1(store)
@@ -111,7 +112,8 @@ func TestAgentRuntimePromotionGrantRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create promoted Invocation resolver: %v", err)
 	}
-	if invocation, resolveErr := resolver.Resolve(context.Background(), admitted.TaskUUID, admitted.RunUUID); resolveErr != nil || invocation.Mode != "active" {
+	if invocation, resolveErr := resolver.Resolve(context.Background(), admitted.TaskUUID, admitted.RunUUID); resolveErr != nil || invocation.Mode != "active" ||
+		len(invocation.ApprovedCapabilities) != 1 || invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend {
 		t.Fatalf("resolve active context from persisted grant: invocation=%+v err=%v", invocation, resolveErr)
 	}
 	if revoked, revokeErr := store.RevokeRuntimePromotionGrant(context.Background(), grant.GrantUUID, now); revokeErr != nil || !revoked {

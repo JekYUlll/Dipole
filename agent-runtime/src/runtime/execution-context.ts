@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const uniqueStrings = (values: string[]) => new Set(values).size === values.length;
+const approvedCapabilitySchema = z.enum(["message.system.send"]);
 
 export const resourceScopeSchema = z.object({
   resourceType: z.string().trim().min(1),
@@ -18,13 +19,16 @@ export const executionContextSchema = z.object({
   mode: z.enum(["shadow", "active"]),
   permissions: z.array(z.string().trim().min(1)).min(1).refine(uniqueStrings, "permissions must be unique"),
   resourceScopes: z.array(resourceScopeSchema).min(1),
-  approvedCapabilities: z.array(z.string().trim().min(1)).refine(uniqueStrings, "approvals must be unique"),
+  approvedCapabilities: z.array(approvedCapabilitySchema).refine(uniqueStrings, "approvals must be unique"),
   requestId: z.string().trim().min(1).optional(),
   traceId: z.string().trim().min(1).optional(),
   eventId: z.string().trim().min(1).optional()
 }).strict().superRefine((context, refinement) => {
   if (context.delegatedByUuid !== undefined && context.delegatedByUuid !== context.principalUuid) {
     refinement.addIssue({ code: "custom", message: "delegator must match principal", path: ["delegatedByUuid"] });
+  }
+  if (context.mode === "shadow" && context.approvedCapabilities.length !== 0) {
+    refinement.addIssue({ code: "custom", message: "shadow mode cannot carry approved Capabilities", path: ["approvedCapabilities"] });
   }
 });
 

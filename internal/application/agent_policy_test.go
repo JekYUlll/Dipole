@@ -3,7 +3,47 @@ package application
 import (
 	"errors"
 	"testing"
+	"time"
 )
+
+func TestProjectAgentApprovedCapabilitiesV1UsesExplicitWriteAllowlist(t *testing.T) {
+	t.Parallel()
+	definition := AgentDefinitionVersionV1{DefinitionUUID: "DEF-1", Version: 1, TenantID: "dipole", OwnerUUID: "U1", AgentUUID: "UAI",
+		Status: AgentDefinitionStatusActive, Permissions: []string{AgentPermissionMessageWrite},
+		Scopes: []AgentResourceScopeV1{{ResourceType: AgentResourceTypeConversation, ResourceID: "direct:U1:UAI", Actions: []string{AgentResourceActionWrite}}}, ValidFrom: time.Unix(1, 0)}
+	capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition)
+	if err != nil || len(capabilities) != 1 || capabilities[0] != AgentCapabilitySystemMessageSend {
+		t.Fatalf("capabilities=%v err=%v", capabilities, err)
+	}
+	definition.Scopes[0].Actions = []string{AgentResourceActionRead}
+	if capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition); err != nil || len(capabilities) != 0 {
+		t.Fatalf("read-only projection=%v err=%v", capabilities, err)
+	}
+	definition.Scopes[0].Actions = []string{AgentResourceActionWrite}
+	definition.Permissions = []string{AgentPermissionConversationRead}
+	if capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition); err != nil || len(capabilities) != 0 {
+		t.Fatalf("missing-permission projection=%v err=%v", capabilities, err)
+	}
+}
+
+func TestValidateAgentApprovedCapabilitiesV1RejectsModeAndAllowlistDrift(t *testing.T) {
+	t.Parallel()
+	if err := ValidateAgentApprovedCapabilitiesV1("active", []string{AgentCapabilitySystemMessageSend}); err != nil {
+		t.Fatalf("valid active projection: %v", err)
+	}
+	for _, test := range []struct {
+		mode string
+		ids  []string
+	}{
+		{mode: "shadow", ids: []string{AgentCapabilitySystemMessageSend}},
+		{mode: "active", ids: []string{"message.future.send"}},
+		{mode: "active", ids: []string{AgentCapabilitySystemMessageSend, AgentCapabilitySystemMessageSend}},
+	} {
+		if err := ValidateAgentApprovedCapabilitiesV1(test.mode, test.ids); !errors.Is(err, ErrAgentCapabilityDenied) {
+			t.Fatalf("Validate(%s, %v) = %v", test.mode, test.ids, err)
+		}
+	}
+}
 
 func TestAgentCapabilityV1DescriptorsAreVersionedAndRiskClassified(t *testing.T) {
 	t.Parallel()

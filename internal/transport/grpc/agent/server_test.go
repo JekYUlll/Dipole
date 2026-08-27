@@ -236,8 +236,9 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 	invocation := application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
 		RuntimeID: "dipole-agent", Mode: "active",
-		Permissions:    []string{"conversation.list"},
-		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+		Permissions:          []string{"conversation.list"},
+		ResourceScopes:       []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+		ApprovedCapabilities: []string{application.AgentCapabilitySystemMessageSend},
 	}
 	server, err := NewServer(&capabilityStub{}, resolverStub{invocation: invocation}, &admissionStub{})
 	if err != nil {
@@ -246,7 +247,7 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 	response, err := server.ResolveMcpContext(context.Background(), &agentv1.ResolveMcpContextRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", PrincipalUserId: "U100",
 	})
-	if err != nil || response.GetPrincipalUserId() != "U100" || response.GetAgentId() != "UAI" || response.GetRuntimeId() != "dipole-agent" || response.GetMode() != "active" || len(response.GetPermissions()) != 1 || len(response.GetResourceScopes()) != 1 {
+	if err != nil || response.GetPrincipalUserId() != "U100" || response.GetAgentId() != "UAI" || response.GetRuntimeId() != "dipole-agent" || response.GetMode() != "active" || len(response.GetPermissions()) != 1 || len(response.GetResourceScopes()) != 1 || len(response.GetApprovedCapabilities()) != 1 {
 		t.Fatalf("unexpected MCP context: response=%+v err=%v", response, err)
 	}
 	_, err = server.ResolveMcpContext(context.Background(), &agentv1.ResolveMcpContextRequest{
@@ -264,6 +265,11 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 	})
 	if status.Code(err) != codes.NotFound {
 		t.Fatalf("forged Runtime code = %s, want %s", status.Code(err), codes.NotFound)
+	}
+	server.resolver = resolverStub{invocation: application.AgentInvocationV1{TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", RuntimeID: "dipole-agent", Mode: "shadow", Permissions: []string{"conversation.list"}, ResourceScopes: invocation.ResourceScopes, ApprovedCapabilities: []string{application.AgentCapabilitySystemMessageSend}}}
+	_, err = server.ResolveMcpContext(context.Background(), &agentv1.ResolveMcpContextRequest{Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", PrincipalUserId: "U100"})
+	if status.Code(err) != codes.NotFound {
+		t.Fatalf("shadow approved Capability code = %s, want %s", status.Code(err), codes.NotFound)
 	}
 }
 

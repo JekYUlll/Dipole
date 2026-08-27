@@ -89,6 +89,7 @@ func (r *PersistentAgentInvocationResolverV1) Resolve(ctx context.Context, taskU
 	if err := authorizeDefinitionAtV1(definition, request, r.now()); err != nil {
 		return application.AgentInvocationV1{}, err
 	}
+	var approvedCapabilities []string
 	if run.Mode == "active" {
 		if r.activeAuthorizer == nil || strings.TrimSpace(run.CandidateVersion) == "" {
 			return application.AgentInvocationV1{}, fmt.Errorf("%w: active Runtime promotion authorization is unavailable", application.ErrAgentExecutionPolicyDenied)
@@ -98,9 +99,14 @@ func (r *PersistentAgentInvocationResolverV1) Resolve(ctx context.Context, taskU
 		}); err != nil {
 			return application.AgentInvocationV1{}, err
 		}
+		approvedCapabilities, err = application.ProjectAgentApprovedCapabilitiesV1(*definition)
+		if err != nil {
+			return application.AgentInvocationV1{}, err
+		}
 	}
 	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
 	invocation.RuntimeID, invocation.Mode = run.RuntimeID, run.Mode
+	invocation.ApprovedCapabilities = approvedCapabilities
 	return invocation, nil
 }
 
@@ -189,6 +195,13 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			return nil, err
 		}
 	}
+	var approvedCapabilities []string
+	if admission.Mode == "active" {
+		approvedCapabilities, err = application.ProjectAgentApprovedCapabilitiesV1(*definition)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if task.Status == application.AgentTaskStatusCreated {
 		changed, transitionErr := a.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
 		if transitionErr != nil {
@@ -227,6 +240,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	}
 	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
 	invocation.RuntimeID, invocation.Mode = admission.RuntimeID, admission.Mode
+	invocation.ApprovedCapabilities = approvedCapabilities
 	return &application.AgentRunAdmissionV1{
 		TaskUUID: task.TaskUUID, RunUUID: runUUID, RunStatus: runStatus,
 		Invocation: invocation,
