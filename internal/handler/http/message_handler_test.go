@@ -65,7 +65,6 @@ func (s *stubMessageService) ListGroupMessagesBeforeSeq(currentUserUUID, groupUU
 }
 
 func TestMessageHandlerListDirectBeforeSeq(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	called := false
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectBeforeSeqFn: func(userUUID, targetUUID string, beforeSeq uint64, limit int) ([]*model.Message, error) {
@@ -89,7 +88,6 @@ func TestMessageHandlerListDirectBeforeSeq(t *testing.T) {
 }
 
 func TestMessageHandlerListDirectAfterSeq(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	called := false
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectAfterSeqFn: func(userUUID, targetUUID string, afterSeq uint64, limit int) ([]*model.Message, error) {
@@ -113,7 +111,6 @@ func TestMessageHandlerListDirectAfterSeq(t *testing.T) {
 }
 
 func TestMessageHandlerRejectsMixedHistoryCursorDomains(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	for _, test := range []struct {
 		name   string
 		path   string
@@ -169,7 +166,6 @@ func (s *stubMessageService) ListOfflineMessages(currentUserUUID string, afterID
 
 func TestMessageHandlerListDirectSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -224,7 +220,6 @@ func TestMessageHandlerListDirectSuccess(t *testing.T) {
 
 func TestMessageHandlerListDirectRejectsInvalidBeforeID(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -247,7 +242,6 @@ func TestMessageHandlerListDirectRejectsInvalidBeforeID(t *testing.T) {
 
 func TestMessageHandlerListDirectNotFound(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -278,7 +272,6 @@ func TestMessageHandlerListDirectNotFound(t *testing.T) {
 
 func TestMessageHandlerListDirectRequiresFriendship(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -301,7 +294,6 @@ func TestMessageHandlerListDirectRequiresFriendship(t *testing.T) {
 
 func TestMessageHandlerListGroupSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listGroupFn: func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -338,7 +330,6 @@ func TestMessageHandlerListGroupSuccess(t *testing.T) {
 
 func TestMessageHandlerListGroupForbidden(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listGroupFn: func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
@@ -361,7 +352,6 @@ func TestMessageHandlerListGroupForbidden(t *testing.T) {
 
 func TestMessageHandlerListGroupAfterSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listGroupAfterFn: func(currentUserUUID, groupUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -424,7 +414,6 @@ func TestMessageHandlerListGroupAfterSequenceFromZero(t *testing.T) {
 
 func TestMessageHandlerListOfflineSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listOfflineFn: func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
@@ -475,7 +464,6 @@ func TestMessageHandlerListOfflineSuccess(t *testing.T) {
 
 func TestMessageHandlerListOfflineRejectsInvalidAfterID(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewMessageHandler(&stubMessageService{
 		listOfflineFn: func(currentUserUUID string, afterID uint, limit int) ([]*model.Message, error) {
