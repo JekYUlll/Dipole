@@ -27,6 +27,7 @@ void TestProjectedEvidence() {
       .offset = 41,
       .source_event_id = "E1",
       .batch_id = "shadow:E1:2:41",
+      .message_type = 0,
       .item_count = 2,
       .outcome = dipole::realtime::ShadowOutcome::kProjected,
       .error_code = "",
@@ -41,6 +42,7 @@ void TestProjectedEvidence() {
                        {"outcome", "projected"},
                        {"source_event_id", "E1"},
                        {"batch_id", "shadow:E1:2:41"},
+                       {"message_type", 0},
                        {"item_count", 2},
                        {"error_code", ""},
                        {"node_batch_count", 0},
@@ -69,6 +71,7 @@ void TestRejectedEvidenceAndFailures() {
       .offset = 9,
       .source_event_id = "",
       .batch_id = "",
+      .message_type = -1,
       .item_count = 0,
       .outcome = dipole::realtime::ShadowOutcome::kRejected,
       .error_code = "invalid_event",
@@ -76,6 +79,8 @@ void TestRejectedEvidenceAndFailures() {
   Check(!sink.Append(evidence), "write rejected evidence");
   Check(nlohmann::json::parse(output.str()).at("outcome") == "rejected",
         "rejected outcome is explicit");
+  Check(nlohmann::json::parse(output.str()).at("message_type").is_null(),
+        "invalid events do not invent a message type");
 
   dipole::realtime::JsonLineEvidenceSink missing(nullptr);
   Check(missing.Append(evidence).has_value(), "missing stream is rejected");

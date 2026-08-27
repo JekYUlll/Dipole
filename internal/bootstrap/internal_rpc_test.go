@@ -38,6 +38,19 @@ type rpcDeliveryObservationSink struct{}
 
 func (rpcDeliveryObservationSink) Observe(*deliveryv1.NodeDeliveryBatch) {}
 
+type rpcBlockingDeliveryObservationSink struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (s rpcBlockingDeliveryObservationSink) Observe(*deliveryv1.NodeDeliveryBatch) {
+	select {
+	case s.started <- struct{}{}:
+	default:
+	}
+	<-s.release
+}
+
 type rpcAgentCapabilityStub struct{ application.AgentCapabilityV1 }
 
 func (rpcAgentCapabilityStub) ListConversations(context.Context, application.AgentInvocationV1, int) ([]*model.Conversation, error) {
@@ -270,15 +283,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		t.Fatalf("dial delivery observation as Realtime: %v", err)
 	}
 	t.Cleanup(func() { _ = connection.Close() })
-	observation, err := deliveryv1.NewNodeDeliveryServiceClient(connection).ObserveNodeBatch(context.Background(), &deliveryv1.NodeDeliveryBatch{
-		ContractVersion: "v1", BatchId: "NB-bootstrap", TargetNodeId: "gateway-1", SourceEventId: "E1",
-		CreatedAt: timestamppb.New(time.Unix(1, 0).UTC()),
-		Items: []*deliveryv1.NodeDeliveryItem{{
-			DeliveryId: "D-bootstrap", RecipientUserId: "U1", ConnectionIds: []string{"C1"},
-			EventType: "chat.message", PayloadJson: []byte(`{"message_id":"M1"}`), OrderingKey: "direct:U1:U2",
-			Mode: deliveryv1.DeliveryMode_DELIVERY_MODE_FULL_EVENT,
-		}},
-	})
+	observation, err := deliveryv1.NewNodeDeliveryServiceClient(connection).ObserveNodeBatch(context.Background(), rpcObservationBatch("NB-bootstrap"))
 	if err != nil || observation.GetStatus() != deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_OBSERVED {
 		t.Fatalf("delivery observation=%+v err=%v", observation, err)
 	}
@@ -287,6 +292,67 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		Service: messageServiceName, Secret: cfg.SharedSecret,
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected Message caller rejection, got %v", err)
+	}
+}
+
+func TestDeliveryObservationRPCReportsBackpressureOverTCP(t *testing.T) {
+	sink := rpcBlockingDeliveryObservationSink{started: make(chan struct{}, 1), release: make(chan struct{})}
+	receiver, err := deliverygrpc.NewShadowServer("gateway-1", 1, 25*time.Millisecond, sink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(receiver.Close)
+	t.Cleanup(func() { close(sink.release) })
+	cfg := config.InternalRPC{
+		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
+		DialTimeoutSeconds: 2,
+	}
+	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	if err != nil {
+		t.Fatalf("start delivery observation rpc: %v", err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+	})
+	if err != nil {
+		t.Fatalf("dial delivery observation: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	client := deliveryv1.NewNodeDeliveryServiceClient(connection)
+
+	if _, err := client.ObserveNodeBatch(context.Background(), rpcObservationBatch("NB-pressure-1")); err != nil {
+		t.Fatalf("observe first batch: %v", err)
+	}
+	select {
+	case <-sink.started:
+	case <-time.After(time.Second):
+		t.Fatal("observation worker did not start")
+	}
+	if _, err := client.ObserveNodeBatch(context.Background(), rpcObservationBatch("NB-pressure-2")); err != nil {
+		t.Fatalf("fill observation queue: %v", err)
+	}
+	observation, err := client.ObserveNodeBatch(context.Background(), rpcObservationBatch("NB-pressure-3"))
+	if err != nil {
+		t.Fatalf("observe saturated queue: %v", err)
+	}
+	if observation.GetStatus() != deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_BACKPRESSURED ||
+		observation.GetErrorCode() != deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_QUEUE_FULL ||
+		observation.GetPressure().GetDepth() != 1 || observation.GetPressure().GetCapacity() != 1 ||
+		observation.GetPressure().GetRetryAfterMs() != 25 {
+		t.Fatalf("unexpected backpressure observation: %+v", observation)
+	}
+}
+
+func rpcObservationBatch(batchID string) *deliveryv1.NodeDeliveryBatch {
+	return &deliveryv1.NodeDeliveryBatch{
+		ContractVersion: "v1", BatchId: batchID, TargetNodeId: "gateway-1", SourceEventId: "E1",
+		CreatedAt: timestamppb.New(time.Unix(1, 0).UTC()),
+		Items: []*deliveryv1.NodeDeliveryItem{{
+			DeliveryId: "D-" + batchID, RecipientUserId: "U1", ConnectionIds: []string{"C1"},
+			EventType: "chat.message", PayloadJson: []byte(`{"message_id":"M1"}`), OrderingKey: "direct:U1:U2",
+			Mode: deliveryv1.DeliveryMode_DELIVERY_MODE_FULL_EVENT,
+		}},
 	}
 }
 

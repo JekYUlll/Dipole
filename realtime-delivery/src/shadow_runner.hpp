@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include "event_projection.hpp"
@@ -38,6 +39,7 @@ struct ShadowEvidence {
   std::int64_t offset = -1;
   std::string source_event_id;
   std::string batch_id;
+  int message_type = -1;
   std::size_t item_count = 0;
   ShadowOutcome outcome = ShadowOutcome::kRejected;
   std::string error_code;
@@ -91,6 +93,7 @@ class ShadowRunner {
   int poll_timeout_ms_;
   PresenceReader* presence_reader_;
   NodeBatchTransport* node_transport_;
+  std::optional<KafkaRecord> pending_record_;
   std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;
 };

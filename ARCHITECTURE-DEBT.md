@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-039：Gateway Kafka assignment 未纳入 readiness
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-28
+- **影响范围：** Go Gateway 实时投递、空 Kafka 冷启动、基准门禁、后续 C++ Realtime Delivery 切流
+- **现状：** C2 同 workload 隔离演练中，空 Kafka 拓扑首次启动曾出现 Gateway HTTP readiness 为 200、`dipole-gateway-consumer` 无任何 assignment 的状态；该轮 40 条消息均已接受和持久化，Gateway reader 指标保持 0，客户端实时收件为 0，聚合 settled lag 仍可显示 0。重启 Gateway 后 direct-created 六个分区完成 assignment，相同 workload 恢复 40/40 收件。成功对照归档通过演练前显式 assignment 检查规避该窗口，生产实现未修改。
+- **风险：** 编排系统、基准或流量切换可能把仅 HTTP/gRPC 可用的 Gateway 当作实时数据面已就绪；缺少 consumer group 行时，单纯汇总 lag 也无法区分“无积压”和“尚未加入消费组”。
+- **建议方向：** 将必需 topic 的 partition assignment 和 reader 健康纳入 Gateway readiness，区分初始 metadata 收敛、运行期 rebalance 与持续失联；基准 preflight 同时要求指定 group/topic 的非空 assignment 与稳定窗口，并保存初始/final group evidence。
+- **处理门槛：** C++ primary 接管、Gateway 自动扩缩容或正式冷启动 SLA 发布前完成；当前 C++ shadow 与对照演练必须保留显式 assignment 前置检查。
+
 ### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
 
 - **优先级：** P1
@@ -163,8 +174,8 @@
 - **现状：** go-redis 会在 Sentinel 选出新 master 后重连命令与 Pub/Sub 连接；连接中断期间已经发布的 Pub/Sub 消息无法补读。Gateway 的 Kafka handler 当前将跨节点 Pub/Sub 视为实时通知通道。
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
-- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v2 与 assignment readiness。真实 Kafka+Redis 回放已量化 stale sibling，Sentinel 演练证明同一 reader 可经有界错误窗口自动发现新 master；仍不写 Gateway，当前 Go Redis Pub/Sub 流量语义未切换。
-- **后续方向：** `ObserveNodeBatch` 先建立默认关闭的节点观察队列和 batch 去重；随后实现 connection 定向投递、逐项 ACK、稳定 delivery ID 去重和 Kafka offset 提交边界。保留 Sync Timeline 作为最终补偿路径。
+- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零；Gateway sink 不持有 Hub/Client，当前 Go Redis Pub/Sub 流量语义未切换。
+- **后续方向：** 评审 connection 定向投递、逐项客户端 ACK、稳定 delivery ID 去重和 Kafka offset 提交边界；同时先处理 `AD-039` 的 Gateway assignment readiness，避免切流门禁把未加入消费组误判为就绪。保留 Sync Timeline 作为最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
 ### AD-015：Message Service 数据库账号尚未收敛表级权限

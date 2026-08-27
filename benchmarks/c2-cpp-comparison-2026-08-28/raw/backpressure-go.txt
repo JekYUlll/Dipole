@@ -1,0 +1,1 @@
+ok  	github.com/JekYUlll/Dipole/internal/bootstrap	1.082s

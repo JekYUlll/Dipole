@@ -4,7 +4,22 @@
 #include <unordered_set>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 namespace dipole::realtime {
+namespace {
+
+int ProjectedMessageType(const delivery::v1::DeliveryEnvelope& envelope) {
+  if (envelope.items().empty()) return -1;
+  const auto payload = nlohmann::json::parse(envelope.items(0).payload_json(), nullptr, false);
+  if (payload.is_discarded()) return -1;
+  const auto message_type = payload.find("message_type");
+  return message_type != payload.end() && message_type->is_number_integer()
+             ? message_type->get<int>()
+             : -1;
+}
+
+}  // namespace
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink,
                            int poll_timeout_ms, PresenceReader* presence_reader,
@@ -35,17 +50,23 @@ ValidationError ShadowRunner::RunOnce(
     return "node transport requires Presence routing";
   }
 
-  PollResult result = consumer_->Poll(poll_timeout_ms_);
-  if (result.status == PollStatus::kTimeout) {
-    return std::nullopt;
-  }
-  if (result.status == PollStatus::kError) {
-    ++stats_.poll_errors;
-    healthy_.store(false);
-    return "shadow Kafka poll failed: " + result.error;
+  PollResult result;
+  if (pending_record_) {
+    result = {.status = PollStatus::kRecord, .record = *pending_record_, .error = {}};
+  } else {
+    result = consumer_->Poll(poll_timeout_ms_);
+    if (result.status == PollStatus::kTimeout) {
+      return std::nullopt;
+    }
+    if (result.status == PollStatus::kError) {
+      ++stats_.poll_errors;
+      healthy_.store(false);
+      return "shadow Kafka poll failed: " + result.error;
+    }
+    ++stats_.polled;
+    pending_record_ = result.record;
   }
 
-  ++stats_.polled;
   delivery::v1::DeliveryEnvelope envelope;
   const auto projection_error = ProjectMessageEvent(result.record, policy, &envelope);
   ShadowEvidence evidence;
@@ -60,6 +81,7 @@ ValidationError ShadowRunner::RunOnce(
   } else {
     evidence.source_event_id = envelope.source_event_id();
     evidence.batch_id = envelope.batch_id();
+    evidence.message_type = ProjectedMessageType(envelope);
     evidence.item_count = static_cast<std::size_t>(envelope.items_size());
     if (presence_reader_ != nullptr) {
       if (!presence_policy) {
@@ -91,7 +113,6 @@ ValidationError ShadowRunner::RunOnce(
         ++stats_.rejected;
       } else {
         evidence.outcome = ShadowOutcome::kProjected;
-        ++stats_.projected;
         if (node_transport_ != nullptr) {
           NodeTransportStats transport_stats;
           deferred_error = node_transport_->Observe(batches, &transport_stats);
@@ -105,6 +126,9 @@ ValidationError ShadowRunner::RunOnce(
             evidence.error_code = "node_transport";
             ++stats_.transport_errors;
           }
+        }
+        if (!deferred_error) {
+          ++stats_.projected;
         }
       }
     } else {
@@ -131,6 +155,7 @@ ValidationError ShadowRunner::RunOnce(
     return "shadow Kafka commit failed: " + *commit_error;
   }
   ++stats_.committed;
+  pending_record_.reset();
   healthy_.store(true);
   return std::nullopt;
 }

@@ -300,6 +300,7 @@ jq -n \
         else $send_count
         end
       ),
+      message_type: 0,
       receiver_conn_ms: $receiver_conn_ms,
       sender_conn_ms: $sender_conn_ms,
       hot_group_warmup_messages: $hot_group_warmup_messages,

@@ -385,6 +385,10 @@ def build_report(summary, operations):
             "persisted": persisted,
             "received": received,
             "expected_receipts": expected,
+            "message_type": _nonnegative_int(
+                operations.get("parameters", {}).get("message_type"),
+                "parameters.message_type",
+            ),
             "acceptance_rate": _rounded(accepted / attempted) if attempted > 0 else None,
             "persistence_rate": _rounded(persisted / accepted) if accepted > 0 else None,
             "throughput_per_second": _rounded(_number(accepted_values, "rate")),
