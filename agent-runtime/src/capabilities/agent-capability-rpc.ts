@@ -39,6 +39,14 @@ export interface AgentApprovalBinding {
   expiresAtUnixMs: number;
 }
 
+export interface AgentApprovalConsumption {
+  readonly approvalId: string;
+  readonly capabilityId: string;
+  readonly scopeSha256: string;
+  readonly argumentsSha256: string;
+  readonly nonceSha256: string;
+}
+
 export interface ConversationListItem {
   readonly conversationKey: string;
   readonly targetId: string;
@@ -318,6 +326,29 @@ export class AgentCapabilityRPCClient {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval resolution returned no response"));
         const expected = decision === "approved" ? "approved" : "revoked";
         if (response.approvalId !== approvalId || response.status !== expected) return reject(new Error("Agent Approval resolution returned a conflicting state"));
+        resolve();
+      });
+    });
+  }
+
+  async consumeApproval(
+    taskId: string,
+    runId: string,
+    consumption: AgentApprovalConsumption,
+    context?: Pick<ExecutionContext, "requestId" | "traceId">
+  ): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.consumeApproval({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId,
+        approvalId: consumption.approvalId, capabilityId: consumption.capabilityId,
+        scopeSha256: consumption.scopeSha256, argumentsSha256: consumption.argumentsSha256,
+        nonceSha256: consumption.nonceSha256, mode: "active"
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval consumption returned no response"));
+        if (response.approvalId !== consumption.approvalId || response.status !== "consumed") {
+          return reject(new Error("Agent Approval consumption returned a conflicting state"));
+        }
         resolve();
       });
     });

@@ -175,8 +175,13 @@ func (s *agentPolicyStoreStub) ApproveApproval(_ context.Context, uuid, actor st
 	approval.Status, approval.ApprovedByUUID = application.AgentApprovalStatusApproved, actor
 	return true, nil
 }
-func (*agentPolicyStoreStub) ConsumeApproval(context.Context, string, application.AgentApprovalClaimV1, time.Time) (bool, error) {
-	return false, nil
+func (s *agentPolicyStoreStub) ConsumeApproval(_ context.Context, uuid string, claim application.AgentApprovalClaimV1, at time.Time) (bool, error) {
+	approval := s.approvals[uuid]
+	if approval == nil || approval.Authorize(claim, at) != nil {
+		return false, nil
+	}
+	approval.Status, approval.ConsumedAt = application.AgentApprovalStatusConsumed, &at
+	return true, nil
 }
 func (s *agentPolicyStoreStub) RevokeApproval(_ context.Context, uuid string, at time.Time) error {
 	approval := s.approvals[uuid]

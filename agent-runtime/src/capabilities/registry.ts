@@ -12,6 +12,13 @@ export interface AgentCapability<I, O> {
   execute(input: I, context: ExecutionContext): Promise<O>;
 }
 
+export interface PreparedCapabilityInvocation {
+  readonly descriptor: CapabilityDescriptor;
+  readonly resource: ResourceRequest;
+  readonly input: unknown;
+  execute(): Promise<unknown>;
+}
+
 export class CapabilityRegistry {
   readonly #capabilities = new Map<string, AgentCapability<unknown, unknown>>();
 
@@ -29,6 +36,10 @@ export class CapabilityRegistry {
   }
 
   async execute(id: string, rawInput: unknown, context: ExecutionContext): Promise<unknown> {
+    return this.prepare(id, rawInput, context).execute();
+  }
+
+  prepare(id: string, rawInput: unknown, context: ExecutionContext): PreparedCapabilityInvocation {
     const capability = this.#capabilities.get(id.trim());
     if (capability === undefined) {
       throw new Error(`capability ${id} is not registered`);
@@ -36,7 +47,12 @@ export class CapabilityRegistry {
     const input = capability.inputSchema.parse(rawInput);
     const resource = capability.resolveResource(input, context);
     this.policy.authorize(context, capability.descriptor, resource);
-    return capability.execute(input, context);
+    return {
+      descriptor: capability.descriptor,
+      resource,
+      input,
+      execute: () => capability.execute(input, context)
+    };
   }
 
   descriptors(): readonly CapabilityDescriptor[] {

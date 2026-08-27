@@ -64,6 +64,16 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { approvalId: "APR-1", status: "approved", approvedByUserId: "U100" });
       return {};
     });
+    const consumeApproval = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({
+        taskId: "TASK-1", runId: "RUN-1", approvalId: "APR-1", capabilityId: "message.bulk.send",
+        scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64), mode: "active"
+      });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { approvalId: input.approvalId, status: "consumed" });
+      return {};
+    });
     const listConversations = vi.fn((input, _metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", limit: 20 });
@@ -144,7 +154,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { invocationId: input.invocationId, status: input.status });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -183,6 +193,10 @@ describe("AgentCapabilityRPCClient", () => {
     };
     await expect(client.requestApproval("TASK-1", "RUN-1", approval, identity)).resolves.toBeUndefined();
     await expect(client.resolveApproval("TASK-1", "RUN-1", "APR-1", "approved", "U100", identity)).resolves.toBeUndefined();
+    await expect(client.consumeApproval("TASK-1", "RUN-1", {
+      approvalId: "APR-1", capabilityId: "message.bulk.send", scopeSha256: "a".repeat(64),
+      argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64)
+    }, identity)).resolves.toBeUndefined();
     await expect(client.authorizeTaskControl("TASK-1", "U100", identity)).resolves.toEqual({
       taskId: "TASK-1", taskStatus: "running",
       workflow: {

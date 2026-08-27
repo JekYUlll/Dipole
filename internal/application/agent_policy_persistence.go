@@ -195,9 +195,16 @@ type AgentApprovalResolutionV1 struct {
 	Decision                           AgentApprovalDecisionV1
 }
 
+type AgentApprovalConsumptionV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	ApprovalUUID                       string
+	Claim                              AgentApprovalClaimV1
+}
+
 type AgentApprovalServiceV1 interface {
 	Request(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
 	Resolve(ctx context.Context, resolution AgentApprovalResolutionV1) (*AgentApprovalV1, error)
+	Consume(ctx context.Context, consumption AgentApprovalConsumptionV1) error
 }
 
 func (d AgentDefinitionVersionV1) Validate() error {

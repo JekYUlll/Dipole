@@ -77,3 +77,43 @@ func TestPersistentAgentApprovalServiceRejectsForgedActorAndCrossTaskApproval(t 
 		}
 	}
 }
+
+func TestPersistentAgentApprovalServiceConsumesExactApprovedBindingOnce(t *testing.T) {
+	now := time.Date(2026, 8, 28, 0, 0, 0, 0, time.UTC)
+	scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "G1", Actions: []string{"write"}}
+	scopeHash, _ := application.AgentResourceScopeSHA256V1(scope)
+	approval := &application.AgentApprovalV1{
+		ApprovalUUID: "APR-WRITE-1", TaskUUID: "TASK-1", CapabilityID: "message.system.send", ResourceScope: scope,
+		ScopeSHA256: scopeHash, ArgumentsSHA256: strings.Repeat("a", 64), NonceSHA256: strings.Repeat("b", 64),
+		Status: application.AgentApprovalStatusApproved, ApprovedByUUID: "U100", ExpiresAt: now.Add(time.Hour),
+	}
+	driftApproval := *approval
+	driftApproval.ApprovalUUID = "APR-WRITE-2"
+	store := &agentPolicyStoreStub{
+		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100"}},
+		runs: map[string]*application.AgentRunV1{"RUN-1": {
+			RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning,
+		}},
+		approvals: map[string]*application.AgentApprovalV1{"APR-WRITE-1": approval, "APR-WRITE-2": &driftApproval},
+	}
+	service := &PersistentAgentApprovalServiceV1{store: store, now: func() time.Time { return now }}
+	consumption := application.AgentApprovalConsumptionV1{
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "active", ApprovalUUID: "APR-WRITE-1",
+		Claim: application.AgentApprovalClaimV1{
+			TaskUUID: "TASK-1", CapabilityID: "message.system.send", ScopeSHA256: scopeHash,
+			ArgumentsSHA256: strings.Repeat("a", 64), NonceSHA256: strings.Repeat("b", 64),
+		},
+	}
+	drift := consumption
+	drift.ApprovalUUID = "APR-WRITE-2"
+	drift.Claim.ArgumentsSHA256 = strings.Repeat("c", 64)
+	if err := service.Consume(context.Background(), drift); !errors.Is(err, application.ErrAgentApprovalDenied) {
+		t.Fatalf("drifted Approval error = %v", err)
+	}
+	if err := service.Consume(context.Background(), consumption); err != nil {
+		t.Fatalf("consume exact Approval: %v", err)
+	}
+	if err := service.Consume(context.Background(), consumption); !errors.Is(err, application.ErrAgentApprovalDenied) {
+		t.Fatalf("replayed Approval error = %v", err)
+	}
+}

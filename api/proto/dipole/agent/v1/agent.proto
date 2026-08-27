@@ -81,6 +81,23 @@ message ApprovalResponse {
   string approved_by_user_id = 3;
 }
 
+message ConsumeApprovalRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string approval_id = 4;
+  string capability_id = 5;
+  string scope_sha256 = 6;
+  string arguments_sha256 = 7;
+  string nonce_sha256 = 8;
+  string mode = 9;
+}
+
+message ConsumeApprovalResponse {
+  string approval_id = 1;
+  string status = 2;
+}
+
 message ListConversationsRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -358,6 +375,7 @@ service AgentCapabilityService {
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
   rpc RequestApproval(RequestApprovalRequest) returns (ApprovalResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
+  rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
