@@ -77,6 +77,8 @@ hiredis adapter 只执行 Presence `HGETALL`，支持 direct 与 Sentinel master
 
 首轮 Kafka+Redis 联合回放消费 206 条 retained 记录：205 projected、1 个既有 poison rejected；隔离 fixture 在 20 条消息中产生 20 个节点批次、20 eligible 与 20 stale，malformed 为 0，最终 group lag 为 0。fixture 与进程已清理。
 
+Sentinel 恢复证据位于 `benchmarks/c2-cpp-presence-2026-08-28/`。隔离的三 Redis/三 Sentinel 拓扑中，同一 reader 在停止当前 master `redis-2` 后连续执行 80 次读取，记录 5 次有界错误并完成 75 次成功读取，随后自动发现 `redis-3`，进程未重启。测试 Compose、网络、fixture 和卷均已删除。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
