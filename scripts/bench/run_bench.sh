@@ -11,6 +11,8 @@ SCENARIO_FILTER="${SCENARIO_FILTER:-}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8081}"
 NODE1_WS="${NODE1_WS:-ws://127.0.0.1:8081}"
 NODE2_WS="${NODE2_WS:-ws://127.0.0.1:8082}"
+NODE1_HEALTH_URL="${NODE1_HEALTH_URL:-${BASE_URL%/}/health}"
+NODE2_HEALTH_URL="${NODE2_HEALTH_URL:-http://127.0.0.1:8082/health}"
 USER_COUNT="${USER_COUNT:-50}"
 GROUP_SIZE="${GROUP_SIZE:-50}"
 PHONE_PREFIX="${PHONE_PREFIX:-138}"
@@ -78,9 +80,9 @@ mkdir -p "${RESULTS_DIR}"
 : >"${LAG_FILE}"
 : >"${PROCESS_SAMPLES_JSONL}"
 
-for port in 8081 8082; do
-  curl --fail --silent --show-error "http://127.0.0.1:${port}/health" >/dev/null || {
-    echo "Dipole node on port ${port} is not ready; start ${COMPOSE_FILE} first" >&2
+for health_url in "${NODE1_HEALTH_URL}" "${NODE2_HEALTH_URL}"; do
+  curl --fail --silent --show-error "${health_url}" >/dev/null || {
+    echo "Dipole node is not ready at ${health_url}; start ${COMPOSE_FILE} first" >&2
     exit 1
   }
 done
@@ -243,6 +245,9 @@ jq -n \
   --arg git_commit "${git_commit}" \
   --arg cpu "${cpu_model}" \
   --arg topology "${COMPOSE_FILE}" \
+  --arg api_base_url "${BASE_URL}" \
+  --arg node1_ws "${NODE1_WS}" \
+  --arg node2_ws "${NODE2_WS}" \
   --arg bench_script "${BENCH_SCRIPT}" \
   --argjson user_count "${USER_COUNT}" \
   --argjson group_size "${GROUP_SIZE}" \
@@ -270,7 +275,14 @@ jq -n \
     run_id: $run_id,
     scenario: $scenario,
     captured_at: $captured_at,
-    environment: {git_commit: $git_commit, cpu: $cpu, topology: $topology},
+    environment: {
+      git_commit: $git_commit,
+      cpu: $cpu,
+      topology: $topology,
+      api_base_url: $api_base_url,
+      node1_ws: $node1_ws,
+      node2_ws: $node2_ws
+    },
     parameters: {
       bench_script: $bench_script,
       user_count: $user_count,

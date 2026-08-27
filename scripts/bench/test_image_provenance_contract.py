@@ -32,6 +32,9 @@ class ImageProvenanceContractTest(unittest.TestCase):
         self.assertIn("docker image inspect", script)
         self.assertIn("runtime_provenance.py", script)
         self.assertIn("--expected-revision", script)
+        self.assertIn("NODE1_HEALTH_URL", script)
+        self.assertIn("NODE2_HEALTH_URL", script)
+        self.assertNotIn("for port in 8081 8082", script)
 
 
 if __name__ == "__main__":
