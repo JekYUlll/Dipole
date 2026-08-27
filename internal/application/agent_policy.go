@@ -16,6 +16,7 @@ const (
 	AgentCapabilityDirectMessagesRead = "message.direct.read"
 	AgentCapabilityConversationsList  = "conversation.list"
 	AgentCapabilityConversationRead   = "conversation.read"
+	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
 
 	AgentPermissionUserProfileRead  = "user.profile.read"
@@ -32,15 +33,15 @@ type AgentCapabilityDescriptorV1 struct {
 }
 
 type AgentInvocationV1 struct {
-	TenantID             string
-	PrincipalUUID        string
-	AgentUUID            string
-	DelegatedByUUID      string
-	Permissions          []string
-	ApprovedCapabilities []string
-	RequestID            string
-	TraceID              string
-	EventID              string
+	TenantID             string   `json:"tenant_id"`
+	PrincipalUUID        string   `json:"principal_uuid"`
+	AgentUUID            string   `json:"agent_uuid"`
+	DelegatedByUUID      string   `json:"delegated_by_uuid,omitempty"`
+	Permissions          []string `json:"permissions"`
+	ApprovedCapabilities []string `json:"approved_capabilities,omitempty"`
+	RequestID            string   `json:"request_id,omitempty"`
+	TraceID              string   `json:"trace_id,omitempty"`
+	EventID              string   `json:"event_id,omitempty"`
 }
 
 var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
@@ -55,6 +56,9 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	},
 	AgentCapabilityConversationRead: {
 		ID: AgentCapabilityConversationRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationRead,
+	},
+	AgentCapabilityAssistantReplySend: {
+		ID: AgentCapabilityAssistantReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
 	},
 	AgentCapabilitySystemMessageSend: {
 		ID: AgentCapabilitySystemMessageSend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,

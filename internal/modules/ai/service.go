@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
@@ -28,30 +29,26 @@ type directContextBuilder interface {
 	BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error)
 }
 
-type messageSender interface {
-	SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error)
-}
-
 type Service struct {
 	config         config.AI
 	contextBuilder directContextBuilder
 	logs           callLogRepository
-	sender         messageSender
+	commands       application.AgentCommandV1
 	agent          Agent
 }
 
-func NewService(builder directContextBuilder, logs callLogRepository, sender messageSender, agent Agent) *Service {
+func NewService(builder directContextBuilder, logs callLogRepository, commands application.AgentCommandV1, agent Agent) *Service {
 	return &Service{
 		config:         config.AIConfig(),
 		contextBuilder: builder,
 		logs:           logs,
-		sender:         sender,
+		commands:       commands,
 		agent:          agent,
 	}
 }
 
 func (s *Service) Enabled() bool {
-	return s != nil && s.config.Enabled && s.agent != nil && s.sender != nil && s.contextBuilder != nil && s.logs != nil
+	return s != nil && s.config.Enabled && s.agent != nil && s.commands != nil && s.contextBuilder != nil && s.logs != nil
 }
 
 func (s *Service) AssistantUUID() string {
@@ -137,7 +134,12 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 			return markFailed(ErrAIEmptyResponse)
 		}
 
-		responseMessage, err = s.sender.SendAssistantTextMessage(assistantUUID, message.SenderUUID, content)
+		responseMessage, err = s.commands.SendMessage(runCtx, application.AgentMessageCommandV1{
+			CommandID:  "reply:" + strings.TrimSpace(message.UUID),
+			Kind:       application.AgentMessageCommandAssistantReplyV1,
+			Invocation: execution.invocationV1(),
+			Content:    content,
+		})
 		if err != nil {
 			return markFailed(err)
 		}

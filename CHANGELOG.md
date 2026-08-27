@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加 `dipole.agent.command.v1` 跨语言消息写契约与本地 adapter：普通回复和系统 Tool 统一经过 AgentPolicy、Message Service、Kafka/Outbox；sender/target 取自可信 Invocation，Command ID 以固定 SHA-256 canonical form 映射到 64 字符 Message 幂等键，并以黄金向量约束未来 TypeScript 实现。
 - 增加 `AgentPolicyV1` 与跨语言 capability descriptors：可信 Invocation 携带 tenant、principal、Agent、delegator、permissions、approvals 和 correlation IDs；read/write 需要显式 permission，destructive/敏感能力需要审批，Embedded Tool 与本地 Capability adapter 双层 fail closed，并以 `AD-027` 跟踪持久授权和审批状态。
 - 增加 `ai.runtime_mode=off|embedded|shadow|remote`：未配置时兼容 `ai.enabled`，非法值 fail fast；shadow 保持 Go/Eino 权威并预留 TS 独立 consumer group，remote/off 在模型与 Capability 依赖构造前停止 Embedded consumer，微服务 Core 默认显式 `off`。
 - 增加 `dipole.agent.capability.v1` 跨语言契约、Go application port 与本地 adapter；Agent ContextBuilder/Tool 停止持有 User/Message/Conversation repository-shaped 依赖，资料、上下文、会话读取和系统消息统一经过 Core/Conversation/Message 应用边界，写命令保留 correlation context。

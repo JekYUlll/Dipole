@@ -35,11 +35,18 @@ func (*agentCapabilityCoreStub) ListSearchConversationKeys(string) ([]string, er
 type agentCapabilityMessagesStub struct {
 	directTarget string
 	groupTarget  string
-	sender       string
-	target       string
-	content      string
-	ids          correlation.IDs
 	items        []*model.Message
+}
+
+type agentCapabilityCommandsStub struct {
+	command application.AgentMessageCommandV1
+	ids     correlation.IDs
+}
+
+func (s *agentCapabilityCommandsStub) SendMessage(ctx context.Context, command application.AgentMessageCommandV1) (*model.Message, error) {
+	s.command = command
+	s.ids = correlation.FromContext(ctx)
+	return &model.Message{UUID: "M-SYSTEM", MessageType: model.MessageTypeSystem}, nil
 }
 
 func (s *agentCapabilityMessagesStub) ListDirectMessages(_ string, target string, _ uint, _ int) ([]*model.Message, error) {
@@ -49,11 +56,6 @@ func (s *agentCapabilityMessagesStub) ListDirectMessages(_ string, target string
 func (s *agentCapabilityMessagesStub) ListGroupMessages(_ string, target string, _ uint, _ int) ([]*model.Message, error) {
 	s.groupTarget = target
 	return s.items, nil
-}
-func (s *agentCapabilityMessagesStub) SendSystemDirectMessageContext(ctx context.Context, sender, target, content string) (*model.Message, error) {
-	s.sender, s.target, s.content = sender, target, content
-	s.ids = correlation.FromContext(ctx)
-	return &model.Message{UUID: "M-SYSTEM", MessageType: model.MessageTypeSystem}, nil
 }
 
 type agentCapabilityConversationsStub struct {
@@ -75,7 +77,7 @@ func TestLocalAgentCapabilityV1RestrictsProfileSubjects(t *testing.T) {
 		"U100": {UUID: "U100"},
 		"UAI":  {UUID: "UAI", UserType: model.UserTypeAssistant},
 	}}
-	capability, err := NewLocalAgentCapabilityV1(core, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{})
+	capability, err := NewLocalAgentCapabilityV1(core, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -96,7 +98,7 @@ func TestLocalAgentCapabilityV1RoutesAuthorizedConversationReads(t *testing.T) {
 
 	messages := &agentCapabilityMessagesStub{items: []*model.Message{{UUID: "M1"}}}
 	conversations := &agentCapabilityConversationsStub{}
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations)
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -127,7 +129,8 @@ func TestLocalAgentCapabilityV1ListsConversationsAndPreservesCommandContext(t *t
 	conversations := &agentCapabilityConversationsStub{items: []*model.Conversation{
 		{TargetUUID: "U200"},
 	}}
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations)
+	commands := &agentCapabilityCommandsStub{}
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, commands)
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -142,15 +145,18 @@ func TestLocalAgentCapabilityV1ListsConversationsAndPreservesCommandContext(t *t
 	if err != nil || message.UUID != "M-SYSTEM" {
 		t.Fatalf("send system message: message=%+v err=%v", message, err)
 	}
-	if messages.sender != "UAI" || messages.target != "U100" || messages.content != "notice" || messages.ids.RequestID != "R1" || messages.ids.TraceID != "T1" {
-		t.Fatalf("command boundary lost identity or correlation: %+v", messages)
+	if commands.command.Kind != application.AgentMessageCommandSystemMessageV1 || commands.command.Invocation.AgentUUID != "UAI" || commands.command.Invocation.PrincipalUUID != "U100" || commands.command.Content != "notice" || commands.ids.RequestID != "R1" || commands.ids.TraceID != "T1" {
+		t.Fatalf("command boundary lost identity or correlation: command=%+v ids=%+v", commands.command, commands.ids)
+	}
+	if commands.command.CommandID == "" {
+		t.Fatal("system capability did not provide a stable command ID")
 	}
 }
 
 func TestLocalAgentCapabilityV1EnforcesInvocationPolicy(t *testing.T) {
 	t.Parallel()
 
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{})
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -179,13 +185,17 @@ func TestNewLocalAgentCapabilityV1RejectsMissingDependencies(t *testing.T) {
 	core := &agentCapabilityCoreStub{}
 	messages := &agentCapabilityMessagesStub{}
 	conversations := &agentCapabilityConversationsStub{}
-	if _, err := NewLocalAgentCapabilityV1(nil, messages, conversations); err == nil {
+	commands := &agentCapabilityCommandsStub{}
+	if _, err := NewLocalAgentCapabilityV1(nil, messages, conversations, commands); err == nil {
 		t.Fatal("expected missing Core dependency rejection")
 	}
-	if _, err := NewLocalAgentCapabilityV1(core, nil, conversations); err == nil {
+	if _, err := NewLocalAgentCapabilityV1(core, nil, conversations, commands); err == nil {
 		t.Fatal("expected missing Message dependency rejection")
 	}
-	if _, err := NewLocalAgentCapabilityV1(core, messages, nil); err == nil {
+	if _, err := NewLocalAgentCapabilityV1(core, messages, nil, commands); err == nil {
 		t.Fatal("expected missing Conversation dependency rejection")
+	}
+	if _, err := NewLocalAgentCapabilityV1(core, messages, conversations, nil); err == nil {
+		t.Fatal("expected missing Command dependency rejection")
 	}
 }

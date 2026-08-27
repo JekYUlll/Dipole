@@ -93,15 +93,20 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		return fmt.Errorf("resolve AI runtime mode: %w", err)
 	}
 	if runsEmbeddedAgent {
+		agentCommands, err := appComposition.NewLocalAgentCommandV1(messaging.Messages)
+		if err != nil {
+			return fmt.Errorf("compose Agent Command v1: %w", err)
+		}
 		agentCapability, err := appComposition.NewLocalAgentCapabilityV1(
 			messaging.Core,
 			messaging.Messages,
 			messaging.Conversations,
+			agentCommands,
 		)
 		if err != nil {
 			return fmt.Errorf("compose Agent Capability v1: %w", err)
 		}
-		if aiService, err := newAIService(aiConfig, repos.AICallLogs, messaging.Messages, agentCapability); err != nil {
+		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability); err != nil {
 			return err
 		} else if aiService != nil {
 			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
@@ -430,7 +435,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, messageService *appComposition.LocalMessageApplication, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
+func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
 	runsEmbeddedAgent, err := aiConfig.RunsEmbeddedAgent()
 	if err != nil {
 		return nil, fmt.Errorf("resolve AI runtime mode: %w", err)
@@ -444,8 +449,8 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, messa
 	if logs == nil {
 		return nil, fmt.Errorf("AI call log store is required when AI is enabled")
 	}
-	if messageService == nil {
-		return nil, fmt.Errorf("AI Message application is required when AI is enabled")
+	if commands == nil {
+		return nil, fmt.Errorf("Agent Command v1 is required when AI is enabled")
 	}
 
 	contextBuilder := aiModule.NewContextBuilder(capability, aiConfig.MaxContextMessages)
@@ -460,7 +465,7 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, messa
 	return aiModule.NewService(
 		contextBuilder,
 		logs,
-		messageService,
+		commands,
 		agent,
 	), nil
 }

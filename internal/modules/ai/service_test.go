@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
@@ -48,18 +49,16 @@ func (s *stubCallLogRepository) MarkFailed(triggerMessageUUID, errorMessage stri
 	return nil
 }
 
-type stubMessageSender struct {
-	assistantUUID string
-	targetUUID    string
-	content       string
-	message       *model.Message
-	err           error
+type stubAgentCommands struct {
+	command application.AgentMessageCommandV1
+	ids     correlation.IDs
+	message *model.Message
+	err     error
 }
 
-func (s *stubMessageSender) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
-	s.assistantUUID = assistantUUID
-	s.targetUUID = targetUUID
-	s.content = content
+func (s *stubAgentCommands) SendMessage(ctx context.Context, command application.AgentMessageCommandV1) (*model.Message, error) {
+	s.command = command
+	s.ids = correlation.FromContext(ctx)
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -88,7 +87,7 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 	t.Parallel()
 
 	logs := &stubCallLogRepository{beginReturn: true}
-	sender := &stubMessageSender{
+	commands := &stubAgentCommands{
 		message: &model.Message{UUID: "MAI200"},
 	}
 	service := &Service{
@@ -103,8 +102,8 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 				Messages: []*schema.Message{schema.UserMessage("hello")},
 			},
 		},
-		logs:   logs,
-		sender: sender,
+		logs:     logs,
+		commands: commands,
 		agent: &stubAgent{
 			reply: &schema.Message{
 				Role:    schema.Assistant,
@@ -135,11 +134,11 @@ func TestServiceHandleDirectMessageSuccess(t *testing.T) {
 	if logs.beginLog == nil || logs.beginLog.TriggerMessageUUID != "M100" {
 		t.Fatalf("expected ai call log begin with trigger M100, got %+v", logs.beginLog)
 	}
-	if sender.assistantUUID != "UAI" || sender.targetUUID != "U100" {
-		t.Fatalf("unexpected sender args: %+v", sender)
+	if commands.command.Invocation.AgentUUID != "UAI" || commands.command.Invocation.PrincipalUUID != "U100" {
+		t.Fatalf("unexpected command identity: %+v", commands.command)
 	}
-	if sender.content != "ai response" {
-		t.Fatalf("expected ai response content, got %q", sender.content)
+	if commands.command.CommandID != "reply:M100" || commands.command.Kind != application.AgentMessageCommandAssistantReplyV1 || commands.command.Content != "ai response" {
+		t.Fatalf("unexpected reply command: %+v", commands.command)
 	}
 	if len(logs.successArgs) == 0 {
 		t.Fatalf("expected ai call success log to be recorded")
@@ -155,8 +154,8 @@ func TestServiceDerivesTrustedExecutionContextFromTrigger(t *testing.T) {
 		contextBuilder: &stubContextBuilder{context: &ConversationContext{
 			Messages: []*schema.Message{schema.UserMessage("hello")},
 		}},
-		logs:   &stubCallLogRepository{beginReturn: true},
-		sender: &stubMessageSender{message: &model.Message{UUID: "M-REPLY"}},
+		logs:     &stubCallLogRepository{beginReturn: true},
+		commands: &stubAgentCommands{message: &model.Message{UUID: "M-REPLY"}},
 		agent: &stubAgent{runFn: func(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
 			var err error
 			captured, err = requireExecutionContext(ctx)
@@ -216,7 +215,7 @@ func TestServiceHandleDirectMessageSkipsNonAssistantTarget(t *testing.T) {
 		},
 		contextBuilder: &stubContextBuilder{},
 		logs:           logs,
-		sender:         &stubMessageSender{},
+		commands:       &stubAgentCommands{},
 		agent:          &stubAgent{},
 	}
 
@@ -249,8 +248,8 @@ func TestServiceHandleDirectMessageMarksFailure(t *testing.T) {
 				Messages: []*schema.Message{schema.UserMessage("hello")},
 			},
 		},
-		logs:   logs,
-		sender: &stubMessageSender{},
+		logs:     logs,
+		commands: &stubAgentCommands{},
 		agent: &stubAgent{
 			err: errors.New("llm timeout"),
 		},
@@ -281,7 +280,7 @@ func TestServiceHandleDirectMessageUsesToolSentMessage(t *testing.T) {
 		UUID:        "MSYS100",
 		MessageType: model.MessageTypeSystem,
 	}
-	sender := &stubMessageSender{}
+	commands := &stubAgentCommands{}
 	service := &Service{
 		config: config.AI{
 			Enabled:       true,
@@ -294,8 +293,8 @@ func TestServiceHandleDirectMessageUsesToolSentMessage(t *testing.T) {
 				Messages: []*schema.Message{schema.UserMessage("send a notice")},
 			},
 		},
-		logs:   logs,
-		sender: sender,
+		logs:     logs,
+		commands: commands,
 		agent: &stubAgent{
 			runFn: func(ctx context.Context, messages []*schema.Message) (*schema.Message, error) {
 				recordToolSentMessage(ctx, toolMessage)
@@ -319,8 +318,8 @@ func TestServiceHandleDirectMessageUsesToolSentMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if sender.content != "" {
-		t.Fatalf("expected no fallback assistant text send, got %q", sender.content)
+	if commands.command.Content != "" {
+		t.Fatalf("expected no fallback assistant text command, got %q", commands.command.Content)
 	}
 	if len(logs.successArgs) == 0 {
 		t.Fatalf("expected ai call success log to be recorded")

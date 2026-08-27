@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-commands/v1/schema.json",
+  "title": "Dipole Agent Message Command v1",
+  "description": "Transport-neutral Agent message write command. Sender, target, authorization, and correlation fields are supplied by the trusted execution chain.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.command.v1",
+  "x-dipole-command-kinds": ["assistant_reply", "system_message"],
+  "x-dipole-capabilities": [
+    {"kind": "assistant_reply", "id": "message.assistant_reply.send", "risk": "write", "required_permission": "message.write", "approval_required": false},
+    {"kind": "system_message", "id": "message.system.send", "risk": "write", "required_permission": "message.write", "approval_required": false}
+  ],
+  "required": ["command_id", "kind", "invocation", "content"],
+  "properties": {
+    "command_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "kind": {"enum": ["assistant_reply", "system_message"]},
+    "invocation": {
+      "type": "object",
+      "required": ["tenant_id", "principal_uuid", "agent_uuid", "permissions"],
+      "properties": {
+        "tenant_id": {"type": "string", "minLength": 1, "readOnly": true},
+        "principal_uuid": {"type": "string", "minLength": 1, "readOnly": true},
+        "agent_uuid": {"type": "string", "minLength": 1, "readOnly": true},
+        "delegated_by_uuid": {"type": "string", "readOnly": true},
+        "permissions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "readOnly": true},
+        "approved_capabilities": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "readOnly": true},
+        "request_id": {"type": "string", "maxLength": 128, "readOnly": true},
+        "trace_id": {"type": "string", "maxLength": 128, "readOnly": true},
+        "event_id": {"type": "string", "maxLength": 128, "readOnly": true}
+      },
+      "additionalProperties": false
+    },
+    "content": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

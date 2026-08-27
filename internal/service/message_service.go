@@ -209,6 +209,10 @@ func (s *MessageService) SendDirectMessageContext(ctx context.Context, senderUUI
 }
 
 func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error) {
+	return s.SendAssistantTextMessageContext(context.Background(), assistantUUID, targetUUID, content, generateClientMessageID())
+}
+
+func (s *MessageService) SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	assistantUUID = strings.TrimSpace(assistantUUID)
 	targetUUID = strings.TrimSpace(targetUUID)
 	content = strings.TrimSpace(content)
@@ -235,7 +239,7 @@ func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, con
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	return s.buildAndDispatchDirect(context.Background(), assistantUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeAIText)
+	return s.buildAndDispatchDirect(ctx, assistantUUID, targetUUID, content, clientMessageID, model.MessageTypeAIText)
 }
 
 func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
@@ -243,6 +247,10 @@ func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content
 }
 
 func (s *MessageService) SendSystemDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content string) (*model.Message, error) {
+	return s.SendSystemDirectMessageCommandContext(ctx, senderUUID, targetUUID, content, generateClientMessageID())
+}
+
+func (s *MessageService) SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	senderUUID = strings.TrimSpace(senderUUID)
 	targetUUID = strings.TrimSpace(targetUUID)
 	content = strings.TrimSpace(content)
@@ -269,7 +277,7 @@ func (s *MessageService) SendSystemDirectMessageContext(ctx context.Context, sen
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	return s.buildAndDispatchDirect(ctx, senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
+	return s.buildAndDispatchDirect(ctx, senderUUID, targetUUID, content, clientMessageID, model.MessageTypeSystem)
 }
 
 // SendSystemGroupMessage sends a system message to a group without any permission checks.
