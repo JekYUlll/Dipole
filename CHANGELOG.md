@@ -192,6 +192,7 @@
 
 ### 变更
 
+- 用户状态固定为语言中立 `dipole.user.status.v1`：`normal=1`、`disabled=2`，Go 领域常量改为显式值，避免其他常量或多语言实现改变持久化语义。
 - Web 会话终止统一覆盖显式退出、HTTP 401、WS kick 和账号切换：先撤销本地凭据，再等待在途 Sync 收敛并清理该用户 IndexedDB；并发终止复用 singleflight，快速重登等待旧清理完成。
 
 - Web 同步以 `message_uuid + message_seq + sync_seq` 作为本地身份、排序和恢复契约；MySQL 自增 `id` 继续只服务旧 Offline 兼容路径。
@@ -263,6 +264,7 @@
 
 ### 迁移说明
 
+- migration v27 将历史 `users.status=0` 归一为 `normal=1`，把默认值改为 `1`，并增加仅允许 `1/2` 的数据库约束。Down 会移除约束并恢复默认值 `0`，已归一的行继续保留 `1`，避免破坏合法账号状态。
 - `dipole-agent-artifact-maintenance -action authorize` 从已签名 reconcile JSON 生成短期授权；`-action evaluate` 需单独注入 `storage.artifact_maintenance_access_key/secret_key` 并连接只读 MySQL。`would_delete` 仅表示当前证据满足条件，不能转换为删除动作；其余阻断结果退出码为 2。
 - 运行 `dipole-agent-artifact-reconcile` 前通过环境变量单独注入 `storage.artifact_audit_access_key/secret_key`，并保持最短 `-minimum-age=24h`；命令输出 JSON，发现候选或异常键时退出码为 2。当前报告仅用于审查和容量治理，不能直接作为删除授权。
 - 通用存储默认凭据由 MinIO root 改为 `dipoleplatform`，Artifact 存储通过 `storage.artifact_*` 独立配置且默认关闭；更新后的 `minio-init` 会幂等创建两个受限用户、policy 和专用 bucket。微服务 Compose 显式启用 Artifact 存储；自定义部署需先创建等价 policy，再设置独立 access key/secret，回滚时关闭 `storage.artifact_enabled` 即可停止 Artifact blob 装配，现有元数据与对象保持不变。
@@ -304,6 +306,7 @@
 
 ### 验证
 
+- User status 契约测试固定 JSON Schema ID、版本、默认值、枚举与 Go 常量一致；真实 MySQL 8.4 migration 测试覆盖历史 `0` 回填、默认写入、非法值拒绝和保留归一数据的降级边界。
 - maintenance 单元/契约测试覆盖双审批与职责分离、15 分钟有效期、候选绑定、24 小时语义复核、元数据回补、对象缺失/漂移/过期和可复算 authorization/receipt 示例；真实 tmpfs MinIO 验证 inspect 身份可 Stat 且无法 List/Put/Delete，生产 Agent protobuf 继续没有 Artifact 清理方法，第 21 个后端二进制及当前源码镜像构建通过。
 - 真实 MySQL 8.4 验证对象键存在/缺失查询与 migration v26 回滚重建，真实 tmpfs MinIO 验证 audit 用户可列举固定前缀且无法 Get/Put/Delete；联合环境运行 CLI 后输出年轻对象隔离和有效 evidence SHA-256。单元测试覆盖过期孤儿、已引用对象、年轻对象、异常键、24 小时门槛、样例上限与报告复核，新增第 20 个后端二进制的当前源码镜像构建通过。
 - 真实 tmpfs MinIO 验证 Artifact 专用身份可幂等 Put/Get，无法删除、写入通用文件 bucket 或逃逸对象前缀；`dipoleplatform` 可正常写入/清理文件对象且无法写 Artifact bucket。三份 Compose 配置渲染和两次连续 `minio-init` 均通过，Go 全量包 test/vet、定向 race、TS 90 项测试、typecheck/build、sqlc/Go+TS Proto 漂移及 19 个当前源码后端二进制镜像构建门禁通过。
@@ -391,7 +394,6 @@
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。
 - Web 协议对照首批仅覆盖收到的私聊消息；群聊存在普通群 fanout 与热群 notify/pull 两套语义，需按群类型建立独立比较契约后再纳入。
-- `users.status` 的 schema 默认值 `0` 与当前 Go 领域常量 `Normal=1`、`Disabled=2` 存在偏移，已记录为 AD-012。
 - 独立 Message Service 已停止在代码中读取 Core Repository；当前仍与 Core 共用 MySQL schema 和数据库账号，最小数据库授权记录为 AD-015。
 - M5 的非 WS HTTP、Swagger 与静态 Web 仍由私网 Core 提供，Gateway 通过反向代理暴露；后续服务拆分前必须保持 Core 不直接暴露公网。
 - HTTP Handler 历史测试并行修改 Gin 全局模式，整包 race 门禁会产生数据竞争；新增 Sync Handler 定向 race 已通过，后续治理记录为 AD-016。

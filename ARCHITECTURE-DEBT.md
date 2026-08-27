@@ -190,17 +190,6 @@
 - **建议方向：** 下一步使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面，并设计显式、可回滚、再次授权的 repair executor；完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
-### AD-012：用户状态常量与 schema 默认值偏移
-
-- **优先级：** P2
-- **状态：** 暂缓
-- **发现日期：** 2026-08-26
-- **影响范围：** `model.User`、`users.status`、手写 SQL、跨语言状态契约
-- **现状：** `DefaultAvatarURL` 与用户状态常量位于同一 `const` 块，受 `iota` 行号影响，当前 `UserStatusNormal=1`、`UserStatusDisabled=2`；baseline schema 的默认值仍为 `0`。
-- **风险：** 依赖 schema 默认值或手写字面量的写入/查询可能产生领域未定义状态；多语言服务若只读取 SQL schema，会与 Go 领域值产生分歧。
-- **建议方向：** 新增显式常量值与数据库约束，先审计并迁移现有 `status=0` 数据，再通过共享枚举契约和 migration 收敛。
-- **处理门槛：** User Service 独立部署或其他语言直接消费用户状态前完成。
-
 ### AD-011：前端缺少可版本化的完整设计基线
 
 - **优先级：** P2
@@ -213,6 +202,17 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-012：用户状态常量与 schema 默认值偏移
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-26
+- **解决日期：** 2026-08-27
+- **影响范围：** `model.User`、`users.status`、跨语言状态契约
+- **解决方式：** `UserStatusNormal=1`、`UserStatusDisabled=2` 改为显式常量，并新增语言中立 `dipole.user.status.v1`；migration v27 将历史 `status=0` 归一为 `1`、修改默认值并通过 CHECK 约束拒绝领域外状态。
+- **验证：** 契约测试固定 Schema ID、版本、默认值、枚举与 Go 常量一致；真实 MySQL 8.4 升降级测试覆盖历史回填、默认写入、非法值拒绝，以及 Down 保留已归一数据。
+- **回滚边界：** Down 恢复旧默认值并移除约束，保留已归一的 `1`；应用回滚仍可读取既有 `1/2` 语义。
 
 ### AD-033：Artifact 仍复用通用文件存储凭据与 bucket
 

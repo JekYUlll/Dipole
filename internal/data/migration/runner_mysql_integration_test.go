@@ -13,6 +13,8 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
+const currentMigrationVersion = 27
+
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {
@@ -33,7 +35,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("migrate empty database: %v", err)
 		}
-		assertCurrentVersion(t, runner, 26)
+		assertCurrentVersion(t, runner, 27)
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
@@ -42,16 +44,22 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
 		}
-		assertMigrationCount(t, db, 26)
-		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (27, 'future_expand')"); err != nil {
+		assertMigrationCount(t, db, 27)
+		if _, err := db.Exec("INSERT INTO schema_migrations (version, name) VALUES (28, 'future_expand')"); err != nil {
 			t.Fatalf("insert future migration: %v", err)
 		}
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("expected rolling deployment to accept a future migration: %v", err)
 		}
-		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 27"); err != nil {
+		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = 28"); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back User status contract migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 26)
+		assertTableCount(t, db, 37)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Artifact migration: %v", err)
 		}
@@ -214,6 +222,83 @@ func TestMySQLBaselineMigration(t *testing.T) {
 
 }
 
+func TestUserStatusContractMigrationNormalizesAndConstrainsValues(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db := openTemporaryDatabase(t, adminDSN, "user_status_contract")
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	ctx := context.Background()
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back User status contract migration: %v", err)
+	}
+
+	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash)
+		VALUES ('U-status-legacy', 'legacy', '13000000001', 'hash')`); err != nil {
+		t.Fatalf("seed legacy default status: %v", err)
+	}
+	var status int8
+	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-legacy'").Scan(&status); err != nil {
+		t.Fatalf("read legacy status: %v", err)
+	}
+	if status != 0 {
+		t.Fatalf("legacy default status = %d, want 0", status)
+	}
+
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("apply User status contract migration: %v", err)
+	}
+	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-legacy'").Scan(&status); err != nil {
+		t.Fatalf("read normalized status: %v", err)
+	}
+	if status != 1 {
+		t.Fatalf("normalized status = %d, want 1", status)
+	}
+	var defaultValue string
+	if err := db.QueryRow(`SELECT column_default FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'status'`).Scan(&defaultValue); err != nil {
+		t.Fatalf("read User status default: %v", err)
+	}
+	if defaultValue != "1" {
+		t.Fatalf("User status default = %q, want 1", defaultValue)
+	}
+	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash, status)
+		VALUES ('U-status-invalid', 'invalid', '13000000002', 'hash', 3)`); err == nil {
+		t.Fatal("expected User status constraint to reject value 3")
+	}
+	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash)
+		VALUES ('U-status-default', 'default', '13000000003', 'hash')`); err != nil {
+		t.Fatalf("insert User with v1 default: %v", err)
+	}
+	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-default'").Scan(&status); err != nil {
+		t.Fatalf("read v1 default status: %v", err)
+	}
+	if status != 1 {
+		t.Fatalf("v1 default status = %d, want 1", status)
+	}
+
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back User status contract migration: %v", err)
+	}
+	if err := db.QueryRow("SELECT status FROM users WHERE uuid = 'U-status-legacy'").Scan(&status); err != nil {
+		t.Fatalf("read status after rollback: %v", err)
+	}
+	if status != 1 {
+		t.Fatalf("rollback changed normalized status to %d, want 1", status)
+	}
+	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash, status)
+		VALUES ('U-status-unconstrained', 'unconstrained', '13000000004', 'hash', 3)`); err != nil {
+		t.Fatalf("rollback did not remove User status constraint: %v", err)
+	}
+}
+
 func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {
@@ -228,7 +313,7 @@ func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	if err := runner.Down(ctx, 3); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-11); err != nil {
 		t.Fatalf("roll back Metadata legacy ID, Search source, and Metadata migrations: %v", err)
 	}
 	inserted, err := db.Exec(`INSERT INTO messages (
@@ -276,7 +361,7 @@ func TestSearchSourceIdentityMigrationBackfillsExistingJobs(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	if err := runner.Down(ctx, 1); err != nil {
+	if err := runner.Down(ctx, currentMigrationVersion-12); err != nil {
 		t.Fatalf("roll back source identity migration: %v", err)
 	}
 	if _, err := db.Exec(`INSERT INTO search_backfill_jobs (
@@ -331,7 +416,7 @@ func TestMySQLMigrationRunnerSerializesConcurrentOwners(t *testing.T) {
 			t.Fatalf("concurrent migration failed: %v", err)
 		}
 	}
-	assertMigrationCount(t, db, 13)
+	assertMigrationCount(t, db, 27)
 }
 
 func TestConversationSequenceMigrationBackfillsPerConversation(t *testing.T) {
