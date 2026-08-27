@@ -194,6 +194,20 @@ message FinishMcpToolInvocationResponse {
   string status = 2;
 }
 
+message ExecuteMcpMessageCommandRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string command_kind = 5;
+  string content = 6;
+}
+
+message ExecuteMcpMessageCommandResponse {
+  AgentToolActionReference action_reference = 1;
+  string client_message_id = 2;
+}
+
 message ProjectTaskWorkflowStateRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -390,6 +404,7 @@ service AgentCapabilityService {
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
+  rpc ExecuteMcpMessageCommand(ExecuteMcpMessageCommandRequest) returns (ExecuteMcpMessageCommandResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
   rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);

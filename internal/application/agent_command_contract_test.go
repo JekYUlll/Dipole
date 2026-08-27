@@ -84,6 +84,17 @@ func TestAgentCommandV1HasLanguageNeutralContract(t *testing.T) {
 	}
 }
 
+func TestAgentMessageCommandToolArgumentsMatchLanguageNeutralGoldenVector(t *testing.T) {
+	digest, err := application.AgentMessageCommandToolArgumentsSHA256V1("U100", "UAI", "notice")
+	if err != nil {
+		t.Fatalf("derive Tool arguments digest: %v", err)
+	}
+	const want = "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9"
+	if digest != want {
+		t.Fatalf("Tool arguments digest = %q, want %q", digest, want)
+	}
+}
+
 func TestAgentMessageCommandV1SerializesWithContractFieldNames(t *testing.T) {
 	t.Parallel()
 

@@ -33,6 +33,17 @@ describe("McpToolInvocationRunner", () => {
     expect(span.end).toHaveBeenCalledOnce();
   });
 
+  it("uses language-neutral canonical arguments independent of key order", async () => {
+    const begin = vi.fn(async () => undefined);
+    const finish = vi.fn(async () => undefined);
+    const runner = new McpToolInvocationRunner({ begin, finish }, tracerFixture().tracer, () => "INV-CANON", monotonicClock(0, 1));
+    await runner.execute(
+      { name: "canonical_probe", capabilityId: "conversation.list" },
+      { conversationId: "direct:U100:UAI", content: "notice" }, context, async () => ({ ok: true })
+    );
+    expect(begin).toHaveBeenCalledWith(expect.objectContaining({ argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9" }));
+  });
+
   it("records a bounded failed terminal and withholds Tool errors", async () => {
     const begin = vi.fn(async () => undefined);
     const finish = vi.fn(async () => undefined);

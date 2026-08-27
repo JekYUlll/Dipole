@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { SpanStatusCode, trace, type Span, type Tracer } from "@opentelemetry/api";
 
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { canonicalMcpJSON } from "./canonical-json.js";
 
 export interface McpToolInvocationBegin {
   invocationId: string;
@@ -64,7 +65,7 @@ export class McpToolInvocationRunner {
       try {
         await this.audit.begin({
           invocationId, taskId: context.taskId, runId: context.runId, toolName: tool.name,
-          capabilityId: tool.capabilityId, argumentsSha256: sha256(canonicalJSON(rawArguments)),
+          capabilityId: tool.capabilityId, argumentsSha256: sha256(canonicalMcpJSON(rawArguments)),
           ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
           ...(context.traceId === undefined ? {} : { traceId: context.traceId }),
           ...(tool.approvalId === undefined ? {} : { approvalId: tool.approvalId })
@@ -83,7 +84,7 @@ export class McpToolInvocationRunner {
           await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
           throw new ToolInvocationFailure();
         }
-        const result = canonicalJSON(rawResult);
+        const result = canonicalMcpJSON(rawResult);
         const resultBytes = Buffer.byteLength(result);
         if (resultBytes > 64 * 1024) {
           await this.finishFailed(invocationId, context, startedAt, "result_too_large");
@@ -153,10 +154,6 @@ function operationWithTimeout(operation: (signal: AbortSignal) => Promise<unknow
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function canonicalJSON(value: unknown): string {
-  return JSON.stringify(value) ?? "null";
 }
 
 function elapsedMilliseconds(startedAt: number, finishedAt: number): number {

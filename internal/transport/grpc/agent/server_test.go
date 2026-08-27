@@ -56,6 +56,17 @@ type agentToolAuditStub struct {
 	err    error
 }
 
+type agentMessageCommandExecutionStub struct {
+	request application.AgentMessageCommandExecutionRequestV1
+	result  application.AgentMessageCommandExecutionResultV1
+	err     error
+}
+
+func (s *agentMessageCommandExecutionStub) Execute(_ context.Context, request application.AgentMessageCommandExecutionRequestV1) (*application.AgentMessageCommandExecutionResultV1, error) {
+	s.request = request
+	return &s.result, s.err
+}
+
 func (s *agentToolAuditStub) Begin(_ context.Context, begin application.AgentToolInvocationBeginV1) (*application.AgentToolInvocationV1, error) {
 	s.begin = begin
 	if s.err != nil {
@@ -268,6 +279,35 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	_, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{Context: requestContext})
 	if status.Code(err) != codes.Aborted {
 		t.Fatalf("conflict code = %s, want %s", status.Code(err), codes.Aborted)
+	}
+}
+
+func TestExecuteMcpMessageCommandUsesBoundRuntimeService(t *testing.T) {
+	commands := &agentMessageCommandExecutionStub{result: application.AgentMessageCommandExecutionResultV1{
+		MessageUUID: "MSG-1", ClientMessageID: strings.Repeat("a", 64), CommandID: "tool:command-1", Kind: application.AgentMessageCommandSystemMessageV1,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithMessageCommands(commands); err != nil {
+		t.Fatalf("configure Message Commands: %v", err)
+	}
+	response, err := server.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
+		CommandKind: "system_message", Content: "notice",
+	})
+	if err != nil || response.GetActionReference().GetResourceId() != "MSG-1" || response.GetClientMessageId() != strings.Repeat("a", 64) ||
+		commands.request.InvocationUUID != "INV-1" || commands.request.Content != "notice" {
+		t.Fatalf("unexpected Message Command response=%+v request=%+v err=%v", response, commands.request, err)
+	}
+	_, err = server.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged principal code = %s", status.Code(err))
+	}
+	commands.err = application.ErrAgentCommandDenied
+	_, err = server.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{Context: grpccommon.RequestContext("", "dipole-agent")})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("denied command code = %s", status.Code(err))
 	}
 }
 

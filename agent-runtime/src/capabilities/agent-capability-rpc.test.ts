@@ -154,7 +154,16 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { invocationId: input.invocationId, status: input.status });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const executeMcpMessageCommand = vi.fn((input, metadata, _options, callback) => {
+      const commandId = "tool:" + "c".repeat(64);
+      const clientMessageId = createHash("sha256").update(`dipole.agent.command.v1\n${input.commandKind}\n${commandId}`).digest("hex");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", commandKind: "system_message", content: "notice" });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: input.commandKind, commandId }, clientMessageId });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -229,6 +238,9 @@ describe("AgentCapabilityRPCClient", () => {
     expect(finishMcpToolInvocation.mock.calls.at(-1)?.[0]).toMatchObject({
       actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: "system_message", commandId: "CMD-1" }
     });
+    await expect(client.executeMessageCommand({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", commandKind: "system_message", content: " notice ", requestId: "R1", traceId: "T1"
+    })).resolves.toEqual({ resourceType: "message", resourceId: "MSG-1", commandKind: "system_message", commandId: "tool:" + "c".repeat(64) });
     await expect(client.projectTaskWorkflowState({
       taskId: "TASK-1", runId: "RUN-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
       workflowStatus: "waiting_approval", workflowRevision: 2

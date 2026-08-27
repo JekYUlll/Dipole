@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { CapabilityRegistry } from "../capabilities/registry.js";
 import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import type { ResourceScope, ExecutionContext } from "../runtime/execution-context.js";
+import { canonicalMcpJSON } from "./canonical-json.js";
 
 export interface McpWriteApprovalGrant {
   readonly approvalId: string;
@@ -63,7 +64,7 @@ export class McpWriteApprovalGate {
       actions: [prepared.resource.action]
     };
     const scopeSha256 = resourceScopeSha256(scope);
-    const argumentsSha256 = sha256(canonicalJSON(prepared.input));
+    const argumentsSha256 = sha256(canonicalMcpJSON(prepared.input));
     if (
       !validGrant(grant)
       || grant.capabilityId !== prepared.descriptor.id
@@ -127,28 +128,6 @@ function resourceScopeSha256(scope: ResourceScope): string {
     throw new Error("MCP write Approval resource scope is invalid");
   }
   return sha256(["dipole.agent.scope.v1", resourceType, resourceId, ...actions].join("\n"));
-}
-
-function canonicalJSON(value: unknown, ancestors = new Set<object>()): string {
-  if (value === null) return "null";
-  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("MCP write arguments must contain finite JSON numbers");
-    return JSON.stringify(value);
-  }
-  if (typeof value !== "object") throw new Error("MCP write arguments must be JSON serializable");
-  if (ancestors.has(value)) throw new Error("MCP write arguments cannot contain cycles");
-  ancestors.add(value);
-  try {
-    if (Array.isArray(value)) return `[${value.map(item => canonicalJSON(item, ancestors)).join(",")}]`;
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) throw new Error("MCP write arguments require plain JSON objects");
-    return `{${Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) =>
-      `${JSON.stringify(key)}:${canonicalJSON(item, ancestors)}`
-    ).join(",")}}`;
-  } finally {
-    ancestors.delete(value);
-  }
 }
 
 function sha256(value: string): string {

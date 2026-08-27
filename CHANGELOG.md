@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加认证的 MCP Message Command RPC：`dipole-agent` 只能在已持久化、仍为 running、带已消费 Approval 且 Task/Run/Capability/身份完全匹配的 Tool Invocation 中请求消息动作。Core 从可信 Invocation 派生 sender/target，按标准化 `{content, conversationId}` canonical JSON 重算审批参数 SHA-256，并根据 `invocation_id + command kind` 生成稳定 Command ID；RPC 只返回 Message UUID、Command 引用和可复算 `client_message_id`。TS Runtime 独立验证返回证据，Tool runner 与 Approval gate 统一使用排序 canonical JSON。生产 MCP Server 仍只注册 read Tool。
 - Agent MCP ToolCall 增加可验证的消息动作血缘：migration v31 与 sqlc 在 Begin 记录已消费 `approval_id`，在完成记录中只保存 `message` 资源 UUID、Command kind/id 与既有结果摘要，不复制消息正文。Core 对写 Capability 重新校验 active Agent Run、Task、参数摘要、审批终态与资源授权，再按权威 Agent sender 和稳定 Command ID 查询 Message receipt；只有 committed Message 的 UUID、sender、target、conversation 和 message type 全部一致时才能完成审计。protobuf 与 TS runner 支持可选 action reference，读 Tool 携带审批/动作引用、失败终态携带动作引用或引用漂移均 fail closed；生产 MCP Server 继续只投影 read Tool。
 - Agent Message Command 增加 sender-scoped receipt/status 查询：Message v1 新增 `GetMessageCommandReceipt`，从认证 principal 派生 sender，并复用现有 sqlc `(sender_uuid, client_message_id)` 查询返回 `ABSENT|COMMITTED`，不新增 Command 表或 pending 状态。Agent 发送失败后使用脱离原取消信号、保留 trace values 的独立 2 秒窗口查询 receipt；仅 sender、target、conversation、message type、content 和稳定幂等键全部匹配时恢复成功，查询故障保留发送与查询两条错误因果链。
 - Agent G4 增加默认关闭的 MCP durable Elicitation adapter：只接受 `elicitation/create` form mode 的严格子集，将最多 16 个 text/select/multiselect/boolean 字段转换为现有 `dipole.agent.elicitation.v1` 和 Temporal `wait_input` directive。checkpoint 绑定 host-owned Request、Server、Tool、Invocation、deadline、完整 Form 与 `trust=untrusted` SHA-256；仅精确且未过期的 durable resume 可转换为 MCP `accept`，`decline/cancel` 也要求同一 Request。URL、number/integer、default、format、description、自由扩展、敏感字段和 checkpoint 漂移均拒绝。当前外部 MCP Client 未声明 Elicitation capability，也未注册 request handler。
@@ -298,6 +299,7 @@
 
 ### 迁移说明
 
+- `ExecuteMcpMessageCommand` 是 additive Agent Capability RPC，无数据迁移。先滚动 Core，再发布 TS Runtime；旧 Runtime 不调用该方法。回滚时先保持生产 MCP write Tool 未注册或关闭，再回退 Runtime/Core。该 RPC 依赖 migration v31 的 Tool Invocation Approval 字段，不能在 v31 之前启用。
 - migration v31 为 `agent_tool_invocations` 增加 nullable Approval 与 action reference 字段及约束。先迁移 Core，再发布 additive Agent Proto 与 Runtime；旧只读调用继续写入空引用。回滚前必须关闭所有未来 write Tool、等待 `running` 调用收敛并确认不再需要 Approval/Command/Message 联查证据，v31 Down 会移除这些字段和索引。
 - `ConsumeApproval` 是一次性、active-only 的安全门槛。审批在 Capability 执行前消费，执行失败后不会自动恢复或重放；调用方必须创建新审批。Message Command 已具备稳定业务幂等键和 sender-scoped receipt 查询，可收敛 RPC 超时后的提交状态；migration v31 已提供 Tool-to-Message lineage，生产 write projection 仍需 active authority、UI 风险摘要和故障演练。当前不要向 `createDipoleMcpServer` 注册 write/destructive Tool。
 - 外部 MCP Client 的原始 `CallToolResult` 不得直接拼接到 system/trusted prompt、Memory 或 Agent instruction。未来接入必须先通过 `externalMcpResultToContextFragment`，保留 `trust=untrusted` 与 provenance；若结果要形成 Artifact 或 Memory，需继续携带原始 Invocation lineage，不能因人工摘要或模型改写提升信任等级。
@@ -353,6 +355,7 @@
 
 ### 验证
 
+- MCP Message Command 测试覆盖 Core 派生 Command ID、canonical 参数黄金向量、Tool/Approval/Task/Run/Capability/身份漂移、Agent event lineage、RPC 服务身份与 TS 返回证据复算；Tool runner 和 Approval gate 对同一参数使用统一排序 canonical JSON。
 - Tool action lineage 测试覆盖已消费审批、Task/Capability/参数摘要与资源 scope 漂移、read/write 引用隔离、Command kind/capability 对应、sender-scoped receipt、Message UUID/身份/会话/类型冲突、protobuf/TS 映射及 sqlc 持久化；生产 MCP Server 的 read-only 投影回归保持通过。
 - MCP 限流测试覆盖 JWT principal 派生、跨 Task 共享额度、principal 隔离、429/`Retry-After` 向上取整、被限请求不进入代理、DELETE 清理旁路、Redis 缺失 fail closed，以及消息发送 fail-open 兼容性；真实 Redis 验证两个 Limiter 实例共享计数和 TTL 到期恢复。
 - MCP ToolCall 测试覆盖 durable begin、权威身份绑定、只读风险门禁、参数/结果哈希、64 KiB 上限、异常脱敏、OTel span 终止、RPC principal 拒绝、重复 begin 与单次终态；真实 MySQL 8.4 验证 migration v30 全量 `up→down` 链、FK/CHECK 约束及 sqlc contract。Go 聚焦测试、128 项 TS 测试、typecheck/build 和双语言生成物通过。
