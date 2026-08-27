@@ -9,11 +9,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "generate:sql": "node ../scripts/generate-agent-ledger-queries.mjs && node ../scripts/generate-agent-model-audit-queries.mjs && node ../scripts/generate-agent-shadow-trajectory-queries.mjs",
+    "generate:sql": "node ../scripts/generate-agent-ledger-queries.mjs && node ../scripts/generate-agent-model-audit-queries.mjs && node ../scripts/generate-agent-shadow-trajectory-queries.mjs && node ../scripts/generate-agent-eval-observation-queries.mjs",
     "generate:proto": "node ../scripts/generate-agent-proto-ts.mjs",
     "check:proto": "node ../scripts/check-agent-proto-ts.mjs",
     "context:calibrate": "tsx src/context/token-calibration-cli.ts",
     "eval:offline": "tsx src/evals/offline-eval-cli.ts",
+    "eval:shadow": "tsx src/evals/shadow-eval-cli.ts",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
     "repair:propose": "tsx src/promotion/workflow-repair-proposal-cli.ts",
