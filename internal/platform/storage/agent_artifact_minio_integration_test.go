@@ -17,7 +17,7 @@ import (
 
 func TestAgentArtifactMinIOIdentityIsBucketAndOperationBound(t *testing.T) {
 	endpoint := os.Getenv("DIPOLE_TEST_MINIO_ENDPOINT")
-	if endpoint == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY") == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_ACCESS_KEY") == "" {
+	if endpoint == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY") == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_ACCESS_KEY") == "" || os.Getenv("DIPOLE_TEST_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY") == "" {
 		t.Skip("isolated MinIO identity environment is required")
 	}
 	artifactAccessKey := os.Getenv("DIPOLE_TEST_ARTIFACT_MINIO_ACCESS_KEY")
@@ -26,6 +26,8 @@ func TestAgentArtifactMinIOIdentityIsBucketAndOperationBound(t *testing.T) {
 	platformSecretKey := os.Getenv("DIPOLE_TEST_PLATFORM_MINIO_SECRET_KEY")
 	auditAccessKey := os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_ACCESS_KEY")
 	auditSecretKey := os.Getenv("DIPOLE_TEST_ARTIFACT_AUDIT_MINIO_SECRET_KEY")
+	maintenanceAccessKey := os.Getenv("DIPOLE_TEST_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY")
+	maintenanceSecretKey := os.Getenv("DIPOLE_TEST_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY")
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	store, err := NewAgentArtifactBlobStoreFromConfig(ctx, AgentArtifactStorageConfigV1{
@@ -103,6 +105,30 @@ func TestAgentArtifactMinIOIdentityIsBucketAndOperationBound(t *testing.T) {
 	}
 	if err := auditClient.RemoveObject(ctx, receipt.Bucket, receipt.ObjectKey, minio.RemoveObjectOptions{}); err == nil {
 		t.Fatal("audit identity deleted Artifact content")
+	}
+	inspector, err := NewAgentArtifactMaintenanceInspectorV1(AgentArtifactMaintenanceConfigV1{
+		Endpoint: endpoint, AccessKey: maintenanceAccessKey, SecretKey: maintenanceSecretKey, Bucket: receipt.Bucket,
+		RuntimeAccessKey: artifactAccessKey, AuditAccessKey: auditAccessKey,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := inspector.Inspect(ctx, receipt.Bucket, receipt.ObjectKey)
+	if err != nil || !state.Found || state.SizeBytes != int64(len(body)) {
+		t.Fatalf("maintenance inspection state=%+v err=%v", state, err)
+	}
+	maintenanceClient := mustMinIOTestClient(t, endpoint, maintenanceAccessKey, maintenanceSecretKey)
+	if _, err := maintenanceClient.PutObject(ctx, receipt.Bucket, receipt.ObjectKey+"-forbidden", bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{}); err == nil {
+		t.Fatal("maintenance inspection identity wrote Artifact content")
+	}
+	if err := maintenanceClient.RemoveObject(ctx, receipt.Bucket, receipt.ObjectKey, minio.RemoveObjectOptions{}); err == nil {
+		t.Fatal("maintenance inspection identity deleted Artifact content")
+	}
+	for object := range maintenanceClient.ListObjects(ctx, receipt.Bucket, minio.ListObjectsOptions{Prefix: "agent-artifacts/v1/", Recursive: true}) {
+		if object.Err == nil {
+			t.Fatal("maintenance inspection identity listed the Artifact bucket")
+		}
+		break
 	}
 }
 
