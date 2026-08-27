@@ -1,11 +1,10 @@
+#include "shadow_evidence.hpp"
+
 #include <cstdlib>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
-
-#include <nlohmann/json.hpp>
-
-#include "shadow_evidence.hpp"
 
 namespace {
 
@@ -77,8 +76,7 @@ void TestRejectedEvidenceAndFailures() {
       .error_code = "invalid_event",
   };
   Check(!sink.Append(evidence), "write rejected evidence");
-  Check(nlohmann::json::parse(output.str()).at("outcome") == "rejected",
-        "rejected outcome is explicit");
+  Check(nlohmann::json::parse(output.str()).at("outcome") == "rejected", "rejected outcome is explicit");
   Check(nlohmann::json::parse(output.str()).at("message_type").is_null(),
         "invalid events do not invent a message type");
 
@@ -88,12 +86,43 @@ void TestRejectedEvidenceAndFailures() {
   Check(sink.Append(evidence).has_value(), "invalid coordinates are rejected");
 }
 
+void TestPrimaryEvidenceHasIndependentSchema() {
+  std::ostringstream output;
+  dipole::realtime::JsonLineEvidenceSink sink(&output);
+  const dipole::realtime::ShadowEvidence evidence{
+      .topic = "dipole.message.direct.created",
+      .partition = 1,
+      .offset = 99,
+      .source_event_id = "E100",
+      .batch_id = "shadow:E100:1:99",
+      .message_type = 0,
+      .item_count = 2,
+      .outcome = dipole::realtime::ShadowOutcome::kDeferred,
+      .error_code = "primary_ack_retain",
+      .node_batch_count = 1,
+      .transport_requested = 1,
+      .transport_rejected = 1,
+      .transport_primary = true,
+      .transport_enqueued = 1,
+      .transport_offline = 0,
+      .transport_failed = 0,
+      .primary_offset_commit = false,
+  };
+  Check(!sink.Append(evidence), "write primary evidence");
+  const auto decoded = nlohmann::json::parse(output.str());
+  Check(decoded.at("schema_version") == "dipole.realtime.primary-evidence.v1" &&
+            decoded.at("transport_mode") == "primary" && decoded.at("transport_enqueued") == 1 &&
+            decoded.at("transport_rejected") == 1 && decoded.at("primary_offset_decision") == "retain",
+        "primary evidence records bounded acknowledgement and offset state");
+}
+
 }  // namespace
 
 int main() {
   try {
     TestProjectedEvidence();
     TestRejectedEvidenceAndFailures();
+    TestPrimaryEvidenceHasIndependentSchema();
   } catch (const std::exception& error) {
     std::cerr << "FAIL: unexpected exception: " << error.what() << '\n';
     ++failures;

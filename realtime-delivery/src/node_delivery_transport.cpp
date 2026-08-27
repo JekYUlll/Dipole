@@ -1,14 +1,14 @@
 #include "node_delivery_transport.hpp"
 
+#include <arpa/inet.h>
+#include <grpcpp/grpcpp.h>
+
 #include <chrono>
 #include <fstream>
 #include <sstream>
 #include <string_view>
 #include <unordered_set>
 #include <utility>
-
-#include <arpa/inet.h>
-#include <grpcpp/grpcpp.h>
 
 namespace dipole::realtime {
 namespace {
@@ -28,8 +28,7 @@ bool IsLoopbackTarget(const std::string& target) {
   const auto host = target.substr(0, separator);
   if (host == "localhost" || host == "[::1]") return true;
   in_addr address{};
-  return inet_pton(AF_INET, host.c_str(), &address) == 1 &&
-         (ntohl(address.s_addr) >> 24U) == 127U;
+  return inet_pton(AF_INET, host.c_str(), &address) == 1 && (ntohl(address.s_addr) >> 24U) == 127U;
 }
 
 ValidationError ReadFile(const std::string& path, std::string* content) {
@@ -44,8 +43,7 @@ ValidationError ReadFile(const std::string& path, std::string* content) {
 
 }  // namespace
 
-ValidationError ParseNodeTargets(const std::string& raw,
-                                 std::map<std::string, std::string>* targets) {
+ValidationError ParseNodeTargets(const std::string& raw, std::map<std::string, std::string>* targets) {
   if (targets == nullptr) return "node target destination is required";
   targets->clear();
   std::size_t start = 0;
@@ -80,18 +78,16 @@ ValidationError ValidateGrpcNodeTransportConfig(const GrpcNodeTransportConfig& c
       return "plaintext node transport target must use loopback";
     }
   }
-  if (config.tls_enabled &&
-      (config.tls_ca_file.empty() || config.tls_cert_file.empty() || config.tls_key_file.empty() ||
-       config.tls_server_name.empty())) {
+  if (config.tls_enabled && (config.tls_ca_file.empty() || config.tls_cert_file.empty() ||
+                             config.tls_key_file.empty() || config.tls_server_name.empty())) {
     return "node transport mTLS material and server name are required";
   }
   return std::nullopt;
 }
 
-ValidationError ClassifyPrimaryAcknowledgements(
-    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
-    const std::vector<delivery::v1::DeliveryAck>& acknowledgements,
-    PrimaryDeliveryStats* stats) {
+ValidationError ClassifyPrimaryAcknowledgements(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                                const std::vector<delivery::v1::DeliveryAck>& acknowledgements,
+                                                PrimaryDeliveryStats* stats) {
   if (stats == nullptr) return "primary delivery stats destination is required";
   *stats = {};
   stats->requested = batches.size();
@@ -148,9 +144,8 @@ ValidationError ClassifyPrimaryAcknowledgements(
   return std::nullopt;
 }
 
-ValidationError GrpcNodeBatchTransport::Create(
-    const GrpcNodeTransportConfig& config,
-    std::unique_ptr<GrpcNodeBatchTransport>* transport) {
+ValidationError GrpcNodeBatchTransport::Create(const GrpcNodeTransportConfig& config,
+                                               std::unique_ptr<GrpcNodeBatchTransport>* transport) {
   if (transport == nullptr) return "node transport destination is required";
   if (const auto error = ValidateGrpcNodeTransportConfig(config); error) return error;
 
@@ -179,9 +174,8 @@ ValidationError GrpcNodeBatchTransport::Create(
   return std::nullopt;
 }
 
-ValidationError GrpcNodeBatchTransport::Observe(
-    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
-    NodeTransportStats* stats) {
+ValidationError GrpcNodeBatchTransport::Observe(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                                NodeTransportStats* stats) {
   if (stats == nullptr) return "node transport stats destination is required";
   *stats = {};
   for (const auto& batch : batches) {
@@ -190,8 +184,7 @@ ValidationError GrpcNodeBatchTransport::Observe(
     if (found == stubs_.end()) return "node transport target is unavailable";
     ++stats->requested;
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() +
-                         std::chrono::milliseconds(config_.timeout_ms));
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(config_.timeout_ms));
     context.AddMetadata("x-dipole-caller-service", std::string(kCallerService));
     context.AddMetadata("x-dipole-service-token", config_.shared_secret);
     if (!batch.request_id().empty()) context.AddMetadata("x-request-id", batch.request_id());
@@ -200,12 +193,10 @@ ValidationError GrpcNodeBatchTransport::Observe(
     delivery::v1::NodeDeliveryObservation observation;
     const auto status = found->second->ObserveNodeBatch(&context, batch, &observation);
     if (!status.ok()) {
-      return "node observation RPC failed with code " +
-             std::to_string(static_cast<int>(status.error_code()));
+      return "node observation RPC failed with code " + std::to_string(static_cast<int>(status.error_code()));
     }
     if (const auto error = ValidateObservation(observation); error) return error;
-    if (observation.batch_id() != batch.batch_id() ||
-        observation.target_node_id() != batch.target_node_id()) {
+    if (observation.batch_id() != batch.batch_id() || observation.target_node_id() != batch.target_node_id()) {
       return "node observation identity drifted";
     }
     switch (observation.status()) {
@@ -226,9 +217,15 @@ ValidationError GrpcNodeBatchTransport::Observe(
   return std::nullopt;
 }
 
-ValidationError GrpcNodeBatchTransport::Deliver(
-    const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
-    std::vector<delivery::v1::DeliveryAck>* acknowledgements) {
+ValidationError GrpcNodeBatchTransport::Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                                PrimaryDeliveryStats* stats) {
+  std::vector<delivery::v1::DeliveryAck> acknowledgements;
+  if (const auto error = Deliver(batches, &acknowledgements); error) return error;
+  return ClassifyPrimaryAcknowledgements(batches, acknowledgements, stats);
+}
+
+ValidationError GrpcNodeBatchTransport::Deliver(const std::vector<delivery::v1::NodeDeliveryBatch>& batches,
+                                                std::vector<delivery::v1::DeliveryAck>* acknowledgements) {
   if (acknowledgements == nullptr) return "node delivery acknowledgements are required";
   acknowledgements->clear();
   acknowledgements->reserve(batches.size());
@@ -237,8 +234,7 @@ ValidationError GrpcNodeBatchTransport::Deliver(
     const auto found = stubs_.find(batch.target_node_id());
     if (found == stubs_.end()) return "node transport target is unavailable";
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() +
-                         std::chrono::milliseconds(config_.timeout_ms));
+    context.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(config_.timeout_ms));
     context.AddMetadata("x-dipole-caller-service", std::string(kCallerService));
     context.AddMetadata("x-dipole-service-token", config_.shared_secret);
     if (!batch.request_id().empty()) context.AddMetadata("x-request-id", batch.request_id());
@@ -247,8 +243,7 @@ ValidationError GrpcNodeBatchTransport::Deliver(
     delivery::v1::DeliveryAck acknowledgement;
     const auto status = found->second->DeliverNodeBatch(&context, batch, &acknowledgement);
     if (!status.ok()) {
-      return "node delivery RPC failed with code " +
-             std::to_string(static_cast<int>(status.error_code()));
+      return "node delivery RPC failed with code " + std::to_string(static_cast<int>(status.error_code()));
     }
     if (const auto error = ValidateAck(acknowledgement); error) return error;
     if (acknowledgement.batch_id() != batch.batch_id()) {

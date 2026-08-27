@@ -1,6 +1,6 @@
 # Realtime Delivery
 
-本文档定义 Go Gateway 与 C++ Realtime Delivery 共享的 v1 投递边界。当前生产流量继续经过 Go Kafka consumer、Redis Presence/PubSub 和 WebSocket Hub；C++ 只运行默认关闭的 observation shadow，不拥有客户端写入权限。
+本文档定义 Go Gateway 与 C++ Realtime Delivery 共享的 v1 投递边界。当前生产流量继续经过 Go Kafka consumer、Redis Presence/PubSub 和 WebSocket Hub；C++ 提供默认关闭的 observation shadow 和候选 primary CLI，尚未进入 Compose 或接管生产流量。
 
 ## 当前链路
 
@@ -89,6 +89,10 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，增加低敏 `message_type` selector 及 requested/observed/duplicate/rejected/backpressured 聚合计数，不保存正文、收件人或 connection ID。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
 
+显式 `primary` 命令复用同一 record ownership，但授予独立的 `dipole-realtime-primary-*` consumer authority。启动必须同时设置 `DIPOLE_REALTIME_PRIMARY_ENABLED=true`、`DIPOLE_REALTIME_PRESENCE_MODE=primary` 和 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=primary`；缺少任一项都会在创建 consumer 前 fail closed。tracked Compose 没有 primary 服务或默认启用值。
+
+primary 顺序固定为 `poll -> project -> Presence -> DeliverNodeBatch -> primary-evidence.v1 -> commit`。完整 ACK 必须与 batch 数量、batch ID 和全部 delivery ID 精确一致；所有结果均为 `ENQUEUED|OFFLINE` 时允许 commit，`PARTIAL/BACKPRESSURED`、`REJECTED`、`FAILED` 或任何漂移会记录有界分类并保留 pending record。Presence 已确认全部 item 离线且没有 node batch 时不发起 RPC，在 evidence 刷盘后直接提交。evidence append 仍先于 offset commit；进程在两者之间崩溃时依靠稳定 delivery ID、Gateway replay state、Web IndexedDB claim 和 Sync Timeline 补偿重放。
+
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
 
 同 workload 对照证据位于 `benchmarks/c2-cpp-comparison-2026-08-28/`。Go baseline 在 20 用户、每用户 2 条文本消息下完成 40/40 accepted、persisted、received；C++ v3 evidence 观察 80 个 Kafka 坐标，`message_type=0` 选择 40 条 workload，40 条好友初始化系统消息保持可见并计为 filtered-out。选中记录全部 projected，node transport requested/observed 为 40/40，最终拒绝和背压为 0，comparison v1 决策为 `eligible`。真实 Go TCP queue saturation race 测试确认容量满时返回 `BACKPRESSURED/QUEUE_FULL`。演练同时发现 Gateway assignment 未进入 readiness，已记录为 `AD-039`；成功候选在负载前显式要求 direct-created 六个分区完成 assignment。
@@ -97,12 +101,12 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 
-C++ shadow 阶段遵守以下门禁：
+C++ 候选运行时遵守以下门禁：
 
 1. 使用独立 consumer group，只生成 route/batch/ACK 对比证据，不向客户端投递。
 2. 对比 source event、目标节点、收件人、connection、mode、ordering key 和处理时延。
-3. 有界队列满时返回 `BACKPRESSURED`，不得静默丢弃；Kafka offset 策略在 primary 切流前单独故障演练。
-4. primary 阶段提交 offset 前必须收到节点 ACK 或写入可重放的持久边界；稳定 delivery ID 配合 Gateway 去重后才能开启自动重试。
+3. 有界队列满时返回 `BACKPRESSURED`，不得静默丢弃；显式 primary runner 已保留 offset，真实 saturation 仍需归档。
+4. primary 提交 offset 前必须收到完整 terminal 节点 ACK 或证明全部 Presence offline；consume-to-ACK 和进程崩溃重放演练通过后才能评审切流。
 5. `OFFLINE` 可提交，消息事实与 Inbox 已持久化；客户端重连后从 Sync Timeline 恢复。
 
 当前主机具备 nlohmann/json 3.11.3；librdkafka 2.3.0 通过 Ubuntu Noble 包无特权解压到临时 sysroot 完成编译与测试，未修改系统包。发布构建必须把 librdkafka 版本写入构建镜像和运行证据，禁止依赖开发机隐式库。
@@ -117,4 +121,4 @@ Gateway 继续拥有连接认证、心跳、WebSocket envelope、连接级有界
 
 ## 回滚
 
-路线图预留 `realtime.delivery=go|shadow|cpp` 开关语义；当前生产配置和 Compose 尚未加入该开关，系统等价于 `go`。独立执行 `shadow` 只增加观察链，失败不会阻塞 Go；`cpp` 需要节点投递、自动回切和同一 workload 的 Go/C++ 对照证据。任何 ACK 漂移、队列溢出、顺序差异或恢复退化都回切 `go`，无需数据回滚。
+路线图预留 `realtime.delivery=go|shadow|cpp` 开关语义；当前生产配置和 Compose 尚未加入该开关，系统等价于 `go`。独立执行 `shadow` 只增加观察链，失败不会阻塞 Go；手工执行 `primary` 还需要专用 enable gate、Presence/transport primary mode 和隔离 consumer group。`cpp` 晋级仍需要真实 offset/crash 证据、自动回切和同一 workload 对照。任何 ACK 漂移、队列溢出、顺序差异或恢复退化都停止候选并保留 Go 权威链路，无需数据回滚。

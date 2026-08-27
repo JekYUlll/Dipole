@@ -30,6 +30,7 @@ class ShadowRecordConsumer {
 };
 
 enum class ShadowOutcome : std::uint8_t { kProjected, kRejected, kDeferred };
+enum class NodeTransportMode : std::uint8_t { kObserve, kPrimary };
 
 // ShadowEvidence deliberately excludes message payloads, recipient IDs and raw
 // errors. Detailed event bodies remain in Kafka and the authoritative Go path.
@@ -54,6 +55,11 @@ struct ShadowEvidence {
   std::size_t transport_duplicate = 0;
   std::size_t transport_rejected = 0;
   std::size_t transport_backpressured = 0;
+  bool transport_primary = false;
+  std::size_t transport_enqueued = 0;
+  std::size_t transport_offline = 0;
+  std::size_t transport_failed = 0;
+  bool primary_offset_commit = false;
 };
 
 class ShadowEvidenceSink {
@@ -78,12 +84,11 @@ struct ShadowRunnerStats {
 class ShadowRunner {
  public:
   ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
-               PresenceReader* presence_reader = nullptr,
-               NodeBatchTransport* node_transport = nullptr);
+               PresenceReader* presence_reader = nullptr, NodeBatchTransport* node_transport = nullptr,
+               NodeTransportMode node_transport_mode = NodeTransportMode::kObserve);
 
-  ValidationError RunOnce(
-      const ProjectionPolicy& policy,
-      const std::optional<PresenceProjectionPolicy>& presence_policy = std::nullopt);
+  ValidationError RunOnce(const ProjectionPolicy& policy,
+                          const std::optional<PresenceProjectionPolicy>& presence_policy = std::nullopt);
   [[nodiscard]] bool Ready() const;
   [[nodiscard]] ShadowRunnerStats Stats() const;
 
@@ -93,6 +98,7 @@ class ShadowRunner {
   int poll_timeout_ms_;
   PresenceReader* presence_reader_;
   NodeBatchTransport* node_transport_;
+  NodeTransportMode node_transport_mode_;
   std::optional<KafkaRecord> pending_record_;
   std::atomic_bool healthy_ = true;
   ShadowRunnerStats stats_;

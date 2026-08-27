@@ -172,4 +172,11 @@ if(BUILD_TESTING)
       "${PROTO_ROOT}/dipole/delivery/v1/testdata"
   )
   set_tests_properties(delivery_shadow_health PROPERTIES TIMEOUT 15)
+  add_test(
+    NAME delivery_primary_health
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tests/primary_health_test.sh"
+      "$<TARGET_FILE:dipole-realtime-delivery>"
+      "${PROTO_ROOT}/dipole/delivery/v1/testdata"
+  )
+  set_tests_properties(delivery_primary_health PROPERTIES TIMEOUT 15)
 endif()
