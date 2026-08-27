@@ -1,0 +1,46 @@
+{
+  "schema_version": "dipole.realtime.node-delivery-shadow-report.v1",
+  "gateway_source_revision": "d68947c8c23a83d231b13d21a91be1725d61531c",
+  "cpp_source_revision": "4105d2159af0773bd8360ca4e605c0c5c6d9a7db",
+  "source_dirty": false,
+  "gateway_image_id": "sha256:591620790941cd0e623cdb965dd047b16b0331166b43ffe85e3c5c72ced92cab",
+  "cpp_image_id": "sha256:3c4eb4be804c39549e1a4620372831c2a1770b17f281f8518aa3abf72048659c",
+  "transport": {
+    "protocol": "gRPC",
+    "tls": "mutual",
+    "client_identity": "dipole-realtime",
+    "server_identity": "dipole-gateway",
+    "target_node_id": "gateway-1",
+    "gateway_listener": "0.0.0.0:9095",
+    "client_writes": 0
+  },
+  "evidence": {
+    "schema_version": "dipole.realtime.shadow-evidence.v3",
+    "records": 10,
+    "projected": 4,
+    "deferred": 5,
+    "rejected": 1,
+    "transport_observed": 3,
+    "transport_duplicate": 1,
+    "initial_observed_event": "E-C2-NODE-2",
+    "recovery_event": "E-C2-RETRY-2",
+    "final_group_lag": 0
+  },
+  "recovery": {
+    "gateway_unavailable_observed": true,
+    "offset_retained_while_deferred": true,
+    "worker_restart_required": true,
+    "same_record_observed_after_restart": true,
+    "committed_offset_replay_duplicate": true
+  },
+  "known_gaps": [
+    "The worker does not seek and retry a deferred record in-process; restart replays it from the committed offset.",
+    "The root Dockerfile packages prebuilt dist binaries, so backend generation must precede image packaging."
+  ],
+  "cleanup": {
+    "shadow_process_removed": true,
+    "compose_project_removed": true,
+    "project_networks_removed": true,
+    "project_volumes_removed": true
+  }
+}

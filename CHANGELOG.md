@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 归档首个 C++ node delivery 跨进程 shadow 证据到 `benchmarks/c2-cpp-node-delivery-2026-08-28/`：C++ 经 Kafka 与 Redis Presence 聚合节点批次，使用 `dipole-realtime` mTLS 身份调用默认关闭的 Go Gateway observation receiver；Gateway 故障时 offset 保持未提交，恢复并重启 worker 后重放成功，回拨已提交 offset 命中稳定 batch 去重，最终 lag 为 0，全程客户端写入为 0。证据同时记录当前 deferred record 需要 worker 重启才能重放，以及发布镜像前必须刷新预构建 `dist/` 的边界。
 - C2 增加默认关闭的 C++ node gRPC transport shadow：显式 `node=target` 路由、10 ms 至 30 s deadline、`dipole-realtime` 服务认证、correlation metadata 和可选 mTLS；明文 target 仅允许 loopback。ShadowRunner 顺序升级为 Presence 投影、节点观察、`shadow-evidence.v3`、Kafka commit；部分成功后的重试依靠稳定 batch ID 与 Gateway 去重，RPC 拒绝/背压/故障会写低敏 `deferred` 证据、保留 offset 并撤销 readiness。真实本地 gRPC、runner 顺序、`-Werror`、clang-tidy 与 11 项 CTest 通过，生产 Compose 仍未启用。
 - C2 增加 Gateway 节点投递观察接收端：默认关闭的独立 gRPC listener 只允许认证的 `dipole-realtime` 调用方，按 Presence node ID 校验 `NodeDeliveryBatch`，通过有界队列、稳定 batch 去重和明确 backpressure 返回观察结果；消费端仅累计低敏批次/条目/连接计数，不调用 WebSocket Hub，也不改变现有 Go Delivery。配置样例固定 loopback、容量和重试提示，race 与完整 Go 门禁通过。
 - C2 增加 `NodeDeliveryService.ObserveNodeBatch` 跨语言观察合约：`NodeDeliveryObservation` 独立表达 observed/rejected/backpressured、节点批次聚合计数、QueuePressure 与 duplicate 去重，不复用客户端 `DeliveryAck`；Go/C++ validator 与第四组 golden vector 已固定。
