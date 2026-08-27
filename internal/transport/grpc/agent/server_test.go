@@ -50,6 +50,25 @@ type agentMemoryResolverStub struct {
 	err                                         error
 }
 
+type agentToolAuditStub struct {
+	begin  application.AgentToolInvocationBeginV1
+	finish application.AgentToolInvocationFinishV1
+	err    error
+}
+
+func (s *agentToolAuditStub) Begin(_ context.Context, begin application.AgentToolInvocationBeginV1) (*application.AgentToolInvocationV1, error) {
+	s.begin = begin
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &application.AgentToolInvocationV1{InvocationUUID: begin.InvocationUUID, Status: application.AgentToolInvocationStatusRunning}, nil
+}
+
+func (s *agentToolAuditStub) Finish(_ context.Context, finish application.AgentToolInvocationFinishV1) error {
+	s.finish = finish
+	return s.err
+}
+
 func (s *agentMemoryResolverStub) ResolveContextMemories(_ context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]application.AgentMemoryV1, error) {
 	s.taskUUID, s.runUUID, s.resourceType, s.resourceID, s.limit = taskUUID, runUUID, resourceType, resourceID, limit
 	return s.items, s.err
@@ -203,6 +222,45 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 	})
 	if status.Code(err) != codes.NotFound {
 		t.Fatalf("foreign principal code = %s, want %s", status.Code(err), codes.NotFound)
+	}
+}
+
+func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
+	audit := &agentToolAuditStub{}
+	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithToolAudits(audit); err != nil {
+		t.Fatalf("configure Tool audit: %v", err)
+	}
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	requestContext.RequestId, requestContext.TraceId = "REQ-1", "TRACE-1"
+	response, err := server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
+		ToolName: "dipole_conversation_list", CapabilityId: application.AgentCapabilityConversationsList,
+		ArgumentsSha256: strings.Repeat("a", 64),
+	})
+	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP {
+		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
+	}
+	finishResponse, err := server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
+		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
+	})
+	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 {
+		t.Fatalf("unexpected Tool finish: response=%+v audit=%+v err=%v", finishResponse, audit.finish, err)
+	}
+	_, err = server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	audit.err = application.ErrAgentToolInvocationConflict
+	_, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{Context: requestContext})
+	if status.Code(err) != codes.Aborted {
+		t.Fatalf("conflict code = %s, want %s", status.Code(err), codes.Aborted)
 	}
 }
 

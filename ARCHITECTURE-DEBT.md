@@ -12,15 +12,15 @@
 
 ## 待处理
 
-### AD-037：MCP 网络入口尚缺 OAuth、审计与写能力门禁
+### AD-037：MCP 网络入口尚缺 OAuth、共享流量治理与写能力门禁
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Runtime、MCP Client/Server、Gateway/OAuth、Capability Policy、外部数据流
-- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 已完成；默认关闭的 Gateway/Runtime 网络入口仅投影 `conversation.list`。Gateway JWT 派生 principal 并覆盖内部身份头，Runtime 接受受信服务密钥后调用 Core，以精确 Task/Run 和固定 Definition 解析 ExecutionContext。两个开关默认关闭，外部 MCP Server、write/destructive Tool 均未启用。
-- **风险：** 当前 JWT 入口尚未实现标准 OAuth resource indicator、MCP 专用 scope/consent、逐调用审计、限流和外部 Server 凭据生命周期；外部 Tool 返回内容可能包含 Prompt Injection 或敏感数据。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
-- **建议方向：** 在共享环境启用前补充 OAuth resource server 或等价 token audience/scope 门禁、MCP 调用 OTel/审计、限流、取消与超时。外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment；write Tool 必须绑定现有 Approval 与 Agent lineage。
+- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。migration v30 与 sqlc Store 为每次调用持久化权威 tenant/principal/Agent/Task/Run、参数/结果 SHA-256、字节数、耗时和稳定终态；TS Runtime 在执行前完成 durable begin，并通过 OpenTelemetry API 创建不含正文的 ToolCall span。未配置 OTel SDK/exporter 时 API 保持 no-op。外部 MCP Server、write/destructive Tool 均未启用。
+- **风险：** 当前 JWT 入口尚未实现标准 OAuth resource indicator、MCP 专用 scope/consent、逐 principal 限流和外部 Server 凭据生命周期；OTel exporter、指标、告警与 trace/audit 联查尚未装配。外部 Tool 返回内容可能包含 Prompt Injection 或敏感数据。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
+- **建议方向：** 在共享环境启用前补充 OAuth resource server 或等价 token audience/scope 门禁、限流、取消与超时，并接入受控 OTel SDK/exporter 和审计告警。外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment；write Tool 必须绑定现有 Approval 与 Agent lineage。
 - **处理门槛：** 任何共享环境 MCP 开关启用、外部 Server 连接或 write/destructive Tool 上线前完成。当前网络入口仅用于受控认证和授权边界验证。
 
 ### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP adapter

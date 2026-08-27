@@ -136,6 +136,38 @@ message ResolveMcpContextResponse {
   repeated string approved_capabilities = 7;
 }
 
+message BeginMcpToolInvocationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string tool_name = 5;
+  string capability_id = 6;
+  string arguments_sha256 = 7;
+}
+
+message BeginMcpToolInvocationResponse {
+  string invocation_id = 1;
+  string status = 2;
+}
+
+message FinishMcpToolInvocationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string status = 5;
+  string result_sha256 = 6;
+  uint64 result_bytes = 7;
+  uint64 latency_ms = 8;
+  string error_code = 9;
+}
+
+message FinishMcpToolInvocationResponse {
+  string invocation_id = 1;
+  string status = 2;
+}
+
 message ProjectTaskWorkflowStateRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -329,6 +361,8 @@ service AgentCapabilityService {
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
+  rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
+  rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
   rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);

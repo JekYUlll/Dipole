@@ -392,7 +392,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts, rpcAgentMemoryStub{})
+	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, artifacts, nil, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}

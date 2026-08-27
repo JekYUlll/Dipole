@@ -28,6 +28,7 @@ type Repositories struct {
 	AgentRepairs       application.AgentWorkflowRepairAuditStoreV1
 	AgentArtifacts     application.AgentArtifactStoreV1
 	AgentMemories      application.AgentMemoryStoreV1
+	AgentToolAudits    application.AgentToolInvocationStoreV1
 	Outbox             application.OutboxRelayStore
 }
 
@@ -125,6 +126,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
 	}
 	repos.AgentMemories = agentMemories
+	agentToolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
+	}
+	repos.AgentToolAudits = agentToolAudits
 	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)

@@ -107,6 +107,24 @@ export interface AgentContextMemory {
   readonly provenance: { readonly sourceType: string; readonly sourceId: string; readonly uri?: string; readonly sequence?: string };
 }
 
+export interface AgentToolInvocationBegin {
+  readonly invocationId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly toolName: string;
+  readonly capabilityId: string;
+  readonly argumentsSha256: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
+export type AgentToolInvocationFinish = {
+  readonly invocationId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly latencyMs: number;
+} & ({ readonly status: "completed"; readonly resultSha256: string; readonly resultBytes: number } | { readonly status: "failed"; readonly errorCode: string });
+
 export class AgentCapabilityRPCClient {
   constructor(
     private readonly rpc: IAgentCapabilityServiceClient,
@@ -384,6 +402,37 @@ export class AgentCapabilityRPCClient {
         } catch (validationError) {
           reject(validationError);
         }
+      });
+    });
+  }
+
+  async begin(input: AgentToolInvocationBegin): Promise<void> {
+    const metadata = this.metadata(input.requestId, input.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.beginMcpToolInvocation({
+        context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
+        invocationId: input.invocationId, toolName: input.toolName, capabilityId: input.capabilityId,
+        argumentsSha256: input.argumentsSha256
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation begin returned no response"));
+        if (response.invocationId !== input.invocationId || response.status !== "running") return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
+        resolve();
+      });
+    });
+  }
+
+  async finishToolInvocation(input: AgentToolInvocationFinish): Promise<void> {
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.finishMcpToolInvocation({
+        context: this.requestContext(), taskId: input.taskId, runId: input.runId, invocationId: input.invocationId,
+        status: input.status, resultSha256: input.status === "completed" ? input.resultSha256 : "",
+        resultBytes: BigInt(input.status === "completed" ? input.resultBytes : 0), latencyMs: BigInt(input.latencyMs),
+        errorCode: input.status === "failed" ? input.errorCode : ""
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation finish returned no response"));
+        if (response.invocationId !== input.invocationId || response.status !== input.status) return reject(new Error("Agent Tool invocation finish returned conflicting evidence"));
+        resolve();
       });
     });
   }

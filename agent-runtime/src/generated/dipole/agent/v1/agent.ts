@@ -415,6 +415,106 @@ export interface ResolveMcpContextResponse {
     approvedCapabilities: string[];
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
+ */
+export interface BeginMcpToolInvocationRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string invocation_id = 4
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string tool_name = 5
+     */
+    toolName: string;
+    /**
+     * @generated from protobuf field: string capability_id = 6
+     */
+    capabilityId: string;
+    /**
+     * @generated from protobuf field: string arguments_sha256 = 7
+     */
+    argumentsSha256: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationResponse
+ */
+export interface BeginMcpToolInvocationResponse {
+    /**
+     * @generated from protobuf field: string invocation_id = 1
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationRequest
+ */
+export interface FinishMcpToolInvocationRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string invocation_id = 4
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string status = 5
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: string result_sha256 = 6
+     */
+    resultSha256: string;
+    /**
+     * @generated from protobuf field: uint64 result_bytes = 7
+     */
+    resultBytes: bigint;
+    /**
+     * @generated from protobuf field: uint64 latency_ms = 8
+     */
+    latencyMs: bigint;
+    /**
+     * @generated from protobuf field: string error_code = 9
+     */
+    errorCode: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationResponse
+ */
+export interface FinishMcpToolInvocationResponse {
+    /**
+     * @generated from protobuf field: string invocation_id = 1
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ProjectTaskWorkflowStateRequest
  */
 export interface ProjectTaskWorkflowStateRequest {
@@ -2275,6 +2375,320 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
  */
 export const ResolveMcpContextResponse = new ResolveMcpContextResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocationRequest> {
+    constructor() {
+        super("dipole.agent.v1.BeginMcpToolInvocationRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "tool_name", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<BeginMcpToolInvocationRequest>): BeginMcpToolInvocationRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.invocationId = "";
+        message.toolName = "";
+        message.capabilityId = "";
+        message.argumentsSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<BeginMcpToolInvocationRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BeginMcpToolInvocationRequest): BeginMcpToolInvocationRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string invocation_id */ 4:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string tool_name */ 5:
+                    message.toolName = reader.string();
+                    break;
+                case /* string capability_id */ 6:
+                    message.capabilityId = reader.string();
+                    break;
+                case /* string arguments_sha256 */ 7:
+                    message.argumentsSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: BeginMcpToolInvocationRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string invocation_id = 4; */
+        if (message.invocationId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.invocationId);
+        /* string tool_name = 5; */
+        if (message.toolName !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.toolName);
+        /* string capability_id = 6; */
+        if (message.capabilityId !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.capabilityId);
+        /* string arguments_sha256 = 7; */
+        if (message.argumentsSha256 !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.argumentsSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
+ */
+export const BeginMcpToolInvocationRequest = new BeginMcpToolInvocationRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class BeginMcpToolInvocationResponse$Type extends MessageType<BeginMcpToolInvocationResponse> {
+    constructor() {
+        super("dipole.agent.v1.BeginMcpToolInvocationResponse", [
+            { no: 1, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<BeginMcpToolInvocationResponse>): BeginMcpToolInvocationResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.invocationId = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<BeginMcpToolInvocationResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BeginMcpToolInvocationResponse): BeginMcpToolInvocationResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string invocation_id */ 1:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: BeginMcpToolInvocationResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string invocation_id = 1; */
+        if (message.invocationId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.invocationId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.BeginMcpToolInvocationResponse
+ */
+export const BeginMcpToolInvocationResponse = new BeginMcpToolInvocationResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolInvocationRequest$Type extends MessageType<FinishMcpToolInvocationRequest> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolInvocationRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "result_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "result_bytes", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 8, name: "latency_ms", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 9, name: "error_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolInvocationRequest>): FinishMcpToolInvocationRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.invocationId = "";
+        message.status = "";
+        message.resultSha256 = "";
+        message.resultBytes = 0n;
+        message.latencyMs = 0n;
+        message.errorCode = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolInvocationRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolInvocationRequest): FinishMcpToolInvocationRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string invocation_id */ 4:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string status */ 5:
+                    message.status = reader.string();
+                    break;
+                case /* string result_sha256 */ 6:
+                    message.resultSha256 = reader.string();
+                    break;
+                case /* uint64 result_bytes */ 7:
+                    message.resultBytes = reader.uint64().toBigInt();
+                    break;
+                case /* uint64 latency_ms */ 8:
+                    message.latencyMs = reader.uint64().toBigInt();
+                    break;
+                case /* string error_code */ 9:
+                    message.errorCode = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolInvocationRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string invocation_id = 4; */
+        if (message.invocationId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.invocationId);
+        /* string status = 5; */
+        if (message.status !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.status);
+        /* string result_sha256 = 6; */
+        if (message.resultSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.resultSha256);
+        /* uint64 result_bytes = 7; */
+        if (message.resultBytes !== 0n)
+            writer.tag(7, WireType.Varint).uint64(message.resultBytes);
+        /* uint64 latency_ms = 8; */
+        if (message.latencyMs !== 0n)
+            writer.tag(8, WireType.Varint).uint64(message.latencyMs);
+        /* string error_code = 9; */
+        if (message.errorCode !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.errorCode);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolInvocationRequest
+ */
+export const FinishMcpToolInvocationRequest = new FinishMcpToolInvocationRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolInvocationResponse$Type extends MessageType<FinishMcpToolInvocationResponse> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolInvocationResponse", [
+            { no: 1, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolInvocationResponse>): FinishMcpToolInvocationResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.invocationId = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolInvocationResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolInvocationResponse): FinishMcpToolInvocationResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string invocation_id */ 1:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolInvocationResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string invocation_id = 1; */
+        if (message.invocationId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.invocationId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolInvocationResponse
+ */
+export const FinishMcpToolInvocationResponse = new FinishMcpToolInvocationResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ProjectTaskWorkflowStateRequest$Type extends MessageType<ProjectTaskWorkflowStateRequest> {
     constructor() {
         super("dipole.agent.v1.ProjectTaskWorkflowStateRequest", [
@@ -4058,6 +4472,8 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
+    { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
+    { name: "FinishMcpToolInvocation", options: {}, I: FinishMcpToolInvocationRequest, O: FinishMcpToolInvocationResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
     { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse },
     { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },

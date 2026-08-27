@@ -29,6 +29,8 @@ const (
 	AgentCapabilityService_ListConversations_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
+	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
+	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
@@ -52,6 +54,8 @@ type AgentCapabilityServiceClient interface {
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
+	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
+	FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
@@ -169,6 +173,26 @@ func (c *agentCapabilityServiceClient) ResolveMcpContext(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BeginMcpToolInvocationResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_BeginMcpToolInvocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishMcpToolInvocationResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishMcpToolInvocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProjectTaskWorkflowStateResponse)
@@ -253,6 +277,8 @@ type AgentCapabilityServiceServer interface {
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
+	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
+	FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
@@ -299,6 +325,12 @@ func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMcpContext not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BeginMcpToolInvocation not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolInvocation not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProjectTaskWorkflowState not implemented")
@@ -523,6 +555,42 @@ func _AgentCapabilityService_ResolveMcpContext_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_BeginMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeginMcpToolInvocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).BeginMcpToolInvocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_BeginMcpToolInvocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).BeginMcpToolInvocation(ctx, req.(*BeginMcpToolInvocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_FinishMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishMcpToolInvocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolInvocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_FinishMcpToolInvocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolInvocation(ctx, req.(*FinishMcpToolInvocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ProjectTaskWorkflowState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProjectTaskWorkflowStateRequest)
 	if err := dec(in); err != nil {
@@ -695,6 +763,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMcpContext",
 			Handler:    _AgentCapabilityService_ResolveMcpContext_Handler,
+		},
+		{
+			MethodName: "BeginMcpToolInvocation",
+			Handler:    _AgentCapabilityService_BeginMcpToolInvocation_Handler,
+		},
+		{
+			MethodName: "FinishMcpToolInvocation",
+			Handler:    _AgentCapabilityService_FinishMcpToolInvocation_Handler,
 		},
 		{
 			MethodName: "ProjectTaskWorkflowState",

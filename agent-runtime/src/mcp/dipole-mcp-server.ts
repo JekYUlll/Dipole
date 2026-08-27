@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import type { CapabilityRegistry } from "../capabilities/registry.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
+import type { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 
 export interface DipoleMcpToolProjection {
   name: string;
@@ -16,6 +17,7 @@ export function createDipoleMcpServer(input: {
   registry: CapabilityRegistry;
   context: ExecutionContext;
   tools: readonly DipoleMcpToolProjection[];
+  runner?: McpToolInvocationRunner;
 }): McpServer {
   const context = executionContextSchema.parse(input.context);
   const descriptors = new Map(input.registry.descriptors().map((descriptor) => [descriptor.id, descriptor]));
@@ -34,9 +36,11 @@ export function createDipoleMcpServer(input: {
       inputSchema: tool.inputSchema,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     }, async (arguments_) => {
-      const result = await input.registry.execute(tool.capabilityId, arguments_, context);
-      const text = JSON.stringify(result);
-      if (new TextEncoder().encode(text).length > 64 * 1024) throw new Error(`MCP Tool ${name} result exceeds 64 KiB`);
+      const execute = () => input.registry.execute(tool.capabilityId, arguments_, context);
+      const text = input.runner === undefined
+        ? JSON.stringify(await execute())
+        : await input.runner.execute({ name, capabilityId: tool.capabilityId }, arguments_, context, execute);
+      if (input.runner === undefined && new TextEncoder().encode(text).length > 64 * 1024) throw new Error(`MCP Tool ${name} result exceeds 64 KiB`);
       return { content: [{ type: "text" as const, text }] };
     });
   }
