@@ -91,6 +91,8 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 真实跨进程证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。该归档绑定的旧候选仍需重启恢复，后续同进程重试修复使用独立提交和门禁。真实 queue saturation/backpressure 与同 workload Go/C++ 对照仍待完成。
 
+`contracts/realtime-delivery-comparison/v1/report.schema.json` 固定同 workload 对照报告。`scripts/realtime_delivery_comparison.py` 将 v3 evidence 按 Kafka topic/partition/offset 折叠，允许 deferred attempt，但要求每个坐标最终 projected、全部请求节点被 observed、最终拒绝/背压为零，并与 Go baseline v4 的 accepted/persisted/received/lag 精确比较。报告只保存双端完整 revision、输入 SHA-256 和聚合计数；结构无效、blocked 和 eligible 分别使用退出码 1、2、0。Harness 单测不能替代真实候选证据。
+
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 
 C++ shadow 阶段遵守以下门禁：

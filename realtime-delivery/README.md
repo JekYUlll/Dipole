@@ -8,6 +8,8 @@ The executable supports `contract_only` and an explicit `shadow` command. Shadow
 ./scripts/check-cpp-realtime.sh
 ```
 
+The canonical gate also tests the language-neutral Go/C++ same-workload comparison report. The comparison folds retry attempts by Kafka coordinate, binds both input files and candidate revisions, and fails closed on final transport or workload drift. See `contracts/realtime-delivery-comparison/v1/`.
+
 The current binary exposes offline validation and a contract-only health process:
 
 ```bash

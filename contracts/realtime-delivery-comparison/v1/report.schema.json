@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-comparison/v1/report.schema.json",
+  "title": "Dipole Realtime Delivery Comparison Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "decision",
+    "issues",
+    "run_id",
+    "candidates",
+    "inputs",
+    "go_workload",
+    "comparison",
+    "report_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-comparison-report.v1" },
+    "decision": { "enum": ["eligible", "blocked"] },
+    "issues": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 255 }
+    },
+    "run_id": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "candidates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["go_revision", "cpp_revision"],
+      "properties": {
+        "go_revision": { "$ref": "#/$defs/git_revision" },
+        "cpp_revision": { "$ref": "#/$defs/git_revision" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["go_baseline_sha256", "cpp_evidence_sha256"],
+      "properties": {
+        "go_baseline_sha256": { "$ref": "#/$defs/sha256" },
+        "cpp_evidence_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "go_workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "accepted", "rejected", "persisted", "received", "expected_receipts"],
+      "properties": {
+        "attempted": { "$ref": "#/$defs/count" },
+        "accepted": { "$ref": "#/$defs/count" },
+        "rejected": { "$ref": "#/$defs/count" },
+        "persisted": { "$ref": "#/$defs/count" },
+        "received": { "$ref": "#/$defs/count" },
+        "expected_receipts": { "$ref": "#/$defs/count" }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_kafka_records",
+        "deferred_attempts",
+        "final_projected",
+        "final_transport_requested",
+        "final_transport_observed",
+        "final_transport_duplicate",
+        "final_transport_rejected",
+        "final_transport_backpressured"
+      ],
+      "properties": {
+        "unique_kafka_records": { "$ref": "#/$defs/count" },
+        "deferred_attempts": { "$ref": "#/$defs/count" },
+        "final_projected": { "$ref": "#/$defs/count" },
+        "final_transport_requested": { "$ref": "#/$defs/count" },
+        "final_transport_observed": { "$ref": "#/$defs/count" },
+        "final_transport_duplicate": { "$ref": "#/$defs/count" },
+        "final_transport_rejected": { "$ref": "#/$defs/count" },
+        "final_transport_backpressured": { "$ref": "#/$defs/count" }
+      }
+    },
+    "report_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "git_revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

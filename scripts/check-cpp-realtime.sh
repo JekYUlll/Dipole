@@ -56,3 +56,7 @@ if [[ -n "${rdkafka_root}" ]]; then
   export LD_LIBRARY_PATH="${rdkafka_root}/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 fi
 ctest --test-dir "${build_dir}" --output-on-failure
+PYTHONPATH="${root_dir}/scripts" python3 -m unittest \
+  "${root_dir}/scripts/test_realtime_delivery_comparison.py"
+python3 -m json.tool \
+  "${root_dir}/contracts/realtime-delivery-comparison/v1/report.schema.json" >/dev/null
