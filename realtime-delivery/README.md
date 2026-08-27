@@ -24,3 +24,11 @@ DIPOLE_REALTIME_EVIDENCE_FILE=/tmp/dipole-shadow.ndjson \
 `/livez`, `/readyz`, and `/health` return service identity after all golden contracts pass. Contract-only readiness is immediate. Shadow readiness requires a live Kafka partition assignment and a healthy latest poll/project/evidence/commit operation. Client-delivery `cpp` mode remains unavailable.
 
 Requirements: CMake 3.21+, `/usr/bin/g++` with C++20, Ninja, clang-tidy, pkg-config, Protobuf compiler/C++ library 3.21+, nlohmann/json 3.11+, and librdkafka 2.3+. `CXX`, `CLANG_TIDY_BIN`, `DIPOLE_CPP_COMPILER_PATH`, and `DIPOLE_CPP_BUILD_DIR` provide explicit toolchain overrides. An unpacked Debian package root can be supplied through `DIPOLE_RDKAFKA_ROOT` without installing host packages.
+
+The independent image builds and runs all CTests on Ubuntu 24.04 before copying only the binary, runtime libraries and Delivery golden contracts:
+
+```bash
+docker build -f realtime-delivery/Dockerfile -t dipole-realtime-delivery:local .
+```
+
+The image is not referenced by production Compose until the remaining routing and comparison gates pass.
