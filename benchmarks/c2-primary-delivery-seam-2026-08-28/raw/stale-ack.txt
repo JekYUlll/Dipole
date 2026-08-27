@@ -1,0 +1,2 @@
+delivery contract v1 golden vectors valid
+{"contract_version":"v1","batch_id":"NB-C2-EVIDENCE-STALE","status":"DELIVERY_ACK_STATUS_ACCEPTED","results":[{"delivery_id":"D-C2-EVIDENCE-STALE","status":"DELIVERY_RESULT_STATUS_OFFLINE"}],"acknowledged_at":"2026-08-27T22:59:45.041467590Z"}
