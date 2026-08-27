@@ -60,13 +60,34 @@ func (s *Server) CompleteRun(ctx context.Context, request *agentv1.CompleteRunRe
 	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
 	}
-	if err := s.admission.Complete(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow"); err != nil {
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 			return nil, status.Error(codes.PermissionDenied, "Agent Run completion denied")
 		}
 		return nil, status.Error(codes.Internal, "Agent Run completion failed")
 	}
 	return &agentv1.CompleteRunResponse{RunStatus: string(application.AgentRunStatusCompleted)}, nil
+}
+
+func (s *Server) FinishRun(ctx context.Context, request *agentv1.FinishRunRequest) (*agentv1.FinishRunResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	runStatus := application.AgentRunStatusV1(strings.TrimSpace(request.GetRunStatus()))
+	lastError := strings.TrimSpace(request.GetLastError())
+	if err := application.ValidateAgentRunTerminalV1(runStatus, lastError); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Agent Run terminal evidence is invalid")
+	}
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", runStatus, lastError); err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Run terminal transition denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Run terminal transition failed")
+	}
+	return &agentv1.FinishRunResponse{RunStatus: string(runStatus)}, nil
 }
 
 func (s *Server) ListConversations(ctx context.Context, request *agentv1.ListConversationsRequest) (*agentv1.ListConversationsResponse, error) {

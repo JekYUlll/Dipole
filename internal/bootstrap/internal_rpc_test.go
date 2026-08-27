@@ -52,6 +52,10 @@ func (rpcAgentAdmissionStub) Complete(context.Context, string, string, string, s
 	return nil
 }
 
+func (rpcAgentAdmissionStub) Finish(context.Context, string, string, string, string, application.AgentRunStatusV1, string) error {
+	return nil
+}
+
 func (rpcCoreStub) ListSearchConversationKeys(userUUID string) ([]string, error) {
 	return []string{"direct:" + userUUID + ":U2"}, nil
 }
@@ -170,6 +174,12 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	})
 	if err != nil || response.GetRunId() != "RUN-1" {
 		t.Fatalf("admit Agent Run through authenticated channel: response=%+v err=%v", response, err)
+	}
+	finished, err := agentClient.FinishRun(context.Background(), &agentv1.FinishRunRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1", RunStatus: "cancelled",
+	})
+	if err != nil || finished.GetRunStatus() != "cancelled" {
+		t.Fatalf("finish Agent Run through authenticated channel: response=%+v err=%v", finished, err)
 	}
 	_, err = corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",

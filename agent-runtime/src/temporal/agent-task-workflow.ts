@@ -11,7 +11,13 @@ import {
   transitionAgentTask,
   type AgentTaskState
 } from "../task/agent-task-state.js";
-import type { AgentTaskActivities, AgentTaskDirective } from "./agent-task-activities.js";
+import type {
+  AgentTaskActivities,
+  AgentTaskDirective,
+  AgentTaskFinishInput,
+  AgentTaskLifecycleActivities,
+  AgentTaskRunBinding
+} from "./agent-task-activities.js";
 import type { AgentTaskWorkflowInput } from "./temporal-task-client.js";
 
 export const provideTaskInputSignal = defineSignal<[
@@ -25,6 +31,15 @@ export const taskStateQuery = defineQuery<AgentTaskState>("taskState");
 
 const { executeAgentTaskStep } = proxyActivities<AgentTaskActivities>({
   startToCloseTimeout: "2 minutes",
+  retry: {
+    initialInterval: "1 second",
+    backoffCoefficient: 2,
+    maximumInterval: "30 seconds",
+    maximumAttempts: 3
+  }
+});
+const { admitAgentTask, finishAgentTask } = proxyActivities<AgentTaskLifecycleActivities>({
+  startToCloseTimeout: "30 seconds",
   retry: {
     initialInterval: "1 second",
     backoffCoefficient: 2,
@@ -60,7 +75,19 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     }
   });
 
-  state = transitionAgentTask(state, { type: "start" });
+  const binding = await admitAgentTask(input);
+  assertRunBinding(input.taskId, binding);
+  if (binding.runStatus === "completed") {
+    return {
+      taskId: input.taskId,
+      status: "completed",
+      revision: state.revision + 1,
+      output: { outcome: "persistent_replay" }
+    };
+  }
+  if (state.status === "created") {
+    state = transitionAgentTask(state, { type: "start" });
+  }
   while (!isTerminal(state)) {
     if (state.status === "waiting_input" || state.status === "waiting_approval") {
       await condition(() => state.status !== "waiting_input" && state.status !== "waiting_approval");
@@ -95,6 +122,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     checkpoint = "checkpoint" in directive ? directive.checkpoint : undefined;
     state = applyDirective(state, directive);
   }
+  await finishAgentTask(terminalActivityInput(input, binding, state));
   return state;
 }
 
@@ -133,4 +161,48 @@ function validMaxSteps(value: number | undefined): number {
     throw new Error("Agent Task maxSteps must be an integer between 1 and 256");
   }
   return maxSteps;
+}
+
+function assertRunBinding(taskId: string, binding: AgentTaskRunBinding): void {
+  if (binding.taskId !== taskId || binding.runId.trim().length === 0) {
+    throw new Error("Agent Task admission returned an invalid Task/Run binding");
+  }
+}
+
+function terminalActivityInput(
+  input: AgentTaskWorkflowInput,
+  binding: AgentTaskRunBinding,
+  state: AgentTaskState
+): AgentTaskFinishInput {
+  if (!isTerminal(state)) {
+    throw new Error("Agent Task must be terminal before finishing its persistent Run");
+  }
+  const lastError = state.status === "failed"
+    ? boundedTerminalEvidence(state.failure?.message || "Agent Task failed")
+    : state.status === "cancelled"
+      ? boundedTerminalEvidence(state.cancellation?.reason ?? "")
+      : "";
+  return {
+    taskId: input.taskId,
+    runId: binding.runId,
+    runStatus: terminalRunStatus(state),
+    lastError,
+    ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+    ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+  };
+}
+
+function terminalRunStatus(state: AgentTaskState): AgentTaskFinishInput["runStatus"] {
+  switch (state.status) {
+    case "completed":
+    case "failed":
+    case "cancelled":
+      return state.status;
+    default:
+      throw new Error(`Agent Task cannot finish its persistent Run from ${state.status}`);
+  }
+}
+
+function boundedTerminalEvidence(value: string): string {
+  return value.trim().slice(0, 256);
 }

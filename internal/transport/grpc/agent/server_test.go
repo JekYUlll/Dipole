@@ -19,9 +19,11 @@ func (s resolverStub) Resolve(context.Context, string, string) (application.Agen
 }
 
 type admissionStub struct {
-	result        application.AgentRunAdmissionV1
-	completedTask string
-	completedRun  string
+	result         application.AgentRunAdmissionV1
+	completedTask  string
+	completedRun   string
+	finishedStatus application.AgentRunStatusV1
+	finishedError  string
 }
 
 func (s *admissionStub) Admit(context.Context, application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
@@ -30,6 +32,12 @@ func (s *admissionStub) Admit(context.Context, application.AgentRunAdmissionRequ
 
 func (s *admissionStub) Complete(_ context.Context, taskUUID, runUUID, _, _ string) error {
 	s.completedTask, s.completedRun = taskUUID, runUUID
+	return nil
+}
+
+func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string, runStatus application.AgentRunStatusV1, lastError string) error {
+	s.completedTask, s.completedRun = taskUUID, runUUID
+	s.finishedStatus, s.finishedError = runStatus, lastError
 	return nil
 }
 
@@ -102,5 +110,30 @@ func TestCompleteRunUsesServerRuntimeBinding(t *testing.T) {
 	})
 	if err != nil || response.GetRunStatus() != "completed" || admission.completedTask != "TASK-1" || admission.completedRun != "RUN-1" {
 		t.Fatalf("unexpected completion response: response=%+v admission=%+v err=%v", response, admission, err)
+	}
+}
+
+func TestFinishRunUsesServerRuntimeBinding(t *testing.T) {
+	admission := &admissionStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, admission)
+	response, err := server.FinishRun(context.Background(), &agentv1.FinishRunRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+		RunStatus: "failed", LastError: "Activity retries exhausted",
+	})
+	if err != nil || response.GetRunStatus() != "failed" || admission.completedTask != "TASK-1" || admission.completedRun != "RUN-1" ||
+		admission.finishedStatus != application.AgentRunStatusFailed || admission.finishedError != "Activity retries exhausted" {
+		t.Fatalf("unexpected finish response: response=%+v admission=%+v err=%v", response, admission, err)
+	}
+}
+
+func TestFinishRunRejectsInvalidStatusAndClientPrincipal(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	for _, request := range []*agentv1.FinishRunRequest{
+		{Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", RunStatus: "running"},
+		{Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", RunStatus: "failed", LastError: "failed"},
+	} {
+		if _, err := server.FinishRun(context.Background(), request); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("FinishRun code = %s, want %s", status.Code(err), codes.InvalidArgument)
+		}
 	}
 }

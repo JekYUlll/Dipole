@@ -173,10 +173,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v22 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal G3 foundation 已增加稳定 Workflow ID、waiting_input/waiting_approval/终态状态机、Signal/Query、Activity 三次有界重试和 Worker 历史恢复；Worker 默认关闭，foundation Activity 只返回受控失败，Kafka Shadow 尚未切流。
-- **风险：** Temporal Workflow 状态尚未与 MySQL AgentTask/Run/Step 形成单一提交协议，生产 Activity 尚未接入 ContextCompiler、ModelRouter、Capability 与 Approval Store。此时提前切流会产生双状态源、重复预算或审批结果漂移。
-- **基线证据：** 真实 Temporal Server 已验证两次 Activity 失败后重试成功、运行中重复启动收敛、Worker 替换后恢复审批等待、Signal 完成和终态重放拒绝；现有 Kafka Shadow 与 Go/Eino 权威路径保持不变。
-- **建议方向：** 先实现 MySQL Task/Run 与 Workflow 的幂等 admission/terminal Activity，随后接入持久 Approval Signal、ContextCompiler/ModelRouter/Capability Step，最后通过 shadow trajectory 比较和显式 runtime mode 完成切流。
+- **现状：** migration v16-v22 已落地 Definition、Task、独立 Runtime Run、模型调用预算、不可变 Plan/Context manifest 和带 lease 的 Step 终态。Temporal Workflow 已通过持久 Activity 建立 Task/Run admission，并以 additive `FinishRun` 精确提交 completed/failed/cancelled Run；该路径仅在 `persistent_shadow` 显式模式启用，Worker 与 Compose 默认仍关闭，Kafka Shadow 和 Go/Eino 继续拥有业务流量及权威 Task 状态。
+- **风险：** Temporal 尚未接入持久 Approval Signal、ContextCompiler、ModelRouter、Capability Step 与 Kafka Event Trigger，Workflow Task 状态也尚未成为 MySQL `agent_tasks` 的权威状态。此时提前切流会产生双状态源、重复预算或审批结果漂移。
+- **基线证据：** 真实 Temporal Server 已验证 admission 历史不在替换 Worker 后重放、Step 与 terminal Activity 独立有界重试、审批恢复和 failed 终态；真实 MySQL 8.4 已验证 failed/cancelled 精确重放与冲突拒绝。现有 Kafka Shadow 与 Go/Eino 权威路径保持不变。
+- **建议方向：** 下一步接入持久 Approval Signal 和只读 ContextCompiler/ModelRouter/Capability Step，再增加默认关闭的 Event Trigger bridge；完成 shadow trajectory 对照后，才通过显式 runtime mode 转移权威 Task 状态和业务流量。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
 ### AD-012：用户状态常量与 schema 默认值偏移

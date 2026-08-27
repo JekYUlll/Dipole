@@ -223,6 +223,44 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil || persistedRun == nil || persistedRun.Status != application.AgentRunStatusCompleted {
 		t.Fatalf("persistent execution Run: %+v err=%v", persistedRun, err)
 	}
+
+	admission, err := appComposition.NewPersistentAgentRunAdmissionV1(store)
+	if err != nil {
+		t.Fatalf("create persistent Run admission: %v", err)
+	}
+	for _, terminal := range []struct {
+		triggerRef string
+		status     application.AgentRunStatusV1
+		lastError  string
+	}{
+		{triggerRef: "M-TEMPORAL-FAILED", status: application.AgentRunStatusFailed, lastError: "Activity retries exhausted"},
+		{triggerRef: "M-TEMPORAL-CANCELLED", status: application.AgentRunStatusCancelled, lastError: "approval_denied"},
+	} {
+		admitted, admitErr := admission.Admit(context.Background(), application.AgentRunAdmissionRequestV1{
+			AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+				TenantID: "dipole", PrincipalUUID: persistentPrincipalUUID, AgentUUID: persistentAgentUUID,
+				DelegatedByUUID: persistentPrincipalUUID, TriggerType: "message.direct.created", TriggerRef: terminal.triggerRef,
+				RequestID: "R-" + terminal.triggerRef, TraceID: "T-" + terminal.triggerRef, EventID: "E-" + terminal.triggerRef,
+			},
+			RuntimeID: "dipole-agent", Mode: "shadow",
+		})
+		if admitErr != nil {
+			t.Fatalf("admit %s Temporal Run: %v", terminal.status, admitErr)
+		}
+		if finishErr := admission.Finish(context.Background(), admitted.TaskUUID, admitted.RunUUID, "dipole-agent", "shadow", terminal.status, terminal.lastError); finishErr != nil {
+			t.Fatalf("finish %s Temporal Run: %v", terminal.status, finishErr)
+		}
+		if finishErr := admission.Finish(context.Background(), admitted.TaskUUID, admitted.RunUUID, "dipole-agent", "shadow", terminal.status, terminal.lastError); finishErr != nil {
+			t.Fatalf("replay %s Temporal Run: %v", terminal.status, finishErr)
+		}
+		persistedTerminal, lookupErr := store.GetRun(context.Background(), admitted.RunUUID)
+		if lookupErr != nil || persistedTerminal == nil || persistedTerminal.Status != terminal.status || persistedTerminal.LastError != terminal.lastError {
+			t.Fatalf("persisted %s Temporal Run: %+v err=%v", terminal.status, persistedTerminal, lookupErr)
+		}
+		if finishErr := admission.Finish(context.Background(), admitted.TaskUUID, admitted.RunUUID, "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); !errors.Is(finishErr, application.ErrAgentExecutionPolicyDenied) {
+			t.Fatalf("conflicting %s Temporal terminal replay should be denied, got %v", terminal.status, finishErr)
+		}
+	}
 }
 
 const embeddedAgentDefinitionVersionForContract uint64 = 1

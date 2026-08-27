@@ -13,6 +13,19 @@ export interface AgentRunIdentity {
   readonly runStatus: "running" | "completed";
 }
 
+export type AgentRunTerminalStatus = "completed" | "failed" | "cancelled";
+
+export interface AgentRunAdmissionRequest {
+  readonly tenantId: string;
+  readonly principalUserId: string;
+  readonly agentId: string;
+  readonly triggerType: string;
+  readonly triggerRef: string;
+  readonly eventId: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
 export interface ConversationListItem {
   readonly conversationKey: string;
   readonly targetId: string;
@@ -37,16 +50,29 @@ export class AgentCapabilityRPCClient {
   }
 
   async admit(event: AgentEvent, identity: AgentIdentity): Promise<AgentRunIdentity> {
-    const metadata = this.metadata(identity.requestId, identity.traceId);
+    return this.admitRun({
+      tenantId: identity.tenantId,
+      principalUserId: identity.principalUuid,
+      agentId: identity.agentUuid,
+      triggerType: event.eventType,
+      triggerRef: event.aggregateId,
+      eventId: event.eventId,
+      ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
+      ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
+    });
+  }
+
+  async admitRun(input: AgentRunAdmissionRequest): Promise<AgentRunIdentity> {
+    const metadata = this.metadata(input.requestId, input.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.admitRun({
-        context: this.requestContext(identity.requestId, identity.traceId),
-        tenantId: identity.tenantId,
-        principalUserId: identity.principalUuid,
-        agentId: identity.agentUuid,
-        triggerType: event.eventType,
-        triggerRef: event.aggregateId,
-        eventId: event.eventId,
+        context: this.requestContext(input.requestId, input.traceId),
+        tenantId: input.tenantId,
+        principalUserId: input.principalUserId,
+        agentId: input.agentId,
+        triggerType: input.triggerType,
+        triggerRef: input.triggerRef,
+        eventId: input.eventId,
         runtimeId: callerService,
         mode: "shadow"
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
@@ -75,6 +101,35 @@ export class AgentCapabilityRPCClient {
         }
         if (response.runStatus !== "completed") {
           reject(new Error(`Agent Run completion returned unsupported status ${response.runStatus}`));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  async finish(
+    taskId: string,
+    runId: string,
+    runStatus: AgentRunTerminalStatus,
+    lastError: string,
+    context?: Pick<ExecutionContext, "requestId" | "traceId">
+  ): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.finishRun({
+        context: this.requestContext(context?.requestId, context?.traceId),
+        taskId,
+        runId,
+        runStatus,
+        lastError
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Run terminal transition returned no response"));
+          return;
+        }
+        if (response.runStatus !== runStatus) {
+          reject(new Error(`Agent Run terminal transition returned unsupported status ${response.runStatus}`));
           return;
         }
         resolve();

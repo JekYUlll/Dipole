@@ -2,6 +2,18 @@ export interface AgentTaskWorkflowInput {
   taskId: string;
   goal: string;
   maxSteps?: number;
+  admission?: AgentTaskAdmissionInput;
+}
+
+export interface AgentTaskAdmissionInput {
+  tenantId: string;
+  principalUserId: string;
+  agentId: string;
+  triggerType: string;
+  triggerRef: string;
+  eventId: string;
+  requestId?: string;
+  traceId?: string;
 }
 
 export interface TemporalWorkflowHandle {

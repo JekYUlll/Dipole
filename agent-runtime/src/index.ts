@@ -1,6 +1,14 @@
 import { buildServer } from "./server.js";
-import { createKafkaShadowRuntime, loadShadowRuntimeConfig } from "./runtime/shadow-runtime.js";
-import { foundationAgentTaskActivities } from "./temporal/agent-task-activities.js";
+import {
+  createAgentCapabilityRPC,
+  createKafkaShadowRuntime,
+  loadShadowRuntimeConfig
+} from "./runtime/shadow-runtime.js";
+import {
+  foundationAgentTaskActivities,
+  type AgentTaskWorkerActivities
+} from "./temporal/agent-task-activities.js";
+import { createPersistentAgentTaskLifecycleActivities } from "./temporal/agent-task-lifecycle-activities.js";
 import {
   createTemporalWorkerRuntime,
   loadTemporalRuntimeConfig,
@@ -14,6 +22,7 @@ const shadowConfig = loadShadowRuntimeConfig(process.env);
 const shadowRuntime = shadowConfig.enabled ? createKafkaShadowRuntime(shadowConfig) : undefined;
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 let temporalRuntime: TemporalWorkerRuntime | undefined;
+let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 let serverStarted = false;
 let shadowStarted = false;
 let temporalStarted = false;
@@ -40,6 +49,8 @@ const stop = (): Promise<void> => {
       }
       temporalStarted = false;
     }
+    temporalRPC?.close();
+    temporalRPC = undefined;
     if (serverStarted) {
       try {
         await server.close();
@@ -56,9 +67,20 @@ const stop = (): Promise<void> => {
 };
 
 if (temporalConfig.enabled) {
+  let activities: AgentTaskWorkerActivities = foundationAgentTaskActivities;
+  if (temporalConfig.activityMode === "persistent_shadow") {
+    if (!shadowConfig.capabilityRpc.enabled) {
+      throw new Error("Persistent Temporal shadow Activities require Agent Capability RPC");
+    }
+    temporalRPC = createAgentCapabilityRPC(shadowConfig);
+    activities = {
+      ...foundationAgentTaskActivities,
+      ...createPersistentAgentTaskLifecycleActivities(temporalRPC.client)
+    };
+  }
   temporalRuntime = createTemporalWorkerRuntime(
     temporalConfig,
-    foundationAgentTaskActivities,
+    activities,
     undefined,
     (error) => {
       if (!ready) {

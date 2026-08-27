@@ -50,5 +50,5 @@ type AgentRunAdmissionV1 struct {
 
 type AgentRunAdmissionServiceV1 interface {
 	Admit(ctx context.Context, request AgentRunAdmissionRequestV1) (*AgentRunAdmissionV1, error)
-	Complete(ctx context.Context, taskUUID, runUUID, runtimeID, mode string) error
+	Finish(ctx context.Context, taskUUID, runUUID, runtimeID, mode string, runStatus AgentRunStatusV1, lastError string) error
 }

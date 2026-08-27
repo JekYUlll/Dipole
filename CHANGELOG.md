@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Temporal G3 增加默认关闭的持久 shadow 生命周期 Activity：Workflow 在 Step 前通过受认证 Capability RPC 建立确定性 Task/Run admission，并在 completed、failed、cancelled 后提交精确终态证据；Core 新增 additive `FinishRun` RPC，以 Task/Run/runtime/mode 绑定、compare-and-set 和终态证据实现网络重试幂等。`DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=foundation|persistent_shadow` 默认保持 `foundation`，Kafka、模型、Capability、Approval 与权威 Task 状态均未切流。
 - TypeScript Agent Runtime 增加 Temporal G3 foundation：以持久 Agent Task ID 生成稳定 Workflow ID，运行中重复启动使用 `USE_EXISTING` 收敛、终态使用 `REJECT_DUPLICATE` 阻止重放；框架中立状态机覆盖 running、waiting_input、waiting_approval、completed、failed、cancelled，Workflow 提供输入/审批/取消 Signal 与状态 Query，模型、Capability、存储和副作用统一隔离到带三次有界重试的 Activity。Worker 配置默认关闭，Compose 显式保持零流量切换，foundation Activity 不产生外部副作用。
 - TypeScript Agent Runtime 增加框架中立 `ContextCompiler` v1 与 migration v22：策略、身份、Task、事件证据和 Capability 以 system/trusted/untrusted JSON record 编译，按全局及 section Token 预算确定性选择 full/compact/omit，必需上下文超预算时 fail closed；Plan 审计持久化 compiler version、估算 Token、selected/omitted ID 和 provenance，不保存额外上下文正文。ModelShadowPlanner 只接收编译后的 prompt，模型 adapter 与上下文策略保持隔离。
 - Agent Runtime 增加 migration v21、独立 `agent_runs` 生命周期与首个受认证远程 Capability：Core 通过 `dipole.agent.v1.AgentCapabilityService` 完成确定性 Task/Run admission、持久 Definition 快照解析和 `conversation.list` 授权，TS Runtime 使用静态生成的 protobuf gRPC client、mTLS `dipole-agent` 身份与 Capability Registry 执行只读 Step。Step 通过 lease/token 持久 claim/result/error，旧 owner 无法覆盖重领结果；Run 完成接口支持网络重试幂等，模型仍不能提交 principal，Agent 身份也无法调用未授权 Core RPC。
@@ -244,6 +245,7 @@
 
 ### 迁移说明
 
+- `FinishRun` 是 Agent Capability v1 的 additive RPC，旧 Runtime 可继续调用 `CompleteRun`。持久 shadow Worker 需同时显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow`、启用 Agent Capability RPC 并配置既有共享密钥或 mTLS；回滚时先恢复 `foundation` 或关闭 Temporal Worker，无需数据迁移。
 - Agent 镜像新增精确锁定的 Temporal TypeScript SDK `1.23.0`，构建和运行基底由 Node 22 Alpine 切换为 Node 22 Bookworm slim，以满足 Temporal Native Core 的 glibc ABI。现有部署无需启动 Temporal Server；`DIPOLE_AGENT_TEMPORAL_ENABLED` 默认为 `false`，仅在独立 foundation 验证环境设置为 `true`，并配置 address、namespace 与 task queue。
 - 发布 Context Compiler v1 前先执行 migration v22；该 migration 只向 `agent_shadow_plans` 追加 nullable compiler/Token/manifest 字段，旧 Runtime 可继续写入空值。回滚新 Runtime 后可执行 v22 down 删除 manifest 字段，不影响 Plan/Step 主数据。
 - 启动 TS Agent Capability 执行前先应用 migration v21 和更新后的 `agent-service-grants.dist.sql`，再为 `dipole-agent` 配置 Core target、共享密钥与 mTLS CA/cert/key/server name。微服务证书脚本已生成 Agent 双用途证书；回滚时先关闭 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED` 或恢复 metadata-only Runtime，再执行 v21 down。v21 down 会删除 Run 审计及未完成 Step lease，只应在确认 Agent consumer 停止后执行。
@@ -280,7 +282,7 @@
 
 ### 验证
 
-- Temporal 状态机、稳定 Workflow ID、重复启动策略、默认关闭配置和 Worker 启停单测通过；真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 Activity 两次失败后第三次重试成功、运行中重复启动返回同一 Run、替换 Worker 从历史恢复审批等待、Signal 后完成、终态重放拒绝和 Activity 最大步数。Agent 全量为 60 passed / 13 skipped，TypeScript typecheck/build、Compose config、npm audit 与 Bookworm 镜像默认关闭/真实 Worker 启用门禁通过。
+- Temporal 状态机、稳定 Workflow ID、重复启动策略、默认关闭配置和 Worker 启停单测通过；真实 Temporal CLI 1.8.2 / Server 1.31.2 验证 admission 仅执行一次、Step 两次失败后第三次成功、替换 Worker 从历史恢复审批等待、Signal 后完成、terminal Activity 失败后重试，以及超步数精确写入 failed。真实 MySQL 8.4 验证 failed/cancelled Run 首次提交、精确重放、持久读取与冲突终态拒绝；Agent 全量为 62 passed / 13 skipped，TypeScript typecheck/build 和 Proto drift 门禁通过。
 - 已通过 Context Compiler 的确定性顺序、section/global budget、full→compact、optional omit、required fail-closed、重复 ID 和不可信内容隔离测试；真实 MySQL 8.4 验证 v22 manifest 持久化与 `up→down→up`，最终 schema version 为 22。
 - 已通过 Go/TypeScript Task/Run ID 黄金向量、Agent application/transport/bootstrap 测试、真实认证 gRPC 最小权限测试、真实 MySQL 8.4 Agent Policy Repository 与 Step claim 合同，以及 migration v21 `up→down→up`；最终 schema version 为 21，`agent_runs` 和 Step claim 字段均存在。真实 Go Core 与 Node grpc-js 完成 `AdmitRun→ListConversations→CompleteRun→replay`，重放返回同一 completed Run。
 - 已通过真实 MySQL 8.4 Agent policy 合约：使用默认长度 Assistant/principal 初始化 Definition，持久 Task 固定版本并完成 `running→completed`；同时覆盖 Definition 撤销/过期、新版并发出现、重复触发和 resource scope 越权拒绝。

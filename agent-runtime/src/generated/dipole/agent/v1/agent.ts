@@ -98,6 +98,40 @@ export interface CompleteRunResponse {
     runStatus: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.FinishRunRequest
+ */
+export interface FinishRunRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string run_status = 4
+     */
+    runStatus: string;
+    /**
+     * @generated from protobuf field: string last_error = 5
+     */
+    lastError: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishRunResponse
+ */
+export interface FinishRunResponse {
+    /**
+     * @generated from protobuf field: string run_status = 1
+     */
+    runStatus: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListConversationsRequest
  */
 export interface ListConversationsRequest {
@@ -451,6 +485,131 @@ class CompleteRunResponse$Type extends MessageType<CompleteRunResponse> {
  */
 export const CompleteRunResponse = new CompleteRunResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class FinishRunRequest$Type extends MessageType<FinishRunRequest> {
+    constructor() {
+        super("dipole.agent.v1.FinishRunRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "run_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "last_error", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishRunRequest>): FinishRunRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.runStatus = "";
+        message.lastError = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishRunRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishRunRequest): FinishRunRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string run_status */ 4:
+                    message.runStatus = reader.string();
+                    break;
+                case /* string last_error */ 5:
+                    message.lastError = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishRunRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string run_status = 4; */
+        if (message.runStatus !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runStatus);
+        /* string last_error = 5; */
+        if (message.lastError !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.lastError);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishRunRequest
+ */
+export const FinishRunRequest = new FinishRunRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishRunResponse$Type extends MessageType<FinishRunResponse> {
+    constructor() {
+        super("dipole.agent.v1.FinishRunResponse", [
+            { no: 1, name: "run_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishRunResponse>): FinishRunResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.runStatus = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishRunResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishRunResponse): FinishRunResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string run_status */ 1:
+                    message.runStatus = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishRunResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string run_status = 1; */
+        if (message.runStatus !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.runStatus);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishRunResponse
+ */
+export const FinishRunResponse = new FinishRunResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ListConversationsRequest$Type extends MessageType<ListConversationsRequest> {
     constructor() {
         super("dipole.agent.v1.ListConversationsRequest", [
@@ -684,5 +843,6 @@ export const ListConversationsResponse = new ListConversationsResponse$Type();
 export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapabilityService", [
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },
+    { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse }
 ]);

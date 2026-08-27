@@ -17,6 +17,17 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { runStatus: "completed" });
       return {};
     });
+    const finishRun = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({
+        taskId: "TASK-1",
+        runId: "RUN-1",
+        runStatus: "failed",
+        lastError: "Activity retries exhausted"
+      });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { runStatus: "failed" });
+      return {};
+    });
     const listConversations = vi.fn((input, _metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", limit: 20 });
@@ -26,7 +37,7 @@ describe("AgentCapabilityRPCClient", () => {
       }] });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, listConversations } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, listConversations } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
 
@@ -37,5 +48,8 @@ describe("AgentCapabilityRPCClient", () => {
       approvedCapabilities: [], eventId: "E1"
     }, 20)).resolves.toEqual([expect.objectContaining({ conversationKey: "group:G1", lastMessageSeq: "42", readSeq: "40" })]);
     await expect(client.complete("TASK-1", "RUN-1", identity)).resolves.toBeUndefined();
+    await expect(client.finish(
+      "TASK-1", "RUN-1", "failed", "Activity retries exhausted", identity
+    )).resolves.toBeUndefined();
   });
 });
