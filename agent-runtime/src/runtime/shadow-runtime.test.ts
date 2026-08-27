@@ -7,12 +7,20 @@ import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runti
 
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
-    expect(loadShadowRuntimeConfig({})).toMatchObject({ enabled: false, groupId: "dipole-agent-shadow-v1" });
+    expect(loadShadowRuntimeConfig({})).toMatchObject({ enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory" });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
       DIPOLE_AGENT_KAFKA_BROKERS: "kafka-1:9092, kafka-2:9092"
     }).brokers).toEqual(["kafka-1:9092", "kafka-2:9092"]);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_LEDGER_MODE: "mysql"
+    })).toThrow(/MySQL/);
+    expect(loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_LEDGER_MODE: "mysql",
+      DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
+      DIPOLE_AGENT_MYSQL_DATABASE: "dipole"
+    })).toMatchObject({ ledgerMode: "mysql", mysql: { host: "mysql", port: 3306, user: "agent", database: "dipole" } });
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {

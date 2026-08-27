@@ -17,6 +17,9 @@ try {
   ready = true;
 } catch (error) {
   process.stderr.write(`${String(error)}\n`);
+  if (shadowRuntime !== undefined) {
+    await shadowRuntime.stop();
+  }
   await server.close();
   process.exitCode = 1;
 }

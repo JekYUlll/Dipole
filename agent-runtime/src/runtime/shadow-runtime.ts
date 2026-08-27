@@ -1,8 +1,11 @@
 import { z } from "zod";
+import { createPool, type Pool } from "mysql2/promise";
 
 import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
 import { decodeMessageCreatedEvent } from "../events/message-event.js";
+import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
+import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { ShadowEventProcessor, type ShadowAuditRecord, type ShadowAuditSink, type ShadowPlanner } from "../events/shadow-processor.js";
 
 const shadowRuntimeConfigSchema = z.object({
@@ -12,10 +15,22 @@ const shadowRuntimeConfigSchema = z.object({
   groupId: z.string().trim().min(1),
   topic: z.string().trim().min(1),
   tenantId: z.string().trim().min(1),
-  agentUuid: z.string().trim().min(1)
+  agentUuid: z.string().trim().min(1),
+  ledgerMode: z.enum(["memory", "mysql"]),
+  leaseMs: z.number().int().min(1000).max(86_400_000),
+  mysql: z.object({
+    host: z.string().trim(),
+    port: z.number().int().min(1).max(65_535),
+    user: z.string().trim(),
+    password: z.string(),
+    database: z.string().trim()
+  }).strict()
 }).strict().superRefine((config, refinement) => {
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
+  }
+  if (config.enabled && config.ledgerMode === "mysql" && (!config.mysql.host || !config.mysql.user || !config.mysql.password || !config.mysql.database)) {
+    refinement.addIssue({ code: "custom", message: "Agent MySQL configuration is required for persistent ledger mode", path: ["mysql"] });
   }
 });
 
@@ -29,8 +44,22 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     groupId: env.DIPOLE_AGENT_KAFKA_GROUP_ID ?? "dipole-agent-shadow-v1",
     topic: env.DIPOLE_AGENT_KAFKA_TOPIC ?? "message.direct.created",
     tenantId: env.DIPOLE_AGENT_TENANT_ID ?? "dipole",
-    agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001"
+    agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
+    ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
+    leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
+    mysql: {
+      host: env.DIPOLE_AGENT_MYSQL_HOST ?? "",
+      port: Number.parseInt(env.DIPOLE_AGENT_MYSQL_PORT ?? "3306", 10),
+      user: env.DIPOLE_AGENT_MYSQL_USER ?? "",
+      password: env.DIPOLE_AGENT_MYSQL_PASSWORD ?? "",
+      database: env.DIPOLE_AGENT_MYSQL_DATABASE ?? ""
+    }
   });
+}
+
+export interface ShadowRuntime {
+  start(): Promise<void>;
+  stop(): Promise<void>;
 }
 
 export class MetadataShadowPlanner implements ShadowPlanner {
@@ -71,6 +100,34 @@ export function buildKafkaShadowRuntime(
   });
 }
 
-export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): KafkaShadowConsumer {
-  return buildKafkaShadowRuntime(config, new KafkaJSConsumerFactory(config.clientId, config.brokers));
+export function createKafkaShadowRuntime(config: ShadowRuntimeConfig): ShadowRuntime {
+  let pool: Pool | undefined;
+  let ledger: EventLedger;
+  if (config.ledgerMode === "mysql") {
+    pool = createPool({
+      host: config.mysql.host, port: config.mysql.port, user: config.mysql.user, password: config.mysql.password,
+      database: config.mysql.database, timezone: "Z", connectionLimit: 10
+    });
+    ledger = new MySQLEventLedger(pool, config.leaseMs);
+  } else {
+    ledger = new InMemoryEventLedger();
+  }
+  const consumer = buildKafkaShadowRuntime(config, new KafkaJSConsumerFactory(config.clientId, config.brokers), undefined, undefined, ledger);
+  return {
+    start: async () => {
+      if (pool !== undefined) {
+        await pool.query(PROBE_AGENT_EVENT_LEDGER);
+      }
+      await consumer.start();
+    },
+    stop: async () => {
+      try {
+        await consumer.stop();
+      } finally {
+        if (pool !== undefined) {
+          await pool.end();
+        }
+      }
+    }
+  };
 }

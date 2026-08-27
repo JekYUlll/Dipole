@@ -63,7 +63,7 @@ export class ShadowEventProcessor {
       triggerType: event.eventType,
       triggerRef: event.aggregateId
     });
-    const claim = await this.ledger.claim(event.eventId, taskId);
+    const claim = await this.ledger.claim(event.eventId, taskId, event.eventType);
     if (claim === undefined) {
       return { outcome: "duplicate", taskId };
     }
@@ -86,7 +86,7 @@ export class ShadowEventProcessor {
       await this.ledger.complete(claim);
       return { outcome: "recorded", taskId };
     } catch (error) {
-      await this.ledger.release(claim);
+      await this.ledger.release(claim, error);
       throw error;
     }
   }
