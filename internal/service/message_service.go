@@ -179,6 +179,26 @@ func (s *MessageService) SendDirectMessage(senderUUID, targetUUID, content, clie
 	return s.SendDirectMessageContext(context.Background(), senderUUID, targetUUID, content, clientMessageID)
 }
 
+func (s *MessageService) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
+	senderUUID = strings.TrimSpace(senderUUID)
+	clientMessageID = strings.TrimSpace(clientMessageID)
+	if senderUUID == "" || clientMessageID == "" || len(clientMessageID) > 64 {
+		return nil, applicationPort.ErrMessageClientMessageIDInvalid
+	}
+	message, err := s.repo.GetBySenderAndClientMessageID(senderUUID, clientMessageID)
+	if err != nil {
+		return nil, fmt.Errorf("get Message Command receipt: %w", err)
+	}
+	if message == nil {
+		return &applicationPort.MessageCommandReceipt{Status: applicationPort.MessageCommandReceiptStatusAbsent}, nil
+	}
+	return &applicationPort.MessageCommandReceipt{Status: applicationPort.MessageCommandReceiptStatusCommitted, Message: message}, nil
+}
+
+func (s *MessageService) GetMessageCommandReceiptContext(_ context.Context, senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
+	return s.GetMessageCommandReceipt(senderUUID, clientMessageID)
+}
+
 func (s *MessageService) SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	content = strings.TrimSpace(content)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -14,10 +15,12 @@ import (
 )
 
 const maxAgentCommandIDLengthV1 = 128
+const agentCommandReceiptRecoveryTimeoutV1 = 2 * time.Second
 
 type agentCommandMessages interface {
 	SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	GetMessageCommandReceiptContext(ctx context.Context, senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error)
 }
 
 type LocalAgentCommandV1 struct {
@@ -62,13 +65,49 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 	})
 	clientMessageID := agentCommandClientMessageIDV1(command.Kind, commandID)
 
+	var message *model.Message
 	switch command.Kind {
 	case application.AgentMessageCommandAssistantReplyV1:
-		return c.messages.SendAssistantTextMessageContext(ctx, agentUUID, principalUUID, content, clientMessageID)
+		message, err = c.messages.SendAssistantTextMessageContext(ctx, agentUUID, principalUUID, content, clientMessageID)
 	case application.AgentMessageCommandSystemMessageV1:
-		return c.messages.SendSystemDirectMessageCommandContext(ctx, agentUUID, principalUUID, content, clientMessageID)
+		message, err = c.messages.SendSystemDirectMessageCommandContext(ctx, agentUUID, principalUUID, content, clientMessageID)
 	default:
 		return nil, application.ErrAgentCommandDenied
+	}
+	if err == nil {
+		if !agentCommandMessageMatchesV1(message, command.Kind, agentUUID, principalUUID, content, clientMessageID) {
+			return nil, application.ErrAgentCommandConflict
+		}
+		return message, nil
+	}
+	recoveryCtx, cancelRecovery := context.WithTimeout(context.WithoutCancel(ctx), agentCommandReceiptRecoveryTimeoutV1)
+	defer cancelRecovery()
+	receipt, receiptErr := c.messages.GetMessageCommandReceiptContext(recoveryCtx, agentUUID, clientMessageID)
+	if receiptErr != nil {
+		return nil, fmt.Errorf("recover Agent Message Command receipt: %w", errors.Join(err, receiptErr))
+	}
+	if receipt == nil || receipt.Status == application.MessageCommandReceiptStatusAbsent {
+		return nil, err
+	}
+	if receipt.Status != application.MessageCommandReceiptStatusCommitted || !agentCommandMessageMatchesV1(receipt.Message, command.Kind, agentUUID, principalUUID, content, clientMessageID) {
+		return nil, application.ErrAgentCommandConflict
+	}
+	return receipt.Message, nil
+}
+
+func agentCommandMessageMatchesV1(message *model.Message, kind application.AgentMessageCommandKindV1, senderUUID, targetUUID, content, clientMessageID string) bool {
+	if message == nil || strings.TrimSpace(message.SenderUUID) != senderUUID || strings.TrimSpace(message.TargetUUID) != targetUUID ||
+		message.TargetType != model.MessageTargetDirect || strings.TrimSpace(message.ConversationKey) != model.DirectConversationKey(senderUUID, targetUUID) ||
+		strings.TrimSpace(message.ClientMessageID) != clientMessageID || strings.TrimSpace(message.Content) != content {
+		return false
+	}
+	switch kind {
+	case application.AgentMessageCommandAssistantReplyV1:
+		return message.MessageType == model.MessageTypeAIText
+	case application.AgentMessageCommandSystemMessageV1:
+		return message.MessageType == model.MessageTypeSystem
+	default:
+		return false
 	}
 }
 

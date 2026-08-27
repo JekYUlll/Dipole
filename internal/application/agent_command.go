@@ -9,7 +9,10 @@ import (
 
 const AgentCommandVersionV1 = "dipole.agent.command.v1"
 
-var ErrAgentCommandDenied = errors.New("agent command denied")
+var (
+	ErrAgentCommandDenied   = errors.New("agent command denied")
+	ErrAgentCommandConflict = errors.New("agent command result conflicts with the request")
+)
 
 type AgentMessageCommandKindV1 string
 

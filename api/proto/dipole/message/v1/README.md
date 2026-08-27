@@ -8,10 +8,13 @@
 - Production transport must use service authentication before accepting `principal_user_id`; the RPC server is not a public client endpoint.
 - Callers set a deadline on every request. The initial budget is 3 seconds for commands and 2 seconds for history queries.
 - A command deadline does not imply rollback after persistence starts. Retries use the same `client_message_id`.
+- `GetMessageCommandReceipt` uses a separate 2-second query budget after an uncertain command outcome. The authenticated principal is always the sender scope; callers cannot query another sender through request fields.
 
 ## Idempotency and pagination
 
 - Command idempotency is scoped by `(principal_user_id, client_message_id)`.
+- Receipt status is `ABSENT` or `COMMITTED`. Message persistence, Metadata, Inbox and Outbox commit atomically, so v1 does not expose a synthetic pending state.
+- A committed receipt includes the authoritative Message. Agent callers validate sender, target, conversation, type, content and `client_message_id` before treating an uncertain send as recovered.
 - Existing clients may omit `client_message_id` during the compatibility window; retry-capable clients must provide it.
 - `page_size=0` uses the existing application default, and the application caps oversized pages. Negative values return `INVALID_ARGUMENT`.
 - Direct history retains the v1 `before_id` field and adds presence-aware optional `before_sequence`; the server rejects nonzero values from both domains. Group history uses the existing oneof with additive `before_sequence`.
@@ -24,7 +27,7 @@
 | gRPC code | Meaning |
 | --- | --- |
 | `UNAUTHENTICATED` | Missing trusted principal |
-| `INVALID_ARGUMENT` | Missing/invalid target, content, file, page size, or cursor |
+| `INVALID_ARGUMENT` | Missing/invalid target, content, file, client message ID, page size, or cursor |
 | `NOT_FOUND` | Target user or group does not exist |
 | `PERMISSION_DENIED` | Friendship or group membership is insufficient |
 | `ALREADY_EXISTS` | Idempotency key conflicts with another target |

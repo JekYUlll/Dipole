@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent Message Command 增加 sender-scoped receipt/status 查询：Message v1 新增 `GetMessageCommandReceipt`，从认证 principal 派生 sender，并复用现有 sqlc `(sender_uuid, client_message_id)` 查询返回 `ABSENT|COMMITTED`，不新增 Command 表或 pending 状态。Agent 发送失败后使用脱离原取消信号、保留 trace values 的独立 2 秒窗口查询 receipt；仅 sender、target、conversation、message type、content 和稳定幂等键全部匹配时恢复成功，查询故障保留发送与查询两条错误因果链。
 - Agent G4 增加默认关闭的 MCP durable Elicitation adapter：只接受 `elicitation/create` form mode 的严格子集，将最多 16 个 text/select/multiselect/boolean 字段转换为现有 `dipole.agent.elicitation.v1` 和 Temporal `wait_input` directive。checkpoint 绑定 host-owned Request、Server、Tool、Invocation、deadline、完整 Form 与 `trust=untrusted` SHA-256；仅精确且未过期的 durable resume 可转换为 MCP `accept`，`decline/cancel` 也要求同一 Request。URL、number/integer、default、format、description、自由扩展、敏感字段和 checkpoint 漂移均拒绝。当前外部 MCP Client 未声明 Elicitation capability，也未注册 request handler。
 - Agent G4 增加默认关闭的 MCP write Approval gate：Core 新增 authenticated、active-only 的原子 `ConsumeApproval` RPC，使用现有 MySQL/sqlc 条件更新精确绑定 Task、Run、Capability、Resource Scope、canonical Arguments 与 host nonce，并让重放、过期、吊销或任一哈希漂移返回拒绝。TS `McpWriteApprovalGate` 先通过 Capability Registry 完成 schema、Policy 和 Resource 校验，再按与 Go 一致的 scope v1/canonical JSON 计算 claim；只有原子消费成功才执行副作用。当前 `createDipoleMcpServer` 仍拒绝所有非 read Tool，生产 grant resolver 和 active authority 尚未装配。
 - Agent G4 增加外部 MCP Result-to-Context adapter：只接收成功、可 JSON 序列化且默认不超过 64 KiB（1 KiB 至 128 KiB 可配）的 Tool 结果，生成固定 `section=evidence`、`trust=untrusted` 的可选 Context fragment，并用 Profile/Server/Tool/Invocation 绑定 provenance。完整正文保留为不可变 JSON 快照；compact 版本只包含 Server、Tool、content type 集合和 structured-content 标记，不复制可能含 Prompt Injection 的外部文本。该 adapter 尚未接入生产外部调用链，外部网络继续关闭。
@@ -296,7 +297,7 @@
 
 ### 迁移说明
 
-- `ConsumeApproval` 是一次性、active-only 的安全门槛。审批在 Capability 执行前消费，执行失败后不会自动恢复或重放；调用方必须创建新审批。未来 Message Command write projection 还需要使用稳定业务幂等键并提供状态查询，避免网络不确定性造成重复提交或无法判断结果。当前不要向 `createDipoleMcpServer` 注册 write/destructive Tool。
+- `ConsumeApproval` 是一次性、active-only 的安全门槛。审批在 Capability 执行前消费，执行失败后不会自动恢复或重放；调用方必须创建新审批。Message Command 已具备稳定业务幂等键和 sender-scoped receipt 查询，可收敛 RPC 超时后的提交状态；生产 write projection 仍需 active authority、Tool-to-Message lineage 和故障演练。当前不要向 `createDipoleMcpServer` 注册 write/destructive Tool。
 - 外部 MCP Client 的原始 `CallToolResult` 不得直接拼接到 system/trusted prompt、Memory 或 Agent instruction。未来接入必须先通过 `externalMcpResultToContextFragment`，保留 `trust=untrusted` 与 provenance；若结果要形成 Artifact 或 Memory，需继续携带原始 Invocation lineage，不能因人工摘要或模型改写提升信任等级。
 - Network Guard 尚未装配生产 Resolver/Dispatcher。后续 Dispatcher 必须用守卫提供的某一个批准地址直接建连，使用 Profile `tlsServerName` 做 SNI/证书主机校验、通过 `caBundleRef` 从可信 Secret backend 取 CA，并返回 socket 实际 peer；禁止在 Dispatcher 内再次按 hostname 自由解析或自动跟随重定向。当前接口存在不代表可启用 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`。
 - Secret Provider adapter 没有生产 backend 或启动配置。未来 Provider 必须为每次 `read` 返回独占、可写的 fresh `Uint8Array`，遵守 AbortSignal 且不得把 secret 写入异常；复用共享 buffer 会在首次请求后被 adapter 清零。SDK 所需 token string 无法强零化，部署时应使用短期、最小权限凭据并依靠 Catalog 版本/吊销和 Server 端失效控制暴露窗口。

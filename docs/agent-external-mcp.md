@@ -76,7 +76,7 @@ Core `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 `mode=active`�
 
 `McpWriteApprovalGate` 持有 Capability Registry，先执行 schema parse、Policy authorize 与 Resource resolve，再从受信 grant resolver 读取当前 approval binding。scope hash 使用与 Go 相同的 `dipole.agent.scope.v1`，参数使用递归排序键的 canonical JSON。grant 精确匹配并且 Core 原子消费成功后，gate 才调用 Capability operation。resolver、consume 或 binding 失败均不会触达副作用。
 
-消费发生在 operation 前，因此语义为安全优先的 at-most-once。operation 失败后审批保持 consumed，重试需要新审批；未来 Message Command 投影还要绑定稳定业务幂等键与 Agent lineage，并提供提交状态查询。当前 `createDipoleMcpServer` 继续硬性拒绝 write/destructive descriptor，且 MCP context 仍为 shadow，生产 write Tool 没有启用。
+消费发生在 operation 前，因此语义为安全优先的 at-most-once。operation 失败后审批保持 consumed，重试需要新审批。Message Command 已使用稳定 `client_message_id` 并提供认证 sender 范围内的 `ABSENT|COMMITTED` receipt；不确定发送会在独立 2 秒窗口查询并核对完整消息绑定。Tool Invocation 到 Message UUID 的长期 lineage 联查和 active authority 仍待接线。当前 `createDipoleMcpServer` 继续硬性拒绝 write/destructive descriptor，且 MCP context 仍为 shadow，生产 write Tool 没有启用。
 
 ## Durable Elicitation 边界
 
