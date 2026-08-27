@@ -22,9 +22,9 @@ type AgentConversationReadV1 struct {
 // AgentCapabilityV1 is the transport-neutral boundary used by Agent runtimes.
 // Identity arguments must come from a trusted execution context.
 type AgentCapabilityV1 interface {
-	GetUserProfile(ctx context.Context, principalUUID, agentUUID, subjectUUID string) (*model.User, error)
-	ListDirectMessages(ctx context.Context, principalUUID, agentUUID string, limit int) ([]*model.Message, error)
-	ListConversations(ctx context.Context, principalUUID string, limit int) ([]*model.Conversation, error)
-	ReadConversation(ctx context.Context, principalUUID, targetUUID string, limit int) (*AgentConversationReadV1, error)
-	SendSystemMessage(ctx context.Context, agentUUID, principalUUID, content string) (*model.Message, error)
+	GetUserProfile(ctx context.Context, invocation AgentInvocationV1, subjectUUID string) (*model.User, error)
+	ListDirectMessages(ctx context.Context, invocation AgentInvocationV1, limit int) ([]*model.Message, error)
+	ListConversations(ctx context.Context, invocation AgentInvocationV1, limit int) ([]*model.Conversation, error)
+	ReadConversation(ctx context.Context, invocation AgentInvocationV1, targetUUID string, limit int) (*AgentConversationReadV1, error)
+	SendSystemMessage(ctx context.Context, invocation AgentInvocationV1, content string) (*model.Message, error)
 }

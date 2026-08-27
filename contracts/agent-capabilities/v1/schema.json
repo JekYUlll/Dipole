@@ -12,7 +12,14 @@
     "read_conversation",
     "send_system_message"
   ],
-  "required": ["operation", "principal_uuid", "agent_uuid", "input"],
+  "x-dipole-capabilities": [
+    {"id": "user.profile.read", "risk": "read", "required_permission": "user.profile.read", "approval_required": false},
+    {"id": "message.direct.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
+    {"id": "conversation.list", "risk": "read", "required_permission": "conversation.list", "approval_required": false},
+    {"id": "conversation.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
+    {"id": "message.system.send", "risk": "write", "required_permission": "message.write", "approval_required": false}
+  ],
+  "required": ["operation", "tenant_id", "principal_uuid", "agent_uuid", "permissions", "input"],
   "properties": {
     "operation": {
       "enum": [
@@ -23,11 +30,38 @@
         "send_system_message"
       ]
     },
+    "tenant_id": {"type": "string", "minLength": 1, "readOnly": true},
     "principal_uuid": {"type": "string", "minLength": 1, "readOnly": true},
     "agent_uuid": {"type": "string", "minLength": 1, "readOnly": true},
+    "delegated_by_uuid": {"type": "string", "readOnly": true},
+    "permissions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true,
+      "readOnly": true
+    },
+    "approved_capabilities": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true,
+      "readOnly": true
+    },
     "request_id": {"type": "string", "readOnly": true},
     "trace_id": {"type": "string", "readOnly": true},
     "input": {"type": "object"}
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "capability_descriptor": {
+      "type": "object",
+      "required": ["id", "risk", "required_permission", "approval_required"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "risk": {"enum": ["read", "write", "destructive"]},
+        "required_permission": {"type": "string", "minLength": 1},
+        "approval_required": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  }
 }

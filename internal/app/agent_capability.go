@@ -42,9 +42,12 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCa
 	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations}, nil
 }
 
-func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, principalUUID, agentUUID, subjectUUID string) (*model.User, error) {
-	principalUUID = strings.TrimSpace(principalUUID)
-	agentUUID = strings.TrimSpace(agentUUID)
+func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
+	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityUserProfileRead); err != nil {
+		return nil, err
+	}
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
+	agentUUID := strings.TrimSpace(invocation.AgentUUID)
 	subjectUUID = strings.TrimSpace(subjectUUID)
 	if principalUUID == "" || agentUUID == "" || subjectUUID == "" || (subjectUUID != principalUUID && subjectUUID != agentUUID) {
 		return nil, application.ErrAgentCapabilityDenied
@@ -56,12 +59,12 @@ func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, principalUUID
 	return user, nil
 }
 
-func (c *LocalAgentCapabilityV1) ListDirectMessages(_ context.Context, principalUUID, agentUUID string, limit int) ([]*model.Message, error) {
-	principalUUID = strings.TrimSpace(principalUUID)
-	agentUUID = strings.TrimSpace(agentUUID)
-	if principalUUID == "" || agentUUID == "" {
-		return nil, application.ErrAgentCapabilityDenied
+func (c *LocalAgentCapabilityV1) ListDirectMessages(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Message, error) {
+	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityDirectMessagesRead); err != nil {
+		return nil, err
 	}
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
+	agentUUID := strings.TrimSpace(invocation.AgentUUID)
 	items, err := c.messages.ListDirectMessages(principalUUID, agentUUID, 0, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list Agent direct messages: %w", err)
@@ -69,11 +72,11 @@ func (c *LocalAgentCapabilityV1) ListDirectMessages(_ context.Context, principal
 	return items, nil
 }
 
-func (c *LocalAgentCapabilityV1) ListConversations(_ context.Context, principalUUID string, limit int) ([]*model.Conversation, error) {
-	principalUUID = strings.TrimSpace(principalUUID)
-	if principalUUID == "" {
-		return nil, application.ErrAgentCapabilityDenied
+func (c *LocalAgentCapabilityV1) ListConversations(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Conversation, error) {
+	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityConversationsList); err != nil {
+		return nil, err
 	}
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
 	items, err := c.conversations.ListForAgent(principalUUID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list Agent conversations: %w", err)
@@ -81,8 +84,11 @@ func (c *LocalAgentCapabilityV1) ListConversations(_ context.Context, principalU
 	return items, nil
 }
 
-func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, principalUUID, targetUUID string, limit int) (*application.AgentConversationReadV1, error) {
-	principalUUID = strings.TrimSpace(principalUUID)
+func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, invocation application.AgentInvocationV1, targetUUID string, limit int) (*application.AgentConversationReadV1, error) {
+	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityConversationRead); err != nil {
+		return nil, err
+	}
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
 	targetUUID = strings.TrimSpace(targetUUID)
 	if principalUUID == "" || targetUUID == "" {
 		return nil, application.ErrAgentCapabilityDenied
@@ -111,15 +117,23 @@ func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, principalUU
 	}, nil
 }
 
-func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, agentUUID, principalUUID, content string) (*model.Message, error) {
-	agentUUID = strings.TrimSpace(agentUUID)
-	principalUUID = strings.TrimSpace(principalUUID)
-	if agentUUID == "" || principalUUID == "" {
-		return nil, application.ErrAgentCapabilityDenied
+func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {
+	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilitySystemMessageSend); err != nil {
+		return nil, err
 	}
+	agentUUID := strings.TrimSpace(invocation.AgentUUID)
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
 	message, err := c.messages.SendSystemDirectMessageContext(ctx, agentUUID, principalUUID, content)
 	if err != nil {
 		return nil, fmt.Errorf("send Agent system message: %w", err)
 	}
 	return message, nil
+}
+
+func authorizeLocalAgentCapabilityV1(invocation application.AgentInvocationV1, capabilityID string) error {
+	descriptor, ok := application.AgentCapabilityDescriptorByIDV1(capabilityID)
+	if !ok {
+		return application.ErrAgentCapabilityDenied
+	}
+	return application.AuthorizeAgentCapabilityV1(invocation, descriptor)
 }

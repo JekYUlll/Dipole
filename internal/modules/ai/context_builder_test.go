@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
@@ -11,20 +12,21 @@ import (
 )
 
 type stubAgentCapability struct {
-	users            map[string]*model.User
-	messages         []*model.Message
-	conversations    []*model.Conversation
-	read             *application.AgentConversationReadV1
-	sentMessage      *model.Message
-	profileRequested string
-	directReads      int
-	senderUUID       string
-	targetUUID       string
-	content          string
-	err              error
+	users             map[string]*model.User
+	messages          []*model.Message
+	conversations     []*model.Conversation
+	read              *application.AgentConversationReadV1
+	sentMessage       *model.Message
+	profileRequested  string
+	directReads       int
+	conversationReads int
+	senderUUID        string
+	targetUUID        string
+	content           string
+	err               error
 }
 
-func (s *stubAgentCapability) GetUserProfile(_ context.Context, _, _, subjectUUID string) (*model.User, error) {
+func (s *stubAgentCapability) GetUserProfile(_ context.Context, _ application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -32,21 +34,22 @@ func (s *stubAgentCapability) GetUserProfile(_ context.Context, _, _, subjectUUI
 	return s.users[subjectUUID], nil
 }
 
-func (s *stubAgentCapability) ListDirectMessages(context.Context, string, string, int) ([]*model.Message, error) {
+func (s *stubAgentCapability) ListDirectMessages(context.Context, application.AgentInvocationV1, int) ([]*model.Message, error) {
 	s.directReads++
 	return s.messages, s.err
 }
 
-func (s *stubAgentCapability) ListConversations(context.Context, string, int) ([]*model.Conversation, error) {
+func (s *stubAgentCapability) ListConversations(context.Context, application.AgentInvocationV1, int) ([]*model.Conversation, error) {
 	return s.conversations, s.err
 }
 
-func (s *stubAgentCapability) ReadConversation(context.Context, string, string, int) (*application.AgentConversationReadV1, error) {
+func (s *stubAgentCapability) ReadConversation(context.Context, application.AgentInvocationV1, string, int) (*application.AgentConversationReadV1, error) {
+	s.conversationReads++
 	return s.read, s.err
 }
 
-func (s *stubAgentCapability) SendSystemMessage(_ context.Context, senderUUID, targetUUID, content string) (*model.Message, error) {
-	s.senderUUID, s.targetUUID, s.content = senderUUID, targetUUID, content
+func (s *stubAgentCapability) SendSystemMessage(_ context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {
+	s.senderUUID, s.targetUUID, s.content = invocation.AgentUUID, invocation.PrincipalUUID, content
 	return s.sentMessage, s.err
 }
 
@@ -86,7 +89,7 @@ func TestContextBuilderBuildDirectContext(t *testing.T) {
 		12,
 	)
 
-	context, err := builder.BuildDirectContext(context.Background(), "U100", "UAI")
+	context, err := builder.BuildDirectContext(toolTestContext("U100"), "U100", "UAI")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -104,5 +107,26 @@ func TestContextBuilderBuildDirectContext(t *testing.T) {
 	}
 	if context.Messages[2].Content == "" {
 		t.Fatalf("expected rendered file content, got empty string")
+	}
+}
+
+func TestContextBuilderStopsBeforeMessagesWithoutReadPermission(t *testing.T) {
+	t.Parallel()
+
+	capability := &stubAgentCapability{users: map[string]*model.User{
+		"U100": {UUID: "U100"},
+		"UAI":  {UUID: "UAI", UserType: model.UserTypeAssistant},
+	}}
+	builder := NewContextBuilder(capability, 12)
+	execution := newExecutionContext(ExecutionContext{
+		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+	}, []string{application.AgentPermissionUserProfileRead}, nil)
+	ctx := withExecutionContext(context.Background(), execution)
+
+	if _, err := builder.BuildDirectContext(ctx, "U100", "UAI"); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected missing conversation permission denial, got %v", err)
+	}
+	if capability.directReads != 0 {
+		t.Fatalf("denied context build reached Message capability %d times", capability.directReads)
 	}
 }

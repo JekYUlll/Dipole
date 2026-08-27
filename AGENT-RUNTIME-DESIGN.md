@@ -97,6 +97,8 @@ interface AgentCapability<I, O> {
 
 Policy Engine 在执行前完成授权、预算、限流、审批和审计。写操作携带幂等键；破坏性操作默认要求人工审批。
 
+G1 已实现 `AgentPolicyV1` 基线：Invocation 携带 tenant、principal、Agent、delegator、permissions、approved capabilities 与 correlation IDs；descriptor 固定 capability ID、`read|write|destructive`、required permission 和 approval flag。Embedded Tool 先快速拒绝，本地 Capability adapter 再执行同一策略，远程 server 必须复用该授权函数或等价 contract。当前静态单 tenant permission 与未持久化 approval 由 `AD-027` 继续跟踪。
+
 ### Agent Task
 
 ```text

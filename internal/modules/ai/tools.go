@@ -198,12 +198,15 @@ func (t *userProfileTool) InvokableRun(ctx context.Context, argumentsInJSON stri
 		return "", fmt.Errorf("decode get_user_profile input: %w", err)
 	}
 
-	execution, err := requireExecutionContext(ctx)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityUserProfileRead)
 	if err != nil {
 		return "", err
 	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", application.ErrAgentCapabilityDenied
+	}
 
-	user, err := t.capability.GetUserProfile(ctx, execution.PrincipalUserUUID, execution.AgentUUID, execution.PrincipalUserUUID)
+	user, err := t.capability.GetUserProfile(ctx, execution.invocationV1(), execution.PrincipalUserUUID)
 	if err != nil {
 		return "", fmt.Errorf("get user profile: %w", err)
 	}
@@ -249,9 +252,12 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		return "", fmt.Errorf("decode search_recent_messages input: %w", err)
 	}
 
-	execution, err := requireExecutionContext(ctx)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityDirectMessagesRead)
 	if err != nil {
 		return "", err
+	}
+	if execution.AgentUUID != t.assistantUUID {
+		return "", application.ErrAgentCapabilityDenied
 	}
 	query := strings.TrimSpace(input.Query)
 	if query == "" {
@@ -266,7 +272,7 @@ func (t *recentMessageSearchTool) InvokableRun(ctx context.Context, argumentsInJ
 		limit = 10
 	}
 
-	items, err := t.capability.ListDirectMessages(ctx, execution.PrincipalUserUUID, t.assistantUUID, 50)
+	items, err := t.capability.ListDirectMessages(ctx, execution.invocationV1(), 50)
 	if err != nil {
 		return "", fmt.Errorf("list recent messages: %w", err)
 	}
@@ -331,7 +337,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		return "", fmt.Errorf("decode send_system_message input: %w", err)
 	}
 
-	execution, err := requireExecutionContext(ctx)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilitySystemMessageSend)
 	if err != nil {
 		return "", err
 	}
@@ -346,7 +352,7 @@ func (t *systemMessageTool) InvokableRun(ctx context.Context, argumentsInJSON st
 		content = string([]rune(content)[:500])
 	}
 
-	message, err := t.capability.SendSystemMessage(ctx, t.assistantUUID, execution.PrincipalUserUUID, content)
+	message, err := t.capability.SendSystemMessage(ctx, execution.invocationV1(), content)
 	if err != nil {
 		return "", fmt.Errorf("send system message: %w", err)
 	}
@@ -385,7 +391,7 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		return "", fmt.Errorf("decode list_user_conversations input: %w", err)
 	}
 
-	execution, err := requireExecutionContext(ctx)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityConversationsList)
 	if err != nil {
 		return "", err
 	}
@@ -398,7 +404,7 @@ func (t *listUserConversationsTool) InvokableRun(ctx context.Context, argumentsI
 		limit = 20
 	}
 
-	convs, err := t.capability.ListConversations(ctx, execution.PrincipalUserUUID, limit)
+	convs, err := t.capability.ListConversations(ctx, execution.invocationV1(), limit)
 	if err != nil {
 		return "", fmt.Errorf("list user conversations: %w", err)
 	}
@@ -457,7 +463,7 @@ func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON
 		return "", fmt.Errorf("decode read_conversation input: %w", err)
 	}
 
-	execution, err := requireExecutionContext(ctx)
+	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityConversationRead)
 	if err != nil {
 		return "", err
 	}
@@ -480,7 +486,7 @@ func (t *readConversationTool) InvokableRun(ctx context.Context, argumentsInJSON
 		targetType = "group"
 	}
 
-	read, err := t.capability.ReadConversation(ctx, userUUID, targetUUID, limit)
+	read, err := t.capability.ReadConversation(ctx, execution.invocationV1(), targetUUID, limit)
 	if err != nil {
 		return "", fmt.Errorf("read conversation capability: %w", err)
 	}
