@@ -319,7 +319,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
   - [x] 建立 `agent-runtime/` Node 22+ foundation：Fastify 健康面、Zod trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine 与只读 shadow processor。
   - [x] 增加 KafkaJS adapter、兼容 v1 Message decoder、独立 `dipole-agent-shadow-*` group、冷启动有界重连与 Compose 服务。
-- [ ] 实现 `ExecutionContext`、Capability Registry、Policy Engine、模型路由与调用预算。
+- [x] 实现 `ExecutionContext`、Capability Registry、Policy Engine、provider-neutral 模型路由与每 Run 调用预算；AI SDK adapter 关闭内部 retry，模型模式默认关闭。
 - [x] 使用独立 consumer group 消费版本化事件，通过 Event ID/Task ID 双唯一、事务 claim、lease 和精确 token 实现跨进程幂等。
 - [x] 使用显式 main/retry/dead topic 实现永久错误直达死信和瞬时错误有界重试，失败发布阻止 handler 完成；真实 Kafka 验证 poison、retry→dead 与 rebalance（`AD-028`）。
 - [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。

@@ -7,7 +7,9 @@ import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runti
 
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
-    expect(loadShadowRuntimeConfig({})).toMatchObject({ enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory" });
+    expect(loadShadowRuntimeConfig({})).toMatchObject({
+      enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata"
+    });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
@@ -21,6 +23,18 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
       DIPOLE_AGENT_MYSQL_DATABASE: "dipole"
     })).toMatchObject({ ledgerMode: "mysql", mysql: { host: "mysql", port: 3306, user: "agent", database: "dipole" } });
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MODEL_MODE: "ai_sdk" })).toThrow(/model routes/);
+    expect(loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
+      DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini,anthropic/claude-sonnet-4.5",
+      DIPOLE_AGENT_MODEL_MAX_CALLS: "2",
+      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "12000",
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "256"
+    })).toMatchObject({
+      modelMode: "ai_sdk",
+      modelRoutes: ["openai/gpt-5-mini", "anthropic/claude-sonnet-4.5"],
+      modelBudget: { maxCalls: 2, totalTimeoutMs: 12000, maxOutputTokensPerCall: 256 }
+    });
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {

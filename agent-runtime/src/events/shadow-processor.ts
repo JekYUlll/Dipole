@@ -28,6 +28,12 @@ export interface AgentIdentity {
 export interface ShadowPlan {
   readonly summary: string;
   readonly capabilityIds: readonly string[];
+  readonly model?: {
+    readonly route: string;
+    readonly attempts: number;
+    readonly inputTokens: number | undefined;
+    readonly outputTokens: number | undefined;
+  };
 }
 
 export interface ShadowPlanner {

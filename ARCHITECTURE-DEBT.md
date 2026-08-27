@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-029：Agent 模型预算与调用轨迹尚未跨重试持久化
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** `agent-runtime`、模型成本、Kafka retry、Run/Step 审计与故障恢复
+- **现状：** provider-neutral ModelRouter 已限制单 Run 最大调用数、总 deadline 和单次输出 Token，并记录成功 route、attempt 与 usage；AI SDK 内部 retry 固定关闭。模型模式默认 `metadata`，显式 `ai_sdk` 仍只生成 read-only shadow plan。调用证据当前写入 Console audit；一次 Kafka retry 会创建新的进程内 Run budget。
+- **风险：** 多次 transport retry 会分别获得预算，重启后也无法从持久记录汇总 Task 总调用数、Token 和 provider failure trajectory。直接开放高成本模型或远程写权会降低成本门禁与事故复盘可信度。
+- **建议方向：** 增加 Agent Run/Step/ModelCall Store，以 Task ID + Run ID 固定预算快照和调用序号；模型调用前原子预留 call slot，完成后记录 usage、latency、route、finish reason 和 error class。Kafka transport retry 与未来 Temporal Workflow retry 使用同一 Task 累计视图。
+- **处理门槛：** 生产启用 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、Tool trajectory 或 `ai.runtime_mode=remote` 前完成，并验证并发预留、进程崩溃、Kafka retry、provider fallback 和预算耗尽恢复。
+
 ### AD-028：Agent Kafka 失败转移尚未接入 retry/DLQ
 
 - **优先级：** P1
