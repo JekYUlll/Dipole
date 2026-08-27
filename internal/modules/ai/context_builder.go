@@ -1,25 +1,18 @@
 package ai
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
-type messageReader interface {
-	ListByConversationKey(conversationKey string, beforeID uint, limit int) ([]*model.Message, error)
-}
-
-type userReader interface {
-	GetByUUID(uuid string) (*model.User, error)
-}
-
 type ContextBuilder struct {
-	messages           messageReader
-	users              userReader
+	capability         application.AgentCapabilityV1
 	maxContextMessages int
 }
 
@@ -29,20 +22,21 @@ type ConversationContext struct {
 	Messages  []*schema.Message
 }
 
-func NewContextBuilder(messages messageReader, users userReader, maxContextMessages int) *ContextBuilder {
+func NewContextBuilder(capability application.AgentCapabilityV1, maxContextMessages int) *ContextBuilder {
 	if maxContextMessages <= 0 {
 		maxContextMessages = 12
 	}
 
 	return &ContextBuilder{
-		messages:           messages,
-		users:              users,
+		capability:         capability,
 		maxContextMessages: maxContextMessages,
 	}
 }
 
-func (b *ContextBuilder) BuildDirectContext(userUUID, assistantUUID string) (*ConversationContext, error) {
-	endUser, err := b.users.GetByUUID(strings.TrimSpace(userUUID))
+func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error) {
+	userUUID = strings.TrimSpace(userUUID)
+	assistantUUID = strings.TrimSpace(assistantUUID)
+	endUser, err := b.capability.GetUserProfile(ctx, userUUID, assistantUUID, userUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get ai conversation user: %w", err)
 	}
@@ -50,7 +44,7 @@ func (b *ContextBuilder) BuildDirectContext(userUUID, assistantUUID string) (*Co
 		return nil, ErrAIUserNotFound
 	}
 
-	assistant, err := b.users.GetByUUID(strings.TrimSpace(assistantUUID))
+	assistant, err := b.capability.GetUserProfile(ctx, userUUID, assistantUUID, assistantUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get ai assistant user: %w", err)
 	}
@@ -58,11 +52,7 @@ func (b *ContextBuilder) BuildDirectContext(userUUID, assistantUUID string) (*Co
 		return nil, ErrAIAssistantNotFound
 	}
 
-	items, err := b.messages.ListByConversationKey(
-		model.DirectConversationKey(endUser.UUID, assistant.UUID),
-		0,
-		b.maxContextMessages,
-	)
+	items, err := b.capability.ListDirectMessages(ctx, endUser.UUID, assistant.UUID, b.maxContextMessages)
 	if err != nil {
 		return nil, fmt.Errorf("list ai conversation messages: %w", err)
 	}

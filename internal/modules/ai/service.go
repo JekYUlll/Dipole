@@ -25,7 +25,7 @@ type callLogRepository interface {
 }
 
 type directContextBuilder interface {
-	BuildDirectContext(userUUID, assistantUUID string) (*ConversationContext, error)
+	BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error)
 }
 
 type messageSender interface {
@@ -105,7 +105,7 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return err
 	}
 
-	conversationContext, err := s.contextBuilder.BuildDirectContext(message.SenderUUID, assistantUUID)
+	conversationContext, err := s.contextBuilder.BuildDirectContext(ctx, message.SenderUUID, assistantUUID)
 	if err != nil {
 		return markFailed(err)
 	}

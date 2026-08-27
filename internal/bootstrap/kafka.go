@@ -87,10 +87,20 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		})
 	}
 	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
-	if aiService, err := newAIService(repos, messaging.Messages); err != nil {
-		return err
-	} else if aiService != nil {
-		platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
+	if config.AIConfig().Enabled {
+		agentCapability, err := appComposition.NewLocalAgentCapabilityV1(
+			messaging.Core,
+			messaging.Messages,
+			messaging.Conversations,
+		)
+		if err != nil {
+			return fmt.Errorf("compose Agent Capability v1: %w", err)
+		}
+		if aiService, err := newAIService(repos.AICallLogs, messaging.Messages, agentCapability); err != nil {
+			return err
+		} else if aiService != nil {
+			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
+		}
 	}
 	if includeMessagePersistence {
 		RegisterMessageKafkaHandlers(messaging.Messages)
@@ -415,20 +425,25 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(repos *appComposition.Repositories, messageService *appComposition.LocalMessageApplication) (*aiModule.Service, error) {
+func newAIService(logs applicationPort.AICallLogStore, messageService *appComposition.LocalMessageApplication, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
 	aiConfig := config.AIConfig()
 	if !aiConfig.Enabled {
 		return nil, nil
 	}
+	if capability == nil {
+		return nil, fmt.Errorf("Agent Capability v1 is required when AI is enabled")
+	}
+	if logs == nil {
+		return nil, fmt.Errorf("AI call log store is required when AI is enabled")
+	}
+	if messageService == nil {
+		return nil, fmt.Errorf("AI Message application is required when AI is enabled")
+	}
 
-	contextBuilder := aiModule.NewContextBuilder(
-		repos.Messages,
-		repos.Users,
-		aiConfig.MaxContextMessages,
-	)
+	contextBuilder := aiModule.NewContextBuilder(capability, aiConfig.MaxContextMessages)
 	agent, err := aiModule.NewConfiguredAgent(
 		context.Background(),
-		aiModule.NewTools(repos.Users, repos.Messages, repos.Conversations, messageService, aiConfig.AssistantUUID)...,
+		aiModule.NewTools(capability, aiConfig.AssistantUUID)...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("init ai agent: %w", err)
@@ -436,7 +451,7 @@ func newAIService(repos *appComposition.Repositories, messageService *appComposi
 
 	return aiModule.NewService(
 		contextBuilder,
-		repos.AICallLogs,
+		logs,
 		messageService,
 		agent,
 	), nil

@@ -239,6 +239,10 @@ func (s *MessageService) SendAssistantTextMessage(assistantUUID, targetUUID, con
 }
 
 func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	return s.SendSystemDirectMessageContext(context.Background(), senderUUID, targetUUID, content)
+}
+
+func (s *MessageService) SendSystemDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content string) (*model.Message, error) {
 	senderUUID = strings.TrimSpace(senderUUID)
 	targetUUID = strings.TrimSpace(targetUUID)
 	content = strings.TrimSpace(content)
@@ -265,7 +269,7 @@ func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content
 		return nil, ErrMessageTargetUnavailable
 	}
 
-	return s.buildAndDispatchDirect(context.Background(), senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
+	return s.buildAndDispatchDirect(ctx, senderUUID, targetUUID, content, generateClientMessageID(), model.MessageTypeSystem)
 }
 
 // SendSystemGroupMessage sends a system message to a group without any permission checks.

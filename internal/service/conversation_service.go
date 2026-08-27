@@ -163,6 +163,31 @@ func (s *ConversationService) ListForUser(userUUID string, limit int) ([]*Conver
 	return result, nil
 }
 
+func (s *ConversationService) ListForAgent(userUUID string, limit int) ([]*model.Conversation, error) {
+	conversations, err := s.repo.ListByUserUUID(strings.TrimSpace(userUUID), normalizeConversationListLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list conversations for Agent: %w", err)
+	}
+	return conversations, nil
+}
+
+func (s *ConversationService) FindForUser(userUUID, targetUUID string) (*model.Conversation, error) {
+	userUUID = strings.TrimSpace(userUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	if userUUID == "" || targetUUID == "" {
+		return nil, ErrConversationTargetRequired
+	}
+	conversationKey := model.DirectConversationKey(userUUID, targetUUID)
+	if strings.HasPrefix(targetUUID, "G") {
+		conversationKey = model.GroupConversationKey(targetUUID)
+	}
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return nil, fmt.Errorf("find conversation for user: %w", err)
+	}
+	return conversation, nil
+}
+
 func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*ConversationReadReceipt, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {

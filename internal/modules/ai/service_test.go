@@ -17,7 +17,7 @@ type stubContextBuilder struct {
 	err     error
 }
 
-func (s *stubContextBuilder) BuildDirectContext(userUUID, assistantUUID string) (*ConversationContext, error) {
+func (s *stubContextBuilder) BuildDirectContext(context.Context, string, string) (*ConversationContext, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
