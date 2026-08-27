@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 增加 `NodeDeliveryService.ObserveNodeBatch` 跨语言观察合约：`NodeDeliveryObservation` 独立表达 observed/rejected/backpressured、节点批次聚合计数、QueuePressure 与 duplicate 去重，不复用客户端 `DeliveryAck`；Go/C++ validator 与第四组 golden vector 已固定。
 - C2 归档 Presence Shadow 与 Sentinel 恢复证据到 `benchmarks/c2-cpp-presence-2026-08-28/`：同一 hiredis reader 在停止当前 master 后完成 80 次读取中的 75 次成功、5 次有界错误，并自动从 `redis-2` 恢复到 `redis-3`，无需进程重启；隔离项目、网络和卷已清理。
 - C2 将 Presence 注入 Kafka ShadowRunner，并升级低敏证据为 `shadow-evidence.v2`：记录节点批次及 malformed/observed/eligible/stale/offline 聚合计数；Redis 读取失败不提交 offset，身份漂移记录 `invalid_presence` 后提交。真实联合回放 206 条，205 projected、1 poison rejected、20 个非空节点批次，最终 lag 为 0。
 - C2 增加 hiredis 1.2 Presence 只读 adapter：支持 direct 或 Sentinel master discovery、AUTH/SELECT、批量 `HGETALL` pipeline、命令失败后断连重发现，以及 Go Hash 兼容解析；真实 Redis 隔离 fixture 验证通过，尚未注入 Kafka ShadowRunner。

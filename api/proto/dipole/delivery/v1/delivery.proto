@@ -31,6 +31,14 @@ enum DeliveryAckStatus {
   DELIVERY_ACK_STATUS_REJECTED = 3;
 }
 
+// NodeObservationStatus is used only by the no-client-write shadow ingress.
+enum NodeObservationStatus {
+  NODE_OBSERVATION_STATUS_UNSPECIFIED = 0;
+  NODE_OBSERVATION_STATUS_OBSERVED = 1;
+  NODE_OBSERVATION_STATUS_REJECTED = 2;
+  NODE_OBSERVATION_STATUS_BACKPRESSURED = 3;
+}
+
 enum DeliveryErrorCode {
   DELIVERY_ERROR_CODE_UNSPECIFIED = 0;
   DELIVERY_ERROR_CODE_QUEUE_FULL = 1;
@@ -97,6 +105,21 @@ message DeliveryAck {
   google.protobuf.Timestamp acknowledged_at = 6;
 }
 
+// NodeDeliveryObservation confirms validation/admission into the bounded
+// shadow observation path. It never claims that a client queue was written.
+message NodeDeliveryObservation {
+  string contract_version = 1;
+  string batch_id = 2;
+  string target_node_id = 3;
+  NodeObservationStatus status = 4;
+  uint32 observed_items = 5;
+  uint32 observed_connections = 6;
+  QueuePressure pressure = 7;
+  DeliveryErrorCode error_code = 8;
+  google.protobuf.Timestamp observed_at = 9;
+  bool duplicate = 10;
+}
+
 message DeliveryResult {
   string delivery_id = 1;
   DeliveryResultStatus status = 2;
@@ -111,4 +134,8 @@ message QueuePressure {
   uint32 depth = 1;
   uint32 capacity = 2;
   uint32 retry_after_ms = 3;
+}
+
+service NodeDeliveryService {
+  rpc ObserveNodeBatch(NodeDeliveryBatch) returns (NodeDeliveryObservation);
 }

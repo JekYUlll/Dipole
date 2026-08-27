@@ -183,6 +183,38 @@ func ValidateAck(ack *deliveryv1.DeliveryAck) error {
 	return nil
 }
 
+func ValidateNodeObservation(observation *deliveryv1.NodeDeliveryObservation) error {
+	if observation == nil {
+		return errors.New("node delivery observation is required")
+	}
+	if observation.ContractVersion != ContractVersion || strings.TrimSpace(observation.BatchId) == "" ||
+		strings.TrimSpace(observation.TargetNodeId) == "" || !validTimestamp(observation.ObservedAt) {
+		return errors.New("node delivery observation version, identity, node, and observed_at are required")
+	}
+	switch observation.Status {
+	case deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_OBSERVED:
+		if observation.ObservedItems == 0 || observation.ObservedConnections == 0 ||
+			observation.ErrorCode != deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_UNSPECIFIED {
+			return errors.New("observed node delivery requires positive counts and no error")
+		}
+	case deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_REJECTED:
+		if observation.ObservedItems != 0 || observation.ObservedConnections != 0 || observation.Pressure != nil ||
+			observation.ErrorCode != deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_INVALID_ITEM {
+			return errors.New("rejected node delivery requires invalid_item and no observed work")
+		}
+	case deliveryv1.NodeObservationStatus_NODE_OBSERVATION_STATUS_BACKPRESSURED:
+		if observation.ObservedItems != 0 || observation.ObservedConnections != 0 ||
+			observation.ErrorCode != deliveryv1.DeliveryErrorCode_DELIVERY_ERROR_CODE_QUEUE_FULL ||
+			observation.Pressure == nil || observation.Pressure.Capacity == 0 ||
+			observation.Pressure.Depth < observation.Pressure.Capacity || observation.Pressure.RetryAfterMs == 0 {
+			return errors.New("backpressured node delivery requires saturated queue pressure")
+		}
+	default:
+		return errors.New("node delivery observation status is required")
+	}
+	return nil
+}
+
 func validTimestamp(value *timestamppb.Timestamp) bool {
 	return value != nil && value.IsValid()
 }

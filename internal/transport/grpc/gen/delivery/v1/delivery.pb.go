@@ -186,6 +186,59 @@ func (DeliveryAckStatus) EnumDescriptor() ([]byte, []int) {
 	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{2}
 }
 
+// NodeObservationStatus is used only by the no-client-write shadow ingress.
+type NodeObservationStatus int32
+
+const (
+	NodeObservationStatus_NODE_OBSERVATION_STATUS_UNSPECIFIED   NodeObservationStatus = 0
+	NodeObservationStatus_NODE_OBSERVATION_STATUS_OBSERVED      NodeObservationStatus = 1
+	NodeObservationStatus_NODE_OBSERVATION_STATUS_REJECTED      NodeObservationStatus = 2
+	NodeObservationStatus_NODE_OBSERVATION_STATUS_BACKPRESSURED NodeObservationStatus = 3
+)
+
+// Enum value maps for NodeObservationStatus.
+var (
+	NodeObservationStatus_name = map[int32]string{
+		0: "NODE_OBSERVATION_STATUS_UNSPECIFIED",
+		1: "NODE_OBSERVATION_STATUS_OBSERVED",
+		2: "NODE_OBSERVATION_STATUS_REJECTED",
+		3: "NODE_OBSERVATION_STATUS_BACKPRESSURED",
+	}
+	NodeObservationStatus_value = map[string]int32{
+		"NODE_OBSERVATION_STATUS_UNSPECIFIED":   0,
+		"NODE_OBSERVATION_STATUS_OBSERVED":      1,
+		"NODE_OBSERVATION_STATUS_REJECTED":      2,
+		"NODE_OBSERVATION_STATUS_BACKPRESSURED": 3,
+	}
+)
+
+func (x NodeObservationStatus) Enum() *NodeObservationStatus {
+	p := new(NodeObservationStatus)
+	*p = x
+	return p
+}
+
+func (x NodeObservationStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NodeObservationStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_dipole_delivery_v1_delivery_proto_enumTypes[3].Descriptor()
+}
+
+func (NodeObservationStatus) Type() protoreflect.EnumType {
+	return &file_dipole_delivery_v1_delivery_proto_enumTypes[3]
+}
+
+func (x NodeObservationStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NodeObservationStatus.Descriptor instead.
+func (NodeObservationStatus) EnumDescriptor() ([]byte, []int) {
+	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{3}
+}
+
 type DeliveryErrorCode int32
 
 const (
@@ -225,11 +278,11 @@ func (x DeliveryErrorCode) String() string {
 }
 
 func (DeliveryErrorCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_dipole_delivery_v1_delivery_proto_enumTypes[3].Descriptor()
+	return file_dipole_delivery_v1_delivery_proto_enumTypes[4].Descriptor()
 }
 
 func (DeliveryErrorCode) Type() protoreflect.EnumType {
-	return &file_dipole_delivery_v1_delivery_proto_enumTypes[3]
+	return &file_dipole_delivery_v1_delivery_proto_enumTypes[4]
 }
 
 func (x DeliveryErrorCode) Number() protoreflect.EnumNumber {
@@ -238,7 +291,7 @@ func (x DeliveryErrorCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DeliveryErrorCode.Descriptor instead.
 func (DeliveryErrorCode) EnumDescriptor() ([]byte, []int) {
-	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{3}
+	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{4}
 }
 
 // DeliveryEnvelope is the language-neutral handoff from event projection to
@@ -723,6 +776,124 @@ func (x *DeliveryAck) GetAcknowledgedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// NodeDeliveryObservation confirms validation/admission into the bounded
+// shadow observation path. It never claims that a client queue was written.
+type NodeDeliveryObservation struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ContractVersion     string                 `protobuf:"bytes,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	BatchId             string                 `protobuf:"bytes,2,opt,name=batch_id,json=batchId,proto3" json:"batch_id,omitempty"`
+	TargetNodeId        string                 `protobuf:"bytes,3,opt,name=target_node_id,json=targetNodeId,proto3" json:"target_node_id,omitempty"`
+	Status              NodeObservationStatus  `protobuf:"varint,4,opt,name=status,proto3,enum=dipole.delivery.v1.NodeObservationStatus" json:"status,omitempty"`
+	ObservedItems       uint32                 `protobuf:"varint,5,opt,name=observed_items,json=observedItems,proto3" json:"observed_items,omitempty"`
+	ObservedConnections uint32                 `protobuf:"varint,6,opt,name=observed_connections,json=observedConnections,proto3" json:"observed_connections,omitempty"`
+	Pressure            *QueuePressure         `protobuf:"bytes,7,opt,name=pressure,proto3" json:"pressure,omitempty"`
+	ErrorCode           DeliveryErrorCode      `protobuf:"varint,8,opt,name=error_code,json=errorCode,proto3,enum=dipole.delivery.v1.DeliveryErrorCode" json:"error_code,omitempty"`
+	ObservedAt          *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	Duplicate           bool                   `protobuf:"varint,10,opt,name=duplicate,proto3" json:"duplicate,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *NodeDeliveryObservation) Reset() {
+	*x = NodeDeliveryObservation{}
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NodeDeliveryObservation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeDeliveryObservation) ProtoMessage() {}
+
+func (x *NodeDeliveryObservation) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeDeliveryObservation.ProtoReflect.Descriptor instead.
+func (*NodeDeliveryObservation) Descriptor() ([]byte, []int) {
+	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *NodeDeliveryObservation) GetContractVersion() string {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return ""
+}
+
+func (x *NodeDeliveryObservation) GetBatchId() string {
+	if x != nil {
+		return x.BatchId
+	}
+	return ""
+}
+
+func (x *NodeDeliveryObservation) GetTargetNodeId() string {
+	if x != nil {
+		return x.TargetNodeId
+	}
+	return ""
+}
+
+func (x *NodeDeliveryObservation) GetStatus() NodeObservationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return NodeObservationStatus_NODE_OBSERVATION_STATUS_UNSPECIFIED
+}
+
+func (x *NodeDeliveryObservation) GetObservedItems() uint32 {
+	if x != nil {
+		return x.ObservedItems
+	}
+	return 0
+}
+
+func (x *NodeDeliveryObservation) GetObservedConnections() uint32 {
+	if x != nil {
+		return x.ObservedConnections
+	}
+	return 0
+}
+
+func (x *NodeDeliveryObservation) GetPressure() *QueuePressure {
+	if x != nil {
+		return x.Pressure
+	}
+	return nil
+}
+
+func (x *NodeDeliveryObservation) GetErrorCode() DeliveryErrorCode {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return DeliveryErrorCode_DELIVERY_ERROR_CODE_UNSPECIFIED
+}
+
+func (x *NodeDeliveryObservation) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
+func (x *NodeDeliveryObservation) GetDuplicate() bool {
+	if x != nil {
+		return x.Duplicate
+	}
+	return false
+}
+
 type DeliveryResult struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	DeliveryId          string                 `protobuf:"bytes,1,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
@@ -736,7 +907,7 @@ type DeliveryResult struct {
 
 func (x *DeliveryResult) Reset() {
 	*x = DeliveryResult{}
-	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[5]
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -748,7 +919,7 @@ func (x *DeliveryResult) String() string {
 func (*DeliveryResult) ProtoMessage() {}
 
 func (x *DeliveryResult) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[5]
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -761,7 +932,7 @@ func (x *DeliveryResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeliveryResult.ProtoReflect.Descriptor instead.
 func (*DeliveryResult) Descriptor() ([]byte, []int) {
-	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{5}
+	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeliveryResult) GetDeliveryId() string {
@@ -812,7 +983,7 @@ type QueuePressure struct {
 
 func (x *QueuePressure) Reset() {
 	*x = QueuePressure{}
-	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[6]
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -824,7 +995,7 @@ func (x *QueuePressure) String() string {
 func (*QueuePressure) ProtoMessage() {}
 
 func (x *QueuePressure) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[6]
+	mi := &file_dipole_delivery_v1_delivery_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -837,7 +1008,7 @@ func (x *QueuePressure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueuePressure.ProtoReflect.Descriptor instead.
 func (*QueuePressure) Descriptor() ([]byte, []int) {
-	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{6}
+	return file_dipole_delivery_v1_delivery_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *QueuePressure) GetDepth() uint32 {
@@ -916,7 +1087,21 @@ const file_dipole_delivery_v1_delivery_proto_rawDesc = "" +
 	"\x06status\x18\x03 \x01(\x0e2%.dipole.delivery.v1.DeliveryAckStatusR\x06status\x12<\n" +
 	"\aresults\x18\x04 \x03(\v2\".dipole.delivery.v1.DeliveryResultR\aresults\x12=\n" +
 	"\bpressure\x18\x05 \x01(\v2!.dipole.delivery.v1.QueuePressureR\bpressure\x12C\n" +
-	"\x0facknowledged_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0eacknowledgedAt\"\x92\x02\n" +
+	"\x0facknowledged_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0eacknowledgedAt\"\x82\x04\n" +
+	"\x17NodeDeliveryObservation\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12\x19\n" +
+	"\bbatch_id\x18\x02 \x01(\tR\abatchId\x12$\n" +
+	"\x0etarget_node_id\x18\x03 \x01(\tR\ftargetNodeId\x12A\n" +
+	"\x06status\x18\x04 \x01(\x0e2).dipole.delivery.v1.NodeObservationStatusR\x06status\x12%\n" +
+	"\x0eobserved_items\x18\x05 \x01(\rR\robservedItems\x121\n" +
+	"\x14observed_connections\x18\x06 \x01(\rR\x13observedConnections\x12=\n" +
+	"\bpressure\x18\a \x01(\v2!.dipole.delivery.v1.QueuePressureR\bpressure\x12D\n" +
+	"\n" +
+	"error_code\x18\b \x01(\x0e2%.dipole.delivery.v1.DeliveryErrorCodeR\terrorCode\x12;\n" +
+	"\vobserved_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\x12\x1c\n" +
+	"\tduplicate\x18\n" +
+	" \x01(\bR\tduplicate\"\x92\x02\n" +
 	"\x0eDeliveryResult\x12\x1f\n" +
 	"\vdelivery_id\x18\x01 \x01(\tR\n" +
 	"deliveryId\x12@\n" +
@@ -945,13 +1130,20 @@ const file_dipole_delivery_v1_delivery_proto_rawDesc = "" +
 	"\x1fDELIVERY_ACK_STATUS_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cDELIVERY_ACK_STATUS_ACCEPTED\x10\x01\x12\x1f\n" +
 	"\x1bDELIVERY_ACK_STATUS_PARTIAL\x10\x02\x12 \n" +
-	"\x1cDELIVERY_ACK_STATUS_REJECTED\x10\x03*\xce\x01\n" +
+	"\x1cDELIVERY_ACK_STATUS_REJECTED\x10\x03*\xb7\x01\n" +
+	"\x15NodeObservationStatus\x12'\n" +
+	"#NODE_OBSERVATION_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
+	" NODE_OBSERVATION_STATUS_OBSERVED\x10\x01\x12$\n" +
+	" NODE_OBSERVATION_STATUS_REJECTED\x10\x02\x12)\n" +
+	"%NODE_OBSERVATION_STATUS_BACKPRESSURED\x10\x03*\xce\x01\n" +
 	"\x11DeliveryErrorCode\x12#\n" +
 	"\x1fDELIVERY_ERROR_CODE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDELIVERY_ERROR_CODE_QUEUE_FULL\x10\x01\x12$\n" +
 	" DELIVERY_ERROR_CODE_INVALID_ITEM\x10\x02\x12(\n" +
 	"$DELIVERY_ERROR_CODE_NODE_UNAVAILABLE\x10\x03\x12 \n" +
-	"\x1cDELIVERY_ERROR_CODE_INTERNAL\x10\x04BOZMgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1b\x06proto3"
+	"\x1cDELIVERY_ERROR_CODE_INTERNAL\x10\x042}\n" +
+	"\x13NodeDeliveryService\x12f\n" +
+	"\x10ObserveNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a+.dipole.delivery.v1.NodeDeliveryObservationBOZMgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1b\x06proto3"
 
 var (
 	file_dipole_delivery_v1_delivery_proto_rawDescOnce sync.Once
@@ -965,40 +1157,48 @@ func file_dipole_delivery_v1_delivery_proto_rawDescGZIP() []byte {
 	return file_dipole_delivery_v1_delivery_proto_rawDescData
 }
 
-var file_dipole_delivery_v1_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_dipole_delivery_v1_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dipole_delivery_v1_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_dipole_delivery_v1_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dipole_delivery_v1_delivery_proto_goTypes = []any{
-	(DeliveryMode)(0),             // 0: dipole.delivery.v1.DeliveryMode
-	(DeliveryResultStatus)(0),     // 1: dipole.delivery.v1.DeliveryResultStatus
-	(DeliveryAckStatus)(0),        // 2: dipole.delivery.v1.DeliveryAckStatus
-	(DeliveryErrorCode)(0),        // 3: dipole.delivery.v1.DeliveryErrorCode
-	(*DeliveryEnvelope)(nil),      // 4: dipole.delivery.v1.DeliveryEnvelope
-	(*DeliveryItem)(nil),          // 5: dipole.delivery.v1.DeliveryItem
-	(*NodeDeliveryBatch)(nil),     // 6: dipole.delivery.v1.NodeDeliveryBatch
-	(*NodeDeliveryItem)(nil),      // 7: dipole.delivery.v1.NodeDeliveryItem
-	(*DeliveryAck)(nil),           // 8: dipole.delivery.v1.DeliveryAck
-	(*DeliveryResult)(nil),        // 9: dipole.delivery.v1.DeliveryResult
-	(*QueuePressure)(nil),         // 10: dipole.delivery.v1.QueuePressure
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(DeliveryMode)(0),               // 0: dipole.delivery.v1.DeliveryMode
+	(DeliveryResultStatus)(0),       // 1: dipole.delivery.v1.DeliveryResultStatus
+	(DeliveryAckStatus)(0),          // 2: dipole.delivery.v1.DeliveryAckStatus
+	(NodeObservationStatus)(0),      // 3: dipole.delivery.v1.NodeObservationStatus
+	(DeliveryErrorCode)(0),          // 4: dipole.delivery.v1.DeliveryErrorCode
+	(*DeliveryEnvelope)(nil),        // 5: dipole.delivery.v1.DeliveryEnvelope
+	(*DeliveryItem)(nil),            // 6: dipole.delivery.v1.DeliveryItem
+	(*NodeDeliveryBatch)(nil),       // 7: dipole.delivery.v1.NodeDeliveryBatch
+	(*NodeDeliveryItem)(nil),        // 8: dipole.delivery.v1.NodeDeliveryItem
+	(*DeliveryAck)(nil),             // 9: dipole.delivery.v1.DeliveryAck
+	(*NodeDeliveryObservation)(nil), // 10: dipole.delivery.v1.NodeDeliveryObservation
+	(*DeliveryResult)(nil),          // 11: dipole.delivery.v1.DeliveryResult
+	(*QueuePressure)(nil),           // 12: dipole.delivery.v1.QueuePressure
+	(*timestamppb.Timestamp)(nil),   // 13: google.protobuf.Timestamp
 }
 var file_dipole_delivery_v1_delivery_proto_depIdxs = []int32{
-	11, // 0: dipole.delivery.v1.DeliveryEnvelope.created_at:type_name -> google.protobuf.Timestamp
-	5,  // 1: dipole.delivery.v1.DeliveryEnvelope.items:type_name -> dipole.delivery.v1.DeliveryItem
+	13, // 0: dipole.delivery.v1.DeliveryEnvelope.created_at:type_name -> google.protobuf.Timestamp
+	6,  // 1: dipole.delivery.v1.DeliveryEnvelope.items:type_name -> dipole.delivery.v1.DeliveryItem
 	0,  // 2: dipole.delivery.v1.DeliveryItem.mode:type_name -> dipole.delivery.v1.DeliveryMode
-	11, // 3: dipole.delivery.v1.NodeDeliveryBatch.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 4: dipole.delivery.v1.NodeDeliveryBatch.items:type_name -> dipole.delivery.v1.NodeDeliveryItem
+	13, // 3: dipole.delivery.v1.NodeDeliveryBatch.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 4: dipole.delivery.v1.NodeDeliveryBatch.items:type_name -> dipole.delivery.v1.NodeDeliveryItem
 	0,  // 5: dipole.delivery.v1.NodeDeliveryItem.mode:type_name -> dipole.delivery.v1.DeliveryMode
 	2,  // 6: dipole.delivery.v1.DeliveryAck.status:type_name -> dipole.delivery.v1.DeliveryAckStatus
-	9,  // 7: dipole.delivery.v1.DeliveryAck.results:type_name -> dipole.delivery.v1.DeliveryResult
-	10, // 8: dipole.delivery.v1.DeliveryAck.pressure:type_name -> dipole.delivery.v1.QueuePressure
-	11, // 9: dipole.delivery.v1.DeliveryAck.acknowledged_at:type_name -> google.protobuf.Timestamp
-	1,  // 10: dipole.delivery.v1.DeliveryResult.status:type_name -> dipole.delivery.v1.DeliveryResultStatus
-	3,  // 11: dipole.delivery.v1.DeliveryResult.error_code:type_name -> dipole.delivery.v1.DeliveryErrorCode
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	11, // 7: dipole.delivery.v1.DeliveryAck.results:type_name -> dipole.delivery.v1.DeliveryResult
+	12, // 8: dipole.delivery.v1.DeliveryAck.pressure:type_name -> dipole.delivery.v1.QueuePressure
+	13, // 9: dipole.delivery.v1.DeliveryAck.acknowledged_at:type_name -> google.protobuf.Timestamp
+	3,  // 10: dipole.delivery.v1.NodeDeliveryObservation.status:type_name -> dipole.delivery.v1.NodeObservationStatus
+	12, // 11: dipole.delivery.v1.NodeDeliveryObservation.pressure:type_name -> dipole.delivery.v1.QueuePressure
+	4,  // 12: dipole.delivery.v1.NodeDeliveryObservation.error_code:type_name -> dipole.delivery.v1.DeliveryErrorCode
+	13, // 13: dipole.delivery.v1.NodeDeliveryObservation.observed_at:type_name -> google.protobuf.Timestamp
+	1,  // 14: dipole.delivery.v1.DeliveryResult.status:type_name -> dipole.delivery.v1.DeliveryResultStatus
+	4,  // 15: dipole.delivery.v1.DeliveryResult.error_code:type_name -> dipole.delivery.v1.DeliveryErrorCode
+	7,  // 16: dipole.delivery.v1.NodeDeliveryService.ObserveNodeBatch:input_type -> dipole.delivery.v1.NodeDeliveryBatch
+	10, // 17: dipole.delivery.v1.NodeDeliveryService.ObserveNodeBatch:output_type -> dipole.delivery.v1.NodeDeliveryObservation
+	17, // [17:18] is the sub-list for method output_type
+	16, // [16:17] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_dipole_delivery_v1_delivery_proto_init() }
@@ -1011,10 +1211,10 @@ func file_dipole_delivery_v1_delivery_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_delivery_v1_delivery_proto_rawDesc), len(file_dipole_delivery_v1_delivery_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   7,
+			NumEnums:      5,
+			NumMessages:   8,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_dipole_delivery_v1_delivery_proto_goTypes,
 		DependencyIndexes: file_dipole_delivery_v1_delivery_proto_depIdxs,
