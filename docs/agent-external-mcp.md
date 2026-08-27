@@ -10,6 +10,7 @@ Agent ExecutionContext (tenant)
   -> Reloading Credential Catalog (exact version + active window + revocation)
   -> ExternalMcpTransportFactory (future production provider)
   -> Secret Provider (opaque ref + version)
+  -> MCP AuthProvider (fresh bytes per request, bounded and redacted)
   -> DNS public-address validation on every connection
   -> TLS ServerName / CA validation
   -> AllowlistedMcpToolClient (Server identity + Tool + egress policy)
@@ -44,6 +45,14 @@ Catalog 以 `(tenant_id, credential_ref, version)` 作为唯一 binding。轮换
 Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
 
 默认 Kubernetes ConfigMap/Secret projected volume 依赖 symlink，会被该 source 拒绝。可以使用输出 regular file 的 CSI provider，或由受信 init/sidecar 把 lifecycle metadata 写入私有 tmpfs，并以同目录原子 rename 更新。Catalog 只含 opaque reference，仍需要部署层完整性、rollback revision 和可用性告警；不要降低 symlink、owner 或 mode 校验来适配挂载。
+
+## Auth Provider 边界
+
+`createExternalMcpAuthProvider` 适配官方 MCP `AuthProvider`，每次 `token()` 都按 Catalog 已授权的 exact binding 调用注入式 Secret Provider。Provider 返回独占、可写的 fresh `Uint8Array`；adapter 使用私有 AbortSignal 和默认 2 秒 deadline，严格限制大小、UTF-8 与 Bearer token 字符，随后覆盖源 buffer。Provider 原始错误、tenant、ref 和 secret 均不进入外部异常。
+
+Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；轮换继续由 Catalog 与 Provider 控制。Adapter 也不缓存 token。MCP SDK 需要把 token 转换成 JavaScript string 并构造 Header，这些副本由 GC 管理，无法提供强零化保证；生产凭据必须短期、最小权限，并支持 Server 端快速吊销。
+
+当前没有 Vault/KMS/Secret Manager backend，也没有把 adapter 装配进 Transport Factory。测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
 
 ## 后续实现门槛
 

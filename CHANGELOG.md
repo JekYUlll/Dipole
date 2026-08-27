@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加 provider-neutral 外部 MCP `AuthProvider` adapter：官方 SDK 每次请求前按 exact Credential binding 调用 Secret Provider，默认 2 秒超时（100 ms 至 60 秒可配）和 4 KiB 上限（16 B 至 8 KiB 可配），只接受严格 UTF-8 与 RFC 6750 Bearer 字符。Provider failure、timeout、非法内容分别收敛为 `secret_unavailable`、`secret_timeout`、`secret_invalid`，不携带底层异常或 credential 标识；成功、校验失败及超时后迟到的 fresh byte buffer 均被覆盖。Adapter 不缓存 token 且不实现 `onUnauthorized`，避免 SDK 自动刷新；JavaScript token/Header 字符串仍由 GC 管理，生产 Secret backend 与外部网络继续关闭。
 - Agent G4 增加外部 MCP Credential Catalog 的受约束文件源：只接受规范绝对路径，要求 canonical、root/预期 Runtime owner 且 group/other 不可写的父目录，并在每次解析时以 `O_NOFOLLOW` 重新打开 single-link regular file；文件 owner/mode 同样受检，配置上限为 32 B 至 1 MiB（默认 256 KiB）。固定缓冲读取可阻断检查后增长绕过，原子 rename 后下一次建连立即使用新 lifecycle manifest；任意路径 symlink、目录、错误 owner/mode、超限和畸形 JSON 均 fail closed，旧 Catalog 不缓存。该 source 尚未装配到生产启动链，也不包含 secret material。
 - Agent G4 增加外部 MCP Credential Catalog v1：语言中立 lifecycle manifest 仅保存 tenant、credential ref/version、生效/过期/吊销状态、provider ID 和 opaque provider secret ref，拒绝附加 secret 字段、重复绑定与非法时间状态。Catalog 在每次建连前重新加载，精确版本已吊销、未生效、过期或跨租户时均在 Transport Factory 前 fail closed；轮换可通过新增版本并更新 Profile 完成，Task、Workflow、Context 和审计不接触秘密正文。生产 Catalog source、Secret Provider 与真实外部连接继续关闭。
 - Agent G4 增加默认关闭的外部 MCP 凭据与网络边界：语言中立 Profile v1 仅允许 tenant、HTTPS endpoint、Server/Tool/Host/Port allowlist、TLS ServerName、CA opaque ref 和版本化 credential opaque ref；拒绝 URL 凭据、query/fragment、IP/localhost/内部域名及附加 secret 字段。租户 Registry 只有在精确 owner 匹配后才调用注入式 Transport Factory，并要求 Factory 每次建连拒绝非公网 DNS 解析；当前生产 Provider 尚未实现，误开 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED` 会直接 fail closed，不产生外部连接。
@@ -291,6 +292,7 @@
 
 ### 迁移说明
 
+- Secret Provider adapter 没有生产 backend 或启动配置。未来 Provider 必须为每次 `read` 返回独占、可写的 fresh `Uint8Array`，遵守 AbortSignal 且不得把 secret 写入异常；复用共享 buffer 会在首次请求后被 adapter 清零。SDK 所需 token string 无法强零化，部署时应使用短期、最小权限凭据并依靠 Catalog 版本/吊销和 Server 端失效控制暴露窗口。
 - Catalog file source 没有默认路径或启动装配。后续受控环境使用时必须挂载 root/Runtime UID 拥有、group/other 不可写的 regular file；默认 Kubernetes ConfigMap/Secret projected volume 使用 symlink，会被 `O_NOFOLLOW` 拒绝，可由受信 init/sidecar 写入私有 tmpfs regular file 并以同目录原子 rename 更新。不要降低 symlink/mode 校验来迁就挂载方式。
 - Credential Catalog v1 没有数据库迁移或生产配置入口。后续 Catalog source 必须返回完整、受信的 `contracts/agent-external-mcp/v1/credential-catalog.schema.json` manifest，并在轮换时先发布新版本、更新 Profile、确认新建连成功，再吊销旧版本；Catalog 中只允许 opaque `provider_secret_ref`，禁止 Secret 值或 provider credential。
 - 外部 MCP Profile foundation 没有数据迁移，Compose 固定 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`。现阶段不要在部署环境开启该变量；Runtime 会在发现启用配置后拒绝启动，直到后续里程碑注入具备加密凭据解析、轮换/吊销、逐次 DNS 地址检查和 TLS 验证的生产 Transport Factory。Profile JSON 禁止保存 Token、密码、私钥或 CA 正文。
