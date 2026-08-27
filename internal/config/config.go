@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -301,13 +302,21 @@ var (
 	once    sync.Once
 )
 
+func configureConfigSource(v *viper.Viper) {
+	if configFile := strings.TrimSpace(os.Getenv("DIPOLE_CONFIG_FILE")); configFile != "" {
+		v.SetConfigFile(configFile)
+		return
+	}
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("configs")
+	v.AddConfigPath(".")
+}
+
 func Load() error {
 	once.Do(func() {
 		v := viper.New()
-		v.SetConfigName("config")
-		v.SetConfigType("yaml")
-		v.AddConfigPath("configs")
-		v.AddConfigPath(".")
+		configureConfigSource(v)
 
 		v.SetEnvPrefix("DIPOLE")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
