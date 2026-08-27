@@ -213,6 +213,7 @@ hot_group:
 
 ai:
   enabled: true
+  runtime_mode: embedded
   provider: openai
   model: deepseek-chat
   api_key: ""  # set via DIPOLE_AI_API_KEY in .env or environment
