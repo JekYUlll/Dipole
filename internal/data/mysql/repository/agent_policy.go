@@ -22,6 +22,7 @@ type AgentPolicyRepository struct {
 }
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentApprovalGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentEventSubscriptionStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentWorkflowRepairAuditStoreV1 = (*AgentPolicyRepository)(nil)
 
@@ -379,6 +380,33 @@ func (r *AgentPolicyRepository) GetApproval(ctx context.Context, approvalUUID st
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Approval: %w", err)
 	}
+	return agentApprovalFromRowV1(row)
+}
+
+func (r *AgentPolicyRepository) ListApprovedAgentApprovalGrants(ctx context.Context, taskUUID, capabilityID, scopeSHA256, argumentsSHA256 string, at time.Time, limit int) ([]application.AgentApprovalV1, error) {
+	if strings.TrimSpace(taskUUID) == "" || strings.TrimSpace(capabilityID) == "" || len(strings.TrimSpace(scopeSHA256)) != 64 ||
+		len(strings.TrimSpace(argumentsSHA256)) != 64 || at.IsZero() || limit < 1 || limit > 2 {
+		return nil, fmt.Errorf("validate Agent Approval grant lookup: %w", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.ListApprovedAgentApprovalGrants(ctx, generated.ListApprovedAgentApprovalGrantsParams{
+		TaskUuid: taskUUID, CapabilityID: capabilityID, ScopeSha256: scopeSHA256, ArgumentsSha256: argumentsSHA256,
+		ExpiresAt: at.UTC(), Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list approved Agent Approval grants: %w", err)
+	}
+	result := make([]application.AgentApprovalV1, 0, len(rows))
+	for _, row := range rows {
+		approval, mapErr := agentApprovalFromRowV1(row)
+		if mapErr != nil {
+			return nil, mapErr
+		}
+		result = append(result, *approval)
+	}
+	return result, nil
+}
+
+func agentApprovalFromRowV1(row generated.AgentApproval) (*application.AgentApprovalV1, error) {
 	var scope application.AgentResourceScopeV1
 	if err := json.Unmarshal(row.ResourceScopeJson, &scope); err != nil {
 		return nil, fmt.Errorf("decode Agent Approval scope: %w", err)

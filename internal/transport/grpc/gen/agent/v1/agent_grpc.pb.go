@@ -27,6 +27,7 @@ const (
 	AgentCapabilityService_RequestApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
 	AgentCapabilityService_ResolveApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
 	AgentCapabilityService_ConsumeApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
+	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
@@ -54,6 +55,7 @@ type AgentCapabilityServiceClient interface {
 	RequestApproval(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ResolveApproval(ctx context.Context, in *ResolveApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ConsumeApproval(ctx context.Context, in *ConsumeApprovalRequest, opts ...grpc.CallOption) (*ConsumeApprovalResponse, error)
+	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
@@ -151,6 +153,16 @@ func (c *agentCapabilityServiceClient) ConsumeApproval(ctx context.Context, in *
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ConsumeApprovalResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ConsumeApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveApprovalGrantResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveApprovalGrant_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -299,6 +311,7 @@ type AgentCapabilityServiceServer interface {
 	RequestApproval(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
 	ResolveApproval(context.Context, *ResolveApprovalRequest) (*ApprovalResponse, error)
 	ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error)
+	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
@@ -345,6 +358,9 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveApproval(context.Context
 }
 func (UnimplementedAgentCapabilityServiceServer) ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ConsumeApproval not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveApprovalGrant not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListConversations not implemented")
@@ -547,6 +563,24 @@ func _AgentCapabilityService_ConsumeApproval_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ConsumeApproval(ctx, req.(*ConsumeApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ResolveApprovalGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveApprovalGrantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ResolveApprovalGrant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ResolveApprovalGrant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ResolveApprovalGrant(ctx, req.(*ResolveApprovalGrantRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -823,6 +857,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConsumeApproval",
 			Handler:    _AgentCapabilityService_ConsumeApproval_Handler,
+		},
+		{
+			MethodName: "ResolveApprovalGrant",
+			Handler:    _AgentCapabilityService_ResolveApprovalGrant_Handler,
 		},
 		{
 			MethodName: "ListConversations",

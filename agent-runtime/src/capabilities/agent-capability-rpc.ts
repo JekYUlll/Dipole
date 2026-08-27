@@ -47,6 +47,16 @@ export interface AgentApprovalConsumption {
   readonly nonceSha256: string;
 }
 
+export interface AgentApprovalGrant {
+  readonly approvalId: string;
+  readonly capabilityId: string;
+  readonly resourceScope: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] };
+  readonly scopeSha256: string;
+  readonly argumentsSha256: string;
+  readonly nonceSha256: string;
+  readonly expiresAtUnixMs: number;
+}
+
 export interface ConversationListItem {
   readonly conversationKey: string;
   readonly targetId: string;
@@ -372,6 +382,52 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async resolveApprovalGrant(
+    taskId: string,
+    runId: string,
+    capabilityId: string,
+    resourceScope: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] },
+    argumentsSha256: string,
+    context?: { requestId?: string; traceId?: string }
+  ): Promise<AgentApprovalGrant> {
+    if (!taskId.trim() || !runId.trim() || !capabilityId.trim() || !validSHA256(argumentsSha256)) {
+      throw new Error("Agent Approval grant request is invalid");
+    }
+    const expectedScopeSha256 = agentResourceScopeSHA256(resourceScope);
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveApprovalGrant({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId, capabilityId,
+        resourceScope: { resourceType: resourceScope.resourceType, resourceId: resourceScope.resourceId, actions: [...resourceScope.actions] },
+        argumentsSha256
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response?.resourceScope === undefined) {
+          reject(error ?? new Error("Agent Approval grant returned no binding"));
+          return;
+        }
+        let expiresAtUnixMs: number;
+        try {
+          expiresAtUnixMs = safeUnixMilliseconds(response.expiresAtUnixMs);
+        } catch (validationError) {
+          reject(validationError);
+          return;
+        }
+        if (!validBoundedIdentifier(response.approvalId, 128) || response.capabilityId !== capabilityId || !sameAgentResourceScope(response.resourceScope, resourceScope) ||
+            response.scopeSha256 !== expectedScopeSha256 || response.argumentsSha256 !== argumentsSha256 || !validSHA256(response.nonceSha256) ||
+            expiresAtUnixMs <= Date.now()) {
+          reject(new Error("Agent Approval grant returned conflicting evidence"));
+          return;
+        }
+        resolve({
+          approvalId: response.approvalId, capabilityId, resourceScope: {
+            resourceType: response.resourceScope.resourceType, resourceId: response.resourceScope.resourceId,
+            actions: [...response.resourceScope.actions]
+          }, scopeSha256: response.scopeSha256, argumentsSha256, nonceSha256: response.nonceSha256, expiresAtUnixMs
+        });
+      });
+    });
+  }
+
   async listConversations(context: ExecutionContext, limit: number): Promise<readonly ConversationListItem[]> {
     const metadata = this.metadata(context.requestId, context.traceId);
     return new Promise((resolve, reject) => {
@@ -672,4 +728,34 @@ function safeRevision(value: bigint): number {
 
 function validBoundedIdentifier(value: string, maximum: number): boolean {
   return value === value.trim() && value.length > 0 && value.length <= maximum;
+}
+
+function validSHA256(value: string): boolean {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
+function safeUnixMilliseconds(value: bigint): number {
+  const milliseconds = Number(value);
+  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new Error("Agent timestamp is outside the safe JavaScript range");
+  return milliseconds;
+}
+
+function agentResourceScopeSHA256(scope: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] }): string {
+  const resourceType = scope.resourceType.trim();
+  const resourceId = scope.resourceId.trim();
+  const actions = scope.actions.map(action => action.trim()).sort();
+  if (!resourceType || !resourceId || actions.length === 0 || actions.some(action => !action) || new Set(actions).size !== actions.length) {
+    throw new Error("Agent Approval resource scope is invalid");
+  }
+  return createHash("sha256").update(["dipole.agent.scope.v1", resourceType, resourceId, ...actions].join("\n")).digest("hex");
+}
+
+function sameAgentResourceScope(
+  left: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] },
+  right: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] }
+): boolean {
+  if (left.resourceType !== right.resourceType || left.resourceId !== right.resourceId) return false;
+  const leftActions = [...left.actions].sort();
+  const rightActions = [...right.actions].sort();
+  return leftActions.length === rightActions.length && leftActions.every((action, index) => action === rightActions[index]);
 }

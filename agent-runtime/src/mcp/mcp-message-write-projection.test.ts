@@ -27,7 +27,7 @@ describe("MCP Message write projection", () => {
         resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
         scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
         argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
-        nonce: "host-owned-once-nonce"
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })
     });
     const begin = vi.fn(async () => { order.push("begin"); });
@@ -100,7 +100,7 @@ describe("MCP Message write projection", () => {
         resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
         scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
         argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
-        nonce: "host-owned-once-nonce"
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })
     });
     const projection = new McpMessageWriteProjection(

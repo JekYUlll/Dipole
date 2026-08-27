@@ -298,6 +298,68 @@ export interface ConsumeApprovalResponse {
     status: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ResolveApprovalGrantRequest
+ */
+export interface ResolveApprovalGrantRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string capability_id = 4
+     */
+    capabilityId: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentResourceScope resource_scope = 5
+     */
+    resourceScope?: AgentResourceScope;
+    /**
+     * @generated from protobuf field: string arguments_sha256 = 6
+     */
+    argumentsSha256: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ResolveApprovalGrantResponse
+ */
+export interface ResolveApprovalGrantResponse {
+    /**
+     * @generated from protobuf field: string approval_id = 1
+     */
+    approvalId: string;
+    /**
+     * @generated from protobuf field: string capability_id = 2
+     */
+    capabilityId: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentResourceScope resource_scope = 3
+     */
+    resourceScope?: AgentResourceScope;
+    /**
+     * @generated from protobuf field: string scope_sha256 = 4
+     */
+    scopeSha256: string;
+    /**
+     * @generated from protobuf field: string arguments_sha256 = 5
+     */
+    argumentsSha256: string;
+    /**
+     * @generated from protobuf field: string nonce_sha256 = 6
+     */
+    nonceSha256: string;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 7
+     */
+    expiresAtUnixMs: bigint;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListConversationsRequest
  */
 export interface ListConversationsRequest {
@@ -2122,6 +2184,185 @@ class ConsumeApprovalResponse$Type extends MessageType<ConsumeApprovalResponse> 
  * @generated MessageType for protobuf message dipole.agent.v1.ConsumeApprovalResponse
  */
 export const ConsumeApprovalResponse = new ConsumeApprovalResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveApprovalGrantRequest$Type extends MessageType<ResolveApprovalGrantRequest> {
+    constructor() {
+        super("dipole.agent.v1.ResolveApprovalGrantRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "resource_scope", kind: "message", T: () => AgentResourceScope },
+            { no: 6, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveApprovalGrantRequest>): ResolveApprovalGrantRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.capabilityId = "";
+        message.argumentsSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<ResolveApprovalGrantRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveApprovalGrantRequest): ResolveApprovalGrantRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string capability_id */ 4:
+                    message.capabilityId = reader.string();
+                    break;
+                case /* dipole.agent.v1.AgentResourceScope resource_scope */ 5:
+                    message.resourceScope = AgentResourceScope.internalBinaryRead(reader, reader.uint32(), options, message.resourceScope);
+                    break;
+                case /* string arguments_sha256 */ 6:
+                    message.argumentsSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveApprovalGrantRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string capability_id = 4; */
+        if (message.capabilityId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.capabilityId);
+        /* dipole.agent.v1.AgentResourceScope resource_scope = 5; */
+        if (message.resourceScope)
+            AgentResourceScope.internalBinaryWrite(message.resourceScope, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        /* string arguments_sha256 = 6; */
+        if (message.argumentsSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.argumentsSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveApprovalGrantRequest
+ */
+export const ResolveApprovalGrantRequest = new ResolveApprovalGrantRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveApprovalGrantResponse$Type extends MessageType<ResolveApprovalGrantResponse> {
+    constructor() {
+        super("dipole.agent.v1.ResolveApprovalGrantResponse", [
+            { no: 1, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "resource_scope", kind: "message", T: () => AgentResourceScope },
+            { no: 4, name: "scope_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "nonce_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveApprovalGrantResponse>): ResolveApprovalGrantResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.approvalId = "";
+        message.capabilityId = "";
+        message.scopeSha256 = "";
+        message.argumentsSha256 = "";
+        message.nonceSha256 = "";
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ResolveApprovalGrantResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveApprovalGrantResponse): ResolveApprovalGrantResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string approval_id */ 1:
+                    message.approvalId = reader.string();
+                    break;
+                case /* string capability_id */ 2:
+                    message.capabilityId = reader.string();
+                    break;
+                case /* dipole.agent.v1.AgentResourceScope resource_scope */ 3:
+                    message.resourceScope = AgentResourceScope.internalBinaryRead(reader, reader.uint32(), options, message.resourceScope);
+                    break;
+                case /* string scope_sha256 */ 4:
+                    message.scopeSha256 = reader.string();
+                    break;
+                case /* string arguments_sha256 */ 5:
+                    message.argumentsSha256 = reader.string();
+                    break;
+                case /* string nonce_sha256 */ 6:
+                    message.nonceSha256 = reader.string();
+                    break;
+                case /* int64 expires_at_unix_ms */ 7:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveApprovalGrantResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string approval_id = 1; */
+        if (message.approvalId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.approvalId);
+        /* string capability_id = 2; */
+        if (message.capabilityId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.capabilityId);
+        /* dipole.agent.v1.AgentResourceScope resource_scope = 3; */
+        if (message.resourceScope)
+            AgentResourceScope.internalBinaryWrite(message.resourceScope, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* string scope_sha256 = 4; */
+        if (message.scopeSha256 !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.scopeSha256);
+        /* string arguments_sha256 = 5; */
+        if (message.argumentsSha256 !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.argumentsSha256);
+        /* string nonce_sha256 = 6; */
+        if (message.nonceSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.nonceSha256);
+        /* int64 expires_at_unix_ms = 7; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(7, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveApprovalGrantResponse
+ */
+export const ResolveApprovalGrantResponse = new ResolveApprovalGrantResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ListConversationsRequest$Type extends MessageType<ListConversationsRequest> {
     constructor() {
@@ -4986,6 +5227,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RequestApproval", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
     { name: "ConsumeApproval", options: {}, I: ConsumeApprovalRequest, O: ConsumeApprovalResponse },
+    { name: "ResolveApprovalGrant", options: {}, I: ResolveApprovalGrantRequest, O: ResolveApprovalGrantResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },

@@ -72,7 +72,9 @@ Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；
 
 ## Write Approval 边界
 
-Core `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 `mode=active`，并通过 MySQL/sqlc 原子条件更新消费已批准且未过期的记录。claim 精确包含 Task、Run 绑定、Capability、Resource Scope SHA-256、canonical Arguments SHA-256 与 host-owned nonce SHA-256；重放、吊销、过期和任一字段漂移都无法消费。
+Core `ResolveApprovalGrant` 与 `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 active Run。Resolve 使用 Task、Capability、Core 计算的 Resource Scope SHA-256 与 canonical Arguments SHA-256 查询最多两条 approved、未消费、未撤销且未过期记录，只在唯一 exact binding 时返回；查询不改变状态。Consume 随后通过 MySQL/sqlc 原子条件更新完成一次性消费，重放、吊销、过期和任一字段漂移都无法成功。
+
+Approval 创建时保存 `nonce_sha256`，Temporal durable binding 也只携带该摘要。它用于区分重复 Approval 并绑定原子 claim，不承担可恢复 Secret 的职责。Runtime 不再要求原始 nonce；认证 grant RPC 返回持久摘要，TS 仍会复核格式并在消费时原样提交。敏感凭据继续使用独立 Secret Provider 边界，不能借用 Approval nonce 字段。
 
 `McpWriteApprovalGate` 持有 Capability Registry，先执行 schema parse、Policy authorize 与 Resource resolve，再从受信 grant resolver 读取当前 approval binding。scope hash 使用与 Go 相同的 `dipole.agent.scope.v1`，参数使用递归排序键的 canonical JSON。grant 精确匹配并且 Core 原子消费成功后，gate 返回只含 Approval、Capability、标准化输入和既有 operation 的授权句柄；兼容 `execute` 路径随后调用 operation。resolver、consume 或 binding 失败均不会触达副作用。
 
@@ -82,7 +84,7 @@ migration v31 把已消费 Approval 绑定到 Tool Invocation Begin，并在成�
 
 `ExecuteMcpMessageCommand` 也只允许认证 `dipole-agent` 调用，且请求必须引用上述 running Tool Invocation。Runtime 不提供 Command ID；Core 使用 `invocation_id + command_kind` 派生稳定 ID，并从权威 Invocation 派生 sender/target。审批参数固定为排序 canonical JSON `{"content":...,"conversationId":...}`，Core 会重算 SHA-256 并与 ToolCall/Approval 摘要比较。返回只含 Message action reference 与 `client_message_id`，TS 还会按 Command v1 公式复算后再接受。该 RPC 没有绕过 Approval/Tool audit 的裸发送路径。
 
-`McpMessageWriteProjection` 将上述边界组合成默认关闭的第一方写路径。Server 仅在 ExecutionContext 为 active、Capability 明确要求审批并注入 write executor 时接受写投影；projection 在消费审批前限制目标为当前 principal 与 Agent 的 direct conversation，随后把 Tool runner 生成的 Invocation ID 传入 Command RPC，并将返回引用绑定到成功终态。生产 `index.ts` 仍只注册 `conversation.list`，没有 write executor、grant resolver 或 active MCP context。上线前还需演练 RPC deadline/cancellation 发生在服务端提交之后的 receipt 与 action-lineage 收敛。
+`McpMessageWriteProjection` 将上述边界组合成默认关闭的第一方写路径。Server 仅在 ExecutionContext 为 active、Capability 明确要求审批并注入 write executor 时接受写投影；projection 在消费审批前限制目标为当前 principal 与 Agent 的 direct conversation，随后把 Tool runner 生成的 Invocation ID 传入 Command RPC，并将返回引用绑定到成功终态。Core grant resolver 与 TS adapter 已具备，生产 `index.ts` 仍只注册 `conversation.list`，没有 write executor 或 active MCP context。上线前还需演练 RPC deadline/cancellation 发生在服务端提交之后的 receipt 与 action-lineage 收敛。
 
 ## Durable Elicitation 边界
 

@@ -254,6 +254,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if approved, err := store.ApproveApproval(context.Background(), pending.ApprovalUUID, "U100", now); err != nil || approved {
 		t.Fatalf("replay approval transition: approved=%v err=%v", approved, err)
 	}
+	grants, err := store.ListApprovedAgentApprovalGrants(context.Background(), task.TaskUUID, approval.CapabilityID, approval.ScopeSHA256, approval.ArgumentsSHA256, now, 2)
+	if err != nil || len(grants) != 2 {
+		t.Fatalf("expected two ambiguous exact grants, grants=%+v err=%v", grants, err)
+	}
 	claim := application.AgentApprovalClaimV1{TaskUUID: task.TaskUUID, CapabilityID: approval.CapabilityID, ScopeSHA256: approval.ScopeSHA256, ArgumentsSHA256: strings.Repeat("d", 64), NonceSHA256: approval.NonceSHA256}
 	if consumed, err := store.ConsumeApproval(context.Background(), approval.ApprovalUUID, claim, now); err != nil || consumed {
 		t.Fatalf("mismatched consume: consumed=%v err=%v", consumed, err)
@@ -261,6 +265,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	claim.ArgumentsSHA256 = approval.ArgumentsSHA256
 	if consumed, err := store.ConsumeApproval(context.Background(), approval.ApprovalUUID, claim, now); err != nil || !consumed {
 		t.Fatalf("exact consume: consumed=%v err=%v", consumed, err)
+	}
+	grants, err = store.ListApprovedAgentApprovalGrants(context.Background(), task.TaskUUID, approval.CapabilityID, approval.ScopeSHA256, approval.ArgumentsSHA256, now, 2)
+	if err != nil || len(grants) != 1 || grants[0].ApprovalUUID != pending.ApprovalUUID {
+		t.Fatalf("expected only the unconsumed exact grant, grants=%+v err=%v", grants, err)
 	}
 	raceApproval := pending
 	raceApproval.ApprovalUUID, raceApproval.NonceSHA256 = "APR-RACE", strings.Repeat("6", 64)

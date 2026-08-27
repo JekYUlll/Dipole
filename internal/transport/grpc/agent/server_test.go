@@ -112,6 +112,20 @@ type approvalServiceStub struct {
 	consumed  application.AgentApprovalConsumptionV1
 }
 
+type approvalGrantResolverStub struct {
+	request application.AgentApprovalGrantRequestV1
+	grant   application.AgentApprovalV1
+	err     error
+}
+
+func (s *approvalGrantResolverStub) ResolveGrant(_ context.Context, request application.AgentApprovalGrantRequestV1) (*application.AgentApprovalV1, error) {
+	s.request = request
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &s.grant, nil
+}
+
 type taskControlAuthorizerStub struct {
 	taskUUID      string
 	principalUUID string
@@ -563,6 +577,35 @@ func TestConsumeApprovalRPCRequiresActiveModeAndExactClaim(t *testing.T) {
 	request.Context = grpccommon.RequestContext("", "dipole-gateway")
 	if _, err := server.ConsumeApproval(context.Background(), request); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged caller Approval consumption code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func TestResolveApprovalGrantRPCUsesActiveServerIdentityAndHidesDenial(t *testing.T) {
+	scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "direct:U100:UAI", Actions: []string{"write"}}
+	resolver := &approvalGrantResolverStub{grant: application.AgentApprovalV1{
+		ApprovalUUID: "APR-1", CapabilityID: "message.system.send", ResourceScope: scope,
+		ScopeSHA256: strings.Repeat("a", 64), ArgumentsSHA256: strings.Repeat("b", 64), NonceSHA256: strings.Repeat("c", 64),
+		ExpiresAt: time.Unix(100, 0),
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithApprovalGrants(resolver); err != nil {
+		t.Fatalf("configure grant resolver: %v", err)
+	}
+	response, err := server.ResolveApprovalGrant(context.Background(), &agentv1.ResolveApprovalGrantRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", CapabilityId: "message.system.send",
+		ResourceScope:   &agentv1.AgentResourceScope{ResourceType: scope.ResourceType, ResourceId: scope.ResourceID, Actions: scope.Actions},
+		ArgumentsSha256: strings.Repeat("b", 64),
+	})
+	if err != nil || response.GetApprovalId() != "APR-1" || response.GetNonceSha256() != strings.Repeat("c", 64) ||
+		resolver.request.RuntimeID != "dipole-agent" || resolver.request.Mode != "active" {
+		t.Fatalf("response=%+v request=%+v err=%v", response, resolver.request, err)
+	}
+	resolver.err = application.ErrAgentApprovalDenied
+	if _, err := server.ResolveApprovalGrant(context.Background(), &agentv1.ResolveApprovalGrantRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", CapabilityId: "message.system.send",
+		ResourceScope: &agentv1.AgentResourceScope{}, ArgumentsSha256: strings.Repeat("b", 64),
+	}); status.Code(err) != codes.NotFound {
+		t.Fatalf("denied grant code = %s, want NotFound", status.Code(err))
 	}
 }
 

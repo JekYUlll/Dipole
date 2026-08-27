@@ -22,6 +22,7 @@ type Server struct {
 	resolver        application.AgentInvocationResolverV1
 	admission       application.AgentRunAdmissionServiceV1
 	approvals       application.AgentApprovalServiceV1
+	approvalGrants  application.AgentApprovalGrantResolverV1
 	controls        application.AgentTaskControlAuthorizerV1
 	projections     application.AgentTaskWorkflowProjectionServiceV1
 	repairs         application.AgentWorkflowRepairAuditServiceV1
@@ -30,6 +31,14 @@ type Server struct {
 	memories        application.AgentMemoryContextResolverV1
 	toolAudits      application.AgentToolInvocationAuditServiceV1
 	messageCommands application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithApprovalGrants(grants application.AgentApprovalGrantResolverV1) (*Server, error) {
+	if s == nil || grants == nil {
+		return nil, errors.New("Agent Approval grant resolver is required")
+	}
+	s.approvalGrants = grants
+	return s, nil
 }
 
 func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServiceV1) (*Server, error) {
@@ -632,6 +641,38 @@ func (s *Server) ConsumeApproval(ctx context.Context, request *agentv1.ConsumeAp
 		return nil, mapApprovalError(err)
 	}
 	return &agentv1.ConsumeApprovalResponse{ApprovalId: request.GetApprovalId(), Status: string(application.AgentApprovalStatusConsumed)}, nil
+}
+
+func (s *Server) ResolveApprovalGrant(ctx context.Context, request *agentv1.ResolveApprovalGrantRequest) (*agentv1.ResolveApprovalGrantResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.approvalGrants == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Approval grant resolver is unavailable")
+	}
+	if request.GetResourceScope() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Agent Approval grant request is invalid")
+	}
+	grant, err := s.approvalGrants.ResolveGrant(grpccommon.Correlation(ctx, request.GetContext()), application.AgentApprovalGrantRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "active",
+		CapabilityID: request.GetCapabilityId(), ArgumentsSHA256: request.GetArgumentsSha256(),
+		ResourceScope: application.AgentResourceScopeV1{
+			ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(),
+			Actions: append([]string(nil), request.GetResourceScope().GetActions()...),
+		},
+	})
+	if err != nil {
+		if errors.Is(err, application.ErrAgentApprovalDenied) {
+			return nil, status.Error(codes.NotFound, "Agent Approval grant is unavailable")
+		}
+		return nil, status.Error(codes.Internal, "Agent Approval grant lookup failed")
+	}
+	return &agentv1.ResolveApprovalGrantResponse{
+		ApprovalId: grant.ApprovalUUID, CapabilityId: grant.CapabilityID,
+		ResourceScope: &agentv1.AgentResourceScope{ResourceType: grant.ResourceScope.ResourceType, ResourceId: grant.ResourceScope.ResourceID, Actions: append([]string(nil), grant.ResourceScope.Actions...)},
+		ScopeSha256:   grant.ScopeSHA256, ArgumentsSha256: grant.ArgumentsSHA256, NonceSha256: grant.NonceSHA256,
+		ExpiresAtUnixMs: grant.ExpiresAt.UnixMilli(),
+	}, nil
 }
 
 func approvalResponse(approval *application.AgentApprovalV1) *agentv1.ApprovalResponse {

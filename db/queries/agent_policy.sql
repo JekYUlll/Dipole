@@ -103,6 +103,20 @@ INSERT INTO agent_approvals (
 -- name: GetAgentApproval :one
 SELECT * FROM agent_approvals WHERE approval_uuid = ? LIMIT 1;
 
+-- name: ListApprovedAgentApprovalGrants :many
+SELECT *
+FROM agent_approvals
+WHERE task_uuid = ?
+  AND capability_id = ?
+  AND scope_sha256 = ?
+  AND arguments_sha256 = ?
+  AND status = 'approved'
+  AND consumed_at IS NULL
+  AND revoked_at IS NULL
+  AND expires_at > ?
+ORDER BY id
+LIMIT ?;
+
 -- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)

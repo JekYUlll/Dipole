@@ -140,6 +140,7 @@ type Querier interface {
 	ListAgentEvalObservationSteps(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationStepsRow, error)
 	ListAgentEvalObservationToolCalls(ctx context.Context, arg ListAgentEvalObservationToolCallsParams) ([]ListAgentEvalObservationToolCallsRow, error)
 	ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error)
+	ListApprovedAgentApprovalGrants(ctx context.Context, arg ListApprovedAgentApprovalGrantsParams) ([]AgentApproval, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
 	ListConversationsByUser(ctx context.Context, arg ListConversationsByUserParams) ([]Conversation, error)
 	ListGroupMembers(ctx context.Context, groupUuid string) ([]GroupMember, error)

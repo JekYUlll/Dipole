@@ -370,7 +370,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加默认关闭的 MCP write Approval gate：Core active-only RPC 原子消费 Task/Run/Capability/Scope/Arguments/Nonce 精确绑定，TS 在 Policy/Resource 校验后消费成功才执行；生产 MCP Server 仍保持 read-only。
   - [x] migration v31 将写 ToolCall 的已消费 Approval 与完成后的 Message Command/UUID 连接为有界 action reference；Core 通过 sender-scoped receipt 复核权威 Message，审计表不保存消息正文，生产 write Tool 投影继续关闭。
   - [x] 增加 MCP Message Command Core/TS transport，并统一 Tool runner 与 Approval gate 的排序 canonical JSON；RPC 只接受已审批 running ToolCall，不能作为裸消息发送入口。
-  - [x] 增加默认关闭的第一方 Message write projection：显式 active executor 串联 Approval consumption、同一 Tool Invocation、Command RPC 与 action finish；生产 Registry、grant resolver 和 active context 继续缺席。
+  - [x] 增加默认关闭的第一方 Message write projection：显式 active executor 串联 Approval consumption、同一 Tool Invocation、Command RPC 与 action finish；该切片未装配生产 Registry、grant resolver 和 active context。
+  - [x] 增加 active-only Approval grant resolution：Core/sqlc 唯一 exact 查询返回持久摘要，TS 独立复核后连接 write gate；生产 Registry、write executor 和 active context 继续缺席。
   - [x] 增加默认关闭的 durable MCP Elicitation adapter：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline/untrusted Form；生产 Client capability、handler 和跨 Activity 恢复接线仍关闭。
   - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
