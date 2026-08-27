@@ -78,6 +78,14 @@ Core `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 `mode=active`�
 
 消费发生在 operation 前，因此语义为安全优先的 at-most-once。operation 失败后审批保持 consumed，重试需要新审批；未来 Message Command 投影还要绑定稳定业务幂等键与 Agent lineage，并提供提交状态查询。当前 `createDipoleMcpServer` 继续硬性拒绝 write/destructive descriptor，且 MCP context 仍为 shadow，生产 write Tool 没有启用。
 
+## Durable Elicitation 边界
+
+`McpDurableElicitationAdapter` 将 MCP `elicitation/create` 的受限 form mode 转为现有 Temporal `wait_input` directive。它只支持 text、无标题值映射的 select/multiselect 和 boolean，最多 16 个字段、32 个选项及 16 KiB 请求；URL mode、number/integer、default、format、description、自由扩展和密码/Token 等敏感字段全部拒绝。外部 message、label 和选项保持 `trust=untrusted`，UI 后续必须明确显示来源 Server/Tool。
+
+checkpoint 使用 SHA-256 绑定 host-owned Request ID、Server、Tool、Invocation、deadline、完整 Form 和信任级别。返回 MCP `accept` 前必须收到同一 Request 的有效 durable input resume，并再次执行 Form response 校验；`decline/cancel` 同样要求精确 Request，过期或 checkpoint 漂移 fail closed。
+
+当前 adapter 是协议纯函数边界。`AllowlistedMcpToolClient` 没有声明 Elicitation capability，也没有 request handler；Temporal Activity 不会阻塞等待用户。后续接线需要把 MCP input-required continuation 保存为 checkpoint，在 Workflow 恢复后的新 Activity 中继续协议交互，并定义 Server 不支持恢复、连接丢失和用户取消时的稳定结果。
+
 ## 后续实现门槛
 
 生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。
