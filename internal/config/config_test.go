@@ -269,4 +269,10 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	if v.GetString("gateway.agent_control_target") == "" {
 		t.Fatal("Gateway Agent Task control target is missing")
 	}
+	if v.GetBool("gateway.agent_mcp_enabled") {
+		t.Fatal("Gateway Agent MCP must remain default off")
+	}
+	if v.GetString("gateway.agent_mcp_target") == "" {
+		t.Fatal("Gateway Agent MCP target is missing")
+	}
 }

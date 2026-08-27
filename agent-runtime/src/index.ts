@@ -1,5 +1,9 @@
 import { buildServer } from "./server.js";
 import { AgentTaskControlService } from "./control/agent-task-control.js";
+import { z } from "zod";
+import { ConversationListCapability } from "./capabilities/conversation-list.js";
+import { CapabilityRegistry } from "./capabilities/registry.js";
+import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
 import {
   createAgentCapabilityRPC,
   createKafkaShadowRuntime,
@@ -28,12 +32,18 @@ const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
+const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
+const mcpSecret = process.env.DIPOLE_AGENT_MCP_SERVER_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.enabled || controlSecret.trim().length === 0)) {
   throw new Error("Agent Task controls require Temporal, Agent Capability RPC, and a control secret");
+}
+if (mcpEnabled && (!shadowConfig.capabilityRpc.enabled || mcpSecret.trim().length === 0)) {
+  throw new Error("Agent MCP Server requires Agent Capability RPC and an MCP server secret");
 }
 let temporalRuntime: TemporalWorkerRuntime | undefined;
 let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
+const mcpRPC = mcpEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
 const temporalReadResources = temporalConfig.enabled && temporalConfig.activityMode === "read_shadow"
   ? createTemporalReadActivityResources(shadowConfig)
   : undefined;
@@ -52,9 +62,35 @@ let stopPromise: Promise<void> | undefined;
 const controlService = controlEnabled
   ? new AgentTaskControlService(controlRPC!.client, temporalDispatcher!)
   : undefined;
+const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
+if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));
+const mcpAuthExtraSchema = z.object({
+  taskId: z.string().trim().min(1),
+  runId: z.string().trim().min(1),
+  requestId: z.string().trim().min(1).optional(),
+  traceId: z.string().trim().min(1).optional()
+}).strict();
+const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHandler({
+  registry: mcpRegistry,
+  tools: [{
+    name: "dipole_conversation_list",
+    capabilityId: "conversation.list",
+    title: "List conversations",
+    description: "List conversations available to the authenticated Dipole Agent Task",
+    inputSchema: z.object({ limit: z.number().int().min(1).max(100).default(20) }).strict()
+  }],
+  resolveContext: (auth) => {
+    const binding = mcpAuthExtraSchema.parse(auth.extra);
+    return mcpRPC!.client.resolveMcpContext(binding.taskId, binding.runId, auth.clientId, {
+      ...(binding.requestId === undefined ? {} : { requestId: binding.requestId }),
+      ...(binding.traceId === undefined ? {} : { traceId: binding.traceId })
+    });
+  }
+});
 const server = buildServer(
   { isReady: () => ready },
-  controlService === undefined ? undefined : { secret: controlSecret, service: controlService }
+  controlService === undefined ? undefined : { secret: controlSecret, service: controlService },
+  mcpHandler === undefined ? undefined : { secret: mcpSecret, handler: mcpHandler }
 );
 const stop = (): Promise<void> => {
   stopPromise ??= (async () => {
@@ -103,6 +139,14 @@ const stop = (): Promise<void> => {
       }
       serverStarted = false;
     }
+    if (mcpHandler !== undefined) {
+      try {
+        await mcpHandler.close();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    mcpRPC?.close();
     if (failures.length > 0) {
       throw new AggregateError(failures, "Agent Runtime shutdown failed");
     }

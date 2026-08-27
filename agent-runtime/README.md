@@ -29,6 +29,17 @@ npm start
 
 Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
+## MCP G4 authenticated mount
+
+MCP Server 网络入口默认关闭。受控环境需要同时启用 Runtime 与 Gateway：
+
+```bash
+DIPOLE_AGENT_MCP_SERVER_ENABLED=true
+DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
+```
+
+客户端访问 `/api/v1/agent/tasks/{task_id}/runs/{run_id}/mcp`。Gateway 支持 Streamable HTTP 的 GET/POST/DELETE，先验证现有 JWT，再以内部服务身份调用 Runtime；Runtime 通过 Core `ResolveMcpContext` 复核 Task owner、运行中的 Run、固定 Definition、权限和 scope。当前只注册 `dipole_conversation_list`，不开启外部 Server、write/destructive Tool。回滚时先关闭 Gateway 开关，再关闭 Runtime 开关。
+
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
 
 ## Temporal G3 foundation

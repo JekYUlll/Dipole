@@ -83,6 +83,17 @@ describe("AgentCapabilityRPCClient", () => {
       });
       return {};
     });
+    const resolveMcpContext = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, {
+        tenantId: "dipole", principalUserId: "U100", agentId: "UAI", delegatedByUserId: "U100",
+        permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }],
+        approvedCapabilities: []
+      });
+      return {};
+    });
     const projectTaskWorkflowState = vi.fn((input, metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({
@@ -119,7 +130,7 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, resolveMcpContext, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -164,6 +175,10 @@ describe("AgentCapabilityRPCClient", () => {
         taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
         workflowStatus: "waiting_approval", workflowRevision: 2
       }
+    });
+    await expect(client.resolveMcpContext("TASK-1", "RUN-1", "U100", identity)).resolves.toMatchObject({
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
+      permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }]
     });
     await expect(client.projectTaskWorkflowState({
       taskId: "TASK-1", runId: "RUN-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",

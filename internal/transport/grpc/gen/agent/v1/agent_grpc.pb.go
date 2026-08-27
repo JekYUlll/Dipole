@@ -28,6 +28,7 @@ const (
 	AgentCapabilityService_ResolveApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
 	AgentCapabilityService_ListConversations_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
+	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
@@ -50,6 +51,7 @@ type AgentCapabilityServiceClient interface {
 	ResolveApproval(ctx context.Context, in *ResolveApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
+	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
@@ -157,6 +159,16 @@ func (c *agentCapabilityServiceClient) AuthorizeTaskControl(ctx context.Context,
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveMcpContextResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveMcpContext_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProjectTaskWorkflowStateResponse)
@@ -240,6 +252,7 @@ type AgentCapabilityServiceServer interface {
 	ResolveApproval(context.Context, *ResolveApprovalRequest) (*ApprovalResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
+	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
@@ -283,6 +296,9 @@ func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Conte
 }
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveMcpContext not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProjectTaskWorkflowState not implemented")
@@ -489,6 +505,24 @@ func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ResolveMcpContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveMcpContextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ResolveMcpContext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ResolveMcpContext_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ResolveMcpContext(ctx, req.(*ResolveMcpContextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ProjectTaskWorkflowState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProjectTaskWorkflowStateRequest)
 	if err := dec(in); err != nil {
@@ -657,6 +691,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AuthorizeTaskControl",
 			Handler:    _AgentCapabilityService_AuthorizeTaskControl_Handler,
+		},
+		{
+			MethodName: "ResolveMcpContext",
+			Handler:    _AgentCapabilityService_ResolveMcpContext_Handler,
 		},
 		{
 			MethodName: "ProjectTaskWorkflowState",

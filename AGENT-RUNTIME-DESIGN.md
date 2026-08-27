@@ -99,7 +99,9 @@ Policy Engine 在执行前完成授权、预算、限流、审批和审计。写
 
 G1 已实现 `AgentPolicyV1`：Invocation 携带 tenant、principal、Agent、delegator、permissions、resource scopes、approved capabilities 与 correlation IDs；descriptor 固定 capability ID、`read|write|destructive`、required permission 和 approval flag。Embedded Tool 先快速拒绝，本地 Capability/Command adapter 再按 `resource_type/resource_id/action` 执行同一策略，远程 server 必须复用该授权函数或等价 contract。Definition grant、Task snapshot 与 Approval 已通过 v16 Store 持久化，`AD-027` 已关闭。
 
-G4 MCP foundation 使用官方拆分版 TypeScript SDK v2。Server 只将显式映射且 descriptor 为 `read` 的 Capability 注册为 Tool，Tool handler 复用 Capability Registry 与 Policy Engine；可信 ExecutionContext 由宿主根据已验证认证信息构建，Tool arguments 不包含身份。Client 在连接前校验 Server/Tool allowlist，握手后复核实际 Server identity，并限制发现数量和响应大小。已使用 InMemory 与 Streamable HTTP transport 验证；HTTP handler 仍是未挂载组件，Runtime/Gateway 没有公开 MCP 路由，OAuth resource server、外部 Server 凭据、审计/OTel、write Tool 与 Elicitation adapter 由 `AD-037` 跟踪。
+G4 MCP foundation 使用官方拆分版 TypeScript SDK v2。Server 只将显式映射且 descriptor 为 `read` 的 Capability 注册为 Tool，Tool handler 复用 Capability Registry 与 Policy Engine；可信 ExecutionContext 由宿主根据已验证认证信息构建，Tool arguments 不包含身份。Client 在连接前校验 Server/Tool allowlist，握手后复核实际 Server identity，并限制发现数量和响应大小。
+
+首个网络挂载由两个独立开关控制且默认关闭。Gateway 在 JWT 认证后将 principal、Task、Run 和 correlation 注入私有 Runtime 路由，移除公开凭据与可伪造内部头；Runtime 使用 `ResolveMcpContext` 让 Core 校验精确 Task/Run、固定 Definition、grant、scope 和 approvals，再为 `conversation.list` 创建请求级 MCP Server。Streamable HTTP 的 GET/POST/DELETE、SSE body 与 Session header 透传。该入口当前仍是受控 Dipole 会话桥，OAuth resource indicator、外部 Server 凭据、调用审计/OTel、限流、write Tool 与 Elicitation adapter 由 `AD-037` 跟踪。
 
 ### Agent Task
 

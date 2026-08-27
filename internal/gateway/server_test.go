@@ -78,6 +78,20 @@ type gatewayAgentTaskStub struct {
 	input      any
 }
 
+type gatewayAgentMCPStub struct {
+	principal string
+	taskID    string
+	runID     string
+}
+
+func (s *gatewayAgentMCPStub) ServeMCP(writer http.ResponseWriter, _ *http.Request, principalUUID, taskUUID, runUUID string) {
+	s.principal, s.taskID, s.runID = principalUUID, taskUUID, runUUID
+	writer.Header().Set("Content-Type", "text/event-stream")
+	writer.Header().Set("Mcp-Session-Id", "S1")
+	writer.WriteHeader(http.StatusAccepted)
+	_, _ = writer.Write([]byte("event: message\ndata: accepted\n\n"))
+}
+
 func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
 	s.principal, s.taskID = principalUUID, taskUUID
 	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "status": "running"}), nil
@@ -278,5 +292,46 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	gateway.Engine().ServeHTTP(inputResponse, inputRequest)
 	if inputResponse.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.requestID != "INPUT-1" {
 		t.Fatalf("Agent input: code=%d tasks=%+v body=%s", inputResponse.Code, tasks, inputResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }))
+	defer core.Close()
+	mcp := &gatewayAgentMCPStub{}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMCP: mcp, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	path := "/api/v1/agent/tasks/TASK-1/runs/RUN-1/mcp"
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"jsonrpc":"2.0"}`)))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized MCP code=%d", unauthorized.Code)
+	}
+	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	if err != nil {
+		t.Fatalf("issue token: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"jsonrpc":"2.0","principal_user_id":"U999"}`))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted || response.Header().Get("Mcp-Session-Id") != "S1" ||
+		mcp.principal != "U100" || mcp.taskID != "TASK-1" || mcp.runID != "RUN-1" {
+		t.Fatalf("MCP route: code=%d headers=%v binding=%+v body=%s", response.Code, response.Header(), mcp, response.Body.String())
 	}
 }

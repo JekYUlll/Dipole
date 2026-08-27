@@ -90,6 +90,14 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent Task control client: %w", err)
 		}
 	}
+	var agentMCP gateway.AgentMCPApplication
+	if gatewayCfg.AgentMCPEnabled {
+		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)
+		}
+	}
 
 	presence := platformPresence.NewRedisPresence()
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
@@ -97,6 +105,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		Core:       core,
 		Search:     search,
 		AgentTasks: agentTasks,
+		AgentMCP:   agentMCP,
 		Presence:   wsTransport.NewRedisPresenceTracker(presence),
 		Limiter:    platformRateLimit.NewLimiter(),
 	})

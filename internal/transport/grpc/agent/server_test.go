@@ -182,6 +182,30 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	}
 }
 
+func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testing.T) {
+	invocation := application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+		Permissions:    []string{"conversation.list"},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}
+	server, err := NewServer(&capabilityStub{}, resolverStub{invocation: invocation}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ResolveMcpContext(context.Background(), &agentv1.ResolveMcpContextRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", PrincipalUserId: "U100",
+	})
+	if err != nil || response.GetPrincipalUserId() != "U100" || response.GetAgentId() != "UAI" || len(response.GetPermissions()) != 1 || len(response.GetResourceScopes()) != 1 {
+		t.Fatalf("unexpected MCP context: response=%+v err=%v", response, err)
+	}
+	_, err = server.ResolveMcpContext(context.Background(), &agentv1.ResolveMcpContextRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", PrincipalUserId: "U999",
+	})
+	if status.Code(err) != codes.NotFound {
+		t.Fatalf("foreign principal code = %s, want %s", status.Code(err), codes.NotFound)
+	}
+}
+
 func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
 	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
 		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
