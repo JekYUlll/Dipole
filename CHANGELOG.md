@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加官方 MCP TypeScript SDK v2 foundation：MCP Server 将显式 allowlist 的只读 Capability 投影为 Tool，并由宿主注入经校验的 ExecutionContext；MCP 参数无法提供 principal。MCP Client 同时校验配置 allowlist、握手 Server identity、已发现 Tool、256 项发现上限及 128 KiB 响应上限。进程内与 Streamable HTTP 契约均通过，HTTP handler 要求宿主提供已验证 `AuthInfo`；Runtime 当前不注册公网路由，不开放 write/destructive Tool。
 - Agent G3 为 `WAITING_INPUT` 与 `WAITING_APPROVAL` 增加持久 deadline 和 Temporal Timer：Input Activity 与已持久 Approval binding 提供绝对截止时间，Workflow history 固定该值；到期且没有精确 Signal 时确定性进入 `cancelled`，分别记录 `input_expired` 或 `approval_expired`，投影终态并完成持久 Run，避免无限等待占用执行资源。
 - Agent G3 增加语言中立 `dipole.agent.elicitation.v1` 与持久输入恢复链：Temporal `WAITING_INPUT` 固定受限 Form 和 request ID，Gateway 公开 JWT 认证输入 API，Runtime 经 Core 复核 Task principal 后校验精确字段、类型、选项和 16 KiB 上限，再发送 Signal。无效值、跨用户、旧 request 与终态请求 fail closed；Worker 替换后仍可从 Workflow history 恢复同一等待点。Pencil 客户端、敏感输入与 MCP Elicitation adapter 继续关闭。
 - Agent G3 增加 migration v29 与默认关闭的 scoped Memory foundation：MySQL/sqlc 以 tenant、Task principal、Agent 和 conversation resource 保存不可变 Working/Episodic/Semantic/Procedural/Observational Memory，记录 full/compact content、priority、有效期和 provenance。受认证 `dipole-agent` 只能用运行中的 Task/Run 请求 Core；Core 从固定 Definition 解析 read permission/scope，并以 Task 创建时间固定可见记录上界，撤销/过期立即失效。显式启用后，TypeScript ModelShadowPlanner 为实际命中的 Memory 分配独立 500-token 预算并以 `untrusted` provenance fragment 注入 Context；空结果保留原 evidence 预算和路径。

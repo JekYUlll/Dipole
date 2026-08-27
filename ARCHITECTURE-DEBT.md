@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-037：MCP foundation 尚未接入生产认证、审计与写能力门禁
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Runtime、MCP Client/Server、Gateway/OAuth、Capability Policy、外部数据流
+- **现状：** 官方 MCP TS SDK v2 已提供框架中立 Client/Server adapter；Server 仅投影显式 allowlist 的 read Capability并复用 trusted ExecutionContext 与 Policy Engine，Client 校验配置 allowlist、握手 identity、Tool discovery 和有界响应。InMemory 与 Streamable HTTP 测试通过，但 HTTP handler 未挂载到 Runtime，生产零暴露。
+- **风险：** 直接挂载 handler 会缺少 OAuth resource indicator、Token 验证、租户/Task 映射、调用审计和外部 Server 凭据生命周期；外部 Tool 返回内容可能包含 Prompt Injection 或敏感数据。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
+- **建议方向：** 先由 Gateway 或独立 OAuth resource server 生成已验证 `AuthInfo`，Runtime 只接受受信代理并将调用关联 Task/Run/trace；外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment。完成 OTel、限流、取消、超时和离线 permission/egress Eval 后，再按 Tool 单独开放；write Tool 必须绑定现有 Approval 与 Agent lineage。
+- **处理门槛：** 任何共享环境 MCP 监听、外部 Server 连接或 write/destructive Tool 上线前完成。当前 foundation 仅用于协议与授权边界验证。
+
 ### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP adapter
 
 - **优先级：** P1

@@ -351,6 +351,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G4：MCP、评估、观测与安全门禁
 
 - [ ] Runtime 作为 MCP Client 接入外部工具，并以 MCP Server 暴露受控 Dipole Capability。
+  - [x] 使用官方 MCP TS SDK v2 建立 Client/Server foundation：只读 Capability 投影复用 Registry/Policy，宿主注入 trusted Context；Client 校验 Server identity 与双 allowlist，InMemory/Streamable HTTP 契约通过。
+  - [ ] 完成 Gateway/OAuth resource server、外部 Server 凭据与审计、默认关闭的 Runtime 挂载、write Tool Approval 和 Elicitation adapter（`AD-037`）。
 - [ ] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
 - [ ] 通过 OpenTelemetry 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
