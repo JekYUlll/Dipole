@@ -12,6 +12,28 @@
 
 ## 待处理
 
+### AD-033：Artifact 仍复用通用文件存储凭据与 bucket
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Artifact、MinIO 权限隔离、跨域对象覆盖与生产切流
+- **现状：** Artifact v1 使用现有 Core MinIO client 和 bucket 下的 `agent-artifacts/v1/` 内容寻址前缀。应用层只开放 Put/Get，精确重试和读取均复核 SHA-256；当前 Agent `read_shadow` 默认关闭，Compose 固定 `foundation`。
+- **风险：** 底层通用文件凭据仍可越过应用接口覆盖或删除 Artifact 对象。哈希验证可以阻止错误内容被使用并留下冲突证据，但无法提供存储层最小权限和跨业务故障隔离。
+- **建议方向：** 为 Artifact 配置独立 bucket、专用 Core 身份和 prefix/bucket policy，仅允许 Put/Get/List 所需操作；删除权仅授予经过 dry-run、保留窗口和审计 receipt 的 maintenance 身份。通过真实 MinIO 越权测试证明文件上传身份和 Agent Runtime 身份均无法修改 Artifact。
+- **处理门槛：** `agent.mode=remote` 或 Artifact active 写流量评审前完成；Shadow 阶段保留哈希门禁并接受共享 bucket。
+
+### AD-032：Artifact 对象写入后缺少孤儿清扫证据
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Artifact、MinIO 容量、MySQL 元数据、故障恢复与审计
+- **现状：** migration v26 保存不可变 Artifact 元数据，正文使用 Task/Run/版本/内容哈希导出的确定性对象键。对象先写 MinIO，随后追加 MySQL 元数据；网络重试会复用并重新验证同一对象，用户读取只能到达已提交的元数据记录。
+- **风险：** MinIO 写入成功后若 MySQL 持续失败且任务不再重试，会留下无法从用户 API 引用的内容寻址对象。该对象不会覆盖其他版本，也不会获得读取授权，但会长期占用容量。
+- **建议方向：** 增加只读 Reconcile，按固定对象前缀与元数据快照列出孤儿并输出 SHA-256 证据；清理使用独立 maintenance 身份、最短保留窗口、dry-run 和审计 receipt，Runtime/Core 账号继续没有删除权限。
+- **处理门槛：** Artifact 进入 active 模式或配置自动保留期限前完成；Shadow 阶段以容量指标和人工审计接受该风险。
+
 ### AD-031：Context Token 预算使用确定性近似估算
 
 - **优先级：** P2
@@ -173,7 +195,7 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v25 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态、附加 Workflow projection，以及默认空授权的 repair proposal/双人审批审计。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API；repair 审计 RPC 只接受 Gateway principal，Agent 服务身份无权调用。离线对账输出六类版本化证据；Shadow 晋级策略要求连续 24 小时、24 个观察点、累计 100 个 Task、零异常和完整 Eval，并且只生成 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
+- **现状：** migration v16-v26 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态、附加 Workflow projection、版本化 Artifact，以及默认空授权的 repair proposal/双人审批审计。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter、只读 Capability Step 和内容寻址 Artifact 创建。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API；repair 审计 RPC 只接受 Gateway principal，Agent 服务身份无权调用。离线对账输出六类版本化证据；Shadow 晋级策略要求连续 24 小时、24 个观察点、累计 100 个 Task、零异常和完整 Eval，并且只生成 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
 - **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory、真实任务终态 outcome Eval 或 repair 审批前端。v25 的 `approved` 只保存审计结论；execution plan v1 仅允许带 CAS/回滚证据的 dry-run，执行器和 projection 修改命令保持缺席。操作员授权当前需要受控 SQL 配置。Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v25 全链升降级、16 路同审批人重放仅一票、两位独立审批后批准，以及原 projection 并发与 shadow cohort keyset 契约。TypeScript/Go canonical evidence SHA-256 使用黄金向量对齐；gRPC 测试验证 Gateway principal 绑定和 Agent 最小权限拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
 - **建议方向：** 下一步使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面，并设计显式、可回滚、再次授权的 repair executor；完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。

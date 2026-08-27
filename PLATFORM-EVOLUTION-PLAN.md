@@ -338,6 +338,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
 - [ ] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact。
+  - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。
 - [ ] 事件携带 origin、causation 和 task 标识，阻断同一因果链的循环触发。
 
 ### G4：MCP、评估、观测与安全门禁

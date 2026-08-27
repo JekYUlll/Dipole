@@ -70,6 +70,8 @@ type Querier interface {
 	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error)
+	GetAgentArtifact(ctx context.Context, artifactUuid string) (AgentArtifact, error)
+	GetAgentArtifactByTaskTypeVersion(ctx context.Context, arg GetAgentArtifactByTaskTypeVersionParams) (AgentArtifact, error)
 	GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDefinitionVersionParams) (AgentDefinitionVersion, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
@@ -113,6 +115,7 @@ type Querier interface {
 	InitGroupConversation(ctx context.Context, arg InitGroupConversationParams) (sql.Result, error)
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	InsertAgentApproval(ctx context.Context, arg InsertAgentApprovalParams) error
+	InsertAgentArtifact(ctx context.Context, arg InsertAgentArtifactParams) (int64, error)
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error

@@ -37,7 +37,13 @@ describe("Temporal read Step Activities", () => {
       completeStep: vi.fn(async () => undefined),
       failStep: vi.fn(async () => undefined)
     };
-    const activities = createTemporalReadStepActivities({ planner, audit: trajectory, registry, trajectory, stepLeaseMs: 60_000 });
+    const artifacts = { createArtifact: vi.fn(async () => ({
+      schemaVersion: "dipole.agent.artifact.v1" as const, artifactId: "a".repeat(64), taskId,
+      runId: agentRunId(taskId), artifactType: "conversation_digest", version: 1,
+      title: "Conversation digest", mediaType: "text/markdown", contentSha256: "b".repeat(64),
+      sizeBytes: 10, metadata: {}
+    })) };
+    const activities = createTemporalReadStepActivities({ planner, audit: trajectory, registry, trajectory, artifacts, stepLeaseMs: 60_000 });
 
     await expect(activities.executeAgentTaskStep({
       taskId, runId: agentRunId(taskId), goal: "observe", step: 0, shadowEvent: event,
@@ -45,11 +51,15 @@ describe("Temporal read Step Activities", () => {
         tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
         triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
       }
-    })).resolves.toEqual({ kind: "complete", output: { summary: "list conversations", stepCount: 1 } });
+    })).resolves.toEqual({ kind: "complete", output: { summary: "list conversations", stepCount: 1, artifactId: "a".repeat(64), artifactVersion: 1 } });
 
     expect(trajectory.append).toHaveBeenCalledOnce();
     expect(listConversations).toHaveBeenCalledOnce();
     expect(trajectory.completeStep).toHaveBeenCalledWith(taskId, 1, "TOKEN-1", [conversation]);
+    expect(artifacts.createArtifact).toHaveBeenCalledWith(expect.objectContaining({
+      taskId, runId: agentRunId(taskId), artifactType: "conversation_digest", version: 1,
+      metadata: { event_id: event.eventId, event_type: event.eventType, step_count: 1 }
+    }));
   });
 
   it("rejects event or Run drift before planning", async () => {

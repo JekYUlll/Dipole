@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
@@ -79,7 +80,21 @@ describe("AgentCapabilityRPCClient", () => {
       }, { taskId: "TASK-2", hasWorkflow: false }], nextCursor: "TASK-2" });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots } as unknown as IAgentCapabilityServiceClient, "secret");
+    const createArtifact = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", artifactType: "report", version: 1 });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      const contentSha256 = createHash("sha256").update(input.content).digest("hex");
+      const artifactId = createHash("sha256").update(["dipole.agent.artifact.v1", input.taskId, input.runId, input.artifactType, input.version.toString(), contentSha256].join("\n")).digest("hex");
+      callback(null, { artifact: {
+        schemaVersion: "dipole.agent.artifact.v1", artifactId, taskId: input.taskId,
+        runId: input.runId, artifactType: input.artifactType, version: input.version,
+        title: input.title, mediaType: input.mediaType, contentSha256,
+        sizeBytes: BigInt(input.content.byteLength), metadataJson: input.metadataJson, createdAtUnixMs: 1n
+      } });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
 
@@ -121,5 +136,9 @@ describe("AgentCapabilityRPCClient", () => {
       }, { taskId: "TASK-2" }],
       nextCursor: "TASK-2"
     });
+    await expect(client.createArtifact({
+      tenantId: "dipole", taskId: "TASK-1", runId: "RUN-1", artifactType: "report", version: 1,
+      title: "Report", mediaType: "text/plain", content: Buffer.from("report"), metadata: { source: "G1" }
+    })).resolves.toMatchObject({ artifactId: expect.stringMatching(/^[a-f0-9]{64}$/), contentSha256: createHash("sha256").update("report").digest("hex"), metadata: { source: "G1" } });
   });
 });

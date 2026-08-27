@@ -473,6 +473,292 @@ export interface ListTaskWorkflowProjectionSnapshotsResponse {
      */
     nextCursor: string;
 }
+/**
+ * @generated from protobuf message dipole.agent.v1.WorkflowRepairEvidence
+ */
+export interface WorkflowRepairEvidence {
+    /**
+     * @generated from protobuf field: string workflow_id = 1
+     */
+    workflowId: string;
+    /**
+     * @generated from protobuf field: string workflow_run_id = 2
+     */
+    workflowRunId: string;
+    /**
+     * @generated from protobuf field: string status = 3
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: uint64 revision = 4
+     */
+    revision: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ProposeWorkflowRepairRequest
+ */
+export interface ProposeWorkflowRepairRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string outcome = 3
+     */
+    outcome: string;
+    /**
+     * @generated from protobuf field: string ticket_ref = 4
+     */
+    ticketRef: string;
+    /**
+     * @generated from protobuf field: string reason = 5
+     */
+    reason: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence projected = 6
+     */
+    projected?: WorkflowRepairEvidence;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence temporal = 7
+     */
+    temporal?: WorkflowRepairEvidence;
+    /**
+     * @generated from protobuf field: int64 proposed_at_unix_ms = 8
+     */
+    proposedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 9
+     */
+    expiresAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.DecideWorkflowRepairRequest
+ */
+export interface DecideWorkflowRepairRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string proposal_id = 2
+     */
+    proposalId: string;
+    /**
+     * @generated from protobuf field: string decision = 3
+     */
+    decision: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.GetWorkflowRepairRequest
+ */
+export interface GetWorkflowRepairRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string proposal_id = 2
+     */
+    proposalId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.WorkflowRepairProposalResponse
+ */
+export interface WorkflowRepairProposalResponse {
+    /**
+     * @generated from protobuf field: string proposal_id = 1
+     */
+    proposalId: string;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string outcome = 3
+     */
+    outcome: string;
+    /**
+     * @generated from protobuf field: string action = 4
+     */
+    action: string;
+    /**
+     * @generated from protobuf field: string proposer_id = 5
+     */
+    proposerId: string;
+    /**
+     * @generated from protobuf field: string ticket_ref = 6
+     */
+    ticketRef: string;
+    /**
+     * @generated from protobuf field: string reason = 7
+     */
+    reason: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence projected = 8
+     */
+    projected?: WorkflowRepairEvidence;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence temporal = 9
+     */
+    temporal?: WorkflowRepairEvidence;
+    /**
+     * @generated from protobuf field: string evidence_sha256 = 10
+     */
+    evidenceSha256: string;
+    /**
+     * @generated from protobuf field: string status = 11
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: uint32 required_approvals = 12
+     */
+    requiredApprovals: number;
+    /**
+     * @generated from protobuf field: int64 proposed_at_unix_ms = 13
+     */
+    proposedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 14
+     */
+    expiresAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CreateArtifactRequest
+ */
+export interface CreateArtifactRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string task_id = 3
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 4
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string artifact_type = 5
+     */
+    artifactType: string;
+    /**
+     * @generated from protobuf field: uint32 version = 6
+     */
+    version: number;
+    /**
+     * @generated from protobuf field: string title = 7
+     */
+    title: string;
+    /**
+     * @generated from protobuf field: string media_type = 8
+     */
+    mediaType: string;
+    /**
+     * @generated from protobuf field: bytes content = 9
+     */
+    content: Uint8Array;
+    /**
+     * @generated from protobuf field: bytes metadata_json = 10
+     */
+    metadataJson: Uint8Array;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.GetArtifactRequest
+ */
+export interface GetArtifactRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string artifact_id = 2
+     */
+    artifactId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentArtifact
+ */
+export interface AgentArtifact {
+    /**
+     * @generated from protobuf field: string schema_version = 1
+     */
+    schemaVersion: string;
+    /**
+     * @generated from protobuf field: string artifact_id = 2
+     */
+    artifactId: string;
+    /**
+     * @generated from protobuf field: string task_id = 3
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 4
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string artifact_type = 5
+     */
+    artifactType: string;
+    /**
+     * @generated from protobuf field: uint32 version = 6
+     */
+    version: number;
+    /**
+     * @generated from protobuf field: string title = 7
+     */
+    title: string;
+    /**
+     * @generated from protobuf field: string media_type = 8
+     */
+    mediaType: string;
+    /**
+     * @generated from protobuf field: string content_sha256 = 9
+     */
+    contentSha256: string;
+    /**
+     * @generated from protobuf field: uint64 size_bytes = 10
+     */
+    sizeBytes: bigint;
+    /**
+     * @generated from protobuf field: bytes metadata_json = 11
+     */
+    metadataJson: Uint8Array;
+    /**
+     * @generated from protobuf field: int64 created_at_unix_ms = 12
+     */
+    createdAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CreateArtifactResponse
+ */
+export interface CreateArtifactResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentArtifact artifact = 1
+     */
+    artifact?: AgentArtifact;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.GetArtifactResponse
+ */
+export interface GetArtifactResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentArtifact artifact = 1
+     */
+    artifact?: AgentArtifact;
+    /**
+     * @generated from protobuf field: bytes content = 2
+     */
+    content: Uint8Array;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
     constructor() {
@@ -1963,6 +2249,857 @@ class ListTaskWorkflowProjectionSnapshotsResponse$Type extends MessageType<ListT
  * @generated MessageType for protobuf message dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
  */
 export const ListTaskWorkflowProjectionSnapshotsResponse = new ListTaskWorkflowProjectionSnapshotsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class WorkflowRepairEvidence$Type extends MessageType<WorkflowRepairEvidence> {
+    constructor() {
+        super("dipole.agent.v1.WorkflowRepairEvidence", [
+            { no: 1, name: "workflow_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "workflow_run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<WorkflowRepairEvidence>): WorkflowRepairEvidence {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.workflowId = "";
+        message.workflowRunId = "";
+        message.status = "";
+        message.revision = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<WorkflowRepairEvidence>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: WorkflowRepairEvidence): WorkflowRepairEvidence {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string workflow_id */ 1:
+                    message.workflowId = reader.string();
+                    break;
+                case /* string workflow_run_id */ 2:
+                    message.workflowRunId = reader.string();
+                    break;
+                case /* string status */ 3:
+                    message.status = reader.string();
+                    break;
+                case /* uint64 revision */ 4:
+                    message.revision = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: WorkflowRepairEvidence, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string workflow_id = 1; */
+        if (message.workflowId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.workflowId);
+        /* string workflow_run_id = 2; */
+        if (message.workflowRunId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.workflowRunId);
+        /* string status = 3; */
+        if (message.status !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.status);
+        /* uint64 revision = 4; */
+        if (message.revision !== 0n)
+            writer.tag(4, WireType.Varint).uint64(message.revision);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.WorkflowRepairEvidence
+ */
+export const WorkflowRepairEvidence = new WorkflowRepairEvidence$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ProposeWorkflowRepairRequest$Type extends MessageType<ProposeWorkflowRepairRequest> {
+    constructor() {
+        super("dipole.agent.v1.ProposeWorkflowRepairRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "outcome", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "ticket_ref", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "projected", kind: "message", T: () => WorkflowRepairEvidence },
+            { no: 7, name: "temporal", kind: "message", T: () => WorkflowRepairEvidence },
+            { no: 8, name: "proposed_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 9, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ProposeWorkflowRepairRequest>): ProposeWorkflowRepairRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.outcome = "";
+        message.ticketRef = "";
+        message.reason = "";
+        message.proposedAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ProposeWorkflowRepairRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ProposeWorkflowRepairRequest): ProposeWorkflowRepairRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string outcome */ 3:
+                    message.outcome = reader.string();
+                    break;
+                case /* string ticket_ref */ 4:
+                    message.ticketRef = reader.string();
+                    break;
+                case /* string reason */ 5:
+                    message.reason = reader.string();
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence projected */ 6:
+                    message.projected = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.projected);
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence temporal */ 7:
+                    message.temporal = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.temporal);
+                    break;
+                case /* int64 proposed_at_unix_ms */ 8:
+                    message.proposedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 9:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ProposeWorkflowRepairRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string outcome = 3; */
+        if (message.outcome !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.outcome);
+        /* string ticket_ref = 4; */
+        if (message.ticketRef !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.ticketRef);
+        /* string reason = 5; */
+        if (message.reason !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.reason);
+        /* dipole.agent.v1.WorkflowRepairEvidence projected = 6; */
+        if (message.projected)
+            WorkflowRepairEvidence.internalBinaryWrite(message.projected, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        /* dipole.agent.v1.WorkflowRepairEvidence temporal = 7; */
+        if (message.temporal)
+            WorkflowRepairEvidence.internalBinaryWrite(message.temporal, writer.tag(7, WireType.LengthDelimited).fork(), options).join();
+        /* int64 proposed_at_unix_ms = 8; */
+        if (message.proposedAtUnixMs !== 0n)
+            writer.tag(8, WireType.Varint).int64(message.proposedAtUnixMs);
+        /* int64 expires_at_unix_ms = 9; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(9, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ProposeWorkflowRepairRequest
+ */
+export const ProposeWorkflowRepairRequest = new ProposeWorkflowRepairRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class DecideWorkflowRepairRequest$Type extends MessageType<DecideWorkflowRepairRequest> {
+    constructor() {
+        super("dipole.agent.v1.DecideWorkflowRepairRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "decision", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<DecideWorkflowRepairRequest>): DecideWorkflowRepairRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proposalId = "";
+        message.decision = "";
+        if (value !== undefined)
+            reflectionMergePartial<DecideWorkflowRepairRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: DecideWorkflowRepairRequest): DecideWorkflowRepairRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string proposal_id */ 2:
+                    message.proposalId = reader.string();
+                    break;
+                case /* string decision */ 3:
+                    message.decision = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: DecideWorkflowRepairRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string proposal_id = 2; */
+        if (message.proposalId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.proposalId);
+        /* string decision = 3; */
+        if (message.decision !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.decision);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.DecideWorkflowRepairRequest
+ */
+export const DecideWorkflowRepairRequest = new DecideWorkflowRepairRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetWorkflowRepairRequest$Type extends MessageType<GetWorkflowRepairRequest> {
+    constructor() {
+        super("dipole.agent.v1.GetWorkflowRepairRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetWorkflowRepairRequest>): GetWorkflowRepairRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proposalId = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetWorkflowRepairRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetWorkflowRepairRequest): GetWorkflowRepairRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string proposal_id */ 2:
+                    message.proposalId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetWorkflowRepairRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string proposal_id = 2; */
+        if (message.proposalId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.proposalId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.GetWorkflowRepairRequest
+ */
+export const GetWorkflowRepairRequest = new GetWorkflowRepairRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class WorkflowRepairProposalResponse$Type extends MessageType<WorkflowRepairProposalResponse> {
+    constructor() {
+        super("dipole.agent.v1.WorkflowRepairProposalResponse", [
+            { no: 1, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "outcome", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "action", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "proposer_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "ticket_ref", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "projected", kind: "message", T: () => WorkflowRepairEvidence },
+            { no: 9, name: "temporal", kind: "message", T: () => WorkflowRepairEvidence },
+            { no: 10, name: "evidence_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "required_approvals", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 13, name: "proposed_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 14, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<WorkflowRepairProposalResponse>): WorkflowRepairProposalResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.proposalId = "";
+        message.taskId = "";
+        message.outcome = "";
+        message.action = "";
+        message.proposerId = "";
+        message.ticketRef = "";
+        message.reason = "";
+        message.evidenceSha256 = "";
+        message.status = "";
+        message.requiredApprovals = 0;
+        message.proposedAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<WorkflowRepairProposalResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: WorkflowRepairProposalResponse): WorkflowRepairProposalResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string proposal_id */ 1:
+                    message.proposalId = reader.string();
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string outcome */ 3:
+                    message.outcome = reader.string();
+                    break;
+                case /* string action */ 4:
+                    message.action = reader.string();
+                    break;
+                case /* string proposer_id */ 5:
+                    message.proposerId = reader.string();
+                    break;
+                case /* string ticket_ref */ 6:
+                    message.ticketRef = reader.string();
+                    break;
+                case /* string reason */ 7:
+                    message.reason = reader.string();
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence projected */ 8:
+                    message.projected = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.projected);
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence temporal */ 9:
+                    message.temporal = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.temporal);
+                    break;
+                case /* string evidence_sha256 */ 10:
+                    message.evidenceSha256 = reader.string();
+                    break;
+                case /* string status */ 11:
+                    message.status = reader.string();
+                    break;
+                case /* uint32 required_approvals */ 12:
+                    message.requiredApprovals = reader.uint32();
+                    break;
+                case /* int64 proposed_at_unix_ms */ 13:
+                    message.proposedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 14:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: WorkflowRepairProposalResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string proposal_id = 1; */
+        if (message.proposalId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.proposalId);
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string outcome = 3; */
+        if (message.outcome !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.outcome);
+        /* string action = 4; */
+        if (message.action !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.action);
+        /* string proposer_id = 5; */
+        if (message.proposerId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.proposerId);
+        /* string ticket_ref = 6; */
+        if (message.ticketRef !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.ticketRef);
+        /* string reason = 7; */
+        if (message.reason !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.reason);
+        /* dipole.agent.v1.WorkflowRepairEvidence projected = 8; */
+        if (message.projected)
+            WorkflowRepairEvidence.internalBinaryWrite(message.projected, writer.tag(8, WireType.LengthDelimited).fork(), options).join();
+        /* dipole.agent.v1.WorkflowRepairEvidence temporal = 9; */
+        if (message.temporal)
+            WorkflowRepairEvidence.internalBinaryWrite(message.temporal, writer.tag(9, WireType.LengthDelimited).fork(), options).join();
+        /* string evidence_sha256 = 10; */
+        if (message.evidenceSha256 !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.evidenceSha256);
+        /* string status = 11; */
+        if (message.status !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.status);
+        /* uint32 required_approvals = 12; */
+        if (message.requiredApprovals !== 0)
+            writer.tag(12, WireType.Varint).uint32(message.requiredApprovals);
+        /* int64 proposed_at_unix_ms = 13; */
+        if (message.proposedAtUnixMs !== 0n)
+            writer.tag(13, WireType.Varint).int64(message.proposedAtUnixMs);
+        /* int64 expires_at_unix_ms = 14; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(14, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.WorkflowRepairProposalResponse
+ */
+export const WorkflowRepairProposalResponse = new WorkflowRepairProposalResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreateArtifactRequest$Type extends MessageType<CreateArtifactRequest> {
+    constructor() {
+        super("dipole.agent.v1.CreateArtifactRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "artifact_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "version", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 7, name: "title", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "media_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "content", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
+            { no: 10, name: "metadata_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CreateArtifactRequest>): CreateArtifactRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.taskId = "";
+        message.runId = "";
+        message.artifactType = "";
+        message.version = 0;
+        message.title = "";
+        message.mediaType = "";
+        message.content = new Uint8Array(0);
+        message.metadataJson = new Uint8Array(0);
+        if (value !== undefined)
+            reflectionMergePartial<CreateArtifactRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreateArtifactRequest): CreateArtifactRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string task_id */ 3:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 4:
+                    message.runId = reader.string();
+                    break;
+                case /* string artifact_type */ 5:
+                    message.artifactType = reader.string();
+                    break;
+                case /* uint32 version */ 6:
+                    message.version = reader.uint32();
+                    break;
+                case /* string title */ 7:
+                    message.title = reader.string();
+                    break;
+                case /* string media_type */ 8:
+                    message.mediaType = reader.string();
+                    break;
+                case /* bytes content */ 9:
+                    message.content = reader.bytes();
+                    break;
+                case /* bytes metadata_json */ 10:
+                    message.metadataJson = reader.bytes();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreateArtifactRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string task_id = 3; */
+        if (message.taskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 4; */
+        if (message.runId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runId);
+        /* string artifact_type = 5; */
+        if (message.artifactType !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.artifactType);
+        /* uint32 version = 6; */
+        if (message.version !== 0)
+            writer.tag(6, WireType.Varint).uint32(message.version);
+        /* string title = 7; */
+        if (message.title !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.title);
+        /* string media_type = 8; */
+        if (message.mediaType !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.mediaType);
+        /* bytes content = 9; */
+        if (message.content.length)
+            writer.tag(9, WireType.LengthDelimited).bytes(message.content);
+        /* bytes metadata_json = 10; */
+        if (message.metadataJson.length)
+            writer.tag(10, WireType.LengthDelimited).bytes(message.metadataJson);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CreateArtifactRequest
+ */
+export const CreateArtifactRequest = new CreateArtifactRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetArtifactRequest$Type extends MessageType<GetArtifactRequest> {
+    constructor() {
+        super("dipole.agent.v1.GetArtifactRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetArtifactRequest>): GetArtifactRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.artifactId = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetArtifactRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetArtifactRequest): GetArtifactRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string artifact_id */ 2:
+                    message.artifactId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetArtifactRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string artifact_id = 2; */
+        if (message.artifactId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.artifactId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.GetArtifactRequest
+ */
+export const GetArtifactRequest = new GetArtifactRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentArtifact$Type extends MessageType<AgentArtifact> {
+    constructor() {
+        super("dipole.agent.v1.AgentArtifact", [
+            { no: 1, name: "schema_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "artifact_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "version", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 7, name: "title", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "media_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "content_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "size_bytes", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 11, name: "metadata_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
+            { no: 12, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentArtifact>): AgentArtifact {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.schemaVersion = "";
+        message.artifactId = "";
+        message.taskId = "";
+        message.runId = "";
+        message.artifactType = "";
+        message.version = 0;
+        message.title = "";
+        message.mediaType = "";
+        message.contentSha256 = "";
+        message.sizeBytes = 0n;
+        message.metadataJson = new Uint8Array(0);
+        message.createdAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<AgentArtifact>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentArtifact): AgentArtifact {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string schema_version */ 1:
+                    message.schemaVersion = reader.string();
+                    break;
+                case /* string artifact_id */ 2:
+                    message.artifactId = reader.string();
+                    break;
+                case /* string task_id */ 3:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 4:
+                    message.runId = reader.string();
+                    break;
+                case /* string artifact_type */ 5:
+                    message.artifactType = reader.string();
+                    break;
+                case /* uint32 version */ 6:
+                    message.version = reader.uint32();
+                    break;
+                case /* string title */ 7:
+                    message.title = reader.string();
+                    break;
+                case /* string media_type */ 8:
+                    message.mediaType = reader.string();
+                    break;
+                case /* string content_sha256 */ 9:
+                    message.contentSha256 = reader.string();
+                    break;
+                case /* uint64 size_bytes */ 10:
+                    message.sizeBytes = reader.uint64().toBigInt();
+                    break;
+                case /* bytes metadata_json */ 11:
+                    message.metadataJson = reader.bytes();
+                    break;
+                case /* int64 created_at_unix_ms */ 12:
+                    message.createdAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentArtifact, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string schema_version = 1; */
+        if (message.schemaVersion !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.schemaVersion);
+        /* string artifact_id = 2; */
+        if (message.artifactId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.artifactId);
+        /* string task_id = 3; */
+        if (message.taskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 4; */
+        if (message.runId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runId);
+        /* string artifact_type = 5; */
+        if (message.artifactType !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.artifactType);
+        /* uint32 version = 6; */
+        if (message.version !== 0)
+            writer.tag(6, WireType.Varint).uint32(message.version);
+        /* string title = 7; */
+        if (message.title !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.title);
+        /* string media_type = 8; */
+        if (message.mediaType !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.mediaType);
+        /* string content_sha256 = 9; */
+        if (message.contentSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.contentSha256);
+        /* uint64 size_bytes = 10; */
+        if (message.sizeBytes !== 0n)
+            writer.tag(10, WireType.Varint).uint64(message.sizeBytes);
+        /* bytes metadata_json = 11; */
+        if (message.metadataJson.length)
+            writer.tag(11, WireType.LengthDelimited).bytes(message.metadataJson);
+        /* int64 created_at_unix_ms = 12; */
+        if (message.createdAtUnixMs !== 0n)
+            writer.tag(12, WireType.Varint).int64(message.createdAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentArtifact
+ */
+export const AgentArtifact = new AgentArtifact$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreateArtifactResponse$Type extends MessageType<CreateArtifactResponse> {
+    constructor() {
+        super("dipole.agent.v1.CreateArtifactResponse", [
+            { no: 1, name: "artifact", kind: "message", T: () => AgentArtifact }
+        ]);
+    }
+    create(value?: PartialMessage<CreateArtifactResponse>): CreateArtifactResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<CreateArtifactResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreateArtifactResponse): CreateArtifactResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.AgentArtifact artifact */ 1:
+                    message.artifact = AgentArtifact.internalBinaryRead(reader, reader.uint32(), options, message.artifact);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreateArtifactResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.AgentArtifact artifact = 1; */
+        if (message.artifact)
+            AgentArtifact.internalBinaryWrite(message.artifact, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CreateArtifactResponse
+ */
+export const CreateArtifactResponse = new CreateArtifactResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GetArtifactResponse$Type extends MessageType<GetArtifactResponse> {
+    constructor() {
+        super("dipole.agent.v1.GetArtifactResponse", [
+            { no: 1, name: "artifact", kind: "message", T: () => AgentArtifact },
+            { no: 2, name: "content", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetArtifactResponse>): GetArtifactResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.content = new Uint8Array(0);
+        if (value !== undefined)
+            reflectionMergePartial<GetArtifactResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetArtifactResponse): GetArtifactResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.AgentArtifact artifact */ 1:
+                    message.artifact = AgentArtifact.internalBinaryRead(reader, reader.uint32(), options, message.artifact);
+                    break;
+                case /* bytes content */ 2:
+                    message.content = reader.bytes();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetArtifactResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.AgentArtifact artifact = 1; */
+        if (message.artifact)
+            AgentArtifact.internalBinaryWrite(message.artifact, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* bytes content = 2; */
+        if (message.content.length)
+            writer.tag(2, WireType.LengthDelimited).bytes(message.content);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.GetArtifactResponse
+ */
+export const GetArtifactResponse = new GetArtifactResponse$Type();
 /**
  * @generated ServiceType for protobuf service dipole.agent.v1.AgentCapabilityService
  */
@@ -1975,5 +3112,10 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
-    { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse }
+    { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse },
+    { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
+    { name: "DecideWorkflowRepair", options: {}, I: DecideWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
+    { name: "GetWorkflowRepair", options: {}, I: GetWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
+    { name: "CreateArtifact", options: {}, I: CreateArtifactRequest, O: CreateArtifactResponse },
+    { name: "GetArtifact", options: {}, I: GetArtifactRequest, O: GetArtifactResponse }
 ]);
