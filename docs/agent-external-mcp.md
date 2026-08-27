@@ -54,6 +54,14 @@ Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；
 
 当前没有 Vault/KMS/Secret Manager backend，也没有把 adapter 装配进 Transport Factory。测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
 
+## Network Guard 边界
+
+`createExternalMcpNetworkGuardedFetch` 可注入官方 SDK `StreamableHTTPClientTransport` 的 custom fetch。它在每个请求上重新校验 HTTPS、Host、Port、TLS ServerName 和无 query/credential 边界，再通过受信 Resolver 获取 1 至 32 个地址；全部答案都必须是格式、address family 和公网范围一致的唯一地址，混合私网答案或后续 rebinding 会在发起连接前被拒绝。
+
+守卫把完整批准地址集合、TLS ServerName 和 opaque CA ref 交给 `ExternalMcpNetworkDispatcher`。Dispatcher 必须直接连接集合中的一个地址并返回 socket 实际 peer，守卫会再次核对；普通 hostname fetch 无法满足该接口。请求固定使用 `redirect=manual`，任何 `3xx`、`response.redirected` 或响应 URL 变化都会被拒绝并释放 body。
+
+当前仓库没有真实 DNS Resolver、TLS pinned Dispatcher 或 CA Secret backend。该模块只固定可测试的 SSRF/DNS rebinding 边界，生产开关仍然 fail closed。后续实现需要把 SDK request timeout/AbortSignal 传播到 DNS、socket connect、TLS handshake 和 response body，并通过真实双栈 DNS、证书不匹配、连接 peer 偏移及超时故障演练。
+
 ## 后续实现门槛
 
 生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。
