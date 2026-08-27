@@ -56,6 +56,14 @@ wait_for_readiness() {
   return 1
 }
 
+assert_dependency_ready() {
+  local service=$1
+  local dependency=$2
+  compose exec -T "${service}" sh -ec \
+    "wget -q -O - http://127.0.0.1:9100/metrics | grep -F 'dipole_dependency_ready{dependency=\"${dependency}\",service=\"dipole-${service}\"} 1'" \
+    >/dev/null
+}
+
 assert_container_ids_unchanged() {
   local service
   local current
@@ -85,6 +93,7 @@ compose up -d search
 wait_for_readiness search "ready" 60
 compose up -d gateway
 wait_for_readiness gateway "ready" 60
+assert_dependency_ready gateway kafka-assignment
 for service in "${application_services[@]}"; do
   container_ids[${service}]=$(compose ps -q "${service}")
 done
@@ -117,4 +126,4 @@ for service in "${required_services[@]}"; do
 done
 assert_container_ids_unchanged
 
-printf 'Runtime dependency readiness smoke passed: Elasticsearch isolated Search traffic without application restart cascades.\n'
+printf 'Runtime dependency readiness smoke passed: Gateway assignment was established and Elasticsearch isolated Search traffic without application restart cascades.\n'
