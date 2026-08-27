@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent MCP ToolCall 增加可验证的消息动作血缘：migration v31 与 sqlc 在 Begin 记录已消费 `approval_id`，在完成记录中只保存 `message` 资源 UUID、Command kind/id 与既有结果摘要，不复制消息正文。Core 对写 Capability 重新校验 active Agent Run、Task、参数摘要、审批终态与资源授权，再按权威 Agent sender 和稳定 Command ID 查询 Message receipt；只有 committed Message 的 UUID、sender、target、conversation 和 message type 全部一致时才能完成审计。protobuf 与 TS runner 支持可选 action reference，读 Tool 携带审批/动作引用、失败终态携带动作引用或引用漂移均 fail closed；生产 MCP Server 继续只投影 read Tool。
 - Agent Message Command 增加 sender-scoped receipt/status 查询：Message v1 新增 `GetMessageCommandReceipt`，从认证 principal 派生 sender，并复用现有 sqlc `(sender_uuid, client_message_id)` 查询返回 `ABSENT|COMMITTED`，不新增 Command 表或 pending 状态。Agent 发送失败后使用脱离原取消信号、保留 trace values 的独立 2 秒窗口查询 receipt；仅 sender、target、conversation、message type、content 和稳定幂等键全部匹配时恢复成功，查询故障保留发送与查询两条错误因果链。
 - Agent G4 增加默认关闭的 MCP durable Elicitation adapter：只接受 `elicitation/create` form mode 的严格子集，将最多 16 个 text/select/multiselect/boolean 字段转换为现有 `dipole.agent.elicitation.v1` 和 Temporal `wait_input` directive。checkpoint 绑定 host-owned Request、Server、Tool、Invocation、deadline、完整 Form 与 `trust=untrusted` SHA-256；仅精确且未过期的 durable resume 可转换为 MCP `accept`，`decline/cancel` 也要求同一 Request。URL、number/integer、default、format、description、自由扩展、敏感字段和 checkpoint 漂移均拒绝。当前外部 MCP Client 未声明 Elicitation capability，也未注册 request handler。
 - Agent G4 增加默认关闭的 MCP write Approval gate：Core 新增 authenticated、active-only 的原子 `ConsumeApproval` RPC，使用现有 MySQL/sqlc 条件更新精确绑定 Task、Run、Capability、Resource Scope、canonical Arguments 与 host nonce，并让重放、过期、吊销或任一哈希漂移返回拒绝。TS `McpWriteApprovalGate` 先通过 Capability Registry 完成 schema、Policy 和 Resource 校验，再按与 Go 一致的 scope v1/canonical JSON 计算 claim；只有原子消费成功才执行副作用。当前 `createDipoleMcpServer` 仍拒绝所有非 read Tool，生产 grant resolver 和 active authority 尚未装配。
@@ -297,7 +298,8 @@
 
 ### 迁移说明
 
-- `ConsumeApproval` 是一次性、active-only 的安全门槛。审批在 Capability 执行前消费，执行失败后不会自动恢复或重放；调用方必须创建新审批。Message Command 已具备稳定业务幂等键和 sender-scoped receipt 查询，可收敛 RPC 超时后的提交状态；生产 write projection 仍需 active authority、Tool-to-Message lineage 和故障演练。当前不要向 `createDipoleMcpServer` 注册 write/destructive Tool。
+- migration v31 为 `agent_tool_invocations` 增加 nullable Approval 与 action reference 字段及约束。先迁移 Core，再发布 additive Agent Proto 与 Runtime；旧只读调用继续写入空引用。回滚前必须关闭所有未来 write Tool、等待 `running` 调用收敛并确认不再需要 Approval/Command/Message 联查证据，v31 Down 会移除这些字段和索引。
+- `ConsumeApproval` 是一次性、active-only 的安全门槛。审批在 Capability 执行前消费，执行失败后不会自动恢复或重放；调用方必须创建新审批。Message Command 已具备稳定业务幂等键和 sender-scoped receipt 查询，可收敛 RPC 超时后的提交状态；migration v31 已提供 Tool-to-Message lineage，生产 write projection 仍需 active authority、UI 风险摘要和故障演练。当前不要向 `createDipoleMcpServer` 注册 write/destructive Tool。
 - 外部 MCP Client 的原始 `CallToolResult` 不得直接拼接到 system/trusted prompt、Memory 或 Agent instruction。未来接入必须先通过 `externalMcpResultToContextFragment`，保留 `trust=untrusted` 与 provenance；若结果要形成 Artifact 或 Memory，需继续携带原始 Invocation lineage，不能因人工摘要或模型改写提升信任等级。
 - Network Guard 尚未装配生产 Resolver/Dispatcher。后续 Dispatcher 必须用守卫提供的某一个批准地址直接建连，使用 Profile `tlsServerName` 做 SNI/证书主机校验、通过 `caBundleRef` 从可信 Secret backend 取 CA，并返回 socket 实际 peer；禁止在 Dispatcher 内再次按 hostname 自由解析或自动跟随重定向。当前接口存在不代表可启用 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`。
 - Secret Provider adapter 没有生产 backend 或启动配置。未来 Provider 必须为每次 `read` 返回独占、可写的 fresh `Uint8Array`，遵守 AbortSignal 且不得把 secret 写入异常；复用共享 buffer 会在首次请求后被 adapter 清零。SDK 所需 token string 无法强零化，部署时应使用短期、最小权限凭据并依靠 Catalog 版本/吊销和 Server 端失效控制暴露窗口。
@@ -351,6 +353,7 @@
 
 ### 验证
 
+- Tool action lineage 测试覆盖已消费审批、Task/Capability/参数摘要与资源 scope 漂移、read/write 引用隔离、Command kind/capability 对应、sender-scoped receipt、Message UUID/身份/会话/类型冲突、protobuf/TS 映射及 sqlc 持久化；生产 MCP Server 的 read-only 投影回归保持通过。
 - MCP 限流测试覆盖 JWT principal 派生、跨 Task 共享额度、principal 隔离、429/`Retry-After` 向上取整、被限请求不进入代理、DELETE 清理旁路、Redis 缺失 fail closed，以及消息发送 fail-open 兼容性；真实 Redis 验证两个 Limiter 实例共享计数和 TTL 到期恢复。
 - MCP ToolCall 测试覆盖 durable begin、权威身份绑定、只读风险门禁、参数/结果哈希、64 KiB 上限、异常脱敏、OTel span 终止、RPC principal 拒绝、重复 begin 与单次终态；真实 MySQL 8.4 验证 migration v30 全量 `up→down` 链、FK/CHECK 约束及 sqlc contract。Go 聚焦测试、128 项 TS 测试、typecheck/build 和双语言生成物通过。
 - MCP 认证挂载测试覆盖默认零路由、错误服务密钥、JWT principal 覆盖、Task/Run 绑定、异步 Core 上下文解析、foreign principal NotFound、内部凭据与 body 长度头清理、SSE/Session header 透传及无效标识拒绝；Go 全量 test/vet、定向 race、125 项 TS 测试、typecheck/build、双语言 Proto 漂移、Compose、架构文档和生产依赖零漏洞门禁通过。

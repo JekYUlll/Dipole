@@ -42,6 +42,10 @@ func TestAgentToolInvocationRepositoryContract(t *testing.T) {
 	if err != nil || created {
 		t.Fatalf("duplicate begin must be idempotent: created=%v err=%v", created, err)
 	}
+	loaded, err := store.GetToolInvocation(context.Background(), "INV-1")
+	if err != nil || loaded == nil || loaded.InvocationUUID != "INV-1" || loaded.CapabilityID != application.AgentCapabilityConversationsList {
+		t.Fatalf("get Tool invocation: loaded=%+v err=%v", loaded, err)
+	}
 	finished, err := store.FinishToolInvocation(context.Background(), application.AgentToolInvocationFinishV1{
 		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
 		ResultSHA256: testToolInvocationSHA, ResultBytes: 128, LatencyMS: 12,
@@ -63,6 +67,34 @@ func TestAgentToolInvocationRepositoryContract(t *testing.T) {
 	}
 	if status != "completed" || argumentsSHA != testToolInvocationSHA || resultSHA != testToolInvocationSHA || resultBytes != 128 || latencyMS != 12 {
 		t.Fatalf("unexpected Tool invocation evidence: %s %s %s %d %d", status, argumentsSHA, resultSHA, resultBytes, latencyMS)
+	}
+
+	writeRecord := record
+	writeRecord.InvocationUUID = "INV-W"
+	writeRecord.ToolName = "dipole_message_send"
+	writeRecord.CapabilityID = application.AgentCapabilitySystemMessageSend
+	writeRecord.ApprovalUUID = "APR-1"
+	created, err = store.BeginToolInvocation(context.Background(), writeRecord)
+	if err != nil || !created {
+		t.Fatalf("begin write Tool invocation: created=%v err=%v", created, err)
+	}
+	finished, err = store.FinishToolInvocation(context.Background(), application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-W", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testToolInvocationSHA, ResultBytes: 64, LatencyMS: 8,
+		ActionReference: &application.AgentToolActionReferenceV1{
+			ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-1",
+			CommandKind: application.AgentMessageCommandSystemMessageV1, CommandID: "CMD-1",
+		},
+	})
+	if err != nil || !finished {
+		t.Fatalf("finish write Tool invocation: finished=%v err=%v", finished, err)
+	}
+	var approvalUUID, resourceType, resourceUUID, commandKind, commandID string
+	if err := db.QueryRow(`SELECT approval_uuid, action_resource_type, action_resource_uuid, action_command_kind, action_command_id FROM agent_tool_invocations WHERE invocation_uuid = 'INV-W'`).Scan(&approvalUUID, &resourceType, &resourceUUID, &commandKind, &commandID); err != nil {
+		t.Fatalf("read Tool action lineage: %v", err)
+	}
+	if approvalUUID != "APR-1" || resourceType != "message" || resourceUUID != "MSG-1" || commandKind != "system_message" || commandID != "CMD-1" {
+		t.Fatalf("unexpected Tool action lineage: %q %q %q %q %q", approvalUUID, resourceType, resourceUUID, commandKind, commandID)
 	}
 }
 

@@ -2,8 +2,11 @@
 INSERT IGNORE INTO agent_tool_invocations (
     invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid,
     transport, tool_name, capability_id, arguments_sha256, status,
-    request_id, trace_id, started_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    request_id, trace_id, approval_uuid, started_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: GetAgentToolInvocation :one
+SELECT * FROM agent_tool_invocations WHERE invocation_uuid = ? LIMIT 1;
 
 -- name: FinishAgentToolInvocation :execrows
 UPDATE agent_tool_invocations
@@ -12,6 +15,10 @@ SET status = ?,
     result_bytes = ?,
     latency_ms = ?,
     error_code = ?,
+    action_resource_type = ?,
+    action_resource_uuid = ?,
+    action_command_kind = ?,
+    action_command_id = ?,
     finished_at = CURRENT_TIMESTAMP(3)
 WHERE invocation_uuid = ?
   AND task_uuid = ?

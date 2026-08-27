@@ -367,6 +367,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加默认关闭的外部 MCP Network Guard：每个请求重新解析并要求全部地址为公网，把批准地址交给 pinned Dispatcher 后核对实际 peer，拒绝重定向与 rebinding；生产 Resolver/Dispatcher/Factory 仍缺席。
   - [x] 增加外部 MCP Result-to-Context adapter：成功结果以有界不可变 JSON 快照进入 `untrusted` evidence，并绑定 Profile/Server/Tool/Invocation provenance；compact 内容不复制外部正文，生产调用链仍未启用。
   - [x] 增加默认关闭的 MCP write Approval gate：Core active-only RPC 原子消费 Task/Run/Capability/Scope/Arguments/Nonce 精确绑定，TS 在 Policy/Resource 校验后消费成功才执行；生产 MCP Server 仍保持 read-only。
+  - [x] migration v31 将写 ToolCall 的已消费 Approval 与完成后的 Message Command/UUID 连接为有界 action reference；Core 通过 sender-scoped receipt 复核权威 Message，审计表不保存消息正文，生产 write Tool 投影继续关闭。
   - [x] 增加默认关闭的 durable MCP Elicitation adapter：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline/untrusted Form；生产 Client capability、handler 和跨 Activity 恢复接线仍关闭。
   - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。

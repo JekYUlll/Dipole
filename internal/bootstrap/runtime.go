@@ -197,7 +197,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
 		}
-		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver)
+		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
 		}

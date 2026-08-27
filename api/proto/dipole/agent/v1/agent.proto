@@ -161,11 +161,19 @@ message BeginMcpToolInvocationRequest {
   string tool_name = 5;
   string capability_id = 6;
   string arguments_sha256 = 7;
+  string approval_id = 8;
 }
 
 message BeginMcpToolInvocationResponse {
   string invocation_id = 1;
   string status = 2;
+}
+
+message AgentToolActionReference {
+  string resource_type = 1;
+  string resource_id = 2;
+  string command_kind = 3;
+  string command_id = 4;
 }
 
 message FinishMcpToolInvocationRequest {
@@ -178,6 +186,7 @@ message FinishMcpToolInvocationRequest {
   uint64 result_bytes = 7;
   uint64 latency_ms = 8;
   string error_code = 9;
+  AgentToolActionReference action_reference = 10;
 }
 
 message FinishMcpToolInvocationResponse {

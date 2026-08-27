@@ -2,7 +2,10 @@ package application
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/model"
 )
@@ -32,4 +35,19 @@ type AgentMessageCommandV1 struct {
 // Sender and target identities are derived from the trusted invocation.
 type AgentCommandV1 interface {
 	SendMessage(ctx context.Context, command AgentMessageCommandV1) (*model.Message, error)
+}
+
+func AgentCommandClientMessageIDV1(kind AgentMessageCommandKindV1, commandID string) (string, error) {
+	commandID = strings.TrimSpace(commandID)
+	if commandID == "" || len(commandID) > 128 {
+		return "", ErrAgentCommandDenied
+	}
+	switch kind {
+	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1:
+	default:
+		return "", ErrAgentCommandDenied
+	}
+	canonical := AgentCommandVersionV1 + "\n" + string(kind) + "\n" + commandID
+	digest := sha256.Sum256([]byte(canonical))
+	return hex.EncodeToString(digest[:]), nil
 }

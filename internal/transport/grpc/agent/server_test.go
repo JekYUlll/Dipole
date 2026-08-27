@@ -245,16 +245,17 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	response, err := server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
 		ToolName: "dipole_conversation_list", CapabilityId: application.AgentCapabilityConversationsList,
-		ArgumentsSha256: strings.Repeat("a", 64),
+		ArgumentsSha256: strings.Repeat("a", 64), ApprovalId: "APR-1",
 	})
-	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP {
+	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP || audit.begin.ApprovalUUID != "APR-1" {
 		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
 	}
 	finishResponse, err := server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
 		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
+		ActionReference: &agentv1.AgentToolActionReference{ResourceType: "message", ResourceId: "MSG-1", CommandKind: "system_message", CommandId: "CMD-1"},
 	})
-	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 {
+	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 || audit.finish.ActionReference == nil || audit.finish.ActionReference.ResourceUUID != "MSG-1" {
 		t.Fatalf("unexpected Tool finish: response=%+v audit=%+v err=%v", finishResponse, audit.finish, err)
 	}
 	_, err = server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{

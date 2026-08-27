@@ -18,6 +18,10 @@ SET status = ?,
     result_bytes = ?,
     latency_ms = ?,
     error_code = ?,
+    action_resource_type = ?,
+    action_resource_uuid = ?,
+    action_command_kind = ?,
+    action_command_id = ?,
     finished_at = CURRENT_TIMESTAMP(3)
 WHERE invocation_uuid = ?
   AND task_uuid = ?
@@ -26,14 +30,18 @@ WHERE invocation_uuid = ?
 `
 
 type FinishAgentToolInvocationParams struct {
-	Status         string
-	ResultSha256   sql.NullString
-	ResultBytes    sql.NullInt64
-	LatencyMs      sql.NullInt64
-	ErrorCode      sql.NullString
-	InvocationUuid string
-	TaskUuid       string
-	RunUuid        string
+	Status             string
+	ResultSha256       sql.NullString
+	ResultBytes        sql.NullInt64
+	LatencyMs          sql.NullInt64
+	ErrorCode          sql.NullString
+	ActionResourceType sql.NullString
+	ActionResourceUuid sql.NullString
+	ActionCommandKind  sql.NullString
+	ActionCommandID    sql.NullString
+	InvocationUuid     string
+	TaskUuid           string
+	RunUuid            string
 }
 
 func (q *Queries) FinishAgentToolInvocation(ctx context.Context, arg FinishAgentToolInvocationParams) (int64, error) {
@@ -43,6 +51,10 @@ func (q *Queries) FinishAgentToolInvocation(ctx context.Context, arg FinishAgent
 		arg.ResultBytes,
 		arg.LatencyMs,
 		arg.ErrorCode,
+		arg.ActionResourceType,
+		arg.ActionResourceUuid,
+		arg.ActionCommandKind,
+		arg.ActionCommandID,
 		arg.InvocationUuid,
 		arg.TaskUuid,
 		arg.RunUuid,
@@ -53,12 +65,51 @@ func (q *Queries) FinishAgentToolInvocation(ctx context.Context, arg FinishAgent
 	return result.RowsAffected()
 }
 
+const getAgentToolInvocation = `-- name: GetAgentToolInvocation :one
+SELECT id, invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid, transport, tool_name, capability_id, arguments_sha256, status, result_sha256, result_bytes, latency_ms, error_code, request_id, trace_id, started_at, finished_at, created_at, updated_at, approval_uuid, action_resource_type, action_resource_uuid, action_command_kind, action_command_id FROM agent_tool_invocations WHERE invocation_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentToolInvocation(ctx context.Context, invocationUuid string) (AgentToolInvocation, error) {
+	row := q.db.QueryRowContext(ctx, getAgentToolInvocation, invocationUuid)
+	var i AgentToolInvocation
+	err := row.Scan(
+		&i.ID,
+		&i.InvocationUuid,
+		&i.TenantID,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
+		&i.TaskUuid,
+		&i.RunUuid,
+		&i.Transport,
+		&i.ToolName,
+		&i.CapabilityID,
+		&i.ArgumentsSha256,
+		&i.Status,
+		&i.ResultSha256,
+		&i.ResultBytes,
+		&i.LatencyMs,
+		&i.ErrorCode,
+		&i.RequestID,
+		&i.TraceID,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ApprovalUuid,
+		&i.ActionResourceType,
+		&i.ActionResourceUuid,
+		&i.ActionCommandKind,
+		&i.ActionCommandID,
+	)
+	return i, err
+}
+
 const insertAgentToolInvocation = `-- name: InsertAgentToolInvocation :execrows
 INSERT IGNORE INTO agent_tool_invocations (
     invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid,
     transport, tool_name, capability_id, arguments_sha256, status,
-    request_id, trace_id, started_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    request_id, trace_id, approval_uuid, started_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAgentToolInvocationParams struct {
@@ -75,6 +126,7 @@ type InsertAgentToolInvocationParams struct {
 	Status          string
 	RequestID       sql.NullString
 	TraceID         sql.NullString
+	ApprovalUuid    sql.NullString
 	StartedAt       time.Time
 }
 
@@ -93,6 +145,7 @@ func (q *Queries) InsertAgentToolInvocation(ctx context.Context, arg InsertAgent
 		arg.Status,
 		arg.RequestID,
 		arg.TraceID,
+		arg.ApprovalUuid,
 		arg.StartedAt,
 	)
 	if err != nil {

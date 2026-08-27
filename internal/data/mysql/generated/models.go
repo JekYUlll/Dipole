@@ -139,6 +139,36 @@ type AgentTask struct {
 	TriggerSubscriptionUuid sql.NullString
 }
 
+type AgentToolInvocation struct {
+	ID                 uint64
+	InvocationUuid     string
+	TenantID           string
+	PrincipalUuid      string
+	AgentUuid          string
+	TaskUuid           string
+	RunUuid            string
+	Transport          string
+	ToolName           string
+	CapabilityID       string
+	ArgumentsSha256    string
+	Status             string
+	ResultSha256       sql.NullString
+	ResultBytes        sql.NullInt64
+	LatencyMs          sql.NullInt64
+	ErrorCode          sql.NullString
+	RequestID          sql.NullString
+	TraceID            sql.NullString
+	StartedAt          time.Time
+	FinishedAt         sql.NullTime
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	ApprovalUuid       sql.NullString
+	ActionResourceType sql.NullString
+	ActionResourceUuid sql.NullString
+	ActionCommandKind  sql.NullString
+	ActionCommandID    sql.NullString
+}
+
 type AgentWorkflowRepairDecision struct {
 	ProposalUuid string
 	ApproverUuid string
