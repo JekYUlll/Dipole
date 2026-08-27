@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
+find_package(nlohmann_json 3.11 REQUIRED)
 pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET "protobuf>=3.21")
 find_program(PROTOC_EXECUTABLE protoc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 
@@ -31,6 +32,7 @@ add_custom_command(
 
 add_library(delivery_contract
   src/contract_validator.cpp
+  src/event_projection.cpp
   src/health_server.cpp
   "${DELIVERY_PROTO_CC}"
 )
@@ -38,7 +40,7 @@ target_include_directories(delivery_contract PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
   "${GENERATED_ROOT}"
 )
-target_link_libraries(delivery_contract PUBLIC PkgConfig::PROTOBUF)
+target_link_libraries(delivery_contract PUBLIC PkgConfig::PROTOBUF nlohmann_json::nlohmann_json)
 target_compile_options(delivery_contract PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(dipole-realtime-delivery src/main.cpp)
@@ -54,6 +56,11 @@ if(BUILD_TESTING)
     DIPOLE_DELIVERY_TESTDATA_DIR="${PROTO_ROOT}/dipole/delivery/v1/testdata"
   )
   add_test(NAME delivery_contract_test COMMAND delivery_contract_test)
+
+  add_executable(delivery_projection_test tests/event_projection_test.cpp)
+  target_link_libraries(delivery_projection_test PRIVATE delivery_contract)
+  target_compile_options(delivery_projection_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  add_test(NAME delivery_projection_test COMMAND delivery_projection_test)
   add_test(
     NAME delivery_contract_cli
     COMMAND dipole-realtime-delivery validate "${PROTO_ROOT}/dipole/delivery/v1/testdata"
