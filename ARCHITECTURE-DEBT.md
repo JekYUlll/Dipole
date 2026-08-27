@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-030：TypeScript Agent 尚缺受认证的远程 Capability 传输
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** `agent-runtime`、Core/Message/Conversation 边界、可信身份、只读 Step 执行
+- **现状：** `dipole.agent.capability.v1` 已固定语言中立操作、可信 Invocation、permission/resource scope 和风险描述；Go 侧仅有进程内 `LocalAgentCapabilityV1`。TS Runtime 已具备 Policy Engine、Capability Registry 及 migration v20 的结构化 Plan/Step 审计，当前 Step 只进入 `planned`，不会绕过服务边界调用公开 HTTP。
+- **风险：** 在受认证的内部 RPC adapter 完成前，TS Runtime 无法执行 `conversation.list/read`；若临时复用客户端 HTTP token 或允许模型提交 principal，会破坏可信 ExecutionContext 和最小权限边界。
+- **建议方向：** 新增独立 Agent Capability v1 gRPC/Connect transport，服务端从 mTLS/service identity 与持久 Task policy 构造 Invocation，先只开放 `conversation.list`；TS adapter 通过 Capability Registry 执行并持久化 Step claim/result/error，write capability 继续关闭。
+- **处理门槛：** 通过跨语言 contract、伪造 principal 拒绝、resource scope、Kafka retry 幂等、真实内部身份和 rollback 测试后，才允许首个 Step 从 `planned` 进入执行状态。
+
 ### AD-029：Agent 模型预算与调用轨迹尚未跨重试持久化
 
 - **优先级：** P1

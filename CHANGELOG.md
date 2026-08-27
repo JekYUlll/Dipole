@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent Runtime 增加 migration v20 与持久 Shadow Plan/Step 轨迹：模型输出升级为有序 `steps[]`，每步固定 capability ID 与结构化输入；Task Plan 以 SHA-256 不可变快照保存，Kafka 并发重放幂等收敛，计划漂移 fail closed。MySQL ledger 模式在 Kafka readiness 前探测轨迹表，最小账号仅获两表 `SELECT, INSERT`。
 - Agent Runtime 增加 migration v19 与 MySQL ModelAuditStore：Task 唯一绑定持久 Run 和不可变预算快照，ModelRouter 在调用 provider 前事务预留 call slot，16 路并发及跨 Kafka 重投均严格受 `max_calls` 限制；调用完成/失败记录 route、Token、finish reason、latency 和错误，崩溃遗留 slot 在 Run 终止时收敛为 `abandoned`。AI SDK 模式强制持久 Store，Agent 最小账号仅新增两张审计表的 SELECT/INSERT/UPDATE。
 - TypeScript Agent Runtime 增加 provider-neutral `ModelRouter` 与 AI SDK 结构化输出 adapter：按有序 route 降级，失败调用计入每 Run 调用上限，总 deadline 与单次输出 Token 上限由 Runtime 强制传递，AI SDK 隐式 retry 关闭；`metadata` 仍为默认模式，模型 plan 仅允许只读 capability 白名单并记录 route/attempt/token usage。
 - Agent Runtime 增加有界 Kafka 失败转移：`dipole.<topic>.retry/.dead` 显式创建并校验拓扑，无效 envelope/tombstone 直接死信，处理错误最多尝试三次且保留原始 key/value/header；publisher 失败时 handler 拒绝完成。真实 Kafka 3.9 已验证 poison、retry→dead、offset LAG 归零和双副本 rebalance。
