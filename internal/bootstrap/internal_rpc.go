@@ -79,7 +79,7 @@ func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capab
 	return newCoreRPCServer(cfg, capability, agentAdapter)
 }
 
-func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, messageCommands application.AgentMessageCommandExecutionV1, memories ...application.AgentMemoryContextResolverV1) (*InternalRPCServer, error) {
+func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, memories ...application.AgentMemoryContextResolverV1) (*InternalRPCServer, error) {
 	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
@@ -97,6 +97,11 @@ func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability appli
 	if messageCommands != nil {
 		if _, err := agentAdapter.WithMessageCommands(messageCommands); err != nil {
 			return nil, fmt.Errorf("configure Agent Message Command rpc adapter: %w", err)
+		}
+	}
+	if approvalGrants != nil {
+		if _, err := agentAdapter.WithApprovalGrants(approvalGrants); err != nil {
+			return nil, fmt.Errorf("configure Agent Approval grant rpc adapter: %w", err)
 		}
 	}
 	if subscriptions != nil {

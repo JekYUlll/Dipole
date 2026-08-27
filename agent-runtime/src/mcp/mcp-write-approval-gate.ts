@@ -2,16 +2,17 @@ import { createHash } from "node:crypto";
 
 import type { CapabilityRegistry } from "../capabilities/registry.js";
 import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
-import type { ResourceScope, ExecutionContext } from "../runtime/execution-context.js";
+import type { ExecutionContext } from "../runtime/execution-context.js";
 import { canonicalMcpJSON } from "./canonical-json.js";
 
 export interface McpWriteApprovalGrant {
   readonly approvalId: string;
   readonly capabilityId: string;
-  readonly resourceScope: ResourceScope;
+  readonly resourceScope: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] };
   readonly scopeSha256: string;
   readonly argumentsSha256: string;
-  readonly nonce: string;
+  readonly nonceSha256: string;
+  readonly expiresAtUnixMs: number;
 }
 
 export interface McpWriteApprovalGrantResolver {
@@ -93,7 +94,7 @@ export class McpWriteApprovalGate {
         capabilityId: prepared.descriptor.id,
         scopeSha256,
         argumentsSha256,
-        nonceSha256: sha256(grant.nonce),
+        nonceSha256: grant.nonceSha256,
         ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
         ...(context.traceId === undefined ? {} : { traceId: context.traceId })
       });
@@ -126,17 +127,42 @@ export function createMcpWriteApprovalConsumePort(
   };
 }
 
+export function createMcpWriteApprovalGrantResolver(
+  client: Pick<AgentCapabilityRPCClient, "resolveApprovalGrant">
+): McpWriteApprovalGrantResolver {
+  return {
+    resolve: input => {
+      const scope = {
+        resourceType: input.resource.resourceType,
+        resourceId: input.resource.resourceId,
+        actions: [input.resource.action]
+      };
+      return client.resolveApprovalGrant(
+        input.context.taskId,
+        input.context.runId,
+        input.capabilityId,
+        scope,
+        sha256(canonicalMcpJSON(input.arguments)),
+        {
+          ...(input.context.requestId === undefined ? {} : { requestId: input.context.requestId }),
+          ...(input.context.traceId === undefined ? {} : { traceId: input.context.traceId })
+        }
+      );
+    }
+  };
+}
+
 function validGrant(grant: McpWriteApprovalGrant): boolean {
   return /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(grant.approvalId)
     && /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(grant.capabilityId)
     && /^[a-f0-9]{64}$/.test(grant.scopeSha256)
     && /^[a-f0-9]{64}$/.test(grant.argumentsSha256)
-    && grant.nonce.length >= 16
-    && grant.nonce.length <= 256
-    && /^[\x21-\x7e]+$/.test(grant.nonce);
+    && /^[a-f0-9]{64}$/.test(grant.nonceSha256)
+    && Number.isSafeInteger(grant.expiresAtUnixMs)
+    && grant.expiresAtUnixMs > Date.now();
 }
 
-function resourceScopeSha256(scope: ResourceScope): string {
+function resourceScopeSha256(scope: { readonly resourceType: string; readonly resourceId: string; readonly actions: readonly string[] }): string {
   const resourceType = scope.resourceType.trim();
   const resourceId = scope.resourceId.trim();
   const actions = scope.actions.map(action => action.trim()).sort();

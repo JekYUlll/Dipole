@@ -717,6 +717,76 @@ func (q *Queries) ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, 
 	return items, nil
 }
 
+const listApprovedAgentApprovalGrants = `-- name: ListApprovedAgentApprovalGrants :many
+SELECT id, approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256, arguments_sha256, nonce_sha256, status, expires_at, consumed_at, revoked_at, created_at, updated_at, approved_by_uuid
+FROM agent_approvals
+WHERE task_uuid = ?
+  AND capability_id = ?
+  AND scope_sha256 = ?
+  AND arguments_sha256 = ?
+  AND status = 'approved'
+  AND consumed_at IS NULL
+  AND revoked_at IS NULL
+  AND expires_at > ?
+ORDER BY id
+LIMIT ?
+`
+
+type ListApprovedAgentApprovalGrantsParams struct {
+	TaskUuid        string
+	CapabilityID    string
+	ScopeSha256     string
+	ArgumentsSha256 string
+	ExpiresAt       time.Time
+	Limit           int32
+}
+
+func (q *Queries) ListApprovedAgentApprovalGrants(ctx context.Context, arg ListApprovedAgentApprovalGrantsParams) ([]AgentApproval, error) {
+	rows, err := q.db.QueryContext(ctx, listApprovedAgentApprovalGrants,
+		arg.TaskUuid,
+		arg.CapabilityID,
+		arg.ScopeSha256,
+		arg.ArgumentsSha256,
+		arg.ExpiresAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentApproval{}
+	for rows.Next() {
+		var i AgentApproval
+		if err := rows.Scan(
+			&i.ID,
+			&i.ApprovalUuid,
+			&i.TaskUuid,
+			&i.CapabilityID,
+			&i.ResourceScopeJson,
+			&i.ScopeSha256,
+			&i.ArgumentsSha256,
+			&i.NonceSha256,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.ConsumedAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ApprovedByUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMatchingAgentEventSubscriptions = `-- name: ListMatchingAgentEventSubscriptions :many
 SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at
 FROM agent_event_subscriptions AS s

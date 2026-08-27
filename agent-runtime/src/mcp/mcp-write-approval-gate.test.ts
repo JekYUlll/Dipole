@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
-import { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
+import { createMcpWriteApprovalGrantResolver, McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
 
 describe("MCP write Approval gate", () => {
   it("consumes an exact durable binding before one write execution", async () => {
@@ -80,6 +80,24 @@ describe("MCP write Approval gate", () => {
     await expect(invoke()).rejects.toThrow(/already consumed/i);
     expect(execute).toHaveBeenCalledOnce();
   });
+
+  it("resolves the persisted exact grant through the authenticated RPC port", async () => {
+    const resolveApprovalGrant = vi.fn(async () => grant({ content: "notice", conversationId: "group:G1" }));
+    const resolver = createMcpWriteApprovalGrantResolver({ resolveApprovalGrant });
+
+    await expect(resolver.resolve({
+      capabilityId: "message.system.send",
+      resource: { resourceType: "conversation", resourceId: "group:G1", action: "write" },
+      arguments: { conversationId: "group:G1", content: "notice" },
+      context: context()
+    })).resolves.toMatchObject({ approvalId: "APR-1", nonceSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(resolveApprovalGrant).toHaveBeenCalledWith(
+      "TASK-1", "RUN-1", "message.system.send",
+      { resourceType: "conversation", resourceId: "group:G1", actions: ["write"] },
+      argumentHash({ content: "notice", conversationId: "group:G1" }),
+      { requestId: "REQ-1", traceId: "TRACE-1" }
+    );
+  });
 });
 
 function writeRegistry(execute: (input: { conversationId: string; content: string }, context: ExecutionContext) => Promise<unknown>): CapabilityRegistry {
@@ -105,7 +123,8 @@ function grant(arguments_: Record<string, unknown>) {
   return {
     approvalId: "APR-1", capabilityId: "message.system.send",
     resourceScope: { resourceType: "conversation", resourceId: "group:G1", actions: ["write"] },
-    scopeSha256: scopeHash(), argumentsSha256: argumentHash(arguments_), nonce: "host-owned-once-nonce"
+    scopeSha256: scopeHash(), argumentsSha256: argumentHash(arguments_), nonceSha256: sha256("host-owned-once-nonce"),
+    expiresAtUnixMs: Date.now() + 60_000
   };
 }
 
