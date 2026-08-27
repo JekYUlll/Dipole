@@ -27,7 +27,9 @@ describe("Agent Task state", () => {
   it("requires the exact pending input request before resuming", () => {
     const waiting = transitionAgentTask(
       transitionAgentTask(createAgentTaskState("task-2"), { type: "start" }),
-      { type: "request_input", requestId: "input-1", prompt: "Choose a group" }
+      { type: "request_input", requestId: "input-1", prompt: "Choose a group", form: {
+        schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "groupId", label: "Group", type: "select", required: true, options: ["G1", "G2"] }]
+      } }
     );
 
     expect(() => transitionAgentTask(waiting, {
@@ -36,6 +38,9 @@ describe("Agent Task state", () => {
     expect(transitionAgentTask(waiting, {
       type: "provide_input", requestId: "input-1", value: { groupId: "G1" }
     })).toMatchObject({ status: "running", revision: 3, resume: { kind: "input", value: { groupId: "G1" } } });
+    expect(() => transitionAgentTask(waiting, {
+      type: "provide_input", requestId: "input-1", value: { groupId: "G9" }
+    })).toThrow(/groupId/);
   });
 
   it("turns a denied approval into a terminal cancellation", () => {

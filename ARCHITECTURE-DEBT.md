@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP adapter
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-27
+- **影响范围：** Agent Human-in-the-loop、Web 客户端、MCP 集成、凭据与第三方授权
+- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验和大小上限；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点。当前仅提供 API 与 Workflow 能力，未交付 Pencil 设计稿和前端渲染。
+- **风险：** 缺少 UI 时用户无法在产品内完成 durable input；将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；直接映射 MCP Elicitation 还可能引入 URL 跳转、来源和取消语义差异。
+- **建议方向：** Pencil MCP transport 恢复后先维护完整 desktop/mobile 表单、错误、取消和过期状态，再实现 schema 驱动前端；普通 Form 明确禁止敏感字段。第三方授权采用独立 URL mode、短期 challenge 与回调绑定，MCP adapter 需固定来源、progress/cancel 和版本映射，并增加审计与端到端测试。
+- **处理门槛：** Project Guardian 面向用户演示前完成普通 Form UI；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成敏感输入隔离与威胁建模。
+
 ### AD-035：Memory foundation 缺少受控写入、压缩与删除治理
 
 - **优先级：** P1

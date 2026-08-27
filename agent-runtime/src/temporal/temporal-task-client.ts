@@ -119,6 +119,10 @@ export class TemporalTaskControlClient implements AgentTaskWorkflowControlPort {
     await this.handle(taskId).signal("resolveTaskApproval", signal);
   }
 
+  async provideInput(taskId: string, signal: { requestId: string; value: Readonly<Record<string, string | boolean | readonly string[]>> }): Promise<void> {
+    await this.handle(taskId).signal("provideTaskInput", signal);
+  }
+
   private handle(taskId: string): TemporalWorkflowControlHandle {
     return this.workflow.getHandle(agentTaskWorkflowId(taskId));
   }
@@ -179,6 +183,10 @@ export function createTemporalTaskDispatchRuntime(config: {
     async resolveApproval(taskId, signal) {
       if (controls === undefined) throw new Error("Temporal Task controls are not started");
       await controls.resolveApproval(taskId, signal);
+    },
+    async provideInput(taskId, signal) {
+      if (controls === undefined) throw new Error("Temporal Task controls are not started");
+      await controls.provideInput(taskId, signal);
     },
     async stop() {
       dispatcher = undefined;

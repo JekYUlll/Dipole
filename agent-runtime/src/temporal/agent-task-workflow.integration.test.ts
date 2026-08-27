@@ -151,7 +151,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
       async executeAgentTaskStep() {
-        return { kind: "wait_input", requestId: "INPUT-1", prompt: "choose scope" };
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "choose scope", form: {
+          schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today", "week"] }]
+        } };
       }
     };
     const worker = await createWorker(env, taskQueue, activities);
@@ -177,6 +179,46 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     ]);
     worker.shutdown();
     await workerRun;
+  }, 120_000);
+
+  it("keeps invalid input pending and resumes from an exact durable Elicitation Signal", async () => {
+    const taskQueue = `dipole-agent-task-input-${Date.now()}`;
+    let calls = 0;
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId: "run-input-1", runStatus: "running" }; },
+      async finishAgentTask() {},
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep(input) {
+        calls += 1;
+        if (input.resume?.kind === "input") return { kind: "complete", output: { scope: input.resume.value.scope } };
+        return { kind: "wait_input", requestId: "INPUT-1", prompt: "Choose scope", form: {
+          schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today", "week"] }]
+        } };
+      }
+    };
+    const workerOne = await createWorker(env, taskQueue, activities);
+    const workerOneRun = workerOne.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+    const started = await tasks.start({ taskId: "task-input-1", goal: "choose scope" });
+    const handle = env.client.workflow.getHandle(started.workflowId);
+    await waitForStatus(env, handle, "waiting_input");
+    await controls.provideInput("task-input-1", { requestId: "INPUT-1", value: { scope: "month" } });
+    await env.sleep(100);
+    await expect(controls.query("task-input-1")).resolves.toMatchObject({ status: "waiting_input", pending: { requestId: "INPUT-1" } });
+
+    workerOne.shutdown();
+    await workerOneRun;
+    const workerTwo = await createWorker(env, taskQueue, activities);
+    const workerTwoRun = workerTwo.run();
+    await controls.provideInput("task-input-1", { requestId: "INPUT-OLD", value: { scope: "today" } });
+    await controls.provideInput("task-input-1", { requestId: "INPUT-1", value: { scope: "today" } });
+    await expect(handle.result()).resolves.toMatchObject({ status: "completed", output: { scope: "today" } });
+    expect(calls).toBe(2);
+    workerTwo.shutdown();
+    await workerTwoRun;
   }, 120_000);
 
   it("fails a Task after its bounded Activity step budget", async () => {

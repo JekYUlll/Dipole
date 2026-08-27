@@ -39,3 +39,26 @@ func TestAgentTaskControlClientUsesTrustedServiceHeaders(t *testing.T) {
 		t.Fatalf("resolve approval: result=%+v err=%v", result, err)
 	}
 }
+
+func TestAgentTaskControlClientForwardsStructuredInputWithoutPrincipalField(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/internal/v1/agent/tasks/TASK-1/inputs/INPUT-1" || request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
+			t.Fatalf("unexpected input request: path=%s headers=%v", request.URL.Path, request.Header)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatalf("decode input body: %v", err)
+		}
+		value, ok := body["value"].(map[string]any)
+		if !ok || value["scope"] != "today" || body["principalUserId"] != nil {
+			t.Fatalf("unexpected input body: %v", body)
+		}
+		writer.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+	client, _ := NewAgentTaskControlClient(server.URL, "secret", time.Second)
+	result, err := client.ProvideInput(context.Background(), "U100", "TASK-1", "INPUT-1", map[string]any{"scope": "today"})
+	if err != nil || result.StatusCode != http.StatusAccepted {
+		t.Fatalf("provide input: result=%+v err=%v", result, err)
+	}
+}

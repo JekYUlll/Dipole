@@ -59,6 +59,7 @@ describe("TemporalTaskControlClient", () => {
     await controls.resolveApproval("TASK-1", {
       requestId: "REQ-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
     });
+    await controls.provideInput("TASK-1", { requestId: "INPUT-1", value: { scope: "today" } });
 
     expect(getHandle).toHaveBeenCalledWith("dipole-agent-task/TASK-1");
     expect(query).toHaveBeenCalledWith("taskState");
@@ -66,6 +67,7 @@ describe("TemporalTaskControlClient", () => {
     expect(signal).toHaveBeenCalledWith("resolveTaskApproval", {
       requestId: "REQ-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100"
     });
+    expect(signal).toHaveBeenCalledWith("provideTaskInput", { requestId: "INPUT-1", value: { scope: "today" } });
   });
 });
 

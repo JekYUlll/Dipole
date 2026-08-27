@@ -1,5 +1,6 @@
 import type { AgentTaskControlAuthorization } from "../capabilities/agent-capability-rpc.js";
 import type { AgentTaskState } from "../task/agent-task-state.js";
+import { validateElicitationResponse, type AgentElicitationValue } from "../task/agent-elicitation.js";
 
 export type AgentTaskControlErrorCode = "invalid_argument" | "not_found" | "conflict";
 
@@ -23,6 +24,7 @@ export interface AgentTaskWorkflowControlPort {
     decision: "approved" | "denied";
     actorUserId: string;
   }): Promise<void>;
+  provideInput(taskId: string, signal: { requestId: string; value: AgentElicitationValue }): Promise<void>;
 }
 
 export interface AgentTaskControlIdentity {
@@ -79,6 +81,18 @@ export class AgentTaskControlService {
       decision: input.decision,
       actorUserId: input.principalUserId
     });
+  }
+
+  async provideInput(input: AgentTaskControlIdentity & { requestId: string; value: unknown }): Promise<void> {
+    await this.authorize(input);
+    const state = await this.workflows.query(input.taskId);
+    if (state.status !== "waiting_input" || state.pending?.kind !== "input" || state.pending.requestId !== input.requestId) {
+      throw new AgentTaskControlError("conflict", "Agent Task input is no longer pending");
+    }
+    let value: AgentElicitationValue;
+    try { value = validateElicitationResponse(state.pending.form, input.value); }
+    catch (error) { throw new AgentTaskControlError("invalid_argument", error instanceof Error ? error.message : "Agent Task input is invalid"); }
+    await this.workflows.provideInput(input.taskId, { requestId: state.pending.requestId, value });
   }
 
   private async authorize(input: AgentTaskControlIdentity): Promise<AgentTaskControlAuthorization> {

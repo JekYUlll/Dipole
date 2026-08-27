@@ -139,7 +139,7 @@ Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根
 
 ## 6. Human-in-the-loop 与 Artifact
 
-高风险动作进入 `WAITING_APPROVAL`，通过 Temporal Signal 接收批准或拒绝。缺少结构化输入时进入 `WAITING_INPUT`，客户端展示表单；后续可通过 MCP Elicitation adapter 对外提供同类能力。
+高风险动作进入 `WAITING_APPROVAL`，通过 Temporal Signal 接收批准或拒绝。缺少结构化输入时进入 `WAITING_INPUT`。G3 v1 已固定 `dipole.agent.elicitation.v1`：Workflow 持久保存受限 Form 与 request ID，Gateway 从 JWT 派生 principal，Runtime 经 Core 复核 Task 所有权并按当前 Form 校验响应后发送 Signal。旧 request、跨用户、未知字段、非法选项与终态请求均 fail closed；Worker 替换后由 Workflow history 恢复等待点。当前没有 Pencil 表单 UI、敏感凭据输入、URL mode 或 MCP Elicitation adapter，详见 `AD-036`。
 
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 
