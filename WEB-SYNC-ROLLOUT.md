@@ -81,11 +81,13 @@ cd frontend
 npm ci
 npm run test:e2e:install
 npm run test:e2e
+cd ..
+./scripts/check-web-sync-real-quota.sh
 ```
 
 Playwright 运行 Chromium、Firefox、WebKit 的生产 IndexedDB 实现，覆盖容量淘汰、重开、账号隔离、延迟清理和页面重载中断事务。Chromium 额外启动独立 persistent profile，在生产 `commitPage` 仍 pending 时通过 CDP `Browser.crash` 终止浏览器主进程，再以同一 profile 重启并验证 Message、manifest 与安全 Cursor 的整页原子性。Linux WebKit 需要先执行 Playwright 官方 `install-deps webkit`，CI 可使用与 `@playwright/test` 版本一致的官方镜像。
 
-Chromium CDP `Storage.overrideQuotaForOrigin` 当前属于实验能力；如果它报告 active 但仍允许 IndexedDB 写入，用例会明确 skip。完整进程强退证据已经纳入自动验收，该结果仍不能替代受限磁盘 profile 或真实设备产生的 `QuotaExceededError` 证据，AD-025 因此继续保持处理中。
+Chromium CDP `Storage.overrideQuotaForOrigin` 当前属于实验能力；如果它报告 active 但仍允许 IndexedDB 写入，用例会明确 skip。`check-web-sync-real-quota.sh` 使用无特权 user/mount namespace 挂载 128 MiB tmpfs，并预留 24 MiB reserve file；独立 Chromium profile 持续提交随机不可压缩正文，真实拒绝后释放 reserve，再读取数据库验证失败页原子性。普通 E2E 默认跳过该外部门禁，Linux CI 需要允许 user namespace 和 tmpfs mount。完整进程强退与受限容量证据已经纳入自动验收，AD-025 继续跟踪共享设备 401/kick。
 
 生产 Prometheus 查询：
 

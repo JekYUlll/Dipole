@@ -179,6 +179,42 @@ const acceptance = {
     }
   },
 
+  async fillUntilStorageRejected(databaseName: string) {
+    const store = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName, {
+      highWaterMessages: 100_000,
+      lowWaterMessages: 90_000,
+    })
+    await store.commitPage('U1', page([{ id: 1, conversation: 'direct:U1:U2' }], 1))
+    let lastCommittedSeq = 1
+    for (let id = 2; id <= 256; id += 1) {
+      const chunks: string[] = []
+      for (let index = 0; index < 8; index += 1) {
+        const bytes = crypto.getRandomValues(new Uint8Array(64 * 1_024))
+        chunks.push(btoa(String.fromCharCode(...bytes)))
+      }
+      try {
+        await store.commitPage('U1', page([{
+          id,
+          conversation: 'direct:U1:U2',
+          content: chunks.join(''),
+        }], id))
+        lastCommittedSeq = id
+      } catch (error) {
+        const candidate = error as Error
+        store.close()
+        return {
+          errorName: candidate.name,
+          errorMessage: candidate.message,
+          classified: isLocalSyncCapacityError(candidate),
+          lastCommittedSeq,
+          rejectedSeq: id,
+        }
+      }
+    }
+    store.close()
+    throw new Error('constrained profile accepted every IndexedDB page')
+  },
+
   async cleanup(databaseName: string) {
     await deleteDatabase(databaseName)
   },

@@ -1,4 +1,6 @@
 import { chromium, expect, test } from '@playwright/test'
+import { unlink } from 'node:fs/promises'
+import { join } from 'node:path'
 
 const harnessURL = '/app/e2e/indexeddb.html'
 
@@ -135,5 +137,38 @@ test('does not advance the safe cursor when Chromium rejects a page at the real 
       await window.dipoleIndexedDBAcceptance.cleanup(name)
     }, databaseName)
     await client.detach()
+  }
+})
+
+test('does not advance the safe cursor when a constrained profile filesystem rejects IndexedDB', async ({ browserName }, testInfo) => {
+  test.skip(browserName !== 'chromium', 'constrained profile acceptance is Chromium-only')
+  const profileRoot = process.env.DIPOLE_REAL_QUOTA_PROFILE_ROOT
+  const reserveFile = process.env.DIPOLE_REAL_QUOTA_RESERVE_FILE
+  test.skip(!profileRoot || !reserveFile, 'run scripts/check-web-sync-real-quota.sh for a constrained tmpfs profile')
+  test.setTimeout(120_000)
+
+  const context = await chromium.launchPersistentContext(join(profileRoot!, 'profile'), { headless: true })
+  try {
+    const page = context.pages()[0] ?? await context.newPage()
+    await page.goto(harnessURL)
+    const rejection = await page.evaluate(async () => {
+      return window.dipoleIndexedDBAcceptance.fillUntilStorageRejected('dipole-real-quota')
+    })
+    await unlink(reserveFile!)
+    const recovered = await page.evaluate(async () => {
+      return window.dipoleIndexedDBAcceptance.inspectInterruptedWrite('dipole-real-quota')
+    })
+    await testInfo.attach('real-quota-recovery.json', {
+      body: JSON.stringify({ rejection, recovered }, null, 2),
+      contentType: 'application/json',
+    })
+
+    expect(rejection.classified).toBe(true)
+    expect(recovered.syncSeq).toBe(rejection.lastCommittedSeq)
+    expect(recovered.messageCount).toBe(rejection.lastCommittedSeq)
+    expect(recovered.manifest.syncSeq).toBe(recovered.syncSeq)
+    expect(recovered.manifest.messageCount).toBe(recovered.messageCount)
+  } finally {
+    await context.close()
   }
 })
