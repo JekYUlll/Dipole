@@ -8,13 +8,28 @@ import type { EventLedger } from "./event-ledger.js";
 
 const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
+const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
+
+const eventLineageSchema = z.object({
+  origin: z.object({
+    type: z.enum(["agent", "service", "system"]),
+    id: z.string().trim().min(1).max(128).regex(lineageIdentifier)
+  }).strict(),
+  causationEventId: z.string().trim().min(1).max(128).regex(lineageIdentifier).optional(),
+  agentTaskId: z.string().trim().min(1).max(128).regex(lineageIdentifier).optional()
+}).strict().superRefine((lineage, context) => {
+  if (lineage.origin.type === "agent" && lineage.agentTaskId === undefined) {
+    context.addIssue({ code: "custom", path: ["agentTaskId"], message: "agentTaskId is required for Agent origin" });
+  }
+});
 
 export const agentEventSchema = z.object({
   eventId: z.string().trim().min(1),
   eventType: z.string().trim().min(1),
   aggregateId: z.string().trim().min(1),
   occurredAt: z.iso.datetime(),
-  payload: z.record(z.string(), z.unknown())
+  payload: z.record(z.string(), z.unknown()),
+  lineage: eventLineageSchema.optional()
 }).strict();
 
 export type AgentEvent = z.infer<typeof agentEventSchema>;
@@ -107,7 +122,7 @@ export interface ShadowPlanExecutionDependencies {
   };
 }
 
-export type ShadowProcessResult = { readonly outcome: "recorded" | "duplicate"; readonly taskId: string };
+export type ShadowProcessResult = { readonly outcome: "recorded" | "duplicate" | "suppressed"; readonly taskId: string };
 
 export function agentTaskId(input: { tenantId: string; agentUuid: string; triggerType: string; triggerRef: string }): string {
   const canonical = [policyVersion, input.tenantId.trim(), input.agentUuid.trim(), input.triggerType.trim(), input.triggerRef.trim()].join("\n");
@@ -143,6 +158,9 @@ export class ShadowEventProcessor {
       triggerType: event.eventType,
       triggerRef: event.aggregateId
     });
+    if (event.lineage?.origin.type === "agent" && event.lineage.origin.id === identity.agentUuid.trim()) {
+      return { outcome: "suppressed", taskId };
+    }
     const claim = await this.ledger.claim(event.eventId, taskId, event.eventType);
     if (claim === undefined) {
       return { outcome: "duplicate", taskId };

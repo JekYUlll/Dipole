@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 func TestNewEnvelopeContextCarriesCorrelation(t *testing.T) {
@@ -17,6 +18,22 @@ func TestNewEnvelopeContextCarriesCorrelation(t *testing.T) {
 	}
 	if envelope.RequestID != "R1" || envelope.TraceID != "T1" || envelope.EventID == "" {
 		t.Fatalf("unexpected correlation: %+v", envelope)
+	}
+}
+
+func TestNewEnvelopeContextCarriesEventLineage(t *testing.T) {
+	t.Parallel()
+	ctx := eventlineage.WithContext(context.Background(), eventlineage.Lineage{
+		Origin:           eventlineage.Origin{Type: eventlineage.OriginAgent, ID: "UAI"},
+		CausationEventID: "E-TRIGGER",
+		AgentTaskID:      "TASK-1",
+	})
+	envelope, err := NewEnvelopeContext(ctx, "message.created", map[string]string{"message_id": "M1"})
+	if err != nil {
+		t.Fatalf("new envelope: %v", err)
+	}
+	if envelope.Lineage == nil || envelope.Lineage.Origin.ID != "UAI" || envelope.Lineage.CausationEventID != "E-TRIGGER" || envelope.Lineage.AgentTaskID != "TASK-1" {
+		t.Fatalf("unexpected lineage: %+v", envelope.Lineage)
 	}
 }
 
@@ -71,5 +88,13 @@ func TestDecodeEnvelopeRejectsMalformedVersion(t *testing.T) {
 		if !errors.Is(err, ErrUnsupportedEventVersion) {
 			t.Fatalf("version %q: expected unsupported version, got %v", version, err)
 		}
+	}
+}
+
+func TestDecodeEnvelopeRejectsAgentLineageWithoutTask(t *testing.T) {
+	t.Parallel()
+	_, err := DecodeEnvelope([]byte(`{"event_type":"message.created","version":"v1","lineage":{"origin":{"type":"agent","id":"UAI"}},"payload":{}}`))
+	if err == nil {
+		t.Fatal("expected malformed Agent lineage to be rejected")
 	}
 }

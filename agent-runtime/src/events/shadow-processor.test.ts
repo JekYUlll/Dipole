@@ -7,6 +7,34 @@ import { InMemoryEventLedger } from "./event-ledger.js";
 import { ShadowEventProcessor, agentRunId, agentTaskId, type AgentEvent } from "./shadow-processor.js";
 
 describe("ShadowEventProcessor", () => {
+  it("suppresses events from the same Agent causal chain before claiming or dispatching", async () => {
+    const plan = vi.fn();
+    const append = vi.fn();
+    const claim = vi.fn();
+    const dispatch = vi.fn();
+    const processor = new ShadowEventProcessor(
+      { plan }, { append }, { claim, complete: vi.fn(), release: vi.fn() },
+      undefined, undefined, undefined, 60_000, { dispatch }
+    );
+    const event = {
+      eventId: "E-LOOP", eventType: "message.direct.created", aggregateId: "M-LOOP",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {},
+      lineage: {
+        origin: { type: "agent" as const, id: "UAI" },
+        causationEventId: "E-REQUEST",
+        agentTaskId: "TASK-ORIGIN"
+      }
+    };
+
+    await expect(processor.process(event, {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI"
+    })).resolves.toEqual({ outcome: "suppressed", taskId: expect.stringMatching(/^task:/) });
+    expect(claim).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(plan).not.toHaveBeenCalled();
+    expect(append).not.toHaveBeenCalled();
+  });
+
   it("uses the Go-compatible Task ID and records each event once", async () => {
     expect(agentTaskId({
       tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100"
