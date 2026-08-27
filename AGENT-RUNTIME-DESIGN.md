@@ -170,6 +170,8 @@ Eval Harness 同时评估：
 
 模型、Prompt、Tool Schema 和 Memory Policy 升级先跑离线数据集，再进入 shadow，最后按 Agent 或用户灰度。
 
+G3 Shadow 晋级使用 `contracts/agent-promotion/v1/policy.json`：同一候选版本连续观察至少 24 小时，至少 24 个观察点且最大间隔 90 分钟，累计比较至少 100 个 Task，Workflow projection 六类对账中只能出现 `match`；projection、outcome、trajectory、permission Eval 必须全部通过。策略评估只产出 `eligible|blocked` Artifact，不修改 Runtime mode。Workflow repair 也只生成一小时内有效、绑定操作员声明/工单/Temporal 证据与 SHA-256 的 proposal；服务端认证、持久审计和审批链完成前没有执行入口。
+
 当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个原 `AD-008` case 持续提交恶意身份参数，并要求资料读取和系统消息目标使用服务端派生 principal；TypeScript Runtime 必须通过同一契约后才能获得流量。
 
 Embedded Runtime 的 `ExecutionContext` 由 Service 从触发 Message、持久 Task policy snapshot 与 correlation context 共同派生 principal、Agent、会话、permission/resource scope 和 request/trace/event ID。Tool schema 不暴露身份字段，缺少可信上下文或资源授权时拒绝执行。

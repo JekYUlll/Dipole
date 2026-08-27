@@ -13,6 +13,8 @@
     "generate:proto": "node ../scripts/generate-agent-proto-ts.mjs",
     "check:proto": "node ../scripts/check-agent-proto-ts.mjs",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
+    "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
+    "repair:propose": "tsx src/promotion/workflow-repair-proposal-cli.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",

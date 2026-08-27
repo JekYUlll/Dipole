@@ -69,6 +69,22 @@ npm run reconcile:projection -- --page-size=100 --max-examples=100
 
 命令输出 `dipole.agent.projection-reconcile.v1` JSON。全部 Task 为 `match` 时退出 0，发现 missing/stale/ahead/conflict/unavailable 时退出 2。它通过 Core 私有 RPC 分页读取固定 shadow cohort，只读 Temporal Query/Describe，不修改 Task、Run 或 Workflow。
 
+将同一候选版本的对账观察和 Eval 结果整理为 `dipole.agent.shadow-promotion-evidence.v1` 后，可执行：
+
+```bash
+npm run promotion:check -- --evidence=/path/to/evidence.json
+```
+
+策略要求连续 24 小时、至少 24 个观察点、最大间隔 90 分钟、累计至少 100 个 Task、零 projection 异常与 unavailable，并要求 projection/outcome/trajectory/permission Eval 全通过。eligible 只用于人工评审，命令不修改配置或运行时权威。
+
+确认 Temporal 证据后，操作员可生成短时效修复候选 Artifact：
+
+```bash
+npm run repair:propose -- --input=/path/to/repair-input.json
+```
+
+提案绑定 Task、操作员声明、工单、原因、投影/Temporal 证据和一小时有效期，并生成稳定 SHA-256。当前没有 apply 命令，提案也尚未经过服务端签名和持久审批，不能作为已授权修复。
+
 Shadow 模式仅生成并审计 plan，Policy Engine 拒绝 write/destructive capability。微服务默认使用 MySQL EventLedger，通过 Event ID/Task ID 唯一约束、claim token 与 lease 收敛重启和多副本重复投递；`memory` 只用于显式本地回滚。无效事件直接进入 dead，瞬时处理错误按 `retry_attempt` 有界重试；转移发布失败会让 handler 拒绝完成。migration v20 将 Plan 保存为不可变 Task 快照，并按顺序保存处于 `planned` 状态的结构化 capability Step；远程只读执行与 Step 终态将在 Agent Capability RPC 接入后启用。
 
 模型调用默认关闭。显式开启 AI SDK shadow planner 时配置有序 route 与预算，并通过 `AI_GATEWAY_API_KEY` 提供 Gateway 凭据：
