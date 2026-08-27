@@ -173,10 +173,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
-- **现状：** migration v16-v24 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态和附加 Workflow projection。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API。离线对账通过受认证 Core 分页 RPC 与 Temporal Query/Describe 输出 `match|missing|stale|ahead|conflict|unavailable`，只生成版本化报告与 Eval 证据。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
-- **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Artifact、Memory、任务终态 outcome Eval 或审批前端。离线报告没有自动修复能力，Temporal Worker 停止时 Query 会归类为 unavailable。提前转为 active 会缺少状态晋级阈值、修复审计和完整产品恢复界面。
+- **现状：** migration v16-v24 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态和附加 Workflow projection。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态与 Approval Signal；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter 和只读 Capability Step。Gateway 已提供默认关闭的 JWT Task query/cancel/approval API。离线对账输出六类版本化证据；Shadow 晋级策略要求连续 24 小时、24 个观察点、累计 100 个 Task、零异常和完整 Eval，并且只生成 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
+- **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Artifact、Memory、真实任务终态 outcome Eval 或审批前端。repair proposal 当前属于未签名 Artifact，尚无服务端认证、持久审批或执行器；Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v24 全链升降级、16 路同 revision 恰好一次写入、重放收敛、漂移拒绝及 shadow cohort keyset 枚举。版本化 Eval 固定六类对账结果；真实 gRPC 通道验证分页方法仍受 Agent 最小权限 allowlist。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
-- **建议方向：** 下一步定义 shadow 晋级阈值和人工修复审计，再使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面；满足连续对账与 outcome Eval 证据后才转移权威 Task 与回复流量。
+- **建议方向：** 下一步将 repair proposal 接入受认证操作员身份、MySQL 审计和双人审批，再使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面；完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
 ### AD-012：用户状态常量与 schema 默认值偏移
