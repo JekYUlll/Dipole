@@ -163,6 +163,8 @@ Eval Harness 同时评估：
 
 模型、Prompt、Tool Schema 和 Memory Policy 升级先跑离线数据集，再进入 shadow，最后按 Agent 或用户灰度。
 
+当前 Embedded Go/Eino baseline 位于 `contracts/agent-evals/v1/go-eino-baseline.json`。它通过真实 Service/Tool adapter 测试固定 direct trigger 过滤与幂等、普通回复、Tool 回复去重、会话授权和消息读取轨迹。两个 `AD-008` case 明确记录模型参数仍可覆盖资料读取身份和系统消息目标；TypeScript Runtime 在切流前必须让同一用例转为服务端 principal 派生结果，并保留旧 baseline 作为回归对照。
+
 ## 9. 渐进路线
 
 1. 固化 Go/Eino 行为基线、事件契约和评测集，建立 Capability API 与 Agent Command API。

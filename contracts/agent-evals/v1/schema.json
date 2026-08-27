@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/schema.json",
+  "title": "Dipole Agent Evaluation Suite v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "baseline_id", "cases"],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.eval.v1"},
+    "baseline_id": {"type": "string", "minLength": 1},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "operation", "input", "expected"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+          "category": {"enum": ["event", "reply", "trajectory", "permission"]},
+          "operation": {"type": "string", "minLength": 1},
+          "input": {"type": "object"},
+          "expected": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["outcome", "trajectory", "permission"],
+            "properties": {
+              "outcome": {"type": "string", "minLength": 1},
+              "trajectory": {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1}
+              },
+              "permission": {"type": "string", "minLength": 1},
+              "known_gap": {"type": "string", "pattern": "^AD-[0-9]{3}$"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

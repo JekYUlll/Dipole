@@ -120,6 +120,7 @@
 - **影响范围：** `internal/modules/ai/tools.go`、会话读取、用户资料、系统消息发送
 - **现状：** 多个 Tool Schema 暴露 `user_uuid`，执行时直接使用模型生成的参数查询资源或确定消息目标。
 - **风险：** Tool 缺少由认证链注入的 principal 与统一 Capability Policy，模型参数可能造成越权读取、错误目标写入或审计身份不清。
+- **基线证据：** `dipole.agent.eval.v1` 中的 profile principal override 与 system-message target override 均稳定复现 `model_identity_accepted`，并绑定本债务编号；会话读取的 allow/deny 轨迹同时固定现有资源存在性检查。
 - **建议方向：** 引入不可由模型覆盖的 `ExecutionContext`，将 principal、委托身份、权限和 trace 注入 Tool；模型只提交资源参数，Capability API 执行服务端授权。
 - **处理门槛：** TypeScript Agent Runtime 获得任何生产读写流量前完成。
 
@@ -131,6 +132,7 @@
 - **影响范围：** `ai_call_logs`、长任务、审批、失败恢复和评测
 - **现状：** 当前记录 trigger、response、Token 和 latency，执行仍以单次 Kafka handler 和模型调用为中心。
 - **风险：** 服务重启、等待用户输入或审批、Tool 重试和多步骤 Artifact 无法形成可恢复、可审计的统一状态。
+- **基线证据：** Go/Eino v1 评测集只能从测试 adapter 还原单次 trigger、Agent、Tool 和消息动作轨迹；生产持久层仍仅记录调用开始、成功/失败、Token 与响应消息 ID。
 - **建议方向：** 引入 AgentTask、Run、Step、ToolInvocation、Approval 和 Artifact 模型，由 Temporal Workflow 管理状态与恢复。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
