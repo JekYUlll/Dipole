@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -225,10 +226,43 @@ func (r *AgentPolicyRepository) CreateApproval(ctx context.Context, approval app
 		NonceSha256: approval.NonceSHA256, Status: string(approval.Status), ApprovedByUuid: approval.ApprovedByUUID,
 		ExpiresAt: approval.ExpiresAt, ConsumedAt: nullableTime(approval.ConsumedAt), RevokedAt: nullableTime(approval.RevokedAt),
 	})
-	if err != nil {
+	if err == nil {
+		return nil
+	}
+	var duplicate *mysqlDriver.MySQLError
+	if !errors.As(err, &duplicate) || duplicate.Number != 1062 {
 		return fmt.Errorf("create Agent Approval: %w", err)
 	}
+	existing, lookupErr := r.GetApproval(ctx, approval.ApprovalUUID)
+	if lookupErr != nil {
+		return lookupErr
+	}
+	if existing == nil || !sameAgentApproval(*existing, approval) {
+		return fmt.Errorf("%w: approval_uuid=%s", ErrAgentPolicyConflict, approval.ApprovalUUID)
+	}
 	return nil
+}
+
+func (r *AgentPolicyRepository) GetApproval(ctx context.Context, approvalUUID string) (*application.AgentApprovalV1, error) {
+	row, err := r.queries.GetAgentApproval(ctx, approvalUUID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get Agent Approval: %w", err)
+	}
+	var scope application.AgentResourceScopeV1
+	if err := json.Unmarshal(row.ResourceScopeJson, &scope); err != nil {
+		return nil, fmt.Errorf("decode Agent Approval scope: %w", err)
+	}
+	return &application.AgentApprovalV1{
+		ApprovalUUID: row.ApprovalUuid, TaskUUID: row.TaskUuid, CapabilityID: row.CapabilityID,
+		ResourceScope: scope, ScopeSHA256: row.ScopeSha256, ArgumentsSHA256: row.ArgumentsSha256,
+		NonceSHA256: row.NonceSha256, Status: application.AgentApprovalStatusV1(row.Status),
+		ApprovedByUUID: row.ApprovedByUuid, ExpiresAt: row.ExpiresAt,
+		ConsumedAt: timePointer(row.ConsumedAt), RevokedAt: timePointer(row.RevokedAt),
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
 }
 
 func (r *AgentPolicyRepository) ConsumeApproval(ctx context.Context, approvalUUID string, claim application.AgentApprovalClaimV1, consumedAt time.Time) (bool, error) {
@@ -269,6 +303,19 @@ func (r *AgentPolicyRepository) RevokeApproval(ctx context.Context, approvalUUID
 	return nil
 }
 
+func (r *AgentPolicyRepository) DenyApproval(ctx context.Context, approvalUUID string, deniedAt time.Time) (bool, error) {
+	if strings.TrimSpace(approvalUUID) == "" || deniedAt.IsZero() {
+		return false, fmt.Errorf("validate Agent Approval denial: %w", application.ErrAgentPolicyInvalid)
+	}
+	rows, err := r.queries.DenyAgentApproval(ctx, generated.DenyAgentApprovalParams{
+		RevokedAt: nullableTime(&deniedAt), ApprovalUuid: approvalUUID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("deny Agent Approval: %w", err)
+	}
+	return rows > 0, nil
+}
+
 func sameAgentTask(left, right application.AgentTaskV1) bool {
 	left.Status, right.Status = "", ""
 	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
@@ -281,6 +328,12 @@ func nullableTime(value *time.Time) sql.NullTime {
 		return sql.NullTime{}
 	}
 	return sql.NullTime{Time: value.UTC(), Valid: true}
+}
+
+func sameAgentApproval(left, right application.AgentApprovalV1) bool {
+	left.CreatedAt, left.UpdatedAt = time.Time{}, time.Time{}
+	right.CreatedAt, right.UpdatedAt = time.Time{}, time.Time{}
+	return reflect.DeepEqual(left, right)
 }
 
 func timePointer(value sql.NullTime) *time.Time {

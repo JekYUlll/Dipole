@@ -7,7 +7,7 @@ describe("Agent Task state", () => {
     const created = createAgentTaskState("task-1");
     const running = transitionAgentTask(created, { type: "start" });
     const waiting = transitionAgentTask(running, {
-      type: "request_approval", requestId: "approval-1", summary: "send one message"
+      type: "request_approval", requestId: "approval-1", approvalId: "APR-1", summary: "send one message"
     });
     const resumed = transitionAgentTask(waiting, {
       type: "resolve_approval", requestId: "approval-1", decision: "approved"
@@ -17,7 +17,7 @@ describe("Agent Task state", () => {
     expect(created).toEqual({ taskId: "task-1", status: "created", revision: 0 });
     expect(waiting).toMatchObject({
       status: "waiting_approval", revision: 2,
-      pending: { kind: "approval", requestId: "approval-1", summary: "send one message" }
+      pending: { kind: "approval", requestId: "approval-1", approvalId: "APR-1", summary: "send one message" }
     });
     expect(resumed).toMatchObject({ status: "running", revision: 3 });
     expect(resumed).not.toHaveProperty("pending");
@@ -41,7 +41,7 @@ describe("Agent Task state", () => {
   it("turns a denied approval into a terminal cancellation", () => {
     const waiting = transitionAgentTask(
       transitionAgentTask(createAgentTaskState("task-3"), { type: "start" }),
-      { type: "request_approval", requestId: "approval-3", summary: "delete artifact" }
+      { type: "request_approval", requestId: "approval-3", approvalId: "APR-3", summary: "delete artifact" }
     );
     const cancelled = transitionAgentTask(waiting, {
       type: "resolve_approval", requestId: "approval-3", decision: "denied"

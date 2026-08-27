@@ -79,6 +79,52 @@ func (q *Queries) ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentAppr
 	return result.RowsAffected()
 }
 
+const denyAgentApproval = `-- name: DenyAgentApproval :execrows
+UPDATE agent_approvals
+SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
+WHERE approval_uuid = ? AND status = 'pending' AND consumed_at IS NULL AND revoked_at IS NULL
+`
+
+type DenyAgentApprovalParams struct {
+	RevokedAt    sql.NullTime
+	ApprovalUuid string
+}
+
+func (q *Queries) DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, denyAgentApproval, arg.RevokedAt, arg.ApprovalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getAgentApproval = `-- name: GetAgentApproval :one
+SELECT id, approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256, arguments_sha256, nonce_sha256, status, expires_at, consumed_at, revoked_at, created_at, updated_at, approved_by_uuid FROM agent_approvals WHERE approval_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error) {
+	row := q.db.QueryRowContext(ctx, getAgentApproval, approvalUuid)
+	var i AgentApproval
+	err := row.Scan(
+		&i.ID,
+		&i.ApprovalUuid,
+		&i.TaskUuid,
+		&i.CapabilityID,
+		&i.ResourceScopeJson,
+		&i.ScopeSha256,
+		&i.ArgumentsSha256,
+		&i.NonceSha256,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ApprovedByUuid,
+	)
+	return i, err
+}
+
 const getAgentDefinitionVersion = `-- name: GetAgentDefinitionVersion :one
 SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
 WHERE definition_uuid = ? AND version = ?

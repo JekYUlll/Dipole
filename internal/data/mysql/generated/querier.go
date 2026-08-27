@@ -51,6 +51,7 @@ type Querier interface {
 	DeleteGroupMember(ctx context.Context, arg DeleteGroupMemberParams) (sql.Result, error)
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
 	DeletePublishedSearchOutboxBatch(ctx context.Context, arg DeletePublishedSearchOutboxBatchParams) (sql.Result, error)
+	DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error)
 	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error
@@ -65,6 +66,7 @@ type Querier interface {
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
+	GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error)
 	GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDefinitionVersionParams) (AgentDefinitionVersion, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)

@@ -7,6 +7,9 @@ import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
 import type { ListConversationsResponse } from "./agent.js";
 import type { ListConversationsRequest } from "./agent.js";
+import type { ResolveApprovalRequest } from "./agent.js";
+import type { ApprovalResponse } from "./agent.js";
+import type { RequestApprovalRequest } from "./agent.js";
 import type { FinishRunResponse } from "./agent.js";
 import type { FinishRunRequest } from "./agent.js";
 import type { CompleteRunResponse } from "./agent.js";
@@ -39,6 +42,20 @@ export interface IAgentCapabilityServiceClient {
     finishRun(input: FinishRunRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
     finishRun(input: FinishRunRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
     finishRun(input: FinishRunRequest, callback: (err: grpc.ServiceError | null, value?: FinishRunResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: RequestApproval
+     */
+    requestApproval(input: RequestApprovalRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    requestApproval(input: RequestApprovalRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    requestApproval(input: RequestApprovalRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    requestApproval(input: RequestApprovalRequest, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ResolveApproval
+     */
+    resolveApproval(input: ResolveApprovalRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    resolveApproval(input: ResolveApprovalRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    resolveApproval(input: ResolveApprovalRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
+    resolveApproval(input: ResolveApprovalRequest, callback: (err: grpc.ServiceError | null, value?: ApprovalResponse) => void): grpc.ClientUnaryCall;
     /**
      * @generated from protobuf rpc: ListConversations
      */
@@ -78,10 +95,24 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
         return this.makeUnaryRequest<FinishRunRequest, FinishRunResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: FinishRunRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): FinishRunResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
+     * @generated from protobuf rpc: RequestApproval
+     */
+    requestApproval(input: RequestApprovalRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[3];
+        return this.makeUnaryRequest<RequestApprovalRequest, ApprovalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: RequestApprovalRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ApprovalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ResolveApproval
+     */
+    resolveApproval(input: ResolveApprovalRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ApprovalResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[4];
+        return this.makeUnaryRequest<ResolveApprovalRequest, ApprovalResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ResolveApprovalRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ApprovalResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
      * @generated from protobuf rpc: ListConversations
      */
     listConversations(input: ListConversationsRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListConversationsResponse) => void)): grpc.ClientUnaryCall {
-        const method = AgentCapabilityService.methods[3];
+        const method = AgentCapabilityService.methods[5];
         return this.makeUnaryRequest<ListConversationsRequest, ListConversationsResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ListConversationsRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListConversationsResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

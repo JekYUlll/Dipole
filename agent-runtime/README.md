@@ -44,7 +44,7 @@ npm start
 
 Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复用现有 Workflow，终态 Task 拒绝重复启动。模型调用、Capability RPC、持久化和副作用重试均须通过 Activity；foundation 的 Step Activity 只返回受控失败，用于验证 Worker 部署、恢复和运维边界。
 
-显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 必须从可信事件构造 `admission`，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step、Approval 和权威 Task 状态继续由既有路径持有。
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 

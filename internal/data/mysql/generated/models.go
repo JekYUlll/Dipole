@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+type AgentApproval struct {
+	ID                uint64
+	ApprovalUuid      string
+	TaskUuid          string
+	CapabilityID      string
+	ResourceScopeJson json.RawMessage
+	ScopeSha256       string
+	ArgumentsSha256   string
+	NonceSha256       string
+	Status            string
+	ExpiresAt         time.Time
+	ConsumedAt        sql.NullTime
+	RevokedAt         sql.NullTime
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ApprovedByUuid    string
+}
+
 type AgentDefinitionVersion struct {
 	ID              uint64
 	DefinitionUuid  string

@@ -55,6 +55,9 @@ INSERT INTO agent_approvals (
     consumed_at, revoked_at, created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
 
+-- name: GetAgentApproval :one
+SELECT * FROM agent_approvals WHERE approval_uuid = ? LIMIT 1;
+
 -- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)
@@ -82,3 +85,8 @@ WHERE approval_uuid = ?
 UPDATE agent_approvals
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
 WHERE approval_uuid = ? AND consumed_at IS NULL AND revoked_at IS NULL;
+
+-- name: DenyAgentApproval :execrows
+UPDATE agent_approvals
+SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
+WHERE approval_uuid = ? AND status = 'pending' AND consumed_at IS NULL AND revoked_at IS NULL;

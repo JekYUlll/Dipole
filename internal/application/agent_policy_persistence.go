@@ -126,6 +126,29 @@ type AgentApprovalClaimV1 struct {
 	NonceSHA256     string `json:"nonce_sha256"`
 }
 
+type AgentApprovalDecisionV1 string
+
+const (
+	AgentApprovalDecisionApproved AgentApprovalDecisionV1 = "approved"
+	AgentApprovalDecisionDenied   AgentApprovalDecisionV1 = "denied"
+)
+
+type AgentApprovalRequestV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	Approval                           AgentApprovalV1
+}
+
+type AgentApprovalResolutionV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	ApprovalUUID, ActorUUID            string
+	Decision                           AgentApprovalDecisionV1
+}
+
+type AgentApprovalServiceV1 interface {
+	Request(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
+	Resolve(ctx context.Context, resolution AgentApprovalResolutionV1) (*AgentApprovalV1, error)
+}
+
 func (d AgentDefinitionVersionV1) Validate() error {
 	if anyBlank(d.DefinitionUUID, d.TenantID, d.OwnerUUID, d.AgentUUID) || d.Version == 0 || d.ValidFrom.IsZero() ||
 		(d.Status != AgentDefinitionStatusActive && d.Status != AgentDefinitionStatusRevoked) || len(d.Permissions) == 0 || len(d.Scopes) == 0 {
@@ -358,7 +381,9 @@ type AgentPolicyStoreV1 interface {
 	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
 	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)
 	CreateApproval(ctx context.Context, approval AgentApprovalV1) error
+	GetApproval(ctx context.Context, approvalUUID string) (*AgentApprovalV1, error)
 	ApproveApproval(ctx context.Context, approvalUUID, approvedByUUID string, approvedAt time.Time) (bool, error)
 	ConsumeApproval(ctx context.Context, approvalUUID string, claim AgentApprovalClaimV1, consumedAt time.Time) (bool, error)
 	RevokeApproval(ctx context.Context, approvalUUID string, revokedAt time.Time) error
+	DenyApproval(ctx context.Context, approvalUUID string, deniedAt time.Time) (bool, error)
 }

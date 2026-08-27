@@ -2,7 +2,9 @@ package agentgrpc
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -44,6 +46,27 @@ func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string
 type capabilityStub struct {
 	application.AgentCapabilityV1
 	invocation application.AgentInvocationV1
+}
+
+type approvalServiceStub struct {
+	requested application.AgentApprovalRequestV1
+	resolved  application.AgentApprovalResolutionV1
+}
+
+func (s *approvalServiceStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
+	s.requested = request
+	approval := request.Approval
+	return &approval, nil
+}
+
+func (s *approvalServiceStub) Resolve(_ context.Context, resolution application.AgentApprovalResolutionV1) (*application.AgentApprovalV1, error) {
+	s.resolved = resolution
+	status := application.AgentApprovalStatusRevoked
+	actor := ""
+	if resolution.Decision == application.AgentApprovalDecisionApproved {
+		status, actor = application.AgentApprovalStatusApproved, resolution.ActorUUID
+	}
+	return &application.AgentApprovalV1{ApprovalUUID: resolution.ApprovalUUID, Status: status, ApprovedByUUID: actor}, nil
 }
 
 func (s *capabilityStub) ListConversations(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Conversation, error) {
@@ -135,5 +158,24 @@ func TestFinishRunRejectsInvalidStatusAndClientPrincipal(t *testing.T) {
 		if _, err := server.FinishRun(context.Background(), request); status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("FinishRun code = %s, want %s", status.Code(err), codes.InvalidArgument)
 		}
+	}
+}
+
+func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
+		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
+	})
+	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
+		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
+	}
+	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
+	})
+	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
+		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
 	}
 }

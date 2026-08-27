@@ -124,6 +124,18 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err := store.CreateApproval(context.Background(), approval); err != nil {
 		t.Fatalf("create approval: %v", err)
 	}
+	if err := store.CreateApproval(context.Background(), approval); err != nil {
+		t.Fatalf("replay exact approval: %v", err)
+	}
+	loadedApproval, err := store.GetApproval(context.Background(), approval.ApprovalUUID)
+	if err != nil || loadedApproval == nil || loadedApproval.NonceSHA256 != approval.NonceSHA256 || loadedApproval.ResourceScope.ResourceID != approval.ResourceScope.ResourceID {
+		t.Fatalf("get exact approval: approval=%+v err=%v", loadedApproval, err)
+	}
+	conflictingApproval := approval
+	conflictingApproval.ArgumentsSHA256 = strings.Repeat("9", 64)
+	if err := store.CreateApproval(context.Background(), conflictingApproval); !errors.Is(err, sqlcRepository.ErrAgentPolicyConflict) {
+		t.Fatalf("expected approval conflict, got %v", err)
+	}
 	pending := approval
 	pending.ApprovalUUID, pending.NonceSHA256 = "APR-0", strings.Repeat("0", 64)
 	pending.Status, pending.ApprovedByUUID = application.AgentApprovalStatusPending, ""
@@ -143,6 +155,33 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	claim.ArgumentsSHA256 = approval.ArgumentsSHA256
 	if consumed, err := store.ConsumeApproval(context.Background(), approval.ApprovalUUID, claim, now); err != nil || !consumed {
 		t.Fatalf("exact consume: consumed=%v err=%v", consumed, err)
+	}
+	raceApproval := pending
+	raceApproval.ApprovalUUID, raceApproval.NonceSHA256 = "APR-RACE", strings.Repeat("6", 64)
+	if err := store.CreateApproval(context.Background(), raceApproval); err != nil {
+		t.Fatalf("create decision-race approval: %v", err)
+	}
+	var decisionWins atomic.Int64
+	var decisionWait sync.WaitGroup
+	decisionWait.Add(2)
+	go func() {
+		defer decisionWait.Done()
+		changed, _ := store.ApproveApproval(context.Background(), raceApproval.ApprovalUUID, "U100", now)
+		if changed {
+			decisionWins.Add(1)
+		}
+	}()
+	go func() {
+		defer decisionWait.Done()
+		changed, _ := store.DenyApproval(context.Background(), raceApproval.ApprovalUUID, now)
+		if changed {
+			decisionWins.Add(1)
+		}
+	}()
+	decisionWait.Wait()
+	decisionResult, err := store.GetApproval(context.Background(), raceApproval.ApprovalUUID)
+	if err != nil || decisionWins.Load() != 1 || (decisionResult.Status != application.AgentApprovalStatusApproved && decisionResult.Status != application.AgentApprovalStatusRevoked) {
+		t.Fatalf("Approval decision race: wins=%d approval=%+v err=%v", decisionWins.Load(), decisionResult, err)
 	}
 	if consumed, err := store.ConsumeApproval(context.Background(), approval.ApprovalUUID, claim, now); err != nil || consumed {
 		t.Fatalf("replayed consume: consumed=%v err=%v", consumed, err)
@@ -260,6 +299,52 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		if finishErr := admission.Finish(context.Background(), admitted.TaskUUID, admitted.RunUUID, "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); !errors.Is(finishErr, application.ErrAgentExecutionPolicyDenied) {
 			t.Fatalf("conflicting %s Temporal terminal replay should be denied, got %v", terminal.status, finishErr)
 		}
+	}
+
+	durableRun, err := admission.Admit(context.Background(), application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+			TenantID: "dipole", PrincipalUUID: persistentPrincipalUUID, AgentUUID: persistentAgentUUID,
+			DelegatedByUUID: persistentPrincipalUUID, TriggerType: "message.direct.created", TriggerRef: "M-TEMPORAL-APPROVAL",
+			RequestID: "R-TEMPORAL-APPROVAL", TraceID: "T-TEMPORAL-APPROVAL", EventID: "E-TEMPORAL-APPROVAL",
+		}, RuntimeID: "dipole-agent", Mode: "shadow",
+	})
+	if err != nil {
+		t.Fatalf("admit durable Approval Run: %v", err)
+	}
+	approvalService, err := appComposition.NewPersistentAgentApprovalServiceV1(store)
+	if err != nil {
+		t.Fatalf("create persistent Approval service: %v", err)
+	}
+	durableScope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "G-DURABLE", Actions: []string{"write"}}
+	durableScopeHash, _ := application.AgentResourceScopeSHA256V1(durableScope)
+	durableApproval := application.AgentApprovalV1{
+		ApprovalUUID: "APR-DURABLE", TaskUUID: durableRun.TaskUUID, CapabilityID: "message.bulk.send", ResourceScope: durableScope,
+		ScopeSHA256: durableScopeHash, ArgumentsSHA256: strings.Repeat("7", 64), NonceSHA256: strings.Repeat("8", 64),
+		Status: application.AgentApprovalStatusPending, ExpiresAt: time.Now().UTC().Add(time.Hour),
+	}
+	approvalRequest := application.AgentApprovalRequestV1{TaskUUID: durableRun.TaskUUID, RunUUID: durableRun.RunUUID, RuntimeID: "dipole-agent", Mode: "shadow", Approval: durableApproval}
+	if _, err := approvalService.Request(context.Background(), approvalRequest); err != nil {
+		t.Fatalf("persist durable Approval: %v", err)
+	}
+	resolution := application.AgentApprovalResolutionV1{TaskUUID: durableRun.TaskUUID, RunUUID: durableRun.RunUUID, RuntimeID: "dipole-agent", Mode: "shadow", ApprovalUUID: durableApproval.ApprovalUUID, ActorUUID: persistentPrincipalUUID, Decision: application.AgentApprovalDecisionApproved}
+	var resolutionFailures atomic.Int64
+	var resolutionWait sync.WaitGroup
+	for range 16 {
+		resolutionWait.Add(1)
+		go func() {
+			defer resolutionWait.Done()
+			resolved, resolveErr := approvalService.Resolve(context.Background(), resolution)
+			if resolveErr != nil || resolved.Status != application.AgentApprovalStatusApproved {
+				resolutionFailures.Add(1)
+			}
+		}()
+	}
+	resolutionWait.Wait()
+	if resolutionFailures.Load() != 0 {
+		t.Fatalf("concurrent durable Approval resolution failures=%d", resolutionFailures.Load())
+	}
+	if resolved, err := approvalService.Resolve(context.Background(), resolution); err != nil || resolved.ApprovedByUUID != persistentPrincipalUUID {
+		t.Fatalf("replay durable Approval resolution: approval=%+v err=%v", resolved, err)
 	}
 }
 
