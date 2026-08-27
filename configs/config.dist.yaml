@@ -17,6 +17,10 @@ gateway:
   # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/gateway.
   mode: embedded
   core_http_target: http://127.0.0.1:8081
+  # Exposes JWT-authenticated durable Task query/cancel/approval routes through the Gateway.
+  # Keep disabled until the Agent Runtime and Temporal control plane are ready.
+  agent_control_enabled: false
+  agent_control_target: http://127.0.0.1:8091
 
 tls:
   enabled: false

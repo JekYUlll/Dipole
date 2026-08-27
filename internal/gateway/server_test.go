@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -64,6 +66,34 @@ type gatewaySearchStub struct {
 	principal string
 	text      string
 	limit     int
+}
+
+type gatewayAgentTaskStub struct {
+	principal  string
+	taskID     string
+	approvalID string
+	decision   string
+	reason     string
+}
+
+func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID = principalUUID, taskUUID
+	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "status": "running"}), nil
+}
+
+func (s *gatewayAgentTaskStub) CancelTask(_ context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID, s.reason = principalUUID, taskUUID, reason
+	return agentControlJSON(http.StatusAccepted, map[string]any{"status": "cancellation_requested"}), nil
+}
+
+func (s *gatewayAgentTaskStub) ResolveApproval(_ context.Context, principalUUID, taskUUID, approvalUUID, decision string) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID, s.approvalID, s.decision = principalUUID, taskUUID, approvalUUID, decision
+	return agentControlJSON(http.StatusAccepted, map[string]any{"status": "resolution_requested"}), nil
+}
+
+func agentControlJSON(status int, value any) *AgentTaskControlResult {
+	body, _ := json.Marshal(value)
+	return &AgentTaskControlResult{StatusCode: status, Body: body, ContentType: "application/json"}
 }
 
 func (s *gatewaySearchStub) Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error) {
@@ -192,5 +222,46 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `"message_id":"M1"`) {
 		t.Fatalf("unexpected Search response: %s", response.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	proxied := 0
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { proxied++; writer.WriteHeader(http.StatusTeapot) }))
+	defer core.Close()
+	tasks := &gatewayAgentTaskStub{}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentTasks: tasks, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/tasks/TASK-1", nil))
+	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 {
+		t.Fatalf("unauthorized control: code=%d proxied=%d", unauthorized.Code, proxied)
+	}
+	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	if err != nil {
+		t.Fatalf("issue token: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/tasks/TASK-1/approvals/APR-1", strings.NewReader(`{"decision":"approved","principal_user_id":"U999"}`))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted || proxied != 0 || tasks.principal != "U100" || tasks.taskID != "TASK-1" || tasks.approvalID != "APR-1" || tasks.decision != "approved" {
+		t.Fatalf("Agent control: code=%d proxied=%d tasks=%+v body=%s", response.Code, proxied, tasks, response.Body.String())
 	}
 }

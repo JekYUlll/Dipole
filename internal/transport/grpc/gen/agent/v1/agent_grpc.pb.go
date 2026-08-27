@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AgentCapabilityService_AdmitRun_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
-	AgentCapabilityService_CompleteRun_FullMethodName       = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
-	AgentCapabilityService_FinishRun_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
-	AgentCapabilityService_RequestApproval_FullMethodName   = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
-	AgentCapabilityService_ResolveApproval_FullMethodName   = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
-	AgentCapabilityService_ListConversations_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
+	AgentCapabilityService_AdmitRun_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
+	AgentCapabilityService_CompleteRun_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
+	AgentCapabilityService_FinishRun_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
+	AgentCapabilityService_RequestApproval_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
+	AgentCapabilityService_ResolveApproval_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
+	AgentCapabilityService_ListConversations_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
+	AgentCapabilityService_AuthorizeTaskControl_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -37,6 +38,7 @@ type AgentCapabilityServiceClient interface {
 	RequestApproval(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ResolveApproval(ctx context.Context, in *ResolveApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
+	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 }
 
 type agentCapabilityServiceClient struct {
@@ -107,6 +109,16 @@ func (c *agentCapabilityServiceClient) ListConversations(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthorizeTaskControlResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeTaskControl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentCapabilityServiceServer is the server API for AgentCapabilityService service.
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
@@ -117,6 +129,7 @@ type AgentCapabilityServiceServer interface {
 	RequestApproval(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
 	ResolveApproval(context.Context, *ResolveApprovalRequest) (*ApprovalResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
+	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
 
@@ -144,6 +157,9 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveApproval(context.Context
 }
 func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListConversations not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) mustEmbedUnimplementedAgentCapabilityServiceServer() {
 }
@@ -275,6 +291,24 @@ func _AgentCapabilityService_ListConversations_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthorizeTaskControlRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).AuthorizeTaskControl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_AuthorizeTaskControl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).AuthorizeTaskControl(ctx, req.(*AuthorizeTaskControlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentCapabilityService_ServiceDesc is the grpc.ServiceDesc for AgentCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -305,6 +339,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListConversations",
 			Handler:    _AgentCapabilityService_ListConversations_Handler,
+		},
+		{
+			MethodName: "AuthorizeTaskControl",
+			Handler:    _AgentCapabilityService_AuthorizeTaskControl_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

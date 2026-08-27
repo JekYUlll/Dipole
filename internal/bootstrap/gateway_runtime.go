@@ -82,14 +82,23 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		search = searchClient
 		runtime.searchConn = searchConnection
 	}
+	var agentTasks gateway.AgentTaskControlApplication
+	if gatewayCfg.AgentControlEnabled {
+		agentTasks, err = gateway.NewAgentTaskControlClient(gatewayCfg.AgentControlTarget, rpcCfg.SharedSecret, time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Task control client: %w", err)
+		}
+	}
 
 	presence := platformPresence.NewRedisPresence()
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages: messages,
-		Core:     core,
-		Search:   search,
-		Presence: wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:  platformRateLimit.NewLimiter(),
+		Messages:   messages,
+		Core:       core,
+		Search:     search,
+		AgentTasks: agentTasks,
+		Presence:   wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:    platformRateLimit.NewLimiter(),
 	})
 	if err != nil {
 		cleanup()

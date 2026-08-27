@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G3 增加默认关闭的 Gateway Task 控制桥：公开 `GET /api/v1/agent/tasks/:task_id`、取消与 Approval resolution API 由 Gateway JWT 派生 principal，经固定服务身份与共享密钥调用私有 Runtime；Runtime 每次操作都通过 additive `AuthorizeTaskControl` RPC 向 Go/sqlc Core 校验 Task 所有权，再执行 Temporal Query/Signal。审批同时绑定当前 pending request/approval ID，跨用户、旧审批、终态取消和模型/请求体伪造 principal 均 fail closed；TS 继续无权直接读取 `agent_tasks`。
 - Temporal G3 增加默认关闭的 `read_shadow` 执行模式与 migration v23：Kafka Shadow 保留独立 consumer/EventLedger 和事件触发责任，成功启动稳定 Workflow 后由 Temporal Activity 执行 ContextCompiler、持久 ModelRouter、不可变 Plan 与首条只读 Capability 轨迹。成功模型调用保存 Zod 校验后的结构化输出，Activity 在 provider 返回、Plan 或 Step 完成后丢失 ACK 时可恢复同一输出和已完成 Step，不能重复付费调用或 Tool 副作用；Task/Run/admission/event 任一绑定漂移均 fail closed。
 - Temporal G3 增加持久 Approval Signal：`wait_approval` 在进入等待前通过 additive `RequestApproval` RPC 保存 capability、resource scope、arguments、nonce 与过期时间绑定；Signal 必须同时匹配 request/approval ID，并由 `ResolveApproval` 校验运行中的 Task/Run 和持久 Task principal，Core 完成 approved/revoked 后 Workflow 才恢复。创建、批准、拒绝和并发网络重放均收敛，默认 `foundation` 与现有 Kafka/模型/Capability 流量保持不变。
 - Temporal G3 增加默认关闭的持久 shadow 生命周期 Activity：Workflow 在 Step 前通过受认证 Capability RPC 建立确定性 Task/Run admission，并在 completed、failed、cancelled 后提交精确终态证据；Core 新增 additive `FinishRun` RPC，以 Task/Run/runtime/mode 绑定、compare-and-set 和终态证据实现网络重试幂等。`DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=foundation|persistent_shadow` 默认保持 `foundation`，Kafka、模型、Capability、Approval 与权威 Task 状态均未切流。

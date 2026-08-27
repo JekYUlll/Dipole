@@ -103,6 +103,17 @@ message ListConversationsResponse {
   repeated ConversationSnapshot conversations = 1;
 }
 
+message AuthorizeTaskControlRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string principal_user_id = 3;
+}
+
+message AuthorizeTaskControlResponse {
+  string task_id = 1;
+  string task_status = 2;
+}
+
 service AgentCapabilityService {
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
@@ -110,4 +121,5 @@ service AgentCapabilityService {
   rpc RequestApproval(RequestApprovalRequest) returns (ApprovalResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
 }

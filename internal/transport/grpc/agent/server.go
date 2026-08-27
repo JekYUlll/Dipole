@@ -20,6 +20,7 @@ type Server struct {
 	resolver   application.AgentInvocationResolverV1
 	admission  application.AgentRunAdmissionServiceV1
 	approvals  application.AgentApprovalServiceV1
+	controls   application.AgentTaskControlAuthorizerV1
 }
 
 func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*Server, error) {
@@ -31,6 +32,35 @@ func NewServer(capability application.AgentCapabilityV1, resolver application.Ag
 		approvalService = approvals[0]
 	}
 	return &Server{capability: capability, resolver: resolver, admission: admission, approvals: approvalService}, nil
+}
+
+func NewServerWithControl(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1) (*Server, error) {
+	server, err := NewServer(capability, resolver, admission, approvals)
+	if err != nil {
+		return nil, err
+	}
+	if controls == nil {
+		return nil, errors.New("Agent Task control authorizer is required")
+	}
+	server.controls = controls
+	return server, nil
+}
+
+func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.AuthorizeTaskControlRequest) (*agentv1.AuthorizeTaskControlResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.controls == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task control authorization is invalid")
+	}
+	authorization, err := s.controls.AuthorizeTaskControl(ctx, request.GetTaskId(), request.GetPrincipalUserId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.NotFound, "Agent Task unavailable")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task control authorization failed")
+	}
+	return &agentv1.AuthorizeTaskControlResponse{TaskId: authorization.TaskUUID, TaskStatus: string(authorization.Status)}, nil
 }
 
 func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {

@@ -29,8 +29,10 @@ type Server struct {
 }
 
 type Gateway struct {
-	Mode           string `mapstructure:"mode"`
-	CoreHTTPTarget string `mapstructure:"core_http_target"`
+	Mode                string `mapstructure:"mode"`
+	CoreHTTPTarget      string `mapstructure:"core_http_target"`
+	AgentControlEnabled bool   `mapstructure:"agent_control_enabled"`
+	AgentControlTarget  string `mapstructure:"agent_control_target"`
 }
 
 type TLS struct {
@@ -305,6 +307,8 @@ func Load() error {
 		v.SetDefault("server.port", 8080)
 		v.SetDefault("gateway.mode", "embedded")
 		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
+		v.SetDefault("gateway.agent_control_enabled", false)
+		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
@@ -445,6 +449,8 @@ func Load() error {
 			"server.host",
 			"server.port",
 			"gateway.core_http_target",
+			"gateway.agent_control_enabled",
+			"gateway.agent_control_target",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
@@ -648,8 +654,10 @@ func ServerConfig() Server {
 func GatewayConfig() Gateway {
 	MustLoad()
 	return Gateway{
-		Mode:           strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
-		CoreHTTPTarget: strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		Mode:                strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget:      strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		AgentControlEnabled: cfg.GetBool("gateway.agent_control_enabled"),
+		AgentControlTarget:  strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
 	}
 }
 

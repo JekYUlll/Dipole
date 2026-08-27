@@ -175,7 +175,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Approval service: %w", composeErr)
 		}
-		coreRPC, err = NewCoreRPCServerWithAgent(rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService)
+		controlAuthorizer, composeErr := appComposition.NewPersistentAgentTaskControlAuthorizerV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Task control authorizer: %w", composeErr)
+		}
+		coreRPC, err = NewCoreRPCServerWithAgentControl(rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)
 		}

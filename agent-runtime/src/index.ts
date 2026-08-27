@@ -1,4 +1,5 @@
 import { buildServer } from "./server.js";
+import { AgentTaskControlService } from "./control/agent-task-control.js";
 import {
   createAgentCapabilityRPC,
   createKafkaShadowRuntime,
@@ -25,13 +26,19 @@ const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
+const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
+const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
+if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.enabled || controlSecret.trim().length === 0)) {
+  throw new Error("Agent Task controls require Temporal, Agent Capability RPC, and a control secret");
+}
 let temporalRuntime: TemporalWorkerRuntime | undefined;
 let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
+const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
 const temporalReadResources = temporalConfig.enabled && temporalConfig.activityMode === "read_shadow"
   ? createTemporalReadActivityResources(shadowConfig)
   : undefined;
 let temporalDispatcher: TemporalTaskDispatchRuntime | undefined;
-if (temporalConfig.enabled && temporalConfig.activityMode === "read_shadow" && shadowConfig.enabled) {
+if (temporalConfig.enabled && ((temporalConfig.activityMode === "read_shadow" && shadowConfig.enabled) || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
 const shadowRuntime = shadowConfig.enabled ? createKafkaShadowRuntime(shadowConfig, temporalDispatcher) : undefined;
@@ -42,7 +49,13 @@ let temporalReadResourcesOpen = temporalReadResources !== undefined;
 let temporalDispatcherStarted = false;
 let stopPromise: Promise<void> | undefined;
 
-const server = buildServer({ isReady: () => ready });
+const controlService = controlEnabled
+  ? new AgentTaskControlService(controlRPC!.client, temporalDispatcher!)
+  : undefined;
+const server = buildServer(
+  { isReady: () => ready },
+  controlService === undefined ? undefined : { secret: controlSecret, service: controlService }
+);
 const stop = (): Promise<void> => {
   stopPromise ??= (async () => {
     ready = false;
@@ -81,6 +94,7 @@ const stop = (): Promise<void> => {
     }
     temporalRPC?.close();
     temporalRPC = undefined;
+    controlRPC?.close();
     if (serverStarted) {
       try {
         await server.close();

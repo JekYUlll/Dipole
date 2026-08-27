@@ -70,7 +70,7 @@ Composition Root 现在只接受 `*sql.DB` 并创建 sqlc adapters；迁移期�
 
 Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store。
 
-TypeScript Agent Runtime 的 EventLedger、Model Audit 和 Shadow Trajectory 查询分别以 `db/queries/agent_event_ledger.sql`、`db/queries/agent_model_audit.sql` 与 `db/queries/agent_shadow_trajectory.sql` 为唯一来源：sqlc 校验 MySQL schema 与命名查询并生成 Go 契约，对应生成器从相同文件产出 mysql2 使用的 TypeScript 常量。Task/Definition/Run 继续由 Go sqlc `AgentPolicyStoreV1` 独占写入，TS 经受认证 Agent gRPC admission/lifecycle 访问，避免跨语言共享业务表写权限。TS adapter 不维护第二份手写 SQL；其账号仅访问 Agent 自有 ledger、模型审计和 Shadow 轨迹表。
+TypeScript Agent Runtime 的 EventLedger、Model Audit 和 Shadow Trajectory 查询分别以 `db/queries/agent_event_ledger.sql`、`db/queries/agent_model_audit.sql` 与 `db/queries/agent_shadow_trajectory.sql` 为唯一来源：sqlc 校验 MySQL schema 与命名查询并生成 Go 契约，对应生成器从相同文件产出 mysql2 使用的 TypeScript 常量。Task/Definition/Run 继续由 Go sqlc `AgentPolicyStoreV1` 独占写入，TS 经受认证 Agent gRPC admission/lifecycle 访问，Task query/cancel/approval 控制也必须先调用 Core `AuthorizeTaskControl` 校验 principal 所有权。TS adapter 不维护第二份手写 SQL；其账号仅访问 Agent 自有 ledger、模型审计和 Shadow 轨迹表，不能直接读取或写入 `agent_tasks`。
 
 `000022_agent_context_manifest` 在现有 Shadow Plan 上追加 nullable compiler version、估算 Token 和 provenance manifest。旧 Runtime 可继续写 NULL；新 Runtime 将 manifest 与 Plan 一起原子插入，sqlc 与 TS mysql2 常量继续由同一命名查询生成。
 
