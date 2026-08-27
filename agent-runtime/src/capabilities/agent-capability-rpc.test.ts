@@ -28,6 +28,16 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { runStatus: "failed" });
       return {};
     });
+    const requestApproval = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", approvalId: "APR-1", capabilityId: "message.bulk.send" });
+      callback(null, { approvalId: "APR-1", status: "pending", approvedByUserId: "" });
+      return {};
+    });
+    const resolveApproval = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", approvalId: "APR-1", actorUserId: "U100", decision: "approved" });
+      callback(null, { approvalId: "APR-1", status: "approved", approvedByUserId: "U100" });
+      return {};
+    });
     const listConversations = vi.fn((input, _metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", limit: 20 });
@@ -37,7 +47,7 @@ describe("AgentCapabilityRPCClient", () => {
       }] });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, listConversations } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, completeRun, finishRun, requestApproval, resolveApproval, listConversations } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = { eventId: "E1", eventType: "message.direct.created", aggregateId: "M1", occurredAt: "2026-08-27T08:00:00.000Z", payload: {} };
 
@@ -51,5 +61,13 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.finish(
       "TASK-1", "RUN-1", "failed", "Activity retries exhausted", identity
     )).resolves.toBeUndefined();
+    const approval = {
+      approvalId: "APR-1", capabilityId: "message.bulk.send",
+      resourceScope: { resourceType: "conversation", resourceId: "G1", actions: ["write"] },
+      scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64),
+      expiresAtUnixMs: Date.UTC(2026, 7, 28)
+    };
+    await expect(client.requestApproval("TASK-1", "RUN-1", approval, identity)).resolves.toBeUndefined();
+    await expect(client.resolveApproval("TASK-1", "RUN-1", "APR-1", "approved", "U100", identity)).resolves.toBeUndefined();
   });
 });

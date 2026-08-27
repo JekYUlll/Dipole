@@ -9,11 +9,11 @@ export type AgentTaskStatus =
 
 export type AgentTaskPending =
   | { kind: "input"; requestId: string; prompt: string }
-  | { kind: "approval"; requestId: string; summary: string };
+  | { kind: "approval"; requestId: string; approvalId: string; summary: string };
 
 export type AgentTaskResume =
   | { kind: "input"; requestId: string; value: unknown }
-  | { kind: "approval"; requestId: string; decision: "approved" };
+  | { kind: "approval"; requestId: string; approvalId: string; decision: "approved" };
 
 export interface AgentTaskState {
   taskId: string;
@@ -30,7 +30,7 @@ export type AgentTaskTransition =
   | { type: "start" }
   | { type: "request_input"; requestId: string; prompt: string }
   | { type: "provide_input"; requestId: string; value: unknown }
-  | { type: "request_approval"; requestId: string; summary: string }
+  | { type: "request_approval"; requestId: string; approvalId: string; summary: string }
   | { type: "resolve_approval"; requestId: string; decision: "approved" | "denied" }
   | { type: "complete"; output: unknown }
   | { type: "fail"; message: string }
@@ -69,7 +69,7 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
       requireStatus(state, event.type, "running");
       return {
         ...next(state, "waiting_approval"),
-        pending: { kind: "approval", requestId: event.requestId, summary: event.summary }
+        pending: { kind: "approval", requestId: event.requestId, approvalId: event.approvalId, summary: event.summary }
       };
     case "resolve_approval": {
       requireStatus(state, event.type, "waiting_approval");
@@ -82,7 +82,7 @@ export function transitionAgentTask(state: AgentTaskState, event: AgentTaskTrans
       }
       return {
         ...next(state, "running"),
-        resume: { kind: "approval", requestId: pending.requestId, decision: "approved" }
+        resume: { kind: "approval", requestId: pending.requestId, approvalId: pending.approvalId, decision: "approved" }
       };
     }
     case "complete":

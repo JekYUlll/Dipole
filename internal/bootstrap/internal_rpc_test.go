@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,15 @@ func (rpcAgentResolverStub) Resolve(context.Context, string, string) (applicatio
 }
 
 type rpcAgentAdmissionStub struct{}
+type rpcAgentApprovalStub struct{}
+
+func (rpcAgentApprovalStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
+	approval := request.Approval
+	return &approval, nil
+}
+func (rpcAgentApprovalStub) Resolve(_ context.Context, resolution application.AgentApprovalResolutionV1) (*application.AgentApprovalV1, error) {
+	return &application.AgentApprovalV1{ApprovalUUID: resolution.ApprovalUUID, Status: application.AgentApprovalStatusApproved, ApprovedByUUID: resolution.ActorUUID}, nil
+}
 
 func (rpcAgentAdmissionStub) Admit(context.Context, application.AgentRunAdmissionRequestV1) (*application.AgentRunAdmissionV1, error) {
 	return &application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}, nil
@@ -153,7 +163,7 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 
 func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgent(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{})
+	server, err := NewCoreRPCServerWithAgent(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{})
 	if err != nil {
 		t.Fatalf("start Agent rpc server: %v", err)
 	}
@@ -180,6 +190,21 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	})
 	if err != nil || finished.GetRunStatus() != "cancelled" {
 		t.Fatalf("finish Agent Run through authenticated channel: response=%+v err=%v", finished, err)
+	}
+	expiresAt := time.Now().Add(time.Hour).UnixMilli()
+	requested, err := agentClient.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
+		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: expiresAt,
+	})
+	if err != nil || requested.GetStatus() != "pending" {
+		t.Fatalf("request Approval through authenticated channel: response=%+v err=%v", requested, err)
+	}
+	resolved, err := agentClient.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
+	})
+	if err != nil || resolved.GetStatus() != "approved" {
+		t.Fatalf("resolve Approval through authenticated channel: response=%+v err=%v", resolved, err)
 	}
 	_, err = corev1.NewCoreCapabilityServiceClient(connection).GetUser(context.Background(), &corev1.GetUserRequest{
 		Context: &commonv1.RequestContext{CallerService: agentServiceName}, UserId: "U100",

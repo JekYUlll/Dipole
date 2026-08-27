@@ -14,6 +14,8 @@ export interface PersistentAgentRunLifecyclePort {
     lastError: string,
     context?: { requestId?: string; traceId?: string }
   ): Promise<void>;
+  requestApproval(taskId: string, runId: string, approval: Parameters<AgentTaskLifecycleActivities["requestAgentTaskApproval"]>[0]["approval"], context?: { requestId?: string; traceId?: string }): Promise<void>;
+  resolveApproval(taskId: string, runId: string, approvalId: string, decision: "approved" | "denied", actorUserId: string, context?: { requestId?: string; traceId?: string }): Promise<void>;
 }
 
 export function createPersistentAgentTaskLifecycleActivities(
@@ -42,6 +44,19 @@ export function createPersistentAgentTaskLifecycleActivities(
         input.lastError,
         context
       );
+    },
+    async requestAgentTaskApproval(input) {
+      await lifecycle.requestApproval(input.taskId, input.runId, input.approval, correlation(input));
+    },
+    async resolveAgentTaskApproval(input) {
+      await lifecycle.resolveApproval(input.taskId, input.runId, input.approvalId, input.decision, input.actorUserId, correlation(input));
     }
+  };
+}
+
+function correlation(input: { requestId?: string; traceId?: string }) {
+  return {
+    ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    ...(input.traceId === undefined ? {} : { traceId: input.traceId })
   };
 }

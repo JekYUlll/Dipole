@@ -16,6 +16,7 @@ type agentPolicyStoreStub struct {
 	definitions map[string]*application.AgentDefinitionVersionV1
 	tasks       map[string]*application.AgentTaskV1
 	runs        map[string]*application.AgentRunV1
+	approvals   map[string]*application.AgentApprovalV1
 	afterCreate func()
 }
 
@@ -107,16 +108,47 @@ func (s *agentPolicyStoreStub) TransitionRunStatus(_ context.Context, uuid strin
 	return true, nil
 }
 
-func (*agentPolicyStoreStub) CreateApproval(context.Context, application.AgentApprovalV1) error {
+func (s *agentPolicyStoreStub) CreateApproval(_ context.Context, approval application.AgentApprovalV1) error {
+	if s.approvals == nil {
+		s.approvals = map[string]*application.AgentApprovalV1{}
+	}
+	copy := approval
+	s.approvals[approval.ApprovalUUID] = &copy
 	return nil
 }
-func (*agentPolicyStoreStub) ApproveApproval(context.Context, string, string, time.Time) (bool, error) {
-	return false, nil
+func (s *agentPolicyStoreStub) GetApproval(_ context.Context, uuid string) (*application.AgentApprovalV1, error) {
+	if s.approvals[uuid] == nil {
+		return nil, nil
+	}
+	copy := *s.approvals[uuid]
+	return &copy, nil
+}
+func (s *agentPolicyStoreStub) ApproveApproval(_ context.Context, uuid, actor string, _ time.Time) (bool, error) {
+	approval := s.approvals[uuid]
+	if approval == nil || approval.Status != application.AgentApprovalStatusPending {
+		return false, nil
+	}
+	approval.Status, approval.ApprovedByUUID = application.AgentApprovalStatusApproved, actor
+	return true, nil
 }
 func (*agentPolicyStoreStub) ConsumeApproval(context.Context, string, application.AgentApprovalClaimV1, time.Time) (bool, error) {
 	return false, nil
 }
-func (*agentPolicyStoreStub) RevokeApproval(context.Context, string, time.Time) error { return nil }
+func (s *agentPolicyStoreStub) RevokeApproval(_ context.Context, uuid string, at time.Time) error {
+	approval := s.approvals[uuid]
+	if approval != nil && approval.Status == application.AgentApprovalStatusPending {
+		approval.Status, approval.RevokedAt = application.AgentApprovalStatusRevoked, &at
+	}
+	return nil
+}
+func (s *agentPolicyStoreStub) DenyApproval(_ context.Context, uuid string, at time.Time) (bool, error) {
+	approval := s.approvals[uuid]
+	if approval == nil || approval.Status != application.AgentApprovalStatusPending {
+		return false, nil
+	}
+	approval.Status, approval.RevokedAt = application.AgentApprovalStatusRevoked, &at
+	return true, nil
+}
 
 func TestPersistentAgentExecutionPolicyPinsDefinitionAndTransitionsTask(t *testing.T) {
 	t.Parallel()

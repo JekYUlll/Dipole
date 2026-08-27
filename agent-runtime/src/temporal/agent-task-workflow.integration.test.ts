@@ -23,6 +23,8 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let calls = 0;
     let admissions = 0;
     let finishAttempts = 0;
+    let approvalRequests = 0;
+    let approvalResolutions = 0;
     const activities: AgentTaskWorkerActivities = {
       async admitAgentTask(input) {
         admissions += 1;
@@ -37,13 +39,29 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
           throw new Error("transient terminal write failure");
         }
       },
+      async requestAgentTaskApproval(input) {
+        approvalRequests += 1;
+        expect(input.approval.approvalId).toBe("APR-1");
+      },
+      async resolveAgentTaskApproval(input) {
+        approvalResolutions += 1;
+        expect(input).toMatchObject({ approvalId: "APR-1", actorUserId: "U100", decision: "approved" });
+      },
       async executeAgentTaskStep(input) {
         calls += 1;
         if (calls < 3) {
           throw new Error("transient activity failure");
         }
         if (input.resume?.kind !== "approval") {
-          return { kind: "wait_approval", requestId: "approval-1", summary: "send digest", checkpoint: { phase: "ready" } };
+          return {
+            kind: "wait_approval", requestId: "approval-1", summary: "send digest", checkpoint: { phase: "ready" },
+            approval: {
+              approvalId: "APR-1", capabilityId: "message.bulk.send",
+              resourceScope: { resourceType: "conversation", resourceId: "G1", actions: ["write"] },
+              scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64),
+              expiresAtUnixMs: Date.UTC(2026, 7, 28)
+            }
+          };
         }
         return { kind: "complete", output: { artifactId: "A1", checkpoint: input.checkpoint } };
       }
@@ -66,7 +84,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     const workerTwo = await createWorker(env, taskQueue, activities);
     const workerTwoRun = workerTwo.run();
     await waitForStatus(env, handle, "waiting_approval");
-    await handle.signal("resolveTaskApproval", { requestId: "approval-1", decision: "approved" });
+    await handle.signal("resolveTaskApproval", { requestId: "approval-1", approvalId: "APR-1", decision: "approved", actorUserId: "U100" });
     await waitForStatus(env, handle, "completed");
     const result = await handle.result();
     workerTwo.shutdown();
@@ -78,6 +96,8 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(calls).toBe(4);
     expect(admissions).toBe(1);
     expect(finishAttempts).toBe(2);
+    expect(approvalRequests).toBe(1);
+    expect(approvalResolutions).toBe(1);
 
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
   }, 120_000);
@@ -93,6 +113,8 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       async finishAgentTask(input) {
         terminalWrites.push(input);
       },
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
       async executeAgentTaskStep() {
         calls += 1;
         return { kind: "continue", checkpoint: { calls } };

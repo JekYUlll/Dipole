@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -18,13 +19,68 @@ type Server struct {
 	capability application.AgentCapabilityV1
 	resolver   application.AgentInvocationResolverV1
 	admission  application.AgentRunAdmissionServiceV1
+	approvals  application.AgentApprovalServiceV1
 }
 
-func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1) (*Server, error) {
+func NewServer(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*Server, error) {
 	if capability == nil || resolver == nil || admission == nil {
 		return nil, errors.New("Agent Capability, Invocation resolver, and Run admission are required")
 	}
-	return &Server{capability: capability, resolver: resolver, admission: admission}, nil
+	var approvalService application.AgentApprovalServiceV1
+	if len(approvals) > 0 {
+		approvalService = approvals[0]
+	}
+	return &Server{capability: capability, resolver: resolver, admission: admission, approvals: approvalService}, nil
+}
+
+func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Agent Approval request is invalid")
+	}
+	approval, err := s.approvals.Request(ctx, application.AgentApprovalRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		Approval: application.AgentApprovalV1{
+			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
+			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
+			ScopeSHA256:   request.GetScopeSha256(), ArgumentsSHA256: request.GetArgumentsSha256(), NonceSHA256: request.GetNonceSha256(),
+			Status: application.AgentApprovalStatusPending, ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()).UTC(),
+		},
+	})
+	if err != nil {
+		return nil, mapApprovalError(err)
+	}
+	return approvalResponse(approval), nil
+}
+
+func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveApprovalRequest) (*agentv1.ApprovalResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Approval resolution is invalid")
+	}
+	approval, err := s.approvals.Resolve(ctx, application.AgentApprovalResolutionV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		ApprovalUUID: request.GetApprovalId(), ActorUUID: request.GetActorUserId(), Decision: application.AgentApprovalDecisionV1(request.GetDecision()),
+	})
+	if err != nil {
+		return nil, mapApprovalError(err)
+	}
+	return approvalResponse(approval), nil
+}
+
+func approvalResponse(approval *application.AgentApprovalV1) *agentv1.ApprovalResponse {
+	return &agentv1.ApprovalResponse{ApprovalId: approval.ApprovalUUID, Status: string(approval.Status), ApprovedByUserId: approval.ApprovedByUUID}
+}
+
+func mapApprovalError(err error) error {
+	if errors.Is(err, application.ErrAgentApprovalDenied) {
+		return status.Error(codes.PermissionDenied, "Agent Approval denied")
+	}
+	return status.Error(codes.Internal, "Agent Approval transition failed")
 }
 
 func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest) (*agentv1.AdmitRunResponse, error) {

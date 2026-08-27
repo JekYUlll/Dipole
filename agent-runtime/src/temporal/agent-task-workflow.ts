@@ -24,7 +24,7 @@ export const provideTaskInputSignal = defineSignal<[
   { requestId: string; value: unknown }
 ]>("provideTaskInput");
 export const resolveTaskApprovalSignal = defineSignal<[
-  { requestId: string; decision: "approved" | "denied" }
+  { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string }
 ]>("resolveTaskApproval");
 export const cancelTaskSignal = defineSignal<[{ reason: string }]>("cancelTask");
 export const taskStateQuery = defineQuery<AgentTaskState>("taskState");
@@ -38,7 +38,7 @@ const { executeAgentTaskStep } = proxyActivities<AgentTaskActivities>({
     maximumAttempts: 3
   }
 });
-const { admitAgentTask, finishAgentTask } = proxyActivities<AgentTaskLifecycleActivities>({
+const { admitAgentTask, finishAgentTask, requestAgentTaskApproval, resolveAgentTaskApproval } = proxyActivities<AgentTaskLifecycleActivities>({
   startToCloseTimeout: "30 seconds",
   retry: {
     initialInterval: "1 second",
@@ -52,6 +52,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
   let state = createAgentTaskState(input.taskId);
   let checkpoint: unknown;
   let step = 0;
+  let approvalSignal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string } | undefined;
   const maxSteps = validMaxSteps(input.maxSteps);
 
   setHandler(taskStateQuery, () => state);
@@ -62,12 +63,10 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     state = transitionAgentTask(state, { type: "provide_input", requestId: signal.requestId, value: signal.value });
   });
   setHandler(resolveTaskApprovalSignal, (signal) => {
-    if (state.status !== "waiting_approval" || state.pending?.kind !== "approval" || state.pending.requestId !== signal.requestId) {
+    if (approvalSignal !== undefined || state.status !== "waiting_approval" || state.pending?.kind !== "approval" || state.pending.requestId !== signal.requestId || state.pending.approvalId !== signal.approvalId) {
       return;
     }
-    state = transitionAgentTask(state, {
-      type: "resolve_approval", requestId: signal.requestId, decision: signal.decision
-    });
+    approvalSignal = signal;
   });
   setHandler(cancelTaskSignal, (signal) => {
     if (!isTerminal(state)) {
@@ -89,8 +88,22 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     state = transitionAgentTask(state, { type: "start" });
   }
   while (!isTerminal(state)) {
-    if (state.status === "waiting_input" || state.status === "waiting_approval") {
-      await condition(() => state.status !== "waiting_input" && state.status !== "waiting_approval");
+    if (state.status === "waiting_input") {
+      await condition(() => state.status !== "waiting_input");
+      continue;
+    }
+    if (state.status === "waiting_approval") {
+      await condition(() => state.status !== "waiting_approval" || approvalSignal !== undefined);
+      if (state.status !== "waiting_approval") continue;
+      const signal = approvalSignal!;
+      await resolveAgentTaskApproval({
+        taskId: input.taskId, runId: binding.runId, approvalId: signal.approvalId,
+        decision: signal.decision, actorUserId: signal.actorUserId,
+        ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+        ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+      });
+      approvalSignal = undefined;
+      state = transitionAgentTask(state, { type: "resolve_approval", requestId: signal.requestId, decision: signal.decision });
       continue;
     }
     if (step >= maxSteps) {
@@ -120,6 +133,13 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     }
     step += 1;
     checkpoint = "checkpoint" in directive ? directive.checkpoint : undefined;
+    if (directive.kind === "wait_approval") {
+      await requestAgentTaskApproval({
+        taskId: input.taskId, runId: binding.runId, approval: directive.approval,
+        ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+        ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+      });
+    }
     state = applyDirective(state, directive);
   }
   await finishAgentTask(terminalActivityInput(input, binding, state));
@@ -138,7 +158,7 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): A
       });
     case "wait_approval":
       return transitionAgentTask(state, {
-        type: "request_approval", requestId: directive.requestId, summary: directive.summary
+        type: "request_approval", requestId: directive.requestId, approvalId: directive.approval.approvalId, summary: directive.summary
       });
     case "complete":
       return transitionAgentTask(state, { type: "complete", output: directive.output });

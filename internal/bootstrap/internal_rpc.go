@@ -54,8 +54,8 @@ func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	return newCoreRPCServer(cfg, capability, nil)
 }
 
-func NewCoreRPCServerWithAgent(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1) (*InternalRPCServer, error) {
-	agentAdapter, err := agentgrpc.NewServer(agentCapability, resolver, admission)
+func NewCoreRPCServerWithAgent(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServer(agentCapability, resolver, admission, approvals...)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
 	}
@@ -211,6 +211,8 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_AdmitRun_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_CompleteRun_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_FinishRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_RequestApproval_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {
 		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")

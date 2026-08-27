@@ -26,6 +26,16 @@ export interface AgentRunAdmissionRequest {
   readonly traceId?: string;
 }
 
+export interface AgentApprovalBinding {
+  approvalId: string;
+  capabilityId: string;
+  resourceScope: { resourceType: string; resourceId: string; actions: readonly string[] };
+  scopeSha256: string;
+  argumentsSha256: string;
+  nonceSha256: string;
+  expiresAtUnixMs: number;
+}
+
 export interface ConversationListItem {
   readonly conversationKey: string;
   readonly targetId: string;
@@ -132,6 +142,37 @@ export class AgentCapabilityRPCClient {
           reject(new Error(`Agent Run terminal transition returned unsupported status ${response.runStatus}`));
           return;
         }
+        resolve();
+      });
+    });
+  }
+
+  async requestApproval(taskId: string, runId: string, approval: AgentApprovalBinding, context?: Pick<ExecutionContext, "requestId" | "traceId">): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.requestApproval({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId,
+        approvalId: approval.approvalId, capabilityId: approval.capabilityId,
+        resourceScope: { ...approval.resourceScope, actions: [...approval.resourceScope.actions] },
+        scopeSha256: approval.scopeSha256, argumentsSha256: approval.argumentsSha256,
+        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval request returned no response"));
+        if (response.approvalId !== approval.approvalId || (response.status !== "pending" && response.status !== "approved")) return reject(new Error("Agent Approval request returned a conflicting binding"));
+        resolve();
+      });
+    });
+  }
+
+  async resolveApproval(taskId: string, runId: string, approvalId: string, decision: "approved" | "denied", actorUserId: string, context?: Pick<ExecutionContext, "requestId" | "traceId">): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveApproval({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId, approvalId, actorUserId, decision
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval resolution returned no response"));
+        const expected = decision === "approved" ? "approved" : "revoked";
+        if (response.approvalId !== approvalId || response.status !== expected) return reject(new Error("Agent Approval resolution returned a conflicting state"));
         resolve();
       });
     });

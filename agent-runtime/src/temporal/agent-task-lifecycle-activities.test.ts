@@ -9,7 +9,9 @@ describe("Persistent Agent Task lifecycle Activities", () => {
   it("admits from trusted Workflow input and commits the exact terminal evidence", async () => {
     const admitRun = vi.fn(async () => ({ taskId: "task-1", runId: "run-1", runStatus: "running" as const }));
     const finish = vi.fn(async () => undefined);
-    const activities = createPersistentAgentTaskLifecycleActivities({ admitRun, finish } satisfies PersistentAgentRunLifecyclePort);
+    const requestApproval = vi.fn(async () => undefined);
+    const resolveApproval = vi.fn(async () => undefined);
+    const activities = createPersistentAgentTaskLifecycleActivities({ admitRun, finish, requestApproval, resolveApproval } satisfies PersistentAgentRunLifecyclePort);
 
     await expect(activities.admitAgentTask({
       taskId: "task-1",
@@ -53,7 +55,9 @@ describe("Persistent Agent Task lifecycle Activities", () => {
   it("rejects a persistent Workflow without trusted admission data", async () => {
     const port: PersistentAgentRunLifecyclePort = {
       admitRun: vi.fn(),
-      finish: vi.fn()
+      finish: vi.fn(),
+      requestApproval: vi.fn(),
+      resolveApproval: vi.fn()
     };
     const activities = createPersistentAgentTaskLifecycleActivities(port);
 
