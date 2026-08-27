@@ -3,13 +3,13 @@ package service
 import (
 	"fmt"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/repository"
 )
 
 type adminOverviewRepository interface {
-	OverviewCounts() (*repository.AdminOverviewCounts, error)
+	OverviewCounts() (*application.AdminOverviewCounts, error)
 }
 
 type adminRealtimeStats interface {

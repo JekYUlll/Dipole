@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 const (
@@ -89,9 +91,17 @@ func (c *Client) Enqueue(payload []byte) error {
 }
 
 func (c *Client) SendEvent(eventType string, data any) error {
+	return c.SendEventContext(context.Background(), eventType, data)
+}
+
+func (c *Client) SendEventContext(ctx context.Context, eventType string, data any) error {
+	ids := correlation.FromContext(ctx)
 	return c.EnqueueJSON(OutboundEvent{
-		Type: eventType,
-		Data: data,
+		Type:      eventType,
+		RequestID: ids.RequestID,
+		TraceID:   ids.TraceID,
+		EventID:   ids.EventID,
+		Data:      data,
 	})
 }
 

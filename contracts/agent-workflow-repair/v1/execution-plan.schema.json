@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-workflow-repair/v1/execution-plan.schema.json",
+  "title": "Dipole Agent Workflow Repair Execution Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "mode", "planId", "proposalId", "proposalStatus", "proposalEvidenceSha256", "proposerId",
+    "executorId", "executorGrantVersion", "changeTicketRef", "approverIds",
+    "expectedCurrentProjection", "targetProjection", "rollbackProjection",
+    "expectedCurrentSha256", "targetSha256", "rollbackSha256",
+    "capturedAt", "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.workflow-repair-execution-plan.v1" },
+    "mode": { "const": "dry_run" },
+    "planId": { "type": "string", "pattern": "^repair-plan:[a-f0-9]{64}$" },
+    "proposalId": { "type": "string", "pattern": "^repair:[a-f0-9]{64}$" },
+    "proposalStatus": { "const": "approved" },
+    "proposalEvidenceSha256": { "$ref": "#/$defs/sha256" },
+    "proposerId": { "type": "string", "minLength": 1, "maxLength": 24 },
+    "executorId": { "type": "string", "minLength": 1, "maxLength": 24 },
+    "executorGrantVersion": { "type": "integer", "minimum": 1 },
+    "changeTicketRef": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "approverIds": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 24 }
+    },
+    "expectedCurrentProjection": { "oneOf": [{ "$ref": "#/$defs/workflowEvidence" }, { "type": "null" }] },
+    "targetProjection": { "$ref": "#/$defs/workflowEvidence" },
+    "rollbackProjection": { "oneOf": [{ "$ref": "#/$defs/workflowEvidence" }, { "type": "null" }] },
+    "expectedCurrentSha256": { "$ref": "#/$defs/nullableSha256" },
+    "targetSha256": { "$ref": "#/$defs/sha256" },
+    "rollbackSha256": { "$ref": "#/$defs/nullableSha256" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+    "workflowEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowId", "workflowRunId", "status", "revision"],
+      "properties": {
+        "workflowId": { "type": "string", "minLength": 1 },
+        "workflowRunId": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

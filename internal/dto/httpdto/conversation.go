@@ -21,6 +21,8 @@ type ConversationResponse struct {
 	Remark          string                             `json:"remark"`
 	LastMessage     ConversationMessageSummaryResponse `json:"last_message"`
 	UnreadCount     int                                `json:"unread_count"`
+	LastMessageSeq  uint64                             `json:"last_message_seq"`
+	ReadSeq         uint64                             `json:"read_seq"`
 }
 
 type UpdateConversationRemarkRequest struct {
@@ -44,7 +46,9 @@ func ToConversationResponse(item *service.ConversationView) *ConversationRespons
 			SentAt:      item.Conversation.LastMessageAt,
 			SenderUUID:  item.Conversation.LastMessageSenderUUID,
 		},
-		UnreadCount: item.Conversation.UnreadCount,
+		UnreadCount:    item.Conversation.UnreadCount,
+		LastMessageSeq: item.Conversation.LastMessageSeq,
+		ReadSeq:        item.Conversation.ReadSeq,
 	}
 }
 

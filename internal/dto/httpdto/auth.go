@@ -28,6 +28,30 @@ type LoginRequest struct {
 	Password  string `json:"password" binding:"required,min=6,max=32"`
 }
 
+type AgentMCPGrantRequest struct {
+	Resource string   `json:"resource" binding:"required,url"`
+	Scopes   []string `json:"scopes" binding:"required,min=1,max=1,dive,required"`
+	Consent  bool     `json:"consent" binding:"required"`
+}
+
+type AgentMCPGrantResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Resource    string `json:"resource"`
+	Scope       string `json:"scope"`
+}
+
+func NewAgentMCPGrantResponse(result *service.AgentMCPGrantResult) *AgentMCPGrantResponse {
+	if result == nil {
+		return nil
+	}
+	return &AgentMCPGrantResponse{
+		AccessToken: result.AccessToken, TokenType: result.TokenType, ExpiresIn: result.ExpiresIn,
+		Resource: result.Resource, Scope: result.Scope,
+	}
+}
+
 func (r LoginRequest) ToInput() service.LoginInput {
 	return service.LoginInput{
 		Telephone: r.Telephone,

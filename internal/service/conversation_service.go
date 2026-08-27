@@ -23,7 +23,7 @@ type conversationRepository interface {
 	InitGroupConversation(userUUID, groupUUID, conversationKey string, createdAt time.Time) error
 	ListByUserUUID(userUUID string, limit int) ([]*model.Conversation, error)
 	GetByUserAndConversationKey(userUUID, conversationKey string) (*model.Conversation, error)
-	ClearUnreadByConversationKey(userUUID, conversationKey string) error
+	MarkReadThroughByConversationKey(userUUID, conversationKey string, readThroughSeq uint64) error
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
 }
 
@@ -38,11 +38,12 @@ type ConversationView struct {
 }
 
 type ConversationService struct {
-	repo       conversationRepository
-	userFinder conversationUserFinder
-	groupRepo  conversationGroupRepository
-	notifier   conversationNotifier
-	events     eventPublisher
+	repo         conversationRepository
+	userFinder   conversationUserFinder
+	groupRepo    conversationGroupRepository
+	notifier     conversationNotifier
+	events       eventPublisher
+	observeWrite func(string, time.Duration, error)
 }
 
 type conversationGroupRepository interface {
@@ -61,6 +62,7 @@ type ConversationReadReceipt struct {
 	TargetType          int8      `json:"target_type"`
 	ConversationKey     string    `json:"conversation_key"`
 	LastReadMessageUUID string    `json:"last_read_message_uuid"`
+	LastReadSeq         uint64    `json:"last_read_seq"`
 	ReadAt              time.Time `json:"read_at"`
 }
 
@@ -74,15 +76,38 @@ func NewConversationService(repo conversationRepository, userFinder conversation
 	}
 }
 
+func (s *ConversationService) SetProjectionWriteObserver(observer func(string, time.Duration, error)) {
+	s.observeWrite = observer
+}
+
+func (s *ConversationService) observeProjectionWrite(projection string, duration time.Duration, err error) {
+	if s.observeWrite != nil {
+		s.observeWrite(projection, duration, err)
+	}
+}
+
+func (s *ConversationService) WithNotifier(notifier conversationNotifier) *ConversationService {
+	if s != nil {
+		s.notifier = notifier
+	}
+	return s
+}
+
 func (s *ConversationService) UpdateDirectConversations(message *model.Message) error {
 	if message == nil || message.TargetType != model.MessageTargetDirect {
 		return nil
 	}
 
-	if err := s.repo.UpsertDirectMessage(message.SenderUUID, message.TargetUUID, message, 0); err != nil {
+	startedAt := time.Now()
+	err := s.repo.UpsertDirectMessage(message.SenderUUID, message.TargetUUID, message, 0)
+	s.observeProjectionWrite("direct_message", time.Since(startedAt), err)
+	if err != nil {
 		return fmt.Errorf("upsert sender direct conversation: %w", err)
 	}
-	if err := s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1); err != nil {
+	startedAt = time.Now()
+	err = s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1)
+	s.observeProjectionWrite("direct_message", time.Since(startedAt), err)
+	if err != nil {
 		return fmt.Errorf("upsert target direct conversation: %w", err)
 	}
 
@@ -95,7 +120,10 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error {
 	conversationKey := "group:" + groupUUID
 	for _, userUUID := range memberUUIDs {
-		if err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt); err != nil {
+		startedAt := time.Now()
+		err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt)
+		s.observeProjectionWrite("group_init", time.Since(startedAt), err)
+		if err != nil {
 			return fmt.Errorf("init group conversation for user %s: %w", userUUID, err)
 		}
 	}
@@ -119,7 +147,10 @@ func (s *ConversationService) UpdateGroupConversations(message *model.Message) e
 		if member.UserUUID == message.SenderUUID {
 			unreadIncrement = 0
 		}
-		if err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement); err != nil {
+		startedAt := time.Now()
+		err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement)
+		s.observeProjectionWrite("group_message", time.Since(startedAt), err)
+		if err != nil {
 			return fmt.Errorf("upsert group conversation for user %s: %w", member.UserUUID, err)
 		}
 	}
@@ -155,6 +186,31 @@ func (s *ConversationService) ListForUser(userUUID string, limit int) ([]*Conver
 	return result, nil
 }
 
+func (s *ConversationService) ListForAgent(userUUID string, limit int) ([]*model.Conversation, error) {
+	conversations, err := s.repo.ListByUserUUID(strings.TrimSpace(userUUID), normalizeConversationListLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list conversations for Agent: %w", err)
+	}
+	return conversations, nil
+}
+
+func (s *ConversationService) FindForUser(userUUID, targetUUID string) (*model.Conversation, error) {
+	userUUID = strings.TrimSpace(userUUID)
+	targetUUID = strings.TrimSpace(targetUUID)
+	if userUUID == "" || targetUUID == "" {
+		return nil, ErrConversationTargetRequired
+	}
+	conversationKey := model.DirectConversationKey(userUUID, targetUUID)
+	if strings.HasPrefix(targetUUID, "G") {
+		conversationKey = model.GroupConversationKey(targetUUID)
+	}
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return nil, fmt.Errorf("find conversation for user: %w", err)
+	}
+	return conversation, nil
+}
+
 func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*ConversationReadReceipt, error) {
 	targetUUID = strings.TrimSpace(targetUUID)
 	if targetUUID == "" {
@@ -174,7 +230,11 @@ func (s *ConversationService) MarkDirectConversationRead(userUUID, targetUUID st
 	if err != nil {
 		return nil, fmt.Errorf("get direct conversation before mark read: %w", err)
 	}
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, conversationKey); err != nil {
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return nil, fmt.Errorf("mark direct conversation read: %w", err)
 	}
 
@@ -210,7 +270,16 @@ func (s *ConversationService) MarkGroupConversationRead(userUUID, groupUUID stri
 		return ErrConversationPermissionDenied
 	}
 
-	if err := s.repo.ClearUnreadByConversationKey(userUUID, model.GroupConversationKey(groupUUID)); err != nil {
+	conversationKey := model.GroupConversationKey(groupUUID)
+	conversation, err := s.repo.GetByUserAndConversationKey(userUUID, conversationKey)
+	if err != nil {
+		return fmt.Errorf("get group conversation before mark read: %w", err)
+	}
+	readThroughSeq := uint64(0)
+	if conversation != nil {
+		readThroughSeq = conversation.LastMessageSeq
+	}
+	if err := s.repo.MarkReadThroughByConversationKey(userUUID, conversationKey, readThroughSeq); err != nil {
 		return fmt.Errorf("mark group conversation read: %w", err)
 	}
 
@@ -268,6 +337,7 @@ func buildConversationReadReceipt(readerUUID, targetUUID string, targetType int8
 		TargetType:          targetType,
 		ConversationKey:     conversation.ConversationKey,
 		LastReadMessageUUID: conversation.LastMessageUUID,
+		LastReadSeq:         conversation.LastMessageSeq,
 		ReadAt:              time.Now().UTC(),
 	}
 }

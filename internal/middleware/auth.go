@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/repository"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
@@ -16,7 +15,11 @@ const (
 	ContextTokenKey = "accessToken"
 )
 
-func Auth(tokenService *service.TokenService, userRepo *repository.UserRepository) gin.HandlerFunc {
+type authUserFinder interface {
+	GetByUUID(uuid string) (*model.User, error)
+}
+
+func Auth(tokenService *service.TokenService, userRepo authUserFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := parseBearerToken(c.GetHeader("Authorization"))
 		if !ok {
@@ -44,6 +47,37 @@ func Auth(tokenService *service.TokenService, userRepo *repository.UserRepositor
 			return
 		}
 
+		c.Set(ContextUserKey, user)
+		c.Set(ContextTokenKey, token)
+		c.Next()
+	}
+}
+
+func AgentMCPAuth(tokenService *service.TokenService, userRepo authUserFinder) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, ok := parseBearerToken(c.GetHeader("Authorization"))
+		if !ok {
+			writeError(c, http.StatusUnauthorized, "Agent MCP access token is required")
+			c.Abort()
+			return
+		}
+		session, err := tokenService.ResolveAgentMCPAccessToken(token, service.AgentMCPResourceIdentifier(), service.AgentMCPReadScope)
+		if err != nil {
+			writeError(c, http.StatusUnauthorized, "Agent MCP access token is invalid")
+			c.Abort()
+			return
+		}
+		user, err := userRepo.GetByUUID(session.UserUUID)
+		if err != nil {
+			writeError(c, http.StatusInternalServerError, err.Error())
+			c.Abort()
+			return
+		}
+		if user == nil || user.Status == model.UserStatusDisabled {
+			writeError(c, http.StatusUnauthorized, "user session is invalid")
+			c.Abort()
+			return
+		}
 		c.Set(ContextUserKey, user)
 		c.Set(ContextTokenKey, token)
 		c.Next()

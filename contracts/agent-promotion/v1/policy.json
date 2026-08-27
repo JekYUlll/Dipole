@@ -1,0 +1,9 @@
+{
+  "schema_version": "dipole.agent.shadow-promotion-policy.v1",
+  "minimum_window_hours": 24,
+  "minimum_observations": 24,
+  "maximum_observation_gap_minutes": 90,
+  "minimum_scanned_tasks": 100,
+  "required_projection_eval_cases": 6,
+  "required_agent_evals": ["outcome", "trajectory", "permission"]
+}

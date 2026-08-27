@@ -1,0 +1,115 @@
+{
+  "schema_version": "dipole.performance.baseline.v3",
+  "source_schema_version": "dipole.performance.operations.v3",
+  "run_id": "ad005-4343684-timing-hot-100",
+  "scenario": "group_hot",
+  "captured_at": "20260827T091900Z",
+  "environment": {
+    "git_commit": "4343684011a02112eb3e9233e7c4279bf64a4ee9",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "topology": "docker-compose.dist.yml"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench_group.js",
+    "user_count": 100,
+    "group_size": 100,
+    "phone_prefix": "194",
+    "sender_count": 1,
+    "messages_per_sender": 10,
+    "receiver_conn_ms": 22000,
+    "sender_conn_ms": 15000,
+    "hot_group_warmup_messages": 1,
+    "hot_group_member_count_threshold": 100,
+    "hot_group_message_threshold": 1
+  },
+  "workload": {
+    "attempted": 10,
+    "accepted": 10,
+    "rejected": 0,
+    "persisted": 10,
+    "received": 990,
+    "expected_receipts": 990,
+    "acceptance_rate": 1.0,
+    "persistence_rate": 1.0,
+    "throughput_per_second": 0.297021
+  },
+  "delivery": {
+    "rate": 1.0,
+    "http_failure_rate": 0
+  },
+  "latency_ms": {
+    "average": 692.472727,
+    "p50": 692,
+    "p95": 1346,
+    "p99": 1354.11,
+    "maximum": 1356
+  },
+  "storage": {
+    "direct": {
+      "messages": 0,
+      "inbox_rows": 0,
+      "inbox_write_amplification": null
+    },
+    "group": {
+      "messages": 10,
+      "inbox_rows": 0,
+      "inbox_write_amplification": 0.0
+    },
+    "conversation_state": {
+      "available": true,
+      "rows_touched": 100,
+      "messages_observed": 11,
+      "write_operations": 1100,
+      "writes_per_observed_message": 100.0,
+      "projection_writes": {
+        "direct_message": 0,
+        "group_init": 100,
+        "group_message": 1100
+      },
+      "counter_source": "dipole_conversation_projection_writes_total",
+      "timing_available": true,
+      "duration_source": "dipole_conversation_projection_write_duration_seconds",
+      "timing": {
+        "direct_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_init": {
+          "success_count": 100,
+          "error_count": 0,
+          "success_sum_seconds": 1.02826037,
+          "average_success_ms": 10.282604,
+          "p95_success_upper_bound_ms": 25.0
+        },
+        "group_message": {
+          "success_count": 1100,
+          "error_count": 0,
+          "success_sum_seconds": 24.167341553,
+          "average_success_ms": 21.970311,
+          "p95_success_upper_bound_ms": 50.0
+        }
+      }
+    }
+  },
+  "kafka": {
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      9,
+      5,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "peak_lag": 9,
+    "settled_lag": 0
+  }
+}

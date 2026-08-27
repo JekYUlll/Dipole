@@ -1,0 +1,120 @@
+package grpcauth
+
+import (
+	"context"
+	"crypto/subtle"
+	"errors"
+	"strings"
+
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
+)
+
+const (
+	serviceMetadataKey = "x-dipole-caller-service"
+	secretMetadataKey  = "x-dipole-service-token"
+)
+
+type Credentials struct {
+	Service string
+	Secret  string
+}
+
+type callerContextKey struct{}
+
+func CallerService(ctx context.Context) (string, bool) {
+	caller, ok := ctx.Value(callerContextKey{}).(string)
+	return caller, ok && caller != ""
+}
+
+func NewUnaryClientInterceptor(credentials Credentials) (grpc.UnaryClientInterceptor, error) {
+	credentials.Service = strings.TrimSpace(credentials.Service)
+	credentials.Secret = strings.TrimSpace(credentials.Secret)
+	if credentials.Service == "" || credentials.Secret == "" {
+		return nil, errors.New("grpc service credentials are required")
+	}
+
+	return func(ctx context.Context, method string, request, reply any, connection *grpc.ClientConn, invoke grpc.UnaryInvoker, options ...grpc.CallOption) error {
+		ctx, ids := correlation.Ensure(ctx, correlation.FromContext(ctx).RequestID, correlation.FromContext(ctx).TraceID)
+		ctx = metadata.AppendToOutgoingContext(
+			ctx,
+			serviceMetadataKey, credentials.Service,
+			secretMetadataKey, credentials.Secret,
+			correlation.RequestMetadataKey, ids.RequestID,
+			correlation.TraceMetadataKey, ids.TraceID,
+		)
+		return invoke(ctx, method, request, reply, connection, options...)
+	}, nil
+}
+
+func NewUnaryServerInterceptor(secret string, allowedCallers ...string) (grpc.UnaryServerInterceptor, error) {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return nil, errors.New("grpc service secret is required")
+	}
+	allowed := make(map[string]struct{}, len(allowedCallers))
+	for _, caller := range allowedCallers {
+		if caller = strings.TrimSpace(caller); caller != "" {
+			allowed[caller] = struct{}{}
+		}
+	}
+	if len(allowed) == 0 {
+		return nil, errors.New("at least one grpc caller service is required")
+	}
+
+	return func(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		incoming, ok := metadata.FromIncomingContext(ctx)
+		if !ok || !matchesSecret(incoming.Get(secretMetadataKey), secret) {
+			return nil, status.Error(codes.Unauthenticated, "service authentication failed")
+		}
+		callers := incoming.Get(serviceMetadataKey)
+		if len(callers) != 1 {
+			return nil, status.Error(codes.Unauthenticated, "caller service identity is required")
+		}
+		if _, ok := allowed[strings.TrimSpace(callers[0])]; !ok {
+			return nil, status.Error(codes.PermissionDenied, "caller service is not allowed")
+		}
+		if err := verifyTLSCaller(ctx, strings.TrimSpace(callers[0])); err != nil {
+			return nil, err
+		}
+		ctx, _ = correlation.Ensure(ctx, firstMetadata(incoming, correlation.RequestMetadataKey), firstMetadata(incoming, correlation.TraceMetadataKey))
+		return handler(context.WithValue(ctx, callerContextKey{}, strings.TrimSpace(callers[0])), request)
+	}, nil
+}
+
+func firstMetadata(values metadata.MD, key string) string {
+	items := values.Get(key)
+	if len(items) != 1 {
+		return ""
+	}
+	return items[0]
+}
+
+func verifyTLSCaller(ctx context.Context, caller string) error {
+	connectionPeer, ok := peer.FromContext(ctx)
+	if !ok || connectionPeer.AuthInfo == nil {
+		return nil
+	}
+	tlsInfo, ok := connectionPeer.AuthInfo.(credentials.TLSInfo)
+	if !ok || len(tlsInfo.State.PeerCertificates) == 0 {
+		return status.Error(codes.Unauthenticated, "verified client certificate is required")
+	}
+	certificateName := strings.TrimSpace(tlsInfo.State.PeerCertificates[0].Subject.CommonName)
+	if certificateName == "" || certificateName != caller {
+		return status.Error(codes.PermissionDenied, "client certificate identity does not match caller service")
+	}
+	return nil
+}
+
+func matchesSecret(values []string, expected string) bool {
+	if len(values) != 1 {
+		return false
+	}
+	provided := strings.TrimSpace(values[0])
+	return len(provided) == len(expected) && subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
+}

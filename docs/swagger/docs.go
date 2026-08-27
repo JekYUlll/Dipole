@@ -2161,7 +2161,7 @@ const docTemplate = `{
                 "tags": [
                     "Message"
                 ],
-                "summary": "获取单聊历史消息",
+                "summary": "获取单聊历史或增量消息",
                 "parameters": [
                     {
                         "type": "string",
@@ -2174,6 +2174,18 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "向前翻页游标",
                         "name": "before_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话序号向前翻页游标",
+                        "name": "before_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话序号增量补拉游标",
+                        "name": "after_seq",
                         "in": "query"
                     },
                     {
@@ -2253,8 +2265,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
+                        "description": "会话序号向前翻页游标",
+                        "name": "before_seq",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "description": "增量补拉游标",
                         "name": "after_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "会话序号增量补拉游标",
+                        "name": "after_seq",
                         "in": "query"
                     },
                     {
@@ -2360,6 +2384,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/messages/search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Message"
+                ],
+                "summary": "搜索当前用户可访问的消息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "检索文本，1..256 个字符",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "返回数量，1..100",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SearchMessageListResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/sync": {
             "get": {
                 "security": [
@@ -2409,6 +2490,296 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/checkpoint": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "获取当前设备同步游标",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.DeviceSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "确认当前设备同步游标",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "已持久化的同步游标",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.AdvanceSyncCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.DeviceSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/comparison": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "仅接收对照与客户端错误计数，不接收消息 ID 或正文",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "上报 Web 同步协议聚合观测结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "旧 Offline 与 Sync 聚合对照结果",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.ClientSyncComparisonRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SuccessEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/groups/checkpoints": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "查询设备的群消息同步位点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "客户端已知群 ID",
+                        "name": "group_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.GroupSyncCheckpointListResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/sync/groups/{group_uuid}/checkpoint": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sync"
+                ],
+                "summary": "确认设备已持久化的群消息位点",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "群 ID",
+                        "name": "group_uuid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "已持久化的群消息序号",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.AdvanceGroupSyncCheckpointRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.GroupSyncCheckpointResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/http.ErrorEnvelope"
                         }
@@ -3048,6 +3419,17 @@ const docTemplate = `{
                 }
             }
         },
+        "http.DeviceSyncCheckpointResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.DeviceSyncCheckpointResponse"
+                }
+            }
+        },
         "http.ErrorEnvelope": {
             "type": "object",
             "properties": {
@@ -3103,6 +3485,31 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/httpdto.GroupResponse"
+                }
+            }
+        },
+        "http.GroupSyncCheckpointListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.GroupSyncCheckpointResponse"
+                    }
+                }
+            }
+        },
+        "http.GroupSyncCheckpointResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.GroupSyncCheckpointResponse"
                 }
             }
         },
@@ -3253,6 +3660,29 @@ const docTemplate = `{
                 }
             }
         },
+        "http.SearchMessageListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.SearchMessageResponse"
+                    }
+                }
+            }
+        },
+        "http.SuccessEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {}
+            }
+        },
         "http.SyncPageResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3340,6 +3770,22 @@ const docTemplate = `{
                 }
             }
         },
+        "httpdto.AdvanceGroupSyncCheckpointRequest": {
+            "type": "object",
+            "properties": {
+                "message_seq": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpdto.AdvanceSyncCheckpointRequest": {
+            "type": "object",
+            "properties": {
+                "sync_seq": {
+                    "type": "integer"
+                }
+            }
+        },
         "httpdto.ApplyContactRequest": {
             "type": "object",
             "required": [
@@ -3363,6 +3809,50 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/httpdto.PrivateUserResponse"
+                }
+            }
+        },
+        "httpdto.ClientSyncComparisonRequest": {
+            "type": "object",
+            "properties": {
+                "baseline": {
+                    "type": "boolean"
+                },
+                "legacy_only": {
+                    "type": "integer"
+                },
+                "match": {
+                    "type": "integer"
+                },
+                "overflow": {
+                    "type": "integer"
+                },
+                "pending": {
+                    "type": "integer"
+                },
+                "storage_full": {
+                    "type": "integer"
+                },
+                "sync_error": {
+                    "type": "integer"
+                },
+                "sync_only": {
+                    "type": "integer"
+                },
+                "timeline_error": {
+                    "type": "integer"
+                },
+                "timeline_invalid": {
+                    "type": "integer"
+                },
+                "timeline_match": {
+                    "type": "integer"
+                },
+                "timeline_mismatch": {
+                    "type": "integer"
+                },
+                "timeline_missing": {
+                    "type": "integer"
                 }
             }
         },
@@ -3441,6 +3931,12 @@ const docTemplate = `{
                 "last_message": {
                     "$ref": "#/definitions/httpdto.ConversationMessageSummaryResponse"
                 },
+                "last_message_seq": {
+                    "type": "integer"
+                },
+                "read_seq": {
+                    "type": "integer"
+                },
                 "remark": {
                     "type": "string"
                 },
@@ -3507,6 +4003,17 @@ const docTemplate = `{
                 },
                 "user_agent": {
                     "type": "string"
+                }
+            }
+        },
+        "httpdto.DeviceSyncCheckpointResponse": {
+            "type": "object",
+            "properties": {
+                "device_id": {
+                    "type": "string"
+                },
+                "sync_seq": {
+                    "type": "integer"
                 }
             }
         },
@@ -3619,6 +4126,23 @@ const docTemplate = `{
                 }
             }
         },
+        "httpdto.GroupSyncCheckpointResponse": {
+            "type": "object",
+            "properties": {
+                "group_uuid": {
+                    "type": "string"
+                },
+                "latest_message_id": {
+                    "type": "string"
+                },
+                "latest_message_seq": {
+                    "type": "integer"
+                },
+                "pulled_message_seq": {
+                    "type": "integer"
+                }
+            }
+        },
         "httpdto.HandleContactApplicationRequest": {
             "type": "object",
             "required": [
@@ -3686,6 +4210,9 @@ const docTemplate = `{
                 },
                 "message_id": {
                     "type": "string"
+                },
+                "message_seq": {
+                    "type": "integer"
                 },
                 "message_type": {
                     "type": "integer"
@@ -3807,6 +4334,35 @@ const docTemplate = `{
                 }
             }
         },
+        "httpdto.SearchMessageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "conversation_key": {
+                    "type": "string"
+                },
+                "from_uuid": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
+                },
+                "message_seq": {
+                    "type": "integer"
+                },
+                "message_type": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "sent_at": {
+                    "type": "string"
+                }
+            }
+        },
         "httpdto.SyncMessageResponse": {
             "type": "object",
             "properties": {
@@ -3815,6 +4371,12 @@ const docTemplate = `{
                 },
                 "message": {
                     "$ref": "#/definitions/httpdto.MessageResponse"
+                },
+                "message_seq": {
+                    "type": "integer"
+                },
+                "message_uuid": {
+                    "type": "string"
                 },
                 "sync_seq": {
                     "type": "integer"

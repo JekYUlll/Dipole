@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	"github.com/JekYUlll/Dipole/internal/service"
 )
 
@@ -46,6 +48,26 @@ type stubDirectMessageService struct {
 	sendGroupMessageFn      func(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error)
 	sendDirectFileMessageFn func(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error)
 	sendGroupFileMessageFn  func(senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error)
+	sendDirectContextFn     func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+}
+
+func (s *stubDirectMessageService) SendDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	if s.sendDirectContextFn != nil {
+		return s.sendDirectContextFn(ctx, senderUUID, targetUUID, content, clientMessageID)
+	}
+	return s.SendDirectMessage(senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *stubDirectMessageService) SendGroupMessageContext(_ context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupMessage(senderUUID, groupUUID, content, clientMessageID)
+}
+
+func (s *stubDirectMessageService) SendDirectFileMessageContext(_ context.Context, senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
+	return s.SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID)
+}
+
+func (s *stubDirectMessageService) SendGroupFileMessageContext(_ context.Context, senderUUID, groupUUID, fileUUID, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupFileMessage(senderUUID, groupUUID, fileUUID, clientMessageID)
 }
 
 func (s *stubDirectMessageService) SendDirectMessage(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
@@ -124,8 +146,10 @@ type wsEvent struct {
 }
 
 type chatSentEvent struct {
-	Type string       `json:"type"`
-	Data ChatSentData `json:"data"`
+	Type      string       `json:"type"`
+	RequestID string       `json:"request_id"`
+	TraceID   string       `json:"trace_id"`
+	Data      ChatSentData `json:"data"`
 }
 
 type chatMessageEvent struct {
@@ -133,9 +157,13 @@ type chatMessageEvent struct {
 	Data ChatMessageData `json:"data"`
 }
 
+type syncItemNotifyEvent struct {
+	Type string             `json:"type"`
+	Data SyncItemNotifyData `json:"data"`
+}
+
 func TestHandlerRejectsMissingToken(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
 	hub := NewHub()
@@ -174,7 +202,6 @@ func TestHandlerRejectsMissingToken(t *testing.T) {
 
 func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	authenticator := NewAuthenticator(
@@ -261,7 +288,6 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 
 func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -287,7 +313,17 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			},
 		},
 	)
+	var commandIDs correlation.IDs
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
+		sendDirectContextFn: func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+			commandIDs = correlation.FromContext(ctx)
+			return &model.Message{
+				UUID: "M100", ConversationKey: model.DirectConversationKey(senderUUID, targetUUID), Seq: 42,
+				ClientMessageID: clientMessageID, SenderUUID: senderUUID, TargetUUID: targetUUID,
+				TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeText,
+				Content: content, SentAt: time.Now().UTC(),
+			}, nil
+		},
 		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 			if senderUUID != "U100" {
 				t.Fatalf("unexpected sender uuid: %s", senderUUID)
@@ -304,6 +340,8 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 
 			return &model.Message{
 				UUID:            "M100",
+				ConversationKey: model.DirectConversationKey(senderUUID, targetUUID),
+				Seq:             42,
 				ClientMessageID: clientMessageID,
 				SenderUUID:      senderUUID,
 				TargetUUID:      targetUUID,
@@ -323,7 +361,7 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 			}
 			return nil
 		},
-	}, true)
+	}, true).WithTimelineNotifyMode(TimelineNotifyShadow)
 
 	router := gin.New()
 	handler := NewHandler(authenticator, hub, dispatcher)
@@ -342,10 +380,16 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	var connectedB wsEvent
 	readWebSocketJSON(t, second, &connectedB)
 
-	payload, err := EncodeCommand(TypeChatSend, SendTextMessageInput{
+	commandData, err := json.Marshal(SendTextMessageInput{
 		TargetUUID:      "U200",
 		Content:         "hello from U100",
 		ClientMessageID: "cmid-handler-1",
+	})
+	if err != nil {
+		t.Fatalf("encode command data: %v", err)
+	}
+	payload, err := json.Marshal(InboundEnvelope{
+		Type: TypeChatSend, RequestID: "ws-request-1", TraceID: "ws-trace-1", Data: commandData,
 	})
 	if err != nil {
 		t.Fatalf("encode command: %v", err)
@@ -368,6 +412,9 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	if !ack.Data.Delivered {
 		t.Fatalf("expected delivered ack, got false")
 	}
+	if commandIDs.RequestID != "ws-request-1" || commandIDs.TraceID != "ws-trace-1" || ack.RequestID != "ws-request-1" || ack.TraceID != "ws-trace-1" {
+		t.Fatalf("unexpected WS correlation: command=%+v ack=%+v", commandIDs, ack)
+	}
 
 	var incoming chatMessageEvent
 	readWebSocketJSON(t, second, &incoming)
@@ -380,11 +427,18 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	if incoming.Data.Content != "hello from U100" {
 		t.Fatalf("expected message content preserved, got %q", incoming.Data.Content)
 	}
+	var notify syncItemNotifyEvent
+	readWebSocketJSON(t, second, &notify)
+	if notify.Type != TypeSyncItemNotifyV1 || notify.Data.MessageUUID != "M100" || notify.Data.MessageSeq != 42 {
+		t.Fatalf("unexpected timeline notification: %+v", notify)
+	}
+	if notify.Data.ConversationKey != model.DirectConversationKey("U100", "U200") {
+		t.Fatalf("unexpected timeline conversation: %+v", notify.Data)
+	}
 }
 
 func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -483,7 +537,6 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 
 func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	users := map[string]*model.User{
@@ -549,7 +602,6 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 
 func TestHandlerRejectsMessageWhenRateLimited(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	hub := NewHub()
 	authenticator := NewAuthenticator(

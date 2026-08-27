@@ -1,0 +1,57 @@
+{
+  "version": "dipole.agent.context-calibration.evidence.v1",
+  "candidate": "2e4babfb766aed4c512844653bf76622452db61c",
+  "capturedAt": "2026-08-27T08:00:00.000Z",
+  "dataClassification": "synthetic",
+  "routes": ["gateway/calibrated"],
+  "profiles": [
+    {
+      "route": "gateway/calibrated",
+      "contextWindowTokens": 32768,
+      "utf8BytesPerToken": 2,
+      "safetyMarginBps": 2500
+    }
+  ],
+  "cases": [
+    {
+      "id": "english",
+      "route": "gateway/calibrated",
+      "category": "english",
+      "text": "Summarize migration risks and owners.",
+      "referenceTokens": 8,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "chinese",
+      "route": "gateway/calibrated",
+      "category": "chinese",
+      "text": "整理数据库迁移风险和负责人。",
+      "referenceTokens": 14,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "code",
+      "route": "gateway/calibrated",
+      "category": "code",
+      "text": "type Task = { id: string; status: string };",
+      "referenceTokens": 16,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "emoji",
+      "route": "gateway/calibrated",
+      "category": "emoji",
+      "text": "ready ✅ blocked ⛔ review 🔍",
+      "referenceTokens": 12,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "tool",
+      "route": "gateway/calibrated",
+      "category": "tool_schema",
+      "text": "{\"name\":\"read_conversation\",\"input\":{\"type\":\"object\"}}",
+      "referenceTokens": 20,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    }
+  ]
+}
