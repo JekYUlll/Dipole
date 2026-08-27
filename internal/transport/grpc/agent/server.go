@@ -28,6 +28,15 @@ type Server struct {
 	artifacts     application.AgentArtifactServiceV1
 	subscriptions application.AgentEventSubscriptionResolverV1
 	memories      application.AgentMemoryContextResolverV1
+	toolAudits    application.AgentToolInvocationAuditServiceV1
+}
+
+func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServiceV1) (*Server, error) {
+	if s == nil || audits == nil {
+		return nil, errors.New("Agent Tool invocation audit service is required")
+	}
+	s.toolAudits = audits
+	return s, nil
 }
 
 func (s *Server) WithMemories(memories application.AgentMemoryContextResolverV1) (*Server, error) {
@@ -397,6 +406,66 @@ func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.Resolve
 		})
 	}
 	return response, nil
+}
+
+func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.BeginMcpToolInvocationRequest) (*agentv1.BeginMcpToolInvocationResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolAudits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Tool invocation audit is unavailable")
+	}
+	record, err := s.toolAudits.Begin(grpccommon.Correlation(ctx, request.GetContext()), application.AgentToolInvocationBeginV1{
+		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		Transport: application.AgentToolTransportMCP, ToolName: request.GetToolName(), CapabilityID: request.GetCapabilityId(),
+		ArgumentsSHA256: request.GetArgumentsSha256(), RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(),
+	})
+	if err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	return &agentv1.BeginMcpToolInvocationResponse{InvocationId: record.InvocationUUID, Status: string(record.Status)}, nil
+}
+
+func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.FinishMcpToolInvocationRequest) (*agentv1.FinishMcpToolInvocationResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolAudits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Tool invocation audit is unavailable")
+	}
+	finish := application.AgentToolInvocationFinishV1{
+		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		Status: application.AgentToolInvocationStatusV1(request.GetStatus()), ResultSHA256: request.GetResultSha256(),
+		ResultBytes: request.GetResultBytes(), LatencyMS: request.GetLatencyMs(), ErrorCode: request.GetErrorCode(),
+	}
+	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
+}
+
+func (s *Server) authorizeMcpToolAuditCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) error {
+	caller, err := grpccommon.Caller(ctx, requestContext)
+	if err != nil {
+		return err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(requestContext.GetPrincipalUserId()) != "" {
+		return status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may audit MCP Tool invocations")
+	}
+	return nil
+}
+
+func mapAgentToolInvocationErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentToolInvocationInvalid):
+		return status.Error(codes.InvalidArgument, "Agent Tool invocation evidence is invalid")
+	case errors.Is(err, application.ErrAgentToolInvocationDenied):
+		return status.Error(codes.PermissionDenied, "Agent Tool invocation denied")
+	case errors.Is(err, application.ErrAgentToolInvocationConflict):
+		return status.Error(codes.Aborted, "Agent Tool invocation state conflicts")
+	default:
+		return status.Error(codes.Internal, "Agent Tool invocation audit failed")
+	}
 }
 
 func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.ProjectTaskWorkflowStateRequest) (*agentv1.ProjectTaskWorkflowStateResponse, error) {

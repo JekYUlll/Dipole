@@ -101,7 +101,9 @@ G1 已实现 `AgentPolicyV1`：Invocation 携带 tenant、principal、Agent、de
 
 G4 MCP foundation 使用官方拆分版 TypeScript SDK v2。Server 只将显式映射且 descriptor 为 `read` 的 Capability 注册为 Tool，Tool handler 复用 Capability Registry 与 Policy Engine；可信 ExecutionContext 由宿主根据已验证认证信息构建，Tool arguments 不包含身份。Client 在连接前校验 Server/Tool allowlist，握手后复核实际 Server identity，并限制发现数量和响应大小。
 
-首个网络挂载由两个独立开关控制且默认关闭。Gateway 在 JWT 认证后将 principal、Task、Run 和 correlation 注入私有 Runtime 路由，移除公开凭据与可伪造内部头；Runtime 使用 `ResolveMcpContext` 让 Core 校验精确 Task/Run、固定 Definition、grant、scope 和 approvals，再为 `conversation.list` 创建请求级 MCP Server。Streamable HTTP 的 GET/POST/DELETE、SSE body 与 Session header 透传。该入口当前仍是受控 Dipole 会话桥，OAuth resource indicator、外部 Server 凭据、调用审计/OTel、限流、write Tool 与 Elicitation adapter 由 `AD-037` 跟踪。
+首个网络挂载由两个独立开关控制且默认关闭。Gateway 在 JWT 认证后将 principal、Task、Run 和 correlation 注入私有 Runtime 路由，移除公开凭据与可伪造内部头；Runtime 使用 `ResolveMcpContext` 让 Core 校验精确 Task/Run、固定 Definition、grant、scope 和 approvals，再为 `conversation.list` 创建请求级 MCP Server。Streamable HTTP 的 GET/POST/DELETE、SSE body 与 Session header 透传。
+
+每次 Tool 调用先经 additive Core RPC 写入 migration v30 的 `agent_tool_invocations`，只有 durable begin 成功后才执行 Capability；完成或失败只能从 `running` 转换一次。审计只保存哈希、大小、耗时和稳定错误码，不保存参数、结果或内部异常正文。TS Runtime 同时通过 OpenTelemetry API 创建 ToolCall span；当前不装配 SDK/exporter，部署方启用观测后仍需遵守正文禁入 span 的约束。OAuth resource indicator、外部 Server 凭据、限流、exporter/告警、write Tool 与 Elicitation adapter继续由 `AD-037` 跟踪。
 
 ### Agent Task
 

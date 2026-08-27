@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加 migration v30 与 MCP ToolCall 持久审计：Core/sqlc 绑定权威 tenant、principal、Agent、Task 和 Run，仅保存参数/结果 SHA-256、结果字节数、耗时、稳定错误码与单次终态；TypeScript Runtime 只有在 durable begin 成功后才执行只读 Capability，并使用 `@opentelemetry/api` 创建不含正文的 ToolCall span。结果超过 64 KiB、工具异常或审计不可用均 fail closed；默认未装配 OTel SDK/exporter。
 - Agent G4 增加默认关闭的认证 MCP 网络入口：Gateway 仅在 JWT 成功后转发 `GET/POST/DELETE` Streamable HTTP，并覆盖客户端伪造的服务身份与 principal；Runtime 通过 additive `ResolveMcpContext` RPC 让 Core 复核 Task、Run、固定 Definition、grant 和 resource scope，再构造只读 `conversation.list` ExecutionContext。服务密钥、Cookie 与公开 Authorization 不进入 MCP handler，SSE 和 Session header 保持流式转发。
 - Agent G4 增加官方 MCP TypeScript SDK v2 foundation：MCP Server 将显式 allowlist 的只读 Capability 投影为 Tool，并由宿主注入经校验的 ExecutionContext；MCP 参数无法提供 principal。MCP Client 同时校验配置 allowlist、握手 Server identity、已发现 Tool、256 项发现上限及 128 KiB 响应上限。进程内与 Streamable HTTP 契约均通过，HTTP handler 要求宿主提供已验证 `AuthInfo`；write/destructive Tool 保持关闭。
 - Agent G3 为 `WAITING_INPUT` 与 `WAITING_APPROVAL` 增加持久 deadline 和 Temporal Timer：Input Activity 与已持久 Approval binding 提供绝对截止时间，Workflow history 固定该值；到期且没有精确 Signal 时确定性进入 `cancelled`，分别记录 `input_expired` 或 `approval_expired`，投影终态并完成持久 Run，避免无限等待占用执行资源。
@@ -259,6 +260,7 @@
 
 ### 安全
 
+- MCP Tool 参数、结果和内部异常正文禁止进入数据库审计及 span 属性；Core 重新解析运行中的 Task/Run 和固定 Definition，只允许 read-risk Capability，Runtime 无法提交 principal。重复 begin、重复终态、伪造 principal 与审计失效均拒绝执行或返回稳定泛化错误。
 - MCP Gateway 代理移除公开 Authorization、Cookie、客户端注入的 `X-Dipole-*` 身份头和 hop-by-hop/body 长度头，再注入固定 `dipole-gateway` 服务凭据与 JWT principal；Core 对外部 principal 不匹配统一返回 unavailable，模型和 Tool 参数无法选择 tenant、Agent、Task 权限或 resource scope。
 - 移除 Vite 5/esbuild 与 Vitest 2 开发依赖链中的 1 个 critical、1 个 high 和 3 个 moderate 公告；完整依赖及生产依赖 `npm audit` 均为零漏洞。
 - 新增第三个离线 `dipoleartifactmaintenance` 检查身份，MinIO policy 仅允许固定 Artifact 前缀 GetObject 证据权限；Go adapter 只暴露 Stat，配置拒绝复用 Runtime 或 audit access key。该身份无法 List、Put、Delete，Core、Agent 与 Gateway 均不持有其凭据。
@@ -276,6 +278,7 @@
 
 ### 迁移说明
 
+- `BeginMcpToolInvocation` 与 `FinishMcpToolInvocation` 是 Agent Capability v1 的 additive RPC。先执行 migration v30 并滚动 Core，再滚动 Runtime；入口默认关闭，确认 Core 审计可用后再按既有双开关启用。回滚先关闭 Gateway/Runtime MCP 开关并等待 `running` 调用收敛，再回退 Runtime/Core；v30 down 会删除 `agent_tool_invocations` 审计历史，应先完成合规留存判断。
 - `ResolveMcpContext` 是 Agent Capability v1 的 additive RPC。先滚动 Core 与 Runtime，再同时显式设置 `DIPOLE_AGENT_MCP_SERVER_ENABLED=true` 和 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true`；任一开关保持 `false` 时公网链路不可用。回滚先关闭 Gateway 开关，再关闭 Runtime 开关，无数据迁移。共享环境仍需完成 `AD-037` 的 OAuth resource indicator、审计、限流和外部 Server 凭据门禁。
 - migration v29 创建 `agent_memories`。先迁移 Core，再滚动发布 additive Proto 两端，最后在受控 Shadow 环境设置 `DIPOLE_AGENT_MEMORY_ENABLED=true`；默认与 Compose 保持 `false`。回滚先关闭开关，Down 会删除全部 Memory 内容和来源记录，只适用于停止 Agent Runtime、确认无需保留记忆且已完成必要导出的环境。
 - migration v28 创建 `agent_event_subscriptions` 并为 `agent_tasks` 增加 nullable `trigger_subscription_uuid` 外键。发布新 Runtime 前先迁移 Core，再滚动发布 additive Proto 两端；启用 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 前必须通过受控 Store 写入绑定有效 Definition 的订阅。回滚先恢复 `direct_target` 并等待在途 Task 收敛，再执行 v28 Down；Down 会删除订阅表及 Task 订阅绑定，仅适用于确认不再需要相关审计数据的环境。
@@ -321,6 +324,7 @@
 
 ### 验证
 
+- MCP ToolCall 测试覆盖 durable begin、权威身份绑定、只读风险门禁、参数/结果哈希、64 KiB 上限、异常脱敏、OTel span 终止、RPC principal 拒绝、重复 begin 与单次终态；真实 MySQL 8.4 验证 migration v30 全量 `up→down` 链、FK/CHECK 约束及 sqlc contract。Go 聚焦测试、128 项 TS 测试、typecheck/build 和双语言生成物通过。
 - MCP 认证挂载测试覆盖默认零路由、错误服务密钥、JWT principal 覆盖、Task/Run 绑定、异步 Core 上下文解析、foreign principal NotFound、内部凭据与 body 长度头清理、SSE/Session header 透传及无效标识拒绝；Go 全量 test/vet、定向 race、125 项 TS 测试、typecheck/build、双语言 Proto 漂移、Compose、架构文档和生产依赖零漏洞门禁通过。
 - Agent Memory 单元与传输测试覆盖内容/生命周期校验、Task 固定身份、conversation scope 越权、伪造 principal、provenance 映射、稳定排序和 `untrusted` Context 注入；真实 MySQL 8.4 验证主体隔离、sqlc 创建/查询/撤销、类型/状态/priority CHECK 及 migration v29 `up→down→up`。聚焦 Go/TS 测试、typecheck 和 build 通过。
 - Agent Event Subscription 单元与契约测试覆盖未知过滤器字段、控制字符、Definition 撤销/过期/漂移、resource scope 越权、RPC 服务身份、零匹配零台账/零计划、多匹配稳定选择和 Task 绑定冲突；真实 MySQL 8.4 验证默认 21 字符 Agent ID、sqlc 创建/查询/撤销、外键/CHECK 约束及 migration v28 `up→down→up`。Go/TS Proto、sqlc 生成物、112 项 TS 测试、typecheck 和 build 通过。

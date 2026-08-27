@@ -69,6 +69,7 @@ type Querier interface {
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)
 	FindLatestAccessibleFileMetadata(ctx context.Context, arg FindLatestAccessibleFileMetadataParams) (MessageMetadatum, error)
+	FinishAgentToolInvocation(ctx context.Context, arg FinishAgentToolInvocationParams) (int64, error)
 	GetAdminOverviewCounts(ctx context.Context, arg GetAdminOverviewCountsParams) (GetAdminOverviewCountsRow, error)
 	GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error)
 	GetAgentArtifact(ctx context.Context, artifactUuid string) (AgentArtifact, error)
@@ -128,6 +129,7 @@ type Querier interface {
 	InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error)
 	InsertAgentShadowStep(ctx context.Context, arg InsertAgentShadowStepParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
+	InsertAgentToolInvocation(ctx context.Context, arg InsertAgentToolInvocationParams) (int64, error)
 	InsertAgentWorkflowRepairDecision(ctx context.Context, arg InsertAgentWorkflowRepairDecisionParams) (int64, error)
 	InsertAgentWorkflowRepairProposal(ctx context.Context, arg InsertAgentWorkflowRepairProposalParams) (int64, error)
 	ListAgentContextMemories(ctx context.Context, arg ListAgentContextMemoriesParams) ([]AgentMemory, error)

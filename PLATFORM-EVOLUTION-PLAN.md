@@ -353,9 +353,11 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] Runtime 作为 MCP Client 接入外部工具，并以 MCP Server 暴露受控 Dipole Capability。
   - [x] 使用官方 MCP TS SDK v2 建立 Client/Server foundation：只读 Capability 投影复用 Registry/Policy，宿主注入 trusted Context；Client 校验 Server identity 与双 allowlist，InMemory/Streamable HTTP 契约通过。
   - [x] 增加默认关闭的 Runtime/Gateway Streamable HTTP 挂载：Gateway JWT 固定 principal，Core 按 Task/Run 解析可信 ExecutionContext，当前只开放显式只读 Capability。
-  - [ ] 完成 OAuth resource indicator、外部 Server 凭据与审计/限流、write Tool Approval 和 Elicitation adapter（`AD-037`）。
+  - [x] migration v30、sqlc Store 与 additive Core RPC 建立 MCP ToolCall 持久审计；TS 执行器在 durable begin 后执行，并创建不含正文的原生 OTel span，失败与超限结果 fail closed。
+  - [ ] 完成 OAuth resource indicator、外部 Server 凭据、限流、OTel SDK/exporter/告警、write Tool Approval 和 Elicitation adapter（`AD-037`）。
 - [ ] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
 - [ ] 通过 OpenTelemetry 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
+  - [x] ToolCall 已使用 `@opentelemetry/api` 建立原生 span 与低敏属性；SDK/exporter 和其余 span 继续保持待办。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
 - [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
 - [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。

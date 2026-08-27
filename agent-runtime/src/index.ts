@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
 import { CapabilityRegistry } from "./capabilities/registry.js";
 import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
+import { McpToolInvocationRunner } from "./mcp/mcp-tool-invocation.js";
 import {
   createAgentCapabilityRPC,
   createKafkaShadowRuntime,
@@ -72,6 +73,10 @@ const mcpAuthExtraSchema = z.object({
 }).strict();
 const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHandler({
   registry: mcpRegistry,
+  runner: new McpToolInvocationRunner({
+    begin: (input) => mcpRPC!.client.begin(input),
+    finish: (input) => mcpRPC!.client.finishToolInvocation(input)
+  }),
   tools: [{
     name: "dipole_conversation_list",
     capabilityId: "conversation.list",

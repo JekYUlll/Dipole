@@ -38,7 +38,9 @@ DIPOLE_AGENT_MCP_SERVER_ENABLED=true
 DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
 ```
 
-客户端访问 `/api/v1/agent/tasks/{task_id}/runs/{run_id}/mcp`。Gateway 支持 Streamable HTTP 的 GET/POST/DELETE，先验证现有 JWT，再以内部服务身份调用 Runtime；Runtime 通过 Core `ResolveMcpContext` 复核 Task owner、运行中的 Run、固定 Definition、权限和 scope。当前只注册 `dipole_conversation_list`，不开启外部 Server、write/destructive Tool。回滚时先关闭 Gateway 开关，再关闭 Runtime 开关。
+客户端访问 `/api/v1/agent/tasks/{task_id}/runs/{run_id}/mcp`。Gateway 支持 Streamable HTTP 的 GET/POST/DELETE，先验证现有 JWT，再以内部服务身份调用 Runtime；Runtime 通过 Core `ResolveMcpContext` 复核 Task owner、运行中的 Run、固定 Definition、权限和 scope。当前只注册 `dipole_conversation_list`，不开启外部 Server、write/destructive Tool。
+
+启用入口前先应用 migration v30 并滚动 Core，再滚动 Runtime/Gateway。每次 Tool 调用必须先通过 Core 持久化 begin；审计只记录参数/结果 SHA-256、结果大小、耗时、终态和稳定错误码。`@opentelemetry/api` 会创建低敏 ToolCall span，当前未安装 SDK/exporter，因此默认没有外部遥测输出。回滚先关闭 Gateway 开关，再关闭 Runtime 开关；确认没有 `running` 调用后才可执行 v30 down，降级会删除 Tool 审计历史。
 
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
 

@@ -130,7 +130,21 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, resolveMcpContext, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const beginMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", capabilityId: "conversation.list" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { invocationId: input.invocationId, status: "running" });
+      return {};
+    });
+    const finishMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", status: "completed", resultBytes: 128n, latencyMs: 12n });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { invocationId: input.invocationId, status: input.status });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -180,6 +194,14 @@ describe("AgentCapabilityRPCClient", () => {
       tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
       permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }]
     });
+    await expect(client.begin({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "dipole_conversation_list",
+      capabilityId: "conversation.list", argumentsSha256: "a".repeat(64), requestId: "R1", traceId: "T1"
+    })).resolves.toBeUndefined();
+    await expect(client.finishToolInvocation({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
+      resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12
+    })).resolves.toBeUndefined();
     await expect(client.projectTaskWorkflowState({
       taskId: "TASK-1", runId: "RUN-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
       workflowStatus: "waiting_approval", workflowRevision: 2
