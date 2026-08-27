@@ -8,6 +8,7 @@ import {
   loadExternalMcpConfig,
   type ExternalMcpTransportFactory
 } from "./external-mcp-profile.js";
+import { ReloadingExternalMcpCredentialCatalog } from "./external-mcp-credential-catalog.js";
 
 const validProfile = {
   schema_version: "dipole.agent.external-mcp-profile.v1",
@@ -25,6 +26,23 @@ const validProfile = {
   },
   allowed_tools: ["search_repositories", "read_issue"]
 };
+
+function credentialCatalog(status: "active" | "revoked" = "active"): ReloadingExternalMcpCredentialCatalog {
+  return new ReloadingExternalMcpCredentialCatalog(async () => ({
+    schema_version: "dipole.agent.external-mcp-credential-catalog.v1",
+    bindings: [{
+      tenant_id: "dipole",
+      credential_ref: "CRED-0123456789ABCDEF",
+      version: 3,
+      provider_id: "vault-prod",
+      provider_secret_ref: "SECRET-0123456789ABCDEF",
+      status,
+      valid_from: "2026-08-27T00:00:00Z",
+      expires_at: null,
+      revoked_at: status === "revoked" ? "2026-08-27T01:00:00Z" : null
+    }]
+  }));
+}
 
 describe("external MCP profile boundary", () => {
   it("keeps the language-neutral contract aligned with the runtime version", async () => {
@@ -103,23 +121,72 @@ describe("external MCP profile boundary", () => {
     const transport = {} as Transport;
     const connect = vi.fn(async () => transport);
     const factory: ExternalMcpTransportFactory = { connect };
-    const registry = new ExternalMcpTransportRegistry(config, factory);
+    const registry = new ExternalMcpTransportRegistry(
+      config,
+      credentialCatalog(),
+      factory,
+      () => new Date("2026-08-27T12:00:00Z")
+    );
 
     await expect(registry.connect("github-prod", "other-tenant")).rejects.toThrow(/tenant/i);
     expect(connect).not.toHaveBeenCalled();
     await expect(registry.connect("github-prod", "dipole")).resolves.toBe(transport);
-    expect(connect).toHaveBeenCalledWith(expect.objectContaining({
-      tenantId: "dipole",
-      credentialRef: "CRED-0123456789ABCDEF",
-      dnsResolution: "public_only",
-      tlsServerName: "mcp.github.example"
-    }), undefined);
+    expect(connect).toHaveBeenCalledWith({
+      profile: expect.objectContaining({
+        tenantId: "dipole",
+        credentialRef: "CRED-0123456789ABCDEF",
+        dnsResolution: "public_only",
+        tlsServerName: "mcp.github.example"
+      }),
+      credential: {
+        tenantId: "dipole",
+        credentialRef: "CRED-0123456789ABCDEF",
+        credentialVersion: 3,
+        providerId: "vault-prod",
+        providerSecretRef: "SECRET-0123456789ABCDEF"
+      }
+    }, undefined);
+  });
+
+  it("blocks a revoked credential before the Transport Factory", async () => {
+    const config = loadExternalMcpConfig({
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "true",
+      DIPOLE_AGENT_EXTERNAL_MCP_PROFILES: JSON.stringify([validProfile])
+    });
+    const connect = vi.fn();
+    const registry = new ExternalMcpTransportRegistry(
+      config,
+      credentialCatalog("revoked"),
+      { connect },
+      () => new Date("2026-08-27T12:00:00Z")
+    );
+    await expect(registry.connect("github-prod", "dipole")).rejects.toThrow(/revoked/i);
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it("does not open a Transport after cancellation", async () => {
+    const config = loadExternalMcpConfig({
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "true",
+      DIPOLE_AGENT_EXTERNAL_MCP_PROFILES: JSON.stringify([validProfile])
+    });
+    const connect = vi.fn();
+    const controller = new AbortController();
+    controller.abort(new Error("request cancelled"));
+    const registry = new ExternalMcpTransportRegistry(
+      config,
+      credentialCatalog(),
+      { connect },
+      () => new Date("2026-08-27T12:00:00Z")
+    );
+    await expect(registry.connect("github-prod", "dipole", controller.signal)).rejects.toThrow(/cancelled/i);
+    expect(connect).not.toHaveBeenCalled();
   });
 
   it("refuses every connection while the kill switch is disabled", async () => {
     const connect = vi.fn();
     const registry = new ExternalMcpTransportRegistry(
       loadExternalMcpConfig({ DIPOLE_AGENT_EXTERNAL_MCP_PROFILES: JSON.stringify([validProfile]) }),
+      credentialCatalog(),
       { connect }
     );
     await expect(registry.connect("github-prod", "dipole")).rejects.toThrow(/disabled/i);
