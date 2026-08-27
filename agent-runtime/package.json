@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "generate:sql": "node ../scripts/generate-agent-ledger-queries.mjs",
+    "generate:sql": "node ../scripts/generate-agent-ledger-queries.mjs && node ../scripts/generate-agent-model-audit-queries.mjs",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
