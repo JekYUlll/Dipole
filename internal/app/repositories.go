@@ -23,6 +23,7 @@ type Repositories struct {
 	Sync          application.SyncStore
 	Search        application.SearchIndex
 	AICallLogs    application.AICallLogStore
+	AgentPolicy   application.AgentPolicyStoreV1
 	Outbox        application.OutboxRelayStore
 }
 
@@ -103,6 +104,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
 	}
 	repos.AICallLogs = adapter
+	agentPolicy, err := sqlcRepository.NewAgentPolicyRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
+	}
+	repos.AgentPolicy = agentPolicy
 	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)

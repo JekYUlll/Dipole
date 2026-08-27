@@ -18,9 +18,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** `ExecutionContext`、Agent Definition、Capability Policy、Human-in-the-loop、远程 TS Runtime
-- **现状：** `AgentPolicyV1` 已固定 tenant、principal、Agent、delegator、permission、risk 与 approval 语义，并在 Embedded Tool 和本地 Capability adapter 双层执行。当前 Embedded Agent 仍使用单 tenant 和代码内默认 permission 集，`approved_capabilities` 仅有运行时契约，尚无持久审批来源。
+- **现状：** `AgentPolicyV1` 已固定 tenant、principal、Agent、delegator、permission、risk 与 approval 语义，并在 Embedded Tool 和本地 Capability adapter 双层执行。migration v16 与 `AgentPolicyStoreV1` 已建立版本化 Definition grant、固定 policy version 的 AgentTask，以及绑定 capability/scope/arguments/nonce/有效期的一次性 Approval；真实 MySQL 并发消费只有一个成功。Embedded Agent 仍使用代码内默认 permission 集，尚未从持久 Task snapshot 解析 Invocation。
 - **风险：** 多 Agent 或多租户上线后，静态授权无法表达按 Agent/资源的最小权限、撤销、审批有效期与审计证据；直接填充 approval 集可能绕过用户确认。
-- **建议方向：** G2/G3 将 permission policy 绑定版本化 Agent Definition，将 Approval 绑定 AgentTask/ToolInvocation、审批人、scope、过期时间和一次性 nonce；Temporal Signal 恢复任务时重新校验 principal、capability、arguments hash 与 policy version。
+- **建议方向：** 下一切片让 Embedded trigger 创建并固定 AgentTask policy snapshot，通过显式 static/persistent 模式灰度；G3 的 Temporal Signal 恢复任务时复用 Store 原子消费并重新校验 principal、capability、scope、arguments hash 与 policy version，审批 UI 只提交受认证的审批事实。
 - **处理门槛：** TS Runtime 获得生产写权限或启用 destructive capability 前，完成持久授权、审批 UI、审计、撤销和重放测试。
 
 ### AD-026：Readiness 尚未持续感知运行期依赖退化

@@ -141,15 +141,17 @@ Context Compiler 根据 token 预算组合系统策略、Agent 身份、任务�
 
 首期包含：
 
-- `agent_definitions`：所有者、指令、模型策略、版本和状态。
+- `agent_definition_versions`：所有者、Agent、permission、resource scope、有效期、版本和撤销状态；grant 内容按版本追加，Task 始终固定精确版本。
 - `agent_subscriptions`：事件、资源、过滤器和策略。
-- `agent_tasks`：目标、触发来源、主体、状态和 Workflow ID。
+- `agent_tasks`：目标、触发来源、主体、状态和固定 Definition version；v16 先提供 compare-and-set 状态迁移，后续追加 Temporal Workflow ID。
 - `agent_runs` / `agent_steps`：模型、Token、延迟、输入输出摘要和执行轨迹。
-- `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态。
+- `tool_invocations` / `agent_approvals`：参数、结果、风险、授权依据和审批状态；v16 Approval 已绑定 capability、canonical scope hash、arguments hash、nonce 和有效期，并通过条件更新完成一次性消费。
 - `agent_artifacts`：类型、URI、版本、来源和元数据。
 - `agent_memories`：作用域、类型、来源、置信度和过期时间。
 
 敏感输入输出采用脱敏摘要和受控对象存储，审计记录避免保存明文凭据。
+
+当前 `dipole.agent.policy.persistence.v1`、migration v16 和 sqlc Store 已落地 Definition/Task/Approval 的最小持久边界。Embedded Go/Eino 仍以 static grant 运行；下一门禁是创建 Task policy snapshot、从精确 Definition version 解析 Invocation，并保留显式 static rollback 后再切换默认模式。
 
 ## 8. 可观测性与评测
 
