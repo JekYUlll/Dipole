@@ -24,6 +24,16 @@ if DIPOLE_REALTIME_KAFKA_BROKERS=127.0.0.1:1 \
   exit 1
 fi
 
+DIPOLE_REALTIME_DELIVERY=go \
+DIPOLE_REALTIME_PRIMARY_ENABLED=true \
+DIPOLE_REALTIME_KAFKA_BROKERS=127.0.0.1:1 \
+DIPOLE_REALTIME_EVIDENCE_FILE="${evidence}" \
+  "${binary}" primary "${testdata}" >"${log_file}" 2>&1 && {
+  echo "primary runtime unexpectedly accepted Go authority" >&2
+  exit 1
+}
+
+DIPOLE_REALTIME_DELIVERY=cpp \
 DIPOLE_REALTIME_PRIMARY_ENABLED=true \
 DIPOLE_REALTIME_HOST=127.0.0.1 \
 DIPOLE_REALTIME_PORT="${port}" \

@@ -89,13 +89,13 @@ C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用�
 
 证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，增加低敏 `message_type` selector 及 requested/observed/duplicate/rejected/backpressured 聚合计数，不保存正文、收件人或 connection ID。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
 
-显式 `primary` 命令复用同一 record ownership，但授予独立的 `dipole-realtime-primary-*` consumer authority。启动必须同时设置 `DIPOLE_REALTIME_PRIMARY_ENABLED=true`、`DIPOLE_REALTIME_PRESENCE_MODE=primary` 和 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=primary`；缺少任一项都会在创建 consumer 前 fail closed。tracked Compose 没有 primary 服务或默认启用值。
+显式 `primary` 命令复用同一 record ownership，但授予独立的 `dipole-realtime-primary-*` consumer authority。启动必须同时设置 `DIPOLE_REALTIME_DELIVERY=cpp`、`DIPOLE_REALTIME_PRIMARY_ENABLED=true`、`DIPOLE_REALTIME_PRESENCE_MODE=primary` 和 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=primary`；缺少任一项都会在创建 consumer 前 fail closed。`shadow` 命令同样要求 `DIPOLE_REALTIME_DELIVERY=shadow`。tracked Compose 没有 C++ primary 服务或默认启用值。
 
 primary 顺序固定为 `poll -> project -> Presence -> DeliverNodeBatch -> primary-evidence.v1 -> commit`。完整 ACK 必须与 batch 数量、batch ID 和全部 delivery ID 精确一致；所有结果均为 `ENQUEUED|OFFLINE` 时允许 commit，`PARTIAL/BACKPRESSURED`、`REJECTED`、`FAILED` 或任何漂移会记录有界分类并保留 pending record。Presence 已确认全部 item 离线且没有 node batch 时不发起 RPC，在 evidence 刷盘后直接提交。evidence append 仍先于 offset commit；进程在两者之间崩溃时依靠稳定 delivery ID、Gateway replay state、Web IndexedDB claim 和 Sync Timeline 补偿重放。
 
 真实 primary runtime 证据位于 `benchmarks/c2-primary-runtime-2026-08-28/`。隔离环境中 terminal ACK 将目标分区提交到 log end；600 KiB probe 在第 40 个批次将真实 WebSocket queue 压至 16/16并收到 `PARTIAL/BACKPRESSURED`；错误 gRPC target worker 为同一坐标写 deferred/retain，`SIGKILL` 前 offset 保持、lag 为 1，正常 worker 重平衡后重放并将 lag 降为 0。报告 8/8 且绑定两张 clean same-revision 镜像。演练声明的是 deferred evidence 后崩溃重放，未声明窄 terminal evidence/commit 窗口的确定性故障点。
 
-同一演练确认 Go Gateway consumer 与 C++ primary group 并行时会各写一条客户端 frame；legacy Go frame 没有可与 C++ stable delivery ID 合并的标识。`AD-041` 因此阻止 primary 加入 tracked Compose。C3 必须先实现互斥 `realtime.delivery` authority、双 group checkpoint 与回切 receipt。
+同一演练确认 Go Gateway consumer 与 C++ primary group 并行时会各写一条客户端 frame；legacy Go frame 没有可与 C++ stable delivery ID 合并的标识。`AD-041` 因此阻止 primary 加入 tracked Compose。C3 第一切片已加入默认 `go` 的本地 `realtime.delivery` 契约：`go|shadow` 使用 Go 消息投递 Handler，`cpp` 使用只校验消息事件并提交原 Go group offset 的 checkpoint Handler；非消息 Gateway 事件保持原行为。跨实例共享 authority fencing、双 group checkpoint receipt 和自动回切完成前仍禁止生产切流。
 
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
 
@@ -125,4 +125,4 @@ Gateway 继续拥有连接认证、心跳、WebSocket envelope、连接级有界
 
 ## 回滚
 
-路线图预留 `realtime.delivery=go|shadow|cpp` 开关语义；当前生产配置和 Compose 尚未加入该开关，系统等价于 `go`。独立执行 `shadow` 只增加观察链，失败不会阻塞 Go；手工执行 `primary` 还需要专用 enable gate、Presence/transport primary mode 和隔离 consumer group。`cpp` 晋级仍需要真实 offset/crash 证据、自动回切和同一 workload 对照。任何 ACK 漂移、队列溢出、顺序差异或恢复退化都停止候选并保留 Go 权威链路，无需数据回滚。
+`realtime.delivery=go|shadow|cpp` 已进入配置，默认和 tracked Compose 行为保持 `go`。`shadow` 保留 Go 客户端写入并允许 C++ 观察；`cpp` 让 Go message-created group 只前移兼容回滚 checkpoint，并要求 Gateway primary RPC 与 C++ primary 本地配置一致。该开关尚未形成集群共享 fencing，不能单独作为灰度控制面。后续切换必须记录双 group 高水位、稳定窗口和可执行回切 receipt；任何 ACK 漂移、队列溢出、顺序差异或恢复退化都停止候选并恢复 Go 权威链路。

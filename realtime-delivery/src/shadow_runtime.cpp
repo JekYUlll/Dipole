@@ -117,6 +117,11 @@ ValidationError LoadDeliveryRuntimeConfig(DeliveryRuntimeAuthority authority, De
   *config = {};
   const bool primary = authority == DeliveryRuntimeAuthority::kPrimary;
   const std::string authority_name = primary ? "primary" : "shadow";
+  const std::string desired_authority = Environment("DIPOLE_REALTIME_DELIVERY");
+  const std::string expected_authority = primary ? "cpp" : "shadow";
+  if (desired_authority != expected_authority) {
+    return "DIPOLE_REALTIME_DELIVERY must match the runtime authority";
+  }
   config->authority = authority;
   config->primary_enabled = false;
   if (primary && !ParseBool(Environment("DIPOLE_REALTIME_PRIMARY_ENABLED", "false"), &config->primary_enabled)) {

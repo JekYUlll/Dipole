@@ -25,6 +25,10 @@ gateway:
   agent_mcp_enabled: false
   agent_mcp_target: http://127.0.0.1:8091
 
+realtime:
+  # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.
+  delivery: go
+
 tls:
   enabled: false
 

@@ -16,6 +16,7 @@ import (
 	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -118,7 +119,13 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
 	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
 	if hub != nil {
-		registerGatewayKafkaHandlers(hub)
+		authority, err := realtimeDelivery.ParseAuthority(config.RealtimeConfig().Delivery)
+		if err != nil {
+			return err
+		}
+		if err := registerGatewayKafkaHandlers(hub, authority); err != nil {
+			return err
+		}
 	}
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
@@ -128,18 +135,17 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	return nil
 }
 
-func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender) error {
+func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
 	if hub == nil {
 		return fmt.Errorf("gateway kafka event sender is required")
 	}
-	registerGatewayKafkaHandlers(hub)
-	return nil
+	return registerGatewayKafkaHandlers(hub, authority)
 }
 
-func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
+func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority) error {
 	hotGroups := platformHotGroup.NewRedisDetector()
 	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
@@ -149,8 +155,12 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
 		}
 	}))
 	timelineNotifyMode := config.MessageConfig().TimelineNotifyMode
-	platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub, timelineNotifyMode))
-	platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode))
+	directHandler, groupHandler, err := gatewayMessageDeliveryHandlers(authority, hub, hotGroups, notifier, timelineNotifyMode)
+	if err != nil {
+		return err
+	}
+	platformKafka.Subscriber.Register("message.direct.created", directHandler)
+	platformKafka.Subscriber.Register("message.group.created", groupHandler)
 	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
 	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{
@@ -175,6 +185,34 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
 	}))
 	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
+	return nil
+}
+
+func gatewayMessageDeliveryHandlers(
+	authority realtimeDelivery.Authority,
+	hub kafkaWSEventSender,
+	hotGroups groupHeatReader,
+	notifier *hotGroupNotifyAggregator,
+	timelineNotifyMode string,
+) (platformKafka.Handler, platformKafka.Handler, error) {
+	switch authority {
+	case realtimeDelivery.AuthorityGo, realtimeDelivery.AuthorityShadow:
+		return deliverDirectMessageHandler(hub, timelineNotifyMode), deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
+	case realtimeDelivery.AuthorityCPP:
+		return checkpointMessageDeliveryHandler("direct"), checkpointMessageDeliveryHandler("group"), nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported Gateway realtime delivery authority %q", authority)
+	}
+}
+
+func checkpointMessageDeliveryHandler(label string) platformKafka.Handler {
+	return func(_ context.Context, event platformKafka.Event) error {
+		if _, err := decodeMessageEventPayload(event); err != nil {
+			logger.Warn("decode "+label+" message for delivery checkpoint failed", zap.Error(err))
+			return err
+		}
+		return nil
+	}
 }
 
 func RegisterMessageKafkaHandlers(persister kafkaMessagePersister) {

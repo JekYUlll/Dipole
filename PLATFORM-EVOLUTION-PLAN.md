@@ -417,6 +417,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### C3：灰度切换与 Gateway 评估
 
 - [ ] 关闭 `AD-041`：建立互斥 Go/C++ 客户端投递 authority、双 group checkpoint 和可执行自动回切，禁止两个写 authority 并行 active。
+  - [x] 增加默认 `go` 的本地 `go|shadow|cpp` 配置、Gateway checkpoint-only Handler 与 C++ 启动错配门禁；保留共享 fencing 和回切证据作为后续切片。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。

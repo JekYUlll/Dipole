@@ -50,6 +50,9 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	if v.GetInt("internal_rpc.delivery_primary_replay_capacity") != 8192 {
 		t.Fatal("primary delivery replay capacity drifted")
 	}
+	if got := v.GetString("realtime.delivery"); got != "go" {
+		t.Fatalf("safe realtime delivery default = %q, want go", got)
+	}
 }
 
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {
@@ -234,6 +237,7 @@ func TestAgentArtifactMaintenancePolicyCanInspectButCannotMutate(t *testing.T) {
 
 func TestSyncConfigLoadsCassandraShadowHydrationFromEnvironment(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
+	t.Setenv("DIPOLE_CONFIG_FILE", filepath.Join("configs", "config.dist.yaml"))
 	t.Setenv("DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION", "true")
 	if err := Load(); err != nil {
 		t.Fatalf("load config: %v", err)
