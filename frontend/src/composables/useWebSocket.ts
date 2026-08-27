@@ -8,6 +8,29 @@ interface UseWsOptions {
   onDisconnected?: () => void
 }
 
+const deliveryReplayCapacity = 4096
+
+export class DeliveryDeduplicator {
+  private readonly seen = new Set<string>()
+  private readonly order: string[] = []
+
+  constructor(private readonly capacity: number) {
+    if (!Number.isSafeInteger(capacity) || capacity < 1) throw new Error('delivery replay capacity must be positive')
+  }
+
+  accept(packet: WsPacket): boolean {
+    const deliveryID = packet.delivery_id?.trim()
+    if (!deliveryID) return true
+    if (this.seen.has(deliveryID)) return false
+    this.seen.add(deliveryID)
+    this.order.push(deliveryID)
+    if (this.order.length > this.capacity) {
+      this.seen.delete(this.order.shift()!)
+    }
+    return true
+  }
+}
+
 export function useWebSocket(options: UseWsOptions = {}) {
   const isConnected = ref(false)
   let ws: WebSocket | null = null
@@ -16,6 +39,7 @@ export function useWebSocket(options: UseWsOptions = {}) {
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let manualClose = false
+  const deliveryDeduplicator = new DeliveryDeduplicator(deliveryReplayCapacity)
 
   const connect = (authToken: string) => {
     if (ws && ws.readyState === WebSocket.OPEN) return
@@ -40,6 +64,7 @@ export function useWebSocket(options: UseWsOptions = {}) {
     ws.onmessage = (event) => {
       try {
         const packet: WsPacket = JSON.parse(event.data as string)
+        if (!deliveryDeduplicator.accept(packet)) return
         options.onMessage?.(packet)
       } catch {
         // ignore malformed frames
