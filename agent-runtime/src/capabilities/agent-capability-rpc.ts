@@ -98,6 +98,15 @@ export interface AgentArtifactCreateInput {
   readonly traceId?: string;
 }
 
+export interface AgentContextMemory {
+  readonly memoryId: string;
+  readonly memoryType: "working" | "episodic" | "semantic" | "procedural" | "observational";
+  readonly content: string;
+  readonly compactContent?: string;
+  readonly priority: number;
+  readonly provenance: { readonly sourceType: string; readonly sourceId: string; readonly uri?: string; readonly sequence?: string };
+}
+
 export class AgentCapabilityRPCClient {
   constructor(
     private readonly rpc: IAgentCapabilityServiceClient,
@@ -181,6 +190,38 @@ export class AgentCapabilityRPCClient {
         } catch (decodeError) {
           reject(decodeError);
         }
+      });
+    });
+  }
+
+  async listContextMemories(context: Pick<ExecutionContext, "taskId" | "runId" | "requestId" | "traceId">, resourceType: string, resourceId: string, limit = 20): Promise<AgentContextMemory[]> {
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.listContextMemories({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId,
+        resourceType, resourceId, limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent Memory lookup returned no response"));
+        try {
+          resolve(response.memories.map((item) => {
+            if (item.provenance === undefined) throw new Error(`Agent Memory ${item.memoryId} has no provenance`);
+            if (!["working", "episodic", "semantic", "procedural", "observational"].includes(item.memoryType)) {
+              throw new Error(`Agent Memory ${item.memoryId} has unsupported type ${item.memoryType}`);
+            }
+            return {
+              memoryId: item.memoryId,
+              memoryType: item.memoryType as AgentContextMemory["memoryType"],
+              content: item.content,
+              ...(item.compactContent ? { compactContent: item.compactContent } : {}),
+              priority: item.priority,
+              provenance: {
+                sourceType: item.provenance.sourceType, sourceId: item.provenance.sourceId,
+                ...(item.provenance.uri ? { uri: item.provenance.uri } : {}),
+                ...(item.provenance.sequence ? { sequence: item.provenance.sequence } : {})
+              }
+            };
+          }));
+        } catch (decodeError) { reject(decodeError); }
       });
     });
   }

@@ -7,6 +7,32 @@ import type { ModelRouter } from "./model-router.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 
 describe("ModelShadowPlanner", () => {
+  it("retrieves scoped Memories and compiles them as untrusted provenance records", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const router = { generate } as unknown as ModelRouter;
+    const requested: Array<{ taskId: string; runId: string; resourceType: string; resourceId: string }> = [];
+    const planner = new ModelShadowPlanner(router, [], new DeterministicContextCompiler(), {
+      listContextMemories: async (context, resourceType, resourceId) => {
+        requested.push({ taskId: context.taskId, runId: context.runId, resourceType, resourceId });
+        return [{
+          memoryId: "MEM-1", memoryType: "semantic", content: "Migration owner is Alice.", compactContent: "Owner: Alice.", priority: 90,
+          provenance: { sourceType: "message", sourceId: "M100", sequence: "42" }
+        }];
+      }
+    });
+
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
+
+    expect(requested).toEqual([{ taskId: "TASK-1", runId: "RUN-1", resourceType: "conversation", resourceId: "group:G1" }]);
+    const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
+    expect(prompt).toContain('"id":"memory:MEM-1"');
+    expect(prompt).toContain('"section":"memory"');
+    expect(prompt).toContain('"trust":"untrusted"');
+    expect(prompt).toContain('"sourceId":"M100"');
+  });
   it("returns a budgeted model plan with routing evidence", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "inspect recent conversations", steps: [{ capabilityId: "conversation.list", input: { limit: 20 } }] },

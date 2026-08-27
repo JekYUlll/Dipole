@@ -43,6 +43,18 @@ type eventSubscriptionResolverStub struct {
 	err     error
 }
 
+type agentMemoryResolverStub struct {
+	taskUUID, runUUID, resourceType, resourceID string
+	limit                                       int
+	items                                       []application.AgentMemoryV1
+	err                                         error
+}
+
+func (s *agentMemoryResolverStub) ResolveContextMemories(_ context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]application.AgentMemoryV1, error) {
+	s.taskUUID, s.runUUID, s.resourceType, s.resourceID, s.limit = taskUUID, runUUID, resourceType, resourceID, limit
+	return s.items, s.err
+}
+
 func (s *eventSubscriptionResolverStub) MatchEventSubscriptions(_ context.Context, request application.AgentEventSubscriptionMatchRequestV1) ([]application.AgentEventSubscriptionV1, error) {
 	s.request = request
 	return s.items, s.err
@@ -291,6 +303,34 @@ func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func TestListContextMemoriesUsesTaskIdentityWithoutClientPrincipal(t *testing.T) {
+	resolver := &agentMemoryResolverStub{items: []application.AgentMemoryV1{{
+		MemoryUUID: "MEM-1", MemoryType: application.AgentMemoryTypeSemantic, Content: "Owner is Alice", CompactContent: "Owner: Alice", Priority: 90,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "message", SourceID: "M1", Sequence: "42"},
+	}}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemories(resolver)
+	request := &agentv1.ListContextMemoriesRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+		ResourceType: "conversation", ResourceId: "group:G1", Limit: 20,
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListContextMemories(ctx, request)
+	})
+	if err != nil {
+		t.Fatalf("list Context Memories: %v", err)
+	}
+	memories := response.(*agentv1.ListContextMemoriesResponse).GetMemories()
+	if resolver.taskUUID != "TASK-1" || resolver.resourceID != "group:G1" || resolver.limit != 20 || len(memories) != 1 || memories[0].GetProvenance().GetSourceId() != "M1" {
+		t.Fatalf("unexpected Memory request=%+v response=%+v", resolver, memories)
+	}
+	request.Context.PrincipalUserId = "U999"
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.ListContextMemories(ctx, request) })
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged principal code = %s", status.Code(err))
 	}
 }
 

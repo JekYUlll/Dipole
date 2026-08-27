@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 28
+const currentMigrationVersion = 29
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -367,6 +367,61 @@ func TestAgentEventSubscriptionMigrationEnforcesBindings(t *testing.T) {
 	}
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("reapply Agent Event Subscription migration: %v", err)
+	}
+}
+
+func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
+	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
+	if adminDSN == "" {
+		t.Skip("DIPOLE_TEST_MYSQL_ADMIN_DSN is required for migration integration tests")
+	}
+	db := openTemporaryDatabase(t, adminDSN, "agent_memory")
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	ctx := context.Background()
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate database: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, valid_from
+	) VALUES ('MEM-1', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3))`); err != nil {
+		t.Fatalf("insert valid Agent Memory: %v", err)
+	}
+	for _, invalid := range []struct {
+		uuid, memoryType, status string
+		priority                 int
+	}{
+		{uuid: "MEM-BAD-TYPE", memoryType: "vector", status: "active", priority: 1},
+		{uuid: "MEM-BAD-STATUS", memoryType: "semantic", status: "pending", priority: 1},
+		{uuid: "MEM-BAD-PRIORITY", memoryType: "semantic", status: "active", priority: 1001},
+	} {
+		if _, err := db.Exec(`INSERT INTO agent_memories (
+			memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+			resource_type, resource_id, content, priority, source_type, source_id, valid_from
+		) VALUES (?, 'dipole', 'U100', 'UAI000000000000000001', ?, ?,
+			'conversation', 'group:G1', 'invalid', ?, 'message', 'M2', UTC_TIMESTAMP(3))`, invalid.uuid, invalid.memoryType, invalid.status, invalid.priority); err == nil {
+			t.Fatalf("expected Agent Memory constraint for %+v", invalid)
+		}
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory migration: %v", err)
+	}
+	var tableCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_memories'`).Scan(&tableCount); err != nil {
+		t.Fatalf("inspect rolled back Agent Memory table: %v", err)
+	}
+	if tableCount != 0 {
+		t.Fatalf("Agent Memory rollback left table count=%d", tableCount)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("reapply Agent Memory migration: %v", err)
+	}
+	if version, err := runner.CurrentVersion(ctx); err != nil || version != 29 {
+		t.Fatalf("Agent Memory version=%d err=%v", version, err)
 	}
 }
 

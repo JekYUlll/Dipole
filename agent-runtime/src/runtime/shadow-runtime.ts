@@ -54,6 +54,7 @@ const shadowRuntimeConfigSchema = z.object({
   modelMode: z.enum(["metadata", "ai_sdk"]),
   modelRoutes: z.array(z.string().trim().min(1)),
   contextCompilerVersion: z.enum(["v1", "v2"]),
+  memoryEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -130,6 +131,9 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.modelMode === "ai_sdk" && !config.capabilityRpc.enabled) {
     refinement.addIssue({ code: "custom", message: "AI SDK mode requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
   }
+  if (config.memoryEnabled && config.modelMode !== "ai_sdk") {
+    refinement.addIssue({ code: "custom", message: "Agent Memory requires AI SDK model mode", path: ["memoryEnabled"] });
+  }
   if (config.capabilityRpc.enabled && config.capabilityRpc.tls.enabled &&
       (!config.capabilityRpc.tls.caFile || !config.capabilityRpc.tls.certFile || !config.capabilityRpc.tls.keyFile || !config.capabilityRpc.tls.serverName)) {
     refinement.addIssue({ code: "custom", message: "Agent Capability RPC mTLS files and server name are required", path: ["capabilityRpc", "tls"] });
@@ -160,6 +164,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
     contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
+    memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
@@ -278,15 +283,15 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher
   const factory = new KafkaJSConsumerFactory(config.clientId, config.brokers);
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
-  const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
-    ? new ModelShadowPlanner(new ModelRouter(
-      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
-    ), ["conversation.list"], routeContextCompiler(config))
-    : new MetadataShadowPlanner();
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
   const rpcTransport = config.capabilityRpc.enabled && (dispatcher === undefined || config.triggerMode === "subscription")
     ? createAgentCapabilityRPC(config)
     : undefined;
+  const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
+    ? new ModelShadowPlanner(new ModelRouter(
+      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
+    ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined)
+    : new MetadataShadowPlanner();
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
   if (config.modelMode === "ai_sdk" && dispatcher === undefined) {
@@ -349,7 +354,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationListCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool)
-  ), ["conversation.list"], routeContextCompiler(config));
+  ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({

@@ -80,6 +80,29 @@ type AgentEventSubscription struct {
 	RevokedAt         sql.NullTime
 }
 
+type AgentMemory struct {
+	ID             uint64
+	MemoryUuid     string
+	TenantID       string
+	PrincipalUuid  string
+	AgentUuid      string
+	MemoryType     string
+	Status         string
+	ResourceType   string
+	ResourceID     string
+	Content        string
+	CompactContent sql.NullString
+	Priority       int32
+	SourceType     string
+	SourceID       string
+	SourceUri      sql.NullString
+	SourceSequence sql.NullString
+	ValidFrom      time.Time
+	ExpiresAt      sql.NullTime
+	RevokedAt      sql.NullTime
+	CreatedAt      time.Time
+}
+
 type AgentRun struct {
 	ID          uint64
 	RunUuid     string

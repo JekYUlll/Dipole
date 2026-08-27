@@ -127,6 +127,8 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 
 每次记忆写入需要来源、作用域、版本、置信度和过期策略；用户可查看、纠正和删除长期记忆。
 
+G3 v1 使用 migration v29 建立读取基础：`agent_memories` 按 tenant、principal、Agent 和精确 conversation scope 保存五类不可变记录、full/compact representation、priority、有效期与 provenance。Runtime 只提交 Task/Run 和资源，Core 从运行中的固定 Definition 解析身份、`conversation.read` permission 与 read scope；模型无法指定 principal。Task 创建时间固定可见记录上界，避免重试吸收后续新增记忆；撤销和过期立即移除，已存在的不可变 Plan 因此会在漂移时 fail closed。`DIPOLE_AGENT_MEMORY_ENABLED` 默认与 Compose 固定为 `false`，受控 Shadow 显式启用后，Context Compiler 仅在命中记录时使用 Memory 独立预算，并将内容统一标记为 `untrusted` 数据。自动写入、版本冲突、Observation/Reflection 压缩、用户纠正/删除和 hybrid/vector retrieval 由 `AD-035` 跟踪，当前仅允许受控 seed 与 Shadow 读取。
+
 ## 5. Event Trigger
 
 `AgentSubscription` 描述 Agent、资源范围、事件类型、过滤策略和 Capability 授权。事件先经过规则、小模型或向量召回做低成本筛选，相关事件才创建 Durable Task。

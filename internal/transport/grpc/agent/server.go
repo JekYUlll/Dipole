@@ -27,6 +27,48 @@ type Server struct {
 	repairs       application.AgentWorkflowRepairAuditServiceV1
 	artifacts     application.AgentArtifactServiceV1
 	subscriptions application.AgentEventSubscriptionResolverV1
+	memories      application.AgentMemoryContextResolverV1
+}
+
+func (s *Server) WithMemories(memories application.AgentMemoryContextResolverV1) (*Server, error) {
+	if s == nil || memories == nil {
+		return nil, errors.New("Agent Memory resolver is required")
+	}
+	s.memories = memories
+	return s, nil
+}
+
+func (s *Server) ListContextMemories(ctx context.Context, request *agentv1.ListContextMemoriesRequest) (*agentv1.ListContextMemoriesResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may list Context Memories")
+	}
+	if s.memories == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory resolver is unavailable")
+	}
+	items, err := s.memories.ResolveContextMemories(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId(), request.GetResourceType(), request.GetResourceId(), int(request.GetLimit()))
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentMemoryDenied):
+			return nil, status.Error(codes.PermissionDenied, "Agent Memory scope denied")
+		case errors.Is(err, application.ErrAgentMemoryInvalid), errors.Is(err, application.ErrAgentExecutionPolicyDenied):
+			return nil, status.Error(codes.FailedPrecondition, "Agent Memory request is invalid")
+		default:
+			return nil, status.Error(codes.Internal, "Agent Memory lookup failed")
+		}
+	}
+	response := &agentv1.ListContextMemoriesResponse{Memories: make([]*agentv1.AgentContextMemory, 0, len(items))}
+	for _, item := range items {
+		response.Memories = append(response.Memories, &agentv1.AgentContextMemory{
+			MemoryId: item.MemoryUUID, MemoryType: string(item.MemoryType), Content: item.Content,
+			CompactContent: item.CompactContent, Priority: item.Priority,
+			Provenance: &agentv1.AgentMemoryProvenance{SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Uri: item.Provenance.URI, Sequence: item.Provenance.Sequence},
+		})
+	}
+	return response, nil
 }
 
 func (s *Server) WithEventSubscriptions(resolver application.AgentEventSubscriptionResolverV1) (*Server, error) {

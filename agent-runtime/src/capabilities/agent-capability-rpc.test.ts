@@ -33,6 +33,16 @@ describe("AgentCapabilityRPCClient", () => {
       }] });
       return {};
     });
+    const listContextMemories = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", resourceType: "conversation", resourceId: "direct:U100:UAI", limit: 20 });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { memories: [{
+        memoryId: "MEM-1", memoryType: "semantic", content: "Owner is Alice", compactContent: "Owner: Alice", priority: 90,
+        provenance: { sourceType: "message", sourceId: "M1", uri: "dipole://message/M1", sequence: "42" }
+      }] });
+      return {};
+    });
     const finishRun = vi.fn((input, metadata, _options, callback) => {
       expect(input).toMatchObject({
         taskId: "TASK-1",
@@ -109,7 +119,7 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, listConversations, authorizeTaskControl, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -126,6 +136,10 @@ describe("AgentCapabilityRPCClient", () => {
       tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
       resourceType: "conversation", resourceId: "direct:U100:UAI",
       filterKind: "message_contains_any", filter: { terms: ["hello"] }
+    }]);
+    await expect(client.listContextMemories({ taskId: "TASK-1", runId: "RUN-1", requestId: "R1", traceId: "T1" }, "conversation", "direct:U100:UAI", 20)).resolves.toEqual([{
+      memoryId: "MEM-1", memoryType: "semantic", content: "Owner is Alice", compactContent: "Owner: Alice", priority: 90,
+      provenance: { sourceType: "message", sourceId: "M1", uri: "dipole://message/M1", sequence: "42" }
     }]);
     await expect(client.listConversations({
       ...identity, taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
