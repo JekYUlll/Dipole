@@ -90,6 +90,57 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if created, err := store.CreateRun(context.Background(), run); err != nil || !created {
 		t.Fatalf("create Agent Run: created=%v err=%v", created, err)
 	}
+	projection := application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: task.TaskUUID, WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+		Status: application.AgentTaskWorkflowStatusRunning, Revision: 1,
+	}
+	var projectionApplied atomic.Int64
+	projectionErrors := make(chan error, 16)
+	var projectionWorkers sync.WaitGroup
+	for worker := 0; worker < 16; worker++ {
+		projectionWorkers.Add(1)
+		go func() {
+			defer projectionWorkers.Done()
+			applied, projectErr := store.ProjectTaskWorkflowState(context.Background(), projection)
+			if projectErr != nil {
+				projectionErrors <- projectErr
+				return
+			}
+			if applied {
+				projectionApplied.Add(1)
+			}
+		}()
+	}
+	projectionWorkers.Wait()
+	close(projectionErrors)
+	for projectErr := range projectionErrors {
+		t.Fatalf("concurrent Workflow projection: %v", projectErr)
+	}
+	if projectionApplied.Load() != 1 {
+		t.Fatalf("concurrent Workflow projection applied %d times, want 1", projectionApplied.Load())
+	}
+	if applied, err := store.ProjectTaskWorkflowState(context.Background(), projection); err != nil || applied {
+		t.Fatalf("replay Workflow projection: applied=%v err=%v", applied, err)
+	}
+	nextProjection := projection
+	nextProjection.Status, nextProjection.Revision = application.AgentTaskWorkflowStatusWaitingInput, 2
+	if applied, err := store.ProjectTaskWorkflowState(context.Background(), nextProjection); err != nil || !applied {
+		t.Fatalf("advance Workflow projection: applied=%v err=%v", applied, err)
+	}
+	loadedTask, err := store.GetTask(context.Background(), task.TaskUUID)
+	if err != nil || loadedTask == nil || loadedTask.Status != application.AgentTaskStatusRunning || loadedTask.Workflow == nil ||
+		loadedTask.Workflow.Status != application.AgentTaskWorkflowStatusWaitingInput || loadedTask.Workflow.Revision != 2 {
+		t.Fatalf("loaded Workflow projection: task=%+v err=%v", loadedTask, err)
+	}
+	for _, conflictProjection := range []application.AgentTaskWorkflowProjectionV1{
+		projection,
+		{TaskUUID: task.TaskUUID, WorkflowID: projection.WorkflowID, RunID: projection.RunID, Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2},
+		{TaskUUID: task.TaskUUID, WorkflowID: "other-workflow", RunID: projection.RunID, Status: application.AgentTaskWorkflowStatusRunning, Revision: 3},
+	} {
+		if _, err := store.ProjectTaskWorkflowState(context.Background(), conflictProjection); !errors.Is(err, sqlcRepository.ErrAgentPolicyConflict) {
+			t.Fatalf("expected Workflow projection conflict for %+v, got %v", conflictProjection, err)
+		}
+	}
 	if created, err := store.CreateRun(context.Background(), run); err != nil || created {
 		t.Fatalf("replay Agent Run: created=%v err=%v", created, err)
 	}

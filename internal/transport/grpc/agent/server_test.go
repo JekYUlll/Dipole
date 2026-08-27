@@ -60,6 +60,20 @@ type taskControlAuthorizerStub struct {
 	err           error
 }
 
+type taskWorkflowProjectionStub struct {
+	request application.AgentTaskWorkflowProjectionRequestV1
+	result  application.AgentTaskWorkflowProjectionV1
+	err     error
+}
+
+func (s *taskWorkflowProjectionStub) Project(_ context.Context, request application.AgentTaskWorkflowProjectionRequestV1) (*application.AgentTaskWorkflowProjectionV1, error) {
+	s.request = request
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &s.result, nil
+}
+
 func (s *taskControlAuthorizerStub) AuthorizeTaskControl(_ context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
 	s.taskUUID, s.principalUUID = taskUUID, principalUUID
 	if s.err != nil {
@@ -117,7 +131,10 @@ func TestListConversationsRejectsClientPrincipal(t *testing.T) {
 }
 
 func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
-	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval}}
+	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
+		TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval,
+		Workflow: &application.AgentTaskWorkflowProjectionV1{WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1", Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2},
+	}}
 	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
 	if err != nil {
 		t.Fatalf("new server: %v", err)
@@ -125,8 +142,48 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	response, err := server.AuthorizeTaskControl(context.Background(), &agentv1.AuthorizeTaskControlRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100",
 	})
-	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
+	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetWorkflowRevision() != 2 ||
+		response.GetWorkflowStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
+	}
+}
+
+func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
+	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+		Status: application.AgentTaskWorkflowStatusWaitingInput, Revision: 2,
+	}}
+	server, err := NewServerWithControlAndProjection(
+		&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{}, projection,
+	)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ProjectTaskWorkflowState(context.Background(), &agentv1.ProjectTaskWorkflowStateRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "waiting_input", WorkflowRevision: 2,
+	})
+	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "shadow" || projection.request.RunUUID != "RUN-1" {
+		t.Fatalf("unexpected Workflow projection: response=%+v request=%+v err=%v", response, projection.request, err)
+	}
+}
+
+func TestProjectTaskWorkflowStateRejectsClientPrincipalAndConflict(t *testing.T) {
+	projection := &taskWorkflowProjectionStub{err: application.ErrAgentWorkflowProjectionConflict}
+	server, _ := NewServerWithControlAndProjection(
+		&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{}, projection,
+	)
+	for _, request := range []*agentv1.ProjectTaskWorkflowStateRequest{
+		{Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1"},
+		{Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1"},
+	} {
+		_, err := server.ProjectTaskWorkflowState(context.Background(), request)
+		if request.GetContext().GetPrincipalUserId() == "" && status.Code(err) != codes.FailedPrecondition {
+			t.Fatalf("projection conflict code = %s", status.Code(err))
+		}
+		if request.GetContext().GetPrincipalUserId() != "" && status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("projection principal code = %s", status.Code(err))
+		}
 	}
 }
 

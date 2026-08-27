@@ -31,6 +31,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let finishAttempts = 0;
     let approvalRequests = 0;
     let approvalResolutions = 0;
+    const projections: Array<{ workflowStatus: string; workflowRevision: number; workflowId: string; workflowRunId: string }> = [];
     const activities: AgentTaskWorkerActivities = {
       async admitAgentTask(input) {
         admissions += 1;
@@ -44,6 +45,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         if (finishAttempts === 1) {
           throw new Error("transient terminal write failure");
         }
+      },
+      async projectAgentTaskState(input) {
+        projections.push(input);
       },
       async requestAgentTaskApproval(input) {
         approvalRequests += 1;
@@ -111,6 +115,13 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(finishAttempts).toBe(2);
     expect(approvalRequests).toBe(1);
     expect(approvalResolutions).toBe(1);
+    expect(projections.map(({ workflowStatus, workflowRevision }) => ({ workflowStatus, workflowRevision }))).toEqual([
+      { workflowStatus: "running", workflowRevision: 1 },
+      { workflowStatus: "waiting_approval", workflowRevision: 2 },
+      { workflowStatus: "running", workflowRevision: 3 },
+      { workflowStatus: "completed", workflowRevision: 4 }
+    ]);
+    expect(projections.every((projection) => projection.workflowId === first.workflowId && projection.workflowRunId === first.runId)).toBe(true);
 
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
   }, 120_000);
@@ -118,12 +129,16 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
   it("cancels a waiting Workflow through the stable Task control adapter", async () => {
     const taskQueue = `dipole-agent-task-cancel-${Date.now()}`;
     const terminalWrites: unknown[] = [];
+    const projections: Array<{ workflowStatus: string; workflowRevision: number }> = [];
     const activities: AgentTaskWorkerActivities = {
       async admitAgentTask(input) {
         return { taskId: input.taskId, runId: "run-cancel-1", runStatus: "running" };
       },
       async finishAgentTask(input) {
         terminalWrites.push(input);
+      },
+      async projectAgentTaskState(input) {
+        projections.push(input);
       },
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
@@ -147,6 +162,11 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(terminalWrites).toEqual([expect.objectContaining({
       taskId: "task-cancel-1", runId: "run-cancel-1", runStatus: "cancelled", lastError: "user_cancelled"
     })]);
+    expect(projections).toEqual([
+      expect.objectContaining({ workflowStatus: "running", workflowRevision: 1 }),
+      expect.objectContaining({ workflowStatus: "waiting_input", workflowRevision: 2 }),
+      expect.objectContaining({ workflowStatus: "cancelled", workflowRevision: 3 })
+    ]);
     worker.shutdown();
     await workerRun;
   }, 120_000);
@@ -162,6 +182,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       async finishAgentTask(input) {
         terminalWrites.push(input);
       },
+      async projectAgentTaskState() {},
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
       async executeAgentTaskStep() {
@@ -244,6 +265,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         return { taskId: input.taskId, runId: agentRunId(input.taskId), runStatus: "running" };
       },
       async finishAgentTask() {},
+      async projectAgentTaskState() {},
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
       async executeAgentTaskStep(input) {

@@ -5,6 +5,8 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { ProjectTaskWorkflowStateResponse } from "./agent.js";
+import type { ProjectTaskWorkflowStateRequest } from "./agent.js";
 import type { AuthorizeTaskControlResponse } from "./agent.js";
 import type { AuthorizeTaskControlRequest } from "./agent.js";
 import type { ListConversationsResponse } from "./agent.js";
@@ -72,6 +74,13 @@ export interface IAgentCapabilityServiceClient {
     authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
     authorizeTaskControl(input: AuthorizeTaskControlRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
     authorizeTaskControl(input: AuthorizeTaskControlRequest, callback: (err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ProjectTaskWorkflowState
+     */
+    projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
+    projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
+    projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
+    projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, callback: (err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -130,5 +139,12 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     authorizeTaskControl(input: AuthorizeTaskControlRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: AuthorizeTaskControlResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[6];
         return this.makeUnaryRequest<AuthorizeTaskControlRequest, AuthorizeTaskControlResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: AuthorizeTaskControlRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AuthorizeTaskControlResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ProjectTaskWorkflowState
+     */
+    projectTaskWorkflowState(input: ProjectTaskWorkflowStateRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ProjectTaskWorkflowStateResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[7];
+        return this.makeUnaryRequest<ProjectTaskWorkflowStateRequest, ProjectTaskWorkflowStateResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ProjectTaskWorkflowStateRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ProjectTaskWorkflowStateResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

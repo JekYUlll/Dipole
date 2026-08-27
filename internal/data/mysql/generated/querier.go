@@ -155,6 +155,7 @@ type Querier interface {
 	ProbeAgentEventLedger(ctx context.Context) ([]string, error)
 	ProbeAgentModelRuns(ctx context.Context) ([]string, error)
 	ProbeAgentShadowPlans(ctx context.Context) ([]string, error)
+	ProjectAgentTaskWorkflowState(ctx context.Context, arg ProjectAgentTaskWorkflowStateParams) (int64, error)
 	ReclaimAgentEvent(ctx context.Context, arg ReclaimAgentEventParams) (int64, error)
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error

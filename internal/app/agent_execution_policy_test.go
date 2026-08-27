@@ -78,6 +78,30 @@ func (s *agentPolicyStoreStub) TransitionTaskStatus(_ context.Context, uuid stri
 	return true, nil
 }
 
+func (s *agentPolicyStoreStub) ProjectTaskWorkflowState(_ context.Context, projection application.AgentTaskWorkflowProjectionV1) (bool, error) {
+	task := s.tasks[projection.TaskUUID]
+	if task == nil {
+		return false, nil
+	}
+	if task.Workflow == nil {
+		copy := projection
+		task.Workflow = &copy
+		return true, nil
+	}
+	if task.Workflow.WorkflowID != projection.WorkflowID || task.Workflow.RunID != projection.RunID {
+		return false, errors.New("Workflow binding conflict")
+	}
+	if task.Workflow.Revision > projection.Revision || (task.Workflow.Revision == projection.Revision && task.Workflow.Status != projection.Status) {
+		return false, errors.New("Workflow revision conflict")
+	}
+	if task.Workflow.Revision == projection.Revision {
+		return false, nil
+	}
+	copy := projection
+	task.Workflow = &copy
+	return true, nil
+}
+
 func (s *agentPolicyStoreStub) CreateRun(_ context.Context, run application.AgentRunV1) (bool, error) {
 	if s.runs == nil {
 		s.runs = map[string]*application.AgentRunV1{}

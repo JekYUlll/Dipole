@@ -33,6 +33,12 @@ export interface TemporalWorkflowHandle {
   runId?: string;
 }
 
+interface TemporalWorkflowStartHandle {
+  workflowId: string;
+  firstExecutionRunId?: string;
+  runId?: string;
+}
+
 interface TemporalWorkflowStartPort {
   start(workflowType: string, options: {
     taskQueue: string;
@@ -40,7 +46,7 @@ interface TemporalWorkflowStartPort {
     workflowIdConflictPolicy: "USE_EXISTING";
     workflowIdReusePolicy: "REJECT_DUPLICATE";
     args: [AgentTaskWorkflowInput];
-  }): Promise<TemporalWorkflowHandle>;
+  }): Promise<TemporalWorkflowStartHandle>;
 }
 
 interface TemporalWorkflowControlHandle {
@@ -59,13 +65,15 @@ export class TemporalTaskClient {
   ) {}
 
   async start(input: AgentTaskWorkflowInput): Promise<TemporalWorkflowHandle> {
-    return this.workflow.start("agentTaskWorkflow", {
+    const handle = await this.workflow.start("agentTaskWorkflow", {
       taskQueue: this.taskQueue,
       workflowId: agentTaskWorkflowId(input.taskId),
       workflowIdConflictPolicy: "USE_EXISTING",
       workflowIdReusePolicy: "REJECT_DUPLICATE",
       args: [input]
     });
+    const runId = handle.firstExecutionRunId ?? handle.runId;
+    return { workflowId: handle.workflowId, ...(runId === undefined ? {} : { runId }) };
   }
 }
 

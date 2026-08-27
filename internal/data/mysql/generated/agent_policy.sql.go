@@ -182,7 +182,7 @@ func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, er
 }
 
 const getAgentTask = `-- name: GetAgentTask :one
-SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid FROM agent_tasks WHERE task_uuid = ? LIMIT 1
+SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at FROM agent_tasks WHERE task_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error) {
@@ -202,6 +202,11 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 		&i.UpdatedAt,
 		&i.PrincipalUuid,
 		&i.AgentUuid,
+		&i.WorkflowID,
+		&i.WorkflowRunID,
+		&i.WorkflowStatus,
+		&i.WorkflowRevision,
+		&i.WorkflowUpdatedAt,
 	)
 	return i, err
 }
@@ -378,6 +383,43 @@ func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams
 		arg.TriggerType,
 		arg.TriggerRef,
 		arg.Goal,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
+    workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND (workflow_id IS NULL OR (workflow_id = ? AND workflow_run_id = ?))
+  AND (workflow_revision IS NULL OR workflow_revision < ?)
+`
+
+type ProjectAgentTaskWorkflowStateParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) ProjectAgentTaskWorkflowState(ctx context.Context, arg ProjectAgentTaskWorkflowStateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, projectAgentTaskWorkflowState,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowRevision_2,
 	)
 	if err != nil {
 		return 0, err

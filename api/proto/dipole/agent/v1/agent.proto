@@ -112,6 +112,28 @@ message AuthorizeTaskControlRequest {
 message AuthorizeTaskControlResponse {
   string task_id = 1;
   string task_status = 2;
+  string workflow_id = 3;
+  string workflow_run_id = 4;
+  string workflow_status = 5;
+  uint64 workflow_revision = 6;
+}
+
+message ProjectTaskWorkflowStateRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string workflow_id = 4;
+  string workflow_run_id = 5;
+  string workflow_status = 6;
+  uint64 workflow_revision = 7;
+}
+
+message ProjectTaskWorkflowStateResponse {
+  string task_id = 1;
+  string workflow_id = 2;
+  string workflow_run_id = 3;
+  string workflow_status = 4;
+  uint64 workflow_revision = 5;
 }
 
 service AgentCapabilityService {
@@ -122,4 +144,5 @@ service AgentCapabilityService {
   rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
+  rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
 }

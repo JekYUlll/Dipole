@@ -2,8 +2,10 @@ import {
   condition,
   defineQuery,
   defineSignal,
+  patched,
   proxyActivities,
-  setHandler
+  setHandler,
+  workflowInfo
 } from "@temporalio/workflow";
 
 import {
@@ -16,6 +18,7 @@ import type {
   AgentTaskDirective,
   AgentTaskFinishInput,
   AgentTaskLifecycleActivities,
+  AgentTaskProjectionInput,
   AgentTaskRunBinding
 } from "./agent-task-activities.js";
 import type { AgentTaskWorkflowInput } from "./temporal-task-client.js";
@@ -38,7 +41,7 @@ const { executeAgentTaskStep } = proxyActivities<AgentTaskActivities>({
     maximumAttempts: 3
   }
 });
-const { admitAgentTask, finishAgentTask, requestAgentTaskApproval, resolveAgentTaskApproval } = proxyActivities<AgentTaskLifecycleActivities>({
+const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTaskApproval, resolveAgentTaskApproval } = proxyActivities<AgentTaskLifecycleActivities>({
   startToCloseTimeout: "30 seconds",
   retry: {
     initialInterval: "1 second",
@@ -53,7 +56,10 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
   let checkpoint: unknown;
   let step = 0;
   let approvalSignal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string } | undefined;
+  let projectedRevision = -1;
   const maxSteps = validMaxSteps(input.maxSteps);
+  const projectionEnabled = patched("agent-task-workflow-projection-v1");
+  const workflow = workflowInfo();
 
   setHandler(taskStateQuery, () => state);
   setHandler(provideTaskInputSignal, (signal) => {
@@ -77,17 +83,23 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
   const binding = await admitAgentTask(input);
   assertRunBinding(input.taskId, binding);
   if (binding.runStatus === "completed") {
-    return {
+    const replayed: AgentTaskState = {
       taskId: input.taskId,
       status: "completed",
       revision: state.revision + 1,
       output: { outcome: "persistent_replay" }
     };
+    if (projectionEnabled) await projectAgentTaskState(projectionActivityInput(input, binding, replayed, workflow));
+    return replayed;
   }
   if (state.status === "created") {
     state = transitionAgentTask(state, { type: "start" });
   }
   while (!isTerminal(state)) {
+    if (projectionEnabled && projectedRevision !== state.revision) {
+      await projectAgentTaskState(projectionActivityInput(input, binding, state, workflow));
+      projectedRevision = state.revision;
+    }
     if (state.status === "waiting_input") {
       await condition(() => state.status !== "waiting_input");
       continue;
@@ -145,8 +157,29 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     }
     state = applyDirective(state, directive);
   }
+  if (projectionEnabled && projectedRevision !== state.revision) {
+    await projectAgentTaskState(projectionActivityInput(input, binding, state, workflow));
+  }
   await finishAgentTask(terminalActivityInput(input, binding, state));
   return state;
+}
+
+function projectionActivityInput(
+  input: AgentTaskWorkflowInput,
+  binding: AgentTaskRunBinding,
+  state: AgentTaskState,
+  workflow: { workflowId: string; runId: string }
+): AgentTaskProjectionInput {
+  return {
+    taskId: input.taskId,
+    runId: binding.runId,
+    workflowId: workflow.workflowId,
+    workflowRunId: workflow.runId,
+    workflowStatus: state.status,
+    workflowRevision: state.revision,
+    ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+    ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+  };
 }
 
 function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): AgentTaskState {

@@ -128,6 +128,26 @@ func TestAgentTaskV1TransitionsAreExplicit(t *testing.T) {
 	}
 }
 
+func TestAgentTaskWorkflowProjectionValidatesStableBindingAndState(t *testing.T) {
+	t.Parallel()
+	valid := AgentTaskWorkflowProjectionV1{
+		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+		Status: AgentTaskWorkflowStatusWaitingInput, Revision: 2,
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid Workflow projection: %v", err)
+	}
+	for _, invalid := range []AgentTaskWorkflowProjectionV1{
+		{},
+		{TaskUUID: "TASK-1", WorkflowID: "workflow-1", RunID: "run-1", Status: "unknown", Revision: 1},
+		{TaskUUID: "TASK-1", WorkflowID: strings.Repeat("w", 256), RunID: "run-1", Status: AgentTaskWorkflowStatusRunning, Revision: 1},
+	} {
+		if err := invalid.Validate(); !errors.Is(err, ErrAgentPolicyInvalid) {
+			t.Fatalf("invalid Workflow projection %+v returned %v", invalid, err)
+		}
+	}
+}
+
 func replaceApprovalClaim(claim AgentApprovalClaimV1, task, capability, scope, arguments, nonce string) AgentApprovalClaimV1 {
 	if task != "" {
 		claim.TaskUUID = task

@@ -73,6 +73,11 @@ type AgentTask struct {
 	UpdatedAt         time.Time
 	PrincipalUuid     string
 	AgentUuid         string
+	WorkflowID        sql.NullString
+	WorkflowRunID     sql.NullString
+	WorkflowStatus    sql.NullString
+	WorkflowRevision  sql.NullInt64
+	WorkflowUpdatedAt sql.NullTime
 }
 
 type CassandraBackfillJob struct {

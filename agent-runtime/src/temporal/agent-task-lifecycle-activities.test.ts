@@ -11,7 +11,8 @@ describe("Persistent Agent Task lifecycle Activities", () => {
     const finish = vi.fn(async () => undefined);
     const requestApproval = vi.fn(async () => undefined);
     const resolveApproval = vi.fn(async () => undefined);
-    const activities = createPersistentAgentTaskLifecycleActivities({ admitRun, finish, requestApproval, resolveApproval } satisfies PersistentAgentRunLifecyclePort);
+    const projectTaskWorkflowState = vi.fn(async () => ({}));
+    const activities = createPersistentAgentTaskLifecycleActivities({ admitRun, finish, requestApproval, resolveApproval, projectTaskWorkflowState } satisfies PersistentAgentRunLifecyclePort);
 
     await expect(activities.admitAgentTask({
       taskId: "task-1",
@@ -50,6 +51,14 @@ describe("Persistent Agent Task lifecycle Activities", () => {
       "task-1", "run-1", "failed", "Activity retries exhausted",
       { requestId: "REQ1", traceId: "TRACE1" }
     );
+    await activities.projectAgentTaskState({
+      taskId: "task-1", runId: "run-1", workflowId: "dipole-agent-task/task-1", workflowRunId: "temporal-1",
+      workflowStatus: "running", workflowRevision: 1, requestId: "REQ1", traceId: "TRACE1"
+    });
+    expect(projectTaskWorkflowState).toHaveBeenCalledWith({
+      taskId: "task-1", runId: "run-1", workflowId: "dipole-agent-task/task-1", workflowRunId: "temporal-1",
+      workflowStatus: "running", workflowRevision: 1
+    }, { requestId: "REQ1", traceId: "TRACE1" });
   });
 
   it("rejects a persistent Workflow without trusted admission data", async () => {
@@ -57,7 +66,8 @@ describe("Persistent Agent Task lifecycle Activities", () => {
       admitRun: vi.fn(),
       finish: vi.fn(),
       requestApproval: vi.fn(),
-      resolveApproval: vi.fn()
+      resolveApproval: vi.fn(),
+      projectTaskWorkflowState: vi.fn()
     };
     const activities = createPersistentAgentTaskLifecycleActivities(port);
 

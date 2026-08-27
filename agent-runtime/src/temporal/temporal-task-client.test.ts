@@ -10,7 +10,7 @@ describe("Temporal Task client", () => {
   });
 
   it("reuses a running Workflow and rejects a new run after terminal completion", async () => {
-    const start = vi.fn(async () => ({ workflowId: "dipole-agent-task/task-1", runId: "run-1" }));
+    const start = vi.fn(async () => ({ workflowId: "dipole-agent-task/task-1", firstExecutionRunId: "run-1" }));
     const client = new TemporalTaskClient({ start }, "dipole-agent-task-v1");
 
     const handle = await client.start({ taskId: "task-1", goal: "summarize G1" });
