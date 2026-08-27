@@ -70,8 +70,10 @@ scripts/bench/recovery_drill.sh
 
 1. 记录目标节点的完整 container/image/revision/PID，并验证健康。
 2. `stop` 目标节点，要求实际观察到健康不可用；EXIT trap 在后续失败时尝试恢复节点。
-3. `start` 同一节点，等待健康恢复并记录新 PID 与恢复时间线。
+3. `start` 同一节点，等待 HTTP 健康和 Kafka consumer group 恢复到故障前成员数并连续稳定 5 秒，再记录新 PID 与恢复时间线。
 4. 在恢复后的稳定进程上运行 baseline v4，要求完整来源证据、100% 接收/持久化/投递和 settled Kafka lag 为零。
 5. 生成绑定精确 baseline SHA-256 的 `recovery-report.v1`。
+
+consumer group 必须在故障前先达到稳定窗口。Kafka lag 解析会将“current offset 缺失且 log end 非零”的行保守计为积压，避免新 group 在 `LastOffset` 初始化窗口跳过记录后仍显示 lag 为零。正式证据应使用 fresh 或已确认无遗留未提交 offset 的候选 Kafka 卷。
 
 该演练描述计划内单节点 stop/start 与恢复后链路。负载期间宕机、Kafka broker 故障、Redis Pub/Sub 切换和客户端重连补偿应分别采集，避免一个报告混合多个故障变量。

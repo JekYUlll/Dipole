@@ -18,7 +18,11 @@ def evidence():
         "run_id": "c1-node2-recovery",
         "target_service": "dipole-node2",
         "expected_revision": REVISION,
-        "fault": {"action": "stop_start"},
+        "fault": {
+            "action": "stop_start",
+            "consumer_group": "dipole-consumer",
+            "stable_member_count": 72,
+        },
         "timeline": {
             "fault_started_at": "2026-08-28T08:00:00.000Z",
             "unavailable_observed_at": "2026-08-28T08:00:00.250Z",
@@ -97,6 +101,7 @@ class RecoveryReportTest(unittest.TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(report["recovery"]["unavailable_to_ready_ms"], 2500)
         self.assertEqual(report["recovery"]["restart_to_ready_ms"], 1750)
+        self.assertEqual(report["fault"]["stable_member_count"], 72)
         self.assertEqual(report["before"]["pid"], 101)
         self.assertEqual(report["after"]["pid"], 202)
         self.assertEqual(report["post_load"]["attempted"], 40)
@@ -120,6 +125,10 @@ class RecoveryReportTest(unittest.TestCase):
         wrong_order = evidence()
         wrong_order["timeline"]["ready_observed_at"] = "2026-08-28T07:59:59Z"
         cases.append(wrong_order)
+
+        no_consumers = evidence()
+        no_consumers["fault"]["stable_member_count"] = 0
+        cases.append(no_consumers)
 
         for candidate in cases:
             with self.subTest(candidate=candidate):

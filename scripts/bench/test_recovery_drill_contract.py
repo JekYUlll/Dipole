@@ -14,11 +14,16 @@ class RecoveryDrillContractTest(unittest.TestCase):
         self.assertIn('trap recover_target EXIT', script)
         self.assertIn('compose stop "${TARGET_SERVICE}"', script)
         self.assertIn('compose start "${TARGET_SERVICE}"', script)
+        self.assertIn("wait_consumer_group_ready", script)
+        self.assertIn("CONSUMER_STABLE_SECONDS", script)
+        self.assertIn("stable_member_count", script)
         self.assertIn("unavailable_observed_at", script)
         self.assertIn("ready_observed_at", script)
         self.assertIn("scripts/bench/run_bench.sh", script)
         self.assertIn("scripts/bench/recovery_report.py", script)
         self.assertLess(script.index('compose start "${TARGET_SERVICE}"'), script.index("scripts/bench/run_bench.sh"))
+        self.assertLess(script.index("pre_fault_member_count="), script.index('compose stop "${TARGET_SERVICE}"'))
+        self.assertLess(script.rindex("wait_consumer_group_ready"), script.index("ready_observed_at="))
         self.assertNotIn("down --volumes", script)
 
 

@@ -36,6 +36,7 @@ TIMELINE_FIELDS = {
     "start_requested_at",
     "ready_observed_at",
 }
+FAULT_FIELDS = {"action", "consumer_group", "stable_member_count"}
 
 
 def _timestamp(value, field):
@@ -172,8 +173,17 @@ def build_report(evidence, baseline, baseline_sha256):
         raise ValueError("target_service is unsupported")
     if not isinstance(expected_revision, str) or not REVISION_PATTERN.fullmatch(expected_revision):
         raise ValueError("expected_revision must be a full lowercase Git revision")
-    if evidence["fault"] != {"action": "stop_start"}:
-        raise ValueError("fault must be the stop_start action")
+    fault = evidence["fault"]
+    if not isinstance(fault, dict) or set(fault) != FAULT_FIELDS:
+        raise ValueError("fault fields do not match recovery evidence v1")
+    if fault["action"] != "stop_start":
+        raise ValueError("fault must use the stop_start action")
+    consumer_group = fault["consumer_group"]
+    if not isinstance(consumer_group, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", consumer_group):
+        raise ValueError("fault.consumer_group is invalid")
+    stable_member_count = _positive_int(
+        fault["stable_member_count"], "fault.stable_member_count"
+    )
 
     before = _snapshot(evidence["before"], "before", expected_revision)
     after = _snapshot(evidence["after"], "after", expected_revision)
@@ -206,7 +216,11 @@ def build_report(evidence, baseline, baseline_sha256):
         "run_id": run_id,
         "target_service": target_service,
         "expected_revision": expected_revision,
-        "fault": {"action": "stop_start"},
+        "fault": {
+            "action": "stop_start",
+            "consumer_group": consumer_group,
+            "stable_member_count": stable_member_count,
+        },
         "recovery": {
             "fault_to_unavailable_ms": int(
                 (parsed["unavailable_observed_at"] - parsed["fault_started_at"]).total_seconds() * 1000

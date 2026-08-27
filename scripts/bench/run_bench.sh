@@ -99,7 +99,7 @@ sample_kafka_lag() {
   LAST_KAFKA_LAG="$(docker compose -f "${COMPOSE_FILE}" exec -T "${KAFKA_SERVICE}" \
     /opt/kafka/bin/kafka-consumer-groups.sh \
     --bootstrap-server 127.0.0.1:9092 --all-groups --describe 2>/dev/null \
-    | awk '$1 ~ /^dipole/ && $6 ~ /^[0-9]+$/ { total += $6 } END { print total + 0 }')"
+    | python3 scripts/bench/kafka_lag.py --group-prefix dipole)"
   printf '%s\n' "${LAST_KAFKA_LAG}" >>"${LAG_FILE}"
 }
 

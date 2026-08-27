@@ -7,6 +7,9 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dist.yml}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-c1}"
 TARGET_SERVICE="${TARGET_SERVICE:-dipole-node2}"
 RECOVERY_TIMEOUT_SECONDS="${RECOVERY_TIMEOUT_SECONDS:-60}"
+CONSUMER_STABLE_SECONDS="${CONSUMER_STABLE_SECONDS:-5}"
+KAFKA_SERVICE="${KAFKA_SERVICE:-kafka}"
+KAFKA_CONSUMER_GROUP="${KAFKA_CONSUMER_GROUP:-dipole-consumer}"
 RESULTS_DIR="${RESULTS_DIR:-scripts/bench/results}"
 RUN_ID="${RUN_ID:-c1-recovery-$(date -u +%Y%m%dT%H%M%SZ)}"
 POST_RUN_ID="${RUN_ID}-post"
@@ -50,6 +53,40 @@ wait_ready() {
   done
   echo "${TARGET_SERVICE} did not recover within ${RECOVERY_TIMEOUT_SECONDS}s" >&2
   compose ps >&2
+  return 1
+}
+
+wait_consumer_group_ready() {
+  local expected_members="${1:-}"
+  local deadline=$((SECONDS + RECOVERY_TIMEOUT_SECONDS))
+  local state members current previous_members="" stable_seconds=0
+  while (( SECONDS < deadline )); do
+    current="$(compose exec -T "${KAFKA_SERVICE}" \
+      /opt/kafka/bin/kafka-consumer-groups.sh \
+      --bootstrap-server 127.0.0.1:9092 \
+      --group "${KAFKA_CONSUMER_GROUP}" \
+      --describe --state 2>/dev/null \
+      | awk -v group="${KAFKA_CONSUMER_GROUP}" '$1 == group {print $(NF-1), $NF}')"
+    read -r state members <<<"${current}"
+    if [[ "${state:-}" == "Stable" && "${members:-}" =~ ^[1-9][0-9]*$ \
+      && ( -z "${expected_members}" || "${members}" == "${expected_members}" ) ]]; then
+      if [[ "${members}" == "${previous_members}" ]]; then
+        stable_seconds=$((stable_seconds + 1))
+      else
+        stable_seconds=1
+        previous_members="${members}"
+      fi
+      if (( stable_seconds >= CONSUMER_STABLE_SECONDS )); then
+        printf '%s\n' "${members}"
+        return 0
+      fi
+    else
+      stable_seconds=0
+      previous_members=""
+    fi
+    sleep 1
+  done
+  echo "consumer group ${KAFKA_CONSUMER_GROUP} did not become stable" >&2
   return 1
 }
 
@@ -112,6 +149,10 @@ if [[ ! "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "RUN_ID may contain only letters, numbers, dot, underscore, and hyphen" >&2
   exit 1
 fi
+if [[ ! "${CONSUMER_STABLE_SECONDS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "CONSUMER_STABLE_SECONDS must be a positive integer" >&2
+  exit 1
+fi
 if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain)" ]]; then
   echo "recovery source tree has changes; commit them before collecting evidence" >&2
   exit 1
@@ -121,6 +162,7 @@ cd "${ROOT_DIR}"
 mkdir -p "${RESULTS_DIR}"
 expected_revision="$(git rev-parse HEAD)"
 curl --fail --silent "${TARGET_HEALTH_URL}" >/dev/null
+pre_fault_member_count="$(wait_consumer_group_ready)"
 before="$(snapshot_target)"
 if [[ "$(jq -r '.revision' <<<"${before}")" != "${expected_revision}" ]]; then
   echo "target image revision does not match recovery source" >&2
@@ -139,6 +181,7 @@ unavailable_observed_at="$(now_rfc3339)"
 start_requested_at="$(now_rfc3339)"
 compose start "${TARGET_SERVICE}"
 wait_ready
+post_fault_member_count="$(wait_consumer_group_ready "${pre_fault_member_count}")"
 ready_observed_at="$(now_rfc3339)"
 after="$(snapshot_target)"
 recovery_required=false
@@ -147,6 +190,8 @@ jq -n \
   --arg run_id "${RUN_ID}" \
   --arg target_service "${TARGET_SERVICE}" \
   --arg expected_revision "${expected_revision}" \
+  --arg consumer_group "${KAFKA_CONSUMER_GROUP}" \
+  --argjson stable_member_count "${post_fault_member_count}" \
   --arg fault_started_at "${fault_started_at}" \
   --arg unavailable_observed_at "${unavailable_observed_at}" \
   --arg start_requested_at "${start_requested_at}" \
@@ -158,7 +203,11 @@ jq -n \
     run_id: $run_id,
     target_service: $target_service,
     expected_revision: $expected_revision,
-    fault: {action: "stop_start"},
+    fault: {
+      action: "stop_start",
+      consumer_group: $consumer_group,
+      stable_member_count: $stable_member_count
+    },
     timeline: {
       fault_started_at: $fault_started_at,
       unavailable_observed_at: $unavailable_observed_at,

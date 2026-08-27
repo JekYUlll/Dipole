@@ -19,7 +19,7 @@
 
 - C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA、关闭 embedded Agent，并依次等待基础设施、执行 MinIO 初始化和 one-shot migration 后启动独立 project，`down` 保留候选卷。迁移编排不进入基础 Compose 服务依赖，既有共享拓扑继续支持 `compose start`。canonical Compose gate 同时验证默认和候选渲染。
 - C1 归档同一候选镜像下 20/50/100 并发连接、每连接 2 条消息的 Go 实时数据面梯度证据：三档接收、持久化和投递率均为 100%，Kafka lag 最终归零；吞吐从 2.51 增至 4.85 msg/s 的同时 P95 从 1.07s 增至 8.08s，提示下一步需用故障恢复和分段剖析定位等待/串行化路径。
-- C1 增加版本化单节点 stop/start 恢复门禁：恢复 evidence 绑定前后 container/image/revision/PID 和单调健康时间线，要求确实观察到 unavailable 与新 PID；恢复后复用 baseline v4 验证消息接收、持久化、投递和 Kafka lag，并以精确 baseline SHA-256 生成 recovery report。EXIT trap 在演练异常时尝试恢复目标节点，稳态资源门禁继续拒绝意外 PID 漂移。
+- C1 增加版本化单节点 stop/start 恢复门禁：恢复 evidence 绑定前后 container/image/revision/PID、单调健康时间线和故障前稳定 consumer group 成员数，要求确实观察到 unavailable、新 PID，并在恢复到相同成员数且连续稳定 5 秒后才运行负载；恢复后复用 baseline v4 验证消息接收、持久化、投递和 Kafka lag，并以精确 baseline SHA-256 生成 recovery report。EXIT trap 在演练异常时尝试恢复目标节点，稳态资源门禁继续拒绝意外 PID 漂移。
 - C1 基准健康检查支持自定义节点 URL，operations/baseline v4 归档无凭据的 API 与 WebSocket 实际端点，避免隔离端口与报告环境描述漂移。
 - C1 为 Go 实时数据面基准增加运行镜像来源门禁：Docker 镜像写入 OCI revision/created 与 source dirty 标签，`run_bench.sh` 从运行容器解析不可变 container/image ID，并要求被测服务、采集器和干净源码树绑定同一完整 Git revision；operations/baseline v4 归档逐服务来源证据，缺标签、dirty 构建、提交偏差或重复容器绑定均在负载启动前 fail closed。
 - C1 增加 Go 实时数据面资源基准采集：`process_metrics.py` 从固定服务 PID 的 `/proc` 多点采样 CPU、RSS、线程与 context switch，`run_bench.sh` 将结果绑定到 operations/baseline v4；进程重启、服务集合漂移和计数异常 fail closed，v1-v3 历史报告继续可读并显式标记资源证据不可用。
@@ -283,6 +283,7 @@
 
 ### 修复
 
+- 修复 C1 Kafka lag 采样将无 committed offset 的分区静默当作零积压：独立解析器对 `current-offset=-` 且存在 log end 的行保守计入 retained backlog，并在找不到目标 consumer group 或字段不可解析时 fail closed。真实 node2 首轮恢复演练因此识别出 HTTP 健康早于 72-member consumer group 稳定、`LastOffset` 跳过 40 条 send-requested 的窗口，失败报告未被接受。
 - 修复 canonical Go gate 在干净 checkout 中隐式依赖被忽略的 `configs/config.yaml`：配置加载器支持显式 `DIPOLE_CONFIG_FILE`，`scripts/check-go.sh` 默认使用跟踪的 `configs/config.dist.yaml`，调用方仍可覆盖；未设置环境变量的生产/本地启动继续沿用原有 `config.yaml` 搜索行为。
 - 修复分布式与微服务 Compose 在干净 checkout 中强制依赖未跟踪 `.env`：本地 env file 改为 optional，关键内部 RPC secret 的 `${VAR:?}` 校验保持不变；新增 `scripts/check-compose.sh` 对全部 Compose 文件执行统一静态解析。
 - migration v17 将 Agent Definition、Task 与 Approval 的身份列从 20 字符 expand-only 扩至 24 字符，修复默认 21 字符 `assistant_uuid` 无法初始化 persistent policy 的启动失败。
