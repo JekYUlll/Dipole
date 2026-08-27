@@ -201,6 +201,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
 		}
+		messageCommands, composeErr := appComposition.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
+		}
 		var artifactService applicationPort.AgentArtifactServiceV1
 		if storageCfg.ArtifactEnabled {
 			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
@@ -218,7 +222,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, artifactService, toolAudits, messageCommands, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

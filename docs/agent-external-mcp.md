@@ -80,6 +80,8 @@ Core `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 `mode=active`�
 
 migration v31 把已消费 Approval 绑定到 Tool Invocation Begin，并在成功终态保存有界 `message` action reference。Core 先确认 Run 属于当前 Task、`dipole-agent/active` 且仍在运行，再从持久 Invocation 获取 Agent/principal，按 Command kind/id 计算稳定 `client_message_id`，回查 sender-scoped receipt，并核对 Message UUID、sender、target、direct conversation 与 message type。审计表只保存 Approval、Command 和 Message 标识及摘要，不保存消息正文；读取 Tool 和失败终态不能携带 action reference。当前 `createDipoleMcpServer` 继续硬性拒绝 write/destructive descriptor，MCP context 仍为 shadow，生产 write Tool 和 active authority 没有启用。
 
+`ExecuteMcpMessageCommand` 也只允许认证 `dipole-agent` 调用，且请求必须引用上述 running Tool Invocation。Runtime 不提供 Command ID；Core 使用 `invocation_id + command_kind` 派生稳定 ID，并从权威 Invocation 派生 sender/target。审批参数固定为排序 canonical JSON `{"content":...,"conversationId":...}`，Core 会重算 SHA-256 并与 ToolCall/Approval 摘要比较。返回只含 Message action reference 与 `client_message_id`，TS 还会按 Command v1 公式复算后再接受。该 RPC 没有绕过 Approval/Tool audit 的裸发送路径。
+
 ## Durable Elicitation 边界
 
 `McpDurableElicitationAdapter` 将 MCP `elicitation/create` 的受限 form mode 转为现有 Temporal `wait_input` directive。它只支持 text、无标题值映射的 select/multiselect 和 boolean，最多 16 个字段、32 个选项及 16 KiB 请求；URL mode、number/integer、default、format、description、自由扩展和密码/Token 等敏感字段全部拒绝。外部 message、label 和选项保持 `trust=untrusted`，UI 后续必须明确显示来源 Server/Tool。

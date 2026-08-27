@@ -18,17 +18,18 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability    application.AgentCapabilityV1
-	resolver      application.AgentInvocationResolverV1
-	admission     application.AgentRunAdmissionServiceV1
-	approvals     application.AgentApprovalServiceV1
-	controls      application.AgentTaskControlAuthorizerV1
-	projections   application.AgentTaskWorkflowProjectionServiceV1
-	repairs       application.AgentWorkflowRepairAuditServiceV1
-	artifacts     application.AgentArtifactServiceV1
-	subscriptions application.AgentEventSubscriptionResolverV1
-	memories      application.AgentMemoryContextResolverV1
-	toolAudits    application.AgentToolInvocationAuditServiceV1
+	capability      application.AgentCapabilityV1
+	resolver        application.AgentInvocationResolverV1
+	admission       application.AgentRunAdmissionServiceV1
+	approvals       application.AgentApprovalServiceV1
+	controls        application.AgentTaskControlAuthorizerV1
+	projections     application.AgentTaskWorkflowProjectionServiceV1
+	repairs         application.AgentWorkflowRepairAuditServiceV1
+	artifacts       application.AgentArtifactServiceV1
+	subscriptions   application.AgentEventSubscriptionResolverV1
+	memories        application.AgentMemoryContextResolverV1
+	toolAudits      application.AgentToolInvocationAuditServiceV1
+	messageCommands application.AgentMessageCommandExecutionV1
 }
 
 func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServiceV1) (*Server, error) {
@@ -36,6 +37,14 @@ func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServi
 		return nil, errors.New("Agent Tool invocation audit service is required")
 	}
 	s.toolAudits = audits
+	return s, nil
+}
+
+func (s *Server) WithMessageCommands(commands application.AgentMessageCommandExecutionV1) (*Server, error) {
+	if s == nil || commands == nil {
+		return nil, errors.New("Agent Message Command execution service is required")
+	}
+	s.messageCommands = commands
 	return s, nil
 }
 
@@ -448,6 +457,36 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
+}
+
+func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.ExecuteMcpMessageCommandRequest) (*agentv1.ExecuteMcpMessageCommandResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.messageCommands == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Message Command execution is unavailable")
+	}
+	result, err := s.messageCommands.Execute(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMessageCommandExecutionRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), InvocationUUID: request.GetInvocationId(),
+		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentCommandDenied):
+			return nil, status.Error(codes.PermissionDenied, "Agent Message Command denied")
+		case errors.Is(err, application.ErrAgentCommandConflict):
+			return nil, status.Error(codes.Aborted, "Agent Message Command result conflicts")
+		default:
+			return nil, status.Error(codes.Internal, "Agent Message Command execution failed")
+		}
+	}
+	return &agentv1.ExecuteMcpMessageCommandResponse{
+		ActionReference: &agentv1.AgentToolActionReference{
+			ResourceType: string(application.AgentToolActionResourceMessage), ResourceId: result.MessageUUID,
+			CommandKind: string(result.Kind), CommandId: result.CommandID,
+		},
+		ClientMessageId: result.ClientMessageID,
+	}, nil
 }
 
 func (s *Server) authorizeMcpToolAuditCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) error {

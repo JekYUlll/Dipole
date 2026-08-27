@@ -598,6 +598,48 @@ export interface FinishMcpToolInvocationResponse {
     status: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ExecuteMcpMessageCommandRequest
+ */
+export interface ExecuteMcpMessageCommandRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string invocation_id = 4
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string command_kind = 5
+     */
+    commandKind: string;
+    /**
+     * @generated from protobuf field: string content = 6
+     */
+    content: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ExecuteMcpMessageCommandResponse
+ */
+export interface ExecuteMcpMessageCommandResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentToolActionReference action_reference = 1
+     */
+    actionReference?: AgentToolActionReference;
+    /**
+     * @generated from protobuf field: string client_message_id = 2
+     */
+    clientMessageId: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ProjectTaskWorkflowStateRequest
  */
 export interface ProjectTaskWorkflowStateRequest {
@@ -3023,6 +3065,146 @@ class FinishMcpToolInvocationResponse$Type extends MessageType<FinishMcpToolInvo
  */
 export const FinishMcpToolInvocationResponse = new FinishMcpToolInvocationResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class ExecuteMcpMessageCommandRequest$Type extends MessageType<ExecuteMcpMessageCommandRequest> {
+    constructor() {
+        super("dipole.agent.v1.ExecuteMcpMessageCommandRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "command_kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ExecuteMcpMessageCommandRequest>): ExecuteMcpMessageCommandRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.invocationId = "";
+        message.commandKind = "";
+        message.content = "";
+        if (value !== undefined)
+            reflectionMergePartial<ExecuteMcpMessageCommandRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ExecuteMcpMessageCommandRequest): ExecuteMcpMessageCommandRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string invocation_id */ 4:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string command_kind */ 5:
+                    message.commandKind = reader.string();
+                    break;
+                case /* string content */ 6:
+                    message.content = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ExecuteMcpMessageCommandRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string invocation_id = 4; */
+        if (message.invocationId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.invocationId);
+        /* string command_kind = 5; */
+        if (message.commandKind !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.commandKind);
+        /* string content = 6; */
+        if (message.content !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.content);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ExecuteMcpMessageCommandRequest
+ */
+export const ExecuteMcpMessageCommandRequest = new ExecuteMcpMessageCommandRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ExecuteMcpMessageCommandResponse$Type extends MessageType<ExecuteMcpMessageCommandResponse> {
+    constructor() {
+        super("dipole.agent.v1.ExecuteMcpMessageCommandResponse", [
+            { no: 1, name: "action_reference", kind: "message", T: () => AgentToolActionReference },
+            { no: 2, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ExecuteMcpMessageCommandResponse>): ExecuteMcpMessageCommandResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.clientMessageId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ExecuteMcpMessageCommandResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ExecuteMcpMessageCommandResponse): ExecuteMcpMessageCommandResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.AgentToolActionReference action_reference */ 1:
+                    message.actionReference = AgentToolActionReference.internalBinaryRead(reader, reader.uint32(), options, message.actionReference);
+                    break;
+                case /* string client_message_id */ 2:
+                    message.clientMessageId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ExecuteMcpMessageCommandResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.AgentToolActionReference action_reference = 1; */
+        if (message.actionReference)
+            AgentToolActionReference.internalBinaryWrite(message.actionReference, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string client_message_id = 2; */
+        if (message.clientMessageId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.clientMessageId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ExecuteMcpMessageCommandResponse
+ */
+export const ExecuteMcpMessageCommandResponse = new ExecuteMcpMessageCommandResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ProjectTaskWorkflowStateRequest$Type extends MessageType<ProjectTaskWorkflowStateRequest> {
     constructor() {
         super("dipole.agent.v1.ProjectTaskWorkflowStateRequest", [
@@ -4809,6 +4991,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "FinishMcpToolInvocation", options: {}, I: FinishMcpToolInvocationRequest, O: FinishMcpToolInvocationResponse },
+    { name: "ExecuteMcpMessageCommand", options: {}, I: ExecuteMcpMessageCommandRequest, O: ExecuteMcpMessageCommandResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
     { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse },
     { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },

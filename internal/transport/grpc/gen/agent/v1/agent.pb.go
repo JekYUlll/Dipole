@@ -1814,6 +1814,142 @@ func (x *FinishMcpToolInvocationResponse) GetStatus() string {
 	return ""
 }
 
+type ExecuteMcpMessageCommandRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	InvocationId  string                 `protobuf:"bytes,4,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
+	CommandKind   string                 `protobuf:"bytes,5,opt,name=command_kind,json=commandKind,proto3" json:"command_kind,omitempty"`
+	Content       string                 `protobuf:"bytes,6,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecuteMcpMessageCommandRequest) Reset() {
+	*x = ExecuteMcpMessageCommandRequest{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecuteMcpMessageCommandRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecuteMcpMessageCommandRequest) ProtoMessage() {}
+
+func (x *ExecuteMcpMessageCommandRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecuteMcpMessageCommandRequest.ProtoReflect.Descriptor instead.
+func (*ExecuteMcpMessageCommandRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetInvocationId() string {
+	if x != nil {
+		return x.InvocationId
+	}
+	return ""
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetCommandKind() string {
+	if x != nil {
+		return x.CommandKind
+	}
+	return ""
+}
+
+func (x *ExecuteMcpMessageCommandRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+type ExecuteMcpMessageCommandResponse struct {
+	state           protoimpl.MessageState    `protogen:"open.v1"`
+	ActionReference *AgentToolActionReference `protobuf:"bytes,1,opt,name=action_reference,json=actionReference,proto3" json:"action_reference,omitempty"`
+	ClientMessageId string                    `protobuf:"bytes,2,opt,name=client_message_id,json=clientMessageId,proto3" json:"client_message_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ExecuteMcpMessageCommandResponse) Reset() {
+	*x = ExecuteMcpMessageCommandResponse{}
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecuteMcpMessageCommandResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecuteMcpMessageCommandResponse) ProtoMessage() {}
+
+func (x *ExecuteMcpMessageCommandResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecuteMcpMessageCommandResponse.ProtoReflect.Descriptor instead.
+func (*ExecuteMcpMessageCommandResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ExecuteMcpMessageCommandResponse) GetActionReference() *AgentToolActionReference {
+	if x != nil {
+		return x.ActionReference
+	}
+	return nil
+}
+
+func (x *ExecuteMcpMessageCommandResponse) GetClientMessageId() string {
+	if x != nil {
+		return x.ClientMessageId
+	}
+	return ""
+}
+
 type ProjectTaskWorkflowStateRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Context          *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
@@ -1829,7 +1965,7 @@ type ProjectTaskWorkflowStateRequest struct {
 
 func (x *ProjectTaskWorkflowStateRequest) Reset() {
 	*x = ProjectTaskWorkflowStateRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1841,7 +1977,7 @@ func (x *ProjectTaskWorkflowStateRequest) String() string {
 func (*ProjectTaskWorkflowStateRequest) ProtoMessage() {}
 
 func (x *ProjectTaskWorkflowStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[24]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1854,7 +1990,7 @@ func (x *ProjectTaskWorkflowStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectTaskWorkflowStateRequest.ProtoReflect.Descriptor instead.
 func (*ProjectTaskWorkflowStateRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{24}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ProjectTaskWorkflowStateRequest) GetContext() *v1.RequestContext {
@@ -1919,7 +2055,7 @@ type ProjectTaskWorkflowStateResponse struct {
 
 func (x *ProjectTaskWorkflowStateResponse) Reset() {
 	*x = ProjectTaskWorkflowStateResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[25]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1931,7 +2067,7 @@ func (x *ProjectTaskWorkflowStateResponse) String() string {
 func (*ProjectTaskWorkflowStateResponse) ProtoMessage() {}
 
 func (x *ProjectTaskWorkflowStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[25]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1944,7 +2080,7 @@ func (x *ProjectTaskWorkflowStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectTaskWorkflowStateResponse.ProtoReflect.Descriptor instead.
 func (*ProjectTaskWorkflowStateResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{25}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ProjectTaskWorkflowStateResponse) GetTaskId() string {
@@ -1993,7 +2129,7 @@ type ListTaskWorkflowProjectionSnapshotsRequest struct {
 
 func (x *ListTaskWorkflowProjectionSnapshotsRequest) Reset() {
 	*x = ListTaskWorkflowProjectionSnapshotsRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[26]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2005,7 +2141,7 @@ func (x *ListTaskWorkflowProjectionSnapshotsRequest) String() string {
 func (*ListTaskWorkflowProjectionSnapshotsRequest) ProtoMessage() {}
 
 func (x *ListTaskWorkflowProjectionSnapshotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[26]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2018,7 +2154,7 @@ func (x *ListTaskWorkflowProjectionSnapshotsRequest) ProtoReflect() protoreflect
 
 // Deprecated: Use ListTaskWorkflowProjectionSnapshotsRequest.ProtoReflect.Descriptor instead.
 func (*ListTaskWorkflowProjectionSnapshotsRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{26}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListTaskWorkflowProjectionSnapshotsRequest) GetContext() *v1.RequestContext {
@@ -2056,7 +2192,7 @@ type TaskWorkflowProjectionSnapshot struct {
 
 func (x *TaskWorkflowProjectionSnapshot) Reset() {
 	*x = TaskWorkflowProjectionSnapshot{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[27]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2068,7 +2204,7 @@ func (x *TaskWorkflowProjectionSnapshot) String() string {
 func (*TaskWorkflowProjectionSnapshot) ProtoMessage() {}
 
 func (x *TaskWorkflowProjectionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[27]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2081,7 +2217,7 @@ func (x *TaskWorkflowProjectionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskWorkflowProjectionSnapshot.ProtoReflect.Descriptor instead.
 func (*TaskWorkflowProjectionSnapshot) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{27}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *TaskWorkflowProjectionSnapshot) GetTaskId() string {
@@ -2136,7 +2272,7 @@ type ListTaskWorkflowProjectionSnapshotsResponse struct {
 
 func (x *ListTaskWorkflowProjectionSnapshotsResponse) Reset() {
 	*x = ListTaskWorkflowProjectionSnapshotsResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[28]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2148,7 +2284,7 @@ func (x *ListTaskWorkflowProjectionSnapshotsResponse) String() string {
 func (*ListTaskWorkflowProjectionSnapshotsResponse) ProtoMessage() {}
 
 func (x *ListTaskWorkflowProjectionSnapshotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[28]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2161,7 +2297,7 @@ func (x *ListTaskWorkflowProjectionSnapshotsResponse) ProtoReflect() protoreflec
 
 // Deprecated: Use ListTaskWorkflowProjectionSnapshotsResponse.ProtoReflect.Descriptor instead.
 func (*ListTaskWorkflowProjectionSnapshotsResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{28}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListTaskWorkflowProjectionSnapshotsResponse) GetTasks() []*TaskWorkflowProjectionSnapshot {
@@ -2190,7 +2326,7 @@ type WorkflowRepairEvidence struct {
 
 func (x *WorkflowRepairEvidence) Reset() {
 	*x = WorkflowRepairEvidence{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[29]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2202,7 +2338,7 @@ func (x *WorkflowRepairEvidence) String() string {
 func (*WorkflowRepairEvidence) ProtoMessage() {}
 
 func (x *WorkflowRepairEvidence) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[29]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2215,7 +2351,7 @@ func (x *WorkflowRepairEvidence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowRepairEvidence.ProtoReflect.Descriptor instead.
 func (*WorkflowRepairEvidence) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{29}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *WorkflowRepairEvidence) GetWorkflowId() string {
@@ -2263,7 +2399,7 @@ type ProposeWorkflowRepairRequest struct {
 
 func (x *ProposeWorkflowRepairRequest) Reset() {
 	*x = ProposeWorkflowRepairRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[30]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2275,7 +2411,7 @@ func (x *ProposeWorkflowRepairRequest) String() string {
 func (*ProposeWorkflowRepairRequest) ProtoMessage() {}
 
 func (x *ProposeWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[30]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2288,7 +2424,7 @@ func (x *ProposeWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProposeWorkflowRepairRequest.ProtoReflect.Descriptor instead.
 func (*ProposeWorkflowRepairRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{30}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ProposeWorkflowRepairRequest) GetContext() *v1.RequestContext {
@@ -2365,7 +2501,7 @@ type DecideWorkflowRepairRequest struct {
 
 func (x *DecideWorkflowRepairRequest) Reset() {
 	*x = DecideWorkflowRepairRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[31]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2377,7 +2513,7 @@ func (x *DecideWorkflowRepairRequest) String() string {
 func (*DecideWorkflowRepairRequest) ProtoMessage() {}
 
 func (x *DecideWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[31]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2390,7 +2526,7 @@ func (x *DecideWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideWorkflowRepairRequest.ProtoReflect.Descriptor instead.
 func (*DecideWorkflowRepairRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{31}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DecideWorkflowRepairRequest) GetContext() *v1.RequestContext {
@@ -2424,7 +2560,7 @@ type GetWorkflowRepairRequest struct {
 
 func (x *GetWorkflowRepairRequest) Reset() {
 	*x = GetWorkflowRepairRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[32]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2436,7 +2572,7 @@ func (x *GetWorkflowRepairRequest) String() string {
 func (*GetWorkflowRepairRequest) ProtoMessage() {}
 
 func (x *GetWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[32]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2449,7 +2585,7 @@ func (x *GetWorkflowRepairRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkflowRepairRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkflowRepairRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{32}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetWorkflowRepairRequest) GetContext() *v1.RequestContext {
@@ -2488,7 +2624,7 @@ type WorkflowRepairProposalResponse struct {
 
 func (x *WorkflowRepairProposalResponse) Reset() {
 	*x = WorkflowRepairProposalResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[33]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2500,7 +2636,7 @@ func (x *WorkflowRepairProposalResponse) String() string {
 func (*WorkflowRepairProposalResponse) ProtoMessage() {}
 
 func (x *WorkflowRepairProposalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[33]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2513,7 +2649,7 @@ func (x *WorkflowRepairProposalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowRepairProposalResponse.ProtoReflect.Descriptor instead.
 func (*WorkflowRepairProposalResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{33}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *WorkflowRepairProposalResponse) GetProposalId() string {
@@ -2632,7 +2768,7 @@ type CreateArtifactRequest struct {
 
 func (x *CreateArtifactRequest) Reset() {
 	*x = CreateArtifactRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[34]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2644,7 +2780,7 @@ func (x *CreateArtifactRequest) String() string {
 func (*CreateArtifactRequest) ProtoMessage() {}
 
 func (x *CreateArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[34]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2657,7 +2793,7 @@ func (x *CreateArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateArtifactRequest.ProtoReflect.Descriptor instead.
 func (*CreateArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{34}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *CreateArtifactRequest) GetContext() *v1.RequestContext {
@@ -2740,7 +2876,7 @@ type GetArtifactRequest struct {
 
 func (x *GetArtifactRequest) Reset() {
 	*x = GetArtifactRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[35]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2752,7 +2888,7 @@ func (x *GetArtifactRequest) String() string {
 func (*GetArtifactRequest) ProtoMessage() {}
 
 func (x *GetArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[35]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2765,7 +2901,7 @@ func (x *GetArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArtifactRequest.ProtoReflect.Descriptor instead.
 func (*GetArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{35}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GetArtifactRequest) GetContext() *v1.RequestContext {
@@ -2802,7 +2938,7 @@ type AgentArtifact struct {
 
 func (x *AgentArtifact) Reset() {
 	*x = AgentArtifact{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[36]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2814,7 +2950,7 @@ func (x *AgentArtifact) String() string {
 func (*AgentArtifact) ProtoMessage() {}
 
 func (x *AgentArtifact) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[36]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2827,7 +2963,7 @@ func (x *AgentArtifact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentArtifact.ProtoReflect.Descriptor instead.
 func (*AgentArtifact) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{36}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *AgentArtifact) GetSchemaVersion() string {
@@ -2923,7 +3059,7 @@ type CreateArtifactResponse struct {
 
 func (x *CreateArtifactResponse) Reset() {
 	*x = CreateArtifactResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[37]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2935,7 +3071,7 @@ func (x *CreateArtifactResponse) String() string {
 func (*CreateArtifactResponse) ProtoMessage() {}
 
 func (x *CreateArtifactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[37]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2948,7 +3084,7 @@ func (x *CreateArtifactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateArtifactResponse.ProtoReflect.Descriptor instead.
 func (*CreateArtifactResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{37}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *CreateArtifactResponse) GetArtifact() *AgentArtifact {
@@ -2968,7 +3104,7 @@ type GetArtifactResponse struct {
 
 func (x *GetArtifactResponse) Reset() {
 	*x = GetArtifactResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[38]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2980,7 +3116,7 @@ func (x *GetArtifactResponse) String() string {
 func (*GetArtifactResponse) ProtoMessage() {}
 
 func (x *GetArtifactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[38]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2993,7 +3129,7 @@ func (x *GetArtifactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArtifactResponse.ProtoReflect.Descriptor instead.
 func (*GetArtifactResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{38}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetArtifactResponse) GetArtifact() *AgentArtifact {
@@ -3024,7 +3160,7 @@ type MatchEventSubscriptionsRequest struct {
 
 func (x *MatchEventSubscriptionsRequest) Reset() {
 	*x = MatchEventSubscriptionsRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[39]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3036,7 +3172,7 @@ func (x *MatchEventSubscriptionsRequest) String() string {
 func (*MatchEventSubscriptionsRequest) ProtoMessage() {}
 
 func (x *MatchEventSubscriptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[39]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3049,7 +3185,7 @@ func (x *MatchEventSubscriptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchEventSubscriptionsRequest.ProtoReflect.Descriptor instead.
 func (*MatchEventSubscriptionsRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{39}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *MatchEventSubscriptionsRequest) GetContext() *v1.RequestContext {
@@ -3112,7 +3248,7 @@ type AgentEventSubscription struct {
 
 func (x *AgentEventSubscription) Reset() {
 	*x = AgentEventSubscription{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[40]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3124,7 +3260,7 @@ func (x *AgentEventSubscription) String() string {
 func (*AgentEventSubscription) ProtoMessage() {}
 
 func (x *AgentEventSubscription) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[40]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3137,7 +3273,7 @@ func (x *AgentEventSubscription) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentEventSubscription.ProtoReflect.Descriptor instead.
 func (*AgentEventSubscription) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{40}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *AgentEventSubscription) GetSubscriptionId() string {
@@ -3219,7 +3355,7 @@ type MatchEventSubscriptionsResponse struct {
 
 func (x *MatchEventSubscriptionsResponse) Reset() {
 	*x = MatchEventSubscriptionsResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[41]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3231,7 +3367,7 @@ func (x *MatchEventSubscriptionsResponse) String() string {
 func (*MatchEventSubscriptionsResponse) ProtoMessage() {}
 
 func (x *MatchEventSubscriptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[41]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3244,7 +3380,7 @@ func (x *MatchEventSubscriptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchEventSubscriptionsResponse.ProtoReflect.Descriptor instead.
 func (*MatchEventSubscriptionsResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{41}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *MatchEventSubscriptionsResponse) GetSubscriptions() []*AgentEventSubscription {
@@ -3268,7 +3404,7 @@ type ListContextMemoriesRequest struct {
 
 func (x *ListContextMemoriesRequest) Reset() {
 	*x = ListContextMemoriesRequest{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[42]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3280,7 +3416,7 @@ func (x *ListContextMemoriesRequest) String() string {
 func (*ListContextMemoriesRequest) ProtoMessage() {}
 
 func (x *ListContextMemoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[42]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3293,7 +3429,7 @@ func (x *ListContextMemoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContextMemoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListContextMemoriesRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{42}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ListContextMemoriesRequest) GetContext() *v1.RequestContext {
@@ -3350,7 +3486,7 @@ type AgentMemoryProvenance struct {
 
 func (x *AgentMemoryProvenance) Reset() {
 	*x = AgentMemoryProvenance{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[43]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3362,7 +3498,7 @@ func (x *AgentMemoryProvenance) String() string {
 func (*AgentMemoryProvenance) ProtoMessage() {}
 
 func (x *AgentMemoryProvenance) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[43]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3375,7 +3511,7 @@ func (x *AgentMemoryProvenance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentMemoryProvenance.ProtoReflect.Descriptor instead.
 func (*AgentMemoryProvenance) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{43}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *AgentMemoryProvenance) GetSourceType() string {
@@ -3420,7 +3556,7 @@ type AgentContextMemory struct {
 
 func (x *AgentContextMemory) Reset() {
 	*x = AgentContextMemory{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[44]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3432,7 +3568,7 @@ func (x *AgentContextMemory) String() string {
 func (*AgentContextMemory) ProtoMessage() {}
 
 func (x *AgentContextMemory) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[44]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3445,7 +3581,7 @@ func (x *AgentContextMemory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentContextMemory.ProtoReflect.Descriptor instead.
 func (*AgentContextMemory) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{44}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *AgentContextMemory) GetMemoryId() string {
@@ -3499,7 +3635,7 @@ type ListContextMemoriesResponse struct {
 
 func (x *ListContextMemoriesResponse) Reset() {
 	*x = ListContextMemoriesResponse{}
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[45]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3511,7 +3647,7 @@ func (x *ListContextMemoriesResponse) String() string {
 func (*ListContextMemoriesResponse) ProtoMessage() {}
 
 func (x *ListContextMemoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_agent_v1_agent_proto_msgTypes[45]
+	mi := &file_dipole_agent_v1_agent_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3524,7 +3660,7 @@ func (x *ListContextMemoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListContextMemoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListContextMemoriesResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{45}
+	return file_dipole_agent_v1_agent_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ListContextMemoriesResponse) GetMemories() []*AgentContextMemory {
@@ -3702,7 +3838,17 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	" \x01(\v2).dipole.agent.v1.AgentToolActionReferenceR\x0factionReference\"^\n" +
 	"\x1fFinishMcpToolInvocationResponse\x12#\n" +
 	"\rinvocation_id\x18\x01 \x01(\tR\finvocationId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"\xac\x02\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\xef\x01\n" +
+	"\x1fExecuteMcpMessageCommandRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12#\n" +
+	"\rinvocation_id\x18\x04 \x01(\tR\finvocationId\x12!\n" +
+	"\fcommand_kind\x18\x05 \x01(\tR\vcommandKind\x12\x18\n" +
+	"\acontent\x18\x06 \x01(\tR\acontent\"\xa4\x01\n" +
+	" ExecuteMcpMessageCommandResponse\x12T\n" +
+	"\x10action_reference\x18\x01 \x01(\v2).dipole.agent.v1.AgentToolActionReferenceR\x0factionReference\x12*\n" +
+	"\x11client_message_id\x18\x02 \x01(\tR\x0fclientMessageId\"\xac\x02\n" +
 	"\x1fProjectTaskWorkflowStateRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
@@ -3871,7 +4017,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"provenance\x18\x06 \x01(\v2&.dipole.agent.v1.AgentMemoryProvenanceR\n" +
 	"provenance\"^\n" +
 	"\x1bListContextMemoriesResponse\x12?\n" +
-	"\bmemories\x18\x01 \x03(\v2#.dipole.agent.v1.AgentContextMemoryR\bmemories2\xb3\x11\n" +
+	"\bmemories\x18\x01 \x03(\v2#.dipole.agent.v1.AgentContextMemoryR\bmemories2\xb4\x12\n" +
 	"\x16AgentCapabilityService\x12|\n" +
 	"\x17MatchEventSubscriptions\x12/.dipole.agent.v1.MatchEventSubscriptionsRequest\x1a0.dipole.agent.v1.MatchEventSubscriptionsResponse\x12p\n" +
 	"\x13ListContextMemories\x12+.dipole.agent.v1.ListContextMemoriesRequest\x1a,.dipole.agent.v1.ListContextMemoriesResponse\x12O\n" +
@@ -3886,6 +4032,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x11ResolveMcpContext\x12).dipole.agent.v1.ResolveMcpContextRequest\x1a*.dipole.agent.v1.ResolveMcpContextResponse\x12y\n" +
 	"\x16BeginMcpToolInvocation\x12..dipole.agent.v1.BeginMcpToolInvocationRequest\x1a/.dipole.agent.v1.BeginMcpToolInvocationResponse\x12|\n" +
 	"\x17FinishMcpToolInvocation\x12/.dipole.agent.v1.FinishMcpToolInvocationRequest\x1a0.dipole.agent.v1.FinishMcpToolInvocationResponse\x12\x7f\n" +
+	"\x18ExecuteMcpMessageCommand\x120.dipole.agent.v1.ExecuteMcpMessageCommandRequest\x1a1.dipole.agent.v1.ExecuteMcpMessageCommandResponse\x12\x7f\n" +
 	"\x18ProjectTaskWorkflowState\x120.dipole.agent.v1.ProjectTaskWorkflowStateRequest\x1a1.dipole.agent.v1.ProjectTaskWorkflowStateResponse\x12\xa0\x01\n" +
 	"#ListTaskWorkflowProjectionSnapshots\x12;.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest\x1a<.dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse\x12w\n" +
 	"\x15ProposeWorkflowRepair\x12-.dipole.agent.v1.ProposeWorkflowRepairRequest\x1a/.dipole.agent.v1.WorkflowRepairProposalResponse\x12u\n" +
@@ -3906,7 +4053,7 @@ func file_dipole_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_dipole_agent_v1_agent_proto_rawDescData
 }
 
-var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_dipole_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_dipole_agent_v1_agent_proto_goTypes = []any{
 	(*AdmitRunRequest)(nil),                             // 0: dipole.agent.v1.AdmitRunRequest
 	(*AdmitRunResponse)(nil),                            // 1: dipole.agent.v1.AdmitRunResponse
@@ -3932,110 +4079,116 @@ var file_dipole_agent_v1_agent_proto_goTypes = []any{
 	(*AgentToolActionReference)(nil),                    // 21: dipole.agent.v1.AgentToolActionReference
 	(*FinishMcpToolInvocationRequest)(nil),              // 22: dipole.agent.v1.FinishMcpToolInvocationRequest
 	(*FinishMcpToolInvocationResponse)(nil),             // 23: dipole.agent.v1.FinishMcpToolInvocationResponse
-	(*ProjectTaskWorkflowStateRequest)(nil),             // 24: dipole.agent.v1.ProjectTaskWorkflowStateRequest
-	(*ProjectTaskWorkflowStateResponse)(nil),            // 25: dipole.agent.v1.ProjectTaskWorkflowStateResponse
-	(*ListTaskWorkflowProjectionSnapshotsRequest)(nil),  // 26: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
-	(*TaskWorkflowProjectionSnapshot)(nil),              // 27: dipole.agent.v1.TaskWorkflowProjectionSnapshot
-	(*ListTaskWorkflowProjectionSnapshotsResponse)(nil), // 28: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
-	(*WorkflowRepairEvidence)(nil),                      // 29: dipole.agent.v1.WorkflowRepairEvidence
-	(*ProposeWorkflowRepairRequest)(nil),                // 30: dipole.agent.v1.ProposeWorkflowRepairRequest
-	(*DecideWorkflowRepairRequest)(nil),                 // 31: dipole.agent.v1.DecideWorkflowRepairRequest
-	(*GetWorkflowRepairRequest)(nil),                    // 32: dipole.agent.v1.GetWorkflowRepairRequest
-	(*WorkflowRepairProposalResponse)(nil),              // 33: dipole.agent.v1.WorkflowRepairProposalResponse
-	(*CreateArtifactRequest)(nil),                       // 34: dipole.agent.v1.CreateArtifactRequest
-	(*GetArtifactRequest)(nil),                          // 35: dipole.agent.v1.GetArtifactRequest
-	(*AgentArtifact)(nil),                               // 36: dipole.agent.v1.AgentArtifact
-	(*CreateArtifactResponse)(nil),                      // 37: dipole.agent.v1.CreateArtifactResponse
-	(*GetArtifactResponse)(nil),                         // 38: dipole.agent.v1.GetArtifactResponse
-	(*MatchEventSubscriptionsRequest)(nil),              // 39: dipole.agent.v1.MatchEventSubscriptionsRequest
-	(*AgentEventSubscription)(nil),                      // 40: dipole.agent.v1.AgentEventSubscription
-	(*MatchEventSubscriptionsResponse)(nil),             // 41: dipole.agent.v1.MatchEventSubscriptionsResponse
-	(*ListContextMemoriesRequest)(nil),                  // 42: dipole.agent.v1.ListContextMemoriesRequest
-	(*AgentMemoryProvenance)(nil),                       // 43: dipole.agent.v1.AgentMemoryProvenance
-	(*AgentContextMemory)(nil),                          // 44: dipole.agent.v1.AgentContextMemory
-	(*ListContextMemoriesResponse)(nil),                 // 45: dipole.agent.v1.ListContextMemoriesResponse
-	(*v1.RequestContext)(nil),                           // 46: dipole.common.v1.RequestContext
+	(*ExecuteMcpMessageCommandRequest)(nil),             // 24: dipole.agent.v1.ExecuteMcpMessageCommandRequest
+	(*ExecuteMcpMessageCommandResponse)(nil),            // 25: dipole.agent.v1.ExecuteMcpMessageCommandResponse
+	(*ProjectTaskWorkflowStateRequest)(nil),             // 26: dipole.agent.v1.ProjectTaskWorkflowStateRequest
+	(*ProjectTaskWorkflowStateResponse)(nil),            // 27: dipole.agent.v1.ProjectTaskWorkflowStateResponse
+	(*ListTaskWorkflowProjectionSnapshotsRequest)(nil),  // 28: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+	(*TaskWorkflowProjectionSnapshot)(nil),              // 29: dipole.agent.v1.TaskWorkflowProjectionSnapshot
+	(*ListTaskWorkflowProjectionSnapshotsResponse)(nil), // 30: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+	(*WorkflowRepairEvidence)(nil),                      // 31: dipole.agent.v1.WorkflowRepairEvidence
+	(*ProposeWorkflowRepairRequest)(nil),                // 32: dipole.agent.v1.ProposeWorkflowRepairRequest
+	(*DecideWorkflowRepairRequest)(nil),                 // 33: dipole.agent.v1.DecideWorkflowRepairRequest
+	(*GetWorkflowRepairRequest)(nil),                    // 34: dipole.agent.v1.GetWorkflowRepairRequest
+	(*WorkflowRepairProposalResponse)(nil),              // 35: dipole.agent.v1.WorkflowRepairProposalResponse
+	(*CreateArtifactRequest)(nil),                       // 36: dipole.agent.v1.CreateArtifactRequest
+	(*GetArtifactRequest)(nil),                          // 37: dipole.agent.v1.GetArtifactRequest
+	(*AgentArtifact)(nil),                               // 38: dipole.agent.v1.AgentArtifact
+	(*CreateArtifactResponse)(nil),                      // 39: dipole.agent.v1.CreateArtifactResponse
+	(*GetArtifactResponse)(nil),                         // 40: dipole.agent.v1.GetArtifactResponse
+	(*MatchEventSubscriptionsRequest)(nil),              // 41: dipole.agent.v1.MatchEventSubscriptionsRequest
+	(*AgentEventSubscription)(nil),                      // 42: dipole.agent.v1.AgentEventSubscription
+	(*MatchEventSubscriptionsResponse)(nil),             // 43: dipole.agent.v1.MatchEventSubscriptionsResponse
+	(*ListContextMemoriesRequest)(nil),                  // 44: dipole.agent.v1.ListContextMemoriesRequest
+	(*AgentMemoryProvenance)(nil),                       // 45: dipole.agent.v1.AgentMemoryProvenance
+	(*AgentContextMemory)(nil),                          // 46: dipole.agent.v1.AgentContextMemory
+	(*ListContextMemoriesResponse)(nil),                 // 47: dipole.agent.v1.ListContextMemoriesResponse
+	(*v1.RequestContext)(nil),                           // 48: dipole.common.v1.RequestContext
 }
 var file_dipole_agent_v1_agent_proto_depIdxs = []int32{
-	46, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 2: dipole.agent.v1.FinishRunRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 3: dipole.agent.v1.RequestApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 0: dipole.agent.v1.AdmitRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 1: dipole.agent.v1.CompleteRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 2: dipole.agent.v1.FinishRunRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 3: dipole.agent.v1.RequestApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
 	6,  // 4: dipole.agent.v1.RequestApprovalRequest.resource_scope:type_name -> dipole.agent.v1.AgentResourceScope
-	46, // 5: dipole.agent.v1.ResolveApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 6: dipole.agent.v1.ConsumeApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 7: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 5: dipole.agent.v1.ResolveApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 6: dipole.agent.v1.ConsumeApprovalRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 7: dipole.agent.v1.ListConversationsRequest.context:type_name -> dipole.common.v1.RequestContext
 	13, // 8: dipole.agent.v1.ListConversationsResponse.conversations:type_name -> dipole.agent.v1.ConversationSnapshot
-	46, // 9: dipole.agent.v1.AuthorizeTaskControlRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 10: dipole.agent.v1.ResolveMcpContextRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 9: dipole.agent.v1.AuthorizeTaskControlRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 10: dipole.agent.v1.ResolveMcpContextRequest.context:type_name -> dipole.common.v1.RequestContext
 	6,  // 11: dipole.agent.v1.ResolveMcpContextResponse.resource_scopes:type_name -> dipole.agent.v1.AgentResourceScope
-	46, // 12: dipole.agent.v1.BeginMcpToolInvocationRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 13: dipole.agent.v1.FinishMcpToolInvocationRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 12: dipole.agent.v1.BeginMcpToolInvocationRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 13: dipole.agent.v1.FinishMcpToolInvocationRequest.context:type_name -> dipole.common.v1.RequestContext
 	21, // 14: dipole.agent.v1.FinishMcpToolInvocationRequest.action_reference:type_name -> dipole.agent.v1.AgentToolActionReference
-	46, // 15: dipole.agent.v1.ProjectTaskWorkflowStateRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 16: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest.context:type_name -> dipole.common.v1.RequestContext
-	27, // 17: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse.tasks:type_name -> dipole.agent.v1.TaskWorkflowProjectionSnapshot
-	46, // 18: dipole.agent.v1.ProposeWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
-	29, // 19: dipole.agent.v1.ProposeWorkflowRepairRequest.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
-	29, // 20: dipole.agent.v1.ProposeWorkflowRepairRequest.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
-	46, // 21: dipole.agent.v1.DecideWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 22: dipole.agent.v1.GetWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
-	29, // 23: dipole.agent.v1.WorkflowRepairProposalResponse.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
-	29, // 24: dipole.agent.v1.WorkflowRepairProposalResponse.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
-	46, // 25: dipole.agent.v1.CreateArtifactRequest.context:type_name -> dipole.common.v1.RequestContext
-	46, // 26: dipole.agent.v1.GetArtifactRequest.context:type_name -> dipole.common.v1.RequestContext
-	36, // 27: dipole.agent.v1.CreateArtifactResponse.artifact:type_name -> dipole.agent.v1.AgentArtifact
-	36, // 28: dipole.agent.v1.GetArtifactResponse.artifact:type_name -> dipole.agent.v1.AgentArtifact
-	46, // 29: dipole.agent.v1.MatchEventSubscriptionsRequest.context:type_name -> dipole.common.v1.RequestContext
-	40, // 30: dipole.agent.v1.MatchEventSubscriptionsResponse.subscriptions:type_name -> dipole.agent.v1.AgentEventSubscription
-	46, // 31: dipole.agent.v1.ListContextMemoriesRequest.context:type_name -> dipole.common.v1.RequestContext
-	43, // 32: dipole.agent.v1.AgentContextMemory.provenance:type_name -> dipole.agent.v1.AgentMemoryProvenance
-	44, // 33: dipole.agent.v1.ListContextMemoriesResponse.memories:type_name -> dipole.agent.v1.AgentContextMemory
-	39, // 34: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:input_type -> dipole.agent.v1.MatchEventSubscriptionsRequest
-	42, // 35: dipole.agent.v1.AgentCapabilityService.ListContextMemories:input_type -> dipole.agent.v1.ListContextMemoriesRequest
-	0,  // 36: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
-	2,  // 37: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
-	4,  // 38: dipole.agent.v1.AgentCapabilityService.FinishRun:input_type -> dipole.agent.v1.FinishRunRequest
-	7,  // 39: dipole.agent.v1.AgentCapabilityService.RequestApproval:input_type -> dipole.agent.v1.RequestApprovalRequest
-	8,  // 40: dipole.agent.v1.AgentCapabilityService.ResolveApproval:input_type -> dipole.agent.v1.ResolveApprovalRequest
-	10, // 41: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:input_type -> dipole.agent.v1.ConsumeApprovalRequest
-	12, // 42: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
-	15, // 43: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
-	17, // 44: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:input_type -> dipole.agent.v1.ResolveMcpContextRequest
-	19, // 45: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:input_type -> dipole.agent.v1.BeginMcpToolInvocationRequest
-	22, // 46: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:input_type -> dipole.agent.v1.FinishMcpToolInvocationRequest
-	24, // 47: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
-	26, // 48: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
-	30, // 49: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:input_type -> dipole.agent.v1.ProposeWorkflowRepairRequest
-	31, // 50: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:input_type -> dipole.agent.v1.DecideWorkflowRepairRequest
-	32, // 51: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:input_type -> dipole.agent.v1.GetWorkflowRepairRequest
-	34, // 52: dipole.agent.v1.AgentCapabilityService.CreateArtifact:input_type -> dipole.agent.v1.CreateArtifactRequest
-	35, // 53: dipole.agent.v1.AgentCapabilityService.GetArtifact:input_type -> dipole.agent.v1.GetArtifactRequest
-	41, // 54: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:output_type -> dipole.agent.v1.MatchEventSubscriptionsResponse
-	45, // 55: dipole.agent.v1.AgentCapabilityService.ListContextMemories:output_type -> dipole.agent.v1.ListContextMemoriesResponse
-	1,  // 56: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
-	3,  // 57: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
-	5,  // 58: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
-	9,  // 59: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	9,  // 60: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	11, // 61: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:output_type -> dipole.agent.v1.ConsumeApprovalResponse
-	14, // 62: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
-	16, // 63: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
-	18, // 64: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:output_type -> dipole.agent.v1.ResolveMcpContextResponse
-	20, // 65: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:output_type -> dipole.agent.v1.BeginMcpToolInvocationResponse
-	23, // 66: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:output_type -> dipole.agent.v1.FinishMcpToolInvocationResponse
-	25, // 67: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
-	28, // 68: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
-	33, // 69: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	33, // 70: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	33, // 71: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	37, // 72: dipole.agent.v1.AgentCapabilityService.CreateArtifact:output_type -> dipole.agent.v1.CreateArtifactResponse
-	38, // 73: dipole.agent.v1.AgentCapabilityService.GetArtifact:output_type -> dipole.agent.v1.GetArtifactResponse
-	54, // [54:74] is the sub-list for method output_type
-	34, // [34:54] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	48, // 15: dipole.agent.v1.ExecuteMcpMessageCommandRequest.context:type_name -> dipole.common.v1.RequestContext
+	21, // 16: dipole.agent.v1.ExecuteMcpMessageCommandResponse.action_reference:type_name -> dipole.agent.v1.AgentToolActionReference
+	48, // 17: dipole.agent.v1.ProjectTaskWorkflowStateRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 18: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest.context:type_name -> dipole.common.v1.RequestContext
+	29, // 19: dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse.tasks:type_name -> dipole.agent.v1.TaskWorkflowProjectionSnapshot
+	48, // 20: dipole.agent.v1.ProposeWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	31, // 21: dipole.agent.v1.ProposeWorkflowRepairRequest.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	31, // 22: dipole.agent.v1.ProposeWorkflowRepairRequest.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	48, // 23: dipole.agent.v1.DecideWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 24: dipole.agent.v1.GetWorkflowRepairRequest.context:type_name -> dipole.common.v1.RequestContext
+	31, // 25: dipole.agent.v1.WorkflowRepairProposalResponse.projected:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	31, // 26: dipole.agent.v1.WorkflowRepairProposalResponse.temporal:type_name -> dipole.agent.v1.WorkflowRepairEvidence
+	48, // 27: dipole.agent.v1.CreateArtifactRequest.context:type_name -> dipole.common.v1.RequestContext
+	48, // 28: dipole.agent.v1.GetArtifactRequest.context:type_name -> dipole.common.v1.RequestContext
+	38, // 29: dipole.agent.v1.CreateArtifactResponse.artifact:type_name -> dipole.agent.v1.AgentArtifact
+	38, // 30: dipole.agent.v1.GetArtifactResponse.artifact:type_name -> dipole.agent.v1.AgentArtifact
+	48, // 31: dipole.agent.v1.MatchEventSubscriptionsRequest.context:type_name -> dipole.common.v1.RequestContext
+	42, // 32: dipole.agent.v1.MatchEventSubscriptionsResponse.subscriptions:type_name -> dipole.agent.v1.AgentEventSubscription
+	48, // 33: dipole.agent.v1.ListContextMemoriesRequest.context:type_name -> dipole.common.v1.RequestContext
+	45, // 34: dipole.agent.v1.AgentContextMemory.provenance:type_name -> dipole.agent.v1.AgentMemoryProvenance
+	46, // 35: dipole.agent.v1.ListContextMemoriesResponse.memories:type_name -> dipole.agent.v1.AgentContextMemory
+	41, // 36: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:input_type -> dipole.agent.v1.MatchEventSubscriptionsRequest
+	44, // 37: dipole.agent.v1.AgentCapabilityService.ListContextMemories:input_type -> dipole.agent.v1.ListContextMemoriesRequest
+	0,  // 38: dipole.agent.v1.AgentCapabilityService.AdmitRun:input_type -> dipole.agent.v1.AdmitRunRequest
+	2,  // 39: dipole.agent.v1.AgentCapabilityService.CompleteRun:input_type -> dipole.agent.v1.CompleteRunRequest
+	4,  // 40: dipole.agent.v1.AgentCapabilityService.FinishRun:input_type -> dipole.agent.v1.FinishRunRequest
+	7,  // 41: dipole.agent.v1.AgentCapabilityService.RequestApproval:input_type -> dipole.agent.v1.RequestApprovalRequest
+	8,  // 42: dipole.agent.v1.AgentCapabilityService.ResolveApproval:input_type -> dipole.agent.v1.ResolveApprovalRequest
+	10, // 43: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:input_type -> dipole.agent.v1.ConsumeApprovalRequest
+	12, // 44: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
+	15, // 45: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
+	17, // 46: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:input_type -> dipole.agent.v1.ResolveMcpContextRequest
+	19, // 47: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:input_type -> dipole.agent.v1.BeginMcpToolInvocationRequest
+	22, // 48: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:input_type -> dipole.agent.v1.FinishMcpToolInvocationRequest
+	24, // 49: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:input_type -> dipole.agent.v1.ExecuteMcpMessageCommandRequest
+	26, // 50: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
+	28, // 51: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+	32, // 52: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:input_type -> dipole.agent.v1.ProposeWorkflowRepairRequest
+	33, // 53: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:input_type -> dipole.agent.v1.DecideWorkflowRepairRequest
+	34, // 54: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:input_type -> dipole.agent.v1.GetWorkflowRepairRequest
+	36, // 55: dipole.agent.v1.AgentCapabilityService.CreateArtifact:input_type -> dipole.agent.v1.CreateArtifactRequest
+	37, // 56: dipole.agent.v1.AgentCapabilityService.GetArtifact:input_type -> dipole.agent.v1.GetArtifactRequest
+	43, // 57: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:output_type -> dipole.agent.v1.MatchEventSubscriptionsResponse
+	47, // 58: dipole.agent.v1.AgentCapabilityService.ListContextMemories:output_type -> dipole.agent.v1.ListContextMemoriesResponse
+	1,  // 59: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
+	3,  // 60: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
+	5,  // 61: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
+	9,  // 62: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	9,  // 63: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	11, // 64: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:output_type -> dipole.agent.v1.ConsumeApprovalResponse
+	14, // 65: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
+	16, // 66: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
+	18, // 67: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:output_type -> dipole.agent.v1.ResolveMcpContextResponse
+	20, // 68: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:output_type -> dipole.agent.v1.BeginMcpToolInvocationResponse
+	23, // 69: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:output_type -> dipole.agent.v1.FinishMcpToolInvocationResponse
+	25, // 70: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:output_type -> dipole.agent.v1.ExecuteMcpMessageCommandResponse
+	27, // 71: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
+	30, // 72: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+	35, // 73: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	35, // 74: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	35, // 75: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	39, // 76: dipole.agent.v1.AgentCapabilityService.CreateArtifact:output_type -> dipole.agent.v1.CreateArtifactResponse
+	40, // 77: dipole.agent.v1.AgentCapabilityService.GetArtifact:output_type -> dipole.agent.v1.GetArtifactResponse
+	57, // [57:78] is the sub-list for method output_type
+	36, // [36:57] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_dipole_agent_v1_agent_proto_init() }
@@ -4049,7 +4202,7 @@ func file_dipole_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_agent_v1_agent_proto_rawDesc), len(file_dipole_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   46,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

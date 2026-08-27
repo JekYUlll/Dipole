@@ -25,7 +25,7 @@ func (r *AgentToolInvocationRepository) BeginToolInvocation(ctx context.Context,
 	begin := application.AgentToolInvocationBeginV1{
 		InvocationUUID: invocation.InvocationUUID, TaskUUID: invocation.TaskUUID, RunUUID: invocation.RunUUID,
 		Transport: invocation.Transport, ToolName: invocation.ToolName, CapabilityID: invocation.CapabilityID,
-		ArgumentsSHA256: invocation.ArgumentsSHA256, RequestID: invocation.RequestID, TraceID: invocation.TraceID,
+		ArgumentsSHA256: invocation.ArgumentsSHA256, RequestID: invocation.RequestID, TraceID: invocation.TraceID, ApprovalUUID: invocation.ApprovalUUID,
 	}
 	if err := begin.Validate(); err != nil || invocation.Status != application.AgentToolInvocationStatusRunning || invocation.StartedAt.IsZero() || invocation.TenantID == "" || invocation.PrincipalUUID == "" || invocation.AgentUUID == "" {
 		return false, application.ErrAgentToolInvocationInvalid

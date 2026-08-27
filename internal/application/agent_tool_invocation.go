@@ -77,9 +77,13 @@ type AgentToolInvocationFinishV1 struct {
 	ActionReference *AgentToolActionReferenceV1
 }
 
-type AgentToolInvocationStoreV1 interface {
-	BeginToolInvocation(ctx context.Context, invocation AgentToolInvocationV1) (bool, error)
+type AgentToolInvocationReaderV1 interface {
 	GetToolInvocation(ctx context.Context, invocationUUID string) (*AgentToolInvocationV1, error)
+}
+
+type AgentToolInvocationStoreV1 interface {
+	AgentToolInvocationReaderV1
+	BeginToolInvocation(ctx context.Context, invocation AgentToolInvocationV1) (bool, error)
 	FinishToolInvocation(ctx context.Context, finish AgentToolInvocationFinishV1) (bool, error)
 }
 

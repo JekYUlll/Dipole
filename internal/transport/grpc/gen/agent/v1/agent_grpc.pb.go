@@ -32,6 +32,7 @@ const (
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
+	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
@@ -58,6 +59,7 @@ type AgentCapabilityServiceClient interface {
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error)
+	ExecuteMcpMessageCommand(ctx context.Context, in *ExecuteMcpMessageCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
@@ -205,6 +207,16 @@ func (c *agentCapabilityServiceClient) FinishMcpToolInvocation(ctx context.Conte
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ExecuteMcpMessageCommand(ctx context.Context, in *ExecuteMcpMessageCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMessageCommandResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecuteMcpMessageCommandResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProjectTaskWorkflowStateResponse)
@@ -292,6 +304,7 @@ type AgentCapabilityServiceServer interface {
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error)
+	ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
@@ -347,6 +360,9 @@ func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.
 }
 func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolInvocation not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteMcpMessageCommand not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProjectTaskWorkflowState not implemented")
@@ -625,6 +641,24 @@ func _AgentCapabilityService_FinishMcpToolInvocation_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ExecuteMcpMessageCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteMcpMessageCommandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ExecuteMcpMessageCommand(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ExecuteMcpMessageCommand(ctx, req.(*ExecuteMcpMessageCommandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ProjectTaskWorkflowState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProjectTaskWorkflowStateRequest)
 	if err := dec(in); err != nil {
@@ -809,6 +843,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FinishMcpToolInvocation",
 			Handler:    _AgentCapabilityService_FinishMcpToolInvocation_Handler,
+		},
+		{
+			MethodName: "ExecuteMcpMessageCommand",
+			Handler:    _AgentCapabilityService_ExecuteMcpMessageCommand_Handler,
 		},
 		{
 			MethodName: "ProjectTaskWorkflowState",

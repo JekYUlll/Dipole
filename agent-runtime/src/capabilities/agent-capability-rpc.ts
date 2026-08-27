@@ -134,6 +134,16 @@ export interface AgentToolActionReference {
   readonly commandId: string;
 }
 
+export interface AgentMessageCommandExecutionInput {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly invocationId: string;
+  readonly commandKind: "assistant_reply" | "system_message";
+  readonly content: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
 export type AgentToolInvocationFinish = {
   readonly invocationId: string;
   readonly taskId: string;
@@ -480,6 +490,34 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async executeMessageCommand(input: AgentMessageCommandExecutionInput): Promise<AgentToolActionReference> {
+    const content = input.content.trim();
+    if (!content || !input.taskId.trim() || !input.runId.trim() || !input.invocationId.trim()) {
+      throw new Error("Agent Message Command input is invalid");
+    }
+    const metadata = this.metadata(input.requestId, input.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.executeMcpMessageCommand({
+        context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
+        invocationId: input.invocationId, commandKind: input.commandKind, content
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response?.actionReference === undefined) {
+          reject(error ?? new Error("Agent Message Command returned no action reference"));
+          return;
+        }
+        const reference = response.actionReference;
+        const commandId = reference.commandId.trim();
+        const clientMessageId = createHash("sha256").update(`dipole.agent.command.v1\n${input.commandKind}\n${commandId}`).digest("hex");
+        if (reference.resourceType !== "message" || !validBoundedIdentifier(reference.resourceId, 64) ||
+            reference.commandKind !== input.commandKind || !validBoundedIdentifier(commandId, 128) || response.clientMessageId !== clientMessageId) {
+          reject(new Error("Agent Message Command returned conflicting evidence"));
+          return;
+        }
+        resolve({ resourceType: "message", resourceId: reference.resourceId, commandKind: input.commandKind, commandId });
+      });
+    });
+  }
+
   async projectTaskWorkflowState(input: AgentTaskWorkflowProjection & { runId: string }, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskWorkflowProjection> {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {
@@ -630,4 +668,8 @@ function safeRevision(value: bigint): number {
     throw new Error("Agent Task Workflow revision exceeds the safe integer range");
   }
   return revision;
+}
+
+function validBoundedIdentifier(value: string, maximum: number): boolean {
+  return value === value.trim() && value.length > 0 && value.length <= maximum;
 }
