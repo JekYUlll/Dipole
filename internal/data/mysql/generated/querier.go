@@ -22,6 +22,7 @@ type Querier interface {
 	AgentArtifactExistsByObjectKey(ctx context.Context, arg AgentArtifactExistsByObjectKeyParams) (bool, error)
 	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
+	ApproveAgentRuntimePromotionProposal(ctx context.Context, arg ApproveAgentRuntimePromotionProposalParams) (int64, error)
 	ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	ClaimAgentShadowStep(ctx context.Context, arg ClaimAgentShadowStepParams) (int64, error)
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
@@ -81,6 +82,12 @@ type Querier interface {
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
+	GetAgentRuntimePromotionGrantForUpdate(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
+	GetAgentRuntimePromotionOperatorGrant(ctx context.Context, arg GetAgentRuntimePromotionOperatorGrantParams) (AgentRuntimePromotionOperatorGrant, error)
+	GetAgentRuntimePromotionProposal(ctx context.Context, proposalUuid string) (AgentRuntimePromotionProposal, error)
+	GetAgentRuntimePromotionProposalForUpdate(ctx context.Context, proposalUuid string) (AgentRuntimePromotionProposal, error)
+	GetAgentRuntimePromotionReview(ctx context.Context, proposalUuid string) (AgentRuntimePromotionReview, error)
+	GetAgentRuntimePromotionRevocation(ctx context.Context, grantUuid string) (AgentRuntimePromotionRevocation, error)
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)
 	GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error)
 	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
@@ -131,6 +138,9 @@ type Querier interface {
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
 	InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error)
+	InsertAgentRuntimePromotionProposal(ctx context.Context, arg InsertAgentRuntimePromotionProposalParams) (int64, error)
+	InsertAgentRuntimePromotionReview(ctx context.Context, arg InsertAgentRuntimePromotionReviewParams) (int64, error)
+	InsertAgentRuntimePromotionRevocation(ctx context.Context, arg InsertAgentRuntimePromotionRevocationParams) (int64, error)
 	InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error)
 	InsertAgentShadowStep(ctx context.Context, arg InsertAgentShadowStepParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
@@ -187,6 +197,7 @@ type Querier interface {
 	ProbeAgentShadowPlans(ctx context.Context) ([]string, error)
 	ProjectAgentTaskWorkflowState(ctx context.Context, arg ProjectAgentTaskWorkflowStateParams) (int64, error)
 	ReclaimAgentEvent(ctx context.Context, arg ReclaimAgentEventParams) (int64, error)
+	RejectAgentRuntimePromotionProposal(ctx context.Context, arg RejectAgentRuntimePromotionProposalParams) (int64, error)
 	RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error

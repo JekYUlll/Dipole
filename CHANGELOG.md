@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加默认关闭的 Runtime promotion control plane：migration v33 与 sqlc 建立 tenant-scoped operator Grant、不可变 Proposal、唯一 Review 和追加式 Revocation 审计。提案必须绑定 `promotion_evaluation` Artifact 的内容哈希及 metadata 中的 Runtime candidate、pinned Definition、Eval Suite SHA-256，并与权威 Task/Run 逐项一致；不同 reviewer 审批时在同一 MySQL 事务生成 durable Grant，授权 revoker 在同一事务追加审计并撤销。四个 additive gRPC 仅接受认证 `dipole-gateway` 并从可信 RequestContext 派生 operator。生产 Bootstrap 只装配控制面审计，仍未向 admission/resolver 注入 active authorizer，也未注册 write Tool。
 - Agent G4 增加 durable Runtime promotion grant：migration v32 与 sqlc 持久绑定 tenant、Runtime candidate、pinned Definition、promotion v2、evidence SHA-256 和完整离线 Eval Suite SHA-256，并要求不同 grantor/reviewer 双人签署、生效窗口与可撤销状态。active Run 保存 candidate version；admission 和每次 persistent MCP context 解析都会重新校验 grant，撤销后已有 active Run 立即失去 context authority。生产 Bootstrap 未注入 authorizer，也没有 grant 签发 API、active admission 或 write Tool 注册。
 - Agent G4 建立 fail-closed active ExecutionContext promotion seam：`PersistentAgentRunAdmission` 只有在注入的 promotion authorizer 对 Runtime candidate、Task 和 pinned Definition 精确授权后才允许创建 active Run；缺少 authorizer、candidate version 或授权拒绝均不会创建 Task/Run。Core MCP context 现在返回持久 Run 的权威 `runtime_id/mode`，Go Server 与 TS Client 双重拒绝伪造 Runtime 或非法 mode。生产 Bootstrap 未注入 authorizer，公开 admission 继续固定 shadow，write Registry/executor 仍关闭。
 - Agent G4 增加 active-only MCP Approval grant resolution：sqlc 按 Task/Capability/Scope/Arguments 查询最多两条 approved、未消费、未撤销且未过期记录，应用层要求 active `dipole-agent` Run、运行中 Task、principal 审批人与唯一 exact binding；零匹配和多匹配统一拒绝。认证 RPC 只返回 Approval ID、Resource Scope、三个 SHA-256 摘要与过期时间，不消费审批。TS client 复算 scope/arguments 并校验响应，grant adapter 直接连接现有 write gate。`nonce_sha256` 明确作为一次性绑定摘要，避免依赖无法持久恢复的原始 nonce。生产 MCP context 继续为 shadow。
@@ -302,6 +303,8 @@
 - 移除 `data.mysql_adapter`、`mysql.auto_migrate` 和无依赖 Repository/Server/Kafka 便捷构造入口。
 
 ### 迁移说明
+
+- 数据库新增 migration v33：创建 `agent_runtime_promotion_operator_grants`、`agent_runtime_promotion_proposals`、`agent_runtime_promotion_reviews` 和 `agent_runtime_promotion_revocations`。升级不会自动创建 operator Grant；部署者需通过受控运维流程预置 tenant-scoped proposer/reviewer/revoker，且应保持职责分离。回滚 v33 会删除控制面提案、复核和撤销审计表，不影响 v32 durable Grant 表，但应先停用控制 API 并归档审计证据。
 
 - 新增 MySQL migration v32：创建 `agent_runtime_promotion_grants`，并为 `agent_runs` 增加可空 `candidate_version`。现有 embedded/shadow Run 无需回填；历史 active Run 缺少 candidate 或 production authorizer 时会 fail closed，回滚会先移除 Run candidate 字段再删除 grant 表。
 - `ResolveApprovalGrant` 是 additive Agent Capability RPC，无数据迁移；先滚动 Core 和 sqlc 查询，再发布 TS Runtime。查询只在持久 active Run 中返回唯一 exact grant，旧 Runtime 不调用。回滚先保持生产 write Tool 未注册，再回退 Runtime/Core。该 RPC 可用不代表 active context 已晋级。

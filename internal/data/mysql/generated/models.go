@@ -6,9 +6,96 @@ package generated
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 )
+
+type AgentRuntimePromotionProposalsStatus string
+
+const (
+	AgentRuntimePromotionProposalsStatusProposed AgentRuntimePromotionProposalsStatus = "proposed"
+	AgentRuntimePromotionProposalsStatusApproved AgentRuntimePromotionProposalsStatus = "approved"
+	AgentRuntimePromotionProposalsStatusRejected AgentRuntimePromotionProposalsStatus = "rejected"
+)
+
+func (e *AgentRuntimePromotionProposalsStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentRuntimePromotionProposalsStatus(s)
+	case string:
+		*e = AgentRuntimePromotionProposalsStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentRuntimePromotionProposalsStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAgentRuntimePromotionProposalsStatus struct {
+	AgentRuntimePromotionProposalsStatus AgentRuntimePromotionProposalsStatus
+	Valid                                bool // Valid is true if AgentRuntimePromotionProposalsStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentRuntimePromotionProposalsStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentRuntimePromotionProposalsStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentRuntimePromotionProposalsStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentRuntimePromotionProposalsStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentRuntimePromotionProposalsStatus), nil
+}
+
+type AgentRuntimePromotionReviewsDecision string
+
+const (
+	AgentRuntimePromotionReviewsDecisionApproved AgentRuntimePromotionReviewsDecision = "approved"
+	AgentRuntimePromotionReviewsDecisionRejected AgentRuntimePromotionReviewsDecision = "rejected"
+)
+
+func (e *AgentRuntimePromotionReviewsDecision) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentRuntimePromotionReviewsDecision(s)
+	case string:
+		*e = AgentRuntimePromotionReviewsDecision(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentRuntimePromotionReviewsDecision: %T", src)
+	}
+	return nil
+}
+
+type NullAgentRuntimePromotionReviewsDecision struct {
+	AgentRuntimePromotionReviewsDecision AgentRuntimePromotionReviewsDecision
+	Valid                                bool // Valid is true if AgentRuntimePromotionReviewsDecision is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentRuntimePromotionReviewsDecision) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentRuntimePromotionReviewsDecision, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentRuntimePromotionReviewsDecision.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentRuntimePromotionReviewsDecision) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentRuntimePromotionReviewsDecision), nil
+}
 
 type AgentApproval struct {
 	ID                uint64
@@ -135,6 +222,60 @@ type AgentRuntimePromotionGrant struct {
 	RevokedAt         sql.NullTime
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type AgentRuntimePromotionOperatorGrant struct {
+	TenantID      string
+	UserUuid      string
+	CanPropose    bool
+	CanReview     bool
+	CanRevoke     bool
+	GrantedByUuid string
+	ValidFrom     time.Time
+	ExpiresAt     sql.NullTime
+	RevokedAt     sql.NullTime
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type AgentRuntimePromotionProposal struct {
+	ProposalUuid         string
+	TenantID             string
+	RuntimeID            string
+	CandidateVersion     string
+	DefinitionUuid       string
+	DefinitionVersion    uint64
+	EvidenceArtifactUuid string
+	EvidenceSha256       string
+	EvalSuiteSha256      string
+	ProposerUuid         string
+	TicketRef            string
+	Reason               string
+	Status               AgentRuntimePromotionProposalsStatus
+	GrantUuid            sql.NullString
+	ProposedAt           time.Time
+	ExpiresAt            time.Time
+	GrantValidFrom       time.Time
+	GrantExpiresAt       time.Time
+	DecidedAt            sql.NullTime
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type AgentRuntimePromotionReview struct {
+	ProposalUuid string
+	ReviewerUuid string
+	Decision     AgentRuntimePromotionReviewsDecision
+	DecidedAt    time.Time
+}
+
+type AgentRuntimePromotionRevocation struct {
+	GrantUuid     string
+	TenantID      string
+	RevokedByUuid string
+	TicketRef     string
+	Reason        string
+	RevokedAt     time.Time
 }
 
 type AgentTask struct {

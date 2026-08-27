@@ -646,6 +646,42 @@ func TestWorkflowRepairRPCRejectsUnauthenticatedDirectAndAgentCalls(t *testing.T
 	}
 }
 
+func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
+	controls := &runtimePromotionControlServiceStub{proposal: &application.AgentRuntimePromotionProposalV1{ProposalUUID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionUUID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactUUID: strings.Repeat("1", 64), EvidenceSHA256: strings.Repeat("2", 64), EvalSuiteSHA256: strings.Repeat("3", 64), ProposerUUID: "U-OPS", Status: application.AgentRuntimePromotionProposalProposed, ProposedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0), GrantValidFrom: time.Unix(1, 0), GrantExpiresAt: time.Unix(3, 0)}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithPromotionControls(controls)
+	request := &agentv1.GetRuntimePromotionRequest{Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), TenantId: "dipole", ProposalId: controls.proposal.ProposalUUID}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) })
+	if err != nil || response.(*agentv1.RuntimePromotionProposalResponse).GetProposalId() != controls.proposal.ProposalUUID || controls.operator != "U-OPS" {
+		t.Fatalf("response=%+v operator=%s err=%v", response, controls.operator, err)
+	}
+	request.Context.CallerService = "dipole-agent"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) }); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent Runtime control code = %s", status.Code(err))
+	}
+}
+
+type runtimePromotionControlServiceStub struct {
+	proposal *application.AgentRuntimePromotionProposalV1
+	operator string
+}
+
+func (s *runtimePromotionControlServiceStub) Propose(_ context.Context, operator string, _ application.AgentRuntimePromotionProposalRequestV1) (*application.AgentRuntimePromotionProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
+}
+func (s *runtimePromotionControlServiceStub) Review(_ context.Context, operator, _ string, _ application.AgentRuntimePromotionReviewDecisionV1) (*application.AgentRuntimePromotionProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
+}
+func (s *runtimePromotionControlServiceStub) Get(_ context.Context, operator, _, _ string) (*application.AgentRuntimePromotionProposalV1, error) {
+	s.operator = operator
+	return s.proposal, nil
+}
+func (s *runtimePromotionControlServiceStub) Revoke(context.Context, string, string, string, string) (*application.AgentRuntimePromotionGrantV1, error) {
+	return nil, nil
+}
+
 type workflowRepairAuditServiceStub struct {
 	proposal *application.AgentWorkflowRepairProposalV1
 	operator string

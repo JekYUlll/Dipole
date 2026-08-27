@@ -34,8 +34,7 @@ func (g AgentRuntimePromotionGrantV1) Validate() error {
 		g.PolicyVersion != AgentRuntimePromotionPolicyVersionV2 || !validSHA256V1(g.EvidenceSHA256) ||
 		!validSHA256V1(g.EvalSuiteSHA256) || !validPromotionIdentifierV1(g.GrantedByUUID, 24) ||
 		!validPromotionIdentifierV1(g.ReviewedByUUID, 24) || g.GrantedByUUID == g.ReviewedByUUID ||
-		g.ValidFrom.IsZero() || g.ExpiresAt.IsZero() || !g.ValidFrom.Before(g.ExpiresAt) ||
-		(g.RevokedAt != nil && g.RevokedAt.Before(g.ValidFrom)) {
+		g.ValidFrom.IsZero() || g.ExpiresAt.IsZero() || !g.ValidFrom.Before(g.ExpiresAt) {
 		return ErrAgentPolicyInvalid
 	}
 	return nil

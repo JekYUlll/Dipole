@@ -13,25 +13,26 @@ import (
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
-	Users               application.UserStore
-	Messages            application.MessageStore
-	Files               application.FileMetadataStore
-	Conversations       application.ConversationStore
-	Contacts            application.ContactStore
-	Groups              application.GroupStore
-	Admin               application.AdminOverviewStore
-	Sync                application.SyncStore
-	Search              application.SearchIndex
-	AICallLogs          application.AICallLogStore
-	AgentPolicy         application.AgentPolicyStoreV1
-	AgentApprovalGrants application.AgentApprovalGrantStoreV1
-	AgentPromotions     application.AgentRuntimePromotionGrantStoreV1
-	AgentSubscriptions  application.AgentEventSubscriptionStoreV1
-	AgentRepairs        application.AgentWorkflowRepairAuditStoreV1
-	AgentArtifacts      application.AgentArtifactStoreV1
-	AgentMemories       application.AgentMemoryStoreV1
-	AgentToolAudits     application.AgentToolInvocationStoreV1
-	Outbox              application.OutboxRelayStore
+	Users                  application.UserStore
+	Messages               application.MessageStore
+	Files                  application.FileMetadataStore
+	Conversations          application.ConversationStore
+	Contacts               application.ContactStore
+	Groups                 application.GroupStore
+	Admin                  application.AdminOverviewStore
+	Sync                   application.SyncStore
+	Search                 application.SearchIndex
+	AICallLogs             application.AICallLogStore
+	AgentPolicy            application.AgentPolicyStoreV1
+	AgentApprovalGrants    application.AgentApprovalGrantStoreV1
+	AgentPromotions        application.AgentRuntimePromotionGrantStoreV1
+	AgentPromotionControls application.AgentRuntimePromotionControlStoreV1
+	AgentSubscriptions     application.AgentEventSubscriptionStoreV1
+	AgentRepairs           application.AgentWorkflowRepairAuditStoreV1
+	AgentArtifacts         application.AgentArtifactStoreV1
+	AgentMemories          application.AgentMemoryStoreV1
+	AgentToolAudits        application.AgentToolInvocationStoreV1
+	Outbox                 application.OutboxRelayStore
 }
 
 type MessageProcessRepositories struct {
@@ -159,6 +160,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
 	}
+	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
+	}
+	repos.AgentPromotionControls = promotionControls
 	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc message repository: %w", err)
