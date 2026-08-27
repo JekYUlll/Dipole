@@ -65,6 +65,9 @@ describe("Dipole MCP read-only projection", () => {
     expect(() => new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {
       read: { allowedArgumentNames: ["apiKey"], maximumBytes: 1024 }
     })).toThrow(/argument names/);
+    expect(() => new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {
+      read: { allowedArgumentNames: [], maximumBytes: 1024 }
+    }, 60_001)).toThrow(/timeout/);
   });
 
   it("rejects a configured identity that differs from the MCP handshake", async () => {
@@ -75,6 +78,27 @@ describe("Dipole MCP read-only projection", () => {
       read: { allowedArgumentNames: [], maximumBytes: 1024 }
     });
     await expect(client.connect(clientTransport)).rejects.toThrow(/identity mismatch/);
+    await server.close();
+  });
+
+  it("bounds external Tool calls and cancels the remote request", async () => {
+    const registry = new CapabilityRegistry();
+    registry.register({
+      descriptor: { id: "conversation.list", risk: "read", requiredPermission: "conversation.list" },
+      inputSchema: z.object({}).strict(), resolveResource: () => ({ resourceType: "conversation", resourceId: "*", action: "list" }),
+      execute: async () => new Promise(() => undefined)
+    });
+    const server = createDipoleMcpServer({ registry, context, tools: [{
+      name: "read", capabilityId: "conversation.list", title: "Read", description: "Read", inputSchema: z.object({}).strict()
+    }] });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["read"], {
+      read: { allowedArgumentNames: [], maximumBytes: 1024 }
+    }, 100);
+    await client.connect(clientTransport);
+    await expect(client.callTool("read", {})).rejects.toThrow();
+    await client.close();
     await server.close();
   });
 
@@ -91,9 +115,11 @@ describe("Dipole MCP read-only projection", () => {
       description: "List conversations", inputSchema: z.object({ limit: z.number().int().min(1).max(100) }).strict()
     }] });
     const transport = new StreamableHTTPClientTransport(new URL("http://dipole.test/mcp"), {
-      fetch: (url, init) => handler.fetch(new Request(url, init), {
-        authInfo: { token: "test-token", clientId: "U200", scopes: ["conversation.list"] }
-      })
+      fetch: (url, init) => {
+        const request = new Request(url, init);
+        expect(request.signal.aborted).toBe(false);
+        return handler.fetch(request, { authInfo: { token: "test-token", clientId: "U200", scopes: ["conversation.list"] } });
+      }
     });
     const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_conversation_list"], {
       dipole_conversation_list: { allowedArgumentNames: ["limit"], maximumBytes: 1024 }

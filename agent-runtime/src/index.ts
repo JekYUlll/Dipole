@@ -41,6 +41,7 @@ const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIP
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
 const mcpSecret = process.env.DIPOLE_AGENT_MCP_SERVER_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpResource = process.env.DIPOLE_AGENT_MCP_RESOURCE?.trim() || "https://dipole.local/api/v1/agent/mcp";
+const mcpToolTimeoutMs = Number.parseInt(process.env.DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS ?? "5000", 10);
 if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.enabled || controlSecret.trim().length === 0)) {
   throw new Error("Agent Task controls require Temporal, Agent Capability RPC, and a control secret");
 }
@@ -51,6 +52,9 @@ if (mcpEnabled) {
   const resource = new URL(mcpResource);
   if ((resource.protocol !== "https:" && resource.protocol !== "http:") || resource.username !== "" || resource.password !== "" || resource.hash !== "" || resource.search !== "") {
     throw new Error("Agent MCP resource must be a canonical HTTP(S) URI without credentials, query, or fragment");
+  }
+  if (!Number.isSafeInteger(mcpToolTimeoutMs) || mcpToolTimeoutMs < 100 || mcpToolTimeoutMs > 60_000) {
+    throw new Error("Agent MCP Tool timeout must be between 100 and 60000 milliseconds");
   }
 }
 observabilityRuntime.start();
@@ -90,7 +94,7 @@ const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHa
   runner: new McpToolInvocationRunner({
     begin: (input) => mcpRPC!.client.begin(input),
     finish: (input) => mcpRPC!.client.finishToolInvocation(input)
-  }),
+  }, undefined, undefined, undefined, mcpToolTimeoutMs),
   tools: [{
     name: "dipole_conversation_list",
     capabilityId: "conversation.list",

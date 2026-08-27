@@ -29,9 +29,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Runtime、MCP Client/Server、Gateway/OAuth、Capability Policy、外部数据流
-- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。第一方授权交换要求 session principal 对 canonical resource 和只读 scope 显式 consent，签发 15 分钟且绑定 `aud/scope/token_use` 的 MCP JWT；普通 session 与 MCP token 互相拒绝。Gateway 剥离外部凭据并向 Runtime 证明已验证 principal/resource/scope。migration v30 与 sqlc Store 为每次调用持久化权威 tenant/principal/Agent/Task/Run、参数/结果 SHA-256、字节数、耗时和稳定终态。统一低敏 OTel、默认关闭的 Collector/Tempo profile、共享 Redis principal 限流与真实 trace smoke 已完成。外部 MCP Server、write/destructive Tool 均未启用。
+- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。第一方授权交换要求 session principal 对 canonical resource 和只读 scope 显式 consent，签发 15 分钟且绑定 `aud/scope/token_use` 的 MCP JWT；普通 session 与 MCP token 互相拒绝。Gateway 剥离外部凭据并向 Runtime 证明已验证 principal/resource/scope。单次 Tool invocation 有 100 ms 至 60 秒有界 timeout、cooperative cancellation 和 `tool_timeout` 审计；外部 Client foundation 的 connect/list/call 也使用 request/total timeout，Runtime 传播连接断开信号。migration v30、统一低敏 OTel、默认关闭的 Collector/Tempo profile、共享 Redis principal 限流与真实 trace smoke 已完成。外部 MCP Server、write/destructive Tool 均未启用。
 - **风险：** 第一方交换尚未提供 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和第三方客户端注册，因此还不能声明为通用 MCP OAuth Server；外部 Server 凭据生命周期也未实现。Tempo local backend 只适合单机 Shadow/验收，尚无生产对象存储生命周期、Alertmanager 通知链和长期 trace/audit 联查证据。结构化 egress guard 无法识别被改名、编码或嵌入普通文本的敏感值，外部 Tool 返回内容也可能包含 Prompt Injection。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
-- **建议方向：** 在共享环境启用前补充 OAuth resource server 或等价 token audience/scope 门禁、取消与超时，并接入受控 OTel SDK/exporter 和审计告警。外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment；write Tool 必须绑定现有 Approval 与 Agent lineage。
+- **建议方向：** 接入真实 OAuth 2.1 Authorization Server 后发布 discovery/PKCE；外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment。生产 trace 使用对象存储与通知链；write Tool 必须绑定现有 Approval 与 Agent lineage。
 - **处理门槛：** 任何共享环境 MCP 开关启用、外部 Server 连接或 write/destructive Tool 上线前完成。当前网络入口仅用于受控认证和授权边界验证。
 
 ### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP adapter

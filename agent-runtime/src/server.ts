@@ -117,9 +117,14 @@ export function buildServer(
           if (value !== undefined && !privateForwardHeader(name)) headers.set(name, Array.isArray(value) ? value.join(",") : value);
         }
         const body = request.method === "POST" && request.body !== undefined ? JSON.stringify(request.body) : undefined;
+        const cancellation = new AbortController();
+        const abort = (): void => cancellation.abort(new Error("MCP client disconnected"));
+        request.raw.once("aborted", abort);
+        reply.raw.once("close", abort);
         const mcpRequest = new Request(`http://dipole-agent.local${request.raw.url}`, {
           method: request.method,
           headers,
+          signal: cancellation.signal,
           ...(body === undefined ? {} : { body })
         });
         const response = await mcp.handler.fetch(mcpRequest, {

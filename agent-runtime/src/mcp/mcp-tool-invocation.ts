@@ -31,14 +31,19 @@ export class McpToolInvocationRunner {
     private readonly audit: McpToolInvocationAuditPort,
     private readonly tracer: Tracer = trace.getTracer("dipole-agent-runtime"),
     private readonly idGenerator: () => string = randomUUID,
-    private readonly now: () => number = performance.now.bind(performance)
-  ) {}
+    private readonly now: () => number = performance.now.bind(performance),
+    private readonly timeoutMs: number = 5_000
+  ) {
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60_000) {
+      throw new Error("MCP Tool timeout must be between 100 and 60000 milliseconds");
+    }
+  }
 
   execute(
     tool: { name: string; capabilityId: string },
     rawArguments: unknown,
     context: ExecutionContext,
-    operation: () => Promise<unknown>
+    operation: (signal: AbortSignal) => Promise<unknown>
   ): Promise<string> {
     return this.tracer.startActiveSpan("agent.tool.call", {}, async (span) => {
       const invocationId = this.idGenerator();
@@ -58,7 +63,14 @@ export class McpToolInvocationRunner {
       }
 
       try {
-        const result = canonicalJSON(await operation());
+        let rawResult: unknown;
+        try {
+          rawResult = await operationWithTimeout(operation, this.timeoutMs);
+        } catch (error) {
+          await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
+          throw new ToolInvocationFailure();
+        }
+        const result = canonicalJSON(rawResult);
         const resultBytes = Buffer.byteLength(result);
         if (resultBytes > 64 * 1024) {
           await this.finishFailed(invocationId, context, startedAt, "result_too_large");
@@ -108,6 +120,21 @@ export class McpToolInvocationRunner {
 }
 
 class ToolInvocationFailure extends Error {}
+class ToolOperationTimeout extends Error {}
+
+function operationWithTimeout(operation: (signal: AbortSignal) => Promise<unknown>, timeoutMs: number): Promise<unknown> {
+  const controller = new AbortController();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      controller.abort(new ToolOperationTimeout());
+      reject(new ToolOperationTimeout());
+    }, timeoutMs);
+    Promise.resolve()
+      .then(() => operation(controller.signal))
+      .then(resolve, reject)
+      .finally(() => clearTimeout(timer));
+  });
+}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");

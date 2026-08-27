@@ -65,6 +65,35 @@ describe("McpToolInvocationRunner", () => {
     await expect(oversized.execute({ name: "list", capabilityId: "conversation.list" }, {}, context, async () => "x".repeat(65 * 1024))).rejects.toThrow("Tool invocation failed");
     expect(finish).toHaveBeenLastCalledWith(expect.objectContaining({ status: "failed", errorCode: "result_too_large" }));
   });
+
+  it("aborts a timed-out Tool and persists one stable terminal", async () => {
+    vi.useFakeTimers();
+    try {
+      const begin = vi.fn(async () => undefined);
+      const finish = vi.fn(async () => undefined);
+      const operation = vi.fn((signal: AbortSignal) => new Promise<unknown>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      }));
+      const runner = new McpToolInvocationRunner(
+        { begin, finish }, tracerFixture().tracer, () => "INV-TIMEOUT", monotonicClock(0, 250), 200
+      );
+      const pending = runner.execute({ name: "list", capabilityId: "conversation.list" }, {}, context, operation);
+      await vi.advanceTimersByTimeAsync(200);
+      await expect(pending).rejects.toThrow("Tool invocation failed");
+      expect(operation).toHaveBeenCalledWith(expect.objectContaining({ aborted: true }));
+      expect(finish).toHaveBeenCalledOnce();
+      expect(finish).toHaveBeenCalledWith(expect.objectContaining({
+        invocationId: "INV-TIMEOUT", status: "failed", errorCode: "tool_timeout", latencyMs: 250
+      }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects unbounded Tool timeout configuration", () => {
+    expect(() => new McpToolInvocationRunner({ begin: vi.fn(), finish: vi.fn() }, tracerFixture().tracer, () => "INV", () => 0, 99)).toThrow(/timeout/);
+    expect(() => new McpToolInvocationRunner({ begin: vi.fn(), finish: vi.fn() }, tracerFixture().tracer, () => "INV", () => 0, 60_001)).toThrow(/timeout/);
+  });
 });
 
 function sha(value: string): string {
