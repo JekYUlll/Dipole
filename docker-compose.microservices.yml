@@ -17,6 +17,13 @@ x-internal-rpc: &internal-rpc
   DIPOLE_INTERNAL_RPC_SEARCH_TARGET: search:9093
   DIPOLE_INTERNAL_RPC_SYNC_TARGET: sync:9094
 
+x-dependency-readiness: &dependency-readiness
+  DIPOLE_METRICS_DEPENDENCY_PROBES_ENABLED: "true"
+  DIPOLE_METRICS_DEPENDENCY_PROBE_INTERVAL_SECONDS: "5"
+  DIPOLE_METRICS_DEPENDENCY_PROBE_TIMEOUT_MS: "1000"
+  DIPOLE_METRICS_DEPENDENCY_FAILURE_THRESHOLD: "3"
+  DIPOLE_METRICS_DEPENDENCY_SUCCESS_THRESHOLD: "2"
+
 services:
   mysql:
     image: mysql:8.4
@@ -251,7 +258,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_SERVER_PORT: "8081"
       DIPOLE_GATEWAY_MODE: remote
       DIPOLE_MESSAGE_TRANSPORT: grpc
@@ -297,7 +304,7 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_MESSAGE_RUNTIME_MODE: owner
       DIPOLE_MESSAGE_INBOX_WRITE_MODE: ${DIPOLE_MESSAGE_INBOX_WRITE_MODE:-atomic}
       DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS: ${DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS:-true}
@@ -334,7 +341,7 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_SYNC_PROJECTOR_ENABLED: "true"
       DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION: ${DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION:-false}
       DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS: ${DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS:-true}
@@ -364,6 +371,7 @@ services:
       kafka:
         condition: service_healthy
     environment:
+      <<: *dependency-readiness
       DIPOLE_ELASTICSEARCH_ENABLED: "true"
       DIPOLE_ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
       DIPOLE_KAFKA_CLIENT_ID: dipole-search-indexer
@@ -374,6 +382,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+      start_period: 20s
 
   search:
     profiles: ["search"]
@@ -390,7 +399,7 @@ services:
       search-indexer:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_INTERNAL_RPC_SEARCH_LISTEN_ADDRESS: 0.0.0.0:9093
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/search.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/search-key.pem
@@ -403,6 +412,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+      start_period: 20s
 
   gateway:
     <<: *dipole-service
@@ -422,7 +432,7 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_GATEWAY_MODE: remote
       DIPOLE_GATEWAY_CORE_HTTP_TARGET: http://core:8081
       DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: ${DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED:-false}

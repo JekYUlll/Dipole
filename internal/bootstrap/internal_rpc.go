@@ -46,6 +46,7 @@ const (
 type InternalRPCServer struct {
 	listener net.Listener
 	server   *grpc.Server
+	health   *health.Server
 	done     chan struct{}
 	stopOnce sync.Once
 }
@@ -296,8 +297,9 @@ func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers
 	}
 	server := grpc.NewServer(options...)
 	register(server)
-	healthv1.RegisterHealthServer(server, newServingHealthServer())
-	runtime := &InternalRPCServer{listener: listener, server: server, done: make(chan struct{})}
+	healthServer := newServingHealthServer()
+	healthv1.RegisterHealthServer(server, healthServer)
+	runtime := &InternalRPCServer{listener: listener, server: server, health: healthServer, done: make(chan struct{})}
 	go func() {
 		defer close(runtime.done)
 		_ = server.Serve(listener)
@@ -417,6 +419,17 @@ func (s *InternalRPCServer) Address() string {
 		return ""
 	}
 	return s.listener.Addr().String()
+}
+
+func (s *InternalRPCServer) SetServing(serving bool) {
+	if s == nil || s.health == nil {
+		return
+	}
+	status := healthv1.HealthCheckResponse_NOT_SERVING
+	if serving {
+		status = healthv1.HealthCheckResponse_SERVING
+	}
+	s.health.SetServingStatus("", status)
 }
 
 func (s *InternalRPCServer) Close(ctx context.Context) {

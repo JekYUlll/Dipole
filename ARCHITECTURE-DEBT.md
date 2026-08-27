@@ -70,13 +70,13 @@
 ### AD-026：Readiness 尚未持续感知运行期依赖退化
 
 - **优先级：** P2
-- **状态：** 暂缓
+- **状态：** 已解决
 - **发现日期：** 2026-08-27
+- **解决日期：** 2026-08-27
 - **影响范围：** Core、Gateway、Message、Sync、Search、Search Indexer、Cassandra Projector 的流量摘除与故障诊断
-- **现状：** 所有长运行时通过统一 metrics listener 暴露 `/livez`、`/readyz`、`dipole_service_info` 和 `dipole_service_ready`；初始化完成后切为 ready，关闭前切为 not-ready。Docker Compose 使用 `/readyz`，Prometheus 对必需服务提供 instance-down 与 prolonged-not-ready 告警。
-- **风险：** 当前 readiness 表达进程生命周期和启动期依赖校验。MySQL、Kafka、Redis、Cassandra 或 Elasticsearch 在运行中退化时，服务可能仍保持 ready，直到实际请求失败或专项指标触发告警。
-- **建议方向：** 为每个服务定义带超时、缓存和失败阈值的关键依赖探针；只将会阻止该服务正确处理请求的依赖纳入 readiness，Kafka backlog、可回退存储和非关键能力继续由指标告警表达，避免瞬时抖动造成级联摘流。
-- **处理门槛：** 完成依赖重要性矩阵、故障注入和防抖测试，并证明单依赖失败不会引发无关服务级联重启后，再启用动态 readiness。
+- **解决方式：** 统一 metrics listener 增加异步缓存探针、逐探针超时和失败/恢复双阈值；服务生命周期状态与关键依赖状态共同决定 HTTP readiness 和 gRPC health。Core、Gateway、Message、Sync、Search、Search Indexer、Cassandra Projector 均按运行责任接入关键依赖，影子读、可回退存储、Kafka backlog 和可选能力继续使用专项指标。默认配置保持关闭，微服务 Compose 以 5 秒周期、1 秒超时、3 次失败、2 次恢复启用。
+- **验证：** race 测试覆盖超时缓存、滞回、防排空反转和状态回调；gRPC health 回归验证 readiness 同步。Elasticsearch 隔离演练确认 Search 与 Search Indexer 退出并恢复 ready，Core、Message、Sync、Gateway 全程 ready，六个应用容器 ID 均未变化。Prometheus 规则测试覆盖具体 `service/dependency` 告警。
+- **长期约束：** 新依赖只有在其故障会阻止服务正确处理当前职责时才加入 readiness；可选能力和有验证回退的存储继续通过有界指标告警。探针不得在 `/readyz` 请求路径执行网络 IO，新增探针需提供失败/恢复防抖与隔离故障演练。
 
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 

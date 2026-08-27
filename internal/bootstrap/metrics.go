@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -26,11 +27,24 @@ func startRuntimeMetrics(cfg config.Metrics, serviceName string, consumer *platf
 		registry.MustRegister(platformKafka.NewConsumerCollector(consumer))
 	}
 	for _, collector := range collectors {
-		if collector != nil {
+		if !isNilCollector(collector) {
 			registry.MustRegister(collector)
 		}
 	}
 	return platformObservability.StartServiceMetricsServer(cfg.Address, serviceName, registry)
+}
+
+func isNilCollector(collector prometheus.Collector) bool {
+	if collector == nil {
+		return true
+	}
+	value := reflect.ValueOf(collector)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 func markRuntimeReady(server *platformObservability.MetricsServer) {

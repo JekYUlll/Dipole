@@ -152,6 +152,30 @@ func (p *Publisher) Publish(ctx context.Context, topic string, message Message) 
 	return nil
 }
 
+func (p *Publisher) Ping(ctx context.Context) error {
+	if p == nil || len(p.brokers) == 0 {
+		return errors.New("kafka publisher is not initialized")
+	}
+	var errs []error
+	for _, broker := range p.brokers {
+		conn, err := kafkago.DialContext(ctx, "tcp", broker)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("dial kafka broker %s: %w", broker, err))
+			continue
+		}
+		if deadline, ok := ctx.Deadline(); ok {
+			_ = conn.SetDeadline(deadline)
+		}
+		_, err = conn.Brokers()
+		_ = conn.Close()
+		if err == nil {
+			return nil
+		}
+		errs = append(errs, fmt.Errorf("fetch kafka brokers from %s: %w", broker, err))
+	}
+	return errors.Join(errs...)
+}
+
 func (p *Publisher) PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error {
 	if p == nil {
 		return nil
