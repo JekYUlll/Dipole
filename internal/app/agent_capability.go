@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,7 +15,6 @@ import (
 type agentCapabilityMessages interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
-	SendSystemDirectMessageContext(ctx context.Context, senderUUID, targetUUID, content string) (*model.Message, error)
 }
 
 type agentCapabilityConversations interface {
@@ -25,11 +26,12 @@ type LocalAgentCapabilityV1 struct {
 	core          application.CoreCapability
 	messages      agentCapabilityMessages
 	conversations agentCapabilityConversations
+	commands      application.AgentCommandV1
 }
 
 var _ application.AgentCapabilityV1 = (*LocalAgentCapabilityV1)(nil)
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCapabilityMessages, conversations agentCapabilityConversations) (*LocalAgentCapabilityV1, error) {
+func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCapabilityMessages, conversations agentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
 	if core == nil {
 		return nil, errors.New("Agent Capability Core dependency is required")
 	}
@@ -39,7 +41,10 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCa
 	if conversations == nil {
 		return nil, errors.New("Agent Capability Conversation dependency is required")
 	}
-	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations}, nil
+	if commands == nil {
+		return nil, errors.New("Agent Capability Command dependency is required")
+	}
+	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands}, nil
 }
 
 func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
@@ -121,13 +126,22 @@ func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, invocati
 	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilitySystemMessageSend); err != nil {
 		return nil, err
 	}
-	agentUUID := strings.TrimSpace(invocation.AgentUUID)
-	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
-	message, err := c.messages.SendSystemDirectMessageContext(ctx, agentUUID, principalUUID, content)
+	commandID := agentCapabilitySystemCommandIDV1(invocation, content)
+	message, err := c.commands.SendMessage(ctx, application.AgentMessageCommandV1{
+		CommandID: commandID, Kind: application.AgentMessageCommandSystemMessageV1,
+		Invocation: invocation, Content: content,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("send Agent system message: %w", err)
 	}
 	return message, nil
+}
+
+func agentCapabilitySystemCommandIDV1(invocation application.AgentInvocationV1, content string) string {
+	canonical := strings.TrimSpace(invocation.AgentUUID) + "\n" + strings.TrimSpace(invocation.PrincipalUUID) + "\n" +
+		strings.TrimSpace(invocation.EventID) + "\n" + strings.TrimSpace(content)
+	digest := sha256.Sum256([]byte(canonical))
+	return "system:" + hex.EncodeToString(digest[:])
 }
 
 func authorizeLocalAgentCapabilityV1(invocation application.AgentInvocationV1, capabilityID string) error {

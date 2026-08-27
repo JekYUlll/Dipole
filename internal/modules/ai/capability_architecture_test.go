@@ -25,3 +25,21 @@ func TestAgentRuntimeDependsOnCapabilityPortInsteadOfRepositories(t *testing.T) 
 		}
 	}
 }
+
+func TestAgentReplyDependsOnCommandPortInsteadOfMessageService(t *testing.T) {
+	t.Parallel()
+
+	payload, err := os.ReadFile("service.go")
+	if err != nil {
+		t.Fatalf("read service.go: %v", err)
+	}
+	source := string(payload)
+	if !strings.Contains(source, "application.AgentCommandV1") {
+		t.Fatal("Agent reply does not depend on AgentCommandV1")
+	}
+	for _, forbidden := range []string{"MessageService", "LocalMessageApplication", "SendAssistantTextMessage"} {
+		if strings.Contains(source, forbidden) {
+			t.Errorf("Agent reply reintroduced direct Message dependency %q", forbidden)
+		}
+	}
+}

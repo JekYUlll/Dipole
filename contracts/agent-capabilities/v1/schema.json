@@ -48,6 +48,7 @@
     },
     "request_id": {"type": "string", "readOnly": true},
     "trace_id": {"type": "string", "readOnly": true},
+    "event_id": {"type": "string", "readOnly": true},
     "input": {"type": "object"}
   },
   "additionalProperties": false,

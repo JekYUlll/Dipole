@@ -1230,6 +1230,28 @@ func TestMessageServiceSendAssistantTextMessageSuccess(t *testing.T) {
 	}
 }
 
+func TestMessageServiceAgentCommandsPreserveExplicitClientMessageID(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubMessageRepository{}
+	service := NewMessageService(repo, &stubMessageUserFinder{users: map[string]*model.User{
+		"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+		"U100": {UUID: "U100", Status: model.UserStatusNormal},
+	}}, &stubFriendshipChecker{}, nil, nil, nil, nil)
+
+	reply, err := service.SendAssistantTextMessageContext(context.Background(), "UAI", "U100", "hello", "agent-command-reply")
+	if err != nil {
+		t.Fatalf("send assistant command: %v", err)
+	}
+	system, err := service.SendSystemDirectMessageCommandContext(context.Background(), "UAI", "U100", "notice", "agent-command-system")
+	if err != nil {
+		t.Fatalf("send system command: %v", err)
+	}
+	if reply.ClientMessageID != "agent-command-reply" || system.ClientMessageID != "agent-command-system" {
+		t.Fatalf("explicit command IDs were not preserved: reply=%q system=%q", reply.ClientMessageID, system.ClientMessageID)
+	}
+}
+
 func TestMessageServicePublishesKafkaEventOnDirectMessage(t *testing.T) {
 	t.Parallel()
 

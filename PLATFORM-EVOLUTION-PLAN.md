@@ -306,7 +306,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 删除 Agent ContextBuilder/Tool 对数据库 repository-shaped port 的直接依赖，读取和动作统一进入 `dipole.agent.capability.v1`；本地 adapter 复用 Core、Conversation 与 Message application 边界。
 - [x] 在 Capability API 中补充 `AgentPolicyV1`：tenant、委托身份、细粒度 permission、`read|write|destructive` 风险和 approval 语义，并在 Tool/adapter 双层授权。
 - [ ] 将 permission grant 与 approval 持久化到版本化 Agent Definition 和 AgentTask，支持 scope、过期、撤销及 arguments hash 重校验（`AD-027`）。
-- [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
+- [x] Agent 回复通过版本化 `dipole.agent.command.v1` 进入 Message Service：可信 Invocation 固定 sender/target，稳定 Command ID 映射到 Message 幂等键并保留 correlation；普通回复和系统 Tool 均不直接写消息库。
 - [x] 增加 `ai.runtime_mode=off|embedded|shadow|remote`，兼容旧 `ai.enabled`；shadow 保留 Go 权威写入，remote 停止注册 Embedded consumer，为 Eino 回滚和 TS 切流建立开关。
 
 **验收：** Capability contract test 通过；Embedded 基线可重复评测；Agent 停机不影响传统 IM。

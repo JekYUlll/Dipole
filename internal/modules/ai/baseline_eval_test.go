@@ -139,7 +139,7 @@ func runHandleDirectMessageEval(t *testing.T, evalCase baselineEvalCase) baselin
 
 	mode := evalString(t, evalCase.Input, "mode")
 	logs := &stubCallLogRepository{beginReturn: mode != "duplicate"}
-	fallbackSender := &stubMessageSender{message: &model.Message{UUID: "M-REPLY"}}
+	fallbackCommands := &stubAgentCommands{message: &model.Message{UUID: "M-REPLY"}}
 	toolSender := &stubAgentCapability{sentMessage: &model.Message{UUID: "M-TOOL", MessageType: model.MessageTypeSystem}}
 	agent := &recordingEvalAgent{mode: mode, toolSender: toolSender}
 	service := &Service{
@@ -148,9 +148,9 @@ func runHandleDirectMessageEval(t *testing.T, evalCase baselineEvalCase) baselin
 			EndUser:  &model.User{UUID: evalString(t, evalCase.Input, "sender_uuid")},
 			Messages: []*schema.Message{schema.UserMessage("baseline")},
 		}},
-		logs:   logs,
-		sender: fallbackSender,
-		agent:  agent,
+		logs:     logs,
+		commands: fallbackCommands,
+		agent:    agent,
 	}
 
 	err := service.HandleDirectMessage(context.Background(), &model.Message{
@@ -173,15 +173,15 @@ func runHandleDirectMessageEval(t *testing.T, evalCase baselineEvalCase) baselin
 		return baselineExpected{Outcome: "deduplicated", Trajectory: []string{"trigger.deduplicated"}, Permission: "principal_targeted"}
 	}
 	if mode == "tool" {
-		if fallbackSender.content != "" || toolSender.targetUUID != "U100" {
-			t.Fatalf("tool reply did not suppress fallback or target principal: fallback=%q target=%q", fallbackSender.content, toolSender.targetUUID)
+		if fallbackCommands.command.Content != "" || toolSender.targetUUID != "U100" {
+			t.Fatalf("tool reply did not suppress fallback or target principal: fallback=%q target=%q", fallbackCommands.command.Content, toolSender.targetUUID)
 		}
 		return baselineExpected{
 			Outcome: "succeeded", Trajectory: []string{"trigger.accepted", "agent.reply", "tool.send_system_message", "run.succeeded"},
 			Permission: "model_argument_matches_principal",
 		}
 	}
-	if fallbackSender.targetUUID != evalString(t, evalCase.Input, "sender_uuid") || len(logs.successArgs) == 0 {
+	if fallbackCommands.command.Invocation.PrincipalUUID != evalString(t, evalCase.Input, "sender_uuid") || len(logs.successArgs) == 0 {
 		t.Fatal("plain reply did not target the triggering principal or complete its call log")
 	}
 	return baselineExpected{
