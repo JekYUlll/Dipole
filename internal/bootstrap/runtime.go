@@ -148,6 +148,8 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		HotGroups: platformHotGroup.NewRedisDetector(),
 		Storage:   platformStorage.Client,
 	})
+	conversationProjectionMetrics := platformObservability.NewConversationProjectionCollector()
+	localMessaging.Conversations.SetProjectionWriteObserver(conversationProjectionMetrics.Observe)
 	rpcCfg := config.InternalRPCConfig()
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
@@ -289,7 +291,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber, syncComparisonMetrics)
+	rt.metrics, err = startRuntimeMetrics(
+		config.MetricsConfig(),
+		coreServiceName,
+		platformKafka.Subscriber,
+		syncComparisonMetrics,
+		conversationProjectionMetrics,
+	)
 	if err != nil {
 		rt.Close()
 		return nil, fmt.Errorf("start runtime metrics: %w", err)

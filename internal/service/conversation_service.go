@@ -38,11 +38,12 @@ type ConversationView struct {
 }
 
 type ConversationService struct {
-	repo       conversationRepository
-	userFinder conversationUserFinder
-	groupRepo  conversationGroupRepository
-	notifier   conversationNotifier
-	events     eventPublisher
+	repo         conversationRepository
+	userFinder   conversationUserFinder
+	groupRepo    conversationGroupRepository
+	notifier     conversationNotifier
+	events       eventPublisher
+	observeWrite func(string)
 }
 
 type conversationGroupRepository interface {
@@ -75,6 +76,16 @@ func NewConversationService(repo conversationRepository, userFinder conversation
 	}
 }
 
+func (s *ConversationService) SetProjectionWriteObserver(observer func(string)) {
+	s.observeWrite = observer
+}
+
+func (s *ConversationService) observeProjectionWrite(projection string) {
+	if s.observeWrite != nil {
+		s.observeWrite(projection)
+	}
+}
+
 func (s *ConversationService) WithNotifier(notifier conversationNotifier) *ConversationService {
 	if s != nil {
 		s.notifier = notifier
@@ -90,9 +101,11 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 	if err := s.repo.UpsertDirectMessage(message.SenderUUID, message.TargetUUID, message, 0); err != nil {
 		return fmt.Errorf("upsert sender direct conversation: %w", err)
 	}
+	s.observeProjectionWrite("direct_message")
 	if err := s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1); err != nil {
 		return fmt.Errorf("upsert target direct conversation: %w", err)
 	}
+	s.observeProjectionWrite("direct_message")
 
 	return nil
 }
@@ -106,6 +119,7 @@ func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUI
 		if err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt); err != nil {
 			return fmt.Errorf("init group conversation for user %s: %w", userUUID, err)
 		}
+		s.observeProjectionWrite("group_init")
 	}
 	return nil
 }
@@ -130,6 +144,7 @@ func (s *ConversationService) UpdateGroupConversations(message *model.Message) e
 		if err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement); err != nil {
 			return fmt.Errorf("upsert group conversation for user %s: %w", member.UserUUID, err)
 		}
+		s.observeProjectionWrite("group_message")
 	}
 
 	return nil
