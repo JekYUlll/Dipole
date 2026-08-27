@@ -23,15 +23,15 @@
 - **建议方向：** 建立版本化 Project Guardian corpus 和双评审 agreement，使用真实 adapter 按场景统计 precision/recall、trajectory 差异和成本分位数；报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 
-### AD-037：MCP 网络入口尚缺 OAuth、共享流量治理与写能力门禁
+### AD-037：MCP 网络入口尚缺 OAuth、外部连接与写能力门禁
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Runtime、MCP Client/Server、Gateway/OAuth、Capability Policy、外部数据流
-- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。第一方授权交换要求 session principal 对 canonical resource 和只读 scope 显式 consent，签发 15 分钟且绑定 `aud/scope/token_use` 的 MCP JWT；普通 session 与 MCP token 互相拒绝。Gateway 剥离外部凭据并向 Runtime 证明已验证 principal/resource/scope。单次 Tool invocation 有 100 ms 至 60 秒有界 timeout、cooperative cancellation 和 `tool_timeout` 审计；外部 Client foundation 的 connect/list/call 也使用 request/total timeout，Runtime 传播连接断开信号。migration v30、统一低敏 OTel、默认关闭的 Collector/Tempo profile、共享 Redis principal 限流与真实 trace smoke 已完成。外部 MCP Server、write/destructive Tool 均未启用。
-- **风险：** 第一方交换尚未提供 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和第三方客户端注册，因此还不能声明为通用 MCP OAuth Server；外部 Server 凭据生命周期也未实现。Tempo local backend 只适合单机 Shadow/验收，尚无生产对象存储生命周期、Alertmanager 通知链和长期 trace/audit 联查证据。结构化 egress guard 无法识别被改名、编码或嵌入普通文本的敏感值，外部 Tool 返回内容也可能包含 Prompt Injection。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
-- **建议方向：** 接入真实 OAuth 2.1 Authorization Server 后发布 discovery/PKCE；外部 Server 使用每租户加密凭据和域名/证书 allowlist，结果作为 untrusted Context fragment。生产 trace 使用对象存储与通知链；write Tool 必须绑定现有 Approval 与 Agent lineage。
+- **现状：** 官方 MCP TS SDK v2 Client/Server foundation 与默认关闭的 Gateway/Runtime 网络入口已完成，当前仅投影 `conversation.list`。第一方授权交换要求 session principal 对 canonical resource 和只读 scope 显式 consent，签发 15 分钟且绑定 `aud/scope/token_use` 的 MCP JWT；普通 session 与 MCP token 互相拒绝。Gateway 剥离外部凭据并向 Runtime 证明已验证 principal/resource/scope。单次 Tool invocation 有 100 ms 至 60 秒有界 timeout、cooperative cancellation 和 `tool_timeout` 审计；外部 Client foundation 的 connect/list/call 也使用 request/total timeout，Runtime 传播连接断开信号。migration v30、统一低敏 OTel、默认关闭的 Collector/Tempo profile、共享 Redis principal 限流与真实 trace smoke 已完成。外部连接 Profile v1 现以严格契约绑定 tenant、HTTPS endpoint、Server identity、Tool/Host/Port allowlist、TLS ServerName、CA 与版本化 credential opaque ref，并要求 Transport Factory 每次连接只接受公网 DNS 解析；生产进程缺少该 Factory 时 fail closed。外部 MCP Server、Secret Provider 和 write/destructive Tool 均未启用。
+- **风险：** 第一方交换尚未提供 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和第三方客户端注册，因此还不能声明为通用 MCP OAuth Server；外部 Server 的加密 Secret Provider、按租户 owner 授权、轮换/吊销和逐次 DNS 解析执行器仍未实现。Tempo local backend 只适合单机 Shadow/验收，尚无生产对象存储生命周期、Alertmanager 通知链和长期 trace/audit 联查证据。结构化 egress guard 无法识别被改名、编码或嵌入普通文本的敏感值，外部 Tool 返回内容也可能包含 Prompt Injection。write/destructive Tool 还需要 durable Approval、幂等键和 lineage。
+- **建议方向：** 接入真实 OAuth 2.1 Authorization Server 后发布 discovery/PKCE；实现 credential-aware Transport Factory，在建连时按 tenant 解析 opaque ref、校验版本/吊销状态、DNS 全部地址与 TLS 证书，绝不把 secret 返回 Runtime。外部 Tool 结果作为 untrusted Context fragment。生产 trace 使用对象存储与通知链；write Tool 必须绑定现有 Approval 与 Agent lineage。
 - **处理门槛：** 任何共享环境 MCP 开关启用、外部 Server 连接或 write/destructive Tool 上线前完成。当前网络入口仅用于受控认证和授权边界验证。
 
 ### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP adapter

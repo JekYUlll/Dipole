@@ -29,6 +29,7 @@ import {
   createAgentObservabilityRuntime,
   loadAgentObservabilityConfig
 } from "./observability/agent-observability-runtime.js";
+import { loadExternalMcpConfig } from "./mcp/external-mcp-profile.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
@@ -36,6 +37,10 @@ let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
+const externalMcpConfig = loadExternalMcpConfig(process.env);
+if (externalMcpConfig.enabled) {
+  throw new Error("External MCP requires a credential-aware, public-DNS-only Transport Factory; no production provider is configured");
+}
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";

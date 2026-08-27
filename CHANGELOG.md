@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Agent G4 增加默认关闭的外部 MCP 凭据与网络边界：语言中立 Profile v1 仅允许 tenant、HTTPS endpoint、Server/Tool/Host/Port allowlist、TLS ServerName、CA opaque ref 和版本化 credential opaque ref；拒绝 URL 凭据、query/fragment、IP/localhost/内部域名及附加 secret 字段。租户 Registry 只有在精确 owner 匹配后才调用注入式 Transport Factory，并要求 Factory 每次建连拒绝非公网 DNS 解析；当前生产 Provider 尚未实现，误开 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED` 会直接 fail closed，不产生外部连接。
 - Agent G4 为 MCP 执行补充有界取消/超时：Runtime Tool invocation 默认 5 秒并限制在 100 ms 至 60 秒，超时触发 cooperative `AbortSignal`、持久化稳定 `tool_timeout` 且关闭 OTel span；外部 MCP Client 的 connect/list/call 默认使用 10 秒 request/total timeout并接受调用方取消信号。Gateway 断连经 Runtime Streamable HTTP Request signal 传播，DELETE Session 清理与长流入口不受统一代理超时破坏。配置保持默认关闭路径无行为变化。
 - Agent G4 增加默认关闭的第一方 MCP 授权交换与资源边界：受认证 session 需对唯一 canonical resource 和 `dipole.agent.mcp.read` 显式 consent，才能取得 15 分钟专用 JWT；令牌以 `aud`、`scope`、`token_use` 防止跨资源和 session/MCP 混用。Gateway 验证后剥离客户端凭据，仅向 Runtime 传递可信 principal/resource/scope，Runtime 再构造只读 `AuthInfo`。Compose 支持统一覆盖 canonical URI，发布与回滚见 `docs/agent-mcp-authorization.md`；通用 OAuth 2.1 discovery/PKCE/客户端注册继续由 `AD-037` 跟踪。
 - Agent G4 增加默认关闭的 OpenTelemetry 运维 profile：Collector `0.159.0` 通过 128 MiB memory limiter、有界 batch/queue 和重试向 Tempo `2.10.5` 写入 trace，Tempo local backend 固定 24 小时保留且端口只绑定 localhost；Prometheus 新增 Collector down、export failure 和 refused span 三类低基数告警。配置 gate 验证 Collector 与规则，真实 smoke 生成 Agent span、核对 accepted/sent 指标并按 trace ID 从 Tempo 查询；运维说明补充 Task/Run 审计联查和回滚。生产对象存储与通知链继续由 `AD-037` 跟踪。
@@ -288,6 +289,7 @@
 
 ### 迁移说明
 
+- 外部 MCP Profile foundation 没有数据迁移，Compose 固定 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`。现阶段不要在部署环境开启该变量；Runtime 会在发现启用配置后拒绝启动，直到后续里程碑注入具备加密凭据解析、轮换/吊销、逐次 DNS 地址检查和 TLS 验证的生产 Transport Factory。Profile JSON 禁止保存 Token、密码、私钥或 CA 正文。
 - MCP 限流没有数据迁移。微服务 Gateway 默认配置为 60 次/60 秒；发布后可调整 `DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT` 与 `DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS`。两个值必须为正且 Redis 必须可用，否则认证 MCP GET/POST 返回 429。回滚先关闭 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED`，保留限流配置不会影响其他入口。
 - `BeginMcpToolInvocation` 与 `FinishMcpToolInvocation` 是 Agent Capability v1 的 additive RPC。先执行 migration v30 并滚动 Core，再滚动 Runtime；入口默认关闭，确认 Core 审计可用后再按既有双开关启用。回滚先关闭 Gateway/Runtime MCP 开关并等待 `running` 调用收敛，再回退 Runtime/Core；v30 down 会删除 `agent_tool_invocations` 审计历史，应先完成合规留存判断。
 - `ResolveMcpContext` 是 Agent Capability v1 的 additive RPC。先滚动 Core 与 Runtime，再同时显式设置 `DIPOLE_AGENT_MCP_SERVER_ENABLED=true` 和 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true`；任一开关保持 `false` 时公网链路不可用。回滚先关闭 Gateway 开关，再关闭 Runtime 开关，无数据迁移。共享环境仍需完成 `AD-037` 的 OAuth resource indicator、外部 Server 凭据和 OTel exporter/告警门禁。
