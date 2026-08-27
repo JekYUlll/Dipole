@@ -130,9 +130,9 @@
 - **影响范围：** 普通群 Inbox、Conversation State、热群吞吐
 - **现状：** 普通群同时按成员更新 Conversation State 和 Inbox；热群仅跳过 Inbox，Conversation State 仍逐成员更新。
 - **风险：** 两类投影职责独立，但成员级写入量会叠加，热群链路仍保留 `O(group_size)` 的会话状态写扩散。
-- **基线证据：** 候选提交 `2202f1f` 增加三节点成功 upsert Counter 与 baseline v2。20 人普通/热群分别保持 20 次 Conversation message 写/消息，100 人普通/热群分别保持 100 次；热群 Inbox 写放大均降为 0，普通群则为 20/100。四组均 100% 投递且 Kafka 最终 lag 为 0。100 人普通群 P95 为 10065 ms，热群为 1853 ms；两者 Conversation 放大相同，说明 Inbox/投递策略贡献显著，当前证据仍不能将剩余延迟单独归因于 Conversation SQL。完整证据见 `benchmarks/ad005-2026-08-27/`。
-- **建议方向：** 下一步按 projection 路径记录有界数据库耗时和批次分布，区分 Conversation、Inbox 与实时投递成本；出现可重复的 Conversation 占比后，再评估热群会话摘要读扩散、异步批处理或分层投影。
-- **处理门槛：** 在 100/1000 人固定 workload 下证明 Conversation projection 对数据库写延迟或端到端 P95 的独立贡献，并定义回滚语义后启动行为优化；指标和 v2 基线继续作为回归门禁。
+- **基线证据：** 候选提交 `2202f1f` 的 baseline v2 证明 Conversation 写放大在 20/100 人普通与热群中均为 20x/100x，见 `benchmarks/ad005-2026-08-27/`。提交 `4343684` 的 baseline v3 进一步记录逐节点 Repository timing：group-message 单次平均为 12.43-23.07 ms，P95 桶上界为 25-50 ms，四组零错误；普通与热群的调用分布接近，而 100 人端到端 P95 分别为 8189 ms 与 1346 ms，支持 Inbox/投递路径是模式差异的重要来源。完整原始快照见 `benchmarks/ad005-projection-timing-2026-08-27/`。
+- **建议方向：** 保留现有 Counter/Histogram 作为回归门禁；在 1000 人固定 workload 或候选实现中比较逐成员串行写、批量 upsert、异步分层投影与热群摘要读扩散，单独记录数据库累计时间、锁等待和投影恢复语义。
+- **处理门槛：** 候选优化需在固定 workload 下减少 Conversation 累计写成本或端到端 P95，保持 Seq/read state、投影重放和回滚正确性，并通过普通/热群完整投递对照后才能关闭；当前 v3 证据已完成归因基线，尚未完成行为优化。
 
 ### AD-007：架构 Markdown 当前未纳入版本控制
 

@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 
 
-SCHEMA_VERSION = "dipole.performance.baseline.v2"
+SCHEMA_VERSION = "dipole.performance.baseline.v3"
 OPERATIONS_SCHEMA_VERSIONS = {
     "dipole.performance.operations.v1",
     "dipole.performance.operations.v2",
+    "dipole.performance.operations.v3",
 }
+PROJECTION_NAMES = {"direct_message", "group_message", "group_init"}
 
 
 def _metric_values(summary, name):
@@ -46,20 +48,80 @@ def _nonnegative_int(value, field):
     return value
 
 
-def _conversation_state_section(storage, required):
+def _unavailable_conversation_state():
+    return {
+        "available": False,
+        "rows_touched": None,
+        "messages_observed": None,
+        "write_operations": None,
+        "writes_per_observed_message": None,
+        "projection_writes": None,
+        "counter_source": None,
+        "timing_available": False,
+        "duration_source": None,
+        "timing": None,
+    }
+
+
+def _nonnegative_number(value, field, nullable=False):
+    if value is None and nullable:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        suffix = " or null" if nullable else ""
+        raise ValueError(f"{field} must be a non-negative number{suffix}")
+    return value
+
+
+def _conversation_timing(values, projection_writes):
+    if not isinstance(values, dict) or set(values) != PROJECTION_NAMES:
+        raise ValueError("timing fields do not match operations v3")
+    result = {}
+    expected_fields = {
+        "success_count",
+        "error_count",
+        "success_sum_seconds",
+        "average_success_ms",
+        "p95_success_upper_bound_ms",
+    }
+    for projection in sorted(PROJECTION_NAMES):
+        raw = values[projection]
+        if not isinstance(raw, dict) or set(raw) != expected_fields:
+            raise ValueError(f"timing.{projection} fields do not match operations v3")
+        success_count = _nonnegative_int(raw["success_count"], f"timing.{projection}.success_count")
+        error_count = _nonnegative_int(raw["error_count"], f"timing.{projection}.error_count")
+        success_sum_seconds = _nonnegative_number(
+            raw["success_sum_seconds"], f"timing.{projection}.success_sum_seconds"
+        )
+        average_success_ms = _nonnegative_number(
+            raw["average_success_ms"], f"timing.{projection}.average_success_ms", nullable=True
+        )
+        p95_success_upper_bound_ms = _nonnegative_number(
+            raw["p95_success_upper_bound_ms"],
+            f"timing.{projection}.p95_success_upper_bound_ms",
+            nullable=True,
+        )
+        if success_count != projection_writes[projection]:
+            raise ValueError(f"timing.{projection}.success_count must equal projection writes")
+        if success_count == 0 and (average_success_ms is not None or p95_success_upper_bound_ms is not None):
+            raise ValueError(f"timing.{projection} empty observations must have null latency values")
+        if success_count > 0 and average_success_ms is None:
+            raise ValueError(f"timing.{projection}.average_success_ms is required")
+        result[projection] = {
+            "success_count": success_count,
+            "error_count": error_count,
+            "success_sum_seconds": _rounded(success_sum_seconds, 9),
+            "average_success_ms": _rounded(average_success_ms),
+            "p95_success_upper_bound_ms": _rounded(p95_success_upper_bound_ms),
+        }
+    return result
+
+
+def _conversation_state_section(storage, source_schema_version):
     values = storage.get("conversation_state")
     if not isinstance(values, dict):
-        if required:
-            raise ValueError("operations v2 requires storage.conversation_state")
-        return {
-            "available": False,
-            "rows_touched": None,
-            "messages_observed": None,
-            "write_operations": None,
-            "writes_per_observed_message": None,
-            "projection_writes": None,
-            "counter_source": None,
-        }
+        if source_schema_version != "dipole.performance.operations.v1":
+            raise ValueError("operations v2/v3 requires storage.conversation_state")
+        return _unavailable_conversation_state()
 
     expected_fields = {
         "rows_touched",
@@ -68,24 +130,25 @@ def _conversation_state_section(storage, required):
         "projection_writes",
         "counter_source",
     }
+    if source_schema_version == "dipole.performance.operations.v3":
+        expected_fields |= {"duration_source", "timing"}
     if set(values) != expected_fields:
-        raise ValueError("storage.conversation_state fields do not match operations v2")
+        raise ValueError("storage.conversation_state fields do not match operations schema")
     rows_touched = _nonnegative_int(values["rows_touched"], "rows_touched")
     messages_observed = _nonnegative_int(values["messages_observed"], "messages_observed")
     write_operations = _nonnegative_int(values["write_operations"], "write_operations")
     raw_projection_writes = values["projection_writes"]
-    projection_names = {"direct_message", "group_message", "group_init"}
-    if not isinstance(raw_projection_writes, dict) or set(raw_projection_writes) != projection_names:
-        raise ValueError("projection_writes fields do not match operations v2")
+    if not isinstance(raw_projection_writes, dict) or set(raw_projection_writes) != PROJECTION_NAMES:
+        raise ValueError("projection_writes fields do not match operations schema")
     projection_writes = {
         name: _nonnegative_int(raw_projection_writes[name], f"projection_writes.{name}")
-        for name in sorted(projection_names)
+        for name in sorted(PROJECTION_NAMES)
     }
     if write_operations != projection_writes["direct_message"] + projection_writes["group_message"]:
         raise ValueError("write_operations must equal direct_message plus group_message writes")
     if values["counter_source"] != "dipole_conversation_projection_writes_total":
         raise ValueError("unsupported conversation counter_source")
-    return {
+    result = {
         "available": True,
         "rows_touched": rows_touched,
         "messages_observed": messages_observed,
@@ -95,7 +158,19 @@ def _conversation_state_section(storage, required):
         ),
         "projection_writes": projection_writes,
         "counter_source": values["counter_source"],
+        "timing_available": False,
+        "duration_source": None,
+        "timing": None,
     }
+    if source_schema_version == "dipole.performance.operations.v3":
+        if values["duration_source"] != "dipole_conversation_projection_write_duration_seconds":
+            raise ValueError("unsupported conversation duration_source")
+        result.update({
+            "timing_available": True,
+            "duration_source": values["duration_source"],
+            "timing": _conversation_timing(values["timing"], projection_writes),
+        })
+    return result
 
 
 def build_report(summary, operations):
@@ -159,7 +234,7 @@ def build_report(summary, operations):
             "group": _storage_section(storage, "group"),
             "conversation_state": _conversation_state_section(
                 storage,
-                required=source_schema_version == "dipole.performance.operations.v2",
+                source_schema_version,
             ),
         },
         "kafka": {
@@ -196,6 +271,14 @@ def evaluate_report(report, minimum_delivery_rate=0.9):
         issues.append("Kafka settled lag is unavailable")
     elif settled_lag != 0:
         issues.append(f"Kafka settled lag is {settled_lag}")
+    conversation_state = report["storage"]["conversation_state"]
+    if conversation_state["timing_available"]:
+        for projection in sorted(PROJECTION_NAMES):
+            error_count = conversation_state["timing"][projection]["error_count"]
+            if error_count != 0:
+                issues.append(
+                    f"Conversation projection {projection} observed {error_count} write errors"
+                )
 
     return issues
 
@@ -216,6 +299,21 @@ def render_markdown(report):
     kafka = report["kafka"]
     delivery = report["delivery"]
     workload = report["workload"]
+    timing = conversation_state["timing"]
+    timing_rows = "Timing evidence unavailable for this source schema."
+    if timing is not None:
+        labels = {
+            "direct_message": "Direct message",
+            "group_message": "Group message",
+            "group_init": "Group init",
+        }
+        timing_rows = "\n".join(
+            f"| {labels[projection]} | {timing[projection]['success_count']} | "
+            f"{timing[projection]['error_count']} | "
+            f"{_format_number(timing[projection]['average_success_ms'], ' ms')} | "
+            f"{_format_number(timing[projection]['p95_success_upper_bound_ms'], ' ms')} |"
+            for projection in ("direct_message", "group_message", "group_init")
+        )
 
     return f"""# Dipole Performance Baseline
 
@@ -237,6 +335,8 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | Group size | {parameters.get('group_size', 'N/A')} |
 | Senders | {parameters.get('sender_count', 'N/A')} |
 | Messages per sender | {parameters.get('messages_per_sender', 'N/A')} |
+| Receiver connection window | {parameters.get('receiver_conn_ms', 'N/A')} ms |
+| Sender connection window | {parameters.get('sender_conn_ms', 'N/A')} ms |
 | Hot-group warm-up messages | {parameters.get('hot_group_warmup_messages', 'N/A')} |
 | Hot-group thresholds | members={parameters.get('hot_group_member_count_threshold', 'N/A')}, messages={parameters.get('hot_group_message_threshold', 'N/A')} |
 | Phone namespace | `{parameters.get('phone_prefix', 'N/A')}` |
@@ -287,6 +387,14 @@ Captured at: `{report.get('captured_at') or 'N/A'}`
 | Group-message projection writes | {conversation_state['projection_writes']['group_message'] if conversation_state['projection_writes'] is not None else 'N/A'} |
 | Group-init projection writes | {conversation_state['projection_writes']['group_init'] if conversation_state['projection_writes'] is not None else 'N/A'} |
 | Counter source | `{conversation_state['counter_source'] or 'N/A'}` |
+
+### Projection Repository Timing
+
+| Projection | Successful calls | Errors | Average | P95 bucket upper bound |
+| --- | ---: | ---: | ---: | ---: |
+{timing_rows}
+
+Duration source: `{conversation_state['duration_source'] or 'N/A'}`
 
 ## Kafka Lag
 

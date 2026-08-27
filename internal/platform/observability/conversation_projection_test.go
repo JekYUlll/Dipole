@@ -1,7 +1,9 @@
 package observability
 
 import (
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -10,9 +12,10 @@ func TestConversationProjectionCollectorUsesBoundedProjectionLabels(t *testing.T
 	t.Parallel()
 
 	collector := NewConversationProjectionCollector()
-	collector.Observe("group_message")
-	collector.Observe("group_message")
-	collector.Observe("unknown")
+	collector.Observe("group_message", 15*time.Millisecond, nil)
+	collector.Observe("group_message", 25*time.Millisecond, nil)
+	collector.Observe("direct_message", 5*time.Millisecond, errors.New("write failed"))
+	collector.Observe("unknown", 10*time.Millisecond, nil)
 	registry := prometheus.NewPedanticRegistry()
 	registry.MustRegister(collector)
 
@@ -21,13 +24,19 @@ func TestConversationProjectionCollectorUsesBoundedProjectionLabels(t *testing.T
 		t.Fatalf("gather conversation metrics: %v", err)
 	}
 	writes := map[string]float64{}
+	histogramCounts := map[string]uint64{}
 	for _, family := range families {
-		if family.GetName() != "dipole_conversation_projection_writes_total" {
-			continue
-		}
 		for _, metric := range family.GetMetric() {
-			projection := metric.GetLabel()[0].GetValue()
-			writes[projection] = metric.GetCounter().GetValue()
+			labels := map[string]string{}
+			for _, label := range metric.GetLabel() {
+				labels[label.GetName()] = label.GetValue()
+			}
+			switch family.GetName() {
+			case "dipole_conversation_projection_writes_total":
+				writes[labels["projection"]] = metric.GetCounter().GetValue()
+			case "dipole_conversation_projection_write_duration_seconds":
+				histogramCounts[labels["projection"]+":"+labels["outcome"]] = metric.GetHistogram().GetSampleCount()
+			}
 		}
 	}
 
@@ -36,5 +45,11 @@ func TestConversationProjectionCollectorUsesBoundedProjectionLabels(t *testing.T
 	}
 	if writes["group_message"] != 2 || writes["direct_message"] != 0 || writes["group_init"] != 0 {
 		t.Fatalf("unexpected projection metrics: %v", writes)
+	}
+	if len(histogramCounts) != 6 {
+		t.Fatalf("projection/outcome label count = %d, want 6: %v", len(histogramCounts), histogramCounts)
+	}
+	if histogramCounts["group_message:success"] != 2 || histogramCounts["direct_message:error"] != 1 {
+		t.Fatalf("unexpected projection duration metrics: %v", histogramCounts)
 	}
 }

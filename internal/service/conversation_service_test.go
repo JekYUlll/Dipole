@@ -205,7 +205,7 @@ func TestConversationServiceUpdateDirectConversationsSuccess(t *testing.T) {
 	}
 }
 
-func TestConversationServiceCountsSuccessfulProjectionWrites(t *testing.T) {
+func TestConversationServiceObservesProjectionWriteDurationAndOutcome(t *testing.T) {
 	t.Parallel()
 
 	repo := &stubConversationRepository{}
@@ -214,9 +214,14 @@ func TestConversationServiceCountsSuccessfulProjectionWrites(t *testing.T) {
 		{UserUUID: "U200"},
 	}}
 	conversationService := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
-	writes := map[string]int{}
-	conversationService.SetProjectionWriteObserver(func(projection string) {
-		writes[projection]++
+	type observation struct {
+		projection string
+		duration   time.Duration
+		err        error
+	}
+	observations := make([]observation, 0, 6)
+	conversationService.SetProjectionWriteObserver(func(projection string, duration time.Duration, err error) {
+		observations = append(observations, observation{projection: projection, duration: duration, err: err})
 	})
 
 	direct := &model.Message{SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect}
@@ -231,6 +236,16 @@ func TestConversationServiceCountsSuccessfulProjectionWrites(t *testing.T) {
 		t.Fatalf("update group conversations: %v", err)
 	}
 
+	writes := map[string]int{}
+	for _, observation := range observations {
+		writes[observation.projection]++
+		if observation.duration < 0 {
+			t.Fatalf("projection %s duration = %v, want non-negative", observation.projection, observation.duration)
+		}
+		if observation.err != nil {
+			t.Fatalf("projection %s returned unexpected observed error: %v", observation.projection, observation.err)
+		}
+	}
 	for projection, want := range map[string]int{
 		"direct_message": 2,
 		"group_init":     2,
@@ -239,6 +254,38 @@ func TestConversationServiceCountsSuccessfulProjectionWrites(t *testing.T) {
 		if got := writes[projection]; got != want {
 			t.Fatalf("projection %s writes = %v, want %v (all metrics: %v)", projection, got, want, writes)
 		}
+	}
+}
+
+func TestConversationServiceObservesFailedProjectionWrite(t *testing.T) {
+	t.Parallel()
+
+	wantErr := errors.New("conversation write failed")
+	repo := &stubConversationRepository{upsertErr: wantErr}
+	conversationService := NewConversationService(repo, &stubConversationUserFinder{}, nil, nil, nil)
+	var observedProjection string
+	var observedDuration time.Duration
+	var observedErr error
+	conversationService.SetProjectionWriteObserver(func(projection string, duration time.Duration, err error) {
+		observedProjection = projection
+		observedDuration = duration
+		observedErr = err
+	})
+
+	err := conversationService.UpdateDirectConversations(&model.Message{
+		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("update direct conversations error = %v, want %v", err, wantErr)
+	}
+	if observedProjection != "direct_message" {
+		t.Fatalf("observed projection = %q, want direct_message", observedProjection)
+	}
+	if observedDuration < 0 {
+		t.Fatalf("observed duration = %v, want non-negative", observedDuration)
+	}
+	if !errors.Is(observedErr, wantErr) {
+		t.Fatalf("observed error = %v, want %v", observedErr, wantErr)
 	}
 }
 
