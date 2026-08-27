@@ -155,7 +155,7 @@ void TestProjectedRecordCommitsAfterEvidence() {
     const auto& evidence = sink.entries.front();
     Check(evidence.outcome == dipole::realtime::ShadowOutcome::kProjected &&
               evidence.source_event_id == "E100" && evidence.batch_id == "shadow:E100:1:99" &&
-              evidence.item_count == 2,
+              evidence.message_type == 0 && evidence.item_count == 2,
           "projected evidence contains bounded identifiers and counts");
     Check(evidence.error_code.empty() && evidence.topic == "dipole.message.direct.created" &&
               evidence.partition == 1 && evidence.offset == 99,

@@ -37,7 +37,11 @@ def build_report(baseline, evidence_records, go_revision, cpp_revision, input_ha
     go_revision = _revision(go_revision, "Go")
     cpp_revision = _revision(cpp_revision, "C++")
     workload = _validate_baseline(baseline, go_revision)
-    attempts = _validate_and_group_evidence(evidence_records)
+    observed_attempts = _validate_and_group_evidence(evidence_records)
+    attempts = [
+        group for group in observed_attempts
+        if group[-1]["message_type"] == workload["message_type"]
+    ]
     final_records = [group[-1] for group in attempts]
 
     issues = []
@@ -83,11 +87,14 @@ def build_report(baseline, evidence_records, go_revision, cpp_revision, input_ha
         "run_id": baseline["run_id"],
         "candidates": {"go_revision": go_revision, "cpp_revision": cpp_revision},
         "inputs": input_hashes or {},
+        "workload_filter": {"message_type": workload["message_type"]},
         "go_workload": {
             key: workload[key]
             for key in ("attempted", "accepted", "rejected", "persisted", "received", "expected_receipts")
         },
         "comparison": {
+            "observed_kafka_records": len(observed_attempts),
+            "filtered_out_kafka_records": len(observed_attempts) - unique_count,
             "unique_kafka_records": unique_count,
             "deferred_attempts": deferred_attempts,
             "final_projected": sum(record["outcome"] == "projected" for record in final_records),
@@ -118,6 +125,8 @@ def _validate_baseline(baseline, go_revision):
     for key in ("attempted", "accepted", "rejected", "persisted", "received", "expected_receipts"):
         if not isinstance(workload.get(key), int) or isinstance(workload.get(key), bool) or workload[key] < 0:
             raise ValueError(f"Go workload {key} must be a non-negative integer")
+    if not _non_negative_int(workload.get("message_type")):
+        raise ValueError("Go workload message_type must be a non-negative integer")
     if workload["attempted"] != workload["accepted"] + workload["rejected"]:
         raise ValueError("Go attempted count must equal accepted plus rejected")
     if not isinstance(baseline.get("delivery"), dict) or not isinstance(baseline.get("kafka"), dict):
@@ -154,6 +163,9 @@ def _validate_and_group_evidence(records):
         event_id = record.get("source_event_id")
         if not isinstance(event_id, str) or not event_id.strip():
             raise ValueError(f"C++ source event is required at line {index + 1}")
+        message_type = record.get("message_type")
+        if not _non_negative_int(message_type):
+            raise ValueError(f"C++ evidence message_type must be non-negative at line {index + 1}")
         coordinate = (topic, partition, offset)
         prior_coordinate = event_coordinates.setdefault(event_id, coordinate)
         if prior_coordinate != coordinate:

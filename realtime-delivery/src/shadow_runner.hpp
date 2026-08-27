@@ -39,6 +39,7 @@ struct ShadowEvidence {
   std::int64_t offset = -1;
   std::string source_event_id;
   std::string batch_id;
+  int message_type = -1;
   std::size_t item_count = 0;
   ShadowOutcome outcome = ShadowOutcome::kRejected;
   std::string error_code;

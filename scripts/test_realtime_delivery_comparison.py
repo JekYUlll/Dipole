@@ -23,6 +23,7 @@ def baseline(count=2):
             "persisted": count,
             "received": count,
             "expected_receipts": count,
+            "message_type": 0,
         },
         "delivery": {"rate": 1.0, "http_failure_rate": 0},
         "kafka": {"settled_lag": 0},
@@ -37,6 +38,7 @@ def evidence(event_id, partition, offset, outcome="projected", **overrides):
         "offset": offset,
         "source_event_id": event_id,
         "batch_id": f"shadow:{event_id}:{partition}:{offset}",
+        "message_type": 0,
         "item_count": 1,
         "outcome": outcome,
         "error_code": "" if outcome == "projected" else "node_transport",
@@ -82,6 +84,24 @@ class RealtimeDeliveryComparisonTest(unittest.TestCase):
         self.assertEqual("blocked", report["decision"])
         self.assertIn("Go accepted messages must equal unique C++ Kafka records", report["issues"])
         self.assertIn("every C++ Kafka record must finish projected", report["issues"])
+
+    def test_filters_setup_system_messages_by_baseline_message_type(self):
+        records = [
+            evidence("SYSTEM1", 0, 0, message_type=3, offline_item_count=1,
+                     node_batch_count=0, transport_requested=0, transport_observed=0),
+            evidence("SYSTEM2", 1, 0, message_type=3, offline_item_count=1,
+                     node_batch_count=0, transport_requested=0, transport_observed=0),
+            evidence("E1", 0, 1),
+            evidence("E2", 1, 1),
+        ]
+
+        report = comparison.build_report(baseline(), records, GO_REVISION, CPP_REVISION)
+
+        self.assertEqual("eligible", report["decision"])
+        self.assertEqual({"message_type": 0}, report["workload_filter"])
+        self.assertEqual(4, report["comparison"]["observed_kafka_records"])
+        self.assertEqual(2, report["comparison"]["filtered_out_kafka_records"])
+        self.assertEqual(2, report["comparison"]["unique_kafka_records"])
 
     def test_rejects_revision_and_coordinate_identity_drift(self):
         with self.assertRaisesRegex(ValueError, "Go revision"):

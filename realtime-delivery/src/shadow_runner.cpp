@@ -4,7 +4,22 @@
 #include <unordered_set>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 namespace dipole::realtime {
+namespace {
+
+int ProjectedMessageType(const delivery::v1::DeliveryEnvelope& envelope) {
+  if (envelope.items().empty()) return -1;
+  const auto payload = nlohmann::json::parse(envelope.items(0).payload_json(), nullptr, false);
+  if (payload.is_discarded()) return -1;
+  const auto message_type = payload.find("message_type");
+  return message_type != payload.end() && message_type->is_number_integer()
+             ? message_type->get<int>()
+             : -1;
+}
+
+}  // namespace
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink,
                            int poll_timeout_ms, PresenceReader* presence_reader,
@@ -66,6 +81,7 @@ ValidationError ShadowRunner::RunOnce(
   } else {
     evidence.source_event_id = envelope.source_event_id();
     evidence.batch_id = envelope.batch_id();
+    evidence.message_type = ProjectedMessageType(envelope);
     evidence.item_count = static_cast<std::size_t>(envelope.items_size());
     if (presence_reader_ != nullptr) {
       if (!presence_policy) {

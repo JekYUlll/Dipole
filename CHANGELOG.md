@@ -17,7 +17,7 @@
 
 ### 新增
 
-- C2 增加语言中立的 Go/C++ 同 workload 对照门禁：将 C++ v3 evidence 按 Kafka 坐标折叠 deferred 重试，要求每条记录最终 projected、全部节点请求 observed、最终拒绝/背压为零，并与 Go baseline v4 的接受、持久化、接收和 settled lag 精确匹配。报告绑定双端完整 revision 与输入 SHA-256，只输出低敏计数，结构错误、blocked、eligible 使用独立退出码；canonical C++ gate 持续运行其单测与 schema 检查。
+- C2 增加语言中立的 Go/C++ 同 workload 对照门禁：Go baseline 显式声明低敏 `message_type` selector，C++ v3 evidence 保留全部 Kafka 坐标并按 selector 排除好友初始化等系统事件；报告同时记录 observed、filtered-out 与 workload 计数。选中记录按 Kafka 坐标折叠 deferred 重试，要求最终 projected、全部节点请求 observed、最终拒绝/背压为零，并与 Go baseline v4 的接受、持久化、接收和 settled lag 精确匹配。报告绑定双端完整 revision 与输入 SHA-256，结构错误、blocked、eligible 使用独立退出码；canonical C++ gate 持续运行其单测与 schema 检查。
 - C2 C++ ShadowRunner 在 transport、Presence、evidence 或 commit 失败后保留至多一条未提交 Kafka record，并沿用 Runtime 的有界错误退避在同进程重试；只有 commit 成功才清除 pending record，deferred 尝试不再重复累计 projected 统计。真实 backpressure 和同 workload Go/C++ 对照仍未启用客户端写入。
 - C2 归档首个 C++ node delivery 跨进程 shadow 证据到 `benchmarks/c2-cpp-node-delivery-2026-08-28/`：C++ 经 Kafka 与 Redis Presence 聚合节点批次，使用 `dipole-realtime` mTLS 身份调用默认关闭的 Go Gateway observation receiver；Gateway 故障时 offset 保持未提交，恢复并重启 worker 后重放成功，回拨已提交 offset 命中稳定 batch 去重，最终 lag 为 0，全程客户端写入为 0。证据同时记录当前 deferred record 需要 worker 重启才能重放，以及发布镜像前必须刷新预构建 `dist/` 的边界。
 - C2 增加默认关闭的 C++ node gRPC transport shadow：显式 `node=target` 路由、10 ms 至 30 s deadline、`dipole-realtime` 服务认证、correlation metadata 和可选 mTLS；明文 target 仅允许 loopback。ShadowRunner 顺序升级为 Presence 投影、节点观察、`shadow-evidence.v3`、Kafka commit；部分成功后的重试依靠稳定 batch ID 与 Gateway 去重，RPC 拒绝/背压/故障会写低敏 `deferred` 证据、保留 offset 并撤销 readiness。真实本地 gRPC、runner 顺序、`-Werror`、clang-tidy 与 11 项 CTest 通过，生产 Compose 仍未启用。

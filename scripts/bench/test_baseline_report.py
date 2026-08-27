@@ -39,6 +39,7 @@ class BaselineReportTest(unittest.TestCase):
                 "phone_prefix": "137",
                 "sender_count": 10,
                 "messages_per_sender": 5,
+                "message_type": 0,
                 "receiver_conn_ms": 15000,
                 "sender_conn_ms": 15000,
                 "hot_group_warmup_messages": 0,
@@ -130,6 +131,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertEqual(report["workload"]["acceptance_rate"], 0.96)
         self.assertEqual(report["workload"]["persistence_rate"], 1.0)
         self.assertEqual(report["workload"]["throughput_per_second"], 40)
+        self.assertEqual(report["workload"]["message_type"], 0)
         self.assertEqual(report["delivery"]["rate"], 0.966667)
         self.assertEqual(report["parameters"]["group_size"], 20)
         self.assertEqual(report["parameters"]["receiver_conn_ms"], 15000)

@@ -30,7 +30,7 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
   if (evidence.topic.empty() || evidence.partition < 0 || evidence.offset < 0) {
     return "shadow evidence Kafka coordinates are invalid";
   }
-  const nlohmann::json record = {
+  nlohmann::json record = {
       {"schema_version", "dipole.realtime.shadow-evidence.v3"},
       {"topic", evidence.topic},
       {"partition", evidence.partition},
@@ -38,6 +38,7 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
       {"outcome", OutcomeName(evidence.outcome)},
       {"source_event_id", evidence.source_event_id},
       {"batch_id", evidence.batch_id},
+      {"message_type", nullptr},
       {"item_count", evidence.item_count},
       {"error_code", evidence.error_code},
       {"node_batch_count", evidence.node_batch_count},
@@ -52,6 +53,9 @@ ValidationError JsonLineEvidenceSink::Append(const ShadowEvidence& evidence) {
       {"transport_rejected", evidence.transport_rejected},
       {"transport_backpressured", evidence.transport_backpressured},
   };
+  if (evidence.message_type >= 0) {
+    record["message_type"] = evidence.message_type;
+  }
   *output_ << record.dump() << '\n';
   output_->flush();
   if (!output_->good()) {

@@ -87,11 +87,11 @@ Gateway 已提供默认关闭的 observation receiver。启用时，它在独立
 
 C++ transport 通过 `DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow` 显式启用，并要求 Presence shadow 同时开启。`DIPOLE_REALTIME_NODE_TARGETS` 使用逗号分隔的 `node_id=host:port` 精确映射；共享服务密钥由 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 注入，每次调用传播 batch 中已有 request/trace ID 并使用有界 deadline。明文只允许 loopback；跨容器或跨主机必须配置 CA、Realtime 客户端证书、私钥和 server name 形成 mTLS。
 
-证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，只增加 requested/observed/duplicate/rejected/backpressured 聚合计数。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
+证据格式随 transport 扩展为 `dipole.realtime.shadow-evidence.v3`，增加低敏 `message_type` selector 及 requested/observed/duplicate/rejected/backpressured 聚合计数，不保存正文、收件人或 connection ID。处理顺序固定为 `poll -> project -> Presence -> node observation -> evidence -> commit`。节点 RPC 故障、拒绝或背压会写 `outcome=deferred,error_code=node_transport`，随后保持 offset 未提交并撤销 readiness；部分节点已接纳时，重放沿用稳定 batch ID，由 Gateway receiver 返回 duplicate，避免重复计数。Runner 现在保留至多一条未提交 record，并在现有有界错误退避后于同进程重试，commit 成功后才清除。
 
 真实跨进程证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。该归档绑定的旧候选仍需重启恢复，后续同进程重试修复使用独立提交和门禁。真实 queue saturation/backpressure 与同 workload Go/C++ 对照仍待完成。
 
-`contracts/realtime-delivery-comparison/v1/report.schema.json` 固定同 workload 对照报告。`scripts/realtime_delivery_comparison.py` 将 v3 evidence 按 Kafka topic/partition/offset 折叠，允许 deferred attempt，但要求每个坐标最终 projected、全部请求节点被 observed、最终拒绝/背压为零，并与 Go baseline v4 的 accepted/persisted/received/lag 精确比较。报告只保存双端完整 revision、输入 SHA-256 和聚合计数；结构无效、blocked 和 eligible 分别使用退出码 1、2、0。Harness 单测不能替代真实候选证据。
+`contracts/realtime-delivery-comparison/v1/report.schema.json` 固定同 workload 对照报告。`scripts/realtime_delivery_comparison.py` 先按 Kafka topic/partition/offset 折叠全部 v3 evidence，再使用 Go baseline 声明的 `message_type` 选择工作负载；初始化系统事件继续计入 observed/filtered-out，避免从原始证据中隐去。选中记录允许 deferred attempt，但要求每个坐标最终 projected、全部请求节点被 observed、最终拒绝/背压为零，并与 Go baseline v4 的 accepted/persisted/received/lag 精确比较。报告只保存双端完整 revision、输入 SHA-256 和聚合计数；结构无效、blocked 和 eligible 分别使用退出码 1、2、0。Harness 单测不能替代真实候选证据。
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。
 

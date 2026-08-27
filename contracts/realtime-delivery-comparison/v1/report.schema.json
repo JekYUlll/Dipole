@@ -11,6 +11,7 @@
     "run_id",
     "candidates",
     "inputs",
+    "workload_filter",
     "go_workload",
     "comparison",
     "report_sha256"
@@ -55,10 +56,20 @@
         "expected_receipts": { "$ref": "#/$defs/count" }
       }
     },
+    "workload_filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_type"],
+      "properties": {
+        "message_type": { "$ref": "#/$defs/count" }
+      }
+    },
     "comparison": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "observed_kafka_records",
+        "filtered_out_kafka_records",
         "unique_kafka_records",
         "deferred_attempts",
         "final_projected",
@@ -69,6 +80,8 @@
         "final_transport_backpressured"
       ],
       "properties": {
+        "observed_kafka_records": { "$ref": "#/$defs/count" },
+        "filtered_out_kafka_records": { "$ref": "#/$defs/count" },
         "unique_kafka_records": { "$ref": "#/$defs/count" },
         "deferred_attempts": { "$ref": "#/$defs/count" },
         "final_projected": { "$ref": "#/$defs/count" },
