@@ -301,7 +301,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### G1：固化迁移基线与 Capability API
 
-- [ ] 将现有 Go/Eino Agent 固化为行为基线，建立事件、回复、Tool 轨迹和权限评测集。
+- [x] 将现有 Go/Eino Agent 固化为行为基线，以语言中立 v1 数据集覆盖事件、回复、Tool 轨迹和权限评测。
 - [ ] 删除 Agent 对数据库 repository 的直接依赖，读取和动作统一进入版本化 Capability API。
 - [ ] 引入由认证系统生成的 `ExecutionContext`，模型不能设置 principal、tenant、权限和审计身份。
 - [ ] Agent 回复通过 Message Service Command API 发送，禁止直接写消息库。
