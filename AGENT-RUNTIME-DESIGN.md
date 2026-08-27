@@ -103,7 +103,9 @@ G4 MCP foundation 使用官方拆分版 TypeScript SDK v2。Server 只将显式�
 
 首个网络挂载由两个独立开关控制且默认关闭。Gateway 在 JWT 认证后将 principal、Task、Run 和 correlation 注入私有 Runtime 路由，移除公开凭据与可伪造内部头；Runtime 使用 `ResolveMcpContext` 让 Core 校验精确 Task/Run、固定 Definition、grant、scope 和 approvals，再为 `conversation.list` 创建请求级 MCP Server。Streamable HTTP 的 GET/POST/DELETE、SSE body 与 Session header 透传。
 
-每次 Tool 调用先经 additive Core RPC 写入 migration v30 的 `agent_tool_invocations`，只有 durable begin 成功后才执行 Capability；完成或失败只能从 `running` 转换一次。审计只保存哈希、大小、耗时和稳定错误码，不保存参数、结果或内部异常正文。TS Runtime 同时通过 OpenTelemetry API 创建 ToolCall span；当前不装配 SDK/exporter，部署方启用观测后仍需遵守正文禁入 span 的约束。OAuth resource indicator、外部 Server 凭据、限流、exporter/告警、write Tool 与 Elicitation adapter继续由 `AD-037` 跟踪。
+每次 Tool 调用先经 additive Core RPC 写入 migration v30 的 `agent_tool_invocations`，只有 durable begin 成功后才执行 Capability；完成或失败只能从 `running` 转换一次。审计只保存哈希、大小、耗时和稳定错误码，不保存参数、结果或内部异常正文。TS Runtime 同时通过 OpenTelemetry API 创建 ToolCall span；当前不装配 SDK/exporter，部署方启用观测后仍需遵守正文禁入 span 的约束。
+
+Gateway 在 JWT principal 解析后、Runtime 代理前执行 MCP 专用 Redis 固定窗口限流。GET/POST 使用 `rate:agent_mcp:{principal}`，因此更换 Task、Run、方法或 Gateway 副本不会获得新额度；DELETE 不计数，确保超限后仍能释放 Streamable HTTP Session。该安全限流独立于旧 `rate_limit.enabled` 开关，Redis 不可用、额度或窗口非法时返回 429 并给出 `Retry-After`。OAuth resource indicator、外部 Server 凭据、exporter/告警、write Tool 与 Elicitation adapter 继续由 `AD-037` 跟踪。
 
 ### Agent Task
 

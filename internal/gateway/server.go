@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -24,17 +25,22 @@ import (
 )
 
 type Dependencies struct {
-	Messages   application.MessageApplication
-	Core       application.CoreCapability
-	Search     application.SearchApplication
-	AgentTasks AgentTaskControlApplication
-	AgentMCP   AgentMCPApplication
-	Presence   wsTransport.PresenceTracker
-	Limiter    MessageRateLimiter
+	Messages        application.MessageApplication
+	Core            application.CoreCapability
+	Search          application.SearchApplication
+	AgentTasks      AgentTaskControlApplication
+	AgentMCP        AgentMCPApplication
+	Presence        wsTransport.PresenceTracker
+	Limiter         MessageRateLimiter
+	AgentMCPLimiter AgentMCPRateLimiter
 }
 
 type MessageRateLimiter interface {
 	AllowMessageSend(userUUID string) (bool, time.Duration)
+}
+
+type AgentMCPRateLimiter interface {
+	AllowAgentMCP(principalUUID string) (bool, time.Duration)
 }
 
 type Server struct {
@@ -86,7 +92,11 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	}
 	if dependencies.AgentMCP != nil {
 		auth := middleware.Auth(tokenService, userFinder)
-		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP))
+		agentMCPLimiter := dependencies.AgentMCPLimiter
+		if agentMCPLimiter == nil {
+			agentMCPLimiter = platformRateLimit.NewLimiter()
+		}
+		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP, agentMCPLimiter))
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
@@ -100,7 +110,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	return &Server{engine: engine, wsHub: hub}, nil
 }
 
-func agentMCPHandler(proxy AgentMCPApplication) gin.HandlerFunc {
+func agentMCPHandler(proxy AgentMCPApplication, limiter AgentMCPRateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodPost && c.Request.Method != http.MethodDelete {
 			c.Status(http.StatusMethodNotAllowed)
@@ -110,6 +120,18 @@ func agentMCPHandler(proxy AgentMCPApplication) gin.HandlerFunc {
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
 			return
+		}
+		if c.Request.Method != http.MethodDelete {
+			allowed, retryAfter := limiter.AllowAgentMCP(user.UUID)
+			if !allowed {
+				seconds := int((retryAfter + time.Second - 1) / time.Second)
+				if seconds < 1 {
+					seconds = 1
+				}
+				c.Header("Retry-After", fmt.Sprintf("%d", seconds))
+				c.JSON(http.StatusTooManyRequests, gin.H{"code": http.StatusTooManyRequests, "message": "Agent MCP rate limit exceeded"})
+				return
+			}
 		}
 		proxy.ServeMCP(c.Writer, c.Request, user.UUID, c.Param("task_id"), c.Param("run_id"))
 	}

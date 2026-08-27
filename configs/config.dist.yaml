@@ -223,6 +223,9 @@ rate_limit:
   message_window_seconds: 60
   file_upload_limit: 10
   file_upload_window_seconds: 300
+  # Applied independently from the legacy enabled switch whenever the MCP route is mounted.
+  agent_mcp_limit: 60
+  agent_mcp_window_seconds: 60
 
 presence:
   enabled: true
