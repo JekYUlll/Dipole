@@ -1242,6 +1242,40 @@ export interface RuntimePromotionGrantResponse {
     revokedAtUnixMs: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.GetRuntimePromotionEvidenceRequest
+ */
+export interface GetRuntimePromotionEvidenceRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string proposal_id = 3
+     */
+    proposalId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RuntimePromotionEvidenceResponse
+ */
+export interface RuntimePromotionEvidenceResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.RuntimePromotionProposalResponse proposal = 1
+     */
+    proposal?: RuntimePromotionProposalResponse;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentArtifact artifact = 2
+     */
+    artifact?: AgentArtifact;
+    /**
+     * @generated from protobuf field: bytes content = 3
+     */
+    content: Uint8Array;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.CreateArtifactRequest
  */
 export interface CreateArtifactRequest {
@@ -5247,6 +5281,129 @@ class RuntimePromotionGrantResponse$Type extends MessageType<RuntimePromotionGra
  */
 export const RuntimePromotionGrantResponse = new RuntimePromotionGrantResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class GetRuntimePromotionEvidenceRequest$Type extends MessageType<GetRuntimePromotionEvidenceRequest> {
+    constructor() {
+        super("dipole.agent.v1.GetRuntimePromotionEvidenceRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GetRuntimePromotionEvidenceRequest>): GetRuntimePromotionEvidenceRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.proposalId = "";
+        if (value !== undefined)
+            reflectionMergePartial<GetRuntimePromotionEvidenceRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GetRuntimePromotionEvidenceRequest): GetRuntimePromotionEvidenceRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string proposal_id */ 3:
+                    message.proposalId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GetRuntimePromotionEvidenceRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string proposal_id = 3; */
+        if (message.proposalId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.proposalId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.GetRuntimePromotionEvidenceRequest
+ */
+export const GetRuntimePromotionEvidenceRequest = new GetRuntimePromotionEvidenceRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RuntimePromotionEvidenceResponse$Type extends MessageType<RuntimePromotionEvidenceResponse> {
+    constructor() {
+        super("dipole.agent.v1.RuntimePromotionEvidenceResponse", [
+            { no: 1, name: "proposal", kind: "message", T: () => RuntimePromotionProposalResponse },
+            { no: 2, name: "artifact", kind: "message", T: () => AgentArtifact },
+            { no: 3, name: "content", kind: "scalar", T: 12 /*ScalarType.BYTES*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RuntimePromotionEvidenceResponse>): RuntimePromotionEvidenceResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.content = new Uint8Array(0);
+        if (value !== undefined)
+            reflectionMergePartial<RuntimePromotionEvidenceResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RuntimePromotionEvidenceResponse): RuntimePromotionEvidenceResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.RuntimePromotionProposalResponse proposal */ 1:
+                    message.proposal = RuntimePromotionProposalResponse.internalBinaryRead(reader, reader.uint32(), options, message.proposal);
+                    break;
+                case /* dipole.agent.v1.AgentArtifact artifact */ 2:
+                    message.artifact = AgentArtifact.internalBinaryRead(reader, reader.uint32(), options, message.artifact);
+                    break;
+                case /* bytes content */ 3:
+                    message.content = reader.bytes();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RuntimePromotionEvidenceResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.RuntimePromotionProposalResponse proposal = 1; */
+        if (message.proposal)
+            RuntimePromotionProposalResponse.internalBinaryWrite(message.proposal, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* dipole.agent.v1.AgentArtifact artifact = 2; */
+        if (message.artifact)
+            AgentArtifact.internalBinaryWrite(message.artifact, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* bytes content = 3; */
+        if (message.content.length)
+            writer.tag(3, WireType.LengthDelimited).bytes(message.content);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RuntimePromotionEvidenceResponse
+ */
+export const RuntimePromotionEvidenceResponse = new RuntimePromotionEvidenceResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class CreateArtifactRequest$Type extends MessageType<CreateArtifactRequest> {
     constructor() {
         super("dipole.agent.v1.CreateArtifactRequest", [
@@ -6222,6 +6379,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ProposeRuntimePromotion", options: {}, I: ProposeRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
     { name: "ReviewRuntimePromotion", options: {}, I: ReviewRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
     { name: "GetRuntimePromotion", options: {}, I: GetRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
+    { name: "GetRuntimePromotionEvidence", options: {}, I: GetRuntimePromotionEvidenceRequest, O: RuntimePromotionEvidenceResponse },
     { name: "RevokeRuntimePromotion", options: {}, I: RevokeRuntimePromotionRequest, O: RuntimePromotionGrantResponse },
     { name: "CreateArtifact", options: {}, I: CreateArtifactRequest, O: CreateArtifactResponse },
     { name: "GetArtifact", options: {}, I: GetArtifactRequest, O: GetArtifactResponse }

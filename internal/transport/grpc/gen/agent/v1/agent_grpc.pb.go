@@ -42,6 +42,7 @@ const (
 	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
 	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
 	AgentCapabilityService_GetRuntimePromotion_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
+	AgentCapabilityService_GetRuntimePromotionEvidence_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotionEvidence"
 	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
 	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
 	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
@@ -74,6 +75,7 @@ type AgentCapabilityServiceClient interface {
 	ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(ctx context.Context, in *ReviewRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(ctx context.Context, in *GetRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
+	GetRuntimePromotionEvidence(ctx context.Context, in *GetRuntimePromotionEvidenceRequest, opts ...grpc.CallOption) (*RuntimePromotionEvidenceResponse, error)
 	RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
@@ -317,6 +319,16 @@ func (c *agentCapabilityServiceClient) GetRuntimePromotion(ctx context.Context, 
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) GetRuntimePromotionEvidence(ctx context.Context, in *GetRuntimePromotionEvidenceRequest, opts ...grpc.CallOption) (*RuntimePromotionEvidenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimePromotionEvidenceResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_GetRuntimePromotionEvidence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimePromotionGrantResponse)
@@ -374,6 +386,7 @@ type AgentCapabilityServiceServer interface {
 	ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(context.Context, *ReviewRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
+	GetRuntimePromotionEvidence(context.Context, *GetRuntimePromotionEvidenceRequest) (*RuntimePromotionEvidenceResponse, error)
 	RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
 	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
@@ -455,6 +468,9 @@ func (UnimplementedAgentCapabilityServiceServer) ReviewRuntimePromotion(context.
 }
 func (UnimplementedAgentCapabilityServiceServer) GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRuntimePromotion not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) GetRuntimePromotionEvidence(context.Context, *GetRuntimePromotionEvidenceRequest) (*RuntimePromotionEvidenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRuntimePromotionEvidence not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeRuntimePromotion not implemented")
@@ -901,6 +917,24 @@ func _AgentCapabilityService_GetRuntimePromotion_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_GetRuntimePromotionEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRuntimePromotionEvidenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).GetRuntimePromotionEvidence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_GetRuntimePromotionEvidence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).GetRuntimePromotionEvidence(ctx, req.(*GetRuntimePromotionEvidenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_RevokeRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RevokeRuntimePromotionRequest)
 	if err := dec(in); err != nil {
@@ -1053,6 +1087,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRuntimePromotion",
 			Handler:    _AgentCapabilityService_GetRuntimePromotion_Handler,
+		},
+		{
+			MethodName: "GetRuntimePromotionEvidence",
+			Handler:    _AgentCapabilityService_GetRuntimePromotionEvidence_Handler,
 		},
 		{
 			MethodName: "RevokeRuntimePromotion",

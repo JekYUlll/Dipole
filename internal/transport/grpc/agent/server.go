@@ -27,11 +27,20 @@ type Server struct {
 	projections       application.AgentTaskWorkflowProjectionServiceV1
 	repairs           application.AgentWorkflowRepairAuditServiceV1
 	promotionControls application.AgentRuntimePromotionControlServiceV1
+	promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1
 	artifacts         application.AgentArtifactServiceV1
 	subscriptions     application.AgentEventSubscriptionResolverV1
 	memories          application.AgentMemoryContextResolverV1
 	toolAudits        application.AgentToolInvocationAuditServiceV1
 	messageCommands   application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithPromotionEvidence(evidence application.AgentRuntimePromotionEvidenceReviewServiceV1) (*Server, error) {
+	if s == nil || evidence == nil {
+		return nil, errors.New("Agent Runtime promotion evidence review service is required")
+	}
+	s.promotionEvidence = evidence
+	return s, nil
 }
 
 func (s *Server) WithPromotionControls(controls application.AgentRuntimePromotionControlServiceV1) (*Server, error) {
@@ -378,6 +387,23 @@ func (s *Server) GetRuntimePromotion(ctx context.Context, request *agentv1.GetRu
 		return nil, runtimePromotionControlErrorV1(err)
 	}
 	return runtimePromotionProposalResponseV1(proposal), nil
+}
+
+func (s *Server) GetRuntimePromotionEvidence(ctx context.Context, request *agentv1.GetRuntimePromotionEvidenceRequest) (*agentv1.RuntimePromotionEvidenceResponse, error) {
+	principal, err := runtimePromotionOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.promotionEvidence == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Runtime promotion evidence review is unavailable")
+	}
+	review, err := s.promotionEvidence.Get(grpccommon.Correlation(ctx, request.GetContext()), principal, request.GetTenantId(), request.GetProposalId())
+	if err != nil {
+		return nil, runtimePromotionControlErrorV1(err)
+	}
+	return &agentv1.RuntimePromotionEvidenceResponse{
+		Proposal: runtimePromotionProposalResponseV1(review.Proposal), Artifact: agentArtifactResponseV1(review.Artifact), Content: review.Content,
+	}, nil
 }
 
 func (s *Server) RevokeRuntimePromotion(ctx context.Context, request *agentv1.RevokeRuntimePromotionRequest) (*agentv1.RuntimePromotionGrantResponse, error) {

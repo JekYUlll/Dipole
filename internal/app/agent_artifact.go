@@ -191,6 +191,22 @@ func (s *PersistentAgentArtifactServiceV1) GetForPrincipal(ctx context.Context, 
 	return artifact, body, nil
 }
 
+func (s *PersistentAgentArtifactServiceV1) ReadPromotionEvidence(ctx context.Context, artifactUUID, expectedSHA256 string) (*application.AgentArtifactV1, []byte, error) {
+	artifact, err := s.artifacts.GetAgentArtifact(ctx, strings.TrimSpace(artifactUUID))
+	if err != nil {
+		return nil, nil, err
+	}
+	if artifact == nil || artifact.ArtifactType != "promotion_evaluation" || artifact.Version != 1 ||
+		artifact.MediaType != "application/json" || artifact.ContentSHA256 != strings.ToLower(strings.TrimSpace(expectedSHA256)) {
+		return nil, nil, fmt.Errorf("%w: promotion evidence Artifact is unavailable", application.ErrAgentRuntimePromotionControlConflict)
+	}
+	body, err := s.readVerifiedBody(ctx, artifact)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%w: promotion evidence body conflicts", application.ErrAgentRuntimePromotionControlConflict)
+	}
+	return artifact, body, nil
+}
+
 func (s *PersistentAgentArtifactServiceV1) verifyStoredBody(ctx context.Context, artifact *application.AgentArtifactV1, expected []byte) error {
 	body, err := s.readVerifiedBody(ctx, artifact)
 	if err != nil {

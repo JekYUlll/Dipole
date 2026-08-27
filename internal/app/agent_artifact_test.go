@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -72,7 +73,8 @@ func TestPersistentAgentArtifactCreateAllowsCompletedPromotionEvaluationOnly(t *
 		Content:  []byte(`{"schemaVersion":"dipole.agent.promotion-evaluation.v1","runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definition":{"id":"DEF-1","version":7},"evidence":{"schemaVersion":"dipole.agent.shadow-promotion-evidence.v2","candidateVersion":"agent-runtime@abc1234","offlineEvalReport":{"suiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","passed":true}},"decision":{"schemaVersion":"dipole.agent.shadow-promotion-decision.v2","candidateVersion":"agent-runtime@abc1234","decision":"eligible","offlineEvalSuiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}}`),
 		Metadata: json.RawMessage(`{"runtimeId":"dipole-agent","candidateVersion":"agent-runtime@abc1234","definitionId":"DEF-1","definitionVersion":7,"evalSuiteSHA256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}`),
 	}
-	service, _ := NewPersistentAgentArtifactServiceV1(policies, newAgentArtifactStoreStubV1(), &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}})
+	blobs := &agentArtifactBlobStoreStubV1{bucket: "bucket", bodies: map[string][]byte{}}
+	service, _ := NewPersistentAgentArtifactServiceV1(policies, newAgentArtifactStoreStubV1(), blobs)
 	first, err := service.Create(context.Background(), valid)
 	if err != nil {
 		t.Fatalf("publish completed promotion evaluation: %v", err)
@@ -80,6 +82,13 @@ func TestPersistentAgentArtifactCreateAllowsCompletedPromotionEvaluationOnly(t *
 	replayed, err := service.Create(context.Background(), valid)
 	if err != nil || replayed.ArtifactUUID != first.ArtifactUUID {
 		t.Fatalf("replay completed promotion evaluation: artifact=%+v err=%v", replayed, err)
+	}
+	reviewArtifact, reviewBody, err := service.ReadPromotionEvidence(context.Background(), first.ArtifactUUID, first.ContentSHA256)
+	if err != nil || reviewArtifact.ArtifactUUID != first.ArtifactUUID || !bytes.Equal(reviewBody, valid.Content) {
+		t.Fatalf("read promotion evidence: artifact=%+v body=%q err=%v", reviewArtifact, reviewBody, err)
+	}
+	if _, _, err := service.ReadPromotionEvidence(context.Background(), first.ArtifactUUID, strings.Repeat("f", 64)); !errors.Is(err, application.ErrAgentRuntimePromotionControlConflict) {
+		t.Fatalf("read promotion evidence with drifted hash: %v", err)
 	}
 
 	invalid := []application.AgentArtifactCreateV1{

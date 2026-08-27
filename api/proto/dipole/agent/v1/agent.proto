@@ -390,6 +390,18 @@ message RuntimePromotionGrantResponse {
   int64 revoked_at_unix_ms = 14;
 }
 
+message GetRuntimePromotionEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string proposal_id = 3;
+}
+
+message RuntimePromotionEvidenceResponse {
+  RuntimePromotionProposalResponse proposal = 1;
+  AgentArtifact artifact = 2;
+  bytes content = 3;
+}
+
 message CreateArtifactRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -511,6 +523,7 @@ service AgentCapabilityService {
   rpc ProposeRuntimePromotion(ProposeRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc ReviewRuntimePromotion(ReviewRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc GetRuntimePromotion(GetRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc GetRuntimePromotionEvidence(GetRuntimePromotionEvidenceRequest) returns (RuntimePromotionEvidenceResponse);
   rpc RevokeRuntimePromotion(RevokeRuntimePromotionRequest) returns (RuntimePromotionGrantResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
