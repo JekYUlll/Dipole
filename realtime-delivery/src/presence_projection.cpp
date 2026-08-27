@@ -101,20 +101,18 @@ ValidationError ProjectPresence(const delivery::v1::DeliveryEnvelope& envelope,
     return "presence projection time and ttl must be positive";
   }
 
-  std::map<std::string, NodeDeliveryBatch> by_node;
-  std::unordered_set<std::string> observed_connection_ids;
-  for (const auto& source_item : envelope.items()) {
-    const auto found = presence.find(source_item.recipient_user_id());
-    if (found == presence.end() || found->second.empty()) {
-      ++stats->offline_items;
-      continue;
-    }
+  std::unordered_set<std::string> recipients;
+  for (const auto& item : envelope.items()) recipients.insert(item.recipient_user_id());
 
-    std::map<std::string, std::vector<std::string>> eligible_by_node;
+  PresenceByUser eligible_presence;
+  std::unordered_set<std::string> observed_connection_ids;
+  for (const auto& recipient : recipients) {
+    const auto found = presence.find(recipient);
+    if (found == presence.end()) continue;
     for (const auto& connection : found->second) {
       ++stats->observed_connections;
       if (connection.connection_id.empty() || connection.node_id.empty() ||
-          connection.user_id != source_item.recipient_user_id()) {
+          connection.user_id != recipient) {
         return "presence connection identity is incomplete or mismatched";
       }
       if (!observed_connection_ids.insert(connection.connection_id).second) {
@@ -127,12 +125,20 @@ ValidationError ProjectPresence(const delivery::v1::DeliveryEnvelope& envelope,
       }
 
       ++stats->eligible_connections;
-      eligible_by_node[connection.node_id].push_back(connection.connection_id);
+      eligible_presence[recipient].push_back(connection);
     }
+  }
 
-    if (eligible_by_node.empty()) {
+  std::map<std::string, NodeDeliveryBatch> by_node;
+  for (const auto& source_item : envelope.items()) {
+    const auto found = eligible_presence.find(source_item.recipient_user_id());
+    if (found == eligible_presence.end() || found->second.empty()) {
       ++stats->offline_items;
       continue;
+    }
+    std::map<std::string, std::vector<std::string>> eligible_by_node;
+    for (const auto& connection : found->second) {
+      eligible_by_node[connection.node_id].push_back(connection.connection_id);
     }
     for (auto& [node_id, connection_ids] : eligible_by_node) {
       auto [iterator, inserted] = by_node.try_emplace(node_id);

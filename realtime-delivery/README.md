@@ -2,7 +2,7 @@
 
 This directory contains the C++ realtime data-plane candidate. It generates C++ types from the canonical `dipole.delivery.v1` Protobuf schema, validates the same golden vectors as Go, and provides a deterministic Kafka-record-to-Delivery projection for message-created events.
 
-The executable supports `contract_only` and an explicit `shadow` command. Shadow consumes Kafka into a low-sensitivity NDJSON evidence file and never queries Redis, routes to Gateway nodes, or writes clients. It remains absent from production Compose.
+The executable supports `contract_only` and an explicit `shadow` command. Shadow consumes Kafka into a low-sensitivity NDJSON evidence file and can query Redis Presence when explicitly enabled. It computes node batches without routing to Gateway nodes or writing clients and remains absent from production Compose.
 
 ```bash
 ./scripts/check-cpp-realtime.sh
@@ -18,6 +18,8 @@ DIPOLE_REALTIME_HOST=127.0.0.1 DIPOLE_REALTIME_PORT=8092 \
 DIPOLE_REALTIME_KAFKA_BROKERS=127.0.0.1:9094 \
 DIPOLE_REALTIME_KAFKA_GROUP_ID=dipole-realtime-shadow-local-v1 \
 DIPOLE_REALTIME_EVIDENCE_FILE=/tmp/dipole-shadow.ndjson \
+DIPOLE_REALTIME_PRESENCE_MODE=shadow \
+DIPOLE_REALTIME_REDIS_ENDPOINT=127.0.0.1:6379 \
   dipole-realtime-delivery shadow api/proto/dipole/delivery/v1/testdata
 ```
 

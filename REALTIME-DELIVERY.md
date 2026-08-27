@@ -73,6 +73,10 @@ Presence 路由先落为纯投影：输入已解析的用户连接快照与明�
 
 hiredis adapter 只执行 Presence `HGETALL`，支持 direct 与 Sentinel master discovery、Redis/Sentinel 密码、DB 选择和批量 pipeline。网络、协议或认证失败会关闭连接，使下一轮重新发现 master；坏 Hash 记录按计数隔离。当前 adapter 已通过真实单节点 Redis fixture，尚未注入 Kafka runner，Sentinel 切主演练仍待完成。
 
+`DIPOLE_REALTIME_PRESENCE_MODE=shadow` 会将 reader 注入 Kafka runner；direct 使用 `DIPOLE_REALTIME_REDIS_ENDPOINT`，Sentinel 使用 `DIPOLE_REALTIME_REDIS_SENTINELS` 与 `DIPOLE_REALTIME_REDIS_MASTER_NAME`。证据格式升级为 `dipole.realtime.shadow-evidence.v2`，只增加节点批次数和 Presence 聚合计数。Redis 读取失败不写 evidence、不提交 offset并撤销 readiness；可读取但身份/所有权冲突记录固定 `invalid_presence` 后允许独立 shadow group 前进。
+
+首轮 Kafka+Redis 联合回放消费 206 条 retained 记录：205 projected、1 个既有 poison rejected；隔离 fixture 在 20 条消息中产生 20 个节点批次、20 eligible 与 20 stale，malformed 为 0，最终 group lag 为 0。fixture 与进程已清理。
+
 ## Offset 与重试边界
 
 现有 Go consumer 在 handler 成功返回后提交 Kafka offset，但 Redis `PUBLISH` 和本地 `Client.Enqueue` 没有持久 ACK。v1 legacy adapter 只将当前返回值映射为 `ENQUEUED/OFFLINE`，不改变该语义。

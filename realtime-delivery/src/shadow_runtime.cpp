@@ -48,6 +48,17 @@ bool ParseBoundedInt(const std::string& raw, int minimum, int maximum, int* outp
   }
 }
 
+ValidationError ParseEndpoints(const std::string& raw, std::vector<RedisEndpoint>* endpoints) {
+  endpoints->clear();
+  if (raw.empty()) return std::nullopt;
+  for (const auto& value : Split(raw)) {
+    RedisEndpoint endpoint;
+    if (auto error = ParseRedisEndpoint(value, &endpoint)) return error;
+    endpoints->push_back(std::move(endpoint));
+  }
+  return std::nullopt;
+}
+
 }  // namespace
 
 ValidationError ValidateShadowRuntimeConfig(const ShadowRuntimeConfig& config) {
@@ -64,7 +75,14 @@ ValidationError ValidateShadowRuntimeConfig(const ShadowRuntimeConfig& config) {
       config.error_backoff_ms < 10 || config.error_backoff_ms > 30000) {
     return "shadow runtime timing is out of range";
   }
-  return ValidateLibrdkafkaConsumerConfig(config.kafka);
+  if (auto error = ValidateLibrdkafkaConsumerConfig(config.kafka)) return error;
+  if (config.presence_shadow) {
+    if (config.presence_ttl_ms < 1000 || config.presence_ttl_ms > 3'600'000) {
+      return "shadow Presence ttl is out of range";
+    }
+    return ValidateHiredisPresenceConfig(config.presence);
+  }
+  return std::nullopt;
 }
 
 ValidationError LoadShadowRuntimeConfig(ShadowRuntimeConfig* config) {
@@ -94,6 +112,37 @@ ValidationError LoadShadowRuntimeConfig(ShadowRuntimeConfig* config) {
     return "DIPOLE_REALTIME_TIMELINE_NOTIFY_MODE must be off or shadow";
   }
   config->timeline_notify_shadow = timeline_mode == "shadow";
+  const auto presence_mode = Environment("DIPOLE_REALTIME_PRESENCE_MODE", "off");
+  if (presence_mode != "off" && presence_mode != "shadow") {
+    return "DIPOLE_REALTIME_PRESENCE_MODE must be off or shadow";
+  }
+  config->presence_shadow = presence_mode == "shadow";
+  if (config->presence_shadow) {
+    const auto direct = Environment("DIPOLE_REALTIME_REDIS_ENDPOINT");
+    if (!direct.empty()) {
+      if (auto error = ParseRedisEndpoint(direct, &config->presence.direct)) return error;
+    }
+    if (auto error = ParseEndpoints(Environment("DIPOLE_REALTIME_REDIS_SENTINELS"),
+                                    &config->presence.sentinels)) {
+      return error;
+    }
+    config->presence.sentinel_master_name = Environment("DIPOLE_REALTIME_REDIS_MASTER_NAME");
+    config->presence.password = Environment("DIPOLE_REALTIME_REDIS_PASSWORD");
+    config->presence.sentinel_password = Environment("DIPOLE_REALTIME_REDIS_SENTINEL_PASSWORD");
+    int db = 0;
+    int timeout_ms = 0;
+    int ttl_seconds = 0;
+    if (!ParseBoundedInt(Environment("DIPOLE_REALTIME_REDIS_DB", "0"), 0, 15, &db) ||
+        !ParseBoundedInt(Environment("DIPOLE_REALTIME_REDIS_TIMEOUT_MS", "500"), 10, 5000,
+                         &timeout_ms) ||
+        !ParseBoundedInt(Environment("DIPOLE_REALTIME_PRESENCE_TTL_SECONDS", "120"), 1, 3600,
+                         &ttl_seconds)) {
+      return "shadow Presence Redis environment is invalid";
+    }
+    config->presence.db = db;
+    config->presence.timeout_ms = timeout_ms;
+    config->presence_ttl_ms = static_cast<std::int64_t>(ttl_seconds) * 1000;
+  }
   return ValidateShadowRuntimeConfig(*config);
 }
 
@@ -113,12 +162,23 @@ int RunShadow(const ShadowRuntimeConfig& config, volatile std::sig_atomic_t& run
     return 1;
   }
   JsonLineEvidenceSink sink(&evidence);
-  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms);
+  std::unique_ptr<HiredisPresenceReader> presence_reader;
+  if (config.presence_shadow) {
+    presence_reader = std::make_unique<HiredisPresenceReader>(config.presence);
+  }
+  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, presence_reader.get());
   const ProjectionPolicy policy{.timeline_notify_shadow = config.timeline_notify_shadow};
 
   std::thread worker([&]() {
     while (running != 0) {
-      if (const auto error = runner.RunOnce(policy); error) {
+      std::optional<PresenceProjectionPolicy> presence_policy;
+      if (config.presence_shadow) {
+        const auto now = std::chrono::system_clock::now().time_since_epoch();
+        presence_policy = {.now_unix_ms =
+                               std::chrono::duration_cast<std::chrono::milliseconds>(now).count(),
+                           .ttl_ms = config.presence_ttl_ms};
+      }
+      if (const auto error = runner.RunOnce(policy, presence_policy); error) {
         std::cerr << *error << '\n';
         std::this_thread::sleep_for(std::chrono::milliseconds(config.error_backoff_ms));
       }

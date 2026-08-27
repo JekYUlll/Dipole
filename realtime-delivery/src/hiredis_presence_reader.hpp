@@ -26,22 +26,18 @@ struct HiredisPresenceConfig {
   int timeout_ms = 500;
 };
 
-struct PresenceReadResult {
-  PresenceByUser by_user;
-  PresenceHashParseStats parse_stats;
-};
-
 ValidationError ParseRedisEndpoint(const std::string& value, RedisEndpoint* endpoint);
 ValidationError ValidateHiredisPresenceConfig(const HiredisPresenceConfig& config);
 
-class HiredisPresenceReader {
+class HiredisPresenceReader final : public PresenceReader {
  public:
   explicit HiredisPresenceReader(HiredisPresenceConfig config);
   ~HiredisPresenceReader();
   HiredisPresenceReader(const HiredisPresenceReader&) = delete;
   HiredisPresenceReader& operator=(const HiredisPresenceReader&) = delete;
 
-  ValidationError ReadUsers(const std::vector<std::string>& user_ids, PresenceReadResult* result);
+  ValidationError ReadUsers(const std::vector<std::string>& user_ids,
+                            PresenceReadResult* result) override;
 
  private:
   ValidationError EnsureConnected();

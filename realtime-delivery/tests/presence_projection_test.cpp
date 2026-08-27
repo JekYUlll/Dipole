@@ -45,6 +45,9 @@ int Expect(bool condition, const std::string& message) {
 
 int TestGroupsEligibleConnectionsDeterministically() {
   auto envelope = Envelope();
+  auto* timeline = envelope.add_items();
+  timeline->CopyFrom(envelope.items(0));
+  timeline->set_delivery_id("delivery-u1-timeline");
   std::unordered_map<std::string, std::vector<PresenceConnection>> presence{
       {"U1",
        {
@@ -65,7 +68,7 @@ int TestGroupsEligibleConnectionsDeterministically() {
   int failures = 0;
   failures += Expect(batches.size() == 2, "expected two node batches");
   failures += Expect(batches[0].target_node_id() == "node-a", "expected stable node ordering");
-  failures += Expect(batches[0].items_size() == 1 && batches[0].items(0).connection_ids_size() == 1 &&
+  failures += Expect(batches[0].items_size() == 2 && batches[0].items(0).connection_ids_size() == 1 &&
                          batches[0].items(0).connection_ids(0) == "C1",
                      "expected only the live node-a connection");
   failures += Expect(batches[1].target_node_id() == "node-b", "expected node-b second");

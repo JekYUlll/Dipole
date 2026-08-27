@@ -38,6 +38,18 @@ struct PresenceHashParseStats {
   std::size_t malformed_records = 0;
 };
 
+struct PresenceReadResult {
+  PresenceByUser by_user;
+  PresenceHashParseStats parse_stats;
+};
+
+class PresenceReader {
+ public:
+  virtual ~PresenceReader() = default;
+  virtual ValidationError ReadUsers(const std::vector<std::string>& user_ids,
+                                    PresenceReadResult* result) = 0;
+};
+
 ValidationError ParsePresenceHash(
     const std::string& user_id,
     const std::vector<std::pair<std::string, std::string>>& fields,
