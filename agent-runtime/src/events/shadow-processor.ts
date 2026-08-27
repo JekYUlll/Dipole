@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
+import type { EventLedger } from "./event-ledger.js";
 
 const policyVersion = "dipole.agent.policy.persistence.v1";
 
@@ -20,6 +21,8 @@ export interface AgentIdentity {
   readonly tenantId: string;
   readonly principalUuid: string;
   readonly agentUuid: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
 }
 
 export interface ShadowPlan {
@@ -50,9 +53,7 @@ export function agentTaskId(input: { tenantId: string; agentUuid: string; trigge
 }
 
 export class ShadowEventProcessor {
-  readonly #processed = new Set<string>();
-
-  constructor(private readonly planner: ShadowPlanner, private readonly audit: ShadowAuditSink) {}
+  constructor(private readonly planner: ShadowPlanner, private readonly audit: ShadowAuditSink, private readonly ledger: EventLedger) {}
 
   async process(rawEvent: unknown, identity: AgentIdentity): Promise<ShadowProcessResult> {
     const event = agentEventSchema.parse(rawEvent);
@@ -62,24 +63,31 @@ export class ShadowEventProcessor {
       triggerType: event.eventType,
       triggerRef: event.aggregateId
     });
-    if (this.#processed.has(event.eventId)) {
+    const claim = await this.ledger.claim(event.eventId, taskId);
+    if (claim === undefined) {
       return { outcome: "duplicate", taskId };
     }
-
-    const context = executionContextSchema.parse({
-      tenantId: identity.tenantId,
-      principalUuid: identity.principalUuid,
-      agentUuid: identity.agentUuid,
-      taskId,
-      mode: "shadow",
-      permissions: ["conversation.read"],
-      resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
-      approvedCapabilities: [],
-      eventId: event.eventId
-    });
-    const plan = await this.planner.plan(event, context);
-    await this.audit.append({ eventId: event.eventId, taskId, eventType: event.eventType, plan });
-    this.#processed.add(event.eventId);
-    return { outcome: "recorded", taskId };
+    try {
+      const context = executionContextSchema.parse({
+        tenantId: identity.tenantId,
+        principalUuid: identity.principalUuid,
+        agentUuid: identity.agentUuid,
+        taskId,
+        mode: "shadow",
+        permissions: ["conversation.read"],
+        resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
+        approvedCapabilities: [],
+        eventId: event.eventId,
+        ...(identity.requestId === undefined ? {} : { requestId: identity.requestId }),
+        ...(identity.traceId === undefined ? {} : { traceId: identity.traceId })
+      });
+      const plan = await this.planner.plan(event, context);
+      await this.audit.append({ eventId: event.eventId, taskId, eventType: event.eventType, plan });
+      await this.ledger.complete(claim);
+      return { outcome: "recorded", taskId };
+    } catch (error) {
+      await this.ledger.release(claim);
+      throw error;
+    }
   }
 }

@@ -73,6 +73,35 @@ services:
       timeout: 3s
       retries: 20
 
+  agent:
+    build:
+      context: ./agent-runtime
+      dockerfile: Dockerfile
+    image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      DIPOLE_AGENT_HOST: 0.0.0.0
+      DIPOLE_AGENT_PORT: "8091"
+      DIPOLE_AGENT_KAFKA_ENABLED: "true"
+      DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092
+      DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent
+      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-v1
+      DIPOLE_AGENT_KAFKA_TOPIC: message.direct.created
+      DIPOLE_AGENT_TENANT_ID: dipole
+      DIPOLE_AGENT_UUID: UAI000000000000000001
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8091/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { InMemoryEventLedger } from "./event-ledger.js";
 import { ShadowEventProcessor, agentTaskId, type AgentEvent } from "./shadow-processor.js";
 
 describe("ShadowEventProcessor", () => {
@@ -11,7 +12,7 @@ describe("ShadowEventProcessor", () => {
 
     const plan = vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({ summary: "read only plan", capabilityIds: ["conversation.read"] }));
     const append = vi.fn(async () => undefined);
-    const processor = new ShadowEventProcessor({ plan }, { append });
+    const processor = new ShadowEventProcessor({ plan }, { append }, new InMemoryEventLedger());
     const event = {
       eventId: "E1",
       eventType: "message.direct.created",
@@ -26,5 +27,22 @@ describe("ShadowEventProcessor", () => {
     expect(plan).toHaveBeenCalledTimes(1);
     expect(plan.mock.calls[0]?.[1].mode).toBe("shadow");
     expect(append).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases its claim when planning fails so Kafka retry can resume", async () => {
+    const ledger = new InMemoryEventLedger();
+    const plan = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary model failure"))
+      .mockResolvedValueOnce({ summary: "retry", capabilityIds: [] });
+    const processor = new ShadowEventProcessor({ plan }, { append: async () => undefined }, ledger);
+    const event = {
+      eventId: "E-RETRY", eventType: "message.direct.created", aggregateId: "M-RETRY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { sender_uuid: "U100" }
+    };
+    const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" };
+
+    await expect(processor.process(event, identity)).rejects.toThrow("temporary model failure");
+    await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "recorded" });
+    expect(plan).toHaveBeenCalledTimes(2);
   });
 });
