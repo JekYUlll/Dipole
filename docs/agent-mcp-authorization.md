@@ -52,4 +52,4 @@ Content-Type: application/json
 
 ## 后续门槛
 
-面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。外部 MCP Server 凭据、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。外部 MCP Server 的 Profile/凭据边界见 `docs/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
