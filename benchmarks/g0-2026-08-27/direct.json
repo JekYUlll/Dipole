@@ -1,0 +1,68 @@
+{
+  "schema_version": "dipole.performance.baseline.v1",
+  "run_id": "g0-direct-20260827-final",
+  "scenario": "direct_msg",
+  "captured_at": "20260827T013828Z",
+  "environment": {
+    "git_commit": "ec979d4e237ccf7d0158bf8ce01c96e896118a93",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "topology": "docker-compose.dist.yml"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench.js",
+    "user_count": 20,
+    "group_size": 2,
+    "phone_prefix": "176",
+    "sender_count": 10,
+    "messages_per_sender": 5,
+    "hot_group_warmup_messages": 0,
+    "hot_group_member_count_threshold": null,
+    "hot_group_message_threshold": null
+  },
+  "workload": {
+    "attempted": 50,
+    "accepted": 50,
+    "rejected": 0,
+    "persisted": 50,
+    "received": 50,
+    "expected_receipts": 50,
+    "acceptance_rate": 1.0,
+    "persistence_rate": 1.0,
+    "throughput_per_second": 3.192699
+  },
+  "delivery": {
+    "rate": 1.0,
+    "http_failure_rate": 0
+  },
+  "latency_ms": {
+    "average": 242.64,
+    "p50": 252,
+    "p95": 352.65,
+    "p99": 374.85,
+    "maximum": 392
+  },
+  "storage": {
+    "direct": {
+      "messages": 50,
+      "inbox_rows": 100,
+      "inbox_write_amplification": 2.0
+    },
+    "group": {
+      "messages": 0,
+      "inbox_rows": 0,
+      "inbox_write_amplification": null
+    }
+  },
+  "kafka": {
+    "samples": [
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    "peak_lag": 8,
+    "settled_lag": 0
+  }
+}

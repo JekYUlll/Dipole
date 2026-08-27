@@ -10,6 +10,8 @@ dist/
 configs/config.yaml
 docs/*.md
 scripts/bench/results
+__pycache__/
+*.py[cod]
 
 # Binaries for programs and plugins
 *.exe

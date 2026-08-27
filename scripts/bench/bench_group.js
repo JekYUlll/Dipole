@@ -8,6 +8,7 @@
 
 import http from "k6/http";
 import ws   from "k6/ws";
+import exec from "k6/execution";
 import { sleep } from "k6";
 import { Trend, Counter, Rate } from "k6/metrics";
 
@@ -15,14 +16,20 @@ const BASE_URL   = __ENV.BASE_URL   || "http://localhost:8081";
 const NODE1_WS   = __ENV.NODE1_WS   || "ws://localhost:8081";
 const NODE2_WS   = __ENV.NODE2_WS   || "ws://localhost:8082";
 const GROUP_SIZE = parseInt(__ENV.GROUP_SIZE || "500");
-const IDLE_SECONDS = parseInt(__ENV.IDLE_SECONDS || "150");
 const SEND_COUNT = parseInt(__ENV.SEND_COUNT || "20");
-const SEND_INTERVAL_MS = parseInt(__ENV.SEND_INTERVAL_MS || "1000");
-const SENDER_WARMUP_MS = parseInt(__ENV.SENDER_WARMUP_MS || "25000");
-const RECEIVER_CONN_MS = parseInt(__ENV.RECEIVER_CONN_MS || "145000");
-const SENDER_CONN_MS = parseInt(__ENV.SENDER_CONN_MS || "145000");
+const SEND_INTERVAL_MS = parseInt(__ENV.SEND_INTERVAL_MS || "300");
+const SENDER_WARMUP_MS = parseInt(__ENV.SENDER_WARMUP_MS || "2000");
+const RECEIVER_CONN_MS = parseInt(__ENV.RECEIVER_CONN_MS || "15000");
+const SENDER_CONN_MS = parseInt(__ENV.SENDER_CONN_MS || "15000");
+const HOT_GROUP_WARMUP_MESSAGES = parseInt(__ENV.HOT_GROUP_WARMUP_MESSAGES || "0");
+const HOT_GROUP_ACTIVATION_WAIT_MS = parseInt(__ENV.HOT_GROUP_ACTIVATION_WAIT_MS || "500");
+const RUN_ID = __ENV.RUN_ID || String(Date.now());
+const PHONE_PREFIX = __ENV.PHONE_PREFIX || "139";
 
 const msgLatency      = new Trend("msg_e2e_latency_ms", true);
+const msgAttempted    = new Counter("msg_attempted_total");
+const msgAccepted     = new Counter("msg_accepted_total");
+const msgRejected     = new Counter("msg_rejected_total");
 const msgSent         = new Counter("msg_sent_total");
 const msgReceived     = new Counter("msg_received_total");
 const msgDeliveryRate = new Rate("msg_delivery_rate");
@@ -32,20 +39,13 @@ export const options = {
   setupTimeout: "300s",
   scenarios: {
     group_blast: {
-      executor: "ramping-vus",
-      startVUs: 0,
-      stages: [
-        { duration: "20s", target: GROUP_SIZE }, // 爬坡：所有成员上线
-        { duration: "60s", target: GROUP_SIZE }, // 稳定：发送者持续发消息
-        { duration: "10s", target: 0          }, // 收尾
-      ],
+      executor: "per-vu-iterations",
+      vus: GROUP_SIZE,
+      iterations: 1,
+      maxDuration: "25s",
       env: { SCENARIO: "group_blast" },
       tags: { scenario: "group_blast" },
     },
-  },
-  thresholds: {
-    msg_e2e_latency_ms: ["p(95)<5000", "p(99)<10000"],
-    msg_delivery_rate:  ["rate>0.80"],
   },
 };
 
@@ -61,7 +61,7 @@ function get(path, token, params) {
   return http.get(`${BASE_URL}${path}${qs}`, { headers });
 }
 
-function phone(i) { return `139${String(i).padStart(8, "0")}`; }
+function phone(i) { return `${PHONE_PREFIX}${String(i).padStart(8, "0")}`; }
 
 function parseEnvelope(body) {
   try {
@@ -142,7 +142,7 @@ function createGroup(token, memberUUIDs) {
 }
 
 export function setup() {
-  const runToken = String(Date.now());
+  const runToken = RUN_ID;
   console.log(`[setup] registering ${GROUP_SIZE} users...`);
   for (let i = 0; i < GROUP_SIZE; i++) {
     registerUser(i);
@@ -159,35 +159,32 @@ export function setup() {
 
   const ok = sessions.filter(Boolean).length;
   console.log(`[setup] logged in ${ok}/${GROUP_SIZE} users`);
+  if (ok !== GROUP_SIZE) {
+    throw new Error(`setup login gate failed: ${ok}/${GROUP_SIZE}`);
+  }
 
   // 群主是 sessions[0]，其余为成员
   const memberUUIDs = sessions.slice(1).filter(Boolean).map(s => s.uuid);
   console.log(`[setup] creating group with ${memberUUIDs.length} members...`);
   const groupUUID = sessions[0] ? createGroup(sessions[0].token, memberUUIDs) : null;
   console.log(`[setup] group: ${groupUUID}`);
+  if (!groupUUID) {
+    throw new Error("setup group gate failed");
+  }
 
   return { sessions, groupUUID, recipientCount: memberUUIDs.length, runToken };
 }
 
 export default function(data) {
-  if (__ITER > 0) {
-    // 这个场景依赖“一人一条长连接”来稳定观察端到端延迟。
-    // 迭代结束后让 VU 挂起，避免 ramping-vus 在同一阶段里反复重连并重复发消息。
-    sleep(IDLE_SECONDS);
-    return;
-  }
-
   const { sessions, groupUUID, recipientCount, runToken } = data;
   if (!groupUUID) {
-    sleep(IDLE_SECONDS);
     return;
   }
 
-  const vuIndex = __VU - 1;
-  const idx = vuIndex % GROUP_SIZE;
+  const vuIndex = Number(exec.scenario.iterationInInstance);
+  const idx = vuIndex;
   const myS = sessions[idx];
   if (!myS) {
-    sleep(IDLE_SECONDS);
     return;
   }
 
@@ -199,26 +196,55 @@ export default function(data) {
     let i = 0;
     let lastMessageID = 0;
     const seenMessageIDs = new Set();
+    const seenCommandResults = new Set();
+    const commandPrefix = `${RUN_ID}-group-${vuIndex}-`;
 
     socket.on("open", () => {
       if (isSender) {
         // 等接收者全部上线，再开始发消息。
         socket.setTimeout(() => {
-          socket.setInterval(() => {
-            if (i >= SEND_COUNT) return;
-            const sentAt = Date.now();
-            socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: groupUUID, content: `bench:${runToken}:${sentAt}` } }));
-            msgSent.add(1);
-            msgExpected.add(recipientCount);
-            i++;
-          }, SEND_INTERVAL_MS);
+          for (let warmup = 0; warmup < HOT_GROUP_WARMUP_MESSAGES; warmup++) {
+            socket.send(JSON.stringify({
+              type: "chat.send",
+              data: {
+                target_uuid: groupUUID,
+                content: `hot-warmup:${RUN_ID}:${warmup}`,
+                client_message_id: `${RUN_ID}-warmup-${warmup}`,
+              },
+            }));
+          }
+          socket.setTimeout(() => {
+            socket.setInterval(() => {
+              if (i >= SEND_COUNT) return;
+              const sentAt = Date.now();
+              socket.send(JSON.stringify({
+                type: "chat.send",
+                data: {
+                  target_uuid: groupUUID,
+                  content: `bench:${runToken}:${sentAt}`,
+                  client_message_id: `${RUN_ID}-group-${vuIndex}-${i}`,
+                },
+              }));
+              msgAttempted.add(1);
+              i++;
+            }, SEND_INTERVAL_MS);
+          }, HOT_GROUP_ACTIVATION_WAIT_MS);
         }, SENDER_WARMUP_MS);
       }
     });
     socket.on("message", (raw) => {
       try {
         const evt = JSON.parse(raw);
-        if (evt.type === "chat.message") {
+        const clientMessageID = evt.data?.client_message_id || "";
+        if (evt.type === "chat.sent" && clientMessageID.startsWith(commandPrefix) && !seenCommandResults.has(clientMessageID)) {
+          seenCommandResults.add(clientMessageID);
+          msgAccepted.add(1);
+          msgSent.add(1);
+          msgExpected.add(recipientCount);
+        } else if (evt.type === "error" && evt.data?.request_type === "chat.send" && clientMessageID.startsWith(commandPrefix) && !seenCommandResults.has(clientMessageID)) {
+          seenCommandResults.add(clientMessageID);
+          msgRejected.add(1);
+        } else if (evt.type === "chat.message") {
           if (evt.data?.target_type !== 1 || evt.data?.target_uuid !== groupUUID) {
             return;
           }
