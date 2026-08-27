@@ -12,3 +12,14 @@
 `known_gap` 表示当前 baseline 中已知且有债务编号的安全差距。缺口关闭时修改 case 预期和 adapter，同时保留攻击输入作为回归，不能静默删除用例。
 
 `projection-reconcile.json` 固化 Temporal Workflow 与 Core/sqlc 投影的六类离线对账结果。该数据集覆盖一致、缺失、落后、超前、同 revision 状态冲突和 Temporal 不可用；报告 schema 固定为 `dipole.agent.projection-reconcile.v1`，任何非 `match` 结果均禁止作为 active 晋级证据。
+
+## 五类离线评测
+
+`offline-suite.json` 是 deterministic synthetic foundation，输入和输出遵循 `offline-suite.schema.json` 与 `offline-report.schema.json`。每个 Suite 必须同时包含 outcome、trajectory、permission、retrieval 和 cost，case ID 在 Suite 内唯一；Runtime 对规范化 Suite 计算 SHA-256，并且报告只保留稳定 ID、失败原因和数值指标，不回显消息或模型正文。
+
+```bash
+cd agent-runtime
+npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
+```
+
+退出码 `0` 表示全部 case 通过，`2` 表示有效 Suite 存在评测失败，`1` 表示参数或契约无效。当前 fixture 用于验证 Harness 语义，真实 Shadow Task adapter、人工标注 corpus 和检索相关性基线由 `AD-038` 跟踪。

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 
-import { agentShadowPromotionPolicy, evaluateAgentShadowPromotion, type AgentShadowPromotionEvidence } from "./agent-shadow-promotion-policy.js";
+import { evaluateOfflineEvalSuite, parseOfflineEvalSuite } from "../evals/offline-evaluator.js";
+import {
+  agentShadowPromotionPolicy, agentShadowPromotionPolicyV2, evaluateAgentShadowPromotion,
+  evaluateAgentShadowPromotionV2, parseAgentShadowPromotionEvidenceV2, type AgentShadowPromotionEvidence,
+  type AgentShadowPromotionEvidenceV2
+} from "./agent-shadow-promotion-policy.js";
 
 describe("Agent shadow promotion policy", () => {
   it("matches the versioned language-neutral policy", async () => {
@@ -16,6 +21,47 @@ describe("Agent shadow promotion policy", () => {
       required_projection_eval_cases: agentShadowPromotionPolicy.requiredProjectionEvalCases,
       required_agent_evals: [...agentShadowPromotionPolicy.requiredAgentEvals]
     });
+  });
+
+  it("matches promotion v2 and requires a candidate-bound five-category report", async () => {
+    const policyPath = new URL("../../../contracts/agent-promotion/v2/policy.json", import.meta.url);
+    const suitePath = new URL("../../../contracts/agent-evals/v1/offline-suite.json", import.meta.url);
+    const policy = JSON.parse(await readFile(policyPath, "utf8"));
+    const suite = parseOfflineEvalSuite(await readFile(suitePath, "utf8"));
+    suite.candidateVersion = "agent-runtime@abc1234";
+    const evidence = cleanEvidenceV2(evaluateOfflineEvalSuite(suite));
+
+    expect(policy).toEqual({
+      schema_version: agentShadowPromotionPolicyV2.schemaVersion,
+      minimum_window_hours: agentShadowPromotionPolicyV2.minimumWindowHours,
+      minimum_observations: agentShadowPromotionPolicyV2.minimumObservations,
+      maximum_observation_gap_minutes: agentShadowPromotionPolicyV2.maximumObservationGapMinutes,
+      minimum_scanned_tasks: agentShadowPromotionPolicyV2.minimumScannedTasks,
+      required_projection_eval_cases: agentShadowPromotionPolicyV2.requiredProjectionEvalCases,
+      required_agent_evals: [...agentShadowPromotionPolicyV2.requiredAgentEvals]
+    });
+    expect(evaluateAgentShadowPromotionV2(parseAgentShadowPromotionEvidenceV2(evidence))).toMatchObject({
+      schemaVersion: "dipole.agent.shadow-promotion-decision.v2",
+      decision: "eligible",
+      offlineEvalSuiteSha256: evidence.offlineEvalReport.suiteSha256
+    });
+
+    evidence.offlineEvalReport.candidateVersion = "agent-runtime@other";
+    expect(() => evaluateAgentShadowPromotionV2(evidence)).toThrow(/candidate version/);
+  });
+
+  it("blocks promotion v2 when any offline category fails", async () => {
+    const suitePath = new URL("../../../contracts/agent-evals/v1/offline-suite.json", import.meta.url);
+    const suite = parseOfflineEvalSuite(await readFile(suitePath, "utf8"));
+    suite.candidateVersion = "agent-runtime@abc1234";
+    const cost = suite.cases.find(item => item.category === "cost");
+    if (cost === undefined) throw new Error("cost fixture missing");
+    cost.observed.totalTokens = 5000;
+
+    const decision = evaluateAgentShadowPromotionV2(cleanEvidenceV2(evaluateOfflineEvalSuite(suite)));
+
+    expect(decision.decision).toBe("blocked");
+    expect(decision.reasons).toEqual(["cost_eval_failed", "offline_eval_failed"]);
   });
   it("requires a continuous 24-hour clean window and complete Agent Evals", () => {
     const evidence = cleanEvidence();
@@ -79,5 +125,18 @@ function cleanEvidence(): AgentShadowPromotionEvidence {
       }
     })),
     evals: { projectionPassed: 6, projectionTotal: 6, outcome: true, trajectory: true, permission: true }
+  };
+}
+
+function cleanEvidenceV2(offlineEvalReport: AgentShadowPromotionEvidenceV2["offlineEvalReport"]): AgentShadowPromotionEvidenceV2 {
+  const legacy = cleanEvidence();
+  return {
+    schemaVersion: "dipole.agent.shadow-promotion-evidence.v2",
+    candidateVersion: legacy.candidateVersion,
+    windowStartedAt: legacy.windowStartedAt,
+    windowEndedAt: legacy.windowEndedAt,
+    observations: legacy.observations,
+    projectionEvals: { passed: 6, total: 6 },
+    offlineEvalReport
   };
 }

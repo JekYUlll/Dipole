@@ -1,16 +1,35 @@
 import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
-import { evaluateAgentShadowPromotion, parseAgentShadowPromotionEvidence } from "./agent-shadow-promotion-policy.js";
+import {
+  evaluateAgentShadowPromotion, evaluateAgentShadowPromotionV2,
+  parseAgentShadowPromotionEvidence, parseAgentShadowPromotionEvidenceV2
+} from "./agent-shadow-promotion-policy.js";
 
-const evidencePath = requiredArgument("--evidence");
-const evidence = parseAgentShadowPromotionEvidence(JSON.parse(await readFile(evidencePath, "utf8")));
-const decision = evaluateAgentShadowPromotion(evidence);
-process.stdout.write(`${JSON.stringify(decision, null, 2)}\n`);
-if (decision.decision !== "eligible") process.exitCode = 2;
+interface Writable {
+  write(value: string): unknown;
+}
 
-function requiredArgument(name: string): string {
-  const prefix = `${name}=`;
-  const value = process.argv.slice(2).find((argument) => argument.startsWith(prefix))?.slice(prefix.length).trim();
-  if (!value) throw new Error(`${name} is required`);
-  return value;
+export async function runPromotionCheckCLI(args: string[], stdout: Writable, stderr: Writable): Promise<number> {
+  const evidenceArgs = args.filter(argument => argument.startsWith("--evidence="));
+  if (args.length !== 1 || evidenceArgs.length !== 1 || evidenceArgs[0]!.slice("--evidence=".length).trim() === "") {
+    stderr.write("promotion check requires exactly one --evidence=<path> argument\n");
+    return 1;
+  }
+
+  try {
+    const value = JSON.parse(await readFile(evidenceArgs[0]!.slice("--evidence=".length), "utf8")) as { schemaVersion?: unknown };
+    const decision = value.schemaVersion === "dipole.agent.shadow-promotion-evidence.v2"
+      ? evaluateAgentShadowPromotionV2(parseAgentShadowPromotionEvidenceV2(value))
+      : evaluateAgentShadowPromotion(parseAgentShadowPromotionEvidence(value));
+    stdout.write(`${JSON.stringify(decision, null, 2)}\n`);
+    return decision.decision === "eligible" ? 0 : 2;
+  } catch (error) {
+    stderr.write(`promotion evidence is invalid: ${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+}
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exitCode = await runPromotionCheckCLI(process.argv.slice(2), process.stdout, process.stderr);
 }

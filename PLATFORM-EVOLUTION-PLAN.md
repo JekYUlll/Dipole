@@ -356,7 +356,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] migration v30、sqlc Store 与 additive Core RPC 建立 MCP ToolCall 持久审计；TS 执行器在 durable begin 后执行，并创建不含正文的原生 OTel span，失败与超限结果 fail closed。
   - [x] Gateway 增加独立于旧总开关的 Redis principal 限流：GET/POST 跨 Task/Run/实例共享额度，Redis 故障 fail closed，DELETE 保留 Session 清理能力。
   - [ ] 完成 OAuth resource indicator、外部 Server 凭据、OTel SDK/exporter/告警、write Tool Approval 和 Elicitation adapter（`AD-037`）。
-- [ ] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
+- [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
+  - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。
+  - [ ] 将真实 Shadow Task 转换为评测 observation，扩充人工标注 corpus、retrieval relevance 与候选成本阈值后归档生产证据（`AD-038`）。
 - [ ] 通过 OpenTelemetry 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
   - [x] ToolCall 已使用 `@opentelemetry/api` 建立原生 span 与低敏属性；SDK/exporter 和其余 span 继续保持待办。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
