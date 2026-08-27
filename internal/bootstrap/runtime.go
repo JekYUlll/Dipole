@@ -235,10 +235,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, syncComparisonMetrics)
+	rt.metrics, err = startRuntimeMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber, syncComparisonMetrics)
 	if err != nil {
 		rt.Close()
 		return nil, fmt.Errorf("start runtime metrics: %w", err)
+	}
+	if rt.metrics != nil {
+		markRuntimeReady(rt.metrics)
 	}
 
 	return rt, nil

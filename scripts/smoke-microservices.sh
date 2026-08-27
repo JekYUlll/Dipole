@@ -45,4 +45,10 @@ core_ws_status="$(compose exec -T core sh -c \
   | head -n 1)"
 [[ "${core_ws_status}" == "404" ]]
 
-echo "Microservices smoke passed: gateway health, Core proxy, mTLS startup, remote WS ownership"
+for service in core message sync gateway; do
+  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx 'alive'
+  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx 'ready'
+  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/metrics | grep -q 'dipole_service_ready{service="dipole-'
+done
+
+echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership"

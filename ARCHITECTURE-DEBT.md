@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-026：Readiness 尚未持续感知运行期依赖退化
+
+- **优先级：** P2
+- **状态：** 暂缓
+- **发现日期：** 2026-08-27
+- **影响范围：** Core、Gateway、Message、Sync、Search、Search Indexer、Cassandra Projector 的流量摘除与故障诊断
+- **现状：** 所有长运行时通过统一 metrics listener 暴露 `/livez`、`/readyz`、`dipole_service_info` 和 `dipole_service_ready`；初始化完成后切为 ready，关闭前切为 not-ready。Docker Compose 使用 `/readyz`，Prometheus 对必需服务提供 instance-down 与 prolonged-not-ready 告警。
+- **风险：** 当前 readiness 表达进程生命周期和启动期依赖校验。MySQL、Kafka、Redis、Cassandra 或 Elasticsearch 在运行中退化时，服务可能仍保持 ready，直到实际请求失败或专项指标触发告警。
+- **建议方向：** 为每个服务定义带超时、缓存和失败阈值的关键依赖探针；只将会阻止该服务正确处理请求的依赖纳入 readiness，Kafka backlog、可回退存储和非关键能力继续由指标告警表达，避免瞬时抖动造成级联摘流。
+- **处理门槛：** 完成依赖重要性矩阵、故障注入和防抖测试，并证明单依赖失败不会引发无关服务级联重启后，再启用动态 readiness。
+
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
 - **优先级：** P1

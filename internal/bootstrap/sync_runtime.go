@@ -148,9 +148,9 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		}
 	}
 	if runtime.shadowHydrator != nil {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, subscriber, runtime.shadowHydrator)
+		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, runtime.shadowHydrator)
 	} else {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, subscriber)
+		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber)
 	}
 	if err != nil {
 		runtime.Close()
@@ -160,6 +160,9 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync rpc server: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration))
 	return runtime, nil

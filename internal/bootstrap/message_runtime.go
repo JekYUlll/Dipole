@@ -158,7 +158,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), platformKafka.Subscriber, runtime.readRouter, runtime.duplicateHydration)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), messageServiceName, platformKafka.Subscriber, runtime.readRouter, runtime.duplicateHydration)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message metrics: %w", err)
@@ -167,6 +167,9 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)
+	}
+	if runtime.metrics != nil {
+		markRuntimeReady(runtime.metrics)
 	}
 	return runtime, nil
 }

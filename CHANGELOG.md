@@ -17,6 +17,7 @@
 
 ### 新增
 
+- 增加统一服务健康面：Core、Gateway、Message、Sync、Search、Search Indexer 与 Cassandra Projector 通过 metrics listener 暴露 `/livez`、`/readyz`、兼容 `/health`、`dipole_service_info` 和 `dipole_service_ready`；微服务 Compose 使用 readiness 探针，Prometheus 增加必需服务 down/not-ready 告警及 promtool 时序测试。
 - 增加统一关联上下文：HTTP Core/Gateway 生成并回传 `X-Request-ID`、`X-Trace-ID`，gRPC metadata/protobuf、WebSocket 命令与 ACK、Kafka Envelope/headers、consumer handler 和 Transactional Outbox 保持同一 request/trace 因果链；每个领域事件独立生成 `event_id`，旧接口和旧事件仍保持兼容。
 - 增加 Group、Conversation Read、Contact 与 Session v1 语言中立事件 schema 和公共 decoder；Gateway 停止自行解码这些 payload，并新增门禁保证所有 `kafkaManagedTopics()` 都有唯一版本化契约。
 - 增加 `contracts/events/message/v1` 语言中立事件契约，分别描述 pre-persistence `send_requested` 与 confirmed Message fact；统一 Gateway、Cassandra、Sync、Search、Backfill 和 Replay 的 v1 decoder，并验证 legacy created 默认值、minor additive 字段、事件通道与 producer schema drift。
