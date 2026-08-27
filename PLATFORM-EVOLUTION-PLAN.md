@@ -399,9 +399,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### C1：建立 Go 数据面基准
 
 - [x] 建立 operations/baseline v4 资源采集器，按服务记录 CPU core%、采样 RSS 峰值、线程峰值和 context switch，并保留 v1-v3 兼容读取。
-- [ ] 在固定连接梯度中归档消息吞吐、P50/P95/P99、CPU、RSS、context switch 和故障恢复基线。
-- [ ] 将连接管理、投递路由、背压、重试和热群聚合定义为版本化协议与 contract test。
-- [ ] 明确 Gateway 与 Delivery 的进程边界，禁止 C++ 数据面访问业务数据库。
+- [x] 在固定 20/50/100 连接梯度中归档吞吐、P50/P95/P99、CPU、RSS、context switch，并完成 node2 stop/start 故障恢复基线。
+- [x] 将投递 envelope、节点批次、ACK/error、背压和热群 mode 定义为版本化 Protobuf 与跨语言 golden vectors；连接级队列、持久重试和去重在 C2 shadow 中实现。
+- [x] 明确 Gateway 与 Delivery 的进程及数据所有权边界，禁止 C++ 数据面访问业务数据库。
 
 ### C2：C++ Realtime Delivery Shadow
 

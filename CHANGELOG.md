@@ -17,6 +17,7 @@
 
 ### 新增
 
+- C2 建立语言无关的 `dipole.delivery.v1` 实时投递契约：`DeliveryEnvelope` 固定 Kafka source coordinates 与用户级投递项，`NodeDeliveryBatch` 固定 Presence 解析后的节点/connection 批次，逐项 ACK 覆盖 enqueued、offline、backpressured、rejected 和 failed，并用饱和队列 retry hint 表达背压。三个 Protobuf JSON golden vectors 与 Go fail-closed validator 约束枚举、时间戳、批次上限、ID 唯一性和 ACK 一致性；legacy adapter 可映射现有 Go Hub 返回值但暂不接管流量，默认仍为 Go Delivery。
 - C1 增加隔离且可回滚的 Go 候选基准拓扑：`docker-compose.dist.yml` 在保持旧默认值的同时支持 image、容器前缀、宿主端口和网段覆盖；`candidate_topology.sh` 只接受与干净工作树同 revision 的镜像，固定 image SHA、关闭 embedded Agent，并依次等待基础设施、执行 MinIO 初始化和 one-shot migration 后启动独立 project，`down` 保留候选卷。迁移编排不进入基础 Compose 服务依赖，既有共享拓扑继续支持 `compose start`。canonical Compose gate 同时验证默认和候选渲染。
 - C1 归档同一候选镜像下 20/50/100 并发连接、每连接 2 条消息的 Go 实时数据面梯度证据：三档接收、持久化和投递率均为 100%，Kafka lag 最终归零；吞吐从 2.51 增至 4.85 msg/s 的同时 P95 从 1.07s 增至 8.08s，提示下一步需用故障恢复和分段剖析定位等待/串行化路径。
 - C1 增加版本化单节点 stop/start 恢复门禁：恢复 evidence 绑定前后 container/image/revision/PID、单调健康时间线和故障前稳定 consumer group 成员数，要求确实观察到 unavailable、新 PID，并在恢复到相同成员数且连续稳定 5 秒后才运行负载；恢复后复用 baseline v4 验证消息接收、持久化、投递和 Kafka lag，并以精确 baseline SHA-256 生成 recovery report。EXIT trap 在演练异常时尝试恢复目标节点，稳态资源门禁继续拒绝意外 PID 漂移。
