@@ -33,7 +33,7 @@ __pycache__/
 
 tmp/
 frontend/chat-server
-frontend/node_modules/
+node_modules/
 frontend/playwright-report/
 frontend/test-results/
 

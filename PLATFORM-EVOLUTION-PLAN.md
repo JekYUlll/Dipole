@@ -317,6 +317,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G2：建立 TypeScript Agent Runtime
 
 - [ ] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
+  - [x] 建立 `agent-runtime/` Node 22+ foundation：Fastify 健康面、Zod trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine 与只读 shadow processor；Kafka/AI SDK adapter 留在下一切片。
 - [ ] 实现 `ExecutionContext`、Capability Registry、Policy Engine、模型路由与调用预算。
 - [ ] 使用独立 consumer group 消费版本化事件，通过事件 ID 和 Task ID 幂等。
 - [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。

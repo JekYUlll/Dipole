@@ -201,3 +201,5 @@ Embedded policy 另由 `ai.policy_mode=persistent|static` 控制。默认 `persi
 Project Guardian 订阅一个项目群，每日维护决策、任务和风险；发现缺失负责人时向用户索取输入；准备向群内发送提醒时等待审批；进程重启后继续原 Task；所有读取、Tool、审批、Artifact 和模型调用均可追踪。
 
 首期避免引入无明确职责的多 Agent 编排，也避免每条消息直接调用高成本模型。
+
+G2 foundation 已建立在 `agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7 与 KafkaJS 2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task ID 和只读 shadow processor。当前 processor 使用进程内幂等基线，Kafka consumer、持久 ledger、AI SDK model adapter 与审计 Store 是下一切片门禁。
