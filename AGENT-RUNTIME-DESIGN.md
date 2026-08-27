@@ -174,7 +174,7 @@ G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、�
 
 Trace 层级采用 `Task → Run → ContextCompile / ModelCall / ToolCall / Approval / ArtifactCreate`。指标至少覆盖任务完成率、Tool 成功率、审批拒绝率、Token 与成本、上下文大小、检索命中、模型回退和端到端延迟。
 
-G4 已通过统一 `AgentTelemetry` 将上述阶段接入 `@opentelemetry/api`。Kafka Foundation 在 Event Processor 建立 Task/Run 父子边界；Temporal 的 Workflow 代码保持确定性，Task admission/finish、Run 执行、Approval 和 Artifact 仅在 Activity 进程创建 span。ContextCompile 记录版本、估算 Token 和选取数量；ModelRouter 为每个真实 provider attempt 建立 ModelCall；native Capability 与 MCP 调用均使用 ToolCall。属性只包含稳定 ID、阶段、route、计数、Token、大小和状态，异常统一写稳定阶段错误，不记录 Prompt、消息、Memory、Tool 参数/结果、Artifact 正文或底层异常文本。当前 API 在无 SDK 时保持 no-op，生产 SDK/exporter、采样、保留和告警仍由 `AD-037` 管理。
+G4 已通过统一 `AgentTelemetry` 将上述阶段接入 `@opentelemetry/api`。Kafka Foundation 在 Event Processor 建立 Task/Run 父子边界；Temporal 的 Workflow 代码保持确定性，Task admission/finish、Run 执行、Approval 和 Artifact 仅在 Activity 进程创建 span。ContextCompile 记录版本、估算 Token 和选取数量；ModelRouter 为每个真实 provider attempt 建立 ModelCall；native Capability 与 MCP 调用均使用 ToolCall。属性只包含稳定 ID、阶段、route、计数、Token、大小和状态，异常统一写稳定阶段错误，不记录 Prompt、消息、Memory、Tool 参数/结果、Artifact 正文或底层异常文本。Runtime 已增加默认关闭的 Node trace SDK + OTLP/HTTP protobuf exporter，使用标准 endpoint/protocol/sampler 环境变量和 ParentBased trace-id ratio 采样，并在逆序关闭末尾 flush；关闭总开关时不创建 SDK。Collector、保留、告警与 trace/audit 联查仍由 `AD-037` 管理。
 
 Eval Harness 同时评估：
 

@@ -25,12 +25,17 @@ import {
   loadTemporalRuntimeConfig,
   type TemporalWorkerRuntime
 } from "./temporal/temporal-runtime.js";
+import {
+  createAgentObservabilityRuntime,
+  loadAgentObservabilityConfig
+} from "./observability/agent-observability-runtime.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
+const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
@@ -41,6 +46,7 @@ if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.en
 if (mcpEnabled && (!shadowConfig.capabilityRpc.enabled || mcpSecret.trim().length === 0)) {
   throw new Error("Agent MCP Server requires Agent Capability RPC and an MCP server secret");
 }
+observabilityRuntime.start();
 let temporalRuntime: TemporalWorkerRuntime | undefined;
 let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
@@ -152,6 +158,11 @@ const stop = (): Promise<void> => {
       }
     }
     mcpRPC?.close();
+    try {
+      await observabilityRuntime.stop();
+    } catch (error) {
+      failures.push(error);
+    }
     if (failures.length > 0) {
       throw new AggregateError(failures, "Agent Runtime shutdown failed");
     }

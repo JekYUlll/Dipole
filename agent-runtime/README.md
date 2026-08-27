@@ -40,11 +40,26 @@ DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
 
 客户端访问 `/api/v1/agent/tasks/{task_id}/runs/{run_id}/mcp`。Gateway 支持 Streamable HTTP 的 GET/POST/DELETE，先验证现有 JWT，再以内部服务身份调用 Runtime；Runtime 通过 Core `ResolveMcpContext` 复核 Task owner、运行中的 Run、固定 Definition、权限和 scope。当前只注册 `dipole_conversation_list`，不开启外部 Server、write/destructive Tool。
 
-启用入口前先应用 migration v30 并滚动 Core，再滚动 Runtime/Gateway。每次 Tool 调用必须先通过 Core 持久化 begin；审计只记录参数/结果 SHA-256、结果大小、耗时、终态和稳定错误码。`@opentelemetry/api` 会创建低敏 ToolCall span，当前未安装 SDK/exporter，因此默认没有外部遥测输出。回滚先关闭 Gateway 开关，再关闭 Runtime 开关；确认没有 `running` 调用后才可执行 v30 down，降级会删除 Tool 审计历史。
+启用入口前先应用 migration v30 并滚动 Core，再滚动 Runtime/Gateway。每次 Tool 调用必须先通过 Core 持久化 begin；审计只记录参数/结果 SHA-256、结果大小、耗时、终态和稳定错误码。`@opentelemetry/api` 会创建低敏 ToolCall span；Exporter 总开关默认关闭。回滚先关闭 Gateway 开关，再关闭 Runtime 开关；确认没有 `running` 调用后才可执行 v30 down，降级会删除 Tool 审计历史。
 
 Gateway 对 MCP GET/POST 使用 Redis principal 额度，默认每 60 秒 60 次，可通过 `DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT` 和 `DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS` 调整。该门禁独立于旧 `DIPOLE_RATE_LIMIT_ENABLED`；Redis 不可用或值小于等于零时返回 429/`Retry-After`。DELETE 始终允许认证用户清理 Session。需要紧急回滚时关闭 `DIPOLE_GATEWAY_AGENT_MCP_ENABLED`，不要通过关闭限流开放无界入口。
 
 外部 MCP Client foundation 对每个 allowlisted Tool 强制配置 egress policy：策略必须与 Tool allowlist 完全匹配，声明允许的顶层参数名和 2 B 到 64 KiB 的请求上限；调用前先规范化为 JSON，拒绝未声明参数、超过 16 层的对象以及 password、token、authorization、cookie、credential、private key 等常见凭据字段。该门禁用于阻止常见误传和无界请求；内容值级 DLP、租户凭据托管与完整 egress 审计完成前，外部 Server 继续保持未启用。
+
+## OpenTelemetry
+
+Agent trace exporter 默认关闭。受控环境可显式启用 OTLP/HTTP protobuf，并使用标准 `OTEL_*` 参数：
+
+```bash
+DIPOLE_AGENT_OTEL_ENABLED=true \
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:4318/v1/traces \
+OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf \
+OTEL_TRACES_SAMPLER=parentbased_traceidratio \
+OTEL_TRACES_SAMPLER_ARG=0.1 \
+npm start
+```
+
+Runtime 拒绝非 HTTP endpoint、嵌入 URL 的凭据、非 protobuf 协议和越界采样/超时。SDK 在业务 Runtime 创建前注册，并在进程逆序关闭的最后阶段 flush；span 仅包含设计文档列出的低敏属性。Collector、保留策略和告警尚未纳入默认 Compose profile，启用前需按 `AD-037` 完成环境验收。
 
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。当前没有公开订阅管理 API，共享环境在管理与审计入口完成前保持默认模式。
 
