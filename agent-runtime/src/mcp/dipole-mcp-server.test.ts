@@ -1,4 +1,4 @@
-import { InMemoryTransport } from "@modelcontextprotocol/server";
+import { InMemoryTransport, Server, createMcpHandler, inputRequired } from "@modelcontextprotocol/server";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -7,6 +7,7 @@ import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
 import { createDipoleMcpHttpHandler } from "./dipole-mcp-http.js";
+import { McpInputRequiredContinuation } from "./mcp-input-required-continuation.js";
 import { AllowlistedMcpToolClient } from "./mcp-tool-client.js";
 
 const context: ExecutionContext = {
@@ -100,6 +101,75 @@ describe("Dipole MCP read-only projection", () => {
     await expect(client.callTool("read", {})).rejects.toThrow();
     await client.close();
     await server.close();
+  });
+
+  it("reconnects a manual input_required round through an exact fresh Tool request", async () => {
+    let observedRetry: unknown;
+    const handler = createMcpHandler(() => {
+      const server = new Server({ name: "calendar.example", version: "1.0.0" }, { capabilities: { tools: {} } });
+      server.setRequestHandler("tools/list", async () => ({ tools: [{
+        name: "calendar.create", description: "Create event", inputSchema: {
+          type: "object", properties: { calendarId: { type: "string" } }, required: ["calendarId"]
+        }
+      }] }));
+      server.setRequestHandler("tools/call", async (_request, ctx) => {
+        if (ctx.mcpReq.inputResponses === undefined) {
+          return inputRequired({
+            inputRequests: { "event-settings": inputRequired.elicit({
+              message: "Choose event settings",
+              requestedSchema: z.object({
+                title: z.string().max(120).meta({ title: "Event title" }),
+                visibility: z.enum(["team", "private"]).meta({ title: "Visibility" })
+              })
+            }) },
+            requestState: "opaque-state-1"
+          });
+        }
+        observedRetry = {
+          responses: ctx.mcpReq.inputResponses,
+          requestState: ctx.mcpReq.requestState()
+        };
+        return { content: [{ type: "text", text: "created" }] };
+      });
+      return server;
+    });
+    const transport = new StreamableHTTPClientTransport(new URL("https://calendar.example/mcp"), {
+      fetch: (url, init) => handler.fetch(new Request(url, init))
+    });
+    const client = new AllowlistedMcpToolClient("calendar.example", ["calendar.example"], ["calendar.create"], {
+      "calendar.create": { allowedArgumentNames: ["calendarId"], maximumBytes: 1024 }
+    }, 10_000, "modern");
+    await client.connect(transport);
+
+    await expect(client.callToolRound({
+      name: "calendar.create", arguments: { calendarId: "CAL-1" }, requestState: "orphan-state"
+    })).rejects.toThrow(/requestState requires inputResponses/);
+
+    const first = await client.callToolRound({ name: "calendar.create", arguments: { calendarId: "CAL-1" } });
+    const continuation = new McpInputRequiredContinuation(() => 1_000);
+    const wait = continuation.begin({
+      result: first, requestId: "INPUT-1", serverId: "calendar.example", toolName: "calendar.create",
+      invocationId: "INV-1", arguments: { calendarId: "CAL-1" }, expiresAtUnixMs: 2_000
+    });
+    await client.close();
+
+    const retry = continuation.retry(wait.checkpoint, {
+      action: "accept", resume: { kind: "input", requestId: "INPUT-1", value: { title: "Review", visibility: "team" } }
+    });
+    const retryTransport = new StreamableHTTPClientTransport(new URL("https://calendar.example/mcp"), {
+      fetch: (url, init) => handler.fetch(new Request(url, init))
+    });
+    const retryClient = new AllowlistedMcpToolClient("calendar.example", ["calendar.example"], ["calendar.create"], {
+      "calendar.create": { allowedArgumentNames: ["calendarId"], maximumBytes: 1024 }
+    }, 10_000, "modern");
+    await retryClient.connect(retryTransport);
+    await expect(retryClient.callToolRound(retry)).resolves.toMatchObject({ content: [{ type: "text", text: "created" }] });
+    expect(observedRetry).toEqual({
+      responses: { "event-settings": { action: "accept", content: { title: "Review", visibility: "team" } } },
+      requestState: "opaque-state-1"
+    });
+    await retryClient.close();
+    await handler.close();
   });
 
   it("serves Streamable HTTP only with host-validated authentication context", async () => {

@@ -7,3 +7,7 @@
 提交路径必须同时绑定 Task ID 和当前 `request_id`。Gateway 从 JWT 派生 principal，Agent Runtime 向 Core 复核 Task 所有权后才发送 Temporal Signal；旧 request、跨用户请求和终态 Task 均拒绝。Workflow history 保存等待与恢复事件，服务重启后继续使用同一个 pending request。
 
 Task Query 的 pending input 同时公开受限来源元数据：本地请求使用 `kind=agent`；MCP 请求使用 `kind=mcp`，并绑定 `serverId`、`toolName`、`invocationId` 与固定的 `trust=untrusted`。来源字段不承载凭据、URL 或可执行授权；旧 directive 缺少来源时按本地 Agent 处理。
+
+MCP `2026-07-28` 的 `input_required` 采用手工多轮工具请求（MRTR）恢复。当前只接受一个 `elicitation/create` Form：首次 `tools/call` 的原始参数、input request key、可选 opaque `requestState` 与来源 lineage 一并进入完整性 checkpoint；用户完成、拒绝或取消后，新 Activity 使用同一 Tool 参数，并按原 key 回传 `inputResponses` 和原 `requestState`。SDK 的进程内自动 fulfilment 必须关闭，避免把可恢复性绑定到单个 Client 进程。
+
+当前 continuation 是默认关闭的 Runtime 基础，尚未装配生产 Temporal Activity、外部 MCP Transport Factory 或产品入口。多 input request、多轮策略、URL mode、凭据和第三方敏感授权均保持拒绝；这些能力需要独立的持久状态、审批与秘密隔离设计。
