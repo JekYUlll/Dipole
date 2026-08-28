@@ -21,7 +21,13 @@ import type {
   AgentTaskProjectionInput,
   AgentTaskRunBinding
 } from "./agent-task-activities.js";
-import type { AgentTaskWorkflowInput } from "./temporal-task-client.js";
+import type { AgentTaskWorkflowHistoryInput } from "./temporal-task-client.js";
+import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
+import {
+  createTemporalMcpBeginActivityInput,
+  createTemporalMcpResumeActivityInput,
+  validateTemporalMcpWorkflowExecution
+} from "./mcp-workflow-envelope.js";
 
 export const provideTaskInputSignal = defineSignal<[
   { requestId: string; value: unknown }
@@ -41,6 +47,15 @@ const { executeAgentTaskStep } = proxyActivities<AgentTaskActivities>({
     maximumAttempts: 3
   }
 });
+const { executeMcpDispatch } = proxyActivities<TemporalMcpDispatchActivities>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    initialInterval: "1 second",
+    backoffCoefficient: 2,
+    maximumInterval: "30 seconds",
+    maximumAttempts: 3
+  }
+});
 const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTaskApproval, resolveAgentTaskApproval } = proxyActivities<AgentTaskLifecycleActivities>({
   startToCloseTimeout: "30 seconds",
   retry: {
@@ -51,13 +66,19 @@ const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTask
   }
 });
 
-export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<AgentTaskState> {
+export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): Promise<AgentTaskState> {
   let state = createAgentTaskState(input.taskId);
   let checkpoint: unknown;
   let step = 0;
   let approvalSignal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string } | undefined;
   let projectedRevision = -1;
   const maxSteps = validMaxSteps(input.maxSteps);
+  const mcpExecution = input.execution === undefined
+    ? undefined
+    : validateTemporalMcpWorkflowExecution(input.execution);
+  if (mcpExecution !== undefined && input.admission === undefined) {
+    throw new Error("External MCP Agent Task requires trusted admission");
+  }
   const projectionEnabled = patched("agent-task-workflow-projection-v1");
   const workflow = workflowInfo();
 
@@ -139,16 +160,30 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
     const resume = state.resume;
     let directive: AgentTaskDirective;
     try {
-      directive = await executeAgentTaskStep({
-        taskId: input.taskId,
-        runId: binding.runId,
-        goal: input.goal,
-        ...(input.admission === undefined ? {} : { admission: input.admission }),
-        ...(input.shadowEvent === undefined ? {} : { shadowEvent: input.shadowEvent }),
-        step,
-        ...(checkpoint === undefined ? {} : { checkpoint }),
-        ...(resume === undefined ? {} : { resume })
-      });
+      if (mcpExecution === undefined) {
+        directive = await executeAgentTaskStep({
+          taskId: input.taskId,
+          runId: binding.runId,
+          goal: input.goal,
+          ...(input.admission === undefined ? {} : { admission: input.admission }),
+          ...(input.shadowEvent === undefined ? {} : { shadowEvent: input.shadowEvent }),
+          step,
+          ...(checkpoint === undefined ? {} : { checkpoint }),
+          ...(resume === undefined ? {} : { resume })
+        });
+      } else if (checkpoint === undefined) {
+        const admission = input.admission;
+        if (admission === undefined) throw new Error("External MCP Agent Task admission is unavailable");
+        directive = await executeMcpDispatch(createTemporalMcpBeginActivityInput(mcpExecution, {
+          taskId: input.taskId,
+          runId: binding.runId,
+          principalUserId: admission.principalUserId,
+          ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
+          ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
+        }));
+      } else {
+        directive = await executeMcpDispatch(createTemporalMcpResumeActivityInput(checkpoint, resume));
+      }
     } catch (error) {
       state = transitionAgentTask(state, { type: "fail", message: activityFailureMessage(error) });
       break;
@@ -176,7 +211,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowInput): Promise<
 }
 
 function projectionActivityInput(
-  input: AgentTaskWorkflowInput,
+  input: AgentTaskWorkflowHistoryInput,
   binding: AgentTaskRunBinding,
   state: AgentTaskState,
   workflow: { workflowId: string; runId: string }
@@ -244,7 +279,7 @@ function assertRunBinding(taskId: string, binding: AgentTaskRunBinding): void {
 }
 
 function terminalActivityInput(
-  input: AgentTaskWorkflowInput,
+  input: AgentTaskWorkflowHistoryInput,
   binding: AgentTaskRunBinding,
   state: AgentTaskState
 ): AgentTaskFinishInput {
