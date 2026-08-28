@@ -105,10 +105,10 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Memory、Context Compiler、隐私删除、长期事实质量、Project Guardian 演示
-- **现状：** migration v29 与 sqlc Store 已保存五类不可变 scoped Memory、full/compact content、priority、有效期和 provenance；Core 根据运行中的 Task/Run 固定 principal、tenant、Agent 与 conversation read scope，并使用 Task 创建时间阻止后续新增记录进入重放，撤销/过期立即 fail closed。migration v38、additive gRPC、Gateway 和默认关闭的 Pencil/Vue 页面已交付 owner list/revoke：主体由认证链派生，稳定 cursor 只返回 owner 记录，公开结果省略内部 URI，撤销保存 revoker、原因和时间，同原因重放幂等且原因漂移冲突。TS 运行时读取与 owner 页面仍需分别显式启用，自动写入保持关闭。
-- **风险：** 自动从消息写入会引入错误事实、Prompt Injection 固化、跨用户泄漏和无限增长；当前撤销能够阻止后续召回并保留审计，尚未提供 append-only 纠正版本，错误事实无法在保留 lineage 的同时发布替代记录。仅按 priority 的精确 scope 检索也无法衡量 recall、precision 和 context 成本。
-- **建议方向：** 下一步建立 append-only correction/supersession 模型、版本冲突和纠正审计，再增加离线 Observation/Reflection Worker；写入策略要求来源证据、置信度、TTL、幂等键和冲突合并。基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker，模型生成记录始终保持不可信数据边界。
-- **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回或根据 Memory 自动执行动作前，完成 append-only 纠正链、permission/retrieval Eval 和真实 owner 治理验收；当前仅允许受控 seed、Shadow 读取及默认关闭的 owner 查看/撤销。
+- **现状：** migration v29 与 sqlc Store 已保存五类不可变 scoped Memory、full/compact content、priority、有效期和 provenance；Core 根据运行中的 Task/Run 固定 principal、tenant、Agent 与 conversation read scope，并使用 Task 创建时间阻止后续新增记录进入重放，撤销/过期立即 fail closed。v38 已交付默认关闭的 owner list/revoke。v39 进一步加入 root/version/predecessor/corrector/reason，sqlc transaction 原子撤销 predecessor 并追加 successor，唯一 predecessor 阻止分叉，稳定 ID 支持精确重放；additive gRPC/Gateway 与独立默认关闭的 Vue correction 已完成，公开结果继续省略内部 URI。TS 运行时读取、owner 页面和 correction 分别需要显式启用，自动写入保持关闭。
+- **风险：** 自动从消息写入会引入错误事实、Prompt Injection 固化、跨用户泄漏和无限增长；append-only 纠正已经保留错误事实及替代链，但尚无隐私删除/保留期政策，也没有针对多次纠正、语义冲突和 retrieval ranking 的真实 Eval。仅按 priority 的精确 scope 检索仍无法衡量 recall、precision 和 context 成本。
+- **建议方向：** 下一步建立 permission/retrieval/纠正 trajectory Eval，再增加离线 Observation/Reflection Worker；写入策略要求来源证据、置信度、TTL、幂等键和冲突合并。基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker，模型生成记录始终保持不可信数据边界。
+- **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回或根据 Memory 自动执行动作前，完成 permission/retrieval Eval、隐私删除与保留期政策以及真实 owner correction 验收；当前仅允许受控 seed、Shadow 读取及默认关闭的 owner 查看、撤销和追加纠正。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 

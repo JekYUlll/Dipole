@@ -483,7 +483,7 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if resolved, err := approvalService.Resolve(context.Background(), resolution); err != nil || resolved.ApprovedByUUID != persistentPrincipalUUID {
 		t.Fatalf("replay durable Approval resolution: approval=%+v err=%v", resolved, err)
 	}
-	if err := runner.Down(context.Background(), 1); err != nil {
+	if err := runner.Down(context.Background(), int(currentVersion-33)); err != nil {
 		t.Fatalf("rollback Event Subscription control migration: %v", err)
 	}
 	if err := runner.Up(context.Background()); err != nil {
