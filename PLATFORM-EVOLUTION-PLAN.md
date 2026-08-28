@@ -461,7 +461,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
     - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
-- [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
+- [x] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练；C3 真实隔离演练覆盖 Controller/C++ 进程替换、Redis outage、Kafka member loss/rejoin、过期 freeze 自动回切和 primary 停止恢复，证据归档于 `/tmp/dipole-c3-cutover-fault-report.json` 与 `/tmp/dipole-c3-cutover-fault-report-controller.json`，报告绑定当前 revision 和依赖/二进制哈希。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
 
 **阶段四验收：** C++ 实现通过同一 contract test，在目标负载下取得可复现收益，故障不会影响 Go 业务控制面，并完成自动回切演练。
