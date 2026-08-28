@@ -357,6 +357,7 @@
 
 ### 变更
 
+- Eino 从 `v0.9.15` 升级至 `v0.9.17`；保持 OpenAI 扩展 `v0.1.13` 不变。Go 全量测试、sqlc drift、Agent Runtime 测试、typecheck 与 build 均通过，未发现 API 兼容性回归。
 - 更新正式技术架构图以匹配当前实现：补充 Core/Message/Gateway/Sync/Search/Agent Runtime 边界、`user_sync_inbox` Sync Timeline、sqlc 数据访问及 Cassandra/Elasticsearch 影子投影；移除 `AutoMigrate`、单体无 Inbox 和旧 Eino 主链路等过时描述。该图仅记录当前已实现或明确默认关闭的能力，不改变运行配置。
 
 - Core RPC Agent 方法 allowlist 补齐 readiness evidence publish/resolve；此前真实 RPC 部署会在 MCP egress freshness 查询时返回 `PermissionDenied`。全栈演练中的 subscription、Run、Workflow projection、MCP Invocation/Round、readiness 和 Artifact 均改由正式 TS `AgentCapabilityRPCClient` 访问隔离 Go mTLS fixture。
