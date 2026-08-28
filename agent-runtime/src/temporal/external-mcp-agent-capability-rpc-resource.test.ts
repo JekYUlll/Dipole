@@ -30,6 +30,7 @@ describe("external MCP Agent Capability RPC resource", () => {
     expect(createRPC).toHaveBeenCalledWith(runtimeConfig);
     expect(resource.dependencies).toEqual({ core: client, artifacts: client });
     expect(resource.dependencies.core).toBe(resource.dependencies.artifacts);
+    expect(resource.subscriptionMatcher).toBe(client);
     expect(Object.isFrozen(resource.dependencies)).toBe(true);
     expect(resource.workerActivities?.executeAgentTaskStep).toBe(foundationAgentTaskActivities.executeAgentTaskStep);
     expect(Object.isFrozen(resource.workerActivities)).toBe(true);

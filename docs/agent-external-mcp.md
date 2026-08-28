@@ -249,6 +249,10 @@ Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立�
 
 成功结果只公开 exact deployment、Worker composition、冻结 Temporal config、可信 `dispatch` 与幂等 `stop`。stop 固定先让 Client 拒绝新请求并 drain 已接受 Workflow start，再停止 Worker polling、Temporal connections 和同一 RPC resource；Client 或 Worker 失败都不会阻断后续清理。该 owner 不创建 Kafka consumer，也没有进入 `index.ts`/Compose；未来进程接线仍须把 Kafka 停止放在 owner.stop 之前，并提供受控 production route/resolver 与真实 readiness/Shadow 证据。
 
+`startExternalMcpShadowProcess` 进一步拥有 Kafka consumer 与上述 Temporal process。它只接受已启用的 subscription trigger：先启动 Temporal Worker/Client，再创建并启动 Kafka；disabled Kafka 或 Temporal deployment 保持零 Kafka 副作用。Kafka 构造、启动或交接后取消会先回收任何已创建的 Kafka runtime，再回收 Temporal owner。正常 stop 同样先停止 Kafka 接收新事件，再 drain Workflow Client 并关闭 Worker/Core resource，成功或失败均幂等。
+
+subscription matcher 由 Worker 的 Agent Capability RPC resource 从同一个认证 client 投影，并沿 startup plan、Worker lifecycle 和 Temporal owner 保持引用一致；Kafka runtime 只借用该 matcher，不拥有或关闭 transport。这样 subscription 授权、persistent Workflow Activities、MCP Core 与 Artifact writer 共享一条身份和连接视图，同时 Temporal resource 仍是唯一关闭权威。matcher 缺失会在 Kafka 构造前 fail closed 并回收 Temporal。该 process 仍未接入 `index.ts`/Compose，生产没有 route/resolver 注册，也不会自动建立外部 MCP 网络连接。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛

@@ -46,6 +46,7 @@ export function createExternalMcpAgentCapabilityRPCResourceFactory(
       signal.throwIfAborted();
       return {
         dependencies: Object.freeze({ core: rpc.client, artifacts: rpc.client }),
+        subscriptionMatcher: rpc.client,
         workerActivities: Object.freeze({
           ...baseActivities,
           ...createPersistentAgentTaskLifecycleActivities(rpc.client)

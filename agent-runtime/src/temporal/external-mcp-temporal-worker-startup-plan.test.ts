@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExternalMcpCapabilityDefinitionRegistry } from "../mcp/external-mcp-deployment-route-manifest.js";
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
 import { foundationAgentTaskActivities } from "./agent-task-activities.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import {
@@ -45,6 +46,7 @@ describe("external MCP Temporal Worker startup plan", () => {
     expect(order).toEqual(["load", "validate", "resource", "compose"]);
     expect(startup.deployment).toBe(harness.deployment);
     expect(startup.worker).toBe(harness.worker);
+    expect(startup.subscriptionMatcher).toBe(harness.subscriptionMatcher);
     expect(harness.compose.mock.calls[0]?.[2]()).toBe(harness.resource.dependencies);
     const loaderOptions = harness.loadDeployment.mock.calls[0]?.[2];
     expect(loaderOptions).toMatchObject({ maximumIoManifestBytes: 4096, signal: expect.any(AbortSignal) });
@@ -201,9 +203,11 @@ describe("external MCP Temporal Worker startup plan", () => {
 function startupHarness(plan: ExternalMcpDeploymentPlan | undefined, order: string[] = []) {
   const definitions = new ExternalMcpCapabilityDefinitionRegistry();
   const worker = { worker: true } as unknown as ExternalMcpTemporalWorkerComposition;
+  const subscriptionMatcher = {} as ShadowSubscriptionMatcher;
   const closeResource = vi.fn(async () => undefined);
   const resource = {
     dependencies: { core: { core: true }, artifacts: { artifacts: true } },
+    subscriptionMatcher,
     close: closeResource
   } as unknown as ExternalMcpTemporalWorkerResource;
   const loadDeployment = vi.fn<ExternalMcpTemporalWorkerStartupSeams["loadDeployment"]>(async () => {
@@ -231,6 +235,7 @@ function startupHarness(plan: ExternalMcpDeploymentPlan | undefined, order: stri
     definitions,
     deployment: plan,
     worker,
+    subscriptionMatcher,
     resource,
     closeResource,
     loadDeployment,
