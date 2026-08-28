@@ -288,6 +288,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Web Sync Engine 将热群补拉消息与群 `message_seq` 原子写入 IndexedDB，落库后再 ACK 设备群 checkpoint；`off` 模式保持不 ACK 的内存兼容路径。
 - [x] 补齐 Direct Timeline `after_seq` 的 HTTP、Message v1 gRPC、Local/Remote/Shadow 与 Cassandra cohort/fallback 契约，使单聊和群聊共享会话 Seq 增量语义。
 - [x] 增加默认关闭的 `sync.item.notify.v1` shadow 协议；通知只携带版本化 locator，现有完整 WS 正文继续投递，热群保留单一聚合 notify + pull 路径。
+- [x] 打通 Gateway/WS `message.timeline_notify_mode=primary` 与 Web `VITE_TIMELINE_NOTIFY_MODE=primary` 配置契约；primary 仍只投递无正文 locator，客户端完成连续序列和 UUID 校验后补拉，服务端 Cassandra 观测门禁独立控制。
 - [x] 增加 Web Timeline shadow verifier、会话级补洞/去重和有界遥测；固化完整 24 小时、至少 100 次 match、零 missing/mismatch/error/invalid 的晋级门禁。
 - [x] 增加 Web Timeline notify primary 客户端路径：按通知的 `conversation_seq` 串行补拉，完成 UUID/序列连续性校验后才交付消息；`off|shadow` 保持兼容，服务端 Cassandra 主读灰度证据仍未晋级。
 - [ ] 在线 Sync Item 通知直接驱动客户端按 `conversation_seq` 拉取 Cassandra 主 Timeline，并完成主读灰度门禁。

@@ -261,7 +261,7 @@ func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message 
 }
 
 func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) {
-	if d.timelineNotifyMode != TimelineNotifyShadow || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
+	if (d.timelineNotifyMode != TimelineNotifyShadow && d.timelineNotifyMode != TimelineNotifyPrimary) || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
 		return
 	}
 	d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
