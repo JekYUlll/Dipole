@@ -494,6 +494,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] App 壳层、Login、Search 工作区、Agent Task Timeline 组件及其路由页面、Agent Event Subscription 和 Agent Memory 管理页已引用共享 `--dp-*` token，并由 Vitest 契约测试和 Timeline Playwright 流程校验 Pencil variables、路由和核心样式边界。
   - [x] Agent Approval 与 Elicitation 表单已引用共享 `--dp-*` token，并由 Vitest 设计契约测试校验主题边界；截图级视觉回归仍待完成。
   - [x] Agent Approval 页面已增加 Playwright 认证流程，校验审批绑定、fail-closed 重试和移动端单列布局；截图级视觉回归仍待完成。
+  - [x] Agent Approval 与 Elicitation 已增加 Chromium canonical 截图回归，固定主要桌面布局；其余页面和真实 Pencil 增量编辑仍待完成。
 
 Pencil CLI 增量任务本轮未形成可提交设计资产，原因和回滚边界记录在 `AD-044`；既有 canonical 文件和批准导出保持不变。
 后续自动化 Pencil 编辑统一通过 `scripts/pencil-safe-edit.mjs`，先在临时路径完成并校验，再替换 canonical 文件。
