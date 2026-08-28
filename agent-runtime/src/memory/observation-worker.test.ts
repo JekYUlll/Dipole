@@ -46,6 +46,16 @@ describe("ObservationWorker", () => {
     expect(first[0]?.memoryId).toMatch(/^OBS-[a-f0-9]{64}$/);
   });
 
+  it("keeps same event IDs independent across scopes", () => {
+    const worker = new ObservationWorker();
+    const first = worker.observe(input("决定：API v2 周五完成。", "EV-SHARED"));
+    const second = worker.observe({ ...input("决定：移动端周五完成。", "EV-SHARED"), tenantId: "tenant-two" });
+
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.memoryId).not.toBe(first[0]?.memoryId);
+  });
+
   it("fails closed for credentials and oversized content", () => {
     const worker = new ObservationWorker();
     expect(worker.observe(input("token=secret password=hunter2"))).toEqual([]);
@@ -80,5 +90,24 @@ describe("ReflectionWorker", () => {
     const worker = new ReflectionWorker({ minimumObservations: 2 });
     expect(worker.reflect({ ...input("ignored", "EV-REFLECT"), windowId: "WIN-1", observations })).toBeUndefined();
     expect(worker.reflect({ ...input("ignored", "EV-REFLECT"), windowId: "WIN-1", observations: [...observations, ...observations] })).toBeUndefined();
+  });
+
+  it("keeps the same window ID independent across resources", () => {
+    const observationWorker = new ObservationWorker();
+    const observations = [
+      ...observationWorker.observe(input("决定：API v2 周五完成。", "EV-1")),
+      ...observationWorker.observe(input("风险：数据库迁移可能延期。", "EV-2")),
+    ];
+    const worker = new ReflectionWorker({ minimumObservations: 2 });
+    const first = worker.reflect({ ...input("ignored", "EV-REFLECT-1"), windowId: "WIN-SHARED", observations });
+    const second = worker.reflect({
+      ...input("ignored", "EV-REFLECT-2"),
+      windowId: "WIN-SHARED",
+      resourceId: "group:G2",
+      observations: observations.map((item) => ({ ...item, resourceId: "group:G2" })),
+    });
+
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
   });
 });
