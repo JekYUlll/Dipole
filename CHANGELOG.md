@@ -33,6 +33,7 @@
 
 ### 验证
 
+- Elasticsearch Search Service 真实隔离契约通过，验证 Core-derived scope、内部 RPC 和 Elasticsearch 9.5.2 查询路径；三节点 Kafka + Elasticsearch Search Indexer smoke 通过，created、recalled tombstone 与迟到 edited 事件最终收敛为 revision 3 且 `searchable=false`。
 - Cassandra Message Store 真实隔离读路由 smoke 通过：migration v47、Cassandra Timeline 主读、payload 损坏回退和缺行回退均完成验证；Sync hydration smoke 同时通过 Metadata 回填、重复消息恢复和 Legacy ID 恢复。
 - 修正 MySQL migration 集成测试版本基线：迁移已扩展至 v47，测试此前仍按 v44 计算回滚步数，导致 Metadata v12 未被重新执行、回填断言读不到记录；当前按实际最高迁移版本验证回滚和重放。
 - 新增 `scripts/pencil-safe-edit.test.mjs`，用 fake Pencil CLI 覆盖有效 `.pen` 与导出原子提交、超时清理临时文件并保持 canonical 不变两条回归路径；测试 `2/2` 通过。
