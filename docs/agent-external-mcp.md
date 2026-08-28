@@ -72,6 +72,10 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。`maximum_secret_bytes` 会同时约束 encrypted Provider、请求期 AuthProvider 和 readiness preflight，避免部署上限与真实请求行为漂移。
 
+`loadExternalMcpDeploymentPlan` 在启动接线之前提供唯一的 default-off 部署组合边界。它先解析一次 Profile，再以同一 owner UID 和 AbortSignal 顺序加载 production I/O 与 deployment route manifest；两者全部通过后才构造 production I/O runtime。返回值只包含 exact config、route Registry/routes、production runtime、Worker external-MCP 依赖和低敏 Runtime binding。readiness collector 与 gated Worker 因而共享同一 I/O snapshot、raw Registry 和有效上限，装配调用方无需重复拼接 binding options。
+
+deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 当前未注册到 `index.ts`、Compose 或任何自动启动路径。
+
 `runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
 
 preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatcher，因此不会创建 Transport、DNS client 或 socket。它证明本地策略与文件依赖可用，无法证明远端 DNS、证书链、网络路由或 MCP 协议响应。
