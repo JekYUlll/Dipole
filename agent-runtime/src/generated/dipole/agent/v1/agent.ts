@@ -1801,6 +1801,49 @@ export interface CreateEventSubscriptionRequest {
     filterJson: Uint8Array;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ListEligibleSubscriptionConversationsRequest
+ */
+export interface ListEligibleSubscriptionConversationsRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string definition_id = 3
+     */
+    definitionId: string;
+    /**
+     * @generated from protobuf field: uint64 definition_version = 4
+     */
+    definitionVersion: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentSubscriptionConversationOption
+ */
+export interface AgentSubscriptionConversationOption {
+    /**
+     * @generated from protobuf field: string conversation_key = 1
+     */
+    conversationKey: string;
+    /**
+     * @generated from protobuf field: string event_type = 2
+     */
+    eventType: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListEligibleSubscriptionConversationsResponse
+ */
+export interface ListEligibleSubscriptionConversationsResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentSubscriptionConversationOption conversations = 1
+     */
+    conversations: AgentSubscriptionConversationOption[];
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListEventSubscriptionsRequest
  */
 export interface ListEventSubscriptionsRequest {
@@ -7508,6 +7551,178 @@ class CreateEventSubscriptionRequest$Type extends MessageType<CreateEventSubscri
  */
 export const CreateEventSubscriptionRequest = new CreateEventSubscriptionRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class ListEligibleSubscriptionConversationsRequest$Type extends MessageType<ListEligibleSubscriptionConversationsRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListEligibleSubscriptionConversationsRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "definition_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "definition_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListEligibleSubscriptionConversationsRequest>): ListEligibleSubscriptionConversationsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.definitionId = "";
+        message.definitionVersion = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ListEligibleSubscriptionConversationsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListEligibleSubscriptionConversationsRequest): ListEligibleSubscriptionConversationsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string definition_id */ 3:
+                    message.definitionId = reader.string();
+                    break;
+                case /* uint64 definition_version */ 4:
+                    message.definitionVersion = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListEligibleSubscriptionConversationsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string definition_id = 3; */
+        if (message.definitionId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.definitionId);
+        /* uint64 definition_version = 4; */
+        if (message.definitionVersion !== 0n)
+            writer.tag(4, WireType.Varint).uint64(message.definitionVersion);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListEligibleSubscriptionConversationsRequest
+ */
+export const ListEligibleSubscriptionConversationsRequest = new ListEligibleSubscriptionConversationsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentSubscriptionConversationOption$Type extends MessageType<AgentSubscriptionConversationOption> {
+    constructor() {
+        super("dipole.agent.v1.AgentSubscriptionConversationOption", [
+            { no: 1, name: "conversation_key", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "event_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentSubscriptionConversationOption>): AgentSubscriptionConversationOption {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.conversationKey = "";
+        message.eventType = "";
+        if (value !== undefined)
+            reflectionMergePartial<AgentSubscriptionConversationOption>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentSubscriptionConversationOption): AgentSubscriptionConversationOption {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string conversation_key */ 1:
+                    message.conversationKey = reader.string();
+                    break;
+                case /* string event_type */ 2:
+                    message.eventType = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentSubscriptionConversationOption, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string conversation_key = 1; */
+        if (message.conversationKey !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.conversationKey);
+        /* string event_type = 2; */
+        if (message.eventType !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.eventType);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentSubscriptionConversationOption
+ */
+export const AgentSubscriptionConversationOption = new AgentSubscriptionConversationOption$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListEligibleSubscriptionConversationsResponse$Type extends MessageType<ListEligibleSubscriptionConversationsResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListEligibleSubscriptionConversationsResponse", [
+            { no: 1, name: "conversations", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentSubscriptionConversationOption }
+        ]);
+    }
+    create(value?: PartialMessage<ListEligibleSubscriptionConversationsResponse>): ListEligibleSubscriptionConversationsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.conversations = [];
+        if (value !== undefined)
+            reflectionMergePartial<ListEligibleSubscriptionConversationsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListEligibleSubscriptionConversationsResponse): ListEligibleSubscriptionConversationsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.AgentSubscriptionConversationOption conversations */ 1:
+                    message.conversations.push(AgentSubscriptionConversationOption.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListEligibleSubscriptionConversationsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.AgentSubscriptionConversationOption conversations = 1; */
+        for (let i = 0; i < message.conversations.length; i++)
+            AgentSubscriptionConversationOption.internalBinaryWrite(message.conversations[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListEligibleSubscriptionConversationsResponse
+ */
+export const ListEligibleSubscriptionConversationsResponse = new ListEligibleSubscriptionConversationsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ListEventSubscriptionsRequest$Type extends MessageType<ListEventSubscriptionsRequest> {
     constructor() {
         super("dipole.agent.v1.ListEventSubscriptionsRequest", [
@@ -8612,6 +8827,7 @@ export const ResolveFreshMcpReadinessEvidenceResponse = new ResolveFreshMcpReadi
 export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapabilityService", [
     { name: "MatchEventSubscriptions", options: {}, I: MatchEventSubscriptionsRequest, O: MatchEventSubscriptionsResponse },
     { name: "CreateEventSubscription", options: {}, I: CreateEventSubscriptionRequest, O: AgentEventSubscription },
+    { name: "ListEligibleSubscriptionConversations", options: {}, I: ListEligibleSubscriptionConversationsRequest, O: ListEligibleSubscriptionConversationsResponse },
     { name: "ListEventSubscriptions", options: {}, I: ListEventSubscriptionsRequest, O: ListEventSubscriptionsResponse },
     { name: "RevokeEventSubscription", options: {}, I: RevokeEventSubscriptionRequest, O: AgentEventSubscription },
     { name: "ListAgentDefinitions", options: {}, I: ListAgentDefinitionsRequest, O: ListAgentDefinitionsResponse },
