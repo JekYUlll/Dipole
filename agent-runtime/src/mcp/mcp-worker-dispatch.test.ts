@@ -95,7 +95,9 @@ describe("MCP Worker command dispatch", () => {
     await expect(replacement.resume(wait.checkpoint, {
       action: "accept",
       resume: { kind: "input", requestId: wait.directive.requestId, value: { title: "Review" } }
-    })).resolves.toEqual({ kind: "complete", result: { content: [{ type: "text", text: "created" }] } });
+    })).resolves.toMatchObject({
+      kind: "complete", result: { content: [{ type: "text", text: "created" }] }, receipt: { roundNumber: 1 }
+    });
     expect(resolver.resolveMcpToolCommand).toHaveBeenCalledTimes(2);
     expect(sessions.open).toHaveBeenCalledTimes(2);
   });

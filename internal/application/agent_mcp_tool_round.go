@@ -67,6 +67,13 @@ type AgentMCPToolRoundClaimResultV1 struct {
 	ErrorCode    string
 }
 
+type AgentMCPToolInvocationTerminalRequestV1 struct {
+	TaskUUID       string
+	RunUUID        string
+	InvocationUUID string
+	RoundUUID      string
+}
+
 type AgentMCPToolRoundStoreV1 interface {
 	ClaimMCPToolRound(ctx context.Context, claim AgentMCPToolRoundClaimV1) (bool, error)
 	GetMCPToolRound(ctx context.Context, roundUUID string) (*AgentMCPToolRoundV1, error)
@@ -76,6 +83,10 @@ type AgentMCPToolRoundStoreV1 interface {
 type AgentMCPToolRoundServiceV1 interface {
 	Claim(ctx context.Context, claim AgentMCPToolRoundClaimV1) (*AgentMCPToolRoundClaimResultV1, error)
 	Finish(ctx context.Context, finish AgentMCPToolRoundFinishV1) error
+}
+
+type AgentMCPToolInvocationTerminalServiceV1 interface {
+	FinishFromRound(ctx context.Context, request AgentMCPToolInvocationTerminalRequestV1) (*AgentToolInvocationV1, error)
 }
 
 var agentMCPToolRoundSHA256PatternV1 = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -123,6 +134,16 @@ func (v AgentMCPToolRoundClaimOutcomeV1) Valid() bool {
 	default:
 		return false
 	}
+}
+
+func (v AgentMCPToolInvocationTerminalRequestV1) Validate() error {
+	if !validExactAgentMCPToolRoundIdentifierV1(v.TaskUUID, 64) ||
+		!validExactAgentMCPToolRoundIdentifierV1(v.RunUUID, 64) ||
+		!validExactAgentMCPToolRoundIdentifierV1(v.InvocationUUID, 64) ||
+		!agentMCPToolRoundSHA256PatternV1.MatchString(v.RoundUUID) {
+		return ErrAgentMCPToolRoundInvalid
+	}
+	return nil
 }
 
 func canonicalAgentMCPToolRoundResultV1(value string) bool {
