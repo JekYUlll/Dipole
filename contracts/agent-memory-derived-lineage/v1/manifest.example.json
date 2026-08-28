@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "dipole.agent.memory-derived-lineage-manifest.v1",
+  "tenantId": "dipole",
+  "principalId": "U100",
+  "memoryId": "MEM-1"
+}
