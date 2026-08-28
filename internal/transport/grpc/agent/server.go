@@ -1052,6 +1052,35 @@ func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.Lis
 	return response, nil
 }
 
+func (s *Server) AppendAgentTaskTimelineEvent(ctx context.Context, request *agentv1.AppendAgentTaskTimelineEventRequest) (*agentv1.AppendAgentTaskTimelineEventResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may append Agent Task Timeline events")
+	}
+	if s.timeline == nil || s.resolver == nil || strings.TrimSpace(request.GetTaskId()) == "" || strings.TrimSpace(request.GetRunId()) == "" {
+		return nil, status.Error(codes.FailedPrecondition, "Agent Task Timeline append is unavailable")
+	}
+	if _, err := s.resolver.Resolve(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId()); err != nil {
+		return nil, status.Error(codes.NotFound, "Agent Task Timeline binding is unavailable")
+	}
+	event := application.AgentTaskTimelineEventV1{
+		EventUUID: request.GetEventId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventKindV1(request.GetKind()), Status: request.GetStatus(),
+		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
+	}
+	if err := event.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline event is invalid")
+	}
+	seq, err := s.timeline.AppendAgentTaskTimelineEvent(grpccommon.Correlation(ctx, request.GetContext()), event)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Agent Task Timeline append failed")
+	}
+	return &agentv1.AppendAgentTaskTimelineEventResponse{EventSeq: seq, EventId: event.EventUUID}, nil
+}
+
 func timelineRevision(authorization *application.AgentTaskControlAuthorizationV1) uint64 {
 	if authorization != nil && authorization.Workflow != nil {
 		return authorization.Workflow.Revision
