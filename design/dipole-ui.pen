@@ -15635,6 +15635,2019 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "bRCLl",
+      "x": 4988,
+      "y": 7420,
+      "name": "Component/Subscription Status",
+      "reusable": true,
+      "width": 172,
+      "height": 36,
+      "fill": "$accent-soft",
+      "cornerRadius": 18,
+      "gap": 8,
+      "padding": [
+        8,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "G4XjP3",
+          "name": "Subscription Status Dot",
+          "fill": "$accent",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "uvRu0",
+          "name": "Subscription Status Label",
+          "fill": "$accent-strong",
+          "content": "ACTIVE / SHADOW",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.6
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "yjH4M",
+      "x": 5208,
+      "y": 7420,
+      "name": "Component/Subscription Filter",
+      "reusable": true,
+      "width": 430,
+      "height": 118,
+      "fill": "$surface",
+      "cornerRadius": 12,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 10,
+      "padding": [
+        16,
+        18
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Wl1ZO",
+          "name": "Subscription Filter Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "CVyGq",
+              "name": "Subscription Filter Label",
+              "fill": "$ink-faint",
+              "content": "MESSAGE FILTER",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 0.8
+            },
+            {
+              "type": "text",
+              "id": "jVKY9",
+              "name": "Subscription Filter Kind",
+              "fill": "$accent-strong",
+              "content": "contains any",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "vSm5R",
+          "name": "Subscription Filter Terms",
+          "fill": "$ink",
+          "content": "事故  ·  延期  ·  风险",
+          "fontFamily": "$font-body",
+          "fontSize": 15,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "abpvT",
+          "name": "Subscription Filter Note",
+          "fill": "$ink-soft",
+          "content": "确定性预筛，未调用语义模型",
+          "fontFamily": "$font-body",
+          "fontSize": 11,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "QeyRC",
+      "x": 5688,
+      "y": 7420,
+      "name": "Component/Subscription Row",
+      "reusable": true,
+      "width": 780,
+      "height": 168,
+      "fill": "$surface",
+      "cornerRadius": 14,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": [
+        18,
+        20
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "QUlCL",
+          "name": "Subscription Row Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "UfTku",
+              "name": "Subscription Row Identity",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wpDeR",
+                  "name": "Subscription Row Title",
+                  "fill": "$ink",
+                  "content": "Project Guardian",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "jtftd",
+                  "name": "Subscription Row Version",
+                  "fill": "$ink-faint",
+                  "content": "DEF-7E21  /  VERSION 04",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "600",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "id": "Ai6Te",
+              "type": "ref",
+              "ref": "bRCLl",
+              "name": "Subscription Row Status"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "gH9dV",
+          "name": "Subscription Row Scope",
+          "fill": "$ink-soft",
+          "content": "message.created   ·   conversation group:DIPOLE",
+          "fontFamily": "$font-data",
+          "fontSize": 11,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "J8QrJ5",
+          "name": "Subscription Row Footer",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jIQHL",
+              "name": "Subscription Row Filter Summary",
+              "fill": "$ink",
+              "content": "all messages",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "RsvRM",
+              "name": "Subscription Row Action",
+              "fill": "$accent-strong",
+              "content": "查看详情  →",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "T5jzX",
+      "x": 5688,
+      "y": 7708,
+      "name": "Agent Subscription/Desktop/Manage",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$surface-app",
+      "children": [
+        {
+          "type": "frame",
+          "id": "UDwVv",
+          "name": "Subscription Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            32,
+            26
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "OWhpk",
+              "name": "Subscription Rail Brand",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "e6suXI",
+                  "name": "Subscription Brand Mark",
+                  "fill": "$accent",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "text",
+                  "id": "QX9pK",
+                  "name": "Subscription Brand Name",
+                  "fill": "$text-inverse",
+                  "content": "DIPOLE",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "800",
+                  "letterSpacing": 1.2
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "a5zgl8",
+              "name": "Subscription Rail Section",
+              "fill": "$text-muted",
+              "content": "AGENT CONTROL",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "Izd4F",
+              "name": "Subscription Active Navigation",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": 10,
+              "gap": 10,
+              "padding": [
+                12,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "vrJHg",
+                  "name": "Subscription Navigation Icon",
+                  "width": 17,
+                  "height": 17,
+                  "icon": "radio-tower",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "DlMM9",
+                  "name": "Subscription Navigation Label",
+                  "fill": "$text-inverse",
+                  "content": "事件订阅",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lSndH",
+              "name": "Subscription Rail Agent 定义",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "L1IXgf",
+                  "name": "Agent 定义 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "bot",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "pQygK",
+                  "name": "Agent 定义 Label",
+                  "fill": "$text-muted",
+                  "content": "Agent 定义",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "gMRrV",
+              "name": "Subscription Rail 任务运行",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "pSnDF",
+                  "name": "任务运行 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "list-checks",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "iWA8P",
+                  "name": "任务运行 Label",
+                  "fill": "$text-muted",
+                  "content": "任务运行",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f2bpp",
+              "name": "Subscription Rail 审批记录",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Nt7BQ",
+                  "name": "审批记录 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "qofI2",
+                  "name": "审批记录 Label",
+                  "fill": "$text-muted",
+                  "content": "审批记录",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "gCsWV",
+              "name": "Subscription Rail Boundary",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "OWNER CONTROL\nRUNTIME: DIRECT_TARGET\n高成本模型调用未启用",
+              "lineHeight": 1.8,
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "HEIWX",
+          "name": "Subscription Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            36,
+            42
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "h7i2U",
+              "name": "Subscription Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Qzokm",
+                  "name": "Subscription Desktop Heading",
+                  "layout": "vertical",
+                  "gap": 7,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UGa89",
+                      "name": "Subscription Desktop Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "PROJECT GUARDIAN / EVENT WATCH",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "SGybl",
+                      "name": "Subscription Desktop Title",
+                      "fill": "$ink",
+                      "content": "事件订阅",
+                      "fontFamily": "$font-display",
+                      "fontSize": 32,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "khog8",
+                      "name": "Subscription Desktop Subtitle",
+                      "fill": "$ink-soft",
+                      "content": "查看谁在观察哪些会话，以及触发前采用的确定性过滤规则。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BxU5M",
+                  "name": "Subscription Create Button",
+                  "fill": "$ink",
+                  "cornerRadius": 10,
+                  "gap": 9,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "qlbeV",
+                      "name": "Subscription Create Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "plus",
+                      "library": "lucide",
+                      "fill": "$surface"
+                    },
+                    {
+                      "type": "text",
+                      "id": "VqEXy",
+                      "name": "Subscription Create Label",
+                      "fill": "$surface",
+                      "content": "创建订阅",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "b76gV",
+              "name": "Subscription Shadow Notice",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 10,
+              "gap": 12,
+              "padding": [
+                13,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "CGMW8",
+                  "name": "Subscription Shadow Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "flask-conical",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "iXfJO",
+                  "name": "Subscription Shadow Notice Text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "订阅控制面已持久化；当前 Runtime 保持 direct_target，创建记录不会自动启用共享环境触发。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ovb68",
+              "name": "Subscription Desktop Columns",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XrMfa",
+                  "name": "Subscription List Region",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "V5mahb",
+                      "name": "Subscription List Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "c4rafC",
+                          "name": "Subscription List Title",
+                          "fill": "$ink",
+                          "content": "我的订阅  ·  03",
+                          "fontFamily": "$font-display",
+                          "fontSize": 17,
+                          "fontWeight": "750"
+                        },
+                        {
+                          "type": "text",
+                          "id": "P5eBh0",
+                          "name": "Subscription List Sort",
+                          "fill": "$ink-faint",
+                          "content": "ACTIVE FIRST  ↓",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "N35rXX",
+                      "type": "ref",
+                      "ref": "QeyRC",
+                      "name": "Project Guardian Active Subscription",
+                      "width": "fill_container",
+                      "descendants": {
+                        "wpDeR": {
+                          "content": "Project Guardian"
+                        },
+                        "jtftd": {
+                          "content": "DEF-7E21  /  VERSION 04"
+                        },
+                        "gH9dV": {
+                          "content": "message.created   ·   conversation group:DIPOLE"
+                        },
+                        "jIQHL": {
+                          "content": "contains any  ·  事故 / 延期 / 风险"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Obb9Y",
+                      "type": "ref",
+                      "ref": "QeyRC",
+                      "name": "Daily Digest Active Subscription",
+                      "width": "fill_container",
+                      "descendants": {
+                        "wpDeR": {
+                          "content": "Daily Digest"
+                        },
+                        "jtftd": {
+                          "content": "DEF-A912  /  VERSION 02"
+                        },
+                        "gH9dV": {
+                          "content": "message.created   ·   conversation group:PLATFORM"
+                        },
+                        "jIQHL": {
+                          "content": "all messages"
+                        }
+                      }
+                    },
+                    {
+                      "id": "yNA1C",
+                      "type": "ref",
+                      "ref": "QeyRC",
+                      "name": "Release Watch Revoked Subscription",
+                      "width": "fill_container",
+                      "opacity": 0.72,
+                      "descendants": {
+                        "wpDeR": {
+                          "content": "Release Watch"
+                        },
+                        "jtftd": {
+                          "content": "DEF-1B40  /  VERSION 01"
+                        },
+                        "Ai6Te": {
+                          "fill": "$danger-soft"
+                        },
+                        "Ai6Te/G4XjP3": {
+                          "fill": "$danger"
+                        },
+                        "Ai6Te/uvRu0": {
+                          "content": "REVOKED",
+                          "fill": "$danger"
+                        },
+                        "gH9dV": {
+                          "content": "message.created   ·   conversation group:RELEASE"
+                        },
+                        "jIQHL": {
+                          "content": "revoked  ·  owner request"
+                        },
+                        "RsvRM": {
+                          "content": "查看审计  →"
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "bwNfU",
+                      "name": "Subscription Pagination Hint",
+                      "fill": "$ink-faint",
+                      "content": "按 subscription ID 稳定分页  ·  下一页 →",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xPn2b",
+                  "name": "Subscription Definition Authority",
+                  "width": 336,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 14,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 18,
+                  "padding": 22,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HXKEE",
+                      "name": "Subscription Authority Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "PINNED AUTHORITY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "odBfJ",
+                      "name": "Subscription Authority Title",
+                      "fill": "$ink",
+                      "content": "Project Guardian  v04",
+                      "fontFamily": "$font-display",
+                      "fontSize": 21,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "g4QJi",
+                      "name": "Subscription Authority ID",
+                      "fill": "$ink-soft",
+                      "content": "DEF-7E21\nowner U100  ·  active",
+                      "lineHeight": 1.6,
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "D3Sga8",
+                      "name": "Subscription Authority Divider",
+                      "fill": "$line",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "uybBV",
+                      "name": "Subscription Scope Label",
+                      "fill": "$ink-faint",
+                      "content": "RESOURCE SCOPE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "m4hqcI",
+                      "name": "Subscription Scope Box",
+                      "width": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 7,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N2voU",
+                          "name": "Subscription Scope Type",
+                          "fill": "$ink",
+                          "content": "conversation",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rIkYt",
+                          "name": "Subscription Scope Resource",
+                          "fill": "$ink-soft",
+                          "content": "group:DIPOLE  ·  read",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "mGImZ",
+                      "type": "ref",
+                      "ref": "yjH4M",
+                      "name": "Subscription Filter Preview",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "QtB05",
+                      "name": "Subscription Creation Boundary",
+                      "width": "fill_container",
+                      "fill": "$danger-soft",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 7,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "paodQ",
+                          "name": "Subscription Creation Boundary Title",
+                          "fill": "$danger",
+                          "content": "创建前检查",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "mo4Xa",
+                          "name": "Subscription Creation Boundary Text",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "仅接受当前 owner 的 active Definition version；scope 或版本漂移立即拒绝。",
+                          "lineHeight": 1.5,
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "g8Uizj",
+      "x": 5688,
+      "y": 8852,
+      "name": "Agent Subscription/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        34,
+        40
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "WFnf6",
+          "name": "Subscription State Matrix Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "WMwHb",
+              "name": "Subscription State Matrix Heading",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T3gyB",
+                  "name": "Subscription State Matrix Eyebrow",
+                  "fill": "$accent-strong",
+                  "content": "DURABLE CONTROL SURFACE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "text",
+                  "id": "iLJmu",
+                  "name": "Subscription State Matrix Title",
+                  "fill": "$ink",
+                  "content": "事件订阅状态契约",
+                  "fontFamily": "$font-display",
+                  "fontSize": 30,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "t1s0hg",
+              "name": "Subscription State Matrix Version",
+              "fill": "$ink-soft",
+              "content": "dipole.agent.event-subscription.v1\nOWNER-DERIVED / DEFAULT-OFF",
+              "lineHeight": 1.5,
+              "textAlign": "right",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "EeUwh",
+          "name": "Subscription State Row 1",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "type": "frame",
+              "id": "oYJHF",
+              "name": "Subscription State LOADING",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VRGJl",
+                  "name": "LOADING State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "M0FYh",
+                      "name": "LOADING State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "loader",
+                      "library": "lucide",
+                      "fill": "$ink-soft"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tGqOs",
+                      "name": "LOADING State Code",
+                      "fill": "$ink-soft",
+                      "content": "LOADING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "YcVQa",
+                  "name": "LOADING State Title",
+                  "fill": "$ink",
+                  "content": "正在读取订阅",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "uQn3X",
+                  "name": "LOADING State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "只显示当前 principal 的分页结果。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "bnyo9",
+                  "name": "LOADING State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "g4CpwL",
+                  "name": "LOADING State Action",
+                  "fill": "$ink-soft",
+                  "content": "等待 Core 响应  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d8pWG",
+              "name": "Subscription State EMPTY",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BcBr6",
+                  "name": "EMPTY State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "kKLs4",
+                      "name": "EMPTY State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "inbox",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "igQIu",
+                      "name": "EMPTY State Code",
+                      "fill": "$accent-strong",
+                      "content": "EMPTY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "r2zAe",
+                  "name": "EMPTY State Title",
+                  "fill": "$ink",
+                  "content": "还没有事件订阅",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "yD2vH",
+                  "name": "EMPTY State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "创建前需要 active Definition version 与 conversation scope。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "gPWdO",
+                  "name": "EMPTY State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "ZGKMx",
+                  "name": "EMPTY State Action",
+                  "fill": "$accent-strong",
+                  "content": "查看 Agent 定义  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c2c0ff",
+              "name": "Subscription State UNAVAILABLE",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$danger-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WJP4f",
+                  "name": "UNAVAILABLE State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "UHAhl",
+                      "name": "UNAVAILABLE State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "triangle-alert",
+                      "library": "lucide",
+                      "fill": "$danger"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hQTOX",
+                      "name": "UNAVAILABLE State Code",
+                      "fill": "$danger",
+                      "content": "UNAVAILABLE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "g6tkY",
+                  "name": "UNAVAILABLE State Title",
+                  "fill": "$ink",
+                  "content": "控制面暂时不可用",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "t2pA95",
+                  "name": "UNAVAILABLE State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "隐藏缓存列表，禁止创建和撤销。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "YhF7r",
+                  "name": "UNAVAILABLE State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "xNMCC",
+                  "name": "UNAVAILABLE State Action",
+                  "fill": "$danger",
+                  "content": "重新确认  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ck53p",
+          "name": "Subscription State Row 2",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Mu9y2",
+              "name": "Subscription State DEFINITION STALE",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "glwnu",
+                  "name": "DEFINITION STALE State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "xK6Yj",
+                      "name": "DEFINITION STALE State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "shield-x",
+                      "library": "lucide",
+                      "fill": "$warning"
+                    },
+                    {
+                      "type": "text",
+                      "id": "mi3QV",
+                      "name": "DEFINITION STALE State Code",
+                      "fill": "$warning",
+                      "content": "DEFINITION STALE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "MzZfi",
+                  "name": "DEFINITION STALE State Title",
+                  "fill": "$ink",
+                  "content": "Definition 已失效",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "I27v4",
+                  "name": "DEFINITION STALE State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "版本、owner、有效期或 scope 漂移，创建请求关闭。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "W9D3d",
+                  "name": "DEFINITION STALE State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "D5qm4",
+                  "name": "DEFINITION STALE State Action",
+                  "fill": "$warning",
+                  "content": "返回定义页  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Br8mB",
+              "name": "Subscription State REVOKING",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HjQmS",
+                  "name": "REVOKING State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "I0CnKt",
+                      "name": "REVOKING State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "loader-circle",
+                      "library": "lucide",
+                      "fill": "$warning"
+                    },
+                    {
+                      "type": "text",
+                      "id": "UDTgG",
+                      "name": "REVOKING State Code",
+                      "fill": "$warning",
+                      "content": "REVOKING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "KmCsR",
+                  "name": "REVOKING State Title",
+                  "fill": "$ink",
+                  "content": "正在撤销订阅",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "dJziS",
+                  "name": "REVOKING State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "原因与 subscription ID 已绑定，等待权威终态。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "XwKre",
+                  "name": "REVOKING State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "JYQRO",
+                  "name": "REVOKING State Action",
+                  "fill": "$warning",
+                  "content": "请勿重复提交  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n1oXt",
+              "name": "Subscription State REVOKED",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$danger-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "p843H",
+                  "name": "REVOKED State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "kGhbs",
+                      "name": "REVOKED State Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "ban",
+                      "library": "lucide",
+                      "fill": "$danger"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EWf6b",
+                      "name": "REVOKED State Code",
+                      "fill": "$danger",
+                      "content": "REVOKED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "dSl6J",
+                  "name": "REVOKED State Title",
+                  "fill": "$ink",
+                  "content": "订阅已撤销",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "750"
+                },
+                {
+                  "type": "text",
+                  "id": "B0sRRM",
+                  "name": "REVOKED State Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保留创建者、撤销者、原因与时间用于审计。",
+                  "lineHeight": 1.55,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "rectangle",
+                  "id": "i5P5J",
+                  "name": "REVOKED State Divider",
+                  "fill": "$line",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "text",
+                  "id": "GLHj0",
+                  "name": "REVOKED State Action",
+                  "fill": "$danger",
+                  "content": "查看审计  →",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Y9wdS",
+      "x": 7248,
+      "y": 8852,
+      "name": "Agent Subscription/Mobile/Revoke",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "sdU0a",
+          "name": "Subscription Mobile App Bar",
+          "width": "fill_container",
+          "height": 64,
+          "fill": "$surface-panel",
+          "padding": [
+            0,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "zldaV",
+              "name": "Subscription Mobile Back",
+              "width": 32,
+              "height": 32,
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "NDfx4",
+                  "name": "Subscription Mobile Back Icon",
+                  "fill": "$text-primary",
+                  "content": "‹",
+                  "lineHeight": 1,
+                  "fontFamily": "$font-display",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ScE0M",
+              "name": "Subscription Mobile Title",
+              "fill": "$text-primary",
+              "content": "事件订阅",
+              "fontFamily": "$font-heading",
+              "fontSize": 17,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "GBnaE",
+              "name": "Subscription Mobile Add Disabled",
+              "opacity": 0.55,
+              "width": 32,
+              "height": 32,
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "eK0rD",
+                  "name": "Subscription Mobile Add Icon",
+                  "fill": "$text-secondary",
+                  "content": "+",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "aMHXj",
+          "name": "Subscription Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            16,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Aowls",
+              "name": "Subscription Mobile Shadow Notice",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 5,
+              "padding": [
+                11,
+                13
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Rz0KR",
+                  "name": "Subscription Mobile Shadow Label",
+                  "fill": "$warning",
+                  "content": "SHADOW · DIRECT_TARGET",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.8
+                },
+                {
+                  "type": "text",
+                  "id": "NDv1t",
+                  "name": "Subscription Mobile Shadow Copy",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "订阅控制已持久化；Runtime 尚未消费订阅触发。",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GDpWh",
+              "name": "Subscription Mobile Toolbar",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BnyT6",
+                  "name": "Subscription Mobile Count",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p1CVH",
+                      "name": "Subscription Mobile Count Value",
+                      "fill": "$text-primary",
+                      "content": "1 个有效订阅",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ml2b9",
+                      "name": "Subscription Mobile Count Hint",
+                      "fill": "$text-muted",
+                      "content": "OWNER: YOU",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "D3OYc",
+                  "name": "Subscription Mobile Catalog Unavailable",
+                  "fill": "$text-muted",
+                  "content": "创建需 Definition 目录",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RuUs1",
+              "name": "Subscription Mobile Active Card",
+              "width": "fill_container",
+              "fill": "$surface-panel",
+              "cornerRadius": 16,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vxCCl",
+                  "name": "Subscription Mobile Card Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iAIvf",
+                      "name": "Subscription Mobile Card Identity",
+                      "width": 220,
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ppRzP",
+                          "name": "Subscription Mobile Card Name",
+                          "fill": "$text-primary",
+                          "content": "Project Guardian",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 17,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "NHnKZ",
+                          "name": "Subscription Mobile Card Version",
+                          "fill": "$text-muted",
+                          "content": "DEF 01JQ...M4 · VERSION 7",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "kizsn",
+                      "type": "ref",
+                      "ref": "bRCLl",
+                      "name": "Subscription Mobile Active Status",
+                      "width": 88,
+                      "descendants": {
+                        "G4XjP3": {
+                          "fill": "$brand"
+                        },
+                        "uvRu0": {
+                          "content": "ACTIVE"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "duUiW",
+                  "name": "Subscription Mobile Scope Block",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xt1pP",
+                      "name": "Subscription Mobile Scope Label",
+                      "fill": "$text-muted",
+                      "content": "SCOPE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    },
+                    {
+                      "type": "text",
+                      "id": "Bc3bz",
+                      "name": "Subscription Mobile Scope Value",
+                      "fill": "$text-primary",
+                      "content": "conversation · G123 / Dipole 开发群",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "x1A6H",
+                  "name": "Subscription Mobile Filter Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WPUuK",
+                      "name": "Subscription Mobile Filter Summary",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "TNbCE",
+                          "name": "Subscription Mobile Filter Label",
+                          "fill": "$text-muted",
+                          "content": "FILTER",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.8
+                        },
+                        {
+                          "type": "text",
+                          "id": "QEaoW",
+                          "name": "Subscription Mobile Filter Value",
+                          "fill": "$text-secondary",
+                          "content": "message_contains_any · 事故 / 延期",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "VlpVo",
+                      "name": "Subscription Mobile Revoke Link",
+                      "fill": "$danger",
+                      "content": "撤销",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "D4vFKc",
+              "name": "Subscription Mobile Boundary Note",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "创建动作保持关闭，直到 Gateway 提供经过鉴权的 Definition 目录。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QgU8R",
+          "name": "Subscription Mobile Revoke Sheet",
+          "width": "fill_container",
+          "height": 300,
+          "fill": "$surface-panel",
+          "cornerRadius": [
+            22,
+            22,
+            0,
+            0
+          ],
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            12,
+            20,
+            22,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Hj0i8",
+              "name": "Subscription Mobile Sheet Handle Row",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 4,
+                  "id": "y4gc1g",
+                  "name": "Subscription Mobile Sheet Handle",
+                  "fill": "$border",
+                  "width": 42,
+                  "height": 4
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Sjxym",
+              "name": "Subscription Mobile Sheet Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WiR5s",
+                  "name": "Subscription Mobile Revoke Title",
+                  "fill": "$text-primary",
+                  "content": "撤销 Project Guardian？",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 19,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "s1TiC",
+                  "name": "Subscription Mobile Revoke Copy",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "撤销将写入精确原因并保留审计记录。该动作不会启用或停止模型 Runtime。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xKblC",
+              "name": "Subscription Mobile Reason Field",
+              "width": "fill_container",
+              "height": 64,
+              "fill": "$surface-muted",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": [
+                9,
+                12
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wMkhZ",
+                  "name": "Subscription Mobile Reason Label",
+                  "fill": "$text-muted",
+                  "content": "REVOKE REASON · REQUIRED",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.6
+                },
+                {
+                  "type": "text",
+                  "id": "QpH9y",
+                  "name": "Subscription Mobile Reason Value",
+                  "fill": "$text-primary",
+                  "content": "项目已归档，停止继续观察",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "za8zP",
+              "name": "Subscription Mobile Revoke Actions",
+              "width": "fill_container",
+              "height": 46,
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "llozH",
+                  "name": "Subscription Mobile Cancel Button",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y1TlHT",
+                      "name": "Subscription Mobile Cancel Label",
+                      "fill": "$text-primary",
+                      "content": "取消",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Vrher",
+                  "name": "Subscription Mobile Confirm Revoke Button",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$danger",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XrpqN",
+                      "name": "Subscription Mobile Confirm Revoke Label",
+                      "fill": "$text-inverse",
+                      "content": "确认撤销",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
