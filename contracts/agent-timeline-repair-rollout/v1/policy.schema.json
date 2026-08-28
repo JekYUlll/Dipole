@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-timeline-repair-rollout/v1/policy.schema.json",
+  "title": "Dipole Agent Timeline Repair Rollout Policy v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["minimumWindowMinutes", "minimumClaimed", "maximumRetryRatioBps", "maximumProjectionErrorBps", "maximumCompleteErrorBps", "maximumClaimErrorBps", "maximumInvalid", "requireRollbackVerified", "requireClearAlerts"],
+  "properties": {
+    "minimumWindowMinutes": {"type": "integer", "minimum": 0}, "minimumClaimed": {"type": "integer", "minimum": 0},
+    "maximumRetryRatioBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumProjectionErrorBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumCompleteErrorBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumClaimErrorBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumInvalid": {"type": "integer", "minimum": 0}, "requireRollbackVerified": {"type": "boolean"}, "requireClearAlerts": {"type": "boolean"}
+  }
+}
