@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Runtime 增加默认关闭的 MCP Worker command dispatcher：初始输入严格只接受 Task/Run/Invocation ID，Profile、Server、Tool、Capability、参数和开始时间每次从 Core 持久 Tool Invocation 解析；稳定 request ID 与输入截止时间由 Invocation 派生，恢复前重新核对完整命令和 Activity checkpoint。连接 Session Factory 仅接收 tenant/profile/server/tool 四字段，不再可见 Task、Run、Invocation 或参数。生产 Worker 与外部 Transport Factory 继续关闭。
 - migration v36、Core/TS RPC 与 MCP Activity 增加 durable Tool round receipt：确定性 Round ID 绑定 Invocation、轮次和请求摘要，MySQL 原子认领后仅原 owner 可一次写入规范结果或稳定失败；Temporal 丢失 Activity completion 时重放已存结果，遗留 `executing` 明确返回 `ambiguous` 并禁止自动 reclaim/retry。外部 Provider、网络开关和 Worker composition 继续关闭；远端已执行但本地收据尚未提交的窗口采用 at-most-once 失败策略。
 - Agent Runtime 增加默认关闭的 MCP `2026-07-28` 手工 `input_required` 续接基础：仅接受一个普通 Form，持久 checkpoint 精确绑定原 Tool 参数、请求键、不透明 `requestState` 与 Server/Tool/Invocation lineage，恢复时由新请求回传同一状态；凭据字段、状态漂移、多请求和超限载荷均 fail closed。生产 Activity 编排、外部连接、多轮与敏感 URL 授权仍未启用。
 - Agent Runtime 增加默认关闭的 MCP Activity-safe round runner：每个首次/恢复轮次均从 tenant-owned Profile 打开全新现代 Client/Transport，并在成功、取消或握手失败后关闭资源；外层 checkpoint 绑定 tenant/profile/server 与内层 continuation，credential 仅在 Registry `connect` 时解析。现有 Worker 模式与外部连接开关保持关闭。

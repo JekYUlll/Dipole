@@ -287,7 +287,12 @@ export class McpInputRequiredActivity {
     signal?: AbortSignal
   ): Promise<McpToolRoundResult> {
     signal?.throwIfAborted();
-    const session = await this.#sessions.open(binding, signal);
+    const session = await this.#sessions.open({
+      tenantId: binding.tenantId,
+      profileId: binding.profileId,
+      serverId: binding.serverId,
+      toolName: binding.toolName
+    }, signal);
     try {
       signal?.throwIfAborted();
       return await session.callToolRound(params, signal);

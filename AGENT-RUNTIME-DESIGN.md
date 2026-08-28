@@ -157,6 +157,8 @@ Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根
 
 外部 MCP Activity 通过 migration v35 的权威 Tool command 和 migration v36 的 durable round receipt 恢复。确定性 Round ID 绑定 Invocation、轮次和 canonical 请求摘要，首次 `claimed` 才允许连接远端；结果先写入 MySQL 终态再返回 Temporal。`replay_completed|replay_failed` 不触达网络，遗留 `executing` 固定为 `ambiguous` 且没有 lease reclaim。远端执行后、本地收据前的窗口采用 `remote_outcome_unknown` at-most-once 失败策略；生产 Worker、Transport Factory 和外部开关继续关闭。
 
+MCP Worker command dispatcher 的不可信输入面只包含 Task/Run/Invocation ID。Core `ResolveMcpToolCommand` 返回持久开始时间和完整命令，TS 复算参数摘要并以全部 authority 字段生成 binding；request ID 和输入截止时间由 Invocation 固定派生。恢复前使用同三 ID 再次解析 Core，并在建立新 Session 前比较命令与 Activity checkpoint。Session Factory 只接收 tenant/profile/server/tool，命令参数与 Task 身份不会传播到连接工厂。
+
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 
 G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。当前没有更新、删除、公开 URL、消息转换和 active 模式写入，Pencil 恢复后再交付用户界面。

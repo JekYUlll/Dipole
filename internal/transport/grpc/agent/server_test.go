@@ -328,6 +328,7 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 		InvocationUUID: "INV-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", TaskUUID: "TASK-1", RunUUID: "RUN-1",
 		ProfileID: "calendar-prod", ServerID: "calendar.example", ToolName: "calendar.create", CapabilityID: application.AgentCapabilityConversationsList,
 		ArgumentsJSON: `{"calendarId":"CAL-1"}`, ArgumentsSHA256: strings.Repeat("c", 64),
+		StartedAt: time.UnixMilli(1_000),
 	}}
 	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	if err != nil {
@@ -349,7 +350,7 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	command, err := server.ResolveMcpToolCommand(context.Background(), &agentv1.ResolveMcpToolCommandRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
 	})
-	if err != nil || command.GetProfileId() != "calendar-prod" || string(command.GetArgumentsJson()) != `{"calendarId":"CAL-1"}` || command.GetPrincipalUserId() != "U100" {
+	if err != nil || command.GetProfileId() != "calendar-prod" || string(command.GetArgumentsJson()) != `{"calendarId":"CAL-1"}` || command.GetPrincipalUserId() != "U100" || command.GetStartedAtUnixMs() != 1_000 {
 		t.Fatalf("unexpected Tool command: response=%+v err=%v", command, err)
 	}
 	finishResponse, err := server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
