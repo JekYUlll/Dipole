@@ -33,6 +33,7 @@ type Server struct {
 	artifacts            application.AgentArtifactServiceV1
 	subscriptions        application.AgentEventSubscriptionResolverV1
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
+	definitionCatalog    application.AgentDefinitionCatalogServiceV1
 	memories             application.AgentMemoryContextResolverV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
 	toolRounds           application.AgentMCPToolRoundServiceV1
@@ -61,6 +62,14 @@ func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSu
 		return nil, errors.New("Agent Event Subscription control service is required")
 	}
 	s.subscriptionControls = controls
+	return s, nil
+}
+
+func (s *Server) WithDefinitionCatalog(catalog application.AgentDefinitionCatalogServiceV1) (*Server, error) {
+	if s == nil || catalog == nil {
+		return nil, errors.New("Agent Definition catalog service is required")
+	}
+	s.definitionCatalog = catalog
 	return s, nil
 }
 
@@ -252,6 +261,46 @@ func (s *Server) RevokeEventSubscription(ctx context.Context, request *agentv1.R
 		return nil, eventSubscriptionControlErrorV1(err)
 	}
 	return agentEventSubscriptionResponseV1(*item), nil
+}
+
+func (s *Server) ListAgentDefinitions(ctx context.Context, request *agentv1.ListAgentDefinitionsRequest) (*agentv1.ListAgentDefinitionsResponse, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.definitionCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Definition catalog is unavailable")
+	}
+	page, err := s.definitionCatalog.List(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentDefinitionCatalogListRequestV1{
+		TenantID: request.GetTenantId(), AfterDefinitionUUID: request.GetAfterDefinitionId(),
+		AfterVersion: request.GetAfterVersion(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentDefinitionCatalogInvalid):
+			return nil, status.Error(codes.FailedPrecondition, "Agent Definition catalog request is invalid")
+		case errors.Is(err, application.ErrAgentDefinitionCatalogConflict):
+			return nil, status.Error(codes.Aborted, "Agent Definition catalog authority changed")
+		default:
+			return nil, status.Error(codes.Internal, "Agent Definition catalog lookup failed")
+		}
+	}
+	response := &agentv1.ListAgentDefinitionsResponse{
+		Definitions:      make([]*agentv1.AgentDefinitionCatalogItem, 0, len(page.Definitions)),
+		NextDefinitionId: page.NextDefinitionUUID, NextVersion: page.NextVersion,
+	}
+	for _, item := range page.Definitions {
+		definition := &agentv1.AgentDefinitionCatalogItem{
+			DefinitionId: item.DefinitionUUID, Version: item.Version, AgentId: item.AgentUUID,
+			ConversationScopes: append([]string(nil), item.ConversationScopes...),
+			ValidFromUnixMs:    item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(), UpdatedAtUnixMs: item.UpdatedAt.UnixMilli(),
+		}
+		if item.ExpiresAt != nil {
+			definition.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
+		}
+		response.Definitions = append(response.Definitions, definition)
+	}
+	return response, nil
 }
 
 func eventSubscriptionOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

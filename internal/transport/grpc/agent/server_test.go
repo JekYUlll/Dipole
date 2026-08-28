@@ -52,6 +52,18 @@ type eventSubscriptionControlStub struct {
 	item      application.AgentEventSubscriptionV1
 }
 
+type agentDefinitionCatalogStub struct {
+	principal string
+	request   application.AgentDefinitionCatalogListRequestV1
+	page      application.AgentDefinitionCatalogPageV1
+}
+
+func (s *agentDefinitionCatalogStub) List(_ context.Context, principal string, request application.AgentDefinitionCatalogListRequestV1) (*application.AgentDefinitionCatalogPageV1, error) {
+	s.principal, s.request = principal, request
+	copy := s.page
+	return &copy, nil
+}
+
 func (s *eventSubscriptionControlStub) Create(_ context.Context, principal string, request application.AgentEventSubscriptionCreateRequestV1) (*application.AgentEventSubscriptionV1, error) {
 	s.principal, s.created = principal, request
 	copy := s.item
@@ -650,6 +662,38 @@ func TestEventSubscriptionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing
 		return server.ListEventSubscriptions(ctx, &agentv1.ListEventSubscriptionsRequest{Context: requestContext, TenantId: "dipole"})
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent data-plane management code = %s", status.Code(err))
+	}
+}
+
+func TestAgentDefinitionCatalogRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
+	catalog := &agentDefinitionCatalogStub{page: application.AgentDefinitionCatalogPageV1{
+		Definitions: []application.AgentDefinitionCatalogItemV1{{
+			DefinitionUUID: "DEF-1", Version: 2, AgentUUID: "UAI", ConversationScopes: []string{"group:G1"},
+			ValidFrom: time.Unix(1, 0), CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(2, 0),
+		}},
+		NextDefinitionUUID: "DEF-1", NextVersion: 2,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithDefinitionCatalog(catalog)
+	requestContext := grpccommon.RequestContext("U100", "dipole-gateway")
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListAgentDefinitions(ctx, &agentv1.ListAgentDefinitionsRequest{
+			Context: requestContext, TenantId: "dipole", AfterDefinitionId: "DEF-0", AfterVersion: 1, Limit: 20,
+		})
+	})
+	if err != nil {
+		t.Fatalf("list Agent Definitions: %v", err)
+	}
+	listed := response.(*agentv1.ListAgentDefinitionsResponse)
+	if catalog.principal != "U100" || catalog.request.AfterDefinitionUUID != "DEF-0" || catalog.request.AfterVersion != 1 || catalog.request.Limit != 20 ||
+		len(listed.GetDefinitions()) != 1 || listed.GetDefinitions()[0].GetDefinitionId() != "DEF-1" || listed.GetNextVersion() != 2 {
+		t.Fatalf("unexpected Definition catalog request=%+v response=%+v", catalog, listed)
+	}
+	requestContext.CallerService = "dipole-agent"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListAgentDefinitions(ctx, &agentv1.ListAgentDefinitionsRequest{Context: requestContext, TenantId: "dipole"})
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent data-plane catalog code = %s", status.Code(err))
 	}
 }
 

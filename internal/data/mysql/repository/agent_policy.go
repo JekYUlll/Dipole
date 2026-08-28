@@ -22,6 +22,7 @@ type AgentPolicyRepository struct {
 }
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentDefinitionCatalogStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentApprovalGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentRuntimePromotionGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentEventSubscriptionStoreV1 = (*AgentPolicyRepository)(nil)
@@ -80,6 +81,25 @@ func (r *AgentPolicyRepository) GetDefinitionVersion(ctx context.Context, defini
 		return nil, fmt.Errorf("get Agent Definition version: %w", err)
 	}
 	return mapAgentDefinitionVersion(row)
+}
+
+func (r *AgentPolicyRepository) ListOwnedActiveDefinitions(ctx context.Context, tenantID, ownerUUID, afterDefinitionUUID string, afterVersion uint64, activeAt time.Time, limit int) ([]application.AgentDefinitionVersionV1, error) {
+	rows, err := r.queries.ListOwnedActiveAgentDefinitions(ctx, generated.ListOwnedActiveAgentDefinitionsParams{
+		TenantID: tenantID, OwnerUuid: ownerUUID, ValidAt: activeAt, ExpiresAfter: nullableTime(&activeAt),
+		AfterDefinitionUuid: afterDefinitionUUID, AfterVersion: afterVersion, Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list owned active Agent Definitions: %w", err)
+	}
+	definitions := make([]application.AgentDefinitionVersionV1, 0, len(rows))
+	for _, row := range rows {
+		definition, mapErr := mapAgentDefinitionVersion(row)
+		if mapErr != nil {
+			return nil, mapErr
+		}
+		definitions = append(definitions, *definition)
+	}
+	return definitions, nil
 }
 
 func mapAgentDefinitionVersion(row generated.AgentDefinitionVersion) (*application.AgentDefinitionVersionV1, error) {
