@@ -34,6 +34,7 @@ import { TemporalMcpSubscriptionRouteSelector } from "../temporal/mcp-subscripti
 import { agentTaskWorkflowId, TemporalMcpTaskClient } from "../temporal/temporal-task-client.js";
 import { TemporalMcpWorkflowExecutionCatalog } from "../temporal/mcp-workflow-envelope.js";
 import { createKafkaShadowRuntime, type ShadowRuntimeConfig } from "./shadow-runtime.js";
+import { createExternalMcpShadowDrillEvidence } from "./external-mcp-shadow-drill-evidence.js";
 
 const enabled = process.env.DIPOLE_AGENT_FULL_STACK_DRILL === "true";
 const integration = describe.skipIf(!enabled);
@@ -156,18 +157,14 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       expect(core.toolCalls).toBe(1);
       expect(core.finishedStatuses).toEqual(["completed", "failed"]);
 
-      await writeEvidence({
-        schema_version: "dipole.agent.external-mcp-shadow-drill.v1",
-        outcome: "passed",
-        isolation: "disposable_mysql_kafka_temporal_and_local_mcp",
+      await writeEvidence(createExternalMcpShadowDrillEvidence({
         event_count: 2,
         ledger_completed_event_count: 2,
         tool_call_count: 1,
         artifact_count: 1,
         restart_duplicate_suppressed: true,
-        expired_readiness_denied: true,
-        production_authority: false
-      });
+        expired_readiness_denied: true
+      }));
     } finally {
       await runtime.stop().catch(() => undefined);
       worker.shutdown();

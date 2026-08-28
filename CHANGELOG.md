@@ -68,6 +68,7 @@
 
 ### 新增
 
+- Agent G4 隔离全栈 Shadow 证据增加语言中立 JSON Schema、严格 Zod 解析器和 `mcp:shadow-drill:check` CLI；契约固定成功计数/布尔门禁、canonical `content_sha256` 与最多 24 小时有效期，并拒绝额外字段、未同步 hash 的内容漂移、未来或过期文件。
 - Agent G4 增加默认跳过的隔离全栈 Shadow 演练：随机 Compose 项目启动独立 MySQL 8.4 与 Kafka 3.9，测试进程启动内存型 Temporal、owner-only route manifest、可信 Core 夹具和本地只读 MCP Server；演练输出 owner-only、无标识符/正文/凭据的 v1 JSON 证据并自动清理容器、网络和卷。
 - 增加默认关闭的 Agent Elicitation Web 闭环：`/agent/tasks/:taskId/input` 根据 authenticated Task Query 渲染 `text|select|multiselect|boolean`，精确绑定 Task/request 提交并在提交、取消或过期后重新查询权威状态；desktop/mobile 响应式页面与 3 项组件行为测试已接入，入口由 `VITE_AGENT_ELICITATION_ENABLED=false|true` 控制。
 - canonical Pencil 增加 Agent Elicitation v1：desktop/mobile 普通 Form、外部来源披露、四类受限字段、七态矩阵及三类可复用组件；设计明确旧 request、敏感字段、URL mode 和依赖不可用时 fail closed，2x 评审图归档于 `design/exports/agent-elicitation-v1/`。
@@ -331,6 +332,7 @@
 
 ### 变更
 
+- 外部 MCP 全栈演练脚本不再内嵌两字段 JSON 判断，统一调用 Runtime 契约校验 CLI；证据创建和离线复核共享相同 canonical hash、时间与成功不变量。
 - 外部 MCP fresh-readiness egress gate 现在除双 binding、hash 和时间结构外，还要求 `expiresAt` 严格晚于 Worker 当前时钟；Worker 复用已有可注入时钟完成每次连接前校验，过期证据在 raw Registry、Catalog 和网络访问前拒绝。
 - 前端开发工具链升级到 Vite 8.2.2、Vitest 4.1.11、plugin-vue 6.0.8 和 Rolldown 1.2.6，并固定 Node 22.12+ LTS；配置改用 `import.meta.dirname`，隔离测试可通过 `DIPOLE_WEB_PROXY_TARGET` 覆盖 HTTP/WS 代理目标。
 - 用户状态固定为语言中立 `dipole.user.status.v1`：`normal=1`、`disabled=2`，Go 领域常量改为显式值，避免其他常量或多语言实现改变持久化语义。
@@ -479,6 +481,7 @@
 
 ### 验证
 
+- 外部 MCP 证据契约聚焦测试通过 7 项，并由真实隔离演练生成包含 `collected_at`、`expires_at` 与 `content_sha256` 的文件后经独立 CLI 验证；篡改计数/布尔值/hash、附加字段、未来时间和过期时间均失败关闭。
 - 外部 MCP 全栈演练通过：2 个 subscription 事件经 Kafka、MySQL EventLedger 与 Temporal 收敛；首个事件完成 1 次 allowlisted read Tool 和 1 个 Artifact，同事件在 Runtime 重启后由持久 ledger 抑制，第二个事件使用过期 readiness 后 Workflow failed 且 Tool 调用仍为 1。证据固定 `production_authority=false`，共享 Docker 服务未触达。
 - C2 C++ shadow 在 Kafka 3.9/librdkafka 2.3.0 上完成首次真实 earliest replay：205 条合法 group event、1 条 poison event 均在 evidence 后提交，最终 lag=0；双实例分担 12 个 partition，停止一例后另一例完成接管并保持 ready=200。归档明确 direct topic 当时为空，尚未证明 direct broker 样本、节点路由或性能收益。
 - C1 node2 恢复演练保留一组 fail-closed 与一组 passing 证据：首轮 `f657100` 在 HTTP 恢复后立即负载，40 条 accepted 消息均未持久化，暴露 consumer group 尚未稳定及旧 lag 零值误判；修复后 `ce4b600` 在 fresh project 中验证 PID `887973→898410`、72 members 前后稳定、完整 readiness 13.53s，恢复后 40/40 持久化与投递、峰值 lag 4、settled lag 0。原始证据和 SHA-256 清单归档于 `benchmarks/c1-go-recovery-2026-08-28/`。
