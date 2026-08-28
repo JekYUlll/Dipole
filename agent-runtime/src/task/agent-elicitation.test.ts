@@ -43,4 +43,11 @@ describe("Agent Elicitation v1", () => {
       schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "bad", label: "Bad", type: "select", required: true, options: [] }]
     })).toThrow(/options/);
   });
+
+  it("rejects sensitive credential fields before they reach a client", () => {
+    expect(() => validateElicitationForm({
+      schemaVersion: "dipole.agent.elicitation.v1",
+      fields: [{ id: "api_token", label: "API token", type: "text", required: true }]
+    })).toThrow(/sensitive/);
+  });
 });

@@ -70,6 +70,8 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 批准的 2x 预览位于 `exports/agent-elicitation-v1/`。普通 Form 只允许 `text`、`select`、`multiselect` 和 `boolean`，提交必须绑定当前 Task、principal 与 `request_id`；旧请求、跨用户请求和终态 Task 均拒绝。界面明确将外部内容标记为不可信，并禁止密码、Token、API Key、支付、Cookie、文件上传和 URL 授权。当前设计不代表 MCP continuation、敏感输入或 URL mode 已接入。
 
+Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 `/agent/tasks/:taskId/input`，由 `VITE_AGENT_ELICITATION_ENABLED=true` 显式启用。页面只使用 authenticated Gateway Task query/input/cancel API；查询失败时清空缓存 Form，提交后重新查询权威 Workflow 状态。MCP continuation、敏感输入和 URL mode 仍未接入。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
