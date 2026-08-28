@@ -239,7 +239,9 @@ dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalo
 
 subscription mode 现在将 Core 返回且经本地 filter 选中的 subscription 固化为 `subscriptionBinding`：其中只含 subscription ID、definition ID/version、tenant 与 Agent。事件 schema 要求 binding 的 subscription ID 与 admission 使用的顶层 ID 一致；旧 direct-target 和只有顶层 ID 的事件仍可解析。`TemporalMcpSubscriptionRouteSelector` 进一步把 exact definition ID/version 映射到代码注册的 route 和参数 resolver，并在 resolver 前核对 tenant/Agent。definition 版本升级不会沿用旧映射，重复 binding、未知版本和非对象参数均固定拒绝。
 
-该 selector 不接受 Profile、Server、Tool、manifest digest、admission 或 goal；route ID 还需经过 Worker composition 提供的 `TemporalMcpWorkflowExecutionCatalog`。参数 resolver 可以从事件构造业务参数，随后仍受 route-local schema、egress 与 Core resource scope 限制。当前生产没有注册任何 definition route 或 resolver，也没有创建受管 Workflow Client；因此这项元数据保留不会触发外部调用。后续接线应先为受控 Shadow definition 提供固定 resolver 和测试 manifest，禁止把模型输出或消息字段直接解释为 route ID。
+deployment route manifest 的可选 `subscription_trigger` 现在提供首个 production-ready registration：同一 host-owned route 绑定 exact Definition ID/version 与静态 JSON 参数。加载器先执行代码 Capability input schema，再要求全部参数名落在 route egress allowlist 且 canonical JSON 不超过 route 上限；重复 Definition binding、schema 失败和扩权全部使完整 manifest 失效。Definition 与参数同时进入 deployment binding SHA-256，配置变化会形成新的 Temporal route history authority。
+
+Worker composition 在资源创建前再次验证全部 trigger route 属于 exact Workflow catalog，并复制冻结 route snapshot。`createExternalMcpSubscriptionRouteSelector` 只从该 snapshot 构造 selector，空 mapping 或 catalog drift 固定拒绝。selector 仍不接受 Profile、Server、Tool、manifest digest、admission 或 goal；静态参数随后继续经过 route-local schema、egress、Core Context 与 resource scope。旧 manifest 可以不含 `subscription_trigger`，但无法进入后续 production subscription process。模型输出和消息字段不能解释为 route ID 或覆盖静态参数。
 
 `startExternalMcpTemporalClientLifecycle` 提供受管 Workflow start connection。它只接受已启动的 `ExternalMcpTemporalWorkerLifecycle`，因此直接复用 Worker owner 冻结的 address、namespace、task queue 和 `workflowExecutions`；调用方没有第二份 Temporal config 或 route catalog 输入。Worker disabled 时 selector factory 与 Client resource factory 均不会调用；enabled 时先构造无网络 selector，再连接 Temporal。连接期间取消或后续构造失败会回滚 resource，错误只暴露固定 startup/cleanup 分类。
 

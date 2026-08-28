@@ -57,6 +57,8 @@ describe("external MCP Temporal Worker composition", () => {
     expect(resolveDependencies).toHaveBeenCalledOnce();
     expect(createRuntime).toHaveBeenCalledWith(plan, dependencies.value);
     expect(composition.runtimeBindingSha256).toBe(plan.runtimeBindingSha256);
+    expect(composition.subscriptionRoutes).toEqual([]);
+    expect(Object.isFrozen(composition.subscriptionRoutes)).toBe(true);
     expect(composition.routeBindings).toEqual([temporalMcpDispatchRouteBinding(calendarRoute)]);
     expect(composition.workflowExecutions.create(calendarRoute.routeId, { eventId: "EV-1" })).toEqual({
       kind: "external_mcp_v1",
@@ -103,6 +105,17 @@ describe("external MCP Temporal Worker composition", () => {
       resolveDependencies,
       createRuntime
     )).toThrow(/route is unavailable/i);
+    expect(() => createExternalMcpTemporalWorkerComposition(
+      {
+        ...deploymentPlan([calendarRoute]),
+        subscriptionRoutes: [{
+          definitionId: "DEF-1", definitionVersion: 1, routeId: "missing-route", resolveArguments: () => ({})
+        }]
+      },
+      foundationAgentTaskActivities,
+      resolveDependencies,
+      createRuntime
+    )).toThrow(/conflict with the Worker catalog/i);
     expect(resolveDependencies).not.toHaveBeenCalled();
     expect(createRuntime).not.toHaveBeenCalled();
   });

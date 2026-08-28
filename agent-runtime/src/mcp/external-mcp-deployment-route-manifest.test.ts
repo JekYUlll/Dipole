@@ -51,6 +51,12 @@ describe("external MCP deployment route manifest", () => {
       routeId: "calendar-event-read", routeVersion: 3, capabilityId: "calendar.event.read",
       workflowStep: 4, ordinal: 1, deploymentBindingSha256: expect.stringMatching(/^[a-f0-9]{64}$/)
     }]);
+    expect(loaded?.subscriptionRoutes).toHaveLength(1);
+    expect(loaded?.subscriptionRoutes[0]).toMatchObject({
+      definitionId: "DEF-CALENDAR-GUARDIAN", definitionVersion: 2, routeId: "calendar-event-read"
+    });
+    expect(loaded?.subscriptionRoutes[0]?.resolveArguments({} as never, {} as never))
+      .toEqual({ calendarId: "CAL-1", eventId: "EV-1" });
     expect(loaded?.registry.workerEgressPolicies("calendar.event.read")).toEqual({
       "calendar-prod": {
         "calendar.read_event": { allowedArgumentNames: ["calendarId", "eventId"], maximumBytes: 1024 }
@@ -66,6 +72,11 @@ describe("external MCP deployment route manifest", () => {
   it("allows deployment policy to narrow a code ceiling and rejects any expansion", async () => {
     const narrowed = manifest();
     narrowed.routes[0]!.egress_policy = { allowed_argument_names: ["calendarId"], maximum_bytes: 512 };
+    const narrowedArguments = narrowed.routes[0]!.subscription_trigger.arguments as {
+      calendarId: string;
+      eventId?: string;
+    };
+    delete narrowedArguments.eventId;
     const narrowPath = await writeManifest(narrowed);
     const loaded = await loadExternalMcpDeploymentRouteManifest(enabledConfig(), definitions(), env(narrowPath), owner());
     expect(loaded?.registry.workerEgressPolicies("calendar.event.read")).toMatchObject({
@@ -115,6 +126,40 @@ describe("external MCP deployment route manifest", () => {
     });
     for (const routes of cases) {
       const path = await writeManifest({ ...manifest(), routes });
+      await expect(loadExternalMcpDeploymentRouteManifest(enabledConfig(), registry, env(path), owner()))
+        .rejects.toThrow("External MCP deployment route manifest is unavailable");
+    }
+  });
+
+  it("binds subscription triggers into the route digest and rejects unsafe trigger mappings", async () => {
+    const baselinePath = await writeManifest(manifest());
+    const baseline = await loadExternalMcpDeploymentRouteManifest(enabledConfig(), definitions(), env(baselinePath), owner());
+    const changed = manifest();
+    changed.routes[0]!.subscription_trigger.arguments.eventId = "EV-2";
+    const changedPath = await writeManifest(changed);
+    const changedRoute = await loadExternalMcpDeploymentRouteManifest(enabledConfig(), definitions(), env(changedPath), owner());
+    expect(changedRoute?.routes[0]?.deploymentBindingSha256)
+      .not.toBe(baseline?.routes[0]?.deploymentBindingSha256);
+
+    const base = manifest().routes[0]!;
+    const cases = [
+      { ...manifest(), routes: [{ ...base, subscription_trigger: {
+        ...base.subscription_trigger, arguments: { calendarId: "CAL-1", unknown: "value" }
+      } }] },
+      { ...manifest(), routes: [base, {
+        ...base, route_id: "calendar-event-other", capability_id: "calendar.event.other",
+        workflow_step: 5, subscription_trigger: { ...base.subscription_trigger }
+      }] }
+    ];
+    const registry = definitions();
+    registry.register({
+      descriptor: { id: "calendar.event.other", risk: "read", requiredPermission: "calendar.read" },
+      inputSchema: z.object({ calendarId: z.string(), eventId: z.string().optional() }).strict(),
+      egressCeiling: { allowedArgumentNames: ["calendarId", "eventId"], maximumBytes: 4096 },
+      resolveResource: input => ({ resourceType: "calendar", resourceId: input.calendarId, action: "read" })
+    });
+    for (const candidate of cases) {
+      const path = await writeManifest(candidate);
       await expect(loadExternalMcpDeploymentRouteManifest(enabledConfig(), registry, env(path), owner()))
         .rejects.toThrow("External MCP deployment route manifest is unavailable");
     }
@@ -185,7 +230,11 @@ function manifest() {
       route_id: "calendar-event-read", route_version: 3, capability_id: "calendar.event.read",
       workflow_step: 4, ordinal: 1, profile_id: "calendar-prod", server_id: "calendar.example",
       tool_name: "calendar.read_event",
-      egress_policy: { allowed_argument_names: ["calendarId", "eventId"], maximum_bytes: 1024 }
+      egress_policy: { allowed_argument_names: ["calendarId", "eventId"], maximum_bytes: 1024 },
+      subscription_trigger: {
+        definition_id: "DEF-CALENDAR-GUARDIAN", definition_version: 2,
+        arguments: { calendarId: "CAL-1", eventId: "EV-1" }
+      }
     }]
   };
 }
