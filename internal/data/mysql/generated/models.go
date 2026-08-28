@@ -271,6 +271,8 @@ type AgentMemory struct {
 	ExpiresAt      sql.NullTime
 	RevokedAt      sql.NullTime
 	CreatedAt      time.Time
+	RevokedByUuid  string
+	RevokeReason   string
 }
 
 type AgentRun struct {

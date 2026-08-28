@@ -338,6 +338,12 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	if v.GetString("gateway.agent_subscription_tenant_id") != "dipole" {
 		t.Fatal("Gateway Agent Subscription tenant default is missing")
 	}
+	if v.GetBool("gateway.agent_memory_enabled") {
+		t.Fatal("Gateway Agent Memory control must remain default off")
+	}
+	if v.GetString("gateway.agent_memory_tenant_id") != "dipole" {
+		t.Fatal("Gateway Agent Memory tenant default is missing")
+	}
 	if v.GetBool("gateway.agent_mcp_enabled") {
 		t.Fatal("Gateway Agent MCP must remain default off")
 	}
