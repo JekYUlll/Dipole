@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AgentEvent } from "./shadow-processor.js";
 
 const identifier = (maximum: number) => z.string().trim().min(1).max(maximum);
+const maxSubscriptionCandidates = 256;
 const termsFilterSchema = z.object({
   terms: z.array(z.string().trim().min(1).max(64).refine((term) => !/[\u0000-\u001f\u007f]/u.test(term), "terms contain control characters")).min(1).max(32)
 }).strict();
@@ -34,6 +35,9 @@ export function parseAgentEventSubscription(value: unknown): AgentEventSubscript
 }
 
 export function matchEventSubscriptions(event: AgentEvent, rawSubscriptions: readonly unknown[]): AgentEventSubscription[] {
+  if (rawSubscriptions.length > maxSubscriptionCandidates) {
+    throw new Error(`subscription candidate set exceeds ${maxSubscriptionCandidates}`);
+  }
   const subscriptions = rawSubscriptions.map((item) => subscriptionSchema.parse(item));
   const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
   const content = typeof event.payload.content === "string" ? event.payload.content.toLowerCase() : "";

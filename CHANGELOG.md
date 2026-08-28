@@ -28,6 +28,7 @@
 - `conversation.list` 与 `conversation.read` 注册 descriptor 增加受限输入 Schema 摘要（类型、范围、默认值和额外字段策略），模型可按契约生成参数，执行时仍由 Zod 进行最终校验。
 - Capability Registry 注册时校验输入 Schema 摘要：限制可投影关键字、`properties` 嵌套结构和 4 KiB 大小，未知字段或异常膨胀会在进入模型上下文前失败。
 - Capability Registry 注册后深度冻结 descriptor snapshot，防止外部对象修改风险、权限或输入 Schema 后造成执行策略与模型上下文漂移。
+- Event Subscription matcher 增加 256 条候选上限，超限集合在 Schema 解析和关键词匹配前 fail-closed，避免异常订阅配置放大单条 Kafka 事件的 CPU/内存开销。
 - 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
 - Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
 
