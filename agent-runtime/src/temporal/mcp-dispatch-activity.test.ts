@@ -53,7 +53,7 @@ describe("Temporal MCP dispatch Activity", () => {
     expect(dependencies.worker.begin).toHaveBeenCalledWith({ taskId: "TASK-1", runId: "RUN-1", invocationId }, expect.any(AbortSignal));
     expect(dependencies.projector.project).toHaveBeenCalledWith({
       context, invocationId, roundId, result: { content: [], secretBody: "untrusted" }
-    });
+    }, expect.any(AbortSignal));
   });
 
   it("re-resolves Context and exact-replays the producer before durable resume", async () => {
