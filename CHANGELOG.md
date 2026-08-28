@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Runtime 增加默认关闭的 MCP Worker Runtime 组合器：将认证 Core command resolver/round receipt、tenant Profile Transport Registry、allowlisted modern Client、Activity-safe continuation 与三 ID dispatcher 组装为单一依赖注入边界。已取消请求会在 Core resolve/receipt claim 前停止；本地完成后替换 Runtime 只回放 canonical receipt，`ambiguous` 不创建 Client/Transport。Temporal 自动调度仍等待受信 Agent Step 创建持久 Invocation，不从 goal、模型输出或事件正文选取命令。
 - Agent Runtime 增加外部 MCP Streamable HTTP Transport Factory：精确复核 Profile 与 Catalog 的 tenant/ref/version 绑定，为每次连接创建独立 AuthProvider、Network Guard 和官方 SDK Transport；每个请求重新读取 Bearer、重新解析全部公共 DNS 地址并核对 pinned peer，同时关闭 401 自动刷新、403 扩权和 SSE 自动重连。生产 Secret Provider、DNS Resolver、TLS pinned Dispatcher 与专用 Worker 仍未装配，外部连接开关继续 fail closed。
 - Agent Runtime 增加默认关闭的 MCP Worker command dispatcher：初始输入严格只接受 Task/Run/Invocation ID，Profile、Server、Tool、Capability、参数和开始时间每次从 Core 持久 Tool Invocation 解析；稳定 request ID 与输入截止时间由 Invocation 派生，恢复前重新核对完整命令和 Activity checkpoint。连接 Session Factory 仅接收 tenant/profile/server/tool 四字段，不再可见 Task、Run、Invocation 或参数。生产 Worker 与外部网络开关继续关闭。
 - migration v36、Core/TS RPC 与 MCP Activity 增加 durable Tool round receipt：确定性 Round ID 绑定 Invocation、轮次和请求摘要，MySQL 原子认领后仅原 owner 可一次写入规范结果或稳定失败；Temporal 丢失 Activity completion 时重放已存结果，遗留 `executing` 明确返回 `ambiguous` 并禁止自动 reclaim/retry。外部 Provider、网络开关和 Worker composition 继续关闭；远端已执行但本地收据尚未提交的窗口采用 at-most-once 失败策略。
