@@ -25,6 +25,14 @@ export interface AgentInputPending {
   expiresAtUnixMs: number
 }
 
+export interface AgentApprovalPending {
+  kind: 'approval'
+  requestId: string
+  approvalId: string
+  summary: string
+  expiresAtUnixMs: number
+}
+
 export type AgentTaskStatus = 'created' | 'running' | 'waiting_input' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled'
 
 export interface AgentTaskState {
@@ -33,7 +41,7 @@ export interface AgentTaskState {
   revision: number
   persistentStatus: string
   workflowProjection: { outcome: 'match' | 'missing' | 'stale' | 'ahead' | 'conflict'; status?: string; revision?: number }
-  pending?: AgentInputPending | { kind: 'approval'; requestId: string; approvalId: string; summary: string; expiresAtUnixMs: number }
+  pending?: AgentInputPending | AgentApprovalPending
   cancellation?: { reason: string; requestId?: string }
 }
 
@@ -69,6 +77,7 @@ export function parseAgentTaskResponse(raw: unknown): AgentTaskState {
     workflowProjection,
   }
   if (raw.status === 'waiting_input') state.pending = parseInputPending(raw.pending)
+  if (raw.status === 'waiting_approval') state.pending = parseApprovalPending(raw.pending)
   if (raw.status === 'cancelled' && raw.cancellation !== undefined) state.cancellation = parseCancellation(raw.cancellation)
   return state
 }
@@ -96,6 +105,19 @@ function parseInputPending(raw: unknown): AgentInputPending {
   return {
     kind: 'input', requestId: raw.requestId as string, prompt: raw.prompt,
     form: parseForm(raw.form), source: parseSource(raw.source), expiresAtUnixMs: raw.expiresAtUnixMs as number,
+  }
+}
+
+function parseApprovalPending(raw: unknown): AgentApprovalPending {
+  if (!isRecord(raw) || raw.kind !== 'approval' || !validIdentity(raw.requestId) ||
+      !validIdentity(raw.approvalId) || typeof raw.summary !== 'string' ||
+      raw.summary.trim().length === 0 || raw.summary.length > 2000 ||
+      !Number.isSafeInteger(raw.expiresAtUnixMs) || (raw.expiresAtUnixMs as number) <= 0) {
+    throw new Error('Agent approval pending request is invalid')
+  }
+  return {
+    kind: 'approval', requestId: raw.requestId as string, approvalId: raw.approvalId as string,
+    summary: raw.summary, expiresAtUnixMs: raw.expiresAtUnixMs as number,
   }
 }
 

@@ -37,4 +37,17 @@ describe('Agent Task response parser', () => {
       } },
     })).toThrow(/sensitive/i)
   })
+
+  it('parses and validates waiting approval state', () => {
+    const task = {
+      ...waitingTask,
+      status: 'waiting_approval',
+      pending: { kind: 'approval', requestId: 'APPROVAL-1', approvalId: 'GRANT-1', summary: 'Send the project update', expiresAtUnixMs: 8_000 },
+    }
+    expect(parseAgentTaskResponse(task)).toMatchObject({
+      status: 'waiting_approval', pending: { kind: 'approval', approvalId: 'GRANT-1' },
+    })
+    expect(() => parseAgentTaskResponse({ ...task, pending: { ...task.pending, summary: '' } })).toThrow(/approval/i)
+    expect(() => parseAgentTaskResponse({ ...task, pending: { ...task.pending, approvalId: 'bad approval id' } })).toThrow(/approval/i)
+  })
 })
