@@ -1,0 +1,16 @@
+groups:
+  - name: dipole-agent-timeline-repair
+    rules:
+      - alert: DipoleAgentTimelineRepairFailures
+        expr: sum(increase(dipole_agent_task_timeline_repair_total{outcome=~"projection_error|complete_error|claim_error|invalid"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent Task Timeline repair worker reported a failure
+
+      - alert: DipoleAgentTimelineRepairNotConverging
+        expr: sum(increase(dipole_agent_task_timeline_repair_total{outcome="projection_error"}[15m])) >= 3
+        labels:
+          severity: critical
+        annotations:
+          summary: Agent Task Timeline repair projection keeps retrying
