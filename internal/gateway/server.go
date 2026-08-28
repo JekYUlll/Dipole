@@ -112,6 +112,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
@@ -191,6 +192,43 @@ func agentMemoryRevokeHandler(memories AgentMemoryControlApplication) gin.Handle
 		}
 		item, err := memories.Revoke(c.Request.Context(), user.UUID, memoryID, body.Reason)
 		writeAgentMemoryResult(c, item, err)
+	}
+}
+
+func agentMemoryCorrectHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		ExpectedVersion uint32 `json:"expectedVersion"`
+		Content         string `json:"content"`
+		CompactContent  string `json:"compactContent"`
+		Reason          string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		memoryID := strings.TrimSpace(c.Param("memory_id"))
+		if !validAgentSubscriptionPublicID(memoryID, 64) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 24*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory correction request"})
+			return
+		}
+		body.Content = strings.TrimSpace(body.Content)
+		body.CompactContent = strings.TrimSpace(body.CompactContent)
+		body.Reason = strings.TrimSpace(body.Reason)
+		if body.ExpectedVersion == 0 || body.Content == "" || len([]byte(body.Content)) > 16*1024 || len([]byte(body.CompactContent)) > 4*1024 ||
+			body.Reason == "" || utf8.RuneCountInString(body.Reason) > 1000 || strings.IndexFunc(body.Reason, unicode.IsControl) >= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory correction request is invalid"})
+			return
+		}
+		result, err := memories.Correct(c.Request.Context(), user.UUID, memoryID, body.ExpectedVersion, body.Content, body.CompactContent, body.Reason)
+		writeAgentMemoryResult(c, result, err)
 	}
 }
 

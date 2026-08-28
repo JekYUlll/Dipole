@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -44,12 +45,21 @@ func (r *AgentMCPToolRoundRepository) GetMCPToolRound(ctx context.Context, round
 	if err != nil {
 		return nil, fmt.Errorf("get Agent MCP Tool round: %w", err)
 	}
+	resultJSON := row.ResultJson
+	if len(resultJSON) > 0 {
+		compacted := make([]byte, 0, len(resultJSON))
+		buffer := bytes.NewBuffer(compacted)
+		if err := json.Compact(buffer, resultJSON); err != nil {
+			return nil, fmt.Errorf("compact Agent MCP Tool round result: %w", err)
+		}
+		resultJSON = buffer.Bytes()
+	}
 	return &application.AgentMCPToolRoundV1{
 		AgentMCPToolRoundClaimV1: application.AgentMCPToolRoundClaimV1{
 			RoundUUID: row.RoundUuid, InvocationUUID: row.InvocationUuid, TaskUUID: row.TaskUuid, RunUUID: row.RunUuid,
 			RoundNumber: row.RoundNumber, RequestSHA256: row.RequestSha256, OwnerTokenSHA256: row.OwnerTokenSha256,
 		},
-		Status: application.AgentMCPToolRoundStatusV1(row.Status), ResultJSON: string(row.ResultJson),
+		Status: application.AgentMCPToolRoundStatusV1(row.Status), ResultJSON: string(resultJSON),
 		ResultSHA256: row.ResultSha256.String, ErrorCode: row.ErrorCode.String,
 	}, nil
 }
