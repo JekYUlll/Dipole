@@ -1,8 +1,8 @@
 import type { AgentTaskResume } from "../task/agent-task-state.js";
 import type { AgentRunTerminalStatus } from "../capabilities/agent-capability-rpc.js";
 import type { AgentApprovalBinding } from "../capabilities/agent-capability-rpc.js";
-import type { AgentTaskWorkflowInput } from "./temporal-task-client.js";
-import type { AgentElicitationForm } from "../task/agent-elicitation.js";
+import type { AgentTaskWorkflowHistoryInput, AgentTaskWorkflowInput } from "./temporal-task-client.js";
+import type { AgentElicitationForm, AgentElicitationSource } from "../task/agent-elicitation.js";
 
 export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
   runId: string;
@@ -13,7 +13,7 @@ export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
 
 export type AgentTaskDirective =
   | { kind: "continue"; checkpoint?: unknown }
-  | { kind: "wait_input"; requestId: string; prompt: string; form: AgentElicitationForm; expiresAtUnixMs: number; checkpoint?: unknown }
+  | { kind: "wait_input"; requestId: string; prompt: string; form: AgentElicitationForm; source?: AgentElicitationSource; expiresAtUnixMs: number; checkpoint?: unknown }
   | { kind: "wait_approval"; requestId: string; summary: string; approval: AgentApprovalBinding; checkpoint?: unknown }
   | { kind: "complete"; output: unknown }
   | { kind: "failed"; message: string };
@@ -49,7 +49,7 @@ export interface AgentTaskProjectionInput {
 }
 
 export interface AgentTaskLifecycleActivities {
-  admitAgentTask(input: AgentTaskWorkflowInput): Promise<AgentTaskRunBinding>;
+  admitAgentTask(input: AgentTaskWorkflowHistoryInput): Promise<AgentTaskRunBinding>;
   finishAgentTask(input: AgentTaskFinishInput): Promise<void>;
   projectAgentTaskState(input: AgentTaskProjectionInput): Promise<void>;
   requestAgentTaskApproval(input: { taskId: string; runId: string; approval: AgentApprovalBinding; requestId?: string; traceId?: string }): Promise<void>;

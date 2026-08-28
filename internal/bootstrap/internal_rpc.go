@@ -91,7 +91,7 @@ func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capab
 	return newCoreRPCServer(cfg, capability, agentAdapter)
 }
 
-func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, subscriptionControls application.AgentEventSubscriptionControlServiceV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, promotionControls application.AgentRuntimePromotionControlServiceV1, promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1, memories ...application.AgentMemoryContextResolverV1) (*InternalRPCServer, error) {
+func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, subscriptionControls application.AgentEventSubscriptionControlServiceV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, toolRounds application.AgentMCPToolRoundServiceV1, toolTerminals application.AgentMCPToolInvocationTerminalServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, promotionControls application.AgentRuntimePromotionControlServiceV1, promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1, readinessPublisher application.AgentMCPReadinessEvidencePublisherV1, readinessResolver application.AgentMCPReadinessEvidenceResolverV1, memories ...application.AgentMemoryContextResolverV1) (*InternalRPCServer, error) {
 	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
@@ -104,6 +104,16 @@ func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability appli
 	if toolAudits != nil {
 		if _, err := agentAdapter.WithToolAudits(toolAudits); err != nil {
 			return nil, fmt.Errorf("configure Agent Tool invocation audit rpc adapter: %w", err)
+		}
+	}
+	if toolRounds != nil {
+		if _, err := agentAdapter.WithMCPToolRounds(toolRounds); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP Tool round rpc adapter: %w", err)
+		}
+	}
+	if toolTerminals != nil {
+		if _, err := agentAdapter.WithMCPToolTerminals(toolTerminals); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP Tool terminal rpc adapter: %w", err)
 		}
 	}
 	if messageCommands != nil {
@@ -124,6 +134,16 @@ func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability appli
 	if promotionEvidence != nil {
 		if _, err := agentAdapter.WithPromotionEvidence(promotionEvidence); err != nil {
 			return nil, fmt.Errorf("configure Agent Runtime promotion evidence review rpc adapter: %w", err)
+		}
+	}
+	if readinessPublisher != nil {
+		if _, err := agentAdapter.WithMCPReadinessEvidencePublisher(readinessPublisher); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP readiness evidence Publisher rpc adapter: %w", err)
+		}
+	}
+	if readinessResolver != nil {
+		if _, err := agentAdapter.WithMCPReadinessEvidenceResolver(readinessResolver); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP readiness evidence Resolver rpc adapter: %w", err)
 		}
 	}
 	if subscriptions != nil {
@@ -310,7 +330,11 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpToolCommand_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ClaimMcpToolRound_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&

@@ -1,6 +1,6 @@
 # Agent 外部 MCP 连接边界
 
-本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前仅交付默认关闭的 Profile 契约与 Transport 抽象，生产 Runtime 不会创建外部连接。
+本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory 与可注入网络策略，生产 Runtime 仍不会创建外部连接。
 
 ## 信任边界
 
@@ -36,7 +36,7 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 在启动阶段返回错误，因为 credential-aware、public-DNS-only Transport Factory 尚未配置。这一行为用于避免配置人员把契约 foundation 误认为已可安全接入生产 Server。
+关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O manifest loader 与 composition 已实现，但尚未注册到 `index.ts`。这一行为用于避免配置人员把独立构件误认为已具备灰度上线条件。
 
 ## 轮换与吊销
 
@@ -52,7 +52,64 @@ Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路
 
 Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；轮换继续由 Catalog 与 Provider 控制。Adapter 也不缓存 token。MCP SDK 需要把 token 转换成 JavaScript string 并构造 Header，这些副本由 GC 管理，无法提供强零化保证；生产凭据必须短期、最小权限，并支持 Server 端快速吊销。
 
-当前没有 Vault/KMS/Secret Manager backend，也没有把 adapter 装配进 Transport Factory。测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
+`createExternalMcpStreamableHttpTransportFactory` 已把 adapter 装配进官方 Streamable HTTP Transport，并且每次连接创建新的 AuthProvider。`createEncryptedFileExternalMcpSecretProvider` 提供本地 AES-256-GCM 静态加密实现：配置把 exact `provider_secret_ref` 映射到密文路径和 `key_ref`，再把 key ref 映射到独立 32 字节 key 文件。Provider 配置在构造时复制，未知 ref、重复路径、错 provider 和非规范路径直接拒绝。
+
+envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte tag`。AAD 以 NUL 分隔绑定 schema、tenant、credential ref/version、provider ID、provider secret ref 和 key ref，因此复制密文到另一租户、版本、引用或 key 配置无法解密。每次 `token()` 都重新打开 key/envelope，成功返回独占可写 plaintext；key 总会擦除，失败或取消路径也擦除已产生的 plaintext。Node/OpenSSL 内部副本及最终 JavaScript token string 仍无法提供强零化保证。
+
+key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
+
+凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或主动吊销连接，encrypted-file Provider 也尚未装配到启动链。
+
+## Production I/O 组合
+
+`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound raw `registry`、local `preflight`、受约束 `shadowConnectivityDrill` 与组合后的 `readinessEvidence`。该 raw Registry 专供 readiness 采集及受控演练；MCP Worker 会在其外层强制构造 fresh-readiness gated Registry。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 raw Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+
+构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
+
+`production-io-manifest.schema.json` 定义 credential-free v1 配置：Catalog 路径及上限、单个 encrypted provider 的 ID/key/secret 路径映射、CA ref/path 映射和 TLS connect timeout。Schema 禁止附加字段，Runtime 进一步要求 ref 唯一、secret 引用已声明 key，并让 Catalog、key、secret 与 CA 的全部路径全局唯一。manifest 不得包含 token、password、32 字节 key、envelope 或 CA 正文。
+
+`loadExternalMcpProductionIoManifest` 只在 Profile 开关 enabled 时读取 `DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST`。该路径和 manifest 内所有路径都必须是规范绝对路径；manifest 父目录必须 canonical、owner 正确且不可被 group/world 写，文件必须 owner-only、无执行位、regular/single-link，并通过 `O_NOFOLLOW` 有界读取 UTF-8 JSON。每次调用重新加载，读取或校验失败统一返回低敏错误且不会回退旧快照；disabled 时连残留环境变量 getter 都不触达。
+
+loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。`maximum_secret_bytes` 会同时约束 encrypted Provider、请求期 AuthProvider 和 readiness preflight，避免部署上限与真实请求行为漂移。
+
+`loadExternalMcpDeploymentPlan` 在启动接线之前提供唯一的 default-off 部署组合边界。它先解析一次 Profile，再以同一 owner UID 和 AbortSignal 顺序加载 production I/O 与 deployment route manifest；两者全部通过后才构造 production I/O runtime。返回值只包含 exact config、route Registry/routes、production runtime、Worker external-MCP 依赖和低敏 Runtime binding。readiness collector 与 gated Worker 因而共享同一 I/O snapshot、raw Registry 和有效上限，装配调用方无需重复拼接 binding options。
+
+deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 当前未注册到 `index.ts`、Compose 或任何自动启动路径。
+
+`runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
+
+preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatcher，因此不会创建 Transport、DNS client 或 socket。它证明本地策略与文件依赖可用，无法证明远端 DNS、证书链、网络路由或 MCP 协议响应。
+
+`runtime.shadowConnectivityDrill({ profileId, tenantId }, signal?)` 是独立的只读在线证据边界。它重新通过 Registry 解析 exact Profile/Catalog，创建正式 guarded Transport 和 modern allowlisted Client，只执行协议 discovery/list；Server identity 必须匹配，全部 configured Tool 必须被发现。演练器不暴露 Client 的 Tool 调用方法，成功或失败都会收敛关闭连接。成功收据只保存 schema、checked-at 与 Tool 数量；Profile、tenant、Server、Tool、地址和证书信息留在受控运维输入/网络审计中。
+
+本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。当前 loader、composition、preflight 与 drill 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
+
+`runtime.readinessEvidence({ profileId, tenantId }, signal?)` 串行执行 preflight 和 drill，默认要求 5 分钟内完成，并校验 preflight 覆盖当前全部 Profile、Credential/CA 计数有界、在线 Tool 数等于目标 Profile allowlist、四个时间单调且均落在 collection window。任何收据重放、旧时间、计数漂移、取消或 cleanup 失败都不会生成 bundle；使用测试注入 `transportBuilder` 的 runtime 也固定拒绝出证。
+
+`contracts/agent-external-mcp/v1/readiness-evidence.schema.json` 保留已发布的 v1 契约；`contracts/agent-external-mcp/v2/readiness-evidence.schema.json` 新增本次持久化要求的 Profile binding，避免在原版本上增加 required 字段。v2 的 `bindingSha256` 对排序后的所有 Profile 字段、Catalog/provider/key/secret/CA ref 与路径映射、owner UID 和 Catalog/Secret/CA/TLS/DNS/Auth/Shadow timeout 上限做 canonical SHA-256；`profileBindingSha256` 独立绑定本次 exact Profile 的 tenant、endpoint、credential version、网络策略与 Tool allowlist。bundle 本身只公开 hash、时间和聚合计数。路径存在于 Runtime binding preimage 中但不直接输出；token、key、envelope 和 CA 正文不参与摘要，避免把可离线猜测的凭据派生值写入运维记录。原地 token 更新会保留同一 binding，fresh preflight 负责证明采集时文件可解密且 Bearer 有效；推荐的版本化 ref/path 轮换会产生新 binding。
+
+MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表。Go Publisher 会严格解析低敏 schema、限制采集窗口最长 10 分钟、规范化毫秒时间、复算 content SHA-256，并把 tenant、Profile/Runtime binding、operator、request/trace、采集时间和最长一小时有效期一起派生为确定性 Evidence ID。表只支持追加：exact content/provenance 重放返回已有记录，binding、收据、窗口或 provenance 漂移生成新记录；历史过期行保留审计，但 fresh 查询必须同时命中 tenant、Profile binding、Runtime binding、`collected_at <= now` 与 `expires_at > now`。该表不依赖 Agent Task/Run，也不写 activation 状态。
+
+Agent Capability 的 additive `PublishMcpReadinessEvidence` RPC 已连接上述 MySQL Publisher。它只允许 transport 认证的 `dipole-agent` 且 RequestContext principal 必须为空；operator 固定取认证 service identity，request/trace 从已验证上下文派生。请求不提供 Evidence ID、Runtime binding、content hash、status 或 activation 字段。Core 限制 evidence JSON 为 16 KiB 并严格解析 v2；TS adapter 会在发送前规范化字段与时间、复算 content SHA-256，并对响应的确定性 Evidence ID、双 binding、状态和时间逐项复核。exact replay 只改变 `created` 为 false。
+
+`ResolveFreshMcpReadinessEvidence` 是对应的只读解析边界。调用方只能提交 tenant、Profile binding 与 Runtime binding，不能提交查询时间、Evidence ID 或 activation 意图；Core 使用服务端当前时间查询并重新验证记录。未找到返回严格空的 `found=false`，找到时只返回 Evidence ID、schema、双 binding、content hash、status 和 collection/expiry 时间。TS adapter 会拒绝带矛盾字段的空响应、binding/hash/schema/status 漂移及倒置时间。
+
+默认关闭的 MCP Worker 在每次外部 `Registry.connect` 前消费该解析结果。Worker construction root 接受 host-owned Profile、production I/O、binding options 与 raw Registry，自行派生 exact Profile binding 和完整 Runtime binding；LLM、Workflow 与客户端均无法传入摘要或查询时间。每次连接都重新查询 Core且不缓存回执，随后再核对 raw Registry 返回的完整 Profile；缺失、双 binding/哈希/时间结构漂移、Profile 漂移、解析失败或取消都会在 raw `connect`、Catalog 与网络访问前停止。readiness collector 保留 raw Registry 以执行初次受控 discovery，避免形成“已有 readiness 才允许采集 readiness”的循环依赖。解析结果只授权本次 exact Profile egress，不改变 Run admission、Profile activation 或 Runtime promotion。
+
+受控 Shadow 环境可通过独立单次命令采集并发布：
+
+```bash
+npm --prefix agent-runtime run mcp:readiness:publish -- \
+  --tenant=TENANT-A \
+  --profile=PROFILE-A \
+  --valid-for-seconds=1800 \
+  --request-id=CHANGE-REQUEST-123 \
+  --trace-id=TRACE-123
+```
+
+执行前必须设置 enabled Profile、production I/O manifest 和 Agent Capability RPC/mTLS 环境。CLI 在任何文件或网络访问前严格校验五个参数；随后重新加载安全 manifest，构造 production adapters，串行执行全部 Profile local preflight 与 exact Profile 的只读 discovery，并在成功后调用一次 Publisher。有效期从 evidence `completedAt` 派生且限制为 60 至 3600 秒。采集、取消、清理、RPC 或收据校验失败只输出固定错误且不会自动重试。RPC 发出后若响应丢失，先按 request/trace 核对 Core 审计；重新运行命令会产生新的采集时间和 Evidence ID，作为追加历史保存。
+
+该命令没有注册到常驻 `index.ts` 或 Compose，不会随 Agent 启动执行，也不读取 admission 或 activation 状态。MCP Worker 已具备 per-egress fresh evidence consumer，但 Worker、外部网络和自动采集调度仍未进入启动链；KMS 签名、可信时间戳和独立审计导出也尚未交付。bundle 作为可复算的运维完整性证据，需在隔离 Shadow tenant 与 trace/audit 联查。回滚 v37 前应先停止 Publisher 与 gated Worker，按保留策略导出证据；Down migration 会删除全部 readiness evidence 历史，之后所有 gated egress 都会 fail closed。
 
 ## Network Guard 边界
 
@@ -60,7 +117,7 @@ Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；
 
 守卫把完整批准地址集合、TLS ServerName 和 opaque CA ref 交给 `ExternalMcpNetworkDispatcher`。Dispatcher 必须直接连接集合中的一个地址并返回 socket 实际 peer，守卫会再次核对；普通 hostname fetch 无法满足该接口。请求固定使用 `redirect=manual`，任何 `3xx`、`response.redirected` 或响应 URL 变化都会被拒绝并释放 body。
 
-当前仓库没有真实 DNS Resolver、TLS pinned Dispatcher 或 CA Secret backend。该模块只固定可测试的 SSRF/DNS rebinding 边界，生产开关仍然 fail closed。后续实现需要把 SDK request timeout/AbortSignal 传播到 DNS、socket connect、TLS handshake 和 response body，并通过真实双栈 DNS、证书不匹配、连接 peer 偏移及超时故障演练。
+仓库已有 request-local Node DNS Resolver、文件 CA Provider 与 pinned TLS Dispatcher，并由 default-off production composition 统一持有；生产开关和启动接线仍然 fail closed。启用前还需通过隔离 Shadow 环境归档真实双栈 DNS、证书不匹配、连接 peer 偏移、超时与回滚故障演练。
 
 ## Result 信任边界
 
@@ -92,10 +149,74 @@ migration v31 把已消费 Approval 绑定到 Tool Invocation Begin，并在成�
 
 checkpoint 使用 SHA-256 绑定 host-owned Request ID、Server、Tool、Invocation、deadline、完整 Form 和信任级别。返回 MCP `accept` 前必须收到同一 Request 的有效 durable input resume，并再次执行 Form response 校验；`decline/cancel` 同样要求精确 Request，过期或 checkpoint 漂移 fail closed。
 
-当前 adapter 是协议纯函数边界。`AllowlistedMcpToolClient` 没有声明 Elicitation capability，也没有 request handler；Temporal Activity 不会阻塞等待用户。后续接线需要把 MCP input-required continuation 保存为 checkpoint，在 Workflow 恢复后的新 Activity 中继续协议交互，并定义 Server 不支持恢复、连接丢失和用户取消时的稳定结果。
+当前 adapter 与单轮 MRTR continuation 已进入默认关闭的 Activity-safe runner：首次调用可返回 `wait_input` checkpoint，恢复后使用新 Client/Transport 精确回传原参数、用户输入和 opaque request state。生产 Worker 尚未调度这类权威命令；多轮、URL mode、敏感输入和 Server 不支持恢复时的产品策略继续关闭。
+
+## Durable Round Receipt 边界
+
+migration v36 为每个外部 Tool Invocation 保存最多两个 round。Round ID 由 Invocation、轮次和 canonical 请求 SHA-256 确定，表同时绑定 Task、Run、请求摘要和随机 owner token 摘要；`INSERT IGNORE` 只允许首次调用原子取得 `executing`，没有 lease、超时回收或 owner 接管路径。
+
+Activity 取得 `claimed` 后才建立全新 Client/Transport。远端返回结果后，Runtime 先把最多 128 KiB 的 canonical JSON、摘要和字节数写成 `completed`，随后才向 Temporal 返回；Activity completion 丢失时，新尝试读取 `replay_completed` 并跳过网络。已知失败以稳定错误码重放。已有 `executing` 一律返回 `ambiguous`，即使新尝试持有相同参数也不会自动重发。传输异常保存为 `remote_outcome_unknown`，将不确定调用收敛为 at-most-once 失败。
+
+该收据仍无法证明远端已执行、但响应尚未到达 Runtime 或本地终态尚未提交的极小窗口。未来只有 Profile 显式声明且验证了服务端幂等键或查询收据协议时，才能对这类调用增加恢复策略。当前 Worker 与外部网络开关保持关闭，禁止通过缩短 lease 或手工修改 `executing` 记录来重试。
+
+Worker command dispatcher 只接受 Task、Run 和 Invocation ID。它通过认证 Core RPC 重新取得持久 Profile、Server、Tool、Capability、canonical 参数摘要和 Invocation 开始时间；稳定 input request ID 与绝对截止时间均由这些权威字段派生。`wait_input` 外层 checkpoint 绑定完整命令摘要和 Activity checkpoint，进程替换后先重新解析并比较，任何参数或 authority 漂移都会在建连前拒绝。连接 Session Factory 只得到 tenant/profile/server/tool 四字段，不接收 Task/Run/Invocation、参数或 principal。
+
+`createMcpWorkerRuntime` 将上述 dispatcher 与 Core round receipt、外部 Transport Registry、allowlisted modern Client 和 Activity continuation 组合为专用可注入单元。取消信号会在 Core resolve 前及 resolve 后再次检查，避免尚未发网的取消认领 `executing` receipt；本地 completed receipt 在替换 Runtime 后直接重放，`ambiguous` 在创建 Client/Transport 前终止。
+
+Invocation begin/finish 现支持精确重放。Begin 的稳定 ID 已存在时，Core 重新授权 Task/Run/Capability/Approval，并逐项比较 tenant、principal、Agent、Tool、Profile/Server、canonical 参数、request/trace；只有完全一致才返回原 running/completed/failed 记录。Finish 对 terminal 记录逐项比较结果摘要、字节数、延迟、错误码与 action reference，精确重放不再次更新数据库。
+
+`ResolveMcpToolCommand` 同时返回 Invocation 状态。对于 completed/failed Invocation，Round Service 在任何 claim 写入前读取确定性 Round ID 对应的既有 receipt；completed/failed 结果可重放，executing 返回 ambiguous，缺失或绑定漂移直接拒绝。terminal Invocation 永远不能创建新 round，因此 Activity completion 丢失不会转化为第二次远端调用。
+
+该组合器当前没有进入 `index.ts` 或 Temporal Worker Activity mode。现有系统也没有“查找下一条外部 Invocation”的轮询入口；后续应由受信 Agent Step 在同一持久 Run 内先创建 exact Invocation，再把三 ID 交给组合器。禁止从 Task goal、模型输出、Kafka payload 或客户端参数直接选择 Profile/Server/Tool，也不为此增加重复命令权威的 dispatch 表。
+
+`TrustedMcpInvocationProducer` 提供上述受信创建边界。运行时输入是 strict `{workflowStep, ordinal, capabilityId, arguments, approvalId?}`；ExecutionContext 提供身份与 Task/Run，`ExternalMcpCapabilityRouteRegistry` 按 Capability 固定 Profile、Server、Tool、输入 schema、Resource resolver 和 egress policy。模型无法提交或覆盖 authority 字段。
+
+`deployment-route-manifest.schema.json` 将生产部署绑定固定为 credential-free v1 文件：每条 route 声明 route ID/version、Capability、Workflow step/ordinal、Profile/Server/Tool 和 effective egress policy。`ExternalMcpCapabilityDefinitionRegistry` 只保存代码拥有的 Capability descriptor、输入 schema、resource resolver 与不可突破的 egress ceiling；安全 loader 将两者与 enabled Profile allowlist 精确 join，生成同一个 `ExternalMcpCapabilityRouteRegistry` 和 `TemporalMcpDispatchRoute[]`。manifest 可以收窄参数名或字节上限，无法扩大代码 ceiling；重复 route、Capability、step/ordinal 坐标，以及未知 definition、Profile、Server 或 Tool 均拒绝。
+
+route manifest 使用与 production I/O manifest 相同的 canonical parent、owner-only、`O_NOFOLLOW`、regular/single-link 和有界 UTF-8 JSON 证据；external Profile disabled 时不会读取残留路径。它不包含 credential、principal、Task/Run、arguments、Approval、模型、goal 或事件数据。loader 当前没有注册到 `index.ts` 或 Worker startup。
+
+Invocation ID 由 tenant/principal/Agent/Task/Run/Workflow step/ordinal 的 canonical v1 绑定计算为 SHA-256。参数、Profile、Server、Tool、Approval 和 trace 不参与 ID 分叉；这些字段发生漂移时，相同 ID 会进入 Core exact begin 比较并 fail closed。这样 Activity retry 保持同一命令意图，显式增加 ordinal 才代表同一步内新的 Tool 调用。producer 可接收 Core 返回的 running/completed/failed 状态，为后续 receipt-only 恢复保留依据。
+
+`FinishMcpToolInvocationFromRound` 提供专用 server-owned terminal API。Runtime 只提交 Task、Run、Invocation 和 Round ID；Core 重新加载两份持久记录，要求 exact binding、规范 terminal receipt 和已知 read-risk Capability，拒绝 `executing`、`input_required` 中间结果、write Capability 与任何漂移。首次完成由 Core 从 Invocation 开始时间和 Round 结果派生 latency、结果字节数、摘要或错误码，再调用既有审计 Finish；重试读取并核对已存 terminal Invocation，因此不会因重新计算 latency 产生冲突。默认关闭的 `createMcpTerminalWorkerRuntime` 在 complete 或稳定 failed Round 后调用该 API，ambiguous 和 waiting_input 不会提前收口。旧 Finish RPC 会先解析持久命令并拒绝任何带 Profile 的外部 Invocation，避免 Runtime 绕过 receipt 形成第二个终态所有者。
+
+`TemporalMcpDispatchActivity` 提供独立、默认关闭的持久编排边界。begin 输入只含 host-owned route binding、Task/Run/principal、业务参数和低敏关联 ID；工厂配置固定 Capability、Workflow step 与 ordinal。deployment loader 先对 route/version、Capability descriptor、step/ordinal、Profile/Server/Tool 和排序后的 effective egress policy 生成 SHA-256；`temporalMcpDispatchRouteBinding` 再把该部署摘要与 route ID/version、Capability、step/ordinal 一起绑定，route ID/version 和最终摘要进入 Temporal Activity history。替换 Worker 的任意部署字段不匹配时都会在 Core 访问前拒绝，即使部署时遗漏 version 提升，也不会在 completion-loss retry 中生成第二个 Invocation 意图。
+
+每次 begin、Activity retry 和 durable resume 都重新调用 Core context resolver，精确核对 Task/Run/principal，再以保存的 canonical 参数重放 `TrustedMcpInvocationProducer`。producer 返回同一 Invocation 后，Activity 仅向 terminal Worker 传递 Task、Run 和 Invocation ID。`wait_input` checkpoint 以 SHA-256 绑定完整 route manifest 摘要、Step 坐标、Invocation、参数、关联 ID 和内部 Worker checkpoint；恢复时任何漂移都会在 Worker 调用前失败。未来受信 Workflow 必须从版本化静态 route manifest 写入 binding，模型、goal、Kafka payload 和客户端参数不能提交或覆盖摘要。
+
+terminal Worker 完成后，Activity 将不可信结果连同 Invocation/Round lineage 交给注入式 projector。`ExternalMcpArtifactProjector` 会从 Core 重新解析 completed Tool command，核对 tenant/principal/Agent/Task/Run 与 Profile/Server/Tool/Capability，调用 MCP 标准 schema 并要求 raw/parsed canonical JSON 完全一致，结果上限为 128 KiB。Artifact type 由稳定 Invocation 前缀派生，version 固定为 1，因此同一 Task 的不同调用各自拥有独立幂等键；metadata 只保存 untrusted 标记、命令 lineage、参数摘要和结果摘要，不复制参数或凭据。writer 返回的 Artifact ID、内容摘要、大小与 metadata 会再次复算。
+
+Artifact RPC 已提交后发生取消时，projector 会让当前 Activity 失败；下一次 Activity retry 重新解析命令并精确写入相同内容，现有 content-addressed Store 返回同一收据。Workflow 输出只保存 Invocation ID、Round ID、Artifact ID/version，不保存外部正文。当前普通 Artifact policy 只允许 `dipole-agent` 的 running shadow Run，active MCP 结果会在写入前 fail closed，后续需独立扩展 active Artifact admission 与对应审计。
+
+`createTemporalMcpDispatchRuntime` 将上述边界组装为一个 route-scoped、default-off Runtime。输入只接受 host-owned Route Registry、Core RPC port、Artifact writer、Transport Registry 和有界 timeout/client seam；同一 Registry 既驱动 `TrustedMcpInvocationProducer`，也按当前 Capability 派生 Worker 使用的唯一 Profile/Tool egress policy，因此装配层无法传入第二份漂移策略。Core port 同时承担 Context、Invocation begin/resolve、Round receipt 和 terminal finish，Artifact projector 也通过该 port 重新读取同一命令。
+
+factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`。producer、terminal Worker、projector、Profile/Tool policy 和 Transport session 均留在闭包内，调用方不能跳过三 ID handoff 或替换完成权威。组合测试已证明首次成功后 Activity completion 丢失只读取 durable Round 并重放同一 Artifact，`input_required` 使用新 Context 与同一 Invocation 继续第二轮，预取消在 Core/receipt/Transport/Artifact 之前结束。
+
+`createTemporalMcpMultiRouteRuntime` 将 deployment plan 的全部 route-scoped runtime 收敛到唯一 `executeMcpDispatch` Activity 表面，避免多个路由以同名 Activity 覆盖注册。构造阶段先验证非空路由集合、每条完整 route binding 与 route ID 唯一性，再为每条 route 注入同一个 plan Registry、gated external-MCP snapshot、Core port 和 Artifact writer。begin 仅以 payload 的 route ID 选取 runtime；resume 仅以 durable checkpoint 内的 route ID 选取 runtime。dispatcher 不自行接受 Capability/Profile/Tool，也不替代 route-local version、manifest/deployment digest 和 checkpoint 完整性校验。
+
+未知 route、残缺 selector 和重复 route 会在 Core 调用前拒绝；route-local 绑定失败与 Temporal cancellation 不被包装或降级。该组合只创建无启动副作用的闭包和映射，不读取凭据文件、不注册 Worker、不执行 RPC、preflight、DNS 或网络连接。后续 Worker 接线必须只注册这一份 Activity，并由受信版本化 Workflow 写入 plan 返回的 route binding。
+
+`TemporalMcpWorkflowExecutionCatalog` 接受 deployment dispatcher 返回的 route bindings，并为专用 `TemporalMcpTaskClient` 生成 `external_mcp_v1` history envelope。启动调用方只提供受信业务选择的 route ID 与 16 KiB 内 JSON object；catalog 注入 route version 和 manifest digest、规范化参数并拒绝空集、重复/未知 route。启动接口不接受 Profile、Server、Tool、Capability、egress policy 或任意摘要，因此 goal、模型输出、Kafka payload 和客户端正文无法覆盖部署 authority。
+
+通用 `agentTaskWorkflow` 对 envelope 采用 additive 分支。首次执行从持久 admission 和 Core admission 结果派生 Task、Run、principal、request/trace，再调用唯一 `executeMcpDispatch`；`wait_input` 后只用 Activity 返回的完整 checkpoint 和状态机验证过的 Signal value 构造 resume。没有 envelope 的现有任务继续调用 `executeAgentTaskStep`，`TemporalTaskClient` 的普通输入类型不包含 execution authority。直接构造缺少 admission 或带附加 authority 字段的 envelope 会 fail closed，route-local Activity 仍会重新验证完整 binding 与参数。
+
+本地 Temporal Server 已验证 MCP begin、durable Elicitation、Worker replacement 和 resume，并回归现有 retry、approval、cancel、input expiry、step budget 与 read-shadow recovery。当前生产 `AgentTaskWorkerActivities` 未注册 `executeMcpDispatch`，专用 MCP client 也未装配到 `index.ts`；只有测试 Worker 显式提供 Activity。下一步仍需受控 Capability definition、真实 route manifest 和独立启动/回滚门禁。
+
+`createExternalMcpTemporalWorkerComposition` 进一步把 deployment plan、multi-route runtime、普通 lifecycle Activities 与 Workflow execution catalog 收敛成一个 default-off bundle。plan 为 undefined 时函数在检查 base Activities 或解析依赖前直接返回；enabled 时先复算 Profile/I/O/readiness options 的 Runtime binding，验证 route binding、Capability egress policy、重复 route 与 `executeMcpDispatch` 名称冲突，然后才调用一次 Core/Artifact 端口 provider。该 provider 只交付端口，composition 不拥有或创建 gRPC resource。
+
+multi-route factory 返回后，composition 会把每个 route ID/version/manifest digest 与预先计算的部署 binding 逐项比较，再公开冻结的 `activities`、`routeBindings`、`workflowExecutions` 和 `runtimeBindingSha256`。因此 Worker 注册和专用 Workflow client 可以消费同一份 authority snapshot，无法分别拼接 route catalog 或替换摘要。构造过程只实例化闭包和内存映射；测试使用真实默认 factory 证明没有 Core、Artifact 或 raw Registry 调用。
+
+`TemporalWorkerActivities` 现允许 additive `executeMcpDispatch`，现有 foundation/persistent/read-shadow Activities 仍可原样注册。生产 `index.ts` 继续只按原三种 mode 构造 Worker，没有加载 deployment plan、调用 composition、创建 MCP RPC/Client 或注册 MCP Activity。后续启动切片必须保证 disabled 路径在 RPC 创建前返回，并为 enabled Shadow deployment 提供启动失败清理、readiness preflight、真实公网证据和明确回滚。
+
+该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
 
-生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。
+Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。`NodeExternalMcpDnsResolver` 现提供真实 Node DNS 适配器：每个 fetch 使用独立 Resolver 并行请求 A/AAAA，不保留跨请求缓存；`ENODATA/ENOTFOUND` 只表示当前 family 无记录，任何其他单族错误会使完整解析失败。调用取消会执行 request-local `Resolver.cancel()`，不会影响其他并发请求。Network Guard 随后继续执行公网、family、重复和数量复核。
+
+`NodeExternalMcpPinnedTlsDispatcher` 接收 Network Guard 当前请求批准的完整地址集合，通过 `https.request` 的自定义 lookup 只返回该集合；`agent=false` 阻止连接复用绕过 fresh DNS，Node 直连路径不会采用环境代理。TLS 固定 ServerName、CA、最低 TLS 1.2 和证书链校验，响应建立后还会把 socket `remoteAddress` 与批准集合再次比较；注入式 client 的 peer 证据也由 Dispatcher 外层复核。请求和响应 body 保持流式，100 ms 至 60 秒的 connect timeout 只覆盖 TLS `secureConnect` 前窗口，取消会销毁当前 request。3xx 不在该层跟随，由 Network Guard 统一拒绝。
+
+文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
+
+生产接入仍至少需要：启动前下游文件 preflight、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。当前 loader/composition 未注册到 `index.ts` 或 Worker startup，不会读取 manifest/凭据、发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。

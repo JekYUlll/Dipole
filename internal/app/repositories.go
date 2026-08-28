@@ -27,11 +27,13 @@ type Repositories struct {
 	AgentApprovalGrants    application.AgentApprovalGrantStoreV1
 	AgentPromotions        application.AgentRuntimePromotionGrantStoreV1
 	AgentPromotionControls application.AgentRuntimePromotionControlStoreV1
+	AgentReadinessEvidence application.AgentMCPReadinessEvidenceStoreV1
 	AgentSubscriptions     application.AgentEventSubscriptionStoreV1
 	AgentRepairs           application.AgentWorkflowRepairAuditStoreV1
 	AgentArtifacts         application.AgentArtifactStoreV1
 	AgentMemories          application.AgentMemoryStoreV1
 	AgentToolAudits        application.AgentToolInvocationStoreV1
+	AgentToolRounds        application.AgentMCPToolRoundStoreV1
 	Outbox                 application.OutboxRelayStore
 }
 
@@ -136,6 +138,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
 	}
 	repos.AgentToolAudits = agentToolAudits
+	agentToolRounds, err := sqlcRepository.NewAgentMCPToolRoundRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
+	}
+	repos.AgentToolRounds = agentToolRounds
 	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
@@ -165,6 +172,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
 	}
 	repos.AgentPromotionControls = promotionControls
+	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
+	}
+	repos.AgentReadinessEvidence = readinessEvidence
 	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc message repository: %w", err)

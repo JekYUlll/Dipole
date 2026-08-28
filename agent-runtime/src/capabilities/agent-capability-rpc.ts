@@ -6,8 +6,13 @@ import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
+import { canonicalMcpJSON } from "../mcp/canonical-json.js";
+import type { ExternalMcpReadinessEvidence } from "../mcp/external-mcp-readiness-evidence.js";
 
 const callerService = "dipole-agent";
+const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
+const mcpToolRoundResultLimit = 128 * 1024;
+const readinessEvidenceRecordSchemaVersion = "dipole.agent.external-mcp-readiness-evidence-record.v1";
 
 export interface AgentRunIdentity {
   readonly taskId: string;
@@ -16,6 +21,57 @@ export interface AgentRunIdentity {
 }
 
 export type AgentRunTerminalStatus = "completed" | "failed" | "cancelled";
+
+export interface AgentMcpToolCommand {
+  readonly invocationId: string;
+  readonly tenantId: string;
+  readonly principalUserId: string;
+  readonly agentId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly profileId: string;
+  readonly serverId: string;
+  readonly toolName: string;
+  readonly capabilityId: string;
+  readonly arguments: Readonly<Record<string, unknown>>;
+  readonly argumentsSha256: string;
+  readonly startedAtUnixMs: number;
+  readonly status: "running" | "completed" | "failed";
+}
+
+export interface AgentMcpToolCommandBeginResult {
+  readonly invocationId: string;
+  readonly status: "running" | "completed" | "failed";
+}
+
+export interface AgentMcpToolCommandTerminalResult {
+  readonly invocationId: string;
+  readonly status: "completed" | "failed";
+}
+
+export interface AgentMcpToolRoundClaim {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly invocationId: string;
+  readonly roundId: string;
+  readonly roundNumber: 0 | 1;
+  readonly requestSha256: string;
+  readonly ownerTokenSha256: string;
+}
+
+export type AgentMcpToolRoundClaimResult =
+  | { readonly outcome: "claimed" }
+  | { readonly outcome: "replay_completed"; readonly result: unknown; readonly resultJSON: string; readonly resultSha256: string }
+  | { readonly outcome: "replay_failed"; readonly errorCode: string }
+  | { readonly outcome: "ambiguous" };
+
+export type AgentMcpToolRoundFinish = {
+  readonly roundId: string;
+  readonly ownerTokenSha256: string;
+} & (
+  | { readonly status: "completed"; readonly resultJSON: string; readonly resultSha256: string }
+  | { readonly status: "failed"; readonly errorCode: string }
+);
 
 export interface AgentRunAdmissionRequest {
   readonly tenantId: string;
@@ -102,6 +158,25 @@ export interface AgentArtifactRecord {
   readonly metadata: Readonly<Record<string, unknown>>;
 }
 
+export interface AgentMCPReadinessEvidenceReceipt {
+  readonly evidenceId: string;
+  readonly profileBindingSha256: string;
+  readonly runtimeBindingSha256: string;
+  readonly contentSha256: string;
+  readonly collectedAt: string;
+  readonly expiresAt: string;
+  readonly created: boolean;
+}
+
+export interface AgentMCPReadinessEvidenceResolution {
+  readonly evidenceId: string;
+  readonly profileBindingSha256: string;
+  readonly runtimeBindingSha256: string;
+  readonly contentSha256: string;
+  readonly collectedAt: string;
+  readonly expiresAt: string;
+}
+
 export interface AgentArtifactCreateInput {
   readonly tenantId: string;
   readonly taskId: string;
@@ -132,6 +207,9 @@ export interface AgentToolInvocationBegin {
   readonly toolName: string;
   readonly capabilityId: string;
   readonly argumentsSha256: string;
+  readonly profileId?: string;
+  readonly serverId?: string;
+  readonly argumentsJson?: string;
   readonly requestId?: string;
   readonly traceId?: string;
   readonly approvalId?: string;
@@ -515,16 +593,149 @@ export class AgentCapabilityRPCClient {
   }
 
   async begin(input: AgentToolInvocationBegin): Promise<void> {
+    const result = await this.beginMcpToolCommand(input);
+    if (result.status !== "running") throw new Error("Agent Tool invocation begin returned conflicting evidence");
+  }
+
+  async beginMcpToolCommand(input: AgentToolInvocationBegin): Promise<AgentMcpToolCommandBeginResult> {
     const metadata = this.metadata(input.requestId, input.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.beginMcpToolInvocation({
         context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
         invocationId: input.invocationId, toolName: input.toolName, capabilityId: input.capabilityId,
-        argumentsSha256: input.argumentsSha256, approvalId: input.approvalId ?? ""
+        argumentsSha256: input.argumentsSha256, approvalId: input.approvalId ?? "",
+        profileId: input.profileId ?? "", serverId: input.serverId ?? "", argumentsJson: Buffer.from(input.argumentsJson ?? "", "utf8")
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation begin returned no response"));
-        if (response.invocationId !== input.invocationId || response.status !== "running") return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
+        if (response.invocationId !== input.invocationId || (response.status !== "running" && response.status !== "completed" && response.status !== "failed")) {
+          return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
+        }
+        resolve({ invocationId: response.invocationId, status: response.status });
+      });
+    });
+  }
+
+  async resolveMcpToolCommand(taskId: string, runId: string, invocationId: string): Promise<AgentMcpToolCommand> {
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveMcpToolCommand({
+        context: this.requestContext(), taskId, runId, invocationId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool command returned no response"));
+        try {
+          const decoded = JSON.parse(Buffer.from(response.argumentsJson).toString("utf8")) as unknown;
+          if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) throw new Error();
+          const canonical = canonicalMcpJSON(decoded);
+          const digest = createHash("sha256").update(canonical).digest("hex");
+          const startedAtUnixMs = safeUnixMilliseconds(response.startedAtUnixMs);
+          if (response.status !== "running" && response.status !== "completed" && response.status !== "failed") throw new Error();
+          if (response.taskId !== taskId || response.runId !== runId || response.invocationId !== invocationId ||
+              Buffer.from(response.argumentsJson).toString("utf8") !== canonical || response.argumentsSha256 !== digest) {
+            throw new Error();
+          }
+          resolve({
+            invocationId, tenantId: response.tenantId, principalUserId: response.principalUserId, agentId: response.agentId,
+            taskId, runId, profileId: response.profileId, serverId: response.serverId, toolName: response.toolName,
+            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest, startedAtUnixMs,
+            status: response.status
+          });
+        } catch {
+          reject(new Error("Agent MCP Tool command returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
+  async claimMcpToolRound(input: AgentMcpToolRoundClaim): Promise<AgentMcpToolRoundClaimResult> {
+    assertSha256(input.roundId, "round ID");
+    assertSha256(input.requestSha256, "request digest");
+    assertSha256(input.ownerTokenSha256, "owner token digest");
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.claimMcpToolRound({
+        context: this.requestContext(), taskId: input.taskId, runId: input.runId, invocationId: input.invocationId,
+        roundId: input.roundId, roundNumber: input.roundNumber, requestSha256: input.requestSha256,
+        ownerTokenSha256: input.ownerTokenSha256
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool round claim returned no response"));
+        try {
+          if (response.roundId !== input.roundId) throw new Error();
+          const resultJSON = Buffer.from(response.resultJson).toString("utf8");
+          switch (response.outcome) {
+            case "claimed":
+            case "ambiguous":
+              if (resultJSON !== "" || response.resultSha256 !== "" || response.errorCode !== "") throw new Error();
+              return resolve({ outcome: response.outcome });
+            case "replay_failed":
+              if (resultJSON !== "" || response.resultSha256 !== "" || !errorCodePattern.test(response.errorCode)) throw new Error();
+              return resolve({ outcome: response.outcome, errorCode: response.errorCode });
+            case "replay_completed": {
+              const result = JSON.parse(resultJSON) as unknown;
+              if (!isRecord(result) || Buffer.byteLength(resultJSON, "utf8") > mcpToolRoundResultLimit) throw new Error();
+              const canonical = canonicalMcpJSON(result);
+              const digest = createHash("sha256").update(canonical).digest("hex");
+              if (canonical !== resultJSON || digest !== response.resultSha256 || response.errorCode !== "") throw new Error();
+              return resolve({ outcome: response.outcome, result, resultJSON, resultSha256: digest });
+            }
+            default:
+              throw new Error();
+          }
+        } catch {
+          reject(new Error("Agent MCP Tool round claim returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
+  async finishMcpToolRound(input: AgentMcpToolRoundFinish): Promise<void> {
+    assertSha256(input.roundId, "round ID");
+    assertSha256(input.ownerTokenSha256, "owner token digest");
+    if (input.status === "completed") {
+      const decoded = JSON.parse(input.resultJSON) as unknown;
+      if (!isRecord(decoded) || Buffer.byteLength(input.resultJSON, "utf8") > mcpToolRoundResultLimit) {
+        throw new Error("Agent MCP Tool round completion evidence is invalid");
+      }
+      const canonical = canonicalMcpJSON(decoded);
+      if (canonical !== input.resultJSON || createHash("sha256").update(canonical).digest("hex") !== input.resultSha256) {
+        throw new Error("Agent MCP Tool round completion evidence is invalid");
+      }
+    } else if (!errorCodePattern.test(input.errorCode)) {
+      throw new Error("Agent MCP Tool round failure evidence is invalid");
+    }
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.finishMcpToolRound({
+        context: this.requestContext(), roundId: input.roundId, ownerTokenSha256: input.ownerTokenSha256,
+        status: input.status, resultJson: Buffer.from(input.status === "completed" ? input.resultJSON : "", "utf8"),
+        resultSha256: input.status === "completed" ? input.resultSha256 : "", errorCode: input.status === "failed" ? input.errorCode : ""
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool round finish returned no response"));
+        if (response.roundId !== input.roundId || response.status !== input.status) return reject(new Error("Agent MCP Tool round finish returned conflicting evidence"));
         resolve();
+      });
+    });
+  }
+
+  async finishMcpToolInvocationFromRound(input: {
+    readonly taskId: string;
+    readonly runId: string;
+    readonly invocationId: string;
+    readonly roundId: string;
+  }): Promise<AgentMcpToolCommandTerminalResult> {
+    assertSha256(input.roundId, "round ID");
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.finishMcpToolInvocationFromRound({
+        context: this.requestContext(), taskId: input.taskId, runId: input.runId,
+        invocationId: input.invocationId, roundId: input.roundId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          return reject(error ?? new Error("Agent MCP Tool invocation terminal returned no response"));
+        }
+        if (response.invocationId !== input.invocationId || (response.status !== "completed" && response.status !== "failed")) {
+          return reject(new Error("Agent MCP Tool invocation terminal returned conflicting evidence"));
+        }
+        resolve({ invocationId: response.invocationId, status: response.status });
       });
     });
   }
@@ -693,6 +904,99 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async publishMcpReadinessEvidence(
+    tenantId: string,
+    evidence: ExternalMcpReadinessEvidence,
+    expiresAt: string,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMCPReadinessEvidenceReceipt> {
+    if (!validBoundedIdentifier(tenantId, 64)) throw new Error("Agent MCP readiness evidence tenant is invalid");
+    const content = canonicalReadinessEvidenceJSON(evidence);
+    const completedAt = canonicalISOString(evidence.completedAt);
+    const expiry = canonicalISOString(expiresAt);
+    const completedAtMs = Date.parse(completedAt);
+    const expiresAtMs = Date.parse(expiry);
+    if (expiresAtMs <= completedAtMs || expiresAtMs - completedAtMs > 60 * 60 * 1_000) {
+      throw new Error("Agent MCP readiness evidence expiry is invalid");
+    }
+    const contentSha256 = createHash("sha256").update(content, "utf8").digest("hex");
+    const requestId = context.requestId ?? "";
+    const traceId = context.traceId ?? "";
+    const evidenceId = createHash("sha256").update([
+      readinessEvidenceRecordSchemaVersion, tenantId, evidence.profileBindingSha256,
+      evidence.bindingSha256, contentSha256, callerService, requestId, traceId, expiry
+    ].join("\n"), "utf8").digest("hex");
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.publishMcpReadinessEvidence({
+        context: this.requestContext(context.requestId, context.traceId), tenantId,
+        profileBindingSha256: evidence.profileBindingSha256, evidenceJson: Buffer.from(content, "utf8"),
+        expiresAtUnixMs: BigInt(expiresAtMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent MCP readiness evidence publication returned no receipt"));
+          return;
+        }
+        try {
+          const collectedAt = new Date(safeUnixMilliseconds(response.collectedAtUnixMs)).toISOString();
+          const returnedExpiry = new Date(safeUnixMilliseconds(response.expiresAtUnixMs)).toISOString();
+          if (response.evidenceId !== evidenceId || response.schemaVersion !== readinessEvidenceRecordSchemaVersion ||
+              response.profileBindingSha256 !== evidence.profileBindingSha256 || response.runtimeBindingSha256 !== evidence.bindingSha256 ||
+              response.contentSha256 !== contentSha256 || response.status !== "recorded" || collectedAt !== completedAt || returnedExpiry !== expiry) {
+            throw new Error();
+          }
+          resolve({ evidenceId, profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+            contentSha256, collectedAt, expiresAt: expiry, created: response.created });
+        } catch {
+          reject(new Error("Agent MCP readiness evidence publication returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
+  async resolveFreshMcpReadinessEvidence(
+    tenantId: string,
+    profileBindingSha256: string,
+    runtimeBindingSha256: string,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMCPReadinessEvidenceResolution | undefined> {
+    if (!validBoundedIdentifier(tenantId, 64) || !validSHA256(profileBindingSha256) || !validSHA256(runtimeBindingSha256)) {
+      throw new Error("Agent MCP readiness evidence lookup is invalid");
+    }
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveFreshMcpReadinessEvidence({
+        context: this.requestContext(context.requestId, context.traceId), tenantId,
+        profileBindingSha256, runtimeBindingSha256
+      }, this.metadata(context.requestId, context.traceId), { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent MCP readiness evidence resolution returned no response"));
+          return;
+        }
+        try {
+          if (!response.found) {
+            if (response.evidenceId !== "" || response.schemaVersion !== "" || response.profileBindingSha256 !== "" ||
+                response.runtimeBindingSha256 !== "" || response.contentSha256 !== "" || response.status !== "" ||
+                response.collectedAtUnixMs !== 0n || response.expiresAtUnixMs !== 0n) throw new Error();
+            resolve(undefined);
+            return;
+          }
+          const collectedAtMs = safeUnixMilliseconds(response.collectedAtUnixMs);
+          const expiresAtMs = safeUnixMilliseconds(response.expiresAtUnixMs);
+          if (!validSHA256(response.evidenceId) || response.schemaVersion !== readinessEvidenceRecordSchemaVersion ||
+              response.profileBindingSha256 !== profileBindingSha256 || response.runtimeBindingSha256 !== runtimeBindingSha256 ||
+              !validSHA256(response.contentSha256) || response.status !== "recorded" || collectedAtMs >= expiresAtMs) throw new Error();
+          resolve({
+            evidenceId: response.evidenceId, profileBindingSha256, runtimeBindingSha256,
+            contentSha256: response.contentSha256, collectedAt: new Date(collectedAtMs).toISOString(),
+            expiresAt: new Date(expiresAtMs).toISOString()
+          });
+        } catch {
+          reject(new Error("Agent MCP readiness evidence resolution returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
   private metadata(requestId?: string, traceId?: string): grpc.Metadata {
     const metadata = new grpc.Metadata();
     metadata.set("x-dipole-caller-service", callerService);
@@ -721,6 +1025,47 @@ function canonicalJSON(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 
+function canonicalReadinessEvidenceJSON(evidence: ExternalMcpReadinessEvidence): string {
+  if (evidence.schemaVersion !== "dipole.agent.external-mcp-readiness-evidence.v2" ||
+      !/^[a-f0-9]{64}$/.test(evidence.bindingSha256) || !/^[a-f0-9]{64}$/.test(evidence.profileBindingSha256)) {
+    throw new Error("Agent MCP readiness evidence is invalid");
+  }
+  const startedAt = canonicalISOString(evidence.startedAt);
+  const completedAt = canonicalISOString(evidence.completedAt);
+  const preflightCheckedAt = canonicalISOString(evidence.preflightCheckedAt);
+  const connectivityCheckedAt = canonicalISOString(evidence.connectivityCheckedAt);
+  const startedAtMs = Date.parse(startedAt);
+  const completedAtMs = Date.parse(completedAt);
+  const preflightAtMs = Date.parse(preflightCheckedAt);
+  const connectivityAtMs = Date.parse(connectivityCheckedAt);
+  if (completedAtMs < startedAtMs || completedAtMs - startedAtMs > 10 * 60 * 1_000 ||
+      preflightAtMs < startedAtMs || preflightAtMs > completedAtMs ||
+      connectivityAtMs < preflightAtMs || connectivityAtMs > completedAtMs ||
+      !validReadinessCount(evidence.profileCount, 64) || !validReadinessCount(evidence.credentialCount, 64) ||
+      evidence.credentialCount > evidence.profileCount || !validReadinessCount(evidence.caBundleCount, 64) ||
+      evidence.caBundleCount > evidence.profileCount || !validReadinessCount(evidence.toolCount, 256)) {
+    throw new Error("Agent MCP readiness evidence is invalid");
+  }
+  return JSON.stringify({
+    schemaVersion: evidence.schemaVersion, bindingSha256: evidence.bindingSha256,
+    profileBindingSha256: evidence.profileBindingSha256, startedAt, completedAt,
+    preflightCheckedAt, connectivityCheckedAt, profileCount: evidence.profileCount,
+    credentialCount: evidence.credentialCount, caBundleCount: evidence.caBundleCount, toolCount: evidence.toolCount
+  });
+}
+
+function canonicalISOString(value: string): string {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+    throw new Error("Agent MCP readiness evidence time is invalid");
+  }
+  return value;
+}
+
+function validReadinessCount(value: number, maximum: number): boolean {
+  return Number.isSafeInteger(value) && value >= 1 && value <= maximum;
+}
+
 function safeRevision(value: bigint): number {
   const revision = Number(value);
   if (!Number.isSafeInteger(revision) || revision < 0) {
@@ -735,6 +1080,14 @@ function validBoundedIdentifier(value: string, maximum: number): boolean {
 
 function validSHA256(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertSha256(value: string, label: string): void {
+  if (!validSHA256(value)) throw new Error(`Agent MCP Tool ${label} is invalid`);
 }
 
 function safeUnixMilliseconds(value: bigint): number {

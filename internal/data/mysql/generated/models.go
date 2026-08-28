@@ -12,6 +12,47 @@ import (
 	"time"
 )
 
+type AgentMcpReadinessEvidenceStatus string
+
+const (
+	AgentMcpReadinessEvidenceStatusRecorded AgentMcpReadinessEvidenceStatus = "recorded"
+)
+
+func (e *AgentMcpReadinessEvidenceStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentMcpReadinessEvidenceStatus(s)
+	case string:
+		*e = AgentMcpReadinessEvidenceStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentMcpReadinessEvidenceStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAgentMcpReadinessEvidenceStatus struct {
+	AgentMcpReadinessEvidenceStatus AgentMcpReadinessEvidenceStatus
+	Valid                           bool // Valid is true if AgentMcpReadinessEvidenceStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentMcpReadinessEvidenceStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentMcpReadinessEvidenceStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentMcpReadinessEvidenceStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentMcpReadinessEvidenceStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentMcpReadinessEvidenceStatus), nil
+}
+
 type AgentRuntimePromotionProposalsStatus string
 
 const (
@@ -169,6 +210,44 @@ type AgentEventSubscription struct {
 	RevokeReason      sql.NullString
 	UpdatedAt         time.Time
 	CreatedByUuid     string
+}
+
+type AgentMcpReadinessEvidence struct {
+	ID                   uint64
+	EvidenceUuid         string
+	SchemaVersion        string
+	TenantID             string
+	ProfileBindingSha256 string
+	RuntimeBindingSha256 string
+	ContentJson          string
+	ContentSha256        string
+	OperatorUuid         string
+	RequestID            sql.NullString
+	TraceID              sql.NullString
+	Status               AgentMcpReadinessEvidenceStatus
+	CollectedAt          time.Time
+	ExpiresAt            time.Time
+	CreatedAt            time.Time
+}
+
+type AgentMcpToolRound struct {
+	ID               uint64
+	RoundUuid        string
+	InvocationUuid   string
+	TaskUuid         string
+	RunUuid          string
+	RoundNumber      uint8
+	RequestSha256    string
+	OwnerTokenSha256 string
+	Status           string
+	ResultJson       json.RawMessage
+	ResultSha256     sql.NullString
+	ResultBytes      sql.NullInt64
+	ErrorCode        sql.NullString
+	ClaimedAt        time.Time
+	FinishedAt       sql.NullTime
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type AgentMemory struct {
@@ -332,6 +411,9 @@ type AgentToolInvocation struct {
 	ActionResourceUuid sql.NullString
 	ActionCommandKind  sql.NullString
 	ActionCommandID    sql.NullString
+	ProfileID          sql.NullString
+	ServerID           sql.NullString
+	ArgumentsJson      json.RawMessage
 }
 
 type AgentWorkflowRepairDecision struct {

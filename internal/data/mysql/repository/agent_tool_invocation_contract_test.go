@@ -2,6 +2,8 @@ package repository_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"testing"
 	"time"
 
@@ -46,6 +48,19 @@ func TestAgentToolInvocationRepositoryContract(t *testing.T) {
 	if err != nil || loaded == nil || loaded.InvocationUUID != "INV-1" || loaded.CapabilityID != application.AgentCapabilityConversationsList {
 		t.Fatalf("get Tool invocation: loaded=%+v err=%v", loaded, err)
 	}
+	external := record
+	external.InvocationUUID = "INV-EXT-1"
+	external.ToolName = "calendar.create"
+	external.ProfileID, external.ServerID, external.ArgumentsJSON = "calendar-prod", "calendar.example", `{"calendarId":"CAL-1"}`
+	external.ArgumentsSHA256 = fmt.Sprintf("%x", sha256.Sum256([]byte(external.ArgumentsJSON)))
+	created, err = store.BeginToolInvocation(context.Background(), external)
+	if err != nil || !created {
+		t.Fatalf("begin external Tool command: created=%v err=%v", created, err)
+	}
+	loaded, err = store.GetToolInvocation(context.Background(), external.InvocationUUID)
+	if err != nil || loaded == nil || loaded.ProfileID != external.ProfileID || loaded.ServerID != external.ServerID || loaded.ArgumentsJSON != external.ArgumentsJSON {
+		t.Fatalf("get external Tool command: loaded=%+v err=%v", loaded, err)
+	}
 	finished, err := store.FinishToolInvocation(context.Background(), application.AgentToolInvocationFinishV1{
 		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
 		ResultSHA256: testToolInvocationSHA, ResultBytes: 128, LatencyMS: 12,
@@ -67,6 +82,11 @@ func TestAgentToolInvocationRepositoryContract(t *testing.T) {
 	}
 	if status != "completed" || argumentsSHA != testToolInvocationSHA || resultSHA != testToolInvocationSHA || resultBytes != 128 || latencyMS != 12 {
 		t.Fatalf("unexpected Tool invocation evidence: %s %s %s %d %d", status, argumentsSHA, resultSHA, resultBytes, latencyMS)
+	}
+	loaded, err = store.GetToolInvocation(context.Background(), "INV-1")
+	if err != nil || loaded == nil || loaded.Status != application.AgentToolInvocationStatusCompleted || loaded.ResultSHA256 != testToolInvocationSHA ||
+		loaded.ResultBytes != 128 || loaded.LatencyMS != 12 || loaded.FinishedAt == nil {
+		t.Fatalf("get terminal Tool invocation evidence: loaded=%+v err=%v", loaded, err)
 	}
 
 	writeRecord := record

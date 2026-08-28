@@ -1,9 +1,27 @@
-import { Client, type CallToolResult, type Tool, type Transport } from "@modelcontextprotocol/client";
+import {
+  Client,
+  isInputRequiredResult,
+  specTypeSchemas,
+  withInputRequired,
+  type CallToolResult,
+  type InputRequiredResult,
+  type Tool,
+  type Transport
+} from "@modelcontextprotocol/client";
 
 export interface McpToolEgressPolicy {
   readonly allowedArgumentNames: readonly string[];
   readonly maximumBytes: number;
 }
+
+export interface McpToolRoundParams {
+  readonly name: string;
+  readonly arguments: Readonly<Record<string, unknown>>;
+  readonly inputResponses?: Readonly<Record<string, unknown>>;
+  readonly requestState?: string;
+}
+
+export type McpToolRoundResult = CallToolResult | InputRequiredResult;
 
 export class AllowlistedMcpToolClient {
   readonly #client: Client;
@@ -11,6 +29,7 @@ export class AllowlistedMcpToolClient {
   readonly #serverId: string;
   readonly #egressPolicies: ReadonlyMap<string, McpToolEgressPolicy>;
   readonly #requestTimeoutMs: number;
+  readonly #manualInputRequiredEnabled: boolean;
   #discovered = new Set<string>();
 
   constructor(
@@ -18,7 +37,8 @@ export class AllowlistedMcpToolClient {
     allowedServerIds: readonly string[],
     allowedTools: readonly string[],
     egressPolicies: Readonly<Record<string, McpToolEgressPolicy>>,
-    requestTimeoutMs = 10_000
+    requestTimeoutMs = 10_000,
+    protocolMode: "legacy" | "modern" = "legacy"
   ) {
     const normalizedServerId = serverId.trim();
     if (!allowedServerIds.includes(normalizedServerId)) throw new Error(`MCP Server ${normalizedServerId} is not allowlisted`);
@@ -31,18 +51,28 @@ export class AllowlistedMcpToolClient {
     if (policyNames.length !== sortedTools.length || !policyNames.every((name, index) => name === sortedTools[index])) {
       throw new Error("MCP Tool egress policies must exactly match the Tool allowlist");
     }
-    this.#egressPolicies = new Map(normalizedTools.map((name) => [name, validateEgressPolicy(name, egressPolicies[name])]));
+    this.#egressPolicies = new Map(normalizedTools.map((name) => [name, validateMcpToolEgressPolicy(name, egressPolicies[name])]));
     this.#allowedTools = new Set(normalizedTools);
     this.#serverId = normalizedServerId;
     if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 100 || requestTimeoutMs > 60_000) {
       throw new Error("MCP request timeout must be between 100 and 60000 milliseconds");
     }
     this.#requestTimeoutMs = requestTimeoutMs;
-    this.#client = new Client({ name: "dipole-agent", version: "0.1.0" });
+    if (protocolMode !== "legacy" && protocolMode !== "modern") throw new Error("MCP protocol mode is invalid");
+    this.#manualInputRequiredEnabled = protocolMode === "modern";
+    this.#client = new Client({ name: "dipole-agent", version: "0.1.0" }, protocolMode === "modern" ? {
+      capabilities: { elicitation: { form: {} } },
+      versionNegotiation: { mode: { pin: "2026-07-28" } },
+      inputRequired: { autoFulfill: false, maxRounds: 1 }
+    } : undefined);
   }
 
-  async connect(transport: Transport): Promise<readonly Tool[]> {
-    const requestOptions = { timeout: this.#requestTimeoutMs, maxTotalTimeout: this.#requestTimeoutMs };
+  async connect(transport: Transport, signal?: AbortSignal): Promise<readonly Tool[]> {
+    const requestOptions = {
+      timeout: this.#requestTimeoutMs,
+      maxTotalTimeout: this.#requestTimeoutMs,
+      ...(signal === undefined ? {} : { signal })
+    };
     await this.#client.connect(transport, requestOptions);
     const server = this.#client.getServerVersion();
     if (server?.name !== this.#serverId) {
@@ -60,13 +90,46 @@ export class AllowlistedMcpToolClient {
 
   async callTool(name: string, arguments_: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<CallToolResult> {
     if (!this.#allowedTools.has(name) || !this.#discovered.has(name)) throw new Error(`MCP Tool ${name} is not allowlisted and discovered`);
-    const safeArguments = enforceEgressPolicy(arguments_, this.#egressPolicies.get(name)!);
+    const safeArguments = enforceMcpToolEgressPolicy(arguments_, this.#egressPolicies.get(name)!);
     const result = await this.#client.callTool({ name, arguments: safeArguments }, {
       timeout: this.#requestTimeoutMs, maxTotalTimeout: this.#requestTimeoutMs, ...(signal === undefined ? {} : { signal })
     });
     const bytes = new TextEncoder().encode(JSON.stringify(result)).length;
     if (bytes > 128 * 1024) throw new Error(`MCP Tool ${name} response exceeds 128 KiB`);
     if (result.isError === true) throw new Error(`MCP Tool ${name} returned an error`);
+    return result;
+  }
+
+  async callToolRound(params: McpToolRoundParams, signal?: AbortSignal): Promise<McpToolRoundResult> {
+    if (!this.#manualInputRequiredEnabled) throw new Error("MCP manual input_required requires modern protocol mode");
+    if (!this.#allowedTools.has(params.name) || !this.#discovered.has(params.name)) {
+      throw new Error(`MCP Tool ${params.name} is not allowlisted and discovered`);
+    }
+    const safeArguments = enforceMcpToolEgressPolicy(params.arguments, this.#egressPolicies.get(params.name)!);
+    const continuation = validateRoundContinuation(params.inputResponses, params.requestState);
+    // Keep SDK auto-fulfilment disabled: Temporal persists the wait, then a fresh
+    // Activity sends the exact continuation parameters produced by the checkpoint.
+    const result = await this.#client.request({
+      method: "tools/call",
+      params: {
+        name: params.name,
+        arguments: safeArguments,
+        ...(continuation.inputResponses === undefined ? {} : { inputResponses: continuation.inputResponses }),
+        ...(continuation.requestState === undefined ? {} : { requestState: continuation.requestState })
+      }
+    }, withInputRequired(specTypeSchemas.CallToolResult), {
+      timeout: this.#requestTimeoutMs,
+      maxTotalTimeout: this.#requestTimeoutMs,
+      allowInputRequired: true,
+      ...(signal === undefined ? {} : { signal })
+    });
+    const bytes = new TextEncoder().encode(JSON.stringify(result)).length;
+    if (bytes > 128 * 1024) throw new Error(`MCP Tool ${params.name} response exceeds 128 KiB`);
+    if (isInputRequiredResult(result)) {
+      if (bytes > 32 * 1024) throw new Error(`MCP Tool ${params.name} input_required response exceeds 32 KiB`);
+      return result;
+    }
+    if (result.isError === true) throw new Error(`MCP Tool ${params.name} returned an error`);
     return result;
   }
 
@@ -81,7 +144,7 @@ const sensitiveArgumentNames = new Set([
   "authorization", "cookie", "credential", "credentials", "privatekey", "clientsecret"
 ]);
 
-function validateEgressPolicy(name: string, policy: McpToolEgressPolicy | undefined): McpToolEgressPolicy {
+export function validateMcpToolEgressPolicy(name: string, policy: McpToolEgressPolicy | undefined): McpToolEgressPolicy {
   if (policy === undefined || !Number.isSafeInteger(policy.maximumBytes) || policy.maximumBytes < 2 || policy.maximumBytes > 64 * 1024) {
     throw new Error(`MCP Tool ${name} egress policy has an invalid byte limit`);
   }
@@ -92,7 +155,7 @@ function validateEgressPolicy(name: string, policy: McpToolEgressPolicy | undefi
   return { allowedArgumentNames: allowed, maximumBytes: policy.maximumBytes };
 }
 
-function enforceEgressPolicy(arguments_: Readonly<Record<string, unknown>>, policy: McpToolEgressPolicy): Record<string, unknown> {
+export function enforceMcpToolEgressPolicy(arguments_: Readonly<Record<string, unknown>>, policy: McpToolEgressPolicy): Record<string, unknown> {
   let encoded: string;
   try {
     encoded = JSON.stringify(arguments_);
@@ -112,6 +175,34 @@ function enforceEgressPolicy(arguments_: Readonly<Record<string, unknown>>, poli
   }
   rejectSensitiveFields(decoded, 0);
   return decoded as Record<string, unknown>;
+}
+
+function validateRoundContinuation(
+  inputResponses: Readonly<Record<string, unknown>> | undefined,
+  requestState: string | undefined
+): { inputResponses?: Record<string, unknown>; requestState?: string } {
+  if (requestState !== undefined && inputResponses === undefined) {
+    throw new Error("MCP requestState requires inputResponses");
+  }
+  let safeResponses: Record<string, unknown> | undefined;
+  if (inputResponses !== undefined) {
+    if (inputResponses === null || typeof inputResponses !== "object" || Array.isArray(inputResponses)) {
+      throw new Error("MCP inputResponses must be an object");
+    }
+    rejectSensitiveFields(inputResponses, 0);
+    const encoded = JSON.stringify(inputResponses);
+    if (encoded === undefined || Buffer.byteLength(encoded, "utf8") > 16 * 1024) {
+      throw new Error("MCP inputResponses exceed 16 KiB");
+    }
+    safeResponses = JSON.parse(encoded) as Record<string, unknown>;
+  }
+  if (requestState !== undefined && (typeof requestState !== "string" || Buffer.byteLength(requestState, "utf8") > 8 * 1024)) {
+    throw new Error("MCP requestState exceeds 8 KiB");
+  }
+  return {
+    ...(safeResponses === undefined ? {} : { inputResponses: safeResponses }),
+    ...(requestState === undefined ? {} : { requestState })
+  };
 }
 
 function rejectSensitiveFields(value: unknown, depth: number): void {

@@ -2,6 +2,7 @@ package agentgrpc
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -79,9 +80,38 @@ type agentMemoryResolverStub struct {
 }
 
 type agentToolAuditStub struct {
-	begin  application.AgentToolInvocationBeginV1
-	finish application.AgentToolInvocationFinishV1
+	begin   application.AgentToolInvocationBeginV1
+	finish  application.AgentToolInvocationFinishV1
+	command *application.AgentMCPToolCommandV1
+	err     error
+}
+
+type agentMCPToolRoundStub struct {
+	claim  application.AgentMCPToolRoundClaimV1
+	finish application.AgentMCPToolRoundFinishV1
+	result *application.AgentMCPToolRoundClaimResultV1
 	err    error
+}
+
+type agentMCPToolTerminalStub struct {
+	request    application.AgentMCPToolInvocationTerminalRequestV1
+	invocation *application.AgentToolInvocationV1
+	err        error
+}
+
+func (s *agentMCPToolTerminalStub) FinishFromRound(_ context.Context, request application.AgentMCPToolInvocationTerminalRequestV1) (*application.AgentToolInvocationV1, error) {
+	s.request = request
+	return s.invocation, s.err
+}
+
+func (s *agentMCPToolRoundStub) Claim(_ context.Context, claim application.AgentMCPToolRoundClaimV1) (*application.AgentMCPToolRoundClaimResultV1, error) {
+	s.claim = claim
+	return s.result, s.err
+}
+
+func (s *agentMCPToolRoundStub) Finish(_ context.Context, finish application.AgentMCPToolRoundFinishV1) error {
+	s.finish = finish
+	return s.err
 }
 
 type agentMessageCommandExecutionStub struct {
@@ -106,6 +136,10 @@ func (s *agentToolAuditStub) Begin(_ context.Context, begin application.AgentToo
 func (s *agentToolAuditStub) Finish(_ context.Context, finish application.AgentToolInvocationFinishV1) error {
 	s.finish = finish
 	return s.err
+}
+
+func (s *agentToolAuditStub) ResolveCommand(_ context.Context, _, _, _ string) (*application.AgentMCPToolCommandV1, error) {
+	return s.command, s.err
 }
 
 func (s *agentMemoryResolverStub) ResolveContextMemories(_ context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]application.AgentMemoryV1, error) {
@@ -302,7 +336,12 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 }
 
 func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
-	audit := &agentToolAuditStub{}
+	audit := &agentToolAuditStub{command: &application.AgentMCPToolCommandV1{
+		InvocationUUID: "INV-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", TaskUUID: "TASK-1", RunUUID: "RUN-1",
+		ProfileID: "calendar-prod", ServerID: "calendar.example", ToolName: "calendar.create", CapabilityID: application.AgentCapabilityConversationsList,
+		ArgumentsJSON: `{"calendarId":"CAL-1"}`, ArgumentsSHA256: strings.Repeat("c", 64),
+		StartedAt: time.UnixMilli(1_000),
+	}}
 	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	if err != nil {
 		t.Fatalf("new server: %v", err)
@@ -320,7 +359,22 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP || audit.begin.ApprovalUUID != "APR-1" {
 		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
 	}
+	command, err := server.ResolveMcpToolCommand(context.Background(), &agentv1.ResolveMcpToolCommandRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
+	})
+	if err != nil || command.GetProfileId() != "calendar-prod" || string(command.GetArgumentsJson()) != `{"calendarId":"CAL-1"}` || command.GetPrincipalUserId() != "U100" || command.GetStartedAtUnixMs() != 1_000 {
+		t.Fatalf("unexpected Tool command: response=%+v err=%v", command, err)
+	}
 	finishResponse, err := server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
+		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
+		ActionReference: &agentv1.AgentToolActionReference{ResourceType: "message", ResourceId: "MSG-1", CommandKind: "system_message", CommandId: "CMD-1"},
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("external direct finish code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	audit.command.ProfileID, audit.command.ServerID, audit.command.ArgumentsJSON = "", "", ""
+	finishResponse, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
 		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
 		ActionReference: &agentv1.AgentToolActionReference{ResourceType: "message", ResourceId: "MSG-1", CommandKind: "system_message", CommandId: "CMD-1"},
@@ -338,6 +392,70 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	_, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{Context: requestContext})
 	if status.Code(err) != codes.Aborted {
 		t.Fatalf("conflict code = %s, want %s", status.Code(err), codes.Aborted)
+	}
+}
+
+func TestMcpToolRoundReceiptUsesAuthenticatedRuntimeContext(t *testing.T) {
+	rounds := &agentMCPToolRoundStub{result: &application.AgentMCPToolRoundClaimResultV1{
+		Outcome: application.AgentMCPToolRoundReplayCompleted, ResultJSON: `{"content":[]}`, ResultSHA256: strings.Repeat("d", 64),
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithMCPToolRounds(rounds); err != nil {
+		t.Fatalf("configure MCP Tool rounds: %v", err)
+	}
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	claimResponse, err := server.ClaimMcpToolRound(context.Background(), &agentv1.ClaimMcpToolRoundRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", RoundId: strings.Repeat("a", 64),
+		RoundNumber: 1, RequestSha256: strings.Repeat("b", 64), OwnerTokenSha256: strings.Repeat("c", 64),
+	})
+	if err != nil || claimResponse.GetOutcome() != "replay_completed" || rounds.claim.RoundNumber != 1 || string(claimResponse.GetResultJson()) != `{"content":[]}` {
+		t.Fatalf("unexpected Tool round claim: response=%+v claim=%+v err=%v", claimResponse, rounds.claim, err)
+	}
+	finishResponse, err := server.FinishMcpToolRound(context.Background(), &agentv1.FinishMcpToolRoundRequest{
+		Context: requestContext, RoundId: strings.Repeat("a", 64), OwnerTokenSha256: strings.Repeat("c", 64),
+		Status: "failed", ErrorCode: "transport_unavailable",
+	})
+	if err != nil || finishResponse.GetStatus() != "failed" || rounds.finish.ErrorCode != "transport_unavailable" {
+		t.Fatalf("unexpected Tool round finish: response=%+v finish=%+v err=%v", finishResponse, rounds.finish, err)
+	}
+	_, err = server.ClaimMcpToolRound(context.Background(), &agentv1.ClaimMcpToolRoundRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	rounds.err = application.ErrAgentMCPToolRoundConflict
+	_, err = server.FinishMcpToolRound(context.Background(), &agentv1.FinishMcpToolRoundRequest{Context: requestContext})
+	if status.Code(err) != codes.Aborted {
+		t.Fatalf("round conflict code = %s, want %s", status.Code(err), codes.Aborted)
+	}
+}
+
+func TestMcpToolInvocationTerminalUsesOnlyBoundRoundEvidence(t *testing.T) {
+	terminal := &agentMCPToolTerminalStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-1", Status: application.AgentToolInvocationStatusCompleted,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithMCPToolTerminals(terminal); err != nil {
+		t.Fatalf("configure MCP Tool terminal: %v", err)
+	}
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	response, err := server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", RoundId: strings.Repeat("a", 64),
+	})
+	if err != nil || response.GetStatus() != "completed" || terminal.request.RoundUUID != strings.Repeat("a", 64) || terminal.request.InvocationUUID != "INV-1" {
+		t.Fatalf("terminal response=%+v request=%+v err=%v", response, terminal.request, err)
+	}
+	_, err = server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	terminal.err = application.ErrAgentMCPToolRoundConflict
+	_, err = server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{Context: requestContext})
+	if status.Code(err) != codes.Aborted {
+		t.Fatalf("terminal conflict code = %s, want %s", status.Code(err), codes.Aborted)
 	}
 }
 
@@ -747,6 +865,194 @@ func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.
 	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) }); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent Runtime control code = %s", status.Code(err))
 	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCUsesAuthenticatedRuntimeIdentity(t *testing.T) {
+	publisher := &mcpReadinessEvidencePublisherStub{created: true}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidencePublisher(publisher)
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	profileBinding := strings.Repeat("b", 64)
+	evidence := application.AgentMCPReadinessEvidenceV1{
+		SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+		BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: profileBinding,
+		StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second),
+		ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+		ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 2,
+	}
+	body, _ := json.Marshal(evidence)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: profileBinding, EvidenceJson: body, ExpiresAtUnixMs: startedAt.Add(30 * time.Minute).UnixMilli(),
+	}
+	request.Context.RequestId, request.Context.TraceId = "REQ-1", "TRACE-1"
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := response.(*agentv1.PublishMcpReadinessEvidenceResponse)
+	if publisher.operator != "dipole-agent" || publisher.request.RequestID != "REQ-1" || publisher.request.TraceID != "TRACE-1" ||
+		result.GetEvidenceId() != publisher.record.EvidenceUUID || result.GetContentSha256() != publisher.record.ContentSHA256 || !result.GetCreated() {
+		t.Fatalf("response=%+v operator=%s request=%+v", result, publisher.operator, publisher.request)
+	}
+	publisher.created = false
+	replay, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || replay.(*agentv1.PublishMcpReadinessEvidenceResponse).GetEvidenceId() != result.GetEvidenceId() || replay.(*agentv1.PublishMcpReadinessEvidenceResponse).GetCreated() {
+		t.Fatalf("replay=%+v err=%v", replay, err)
+	}
+
+	request.Context.PrincipalUserId = "U-OPS"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("principal injection code=%s", status.Code(err))
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway publish code=%s", status.Code(err))
+	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCRejectsInvalidEvidenceBeforeStore(t *testing.T) {
+	publisher := &mcpReadinessEvidencePublisherStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidencePublisher(publisher)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: strings.Repeat("b", 64), EvidenceJson: []byte(`{"schemaVersion":"dipole.agent.external-mcp-readiness-evidence.v2","token":"secret"}`),
+		ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
+	}
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.InvalidArgument || publisher.calls != 0 {
+		t.Fatalf("invalid evidence code=%s calls=%d", status.Code(err), publisher.calls)
+	}
+
+	server.readinessPublisher = nil
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Unavailable {
+		t.Fatalf("missing Publisher code=%s", status.Code(err))
+	}
+}
+
+func TestResolveFreshMcpReadinessEvidenceRPCUsesAuthenticatedRuntimeIdentity(t *testing.T) {
+	record, _ := application.NewAgentMCPReadinessEvidenceRecordV1("OPERATOR", readinessEvidencePublishRequestForRPC())
+	resolver := &mcpReadinessEvidenceResolverStub{record: &record}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidenceResolver(resolver)
+	request := &agentv1.ResolveFreshMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: strings.Repeat("b", 64), RuntimeBindingSha256: strings.Repeat("a", 64),
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || !response.(*agentv1.ResolveFreshMcpReadinessEvidenceResponse).GetFound() || resolver.tenant != "dipole" {
+		t.Fatalf("response=%+v resolver=%+v err=%v", response, resolver, err)
+	}
+	resolver.record = nil
+	empty, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || empty.(*agentv1.ResolveFreshMcpReadinessEvidenceResponse).GetFound() {
+		t.Fatalf("empty=%+v err=%v", empty, err)
+	}
+	request.Context.PrincipalUserId = "U-OPS"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("principal injection code=%s", status.Code(err))
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway resolve code=%s", status.Code(err))
+	}
+	server.readinessResolver = nil
+	request.Context = grpccommon.RequestContext("", "dipole-agent")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Unavailable {
+		t.Fatalf("missing Resolver code=%s", status.Code(err))
+	}
+}
+
+type mcpReadinessEvidenceResolverStub struct {
+	record                                 *application.AgentMCPReadinessEvidenceRecordV1
+	tenant, profileBinding, runtimeBinding string
+	err                                    error
+}
+
+func (resolver *mcpReadinessEvidenceResolverStub) ResolveFreshAgentMCPReadinessEvidence(_ context.Context, tenant, profileBinding, runtimeBinding string) (*application.AgentMCPReadinessEvidenceRecordV1, error) {
+	resolver.tenant, resolver.profileBinding, resolver.runtimeBinding = tenant, profileBinding, runtimeBinding
+	return resolver.record, resolver.err
+}
+
+func readinessEvidencePublishRequestForRPC() application.AgentMCPReadinessEvidenceRequestV1 {
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	return application.AgentMCPReadinessEvidenceRequestV1{
+		TenantID: "dipole", ProfileBindingSHA256: strings.Repeat("b", 64), ExpiresAt: startedAt.Add(30 * time.Minute),
+		Evidence: application.AgentMCPReadinessEvidenceV1{
+			SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+			BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: strings.Repeat("b", 64),
+			StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second), ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+			ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 1,
+		},
+	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCRejectsEmptyPublisherResult(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server.readinessPublisher = emptyMCPReadinessEvidencePublisherStub{}
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	evidence := application.AgentMCPReadinessEvidenceV1{
+		SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+		BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: strings.Repeat("b", 64),
+		StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second),
+		ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+		ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 2,
+	}
+	body, _ := json.Marshal(evidence)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: evidence.ProfileBindingSHA256, EvidenceJson: body,
+		ExpiresAtUnixMs: startedAt.Add(30 * time.Minute).UnixMilli(),
+	}
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Internal {
+		t.Fatalf("empty Publisher result code=%s", status.Code(err))
+	}
+}
+
+type mcpReadinessEvidencePublisherStub struct {
+	operator string
+	request  application.AgentMCPReadinessEvidenceRequestV1
+	record   application.AgentMCPReadinessEvidenceRecordV1
+	calls    int
+	created  bool
+}
+
+type emptyMCPReadinessEvidencePublisherStub struct{}
+
+func (emptyMCPReadinessEvidencePublisherStub) PublishAgentMCPReadinessEvidence(context.Context, string, application.AgentMCPReadinessEvidenceRequestV1) (*application.AgentMCPReadinessEvidenceRecordV1, bool, error) {
+	return nil, false, nil
+}
+
+func (publisher *mcpReadinessEvidencePublisherStub) PublishAgentMCPReadinessEvidence(_ context.Context, operator string, request application.AgentMCPReadinessEvidenceRequestV1) (*application.AgentMCPReadinessEvidenceRecordV1, bool, error) {
+	publisher.operator, publisher.request = operator, request
+	publisher.calls++
+	record, err := application.NewAgentMCPReadinessEvidenceRecordV1(operator, request)
+	publisher.record = record
+	return &publisher.record, publisher.created, err
 }
 
 type runtimePromotionEvidenceServiceStub struct {

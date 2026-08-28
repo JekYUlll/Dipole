@@ -28,12 +28,32 @@ type Server struct {
 	repairs              application.AgentWorkflowRepairAuditServiceV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
 	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
+	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
+	readinessResolver    application.AgentMCPReadinessEvidenceResolverV1
 	artifacts            application.AgentArtifactServiceV1
 	subscriptions        application.AgentEventSubscriptionResolverV1
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
 	memories             application.AgentMemoryContextResolverV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
+	toolRounds           application.AgentMCPToolRoundServiceV1
+	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands      application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
+	if s == nil || publisher == nil {
+		return nil, errors.New("Agent MCP readiness evidence Publisher is required")
+	}
+	s.readinessPublisher = publisher
+	return s, nil
+}
+
+func (s *Server) WithMCPReadinessEvidenceResolver(resolver application.AgentMCPReadinessEvidenceResolverV1) (*Server, error) {
+	if s == nil || resolver == nil {
+		return nil, errors.New("Agent MCP readiness evidence Resolver is required")
+	}
+	s.readinessResolver = resolver
+	return s, nil
 }
 
 func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSubscriptionControlServiceV1) (*Server, error) {
@@ -73,6 +93,22 @@ func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServi
 		return nil, errors.New("Agent Tool invocation audit service is required")
 	}
 	s.toolAudits = audits
+	return s, nil
+}
+
+func (s *Server) WithMCPToolRounds(rounds application.AgentMCPToolRoundServiceV1) (*Server, error) {
+	if s == nil || rounds == nil {
+		return nil, errors.New("Agent MCP Tool round service is required")
+	}
+	s.toolRounds = rounds
+	return s, nil
+}
+
+func (s *Server) WithMCPToolTerminals(terminals application.AgentMCPToolInvocationTerminalServiceV1) (*Server, error) {
+	if s == nil || terminals == nil {
+		return nil, errors.New("Agent MCP Tool terminal service is required")
+	}
+	s.toolTerminals = terminals
 	return s, nil
 }
 
@@ -533,6 +569,98 @@ func (s *Server) RevokeRuntimePromotion(ctx context.Context, request *agentv1.Re
 	return response, nil
 }
 
+func (s *Server) PublishMcpReadinessEvidence(ctx context.Context, request *agentv1.PublishMcpReadinessEvidenceRequest) (*agentv1.PublishMcpReadinessEvidenceResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may publish MCP readiness evidence")
+	}
+	if s.readinessPublisher == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP readiness evidence Publisher is unavailable")
+	}
+	if len(request.GetEvidenceJson()) == 0 || len(request.GetEvidenceJson()) > 16*1024 {
+		return nil, status.Error(codes.InvalidArgument, "Agent MCP readiness evidence is invalid")
+	}
+	evidence, err := application.ParseAgentMCPReadinessEvidenceV1(request.GetEvidenceJson())
+	if err != nil {
+		return nil, readinessEvidenceResolveErrorV1(err)
+	}
+	requestContext := request.GetContext()
+	record, created, err := s.readinessPublisher.PublishAgentMCPReadinessEvidence(
+		grpccommon.Correlation(ctx, requestContext),
+		caller,
+		application.AgentMCPReadinessEvidenceRequestV1{
+			TenantID: request.GetTenantId(), ProfileBindingSHA256: request.GetProfileBindingSha256(),
+			RequestID: requestContext.GetRequestId(), TraceID: requestContext.GetTraceId(),
+			ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()), Evidence: evidence,
+		},
+	)
+	if err != nil {
+		return nil, readinessEvidenceErrorV1(err)
+	}
+	if record == nil {
+		return nil, status.Error(codes.Internal, "Agent MCP readiness evidence publication failed")
+	}
+	return &agentv1.PublishMcpReadinessEvidenceResponse{
+		EvidenceId: record.EvidenceUUID, SchemaVersion: record.SchemaVersion,
+		ProfileBindingSha256: record.ProfileBindingSHA256, RuntimeBindingSha256: record.RuntimeBindingSHA256,
+		ContentSha256: record.ContentSHA256, Status: record.Status,
+		CollectedAtUnixMs: record.CollectedAt.UnixMilli(), ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), Created: created,
+	}, nil
+}
+
+func readinessEvidenceResolveErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid) {
+		return status.Error(codes.InvalidArgument, "Agent MCP readiness evidence lookup is invalid")
+	}
+	return status.Error(codes.Internal, "Agent MCP readiness evidence resolution failed")
+}
+
+func (s *Server) ResolveFreshMcpReadinessEvidence(ctx context.Context, request *agentv1.ResolveFreshMcpReadinessEvidenceRequest) (*agentv1.ResolveFreshMcpReadinessEvidenceResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may resolve MCP readiness evidence")
+	}
+	if s.readinessResolver == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP readiness evidence Resolver is unavailable")
+	}
+	record, err := s.readinessResolver.ResolveFreshAgentMCPReadinessEvidence(
+		grpccommon.Correlation(ctx, request.GetContext()), request.GetTenantId(), request.GetProfileBindingSha256(), request.GetRuntimeBindingSha256(),
+	)
+	if err != nil {
+		return nil, readinessEvidenceResolveErrorV1(err)
+	}
+	if record == nil {
+		return &agentv1.ResolveFreshMcpReadinessEvidenceResponse{Found: false}, nil
+	}
+	if record.Validate() != nil || record.TenantID != request.GetTenantId() ||
+		record.ProfileBindingSHA256 != request.GetProfileBindingSha256() || record.RuntimeBindingSHA256 != request.GetRuntimeBindingSha256() {
+		return nil, status.Error(codes.Internal, "Agent MCP readiness evidence resolution failed")
+	}
+	return &agentv1.ResolveFreshMcpReadinessEvidenceResponse{
+		Found: true, EvidenceId: record.EvidenceUUID, SchemaVersion: record.SchemaVersion,
+		ProfileBindingSha256: record.ProfileBindingSHA256, RuntimeBindingSha256: record.RuntimeBindingSHA256,
+		ContentSha256: record.ContentSHA256, Status: record.Status,
+		CollectedAtUnixMs: record.CollectedAt.UnixMilli(), ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
+	}, nil
+}
+
+func readinessEvidenceErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid):
+		return status.Error(codes.InvalidArgument, "Agent MCP readiness evidence is invalid")
+	case errors.Is(err, application.ErrAgentMCPReadinessEvidenceConflict):
+		return status.Error(codes.FailedPrecondition, "Agent MCP readiness evidence conflicts with immutable history")
+	default:
+		return status.Error(codes.Internal, "Agent MCP readiness evidence publication failed")
+	}
+}
+
 func runtimePromotionOperatorV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	authenticated, ok := grpcauth.CallerService(ctx)
 	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
@@ -694,12 +822,73 @@ func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.Be
 	record, err := s.toolAudits.Begin(grpccommon.Correlation(ctx, request.GetContext()), application.AgentToolInvocationBeginV1{
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Transport: application.AgentToolTransportMCP, ToolName: request.GetToolName(), CapabilityID: request.GetCapabilityId(),
-		ArgumentsSHA256: request.GetArgumentsSha256(), RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), ApprovalUUID: request.GetApprovalId(),
+		ArgumentsSHA256: request.GetArgumentsSha256(), ProfileID: request.GetProfileId(), ServerID: request.GetServerId(), ArgumentsJSON: string(request.GetArgumentsJson()),
+		RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), ApprovalUUID: request.GetApprovalId(),
 	})
 	if err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	return &agentv1.BeginMcpToolInvocationResponse{InvocationId: record.InvocationUUID, Status: string(record.Status)}, nil
+}
+
+func (s *Server) ResolveMcpToolCommand(ctx context.Context, request *agentv1.ResolveMcpToolCommandRequest) (*agentv1.ResolveMcpToolCommandResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolAudits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Tool command resolver is unavailable")
+	}
+	command, err := s.toolAudits.ResolveCommand(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId(), request.GetInvocationId())
+	if err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	return &agentv1.ResolveMcpToolCommandResponse{
+		InvocationId: command.InvocationUUID, TenantId: command.TenantID, PrincipalUserId: command.PrincipalUUID, AgentId: command.AgentUUID,
+		TaskId: command.TaskUUID, RunId: command.RunUUID, ProfileId: command.ProfileID, ServerId: command.ServerID,
+		ToolName: command.ToolName, CapabilityId: command.CapabilityID, ArgumentsJson: []byte(command.ArgumentsJSON), ArgumentsSha256: command.ArgumentsSHA256,
+		StartedAtUnixMs: command.StartedAt.UnixMilli(), Status: string(command.Status),
+	}, nil
+}
+
+func (s *Server) ClaimMcpToolRound(ctx context.Context, request *agentv1.ClaimMcpToolRoundRequest) (*agentv1.ClaimMcpToolRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolRounds == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool round receipt is unavailable")
+	}
+	if request.GetRoundNumber() > 1 {
+		return nil, mapAgentMCPToolRoundErrorV1(application.ErrAgentMCPToolRoundInvalid)
+	}
+	result, err := s.toolRounds.Claim(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMCPToolRoundClaimV1{
+		RoundUUID: request.GetRoundId(), InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		RoundNumber: uint8(request.GetRoundNumber()), RequestSHA256: request.GetRequestSha256(), OwnerTokenSHA256: request.GetOwnerTokenSha256(),
+	})
+	if err != nil {
+		return nil, mapAgentMCPToolRoundErrorV1(err)
+	}
+	return &agentv1.ClaimMcpToolRoundResponse{
+		RoundId: request.GetRoundId(), Outcome: string(result.Outcome), ResultJson: []byte(result.ResultJSON),
+		ResultSha256: result.ResultSHA256, ErrorCode: result.ErrorCode,
+	}, nil
+}
+
+func (s *Server) FinishMcpToolRound(ctx context.Context, request *agentv1.FinishMcpToolRoundRequest) (*agentv1.FinishMcpToolRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolRounds == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool round receipt is unavailable")
+	}
+	finish := application.AgentMCPToolRoundFinishV1{
+		RoundUUID: request.GetRoundId(), OwnerTokenSHA256: request.GetOwnerTokenSha256(),
+		Status: application.AgentMCPToolRoundStatusV1(request.GetStatus()), ResultJSON: string(request.GetResultJson()),
+		ResultSHA256: request.GetResultSha256(), ErrorCode: request.GetErrorCode(),
+	}
+	if err := s.toolRounds.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
+		return nil, mapAgentMCPToolRoundErrorV1(err)
+	}
+	return &agentv1.FinishMcpToolRoundResponse{RoundId: finish.RoundUUID, Status: string(finish.Status)}, nil
 }
 
 func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.FinishMcpToolInvocationRequest) (*agentv1.FinishMcpToolInvocationResponse, error) {
@@ -708,6 +897,13 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 	}
 	if s.toolAudits == nil {
 		return nil, status.Error(codes.Unavailable, "Agent Tool invocation audit is unavailable")
+	}
+	command, err := s.toolAudits.ResolveCommand(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId(), request.GetInvocationId())
+	if err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	if command.ProfileID != "" {
+		return nil, status.Error(codes.PermissionDenied, "external MCP Tool invocation must finish from its durable round")
 	}
 	finish := application.AgentToolInvocationFinishV1{
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
@@ -724,6 +920,22 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
+}
+
+func (s *Server) FinishMcpToolInvocationFromRound(ctx context.Context, request *agentv1.FinishMcpToolInvocationFromRoundRequest) (*agentv1.FinishMcpToolInvocationFromRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolTerminals == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool terminal service is unavailable")
+	}
+	invocation, err := s.toolTerminals.FinishFromRound(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMCPToolInvocationTerminalRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), InvocationUUID: request.GetInvocationId(), RoundUUID: request.GetRoundId(),
+	})
+	if err != nil {
+		return nil, mapAgentMCPToolTerminalErrorV1(err)
+	}
+	return &agentv1.FinishMcpToolInvocationFromRoundResponse{InvocationId: invocation.InvocationUUID, Status: string(invocation.Status)}, nil
 }
 
 func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.ExecuteMcpMessageCommandRequest) (*agentv1.ExecuteMcpMessageCommandResponse, error) {
@@ -778,6 +990,26 @@ func mapAgentToolInvocationErrorV1(err error) error {
 	default:
 		return status.Error(codes.Internal, "Agent Tool invocation audit failed")
 	}
+}
+
+func mapAgentMCPToolRoundErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMCPToolRoundInvalid):
+		return status.Error(codes.InvalidArgument, "Agent MCP Tool round evidence is invalid")
+	case errors.Is(err, application.ErrAgentMCPToolRoundDenied):
+		return status.Error(codes.PermissionDenied, "Agent MCP Tool round denied")
+	case errors.Is(err, application.ErrAgentMCPToolRoundConflict):
+		return status.Error(codes.Aborted, "Agent MCP Tool round state conflicts")
+	default:
+		return status.Error(codes.Internal, "Agent MCP Tool round receipt failed")
+	}
+}
+
+func mapAgentMCPToolTerminalErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentToolInvocationInvalid) || errors.Is(err, application.ErrAgentToolInvocationDenied) || errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		return mapAgentToolInvocationErrorV1(err)
+	}
+	return mapAgentMCPToolRoundErrorV1(err)
 }
 
 func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.ProjectTaskWorkflowStateRequest) (*agentv1.ProjectTaskWorkflowStateResponse, error) {

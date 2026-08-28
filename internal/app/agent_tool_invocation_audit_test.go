@@ -2,7 +2,10 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,20 +14,28 @@ import (
 )
 
 type agentToolAuditStoreStub struct {
-	begun      application.AgentToolInvocationV1
-	finished   application.AgentToolInvocationFinishV1
-	invocation *application.AgentToolInvocationV1
-	beginErr   error
-	finishErr  error
+	begun         application.AgentToolInvocationV1
+	finished      application.AgentToolInvocationFinishV1
+	invocation    *application.AgentToolInvocationV1
+	beginErr      error
+	finishErr     error
+	beginChanged  *bool
+	finishChanged *bool
 }
 
 func (s *agentToolAuditStoreStub) BeginToolInvocation(_ context.Context, invocation application.AgentToolInvocationV1) (bool, error) {
 	s.begun = invocation
+	if s.beginChanged != nil {
+		return *s.beginChanged, s.beginErr
+	}
 	return s.beginErr == nil, s.beginErr
 }
 
 func (s *agentToolAuditStoreStub) FinishToolInvocation(_ context.Context, finish application.AgentToolInvocationFinishV1) (bool, error) {
 	s.finished = finish
+	if s.finishChanged != nil {
+		return *s.finishChanged, s.finishErr
+	}
 	return s.finishErr == nil, s.finishErr
 }
 
@@ -85,6 +96,95 @@ func TestPersistentAgentToolInvocationAuditBindsAuthoritativeInvocation(t *testi
 	}
 }
 
+func TestPersistentAgentToolInvocationAuditPersistsAndResolvesExternalCommand(t *testing.T) {
+	arguments := `{"calendarId":"CAL-1"}`
+	argumentsSHA := fmt.Sprintf("%x", sha256.Sum256([]byte(arguments)))
+	store := &agentToolAuditStoreStub{}
+	service, err := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions:    []string{application.AgentPermissionConversationList},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	if err != nil {
+		t.Fatalf("new audit service: %v", err)
+	}
+	record, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-EXT-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "calendar.create", CapabilityID: application.AgentCapabilityConversationsList,
+		ArgumentsSHA256: argumentsSHA, ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: arguments,
+	})
+	if err != nil {
+		t.Fatalf("begin external command: %v", err)
+	}
+	store.invocation = record
+	command, err := service.ResolveCommand(context.Background(), "TASK-1", "RUN-1", "INV-EXT-1")
+	if err != nil {
+		t.Fatalf("resolve external command: %v", err)
+	}
+	if command.ProfileID != "calendar-prod" || command.ServerID != "calendar.example" || command.ArgumentsJSON != arguments || command.TenantID != "dipole" || command.StartedAt.IsZero() {
+		t.Fatalf("unexpected external command: %+v", command)
+	}
+	store.invocation.Status = application.AgentToolInvocationStatusCompleted
+	command, err = service.ResolveCommand(context.Background(), "TASK-1", "RUN-1", "INV-EXT-1")
+	if err != nil || command.Status != application.AgentToolInvocationStatusCompleted {
+		t.Fatalf("resolve terminal external command: command=%+v err=%v", command, err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditReplaysExactBegin(t *testing.T) {
+	changed := false
+	startedAt := time.UnixMilli(900)
+	existing := &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "list", CapabilityID: application.AgentCapabilityConversationsList, ArgumentsSHA256: testAuditSHA,
+		Status: application.AgentToolInvocationStatusRunning, RequestID: "REQ-1", TraceID: "TRACE-1", StartedAt: startedAt,
+	}
+	store := &agentToolAuditStoreStub{invocation: existing, beginChanged: &changed}
+	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions:    []string{application.AgentPermissionConversationList},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, func() time.Time { return time.UnixMilli(1000) })
+	begin := application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "list", CapabilityID: application.AgentCapabilityConversationsList, ArgumentsSHA256: testAuditSHA,
+		RequestID: "REQ-1", TraceID: "TRACE-1",
+	}
+	replayed, err := service.Begin(context.Background(), begin)
+	if err != nil || replayed != existing || !replayed.StartedAt.Equal(startedAt) {
+		t.Fatalf("exact begin replay = %+v, %v", replayed, err)
+	}
+
+	existing.ArgumentsSHA256 = strings.Repeat("b", 64)
+	if _, err := service.Begin(context.Background(), begin); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		t.Fatalf("drifted begin replay error = %v", err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditRejectsUnsafeExternalCommand(t *testing.T) {
+	store := &agentToolAuditStoreStub{}
+	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions:    []string{application.AgentPermissionConversationList},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	for name, begin := range map[string]application.AgentToolInvocationBeginV1{
+		"partial":    {ProfileID: "calendar-prod"},
+		"hash drift": {ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: `{"calendarId":"CAL-1"}`},
+		"credential": {ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: `{"apiToken":"hidden"}`, ArgumentsSHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(`{"apiToken":"hidden"}`)))},
+	} {
+		begin.InvocationUUID, begin.TaskUUID, begin.RunUUID = "INV-"+strings.ReplaceAll(name, " ", "-"), "TASK-1", "RUN-1"
+		begin.Transport, begin.ToolName, begin.CapabilityID = application.AgentToolTransportMCP, "calendar.create", application.AgentCapabilityConversationsList
+		if begin.ArgumentsSHA256 == "" && name != "hash drift" {
+			begin.ArgumentsSHA256 = testAuditSHA
+		}
+		if _, err := service.Begin(context.Background(), begin); !errors.Is(err, application.ErrAgentToolInvocationInvalid) {
+			t.Fatalf("%s error = %v", name, err)
+		}
+	}
+}
+
 func TestPersistentAgentToolInvocationAuditRejectsWriteCapabilityAndResolverFailure(t *testing.T) {
 	store := &agentToolAuditStoreStub{}
 	invocation := application.AgentInvocationV1{
@@ -127,6 +227,29 @@ func TestPersistentAgentToolInvocationAuditFinishesWithBoundedEvidence(t *testin
 	store.finishErr = application.ErrAgentToolInvocationConflict
 	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
 		t.Fatalf("expected conflict, got %v", err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditReplaysExactFinish(t *testing.T) {
+	finish := application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1",
+		Status: application.AgentToolInvocationStatusCompleted, ResultSHA256: testAuditSHA, ResultBytes: 128, LatencyMS: 12,
+	}
+	store := &agentToolAuditStoreStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", CapabilityID: application.AgentCapabilityConversationsList,
+		Status: application.AgentToolInvocationStatusCompleted, ResultSHA256: testAuditSHA, ResultBytes: 128, LatencyMS: 12,
+	}}
+	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	if err := service.Finish(context.Background(), finish); err != nil {
+		t.Fatalf("exact finish replay: %v", err)
+	}
+	if store.finished.InvocationUUID != "" {
+		t.Fatalf("terminal replay must not update store: %+v", store.finished)
+	}
+
+	finish.ResultBytes++
+	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		t.Fatalf("drifted finish replay error = %v", err)
 	}
 }
 

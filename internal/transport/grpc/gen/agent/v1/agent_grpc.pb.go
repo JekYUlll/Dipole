@@ -35,7 +35,11 @@ const (
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
+	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
+	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
+	AgentCapabilityService_FinishMcpToolRound_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolRound"
 	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
+	AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocationFromRound"
 	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
@@ -49,6 +53,8 @@ const (
 	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
 	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
 	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
+	AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/PublishMcpReadinessEvidence"
+	AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/ResolveFreshMcpReadinessEvidence"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -71,7 +77,11 @@ type AgentCapabilityServiceClient interface {
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
+	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
+	ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error)
+	FinishMcpToolRound(ctx context.Context, in *FinishMcpToolRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolRoundResponse, error)
 	FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error)
+	FinishMcpToolInvocationFromRound(ctx context.Context, in *FinishMcpToolInvocationFromRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationFromRoundResponse, error)
 	ExecuteMcpMessageCommand(ctx context.Context, in *ExecuteMcpMessageCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
@@ -85,6 +95,8 @@ type AgentCapabilityServiceClient interface {
 	RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
+	PublishMcpReadinessEvidence(ctx context.Context, in *PublishMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*PublishMcpReadinessEvidenceResponse, error)
+	ResolveFreshMcpReadinessEvidence(ctx context.Context, in *ResolveFreshMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 }
 
 type agentCapabilityServiceClient struct {
@@ -255,10 +267,50 @@ func (c *agentCapabilityServiceClient) BeginMcpToolInvocation(ctx context.Contex
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveMcpToolCommandResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveMcpToolCommand_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimMcpToolRoundResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ClaimMcpToolRound_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) FinishMcpToolRound(ctx context.Context, in *FinishMcpToolRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolRoundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishMcpToolRoundResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishMcpToolRound_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FinishMcpToolInvocationResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishMcpToolInvocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) FinishMcpToolInvocationFromRound(ctx context.Context, in *FinishMcpToolInvocationFromRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationFromRoundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishMcpToolInvocationFromRoundResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -395,6 +447,26 @@ func (c *agentCapabilityServiceClient) GetArtifact(ctx context.Context, in *GetA
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) PublishMcpReadinessEvidence(ctx context.Context, in *PublishMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*PublishMcpReadinessEvidenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishMcpReadinessEvidenceResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ResolveFreshMcpReadinessEvidence(ctx context.Context, in *ResolveFreshMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*ResolveFreshMcpReadinessEvidenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveFreshMcpReadinessEvidenceResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentCapabilityServiceServer is the server API for AgentCapabilityService service.
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
@@ -415,7 +487,11 @@ type AgentCapabilityServiceServer interface {
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
+	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
+	ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error)
+	FinishMcpToolRound(context.Context, *FinishMcpToolRoundRequest) (*FinishMcpToolRoundResponse, error)
 	FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error)
+	FinishMcpToolInvocationFromRound(context.Context, *FinishMcpToolInvocationFromRoundRequest) (*FinishMcpToolInvocationFromRoundResponse, error)
 	ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
@@ -429,6 +505,8 @@ type AgentCapabilityServiceServer interface {
 	RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
 	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
+	PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error)
+	ResolveFreshMcpReadinessEvidence(context.Context, *ResolveFreshMcpReadinessEvidenceRequest) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
 
@@ -487,8 +565,20 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Conte
 func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginMcpToolInvocation not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveMcpToolCommand not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimMcpToolRound not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolRound(context.Context, *FinishMcpToolRoundRequest) (*FinishMcpToolRoundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolRound not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolInvocation not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocationFromRound(context.Context, *FinishMcpToolInvocationFromRoundRequest) (*FinishMcpToolInvocationFromRoundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolInvocationFromRound not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExecuteMcpMessageCommand not implemented")
@@ -528,6 +618,12 @@ func (UnimplementedAgentCapabilityServiceServer) CreateArtifact(context.Context,
 }
 func (UnimplementedAgentCapabilityServiceServer) GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetArtifact not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishMcpReadinessEvidence not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ResolveFreshMcpReadinessEvidence(context.Context, *ResolveFreshMcpReadinessEvidenceRequest) (*ResolveFreshMcpReadinessEvidenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveFreshMcpReadinessEvidence not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) mustEmbedUnimplementedAgentCapabilityServiceServer() {
 }
@@ -839,6 +935,60 @@ func _AgentCapabilityService_BeginMcpToolInvocation_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ResolveMcpToolCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveMcpToolCommandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ResolveMcpToolCommand(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ResolveMcpToolCommand_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ResolveMcpToolCommand(ctx, req.(*ResolveMcpToolCommandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ClaimMcpToolRound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimMcpToolRoundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ClaimMcpToolRound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ClaimMcpToolRound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ClaimMcpToolRound(ctx, req.(*ClaimMcpToolRoundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_FinishMcpToolRound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishMcpToolRoundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolRound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_FinishMcpToolRound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolRound(ctx, req.(*FinishMcpToolRoundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_FinishMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FinishMcpToolInvocationRequest)
 	if err := dec(in); err != nil {
@@ -853,6 +1003,24 @@ func _AgentCapabilityService_FinishMcpToolInvocation_Handler(srv interface{}, ct
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).FinishMcpToolInvocation(ctx, req.(*FinishMcpToolInvocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_FinishMcpToolInvocationFromRound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishMcpToolInvocationFromRoundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolInvocationFromRound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolInvocationFromRound(ctx, req.(*FinishMcpToolInvocationFromRoundRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1091,6 +1259,42 @@ func _AgentCapabilityService_GetArtifact_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_PublishMcpReadinessEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishMcpReadinessEvidenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).PublishMcpReadinessEvidence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).PublishMcpReadinessEvidence(ctx, req.(*PublishMcpReadinessEvidenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ResolveFreshMcpReadinessEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveFreshMcpReadinessEvidenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ResolveFreshMcpReadinessEvidence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ResolveFreshMcpReadinessEvidence(ctx, req.(*ResolveFreshMcpReadinessEvidenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentCapabilityService_ServiceDesc is the grpc.ServiceDesc for AgentCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1163,8 +1367,24 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_BeginMcpToolInvocation_Handler,
 		},
 		{
+			MethodName: "ResolveMcpToolCommand",
+			Handler:    _AgentCapabilityService_ResolveMcpToolCommand_Handler,
+		},
+		{
+			MethodName: "ClaimMcpToolRound",
+			Handler:    _AgentCapabilityService_ClaimMcpToolRound_Handler,
+		},
+		{
+			MethodName: "FinishMcpToolRound",
+			Handler:    _AgentCapabilityService_FinishMcpToolRound_Handler,
+		},
+		{
 			MethodName: "FinishMcpToolInvocation",
 			Handler:    _AgentCapabilityService_FinishMcpToolInvocation_Handler,
+		},
+		{
+			MethodName: "FinishMcpToolInvocationFromRound",
+			Handler:    _AgentCapabilityService_FinishMcpToolInvocationFromRound_Handler,
 		},
 		{
 			MethodName: "ExecuteMcpMessageCommand",
@@ -1217,6 +1437,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetArtifact",
 			Handler:    _AgentCapabilityService_GetArtifact_Handler,
+		},
+		{
+			MethodName: "PublishMcpReadinessEvidence",
+			Handler:    _AgentCapabilityService_PublishMcpReadinessEvidence_Handler,
+		},
+		{
+			MethodName: "ResolveFreshMcpReadinessEvidence",
+			Handler:    _AgentCapabilityService_ResolveFreshMcpReadinessEvidence_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

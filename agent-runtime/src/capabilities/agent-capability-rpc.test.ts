@@ -5,6 +5,105 @@ import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
 describe("AgentCapabilityRPCClient", () => {
+  it("resolves only an exact low-sensitive fresh readiness receipt", async () => {
+    const profile = "b".repeat(64);
+    const runtime = "a".repeat(64);
+    const resolveFreshMcpReadinessEvidence = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ tenantId: "dipole", profileBindingSha256: profile, runtimeBindingSha256: runtime });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, {
+        found: true, evidenceId: "e".repeat(64), schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: profile, runtimeBindingSha256: runtime, contentSha256: "c".repeat(64), status: "recorded",
+        collectedAtUnixMs: 1_000n, expiresAtUnixMs: 2_000n
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ resolveFreshMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", profile, runtime)).resolves.toMatchObject({
+      evidenceId: "e".repeat(64), contentSha256: "c".repeat(64)
+    });
+  });
+
+  it("accepts an empty readiness result and rejects contradictory empty evidence", async () => {
+    const resolveFreshMcpReadinessEvidence = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        found: false, evidenceId: "", schemaVersion: "", profileBindingSha256: "", runtimeBindingSha256: "",
+        contentSha256: "", status: "", collectedAtUnixMs: 0n, expiresAtUnixMs: 0n
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ resolveFreshMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", "b".repeat(64), "a".repeat(64))).resolves.toBeUndefined();
+    resolveFreshMcpReadinessEvidence.mockImplementationOnce((_input, _metadata, _options, callback) => {
+      callback(null, { found: false, evidenceId: "e".repeat(64) });
+      return {};
+    });
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", "b".repeat(64), "a".repeat(64)))
+      .rejects.toThrow("conflicting evidence");
+  });
+
+  it("publishes v2 readiness evidence with service-owned provenance and verifies the deterministic receipt", async () => {
+    const evidence = {
+      schemaVersion: "dipole.agent.external-mcp-readiness-evidence.v2" as const,
+      bindingSha256: "a".repeat(64), profileBindingSha256: "b".repeat(64),
+      startedAt: "2026-08-28T14:00:00.000Z", completedAt: "2026-08-28T14:00:03.000Z",
+      preflightCheckedAt: "2026-08-28T14:00:01.000Z", connectivityCheckedAt: "2026-08-28T14:00:02.000Z",
+      profileCount: 1, credentialCount: 1, caBundleCount: 1, toolCount: 2
+    };
+    const expiresAt = "2026-08-28T14:30:00.000Z";
+    const publishMcpReadinessEvidence = vi.fn((input, metadata, _options, callback) => {
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      expect(input.context).toMatchObject({ principalUserId: "", requestId: "REQ-1", traceId: "TRACE-1", callerService: "dipole-agent" });
+      expect(input).not.toHaveProperty("operatorId");
+      expect(input).not.toHaveProperty("status");
+      const content = Buffer.from(input.evidenceJson).toString("utf8");
+      expect(JSON.parse(content)).toEqual(evidence);
+      const contentSha256 = createHash("sha256").update(content).digest("hex");
+      const evidenceId = createHash("sha256").update([
+        "dipole.agent.external-mcp-readiness-evidence-record.v1", "dipole", evidence.profileBindingSha256,
+        evidence.bindingSha256, contentSha256, "dipole-agent", "REQ-1", "TRACE-1", expiresAt
+      ].join("\n")).digest("hex");
+      callback(null, {
+        evidenceId, schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+        contentSha256, status: "recorded", collectedAtUnixMs: BigInt(Date.parse(evidence.completedAt)),
+        expiresAtUnixMs: BigInt(Date.parse(expiresAt)), created: true
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ publishMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    const receipt = await client.publishMcpReadinessEvidence("dipole", evidence, expiresAt, { requestId: "REQ-1", traceId: "TRACE-1" });
+
+    expect(receipt).toMatchObject({ created: true, contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/), expiresAt });
+  });
+
+  it("rejects stale input and conflicting readiness publication receipts", async () => {
+    const evidence = {
+      schemaVersion: "dipole.agent.external-mcp-readiness-evidence.v2" as const,
+      bindingSha256: "a".repeat(64), profileBindingSha256: "b".repeat(64),
+      startedAt: "2026-08-28T14:00:00.000Z", completedAt: "2026-08-28T14:00:03.000Z",
+      preflightCheckedAt: "2026-08-28T14:00:01.000Z", connectivityCheckedAt: "2026-08-28T14:00:02.000Z",
+      profileCount: 1, credentialCount: 1, caBundleCount: 1, toolCount: 2
+    };
+    const publishMcpReadinessEvidence = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        evidenceId: "f".repeat(64), schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+        contentSha256: "c".repeat(64), status: "recorded",
+        collectedAtUnixMs: BigInt(Date.parse(evidence.completedAt)), expiresAtUnixMs: BigInt(Date.parse("2026-08-28T14:30:00.000Z")), created: false
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ publishMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.publishMcpReadinessEvidence("dipole", evidence, "2026-08-28T14:30:00.000Z"))
+      .rejects.toThrow("conflicting evidence");
+    await expect(client.publishMcpReadinessEvidence("dipole", evidence, "2026-08-28T16:00:00.000Z"))
+      .rejects.toThrow("expiry is invalid");
+    expect(publishMcpReadinessEvidence).toHaveBeenCalledTimes(1);
+  });
+
   it("admits from trusted event identity and lists by Task/Run only", async () => {
     const admitRun = vi.fn((_input, metadata, _options, callback) => {
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
@@ -52,6 +151,17 @@ describe("AgentCapabilityRPCClient", () => {
       });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
       callback(null, { runStatus: "failed" });
+      return {};
+    });
+    const resolveMcpToolCommand = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      const argumentsJson = Buffer.from(`{"calendarId":"CAL-1"}`);
+      callback(null, {
+        invocationId: "INV-EXT-1", tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
+        profileId: "calendar-prod", serverId: "calendar.example", toolName: "calendar.create", capabilityId: "conversation.list",
+        argumentsJson, argumentsSha256: createHash("sha256").update(argumentsJson).digest("hex"), startedAtUnixMs: 1_000n, status: "running"
+      });
       return {};
     });
     const requestApproval = vi.fn((input, _metadata, _options, callback) => {
@@ -156,11 +266,30 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
+    let beginMcpToolInvocationStatus = "running";
     const beginMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
-      callback(null, { invocationId: input.invocationId, status: "running" });
+      callback(null, { invocationId: input.invocationId, status: beginMcpToolInvocationStatus });
+      return {};
+    });
+    const claimMcpToolRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundNumber: 0 });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      const resultJSON = `{"content":[]}`;
+      callback(null, {
+        roundId: input.roundId, outcome: "replay_completed", resultJson: Buffer.from(resultJSON),
+        resultSha256: createHash("sha256").update(resultJSON).digest("hex"), errorCode: ""
+      });
+      return {};
+    });
+    const finishMcpToolRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input.status).toBe("completed");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { roundId: input.roundId, status: input.status });
       return {};
     });
     const finishMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
@@ -168,6 +297,13 @@ describe("AgentCapabilityRPCClient", () => {
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", status: "completed", resultBytes: 128n, latencyMs: 12n });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
       callback(null, { invocationId: input.invocationId, status: input.status });
+      return {};
+    });
+    const finishMcpToolInvocationFromRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId: "d".repeat(64) });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { invocationId: input.invocationId, status: "completed" });
       return {};
     });
     const executeMcpMessageCommand = vi.fn((input, metadata, _options, callback) => {
@@ -179,7 +315,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: input.commandKind, commandId }, clientMessageId });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, finishMcpToolInvocation, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, resolveMcpToolCommand, claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocation, finishMcpToolInvocationFromRound, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -250,6 +386,30 @@ describe("AgentCapabilityRPCClient", () => {
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "dipole_conversation_list",
       capabilityId: "conversation.list", argumentsSha256: "a".repeat(64), requestId: "R1", traceId: "T1"
     })).resolves.toBeUndefined();
+    beginMcpToolInvocationStatus = "completed";
+    await expect(client.beginMcpToolCommand({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "calendar.read_event",
+      capabilityId: "calendar.event.read", argumentsSha256: "a".repeat(64),
+      profileId: "calendar-prod", serverId: "calendar.example", argumentsJson: `{"calendarId":"CAL-1"}`
+    })).resolves.toEqual({ invocationId: "INV-1", status: "completed" });
+    beginMcpToolInvocationStatus = "running";
+    await expect(client.resolveMcpToolCommand("TASK-1", "RUN-1", "INV-EXT-1")).resolves.toMatchObject({
+      profileId: "calendar-prod", serverId: "calendar.example", arguments: { calendarId: "CAL-1" }, startedAtUnixMs: 1_000, status: "running"
+    });
+    const roundId = "d".repeat(64);
+    const ownerTokenSha256 = "e".repeat(64);
+    await expect(client.claimMcpToolRound({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId, roundNumber: 0,
+      requestSha256: "f".repeat(64), ownerTokenSha256
+    })).resolves.toMatchObject({ outcome: "replay_completed", result: { content: [] } });
+    const roundResultJSON = `{"content":[]}`;
+    await expect(client.finishMcpToolRound({
+      roundId, ownerTokenSha256, status: "completed", resultJSON: roundResultJSON,
+      resultSha256: createHash("sha256").update(roundResultJSON).digest("hex")
+    })).resolves.toBeUndefined();
+    await expect(client.finishMcpToolInvocationFromRound({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId
+    })).resolves.toEqual({ invocationId: "INV-EXT-1", status: "completed" });
     await expect(client.finishToolInvocation({
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
       resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12

@@ -27,10 +27,16 @@ describe("Agent Task state", () => {
   it("requires the exact pending input request before resuming", () => {
     const waiting = transitionAgentTask(
       transitionAgentTask(createAgentTaskState("task-2"), { type: "start" }),
-      { type: "request_input", requestId: "input-1", prompt: "Choose a group", expiresAtUnixMs: 1_000, form: {
+      { type: "request_input", requestId: "input-1", prompt: "Choose a group", expiresAtUnixMs: 1_000, source: {
+        kind: "mcp", serverId: "calendar.example", toolName: "calendar.create", invocationId: "INV-1", trust: "untrusted"
+      }, form: {
         schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "groupId", label: "Group", type: "select", required: true, options: ["G1", "G2"] }]
       } }
     );
+
+    expect(waiting).toMatchObject({ pending: { source: {
+      kind: "mcp", serverId: "calendar.example", toolName: "calendar.create", invocationId: "INV-1", trust: "untrusted"
+    } } });
 
     expect(() => transitionAgentTask(waiting, {
       type: "provide_input", requestId: "other", value: { groupId: "G1" }
@@ -64,6 +70,7 @@ describe("Agent Task state", () => {
       type: "request_input", requestId: "INPUT-1", prompt: "Choose", expiresAtUnixMs: 1_000,
       form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "confirm", label: "Confirm", type: "boolean", required: true }] }
     });
+    expect(input).toMatchObject({ pending: { source: { kind: "agent" } } });
     expect(transitionAgentTask(input, { type: "expire_wait", requestId: "INPUT-1" })).toMatchObject({
       status: "cancelled", cancellation: { reason: "input_expired", requestId: "INPUT-1" }
     });

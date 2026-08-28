@@ -197,6 +197,14 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
 		}
+		readinessEvidence, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP readiness evidence Publisher: %w", composeErr)
+		}
+		readinessResolver, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidenceResolverV1(repos.AgentReadinessEvidence, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP readiness evidence Resolver: %w", composeErr)
+		}
 		subscriptionResolver, composeErr := appComposition.NewPersistentAgentEventSubscriptionResolverV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
@@ -212,6 +220,14 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
+		}
+		toolRounds, composeErr := appComposition.NewPersistentAgentMCPToolRoundServiceV1(repos.AgentToolRounds, repos.AgentToolAudits)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP Tool round receipts: %w", composeErr)
+		}
+		toolTerminals, composeErr := appComposition.NewPersistentAgentMCPToolInvocationTerminalServiceV1(repos.AgentToolRounds, repos.AgentToolAudits, toolAudits)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP Tool invocation terminal: %w", composeErr)
 		}
 		messageCommands, composeErr := appComposition.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
 		if composeErr != nil {
@@ -241,7 +257,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, messageCommands, approvalGrants, promotionControls, promotionEvidence, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

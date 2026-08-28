@@ -74,6 +74,10 @@ export class McpDurableElicitationAdapter {
       checkpoint,
       directive: {
         kind: "wait_input", requestId: input.requestId, prompt: parsed.prompt, form: parsed.form,
+        source: {
+          kind: "mcp", serverId: input.serverId, toolName: input.toolName,
+          invocationId: input.invocationId, trust: "untrusted"
+        },
         expiresAtUnixMs: input.expiresAtUnixMs, checkpoint
       }
     };
@@ -105,7 +109,10 @@ function parseFormRequest(raw: unknown): { prompt: string; form: AgentElicitatio
   }
   if (!isRecord(raw.params.requestedSchema)) throw new Error("MCP Elicitation requested schema is invalid");
   const schema = raw.params.requestedSchema;
-  rejectUnknownKeys(schema, ["type", "properties", "required"], "MCP Elicitation requested schema");
+  rejectUnknownKeys(schema, ["$schema", "type", "properties", "required"], "MCP Elicitation requested schema");
+  if (schema.$schema !== undefined && schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
+    throw new Error("MCP Elicitation requested schema version is unsupported");
+  }
   if (schema.type !== "object" || !isRecord(schema.properties)) throw new Error("MCP Elicitation requested schema must be an object");
   const entries = Object.entries(schema.properties);
   if (entries.length < 1 || entries.length > 16) throw new Error("MCP Elicitation requested schema must contain 1-16 fields");

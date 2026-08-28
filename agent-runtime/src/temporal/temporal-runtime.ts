@@ -3,6 +3,9 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
+import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
+
+export type TemporalWorkerActivities = AgentTaskWorkerActivities & Partial<TemporalMcpDispatchActivities>;
 
 const temporalRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -23,7 +26,7 @@ interface TemporalWorkerPort {
 }
 
 export interface TemporalWorkerFactoryPort {
-  create(config: TemporalRuntimeConfig, activities: AgentTaskWorkerActivities): Promise<{
+  create(config: TemporalRuntimeConfig, activities: TemporalWorkerActivities): Promise<{
     worker: TemporalWorkerPort;
     close(): Promise<void>;
   }>;
@@ -48,7 +51,7 @@ export function loadTemporalRuntimeConfig(env: NodeJS.ProcessEnv): TemporalRunti
 
 export function createTemporalWorkerRuntime(
   config: TemporalRuntimeConfig,
-  activities: AgentTaskWorkerActivities,
+  activities: TemporalWorkerActivities,
   factory: TemporalWorkerFactoryPort = nativeTemporalWorkerFactory,
   onFailure: (error: unknown) => void = () => undefined
 ): TemporalWorkerRuntime {
