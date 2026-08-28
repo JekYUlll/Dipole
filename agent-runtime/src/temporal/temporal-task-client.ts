@@ -13,14 +13,7 @@ export interface AgentTaskWorkflowInput {
   goal: string;
   maxSteps?: number;
   admission?: AgentTaskAdmissionInput;
-  shadowEvent?: {
-    eventId: string;
-    eventType: string;
-    aggregateId: string;
-    occurredAt: string;
-    payload: Readonly<Record<string, unknown>>;
-    subscriptionId?: string | undefined;
-  };
+  shadowEvent?: AgentEvent;
   execution?: never;
 }
 
