@@ -8,6 +8,10 @@ import {
 } from "./mcp-input-required-activity.js";
 import type { McpToolEgressPolicy } from "./mcp-tool-client.js";
 import { McpWorkerCommandDispatcher } from "./mcp-worker-dispatch.js";
+import {
+  McpTerminalWorkerRuntime,
+  type McpInvocationTerminalClient
+} from "./mcp-terminal-worker-runtime.js";
 
 export interface McpWorkerCoreClient extends McpToolRoundReceiptClient {
   resolveMcpToolCommand(taskId: string, runId: string, invocationId: string): Promise<AgentMcpToolCommand>;
@@ -22,6 +26,10 @@ export interface McpWorkerRuntimeDependencies {
   readonly now?: () => number;
   readonly ownerTokenSha256?: () => string;
   readonly createClient?: McpActivityModernClientFactory;
+}
+
+export interface McpTerminalWorkerRuntimeDependencies extends Omit<McpWorkerRuntimeDependencies, "core"> {
+  readonly core: McpWorkerCoreClient & McpInvocationTerminalClient;
 }
 
 export function createMcpWorkerRuntime(dependencies: McpWorkerRuntimeDependencies): McpWorkerCommandDispatcher {
@@ -43,4 +51,8 @@ export function createMcpWorkerRuntime(dependencies: McpWorkerRuntimeDependencie
     dependencies.now,
     dependencies.inputWindowMs
   );
+}
+
+export function createMcpTerminalWorkerRuntime(dependencies: McpTerminalWorkerRuntimeDependencies): McpTerminalWorkerRuntime {
+  return new McpTerminalWorkerRuntime(createMcpWorkerRuntime(dependencies), dependencies.core);
 }

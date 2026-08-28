@@ -870,6 +870,44 @@ export interface FinishMcpToolInvocationResponse {
     status: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationFromRoundRequest
+ */
+export interface FinishMcpToolInvocationFromRoundRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string invocation_id = 4
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string round_id = 5
+     */
+    roundId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolInvocationFromRoundResponse
+ */
+export interface FinishMcpToolInvocationFromRoundResponse {
+    /**
+     * @generated from protobuf field: string invocation_id = 1
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ExecuteMcpMessageCommandRequest
  */
 export interface ExecuteMcpMessageCommandRequest {
@@ -4527,6 +4565,139 @@ class FinishMcpToolInvocationResponse$Type extends MessageType<FinishMcpToolInvo
  */
 export const FinishMcpToolInvocationResponse = new FinishMcpToolInvocationResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolInvocationFromRoundRequest$Type extends MessageType<FinishMcpToolInvocationFromRoundRequest> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolInvocationFromRoundRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "round_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolInvocationFromRoundRequest>): FinishMcpToolInvocationFromRoundRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.invocationId = "";
+        message.roundId = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolInvocationFromRoundRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolInvocationFromRoundRequest): FinishMcpToolInvocationFromRoundRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string invocation_id */ 4:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string round_id */ 5:
+                    message.roundId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolInvocationFromRoundRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string invocation_id = 4; */
+        if (message.invocationId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.invocationId);
+        /* string round_id = 5; */
+        if (message.roundId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.roundId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolInvocationFromRoundRequest
+ */
+export const FinishMcpToolInvocationFromRoundRequest = new FinishMcpToolInvocationFromRoundRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolInvocationFromRoundResponse$Type extends MessageType<FinishMcpToolInvocationFromRoundResponse> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolInvocationFromRoundResponse", [
+            { no: 1, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolInvocationFromRoundResponse>): FinishMcpToolInvocationFromRoundResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.invocationId = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolInvocationFromRoundResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolInvocationFromRoundResponse): FinishMcpToolInvocationFromRoundResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string invocation_id */ 1:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolInvocationFromRoundResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string invocation_id = 1; */
+        if (message.invocationId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.invocationId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolInvocationFromRoundResponse
+ */
+export const FinishMcpToolInvocationFromRoundResponse = new FinishMcpToolInvocationFromRoundResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ExecuteMcpMessageCommandRequest$Type extends MessageType<ExecuteMcpMessageCommandRequest> {
     constructor() {
         super("dipole.agent.v1.ExecuteMcpMessageCommandRequest", [
@@ -7638,6 +7809,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },
     { name: "FinishMcpToolRound", options: {}, I: FinishMcpToolRoundRequest, O: FinishMcpToolRoundResponse },
     { name: "FinishMcpToolInvocation", options: {}, I: FinishMcpToolInvocationRequest, O: FinishMcpToolInvocationResponse },
+    { name: "FinishMcpToolInvocationFromRound", options: {}, I: FinishMcpToolInvocationFromRoundRequest, O: FinishMcpToolInvocationFromRoundResponse },
     { name: "ExecuteMcpMessageCommand", options: {}, I: ExecuteMcpMessageCommandRequest, O: ExecuteMcpMessageCommandResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },
     { name: "ListTaskWorkflowProjectionSnapshots", options: {}, I: ListTaskWorkflowProjectionSnapshotsRequest, O: ListTaskWorkflowProjectionSnapshotsResponse },
