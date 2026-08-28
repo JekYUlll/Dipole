@@ -1035,6 +1035,8 @@ func TestFinishRunRejectsInvalidStatusAndClientPrincipal(t *testing.T) {
 func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	approvals := &approvalServiceStub{}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	timeline := &taskTimelineStub{}
+	server, _ = server.WithTaskTimeline(timeline)
 	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
 		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
@@ -1043,11 +1045,17 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
 		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
 	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventApproval || timeline.events[0].Status != "pending" {
+		t.Fatalf("unexpected Approval timeline request: %+v", timeline.events)
+	}
 	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
 	})
 	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
+	}
+	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {
+		t.Fatalf("unexpected Approval timeline resolution: %+v", timeline.events)
 	}
 }
 
