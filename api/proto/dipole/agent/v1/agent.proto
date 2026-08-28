@@ -215,6 +215,40 @@ message ResolveMcpToolCommandResponse {
   string arguments_sha256 = 12;
 }
 
+message ClaimMcpToolRoundRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string round_id = 5;
+  uint32 round_number = 6;
+  string request_sha256 = 7;
+  string owner_token_sha256 = 8;
+}
+
+message ClaimMcpToolRoundResponse {
+  string round_id = 1;
+  string outcome = 2;
+  bytes result_json = 3;
+  string result_sha256 = 4;
+  string error_code = 5;
+}
+
+message FinishMcpToolRoundRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string round_id = 2;
+  string owner_token_sha256 = 3;
+  string status = 4;
+  bytes result_json = 5;
+  string result_sha256 = 6;
+  string error_code = 7;
+}
+
+message FinishMcpToolRoundResponse {
+  string round_id = 1;
+  string status = 2;
+}
+
 message AgentToolActionReference {
   string resource_type = 1;
   string resource_id = 2;
@@ -580,6 +614,8 @@ service AgentCapabilityService {
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
+  rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);
+  rpc FinishMcpToolRound(FinishMcpToolRoundRequest) returns (FinishMcpToolRoundResponse);
   rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
   rpc ExecuteMcpMessageCommand(ExecuteMcpMessageCommandRequest) returns (ExecuteMcpMessageCommandResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);

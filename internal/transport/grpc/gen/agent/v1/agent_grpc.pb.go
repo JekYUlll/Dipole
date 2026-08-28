@@ -36,6 +36,8 @@ const (
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
+	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
+	AgentCapabilityService_FinishMcpToolRound_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolRound"
 	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
 	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
@@ -73,6 +75,8 @@ type AgentCapabilityServiceClient interface {
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
+	ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error)
+	FinishMcpToolRound(ctx context.Context, in *FinishMcpToolRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolRoundResponse, error)
 	FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error)
 	ExecuteMcpMessageCommand(ctx context.Context, in *ExecuteMcpMessageCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
@@ -267,6 +271,26 @@ func (c *agentCapabilityServiceClient) ResolveMcpToolCommand(ctx context.Context
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimMcpToolRoundResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ClaimMcpToolRound_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) FinishMcpToolRound(ctx context.Context, in *FinishMcpToolRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolRoundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishMcpToolRoundResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_FinishMcpToolRound_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FinishMcpToolInvocationResponse)
@@ -428,6 +452,8 @@ type AgentCapabilityServiceServer interface {
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
+	ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error)
+	FinishMcpToolRound(context.Context, *FinishMcpToolRoundRequest) (*FinishMcpToolRoundResponse, error)
 	FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error)
 	ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
@@ -502,6 +528,12 @@ func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMcpToolCommand not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimMcpToolRound not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolRound(context.Context, *FinishMcpToolRoundRequest) (*FinishMcpToolRoundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolRound not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FinishMcpToolInvocation not implemented")
@@ -873,6 +905,42 @@ func _AgentCapabilityService_ResolveMcpToolCommand_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ClaimMcpToolRound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimMcpToolRoundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ClaimMcpToolRound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ClaimMcpToolRound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ClaimMcpToolRound(ctx, req.(*ClaimMcpToolRoundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_FinishMcpToolRound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishMcpToolRoundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolRound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_FinishMcpToolRound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).FinishMcpToolRound(ctx, req.(*FinishMcpToolRoundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_FinishMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FinishMcpToolInvocationRequest)
 	if err := dec(in); err != nil {
@@ -1199,6 +1267,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMcpToolCommand",
 			Handler:    _AgentCapabilityService_ResolveMcpToolCommand_Handler,
+		},
+		{
+			MethodName: "ClaimMcpToolRound",
+			Handler:    _AgentCapabilityService_ClaimMcpToolRound_Handler,
+		},
+		{
+			MethodName: "FinishMcpToolRound",
+			Handler:    _AgentCapabilityService_FinishMcpToolRound_Handler,
 		},
 		{
 			MethodName: "FinishMcpToolInvocation",
