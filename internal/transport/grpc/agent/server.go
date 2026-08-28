@@ -727,7 +727,7 @@ func (s *Server) ResolveMcpToolCommand(ctx context.Context, request *agentv1.Res
 		InvocationId: command.InvocationUUID, TenantId: command.TenantID, PrincipalUserId: command.PrincipalUUID, AgentId: command.AgentUUID,
 		TaskId: command.TaskUUID, RunId: command.RunUUID, ProfileId: command.ProfileID, ServerId: command.ServerID,
 		ToolName: command.ToolName, CapabilityId: command.CapabilityID, ArgumentsJson: []byte(command.ArgumentsJSON), ArgumentsSha256: command.ArgumentsSHA256,
-		StartedAtUnixMs: command.StartedAt.UnixMilli(),
+		StartedAtUnixMs: command.StartedAt.UnixMilli(), Status: string(command.Status),
 	}, nil
 }
 

@@ -66,7 +66,14 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context,
 		return nil, fmt.Errorf("begin Agent Tool invocation: %w", err)
 	}
 	if !created {
-		return nil, application.ErrAgentToolInvocationConflict
+		existing, loadErr := s.store.GetToolInvocation(ctx, record.InvocationUUID)
+		if loadErr != nil {
+			return nil, fmt.Errorf("load replayed Agent Tool invocation: %w", loadErr)
+		}
+		if !sameAgentToolInvocationBeginV1(existing, &record) {
+			return nil, application.ErrAgentToolInvocationConflict
+		}
+		return existing, nil
 	}
 	return &record, nil
 }
@@ -80,7 +87,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) ResolveCommand(ctx context
 	if err != nil {
 		return nil, fmt.Errorf("load Agent Tool command: %w", err)
 	}
-	if record == nil || record.TaskUUID != taskUUID || record.RunUUID != runUUID || record.Status != application.AgentToolInvocationStatusRunning ||
+	if record == nil || record.TaskUUID != taskUUID || record.RunUUID != runUUID || !resolvableAgentToolInvocationStatusV1(record.Status) ||
 		record.StartedAt.IsZero() || application.ValidateAgentMCPToolCommandV1(record.ProfileID, record.ServerID, record.ArgumentsJSON, record.ArgumentsSHA256) != nil {
 		return nil, application.ErrAgentToolInvocationDenied
 	}
@@ -88,8 +95,12 @@ func (s *persistentAgentToolInvocationAuditServiceV1) ResolveCommand(ctx context
 		InvocationUUID: record.InvocationUUID, TenantID: record.TenantID, PrincipalUUID: record.PrincipalUUID, AgentUUID: record.AgentUUID,
 		TaskUUID: record.TaskUUID, RunUUID: record.RunUUID, ProfileID: record.ProfileID, ServerID: record.ServerID,
 		ToolName: record.ToolName, CapabilityID: record.CapabilityID, ArgumentsJSON: record.ArgumentsJSON, ArgumentsSHA256: record.ArgumentsSHA256,
-		StartedAt: record.StartedAt,
+		StartedAt: record.StartedAt, Status: record.Status,
 	}, nil
+}
+
+func resolvableAgentToolInvocationStatusV1(status application.AgentToolInvocationStatusV1) bool {
+	return status == application.AgentToolInvocationStatusRunning || status == application.AgentToolInvocationStatusCompleted || status == application.AgentToolInvocationStatusFailed
 }
 
 func validToolCommandLookupV1(values ...string) bool {
@@ -116,7 +127,13 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Finish(ctx context.Context
 	if err != nil {
 		return fmt.Errorf("load Agent Tool invocation: %w", err)
 	}
-	if invocation == nil || invocation.TaskUUID != finish.TaskUUID || invocation.RunUUID != finish.RunUUID || invocation.Status != application.AgentToolInvocationStatusRunning {
+	if invocation == nil || invocation.TaskUUID != finish.TaskUUID || invocation.RunUUID != finish.RunUUID {
+		return application.ErrAgentToolInvocationConflict
+	}
+	if invocation.Status != application.AgentToolInvocationStatusRunning {
+		if sameAgentToolInvocationFinishV1(invocation, finish) {
+			return nil
+		}
 		return application.ErrAgentToolInvocationConflict
 	}
 	descriptor, ok := application.AgentCapabilityDescriptorByIDV1(invocation.CapabilityID)
@@ -137,9 +154,43 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Finish(ctx context.Context
 		return fmt.Errorf("finish Agent Tool invocation: %w", err)
 	}
 	if !changed {
-		return application.ErrAgentToolInvocationConflict
+		existing, loadErr := s.store.GetToolInvocation(ctx, finish.InvocationUUID)
+		if loadErr != nil {
+			return fmt.Errorf("load replayed Agent Tool invocation finish: %w", loadErr)
+		}
+		if !sameAgentToolInvocationFinishV1(existing, finish) {
+			return application.ErrAgentToolInvocationConflict
+		}
 	}
 	return nil
+}
+
+func sameAgentToolInvocationBeginV1(existing, candidate *application.AgentToolInvocationV1) bool {
+	return existing != nil && candidate != nil &&
+		existing.InvocationUUID == candidate.InvocationUUID && existing.TenantID == candidate.TenantID &&
+		existing.PrincipalUUID == candidate.PrincipalUUID && existing.AgentUUID == candidate.AgentUUID &&
+		existing.TaskUUID == candidate.TaskUUID && existing.RunUUID == candidate.RunUUID &&
+		existing.Transport == candidate.Transport && existing.ToolName == candidate.ToolName &&
+		existing.CapabilityID == candidate.CapabilityID && existing.ArgumentsSHA256 == candidate.ArgumentsSHA256 &&
+		existing.ProfileID == candidate.ProfileID && existing.ServerID == candidate.ServerID &&
+		existing.ArgumentsJSON == candidate.ArgumentsJSON && existing.RequestID == candidate.RequestID &&
+		existing.TraceID == candidate.TraceID && existing.ApprovalUUID == candidate.ApprovalUUID &&
+		!existing.StartedAt.IsZero()
+}
+
+func sameAgentToolInvocationFinishV1(existing *application.AgentToolInvocationV1, finish application.AgentToolInvocationFinishV1) bool {
+	if existing == nil || existing.Status != finish.Status || existing.ResultSHA256 != finish.ResultSHA256 ||
+		existing.ResultBytes != finish.ResultBytes || existing.LatencyMS != finish.LatencyMS || existing.ErrorCode != finish.ErrorCode {
+		return false
+	}
+	return sameAgentToolActionReferenceV1(existing.ActionReference, finish.ActionReference)
+}
+
+func sameAgentToolActionReferenceV1(left, right *application.AgentToolActionReferenceV1) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }
 
 func (s *persistentAgentToolInvocationAuditServiceV1) authorizeWriteApproval(ctx context.Context, begin application.AgentToolInvocationBeginV1, invocation application.AgentInvocationV1, descriptor application.AgentCapabilityDescriptorV1) error {

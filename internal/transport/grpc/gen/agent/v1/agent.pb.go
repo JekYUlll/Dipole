@@ -1877,6 +1877,7 @@ type ResolveMcpToolCommandResponse struct {
 	ArgumentsJson   []byte                 `protobuf:"bytes,11,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
 	ArgumentsSha256 string                 `protobuf:"bytes,12,opt,name=arguments_sha256,json=argumentsSha256,proto3" json:"arguments_sha256,omitempty"`
 	StartedAtUnixMs int64                  `protobuf:"varint,13,opt,name=started_at_unix_ms,json=startedAtUnixMs,proto3" json:"started_at_unix_ms,omitempty"`
+	Status          string                 `protobuf:"bytes,14,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2000,6 +2001,13 @@ func (x *ResolveMcpToolCommandResponse) GetStartedAtUnixMs() int64 {
 		return x.StartedAtUnixMs
 	}
 	return 0
+}
+
+func (x *ResolveMcpToolCommandResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 type ClaimMcpToolRoundRequest struct {
@@ -5739,7 +5747,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
 	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12#\n" +
-	"\rinvocation_id\x18\x04 \x01(\tR\finvocationId\"\xd5\x03\n" +
+	"\rinvocation_id\x18\x04 \x01(\tR\finvocationId\"\xed\x03\n" +
 	"\x1dResolveMcpToolCommandResponse\x12#\n" +
 	"\rinvocation_id\x18\x01 \x01(\tR\finvocationId\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12*\n" +
@@ -5755,7 +5763,8 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	" \x01(\tR\fcapabilityId\x12%\n" +
 	"\x0earguments_json\x18\v \x01(\fR\rargumentsJson\x12)\n" +
 	"\x10arguments_sha256\x18\f \x01(\tR\x0fargumentsSha256\x12+\n" +
-	"\x12started_at_unix_ms\x18\r \x01(\x03R\x0fstartedAtUnixMs\"\xbe\x02\n" +
+	"\x12started_at_unix_ms\x18\r \x01(\x03R\x0fstartedAtUnixMs\x12\x16\n" +
+	"\x06status\x18\x0e \x01(\tR\x06status\"\xbe\x02\n" +
 	"\x18ClaimMcpToolRoundRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +

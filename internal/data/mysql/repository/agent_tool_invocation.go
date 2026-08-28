@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
@@ -59,8 +60,37 @@ func (r *AgentToolInvocationRepository) GetToolInvocation(ctx context.Context, i
 		CapabilityID: row.CapabilityID, ArgumentsSHA256: row.ArgumentsSha256, ProfileID: row.ProfileID.String, ServerID: row.ServerID.String,
 		ArgumentsJSON: string(row.ArgumentsJson), Status: application.AgentToolInvocationStatusV1(row.Status),
 		RequestID: row.RequestID.String, TraceID: row.TraceID.String, ApprovalUUID: row.ApprovalUuid.String, StartedAt: row.StartedAt,
+		ResultSHA256: row.ResultSha256.String, ResultBytes: nullInt64Uint64(row.ResultBytes), LatencyMS: nullInt64Uint64(row.LatencyMs),
+		ErrorCode: row.ErrorCode.String, ActionReference: agentToolActionReference(row), FinishedAt: nullTimePointer(row.FinishedAt),
 	}
 	return record, nil
+}
+
+func nullInt64Uint64(value sql.NullInt64) uint64 {
+	if !value.Valid || value.Int64 < 0 {
+		return 0
+	}
+	return uint64(value.Int64)
+}
+
+func nullTimePointer(value sql.NullTime) *time.Time {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Time
+	return &result
+}
+
+func agentToolActionReference(row generated.AgentToolInvocation) *application.AgentToolActionReferenceV1 {
+	if !row.ActionResourceType.Valid && !row.ActionResourceUuid.Valid && !row.ActionCommandKind.Valid && !row.ActionCommandID.Valid {
+		return nil
+	}
+	return &application.AgentToolActionReferenceV1{
+		ResourceType: application.AgentToolActionResourceTypeV1(row.ActionResourceType.String),
+		ResourceUUID: row.ActionResourceUuid.String,
+		CommandKind:  application.AgentMessageCommandKindV1(row.ActionCommandKind.String),
+		CommandID:    row.ActionCommandID.String,
+	}
 }
 
 func (r *AgentToolInvocationRepository) FinishToolInvocation(ctx context.Context, finish application.AgentToolInvocationFinishV1) (bool, error) {
