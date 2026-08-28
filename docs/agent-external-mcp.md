@@ -159,6 +159,8 @@ checkpoint 使用 SHA-256 绑定 host-owned Request ID、Server、Tool、Invocat
 
 当前 adapter 与单轮 MRTR continuation 已进入默认关闭的 Activity-safe runner：首次调用可返回 `wait_input` checkpoint，恢复后使用新 Client/Transport 精确回传原参数、用户输入和 opaque request state。生产 Worker 尚未调度这类权威命令；多轮、URL mode、敏感输入和 Server 不支持恢复时的产品策略继续关闭。
 
+默认关闭的 Web Form 只消费 authenticated Task query/input/cancel API，并在查询失败时清空旧请求。浏览器验收覆盖 Chromium、Firefox、WebKit 的精确 Task/request 提交、untrusted Server/Tool/Invocation 来源披露、恢复重试、首个错误字段聚焦和 390x844 单列布局；字段错误通过 `aria-invalid` 与描述节点关联。该页面仍不接受密码、Token、支付信息或 URL mode 授权。
+
 ## Durable Round Receipt 边界
 
 migration v36 为每个外部 Tool Invocation 保存最多两个 round。Round ID 由 Invocation、轮次和 canonical 请求 SHA-256 确定，表同时绑定 Task、Run、请求摘要和随机 owner token 摘要；`INSERT IGNORE` 只允许首次调用原子取得 `executing`，没有 lease、超时回收或 owner 接管路径。
