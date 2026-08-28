@@ -24,6 +24,7 @@
 
 ### 设计决策
 
+- Subscription owner list/revoke 已映射到默认关闭的 Gateway HTTP 与 Vue 页面；实现必须同时启用服务端和前端开关，创建入口继续等待 authenticated Definition 目录，Runtime 继续使用 `direct_target`。
 - Subscription 管理固定披露 owner、精确 Definition version、conversation scope、确定性 filter 和审计状态；列表中的 `active` 只表示控制记录有效，不能表达 Runtime 已消费事件。
 - Runtime 继续显示 `direct_target` Shadow 边界。公开 Definition 目录交付前关闭创建入口，禁止要求用户手填内部 Definition ID；撤销必须提交精确原因并保留审计记录。
 - `definition_stale`、依赖不可用和撤销中的状态均 fail closed；界面不启用共享事件触发，也不声称关键词过滤已经具备语义等价召回能力。
