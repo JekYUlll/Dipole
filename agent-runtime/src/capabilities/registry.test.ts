@@ -26,4 +26,17 @@ describe("CapabilityRegistry", () => {
     await expect(registry.execute("conversation.read", { conversationId: "group:G2" }, context)).rejects.toThrow(/scope/);
     expect(execute).toHaveBeenCalledTimes(1);
   });
+
+  it("rejects unbounded or non-schema fields before exposing descriptors", () => {
+    const capability = (inputSchema: Record<string, unknown>) => ({
+      descriptor: { id: "conversation.read", risk: "read" as const, requiredPermission: "conversation.read", inputSchema },
+      inputSchema: { parse: (input: unknown) => input },
+      resolveResource: () => ({ resourceType: "conversation", resourceId: "*", action: "read" }),
+      execute: async () => undefined
+    });
+
+    expect(() => new CapabilityRegistry().register(capability({ type: "object", description: "leak" }))).toThrow(/key description/);
+    expect(() => new CapabilityRegistry().register(capability({ type: "object", properties: { value: { type: "string" } }, x: true }))).toThrow(/key x/);
+    expect(() => new CapabilityRegistry().register(capability({ type: "object", default: "x".repeat(5 * 1024) }))).toThrow(/too large/);
+  });
 });
