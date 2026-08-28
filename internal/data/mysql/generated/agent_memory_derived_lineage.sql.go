@@ -45,10 +45,12 @@ SELECT
         JOIN agent_model_calls AS orphan_calls ON orphan_calls.run_uuid = orphan_runs.run_uuid
         JOIN agent_tasks AS orphan_tasks ON orphan_tasks.task_uuid = orphan_runs.task_uuid
         LEFT JOIN agent_shadow_plans AS orphan_plans ON orphan_plans.task_uuid = orphan_runs.task_uuid
+        LEFT JOIN agent_memory_task_lineage AS orphan_lineage ON orphan_lineage.task_uuid = orphan_runs.task_uuid
         WHERE orphan_calls.status = 'completed'
           AND orphan_tasks.tenant_id = selected.tenant_id
           AND orphan_tasks.principal_uuid = selected.principal_uuid
-          AND orphan_plans.task_uuid IS NULL) AS unattributed_model_tasks,
+          AND orphan_plans.task_uuid IS NULL
+          AND orphan_lineage.task_uuid IS NULL) AS unattributed_model_tasks,
     (SELECT COUNT(*) FROM agent_model_calls AS calls
         JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid
         WHERE runs.task_uuid IN (
