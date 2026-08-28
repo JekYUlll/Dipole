@@ -97,6 +97,8 @@ primary 顺序固定为 `poll -> project -> Presence -> DeliverNodeBatch -> prim
 
 同一演练确认 Go Gateway consumer 与 C++ primary group 并行时会各写一条客户端 frame；legacy Go frame 没有可与 C++ stable delivery ID 合并的标识。`AD-041` 因此阻止 primary 加入 tracked Compose。C3 第一切片已加入默认 `go` 的本地 `realtime.delivery` 契约：`go|shadow` 使用 Go 消息投递 Handler，`cpp` 使用只校验消息事件并提交原 Go group offset 的 checkpoint Handler；非消息 Gateway 事件保持原行为。跨实例共享 authority fencing、双 group checkpoint receipt 和自动回切完成前仍禁止生产切流。
 
+C3 本地 authority 证据位于 `benchmarks/c3-delivery-authority-2026-08-28/`。两个独立 Compose 项目使用相同 probe 契约：`go` 模式只收到一条 legacy frame，`cpp` 模式只收到一条带稳定 delivery ID 的 frame；Gateway 指标分别确认 `go`/`cpp` ownership。`cpp` 项目中原 Go group 以 checkpoint-only 路径消费，C++ primary group 在 terminal `ENQUEUED(1)` evidence 后提交，两个 group 的有记录分区均为 log end/lag 0。该结果完成本地互斥单帧门槛，未覆盖共享实例动态切换。
+
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
 
 同 workload 对照证据位于 `benchmarks/c2-cpp-comparison-2026-08-28/`。Go baseline 在 20 用户、每用户 2 条文本消息下完成 40/40 accepted、persisted、received；C++ v3 evidence 观察 80 个 Kafka 坐标，`message_type=0` 选择 40 条 workload，40 条好友初始化系统消息保持可见并计为 filtered-out。选中记录全部 projected，node transport requested/observed 为 40/40，最终拒绝和背压为 0，comparison v1 决策为 `eligible`。真实 Go TCP queue saturation race 测试确认容量满时返回 `BACKPRESSURED/QUEUE_FULL`。演练同时发现 Gateway assignment 未进入 readiness，已记录为 `AD-039`；成功候选在负载前显式要求 direct-created 六个分区完成 assignment。
