@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-prefilter/v1/report.schema.json",
+  "title": "Dipole Agent Memory Prefilter Report v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "corpusSha256", "evidenceSha256", "candidate", "passed", "reasons", "confusion", "metrics"],
+  "properties": {"schemaVersion": {"const": "dipole.agent.memory-prefilter-report.v1"}, "corpusSha256": {"$ref": "#/$defs/sha256"}, "evidenceSha256": {"$ref": "#/$defs/sha256"}, "candidate": {"type": "object"}, "passed": {"type": "boolean"}, "reasons": {"type": "array", "items": {"type": "string"}}, "confusion": {"type": "object"}, "metrics": {"type": "object"}},
+  "$defs": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
