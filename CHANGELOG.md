@@ -25,6 +25,7 @@
 - TypeScript Agent Capability RPC 客户端新增 `conversation.read` 跨语言契约测试：固定 group/direct canonical key 的 target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed 行为。
 - `conversation.read` RPC 客户端在边界处拒绝超过请求 `limit` 的消息响应，并对 `found=true/false` 统一校验 target，避免异常响应绕过 Planner 上限或造成资源范围漂移。
 - Context Compiler 的 capability section 现在可消费已注册 Capability Descriptor，向模型提供排序稳定的 `id`、`risk` 和 `requiredPermission` 元数据；运行时从 Registry 注入，旧调用仍兼容 ID-only 表示。
+- Context Compiler 为每个选中的 full/compact fragment 生成 `contentSha256` 并写入 Shadow Plan manifest，支持跨进程重放与 descriptor/context 漂移核验；审计仍不保存 prompt 正文。
 - `conversation.list` 与 `conversation.read` 注册 descriptor 增加受限输入 Schema 摘要（类型、范围、默认值和额外字段策略），模型可按契约生成参数，执行时仍由 Zod 进行最终校验。
 - Capability Registry 注册时校验输入 Schema 摘要：限制可投影关键字、`properties` 嵌套结构和 4 KiB 大小，未知字段或异常膨胀会在进入模型上下文前失败。
 - Capability Registry 注册后深度冻结 descriptor snapshot，防止外部对象修改风险、权限或输入 Schema 后造成执行策略与模型上下文漂移。
