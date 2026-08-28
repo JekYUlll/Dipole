@@ -171,6 +171,26 @@ type AgentEventSubscription struct {
 	CreatedByUuid     string
 }
 
+type AgentMcpToolRound struct {
+	ID               uint64
+	RoundUuid        string
+	InvocationUuid   string
+	TaskUuid         string
+	RunUuid          string
+	RoundNumber      uint8
+	RequestSha256    string
+	OwnerTokenSha256 string
+	Status           string
+	ResultJson       json.RawMessage
+	ResultSha256     sql.NullString
+	ResultBytes      sql.NullInt64
+	ErrorCode        sql.NullString
+	ClaimedAt        time.Time
+	FinishedAt       sql.NullTime
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
 type AgentMemory struct {
 	ID             uint64
 	MemoryUuid     string
