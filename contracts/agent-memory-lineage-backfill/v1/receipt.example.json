@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "dipole.agent.memory-lineage-backfill-receipt.v1",
+  "policyVersion": "memory-lineage-backfill-v1",
+  "manifestSha256": "499d4eb6c2380529ad0a5389e2832f63ee113a82c86834cb6ba4da8383b6450a",
+  "sourceHighWatermarkId": 42,
+  "lastProcessedId": 42,
+  "processedPlans": 4,
+  "references": 8,
+  "inserted": 6,
+  "duplicates": 2,
+  "complete": true,
+  "contentRead": false,
+  "deletionAuthority": false,
+  "runtimeAuthority": false,
+  "receiptSha256": "ad49fa801e97af86d9db32df686f7b5ed79ef830b061dbb76b42029bf185e515"
+}
