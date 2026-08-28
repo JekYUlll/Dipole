@@ -2009,6 +2009,68 @@ export interface PublishMcpReadinessEvidenceResponse {
      */
     created: boolean;
 }
+/**
+ * @generated from protobuf message dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest
+ */
+export interface ResolveFreshMcpReadinessEvidenceRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string profile_binding_sha256 = 3
+     */
+    profileBindingSha256: string;
+    /**
+     * @generated from protobuf field: string runtime_binding_sha256 = 4
+     */
+    runtimeBindingSha256: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponse
+ */
+export interface ResolveFreshMcpReadinessEvidenceResponse {
+    /**
+     * @generated from protobuf field: bool found = 1
+     */
+    found: boolean;
+    /**
+     * @generated from protobuf field: string evidence_id = 2
+     */
+    evidenceId: string;
+    /**
+     * @generated from protobuf field: string schema_version = 3
+     */
+    schemaVersion: string;
+    /**
+     * @generated from protobuf field: string profile_binding_sha256 = 4
+     */
+    profileBindingSha256: string;
+    /**
+     * @generated from protobuf field: string runtime_binding_sha256 = 5
+     */
+    runtimeBindingSha256: string;
+    /**
+     * @generated from protobuf field: string content_sha256 = 6
+     */
+    contentSha256: string;
+    /**
+     * @generated from protobuf field: string status = 7
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: int64 collected_at_unix_ms = 8
+     */
+    collectedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 9
+     */
+    expiresAtUnixMs: bigint;
+}
 // @generated message type with reflection information, may provide speed optimized methods
 class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
     constructor() {
@@ -8040,6 +8102,187 @@ class PublishMcpReadinessEvidenceResponse$Type extends MessageType<PublishMcpRea
  * @generated MessageType for protobuf message dipole.agent.v1.PublishMcpReadinessEvidenceResponse
  */
 export const PublishMcpReadinessEvidenceResponse = new PublishMcpReadinessEvidenceResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveFreshMcpReadinessEvidenceRequest$Type extends MessageType<ResolveFreshMcpReadinessEvidenceRequest> {
+    constructor() {
+        super("dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "profile_binding_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "runtime_binding_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveFreshMcpReadinessEvidenceRequest>): ResolveFreshMcpReadinessEvidenceRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.profileBindingSha256 = "";
+        message.runtimeBindingSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<ResolveFreshMcpReadinessEvidenceRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveFreshMcpReadinessEvidenceRequest): ResolveFreshMcpReadinessEvidenceRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string profile_binding_sha256 */ 3:
+                    message.profileBindingSha256 = reader.string();
+                    break;
+                case /* string runtime_binding_sha256 */ 4:
+                    message.runtimeBindingSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveFreshMcpReadinessEvidenceRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string profile_binding_sha256 = 3; */
+        if (message.profileBindingSha256 !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.profileBindingSha256);
+        /* string runtime_binding_sha256 = 4; */
+        if (message.runtimeBindingSha256 !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runtimeBindingSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest
+ */
+export const ResolveFreshMcpReadinessEvidenceRequest = new ResolveFreshMcpReadinessEvidenceRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ResolveFreshMcpReadinessEvidenceResponse$Type extends MessageType<ResolveFreshMcpReadinessEvidenceResponse> {
+    constructor() {
+        super("dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponse", [
+            { no: 1, name: "found", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 2, name: "evidence_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "schema_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "profile_binding_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "runtime_binding_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "content_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "collected_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 9, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ResolveFreshMcpReadinessEvidenceResponse>): ResolveFreshMcpReadinessEvidenceResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.found = false;
+        message.evidenceId = "";
+        message.schemaVersion = "";
+        message.profileBindingSha256 = "";
+        message.runtimeBindingSha256 = "";
+        message.contentSha256 = "";
+        message.status = "";
+        message.collectedAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ResolveFreshMcpReadinessEvidenceResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ResolveFreshMcpReadinessEvidenceResponse): ResolveFreshMcpReadinessEvidenceResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* bool found */ 1:
+                    message.found = reader.bool();
+                    break;
+                case /* string evidence_id */ 2:
+                    message.evidenceId = reader.string();
+                    break;
+                case /* string schema_version */ 3:
+                    message.schemaVersion = reader.string();
+                    break;
+                case /* string profile_binding_sha256 */ 4:
+                    message.profileBindingSha256 = reader.string();
+                    break;
+                case /* string runtime_binding_sha256 */ 5:
+                    message.runtimeBindingSha256 = reader.string();
+                    break;
+                case /* string content_sha256 */ 6:
+                    message.contentSha256 = reader.string();
+                    break;
+                case /* string status */ 7:
+                    message.status = reader.string();
+                    break;
+                case /* int64 collected_at_unix_ms */ 8:
+                    message.collectedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 9:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ResolveFreshMcpReadinessEvidenceResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* bool found = 1; */
+        if (message.found !== false)
+            writer.tag(1, WireType.Varint).bool(message.found);
+        /* string evidence_id = 2; */
+        if (message.evidenceId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.evidenceId);
+        /* string schema_version = 3; */
+        if (message.schemaVersion !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.schemaVersion);
+        /* string profile_binding_sha256 = 4; */
+        if (message.profileBindingSha256 !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.profileBindingSha256);
+        /* string runtime_binding_sha256 = 5; */
+        if (message.runtimeBindingSha256 !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.runtimeBindingSha256);
+        /* string content_sha256 = 6; */
+        if (message.contentSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.contentSha256);
+        /* string status = 7; */
+        if (message.status !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.status);
+        /* int64 collected_at_unix_ms = 8; */
+        if (message.collectedAtUnixMs !== 0n)
+            writer.tag(8, WireType.Varint).int64(message.collectedAtUnixMs);
+        /* int64 expires_at_unix_ms = 9; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(9, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponse
+ */
+export const ResolveFreshMcpReadinessEvidenceResponse = new ResolveFreshMcpReadinessEvidenceResponse$Type();
 /**
  * @generated ServiceType for protobuf service dipole.agent.v1.AgentCapabilityService
  */
@@ -8078,5 +8321,6 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RevokeRuntimePromotion", options: {}, I: RevokeRuntimePromotionRequest, O: RuntimePromotionGrantResponse },
     { name: "CreateArtifact", options: {}, I: CreateArtifactRequest, O: CreateArtifactResponse },
     { name: "GetArtifact", options: {}, I: GetArtifactRequest, O: GetArtifactResponse },
-    { name: "PublishMcpReadinessEvidence", options: {}, I: PublishMcpReadinessEvidenceRequest, O: PublishMcpReadinessEvidenceResponse }
+    { name: "PublishMcpReadinessEvidence", options: {}, I: PublishMcpReadinessEvidenceRequest, O: PublishMcpReadinessEvidenceResponse },
+    { name: "ResolveFreshMcpReadinessEvidence", options: {}, I: ResolveFreshMcpReadinessEvidenceRequest, O: ResolveFreshMcpReadinessEvidenceResponse }
 ]);
