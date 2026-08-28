@@ -10,6 +10,7 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         compose = (ROOT / "docker-compose.microservices.yml").read_text(encoding="utf-8")
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         build = (ROOT / "scripts/docker-build.sh").read_text(encoding="utf-8")
+        smoke = (ROOT / "scripts/smoke-agent-timeline-repair.sh").read_text(encoding="utf-8")
 
         self.assertIn('agent-timeline-repair:', compose)
         self.assertIn('profiles: ["agent-timeline-repair"]', compose)
@@ -18,6 +19,9 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('condition: service_completed_successfully', compose)
         self.assertIn('COPY dist/dipole-agent-task-timeline-repair', dockerfile)
         self.assertIn('./cmd/agent-task-timeline-repair', build)
+        self.assertIn('timeout 5s', smoke)
+        self.assertIn('agent_task_timeline_repairs', smoke)
+        self.assertIn('agent_task_timeline_events', smoke)
 
 
 if __name__ == "__main__":
