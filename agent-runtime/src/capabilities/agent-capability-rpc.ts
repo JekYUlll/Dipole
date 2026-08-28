@@ -3,6 +3,7 @@ import * as grpc from "@grpc/grpc-js";
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type { Message as AgentMessage } from "../generated/dipole/message/v1/message.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
@@ -123,6 +124,14 @@ export interface ConversationListItem {
   readonly lastMessageAtUnixMs: string;
   readonly readSeq: string;
   readonly unreadCount: number;
+}
+
+export interface ConversationReadResult {
+  readonly found: boolean;
+  readonly reason: string;
+  readonly targetId: string;
+  readonly targetType: number;
+  readonly messages: readonly AgentMessage[];
 }
 
 export interface AgentTaskControlAuthorization {
@@ -530,6 +539,39 @@ export class AgentCapabilityRPCClient {
           readSeq: item.readSeq.toString(),
           unreadCount: item.unreadCount
         })));
+      });
+    });
+  }
+
+  async readConversation(context: ExecutionContext, targetId: string, limit: number): Promise<ConversationReadResult> {
+    const normalizedTargetId = targetId.trim();
+    if (!normalizedTargetId || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error("Agent conversation read request is invalid");
+    }
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.readConversation({
+        context: this.requestContext(context.requestId, context.traceId),
+        taskId: context.taskId,
+        runId: context.runId,
+        targetId: normalizedTargetId,
+        limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent conversation read returned no response"));
+          return;
+        }
+        if (response.found && response.targetId !== normalizedTargetId) {
+          reject(new Error("Agent conversation read returned conflicting target"));
+          return;
+        }
+        resolve({
+          found: response.found,
+          reason: response.reason,
+          targetId: response.targetId,
+          targetType: response.targetType,
+          messages: response.messages
+        });
       });
     });
   }

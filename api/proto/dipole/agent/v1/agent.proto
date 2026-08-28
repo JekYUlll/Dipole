@@ -5,6 +5,7 @@ package dipole.agent.v1;
 option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1";
 
 import "dipole/common/v1/context.proto";
+import "dipole/message/v1/message.proto";
 
 message AdmitRunRequest {
   dipole.common.v1.RequestContext context = 1;
@@ -138,6 +139,22 @@ message ConversationSnapshot {
 
 message ListConversationsResponse {
   repeated ConversationSnapshot conversations = 1;
+}
+
+message ReadConversationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string target_id = 3;
+  int32 limit = 4;
+  string run_id = 5;
+}
+
+message ReadConversationResponse {
+  bool found = 1;
+  string reason = 2;
+  string target_id = 3;
+  int32 target_type = 4;
+  repeated dipole.message.v1.Message messages = 5;
 }
 
 message AuthorizeTaskControlRequest {
@@ -824,6 +841,7 @@ service AgentCapabilityService {
   rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
   rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);

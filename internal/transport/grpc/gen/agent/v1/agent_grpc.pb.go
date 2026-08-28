@@ -38,6 +38,7 @@ const (
 	AgentCapabilityService_ConsumeApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
 	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
+	AgentCapabilityService_ReadConversation_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/ReadConversation"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ListAgentTaskTimeline_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListAgentTaskTimeline"
 	AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AppendAgentTaskTimelineEvent"
@@ -88,6 +89,7 @@ type AgentCapabilityServiceClient interface {
 	ConsumeApproval(ctx context.Context, in *ConsumeApprovalRequest, opts ...grpc.CallOption) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
+	ReadConversation(ctx context.Context, in *ReadConversationRequest, opts ...grpc.CallOption) (*ReadConversationResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(ctx context.Context, in *AppendAgentTaskTimelineEventRequest, opts ...grpc.CallOption) (*AppendAgentTaskTimelineEventResponse, error)
@@ -307,6 +309,16 @@ func (c *agentCapabilityServiceClient) ListConversations(ctx context.Context, in
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListConversationsResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ListConversations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ReadConversation(ctx context.Context, in *ReadConversationRequest, opts ...grpc.CallOption) (*ReadConversationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadConversationResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ReadConversation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -586,6 +598,7 @@ type AgentCapabilityServiceServer interface {
 	ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
+	ReadConversation(context.Context, *ReadConversationRequest) (*ReadConversationResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(context.Context, *AppendAgentTaskTimelineEventRequest) (*AppendAgentTaskTimelineEventResponse, error)
@@ -677,6 +690,9 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveApprovalGrant(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListConversations not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ReadConversation(context.Context, *ReadConversationRequest) (*ReadConversationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadConversation not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
@@ -1113,6 +1129,24 @@ func _AgentCapabilityService_ListConversations_Handler(srv interface{}, ctx cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ListConversations(ctx, req.(*ListConversationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ReadConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadConversationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ReadConversation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ReadConversation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ReadConversation(ctx, req.(*ReadConversationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1649,6 +1683,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListConversations",
 			Handler:    _AgentCapabilityService_ListConversations_Handler,
+		},
+		{
+			MethodName: "ReadConversation",
+			Handler:    _AgentCapabilityService_ReadConversation_Handler,
 		},
 		{
 			MethodName: "AuthorizeTaskControl",
