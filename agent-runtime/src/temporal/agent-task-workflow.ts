@@ -201,7 +201,9 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): A
         : { taskId: state.taskId, status: state.status, revision: state.revision };
     case "wait_input":
       return transitionAgentTask(state, {
-        type: "request_input", requestId: directive.requestId, prompt: directive.prompt, form: directive.form, expiresAtUnixMs: directive.expiresAtUnixMs
+        type: "request_input", requestId: directive.requestId, prompt: directive.prompt, form: directive.form,
+        ...(directive.source === undefined ? {} : { source: directive.source }),
+        expiresAtUnixMs: directive.expiresAtUnixMs
       });
     case "wait_approval":
       return transitionAgentTask(state, {

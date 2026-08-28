@@ -17,11 +17,13 @@
 
 ### 安全
 
+- Agent Elicitation Task Query 新增受限来源绑定：本地请求标记为 Agent，MCP 请求固定携带不可信的 Server/Tool/Invocation 元数据；Runtime 与 Web 双重拒绝凭据类字段，查询失败时 Web 清空缓存 Form 并隐藏上游错误，避免向失效 request 提交数据。
 - 修复内部开发证书生成脚本的权限覆盖顺序：公开证书保持 `0644`，CA 与服务私钥最终固定为 `0600`；新增临时目录回归测试，防止后续演练或本地部署生成可被其他用户读取的私钥。
 - 修复 C3 首次冻结直接回切的节点证据缺口：`rollback_requested` 现在必须先对当前 frozen lease 使用 source-node manifest 生成独立 `rollback_frozen_confirmed` artifact，再允许 source activation；覆盖 freeze 后尚未完成 target-node confirmation 即超时的路径，避免复用缺失或面向候选节点的旧 proof。
 
 ### 新增
 
+- 增加默认关闭的 Agent Elicitation Web 闭环：`/agent/tasks/:taskId/input` 根据 authenticated Task Query 渲染 `text|select|multiselect|boolean`，精确绑定 Task/request 提交并在提交、取消或过期后重新查询权威状态；desktop/mobile 响应式页面与 3 项组件行为测试已接入，入口由 `VITE_AGENT_ELICITATION_ENABLED=false|true` 控制。
 - canonical Pencil 增加 Agent Elicitation v1：desktop/mobile 普通 Form、外部来源披露、四类受限字段、七态矩阵及三类可复用组件；设计明确旧 request、敏感字段、URL mode 和依赖不可用时 fail closed，2x 评审图归档于 `design/exports/agent-elicitation-v1/`。
 - canonical Pencil 增加 Agent Workflow Repair v1：desktop evidence review、`proposed|approved|rejected|expired|unavailable` 六态矩阵、mobile 双人审批层及三类可复用组件；界面明确批准只形成审计结论，不执行 projection repair，2x 评审图归档于 `design/exports/agent-repair-v1/`。
 - 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。

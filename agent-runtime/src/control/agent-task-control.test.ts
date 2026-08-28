@@ -72,6 +72,7 @@ describe("AgentTaskControlService", () => {
     const provideInput = vi.fn(async () => undefined);
     const pending = {
       kind: "input" as const, requestId: "INPUT-1", prompt: "Choose scope", expiresAtUnixMs: 2_000,
+      source: { kind: "agent" as const },
       form: { schemaVersion: "dipole.agent.elicitation.v1" as const, fields: [
         { id: "scope", label: "Scope", type: "select" as const, required: true, options: ["today", "week"] }
       ] }

@@ -446,7 +446,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
 - [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成；Contact、Group、File、Device 与 Settings 待完成。
-- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；Agent Definition、Subscription、完整 Task timeline、Memory 与 Artifact 待完成，Elicitation Vue/MCP continuation 仍由 AD-036 跟踪。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，Agent Definition、Subscription、完整 Task timeline、Memory、Artifact 与 MCP continuation 仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
 设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
@@ -480,6 +480,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
+| `VITE_AGENT_ELICITATION_ENABLED` | `false / true` | Agent 普通输入 Form 路由；默认 `false` |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。
