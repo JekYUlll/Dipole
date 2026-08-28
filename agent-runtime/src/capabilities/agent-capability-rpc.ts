@@ -168,6 +168,15 @@ export interface AgentMCPReadinessEvidenceReceipt {
   readonly created: boolean;
 }
 
+export interface AgentMCPReadinessEvidenceResolution {
+  readonly evidenceId: string;
+  readonly profileBindingSha256: string;
+  readonly runtimeBindingSha256: string;
+  readonly contentSha256: string;
+  readonly collectedAt: string;
+  readonly expiresAt: string;
+}
+
 export interface AgentArtifactCreateInput {
   readonly tenantId: string;
   readonly taskId: string;
@@ -940,6 +949,49 @@ export class AgentCapabilityRPCClient {
             contentSha256, collectedAt, expiresAt: expiry, created: response.created });
         } catch {
           reject(new Error("Agent MCP readiness evidence publication returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
+  async resolveFreshMcpReadinessEvidence(
+    tenantId: string,
+    profileBindingSha256: string,
+    runtimeBindingSha256: string,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMCPReadinessEvidenceResolution | undefined> {
+    if (!validBoundedIdentifier(tenantId, 64) || !validSHA256(profileBindingSha256) || !validSHA256(runtimeBindingSha256)) {
+      throw new Error("Agent MCP readiness evidence lookup is invalid");
+    }
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveFreshMcpReadinessEvidence({
+        context: this.requestContext(context.requestId, context.traceId), tenantId,
+        profileBindingSha256, runtimeBindingSha256
+      }, this.metadata(context.requestId, context.traceId), { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent MCP readiness evidence resolution returned no response"));
+          return;
+        }
+        try {
+          if (!response.found) {
+            if (response.evidenceId !== "" || response.schemaVersion !== "" || response.profileBindingSha256 !== "" ||
+                response.runtimeBindingSha256 !== "" || response.contentSha256 !== "" || response.status !== "" ||
+                response.collectedAtUnixMs !== 0n || response.expiresAtUnixMs !== 0n) throw new Error();
+            resolve(undefined);
+            return;
+          }
+          const collectedAtMs = safeUnixMilliseconds(response.collectedAtUnixMs);
+          const expiresAtMs = safeUnixMilliseconds(response.expiresAtUnixMs);
+          if (!validSHA256(response.evidenceId) || response.schemaVersion !== readinessEvidenceRecordSchemaVersion ||
+              response.profileBindingSha256 !== profileBindingSha256 || response.runtimeBindingSha256 !== runtimeBindingSha256 ||
+              !validSHA256(response.contentSha256) || response.status !== "recorded" || collectedAtMs >= expiresAtMs) throw new Error();
+          resolve({
+            evidenceId: response.evidenceId, profileBindingSha256, runtimeBindingSha256,
+            contentSha256: response.contentSha256, collectedAt: new Date(collectedAtMs).toISOString(),
+            expiresAt: new Date(expiresAtMs).toISOString()
+          });
+        } catch {
+          reject(new Error("Agent MCP readiness evidence resolution returned conflicting evidence"));
         }
       });
     });

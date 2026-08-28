@@ -934,7 +934,7 @@ func TestPublishMcpReadinessEvidenceRPCRejectsInvalidEvidenceBeforeStore(t *test
 		t.Fatalf("invalid evidence code=%s calls=%d", status.Code(err), publisher.calls)
 	}
 
-	server.readinessEvidence = nil
+	server.readinessPublisher = nil
 	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
 		return server.PublishMcpReadinessEvidence(ctx, request)
 	}); status.Code(err) != codes.Unavailable {
@@ -942,9 +942,76 @@ func TestPublishMcpReadinessEvidenceRPCRejectsInvalidEvidenceBeforeStore(t *test
 	}
 }
 
+func TestResolveFreshMcpReadinessEvidenceRPCUsesAuthenticatedRuntimeIdentity(t *testing.T) {
+	record, _ := application.NewAgentMCPReadinessEvidenceRecordV1("OPERATOR", readinessEvidencePublishRequestForRPC())
+	resolver := &mcpReadinessEvidenceResolverStub{record: &record}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidenceResolver(resolver)
+	request := &agentv1.ResolveFreshMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: strings.Repeat("b", 64), RuntimeBindingSha256: strings.Repeat("a", 64),
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || !response.(*agentv1.ResolveFreshMcpReadinessEvidenceResponse).GetFound() || resolver.tenant != "dipole" {
+		t.Fatalf("response=%+v resolver=%+v err=%v", response, resolver, err)
+	}
+	resolver.record = nil
+	empty, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || empty.(*agentv1.ResolveFreshMcpReadinessEvidenceResponse).GetFound() {
+		t.Fatalf("empty=%+v err=%v", empty, err)
+	}
+	request.Context.PrincipalUserId = "U-OPS"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("principal injection code=%s", status.Code(err))
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway resolve code=%s", status.Code(err))
+	}
+	server.readinessResolver = nil
+	request.Context = grpccommon.RequestContext("", "dipole-agent")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ResolveFreshMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Unavailable {
+		t.Fatalf("missing Resolver code=%s", status.Code(err))
+	}
+}
+
+type mcpReadinessEvidenceResolverStub struct {
+	record                                 *application.AgentMCPReadinessEvidenceRecordV1
+	tenant, profileBinding, runtimeBinding string
+	err                                    error
+}
+
+func (resolver *mcpReadinessEvidenceResolverStub) ResolveFreshAgentMCPReadinessEvidence(_ context.Context, tenant, profileBinding, runtimeBinding string) (*application.AgentMCPReadinessEvidenceRecordV1, error) {
+	resolver.tenant, resolver.profileBinding, resolver.runtimeBinding = tenant, profileBinding, runtimeBinding
+	return resolver.record, resolver.err
+}
+
+func readinessEvidencePublishRequestForRPC() application.AgentMCPReadinessEvidenceRequestV1 {
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	return application.AgentMCPReadinessEvidenceRequestV1{
+		TenantID: "dipole", ProfileBindingSHA256: strings.Repeat("b", 64), ExpiresAt: startedAt.Add(30 * time.Minute),
+		Evidence: application.AgentMCPReadinessEvidenceV1{
+			SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+			BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: strings.Repeat("b", 64),
+			StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second), ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+			ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 1,
+		},
+	}
+}
+
 func TestPublishMcpReadinessEvidenceRPCRejectsEmptyPublisherResult(t *testing.T) {
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
-	server.readinessEvidence = emptyMCPReadinessEvidencePublisherStub{}
+	server.readinessPublisher = emptyMCPReadinessEvidencePublisherStub{}
 	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
 	evidence := application.AgentMCPReadinessEvidenceV1{
 		SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,

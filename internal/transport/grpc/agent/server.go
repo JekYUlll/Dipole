@@ -28,7 +28,8 @@ type Server struct {
 	repairs              application.AgentWorkflowRepairAuditServiceV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
 	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
-	readinessEvidence    application.AgentMCPReadinessEvidencePublisherV1
+	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
+	readinessResolver    application.AgentMCPReadinessEvidenceResolverV1
 	artifacts            application.AgentArtifactServiceV1
 	subscriptions        application.AgentEventSubscriptionResolverV1
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
@@ -43,7 +44,15 @@ func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMC
 	if s == nil || publisher == nil {
 		return nil, errors.New("Agent MCP readiness evidence Publisher is required")
 	}
-	s.readinessEvidence = publisher
+	s.readinessPublisher = publisher
+	return s, nil
+}
+
+func (s *Server) WithMCPReadinessEvidenceResolver(resolver application.AgentMCPReadinessEvidenceResolverV1) (*Server, error) {
+	if s == nil || resolver == nil {
+		return nil, errors.New("Agent MCP readiness evidence Resolver is required")
+	}
+	s.readinessResolver = resolver
 	return s, nil
 }
 
@@ -568,7 +577,7 @@ func (s *Server) PublishMcpReadinessEvidence(ctx context.Context, request *agent
 	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may publish MCP readiness evidence")
 	}
-	if s.readinessEvidence == nil {
+	if s.readinessPublisher == nil {
 		return nil, status.Error(codes.Unavailable, "Agent MCP readiness evidence Publisher is unavailable")
 	}
 	if len(request.GetEvidenceJson()) == 0 || len(request.GetEvidenceJson()) > 16*1024 {
@@ -576,10 +585,10 @@ func (s *Server) PublishMcpReadinessEvidence(ctx context.Context, request *agent
 	}
 	evidence, err := application.ParseAgentMCPReadinessEvidenceV1(request.GetEvidenceJson())
 	if err != nil {
-		return nil, readinessEvidenceErrorV1(err)
+		return nil, readinessEvidenceResolveErrorV1(err)
 	}
 	requestContext := request.GetContext()
-	record, created, err := s.readinessEvidence.PublishAgentMCPReadinessEvidence(
+	record, created, err := s.readinessPublisher.PublishAgentMCPReadinessEvidence(
 		grpccommon.Correlation(ctx, requestContext),
 		caller,
 		application.AgentMCPReadinessEvidenceRequestV1{
@@ -599,6 +608,45 @@ func (s *Server) PublishMcpReadinessEvidence(ctx context.Context, request *agent
 		ProfileBindingSha256: record.ProfileBindingSHA256, RuntimeBindingSha256: record.RuntimeBindingSHA256,
 		ContentSha256: record.ContentSHA256, Status: record.Status,
 		CollectedAtUnixMs: record.CollectedAt.UnixMilli(), ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), Created: created,
+	}, nil
+}
+
+func readinessEvidenceResolveErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid) {
+		return status.Error(codes.InvalidArgument, "Agent MCP readiness evidence lookup is invalid")
+	}
+	return status.Error(codes.Internal, "Agent MCP readiness evidence resolution failed")
+}
+
+func (s *Server) ResolveFreshMcpReadinessEvidence(ctx context.Context, request *agentv1.ResolveFreshMcpReadinessEvidenceRequest) (*agentv1.ResolveFreshMcpReadinessEvidenceResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may resolve MCP readiness evidence")
+	}
+	if s.readinessResolver == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP readiness evidence Resolver is unavailable")
+	}
+	record, err := s.readinessResolver.ResolveFreshAgentMCPReadinessEvidence(
+		grpccommon.Correlation(ctx, request.GetContext()), request.GetTenantId(), request.GetProfileBindingSha256(), request.GetRuntimeBindingSha256(),
+	)
+	if err != nil {
+		return nil, readinessEvidenceResolveErrorV1(err)
+	}
+	if record == nil {
+		return &agentv1.ResolveFreshMcpReadinessEvidenceResponse{Found: false}, nil
+	}
+	if record.Validate() != nil || record.TenantID != request.GetTenantId() ||
+		record.ProfileBindingSHA256 != request.GetProfileBindingSha256() || record.RuntimeBindingSHA256 != request.GetRuntimeBindingSha256() {
+		return nil, status.Error(codes.Internal, "Agent MCP readiness evidence resolution failed")
+	}
+	return &agentv1.ResolveFreshMcpReadinessEvidenceResponse{
+		Found: true, EvidenceId: record.EvidenceUUID, SchemaVersion: record.SchemaVersion,
+		ProfileBindingSha256: record.ProfileBindingSHA256, RuntimeBindingSha256: record.RuntimeBindingSHA256,
+		ContentSha256: record.ContentSHA256, Status: record.Status,
+		CollectedAtUnixMs: record.CollectedAt.UnixMilli(), ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
 	}, nil
 }
 

@@ -69,6 +69,10 @@ type AgentMCPReadinessEvidencePublisherV1 interface {
 	PublishAgentMCPReadinessEvidence(context.Context, string, AgentMCPReadinessEvidenceRequestV1) (*AgentMCPReadinessEvidenceRecordV1, bool, error)
 }
 
+type AgentMCPReadinessEvidenceResolverV1 interface {
+	ResolveFreshAgentMCPReadinessEvidence(context.Context, string, string, string) (*AgentMCPReadinessEvidenceRecordV1, error)
+}
+
 func (record AgentMCPReadinessEvidenceRecordV1) Validate() error {
 	evidence, err := ParseAgentMCPReadinessEvidenceV1(record.ContentJSON)
 	if err != nil {
