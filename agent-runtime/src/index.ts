@@ -29,7 +29,11 @@ import {
   createAgentObservabilityRuntime,
   loadAgentObservabilityConfig
 } from "./observability/agent-observability-runtime.js";
-import { loadExternalMcpConfig } from "./mcp/external-mcp-profile.js";
+import {
+  startExternalMcpProductionShadow,
+  validateExternalMcpProductionShadowMode
+} from "./runtime/external-mcp-production-shadow.js";
+import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
@@ -37,10 +41,12 @@ let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
-const externalMcpConfig = loadExternalMcpConfig(process.env);
-if (externalMcpConfig.enabled) {
-  throw new Error("External MCP requires a credential-aware, public-DNS-only Transport Factory; no production provider is configured");
-}
+const externalMcpEnvironment = Object.freeze({ ...process.env });
+const externalMcpShadowEnabled = validateExternalMcpProductionShadowMode(
+  externalMcpEnvironment,
+  shadowConfig,
+  temporalConfig
+);
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
@@ -74,7 +80,10 @@ let temporalDispatcher: TemporalTaskDispatchRuntime | undefined;
 if (temporalConfig.enabled && ((temporalConfig.activityMode === "read_shadow" && shadowConfig.enabled) || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
-const shadowRuntime = shadowConfig.enabled ? createKafkaShadowRuntime(shadowConfig, temporalDispatcher) : undefined;
+const shadowRuntime = shadowConfig.enabled && !externalMcpShadowEnabled
+  ? createKafkaShadowRuntime(shadowConfig, temporalDispatcher)
+  : undefined;
+let externalMcpShadowProcess: ExternalMcpShadowProcess | undefined;
 let serverStarted = false;
 let shadowStarted = false;
 let temporalStarted = false;
@@ -124,6 +133,14 @@ const stop = (): Promise<void> => {
   stopPromise ??= (async () => {
     ready = false;
     const failures: unknown[] = [];
+    if (externalMcpShadowProcess !== undefined) {
+      try {
+        await externalMcpShadowProcess.stop();
+      } catch (error) {
+        failures.push(error);
+      }
+      externalMcpShadowProcess = undefined;
+    }
     if (shadowStarted && shadowRuntime !== undefined) {
       try {
         await shadowRuntime.stop();
@@ -187,7 +204,16 @@ const stop = (): Promise<void> => {
   return stopPromise;
 };
 
-if (temporalConfig.enabled) {
+const onTemporalFailure = (error: unknown): void => {
+  if (!ready) return;
+  process.stderr.write(`Temporal Worker failed: ${String(error)}\n`);
+  process.exitCode = 1;
+  void stop().catch((stopError: unknown) => {
+    process.stderr.write(`${String(stopError)}\n`);
+  });
+};
+
+if (temporalConfig.enabled && !externalMcpShadowEnabled) {
   let activities: AgentTaskWorkerActivities = foundationAgentTaskActivities;
   if (temporalConfig.activityMode === "persistent_shadow") {
     if (!shadowConfig.capabilityRpc.enabled) {
@@ -209,16 +235,7 @@ if (temporalConfig.enabled) {
     temporalConfig,
     activities,
     undefined,
-    (error) => {
-      if (!ready) {
-        return;
-      }
-      process.stderr.write(`Temporal Worker failed: ${String(error)}\n`);
-      process.exitCode = 1;
-      void stop().catch((stopError: unknown) => {
-        process.stderr.write(`${String(stopError)}\n`);
-      });
-    }
+    onTemporalFailure
   );
 }
 
@@ -231,6 +248,16 @@ try {
   if (temporalRuntime !== undefined) {
     temporalStarted = true;
     await temporalRuntime.start();
+  }
+  if (externalMcpShadowEnabled) {
+    externalMcpShadowProcess = await startExternalMcpProductionShadow(
+      externalMcpEnvironment,
+      shadowConfig,
+      temporalConfig,
+      foundationAgentTaskActivities,
+      {},
+      onTemporalFailure
+    );
   }
   if (temporalDispatcher !== undefined) {
     temporalDispatcherStarted = true;

@@ -84,6 +84,8 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
 
+`DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
+
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 
 真实 Temporal dev server 契约默认不进入快速测试，可显式运行：
