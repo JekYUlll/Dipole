@@ -283,6 +283,40 @@ type AgentMemory struct {
 	ContentErasureReasonCode string
 }
 
+type AgentMemoryCandidate struct {
+	ID                 uint64
+	CandidateUuid      string
+	TenantID           string
+	PrincipalUuid      string
+	AgentUuid          string
+	ResourceType       string
+	ResourceID         string
+	CandidateType      string
+	SourceID           string
+	EvidenceIdsJson    json.RawMessage
+	Summary            string
+	PolicyVersion      string
+	CandidateSha256    string
+	Status             string
+	ObservedAt         time.Time
+	CreatedAt          time.Time
+	PromotedMemoryUuid sql.NullString
+	PromotedAt         sql.NullTime
+}
+
+type AgentMemoryCandidateReview struct {
+	ID              uint64
+	ReviewUuid      string
+	CandidateUuid   string
+	CandidateSha256 string
+	ReviewerUuid    string
+	Decision        string
+	Reason          string
+	ReviewSha256    string
+	ReviewedAt      time.Time
+	CreatedAt       time.Time
+}
+
 type AgentMemoryLineageBackfillJob struct {
 	JobName               string
 	Status                string
