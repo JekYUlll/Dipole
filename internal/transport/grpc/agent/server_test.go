@@ -92,6 +92,17 @@ type agentMCPToolRoundStub struct {
 	err    error
 }
 
+type agentMCPToolTerminalStub struct {
+	request    application.AgentMCPToolInvocationTerminalRequestV1
+	invocation *application.AgentToolInvocationV1
+	err        error
+}
+
+func (s *agentMCPToolTerminalStub) FinishFromRound(_ context.Context, request application.AgentMCPToolInvocationTerminalRequestV1) (*application.AgentToolInvocationV1, error) {
+	s.request = request
+	return s.invocation, s.err
+}
+
 func (s *agentMCPToolRoundStub) Claim(_ context.Context, claim application.AgentMCPToolRoundClaimV1) (*application.AgentMCPToolRoundClaimResultV1, error) {
 	s.claim = claim
 	return s.result, s.err
@@ -358,6 +369,15 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
 		ActionReference: &agentv1.AgentToolActionReference{ResourceType: "message", ResourceId: "MSG-1", CommandKind: "system_message", CommandId: "CMD-1"},
 	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("external direct finish code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	audit.command.ProfileID, audit.command.ServerID, audit.command.ArgumentsJSON = "", "", ""
+	finishResponse, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
+		ResultSha256: strings.Repeat("b", 64), ResultBytes: 128, LatencyMs: 12,
+		ActionReference: &agentv1.AgentToolActionReference{ResourceType: "message", ResourceId: "MSG-1", CommandKind: "system_message", CommandId: "CMD-1"},
+	})
 	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 || audit.finish.ActionReference == nil || audit.finish.ActionReference.ResourceUUID != "MSG-1" {
 		t.Fatalf("unexpected Tool finish: response=%+v audit=%+v err=%v", finishResponse, audit.finish, err)
 	}
@@ -407,6 +427,34 @@ func TestMcpToolRoundReceiptUsesAuthenticatedRuntimeContext(t *testing.T) {
 	_, err = server.FinishMcpToolRound(context.Background(), &agentv1.FinishMcpToolRoundRequest{Context: requestContext})
 	if status.Code(err) != codes.Aborted {
 		t.Fatalf("round conflict code = %s, want %s", status.Code(err), codes.Aborted)
+	}
+}
+
+func TestMcpToolInvocationTerminalUsesOnlyBoundRoundEvidence(t *testing.T) {
+	terminal := &agentMCPToolTerminalStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-1", Status: application.AgentToolInvocationStatusCompleted,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithMCPToolTerminals(terminal); err != nil {
+		t.Fatalf("configure MCP Tool terminal: %v", err)
+	}
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	response, err := server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", RoundId: strings.Repeat("a", 64),
+	})
+	if err != nil || response.GetStatus() != "completed" || terminal.request.RoundUUID != strings.Repeat("a", 64) || terminal.request.InvocationUUID != "INV-1" {
+		t.Fatalf("terminal response=%+v request=%+v err=%v", response, terminal.request, err)
+	}
+	_, err = server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	terminal.err = application.ErrAgentMCPToolRoundConflict
+	_, err = server.FinishMcpToolInvocationFromRound(context.Background(), &agentv1.FinishMcpToolInvocationFromRoundRequest{Context: requestContext})
+	if status.Code(err) != codes.Aborted {
+		t.Fatalf("terminal conflict code = %s, want %s", status.Code(err), codes.Aborted)
 	}
 }
 

@@ -7,7 +7,11 @@ import type {
   McpActivityModernClient,
   McpToolRoundReceiptClient
 } from "./mcp-input-required-activity.js";
-import { createMcpWorkerRuntime, type McpWorkerCoreClient } from "./mcp-worker-runtime.js";
+import {
+  createMcpTerminalWorkerRuntime,
+  createMcpWorkerRuntime,
+  type McpWorkerCoreClient
+} from "./mcp-worker-runtime.js";
 
 const command: AgentMcpToolCommand = {
   invocationId: "INV-1",
@@ -27,6 +31,28 @@ const command: AgentMcpToolCommand = {
 };
 
 describe("MCP Worker Runtime composition", () => {
+  it("offers an explicit default-off terminal composition over the durable round receipt", async () => {
+    const receipts = receiptStore();
+    const finishMcpToolInvocationFromRound = vi.fn(async () => ({ invocationId: "INV-1", status: "completed" as const }));
+    const runtime = createMcpTerminalWorkerRuntime({
+      core: { ...receipts.core, finishMcpToolInvocationFromRound },
+      transports: transportRegistry(vi.fn(async () => ({ close: vi.fn() }) as unknown as Transport)),
+      egressPolicies: policies(),
+      createClient: vi.fn(() => ({
+        connect: vi.fn(async () => []),
+        callToolRound: vi.fn(async () => ({ content: [] })),
+        close: vi.fn(async () => undefined)
+      })),
+      now: () => 1_100,
+      ownerTokenSha256: () => "a".repeat(64)
+    });
+
+    await expect(runtime.begin(ids())).resolves.toMatchObject({ kind: "complete", receipt: { roundNumber: 0 } });
+    expect(finishMcpToolInvocationFromRound).toHaveBeenCalledWith({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", roundId: expect.stringMatching(/^[a-f0-9]{64}$/)
+    });
+  });
+
   it("replays a locally completed round after Worker replacement without reconnecting", async () => {
     const receipts = receiptStore();
     const connectTransport = vi.fn<McpActivityExternalTransportRegistry["connect"]>(
@@ -48,9 +74,10 @@ describe("MCP Worker Runtime composition", () => {
     };
 
     const first = createMcpWorkerRuntime(dependencies);
-    await expect(first.begin(ids())).resolves.toEqual({
+    await expect(first.begin(ids())).resolves.toMatchObject({
       kind: "complete",
-      result: { content: [{ type: "text", text: "created" }] }
+      result: { content: [{ type: "text", text: "created" }] },
+      receipt: { roundNumber: 0 }
     });
     expect(connectTransport).toHaveBeenCalledOnce();
     expect(receipts.finish).toHaveBeenCalledOnce();
@@ -60,9 +87,10 @@ describe("MCP Worker Runtime composition", () => {
       ...dependencies,
       ownerTokenSha256: () => "b".repeat(64)
     });
-    await expect(replacement.begin(ids())).resolves.toEqual({
+    await expect(replacement.begin(ids())).resolves.toMatchObject({
       kind: "complete",
-      result: { content: [{ type: "text", text: "created" }] }
+      result: { content: [{ type: "text", text: "created" }] },
+      receipt: { roundNumber: 0 }
     });
     expect(connectTransport).toHaveBeenCalledOnce();
     expect(callToolRound).toHaveBeenCalledOnce();
