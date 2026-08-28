@@ -41,4 +41,4 @@ export DIPOLE_AGENT_MCP_DRILL_EVIDENCE="$evidence_path"
 npm test -- --run src/runtime/external-mcp-full-stack-drill.integration.test.ts
 
 test -s "$evidence_path"
-node -e 'const fs=require("node:fs"); const p=process.argv[1]; const v=JSON.parse(fs.readFileSync(p,"utf8")); if(v.schema_version!=="dipole.agent.external-mcp-shadow-drill.v1"||v.outcome!=="passed") process.exit(1); console.log(JSON.stringify(v,null,2));' "$evidence_path"
+npm run mcp:shadow-drill:check -- --evidence="$evidence_path"
