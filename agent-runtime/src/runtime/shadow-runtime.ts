@@ -262,7 +262,18 @@ export function buildKafkaShadowRuntime(
       }
       const matches = matchEventSubscriptions(event, await admission.matchEventSubscriptions(event, identity));
       if (matches.length === 0) return;
-      event = { ...event, subscriptionId: matches[0]!.subscriptionId };
+      const match = matches[0]!;
+      event = {
+        ...event,
+        subscriptionId: match.subscriptionId,
+        subscriptionBinding: {
+          subscriptionId: match.subscriptionId,
+          definitionId: match.definitionId,
+          definitionVersion: match.definitionVersion,
+          tenantId: match.tenantId,
+          agentId: match.agentId
+        }
+      };
     }
     await processor.process(event, identity);
   }, failureRouter);

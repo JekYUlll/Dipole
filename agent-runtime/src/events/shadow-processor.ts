@@ -24,6 +24,14 @@ const eventLineageSchema = z.object({
   }
 });
 
+const subscriptionBindingSchema = z.object({
+  subscriptionId: z.string().trim().min(1).max(64),
+  definitionId: z.string().trim().min(1).max(64),
+  definitionVersion: z.number().int().positive(),
+  tenantId: z.string().trim().min(1).max(64),
+  agentId: z.string().trim().min(1).max(24)
+}).strict();
+
 export const agentEventSchema = z.object({
   eventId: z.string().trim().min(1),
   eventType: z.string().trim().min(1),
@@ -31,8 +39,17 @@ export const agentEventSchema = z.object({
   occurredAt: z.iso.datetime(),
   payload: z.record(z.string(), z.unknown()),
   lineage: eventLineageSchema.optional(),
-  subscriptionId: z.string().trim().min(1).max(64).optional()
-}).strict();
+  subscriptionId: z.string().trim().min(1).max(64).optional(),
+  subscriptionBinding: subscriptionBindingSchema.optional()
+}).strict().superRefine((event, context) => {
+  if (event.subscriptionBinding !== undefined && event.subscriptionBinding.subscriptionId !== event.subscriptionId) {
+    context.addIssue({
+      code: "custom",
+      path: ["subscriptionBinding", "subscriptionId"],
+      message: "subscription binding does not match the event subscription"
+    });
+  }
+});
 
 export type AgentEvent = z.infer<typeof agentEventSchema>;
 
