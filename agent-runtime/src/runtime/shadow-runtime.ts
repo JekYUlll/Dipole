@@ -477,6 +477,7 @@ function routeContextCompiler(config: ShadowRuntimeConfig): DeterministicContext
   }
   return new DeterministicContextCompiler(estimator.estimate, {
     compilerVersion: "v2",
-    estimatorId: estimator.id
+    estimatorId: estimator.id,
+    maxInputTokens: estimator.contextWindowTokens - config.modelBudget.maxOutputTokensPerCall
   });
 }
