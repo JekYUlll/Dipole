@@ -23,4 +23,10 @@ describe("SubscriptionShadowMetrics", () => {
     expect(output).toContain("dipole_agent_subscription_shadow_enabled 0");
     expect(output).toContain("dipole_agent_subscription_shadow_candidates_total 0");
   });
+
+  it("rejects runtime outcomes outside the bounded metric vocabulary", () => {
+    const metrics = new SubscriptionShadowMetrics();
+    expect(() => metrics.observe({ directTargetAccepted: true, subscriptionOutcome: "overflow" as "match", candidateCount: 0 }))
+      .toThrow(/outcome is invalid/);
+  });
 });
