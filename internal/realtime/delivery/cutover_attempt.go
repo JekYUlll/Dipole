@@ -33,6 +33,7 @@ const (
 	CutoverEventSourceReactivated       CutoverAttemptEventType = "source_reactivated"
 	CutoverEventRollbackCheckpointed    CutoverAttemptEventType = "rollback_checkpointed"
 	CutoverEventRolledBack              CutoverAttemptEventType = "rolled_back"
+	CutoverEventLeaseRenewed            CutoverAttemptEventType = "lease_renewed"
 )
 
 type CutoverAttemptState string
@@ -116,6 +117,22 @@ func (p *CutoverAttemptProjection) Apply(event CutoverAttemptEvent) error {
 }
 
 func (p CutoverAttemptProjection) transition(eventType CutoverAttemptEventType) (CutoverAttemptState, bool, error) {
+	if eventType == CutoverEventLeaseRenewed {
+		switch p.State {
+		case CutoverAttemptCreated, CutoverAttemptFreezeApplied, CutoverAttemptTargetActivated,
+			CutoverAttemptRollbackFreezeApplied, CutoverAttemptSourceReactivated:
+			return p.State, p.RollbackNeedsFreeze, nil
+		case CutoverAttemptSourceCheckpointed:
+			return CutoverAttemptCreated, p.RollbackNeedsFreeze, nil
+		case CutoverAttemptFrozenConfirmed:
+			return CutoverAttemptFreezeApplied, p.RollbackNeedsFreeze, nil
+		case CutoverAttemptTargetCheckpointed:
+			return CutoverAttemptTargetActivated, p.RollbackNeedsFreeze, nil
+		case CutoverAttemptRollbackFrozenConfirmed:
+			return CutoverAttemptRollbackFreezeApplied, p.RollbackNeedsFreeze, nil
+		}
+		return "", p.RollbackNeedsFreeze, fmt.Errorf("cutover attempt lease cannot renew in state %q", p.State)
+	}
 	switch p.State {
 	case CutoverAttemptCreated:
 		if eventType == CutoverEventSourceCheckpointed {

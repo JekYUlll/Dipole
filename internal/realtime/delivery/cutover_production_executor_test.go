@@ -67,6 +67,7 @@ func newProductionExecutorFixture(t *testing.T) *productionExecutorFixture {
 	t.Helper()
 	f := &productionExecutorFixture{now: time.Date(2026, 8, 28, 11, 0, 0, 0, time.UTC)}
 	f.server = miniredis.RunT(t)
+	f.server.SetTime(f.now)
 	f.client = redis.NewClient(&redis.Options{Addr: f.server.Addr()})
 	t.Cleanup(func() { _ = f.client.Close() })
 	var err error
@@ -120,6 +121,90 @@ func newProductionExecutorFixture(t *testing.T) *productionExecutorFixture {
 		t.Fatal(err)
 	}
 	return f
+}
+
+func TestProductionCutoverExecutorRenewsAndRebindsFollowingCheckpoint(t *testing.T) {
+	f := newProductionExecutorFixture(t)
+	journal, err := CreateCutoverAttemptJournal(t.TempDir(), f.config.Manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orchestrator, err := NewCutoverAttemptOrchestrator(journal, f.executor, func() time.Time { return f.now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 4 {
+		f.now = f.now.Add(time.Second)
+		if _, err := orchestrator.Advance(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.now = f.now.Add(time.Second)
+	renewed, err := orchestrator.RenewLease(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renewed.State != CutoverAttemptTargetActivated || renewed.EventType != CutoverEventLeaseRenewed {
+		t.Fatalf("renewed=%+v", renewed)
+	}
+	renewID, _ := cutoverAttemptActionID(f.config.Manifest.AttemptID, 5, CutoverEventLeaseRenewed)
+	receipt, err := f.writer.GetReceipt(context.Background(), renewID)
+	if err != nil || receipt.Action != FenceTransitionRenew || receipt.Authority != AuthorityCPP || receipt.Epoch != 2 {
+		t.Fatalf("renew receipt=%+v err=%v", receipt, err)
+	}
+	f.now = f.now.Add(time.Second)
+	if _, err := orchestrator.Advance(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.aggregator.calls[len(f.aggregator.calls)-1].TransitionID; got != renewID {
+		t.Fatalf("checkpoint transition=%s, want %s", got, renewID)
+	}
+}
+
+func TestProductionCutoverExecutorDoesNotAdoptUnjournaledRenewal(t *testing.T) {
+	f := newProductionExecutorFixture(t)
+	f.config.LeaseDuration = 40 * time.Minute
+	collector, err := NewDualGroupCheckpointCollector(checkpointSourceStub{snapshot: validCheckpointSnapshot()}, func() time.Time { return f.now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.executor, err = NewProductionCutoverAttemptExecutor(f.config, f.writer, f.aggregator, collector, f.artifacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal, err := CreateCutoverAttemptJournal(t.TempDir(), f.config.Manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orchestrator, err := NewCutoverAttemptOrchestrator(journal, f.executor, func() time.Time { return f.now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.now = f.now.Add(time.Second)
+	if _, err := orchestrator.Advance(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	orphan, err := orchestrator.action(CutoverEventLeaseRenewed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.now = f.now.Add(time.Second)
+	if _, err := f.executor.Execute(context.Background(), orphan); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := orchestrator.Advance(context.Background()); err == nil {
+		t.Fatal("advance must not adopt a renewal absent from the journal")
+	}
+	if journal.Projection.State != CutoverAttemptSourceCheckpointed || journal.Projection.LastSequence != 1 {
+		t.Fatalf("failed advance projection=%+v", journal.Projection)
+	}
+	result, err := orchestrator.RenewLease(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.EventType != CutoverEventLeaseRenewed || result.State != CutoverAttemptCreated || result.Sequence != 2 {
+		t.Fatalf("recovered renewal=%+v", result)
+	}
 }
 
 func TestProductionCutoverExecutorCompletesForwardPath(t *testing.T) {

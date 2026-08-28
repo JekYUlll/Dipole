@@ -14,7 +14,7 @@ The Go Gateway and C++ Delivery readers are opt-in and consume the shared vector
 
 `checkpoint-manifest.schema.json` names the compatibility and primary Kafka groups plus the exact message topics. A checkpoint collector requires both groups to be `Stable`, assigned to every named partition, committed at the read-committed log end, and in agreement on every log end. ConsumerProtocol assignment versions 0 through 3 retain a canonical topic/partition prefix; the collector parses that bounded prefix from the raw DescribeGroups response and ignores only the remaining client-owned opaque extension bytes. This supports kafka-go and librdkafka members without weakening topic/partition validation. `checkpoint-receipt.schema.json` binds this partition-level zero-lag snapshot to the observation aggregate SHA-256 and lease identity. `checkpoint-bundle.schema.json` stores both records together so the short-lived Redis proof remains independently reviewable.
 
-`attempt-manifest.schema.json` starts one durable cutover attempt and binds its source/target authorities, exact initial lease SHA-256 and epoch, interruption budget, three expected-node manifests and the dual-group checkpoint manifest. Binding the lease as well as the epoch prevents a later renewal at the same epoch from silently replacing the source state. `attempt-event.schema.json` records each accepted state transition as an immutable, monotonically numbered event. The first event links to the canonical manifest SHA-256; every later event links to the canonical previous event. Strict decoding, sequence validation and the hash chain make an interrupted controller recover by replaying evidence instead of guessing which external action completed.
+`attempt-manifest.schema.json` starts one durable cutover attempt and binds its source/target authorities, exact initial lease SHA-256 and epoch, interruption budget, three expected-node manifests and the dual-group checkpoint manifest. Binding the lease as well as the epoch prevents a later renewal at the same epoch from silently replacing the source state. `attempt-event.schema.json` records each accepted state transition, including `lease_renewed`, as an immutable, monotonically numbered event. The first event links to the canonical manifest SHA-256; every later event links to the canonical previous event. Strict decoding, sequence validation and the hash chain make an interrupted controller recover by replaying evidence instead of guessing which external action completed.
 
 The forward path is `source_checkpointed -> freeze_applied -> frozen_confirmed -> target_activated -> target_checkpointed -> completed`. A rollback requested while the system is frozen may reactivate the source directly. A rollback requested after target activation first requires a second freeze and frozen-node confirmation, then source reactivation and a source-side rollback checkpoint. Each event's `artifact_sha256` must reference the immutable transition receipt or checkpoint bundle that proves the external action.
 
@@ -61,7 +61,16 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
   -confirm
 ```
 
-Run `status` after every step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform the required direct source activation or second freeze, frozen-node confirmation, source activation and rollback checkpoint. Each mutation requires `-confirm`. The command has a 30-second per-action timeout and never loops across multiple side effects in one process invocation.
+Run `status` after every step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform the required direct source activation or second freeze, frozen-node confirmation, source activation and rollback checkpoint. `renew` performs one durable CAS renewal using the latest transition artifact. Evidence bound to the previous lease is invalidated: source checkpoint, frozen confirmation, target checkpoint and rollback frozen confirmation states move back to their preceding collection state and require a fresh `advance`. Renewal never resets the original freeze interruption deadline and is rejected while a rollback decision or terminal state is active. Each mutation requires `-confirm`. The command has a 30-second per-action timeout and never loops across multiple side effects in one process invocation.
+
+```bash
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+  -operation renew \
+  -attempt-dir /secure/cutovers/cutover-20260828-a \
+  -operator operator-a \
+  -lease-duration 10m \
+  -confirm
+```
 
 ## Operator transition state machine
 

@@ -18,7 +18,7 @@
       "required": [
         "action_id", "attempt_id", "sequence", "event_type", "current_state",
         "source_authority", "target_authority", "expected_epoch",
-        "max_interruption_ms", "interruption_deadline_unix_ms"
+        "lease_transition_action_id", "max_interruption_ms", "interruption_deadline_unix_ms"
       ],
       "properties": {
         "action_id": { "$ref": "#/$defs/id" },
@@ -29,6 +29,9 @@
         "source_authority": { "enum": ["go", "shadow", "cpp"] },
         "target_authority": { "enum": ["go", "shadow", "cpp"] },
         "expected_epoch": { "type": "integer", "minimum": 1 },
+        "lease_transition_action_id": {
+          "oneOf": [{ "const": "" }, { "$ref": "#/$defs/id" }]
+        },
         "max_interruption_ms": { "type": "integer", "minimum": 1, "maximum": 600000 },
         "interruption_deadline_unix_ms": { "type": "integer", "minimum": 0 }
       }
@@ -49,7 +52,7 @@
         "target_activated", "target_checkpointed", "completed",
         "rollback_requested", "rollback_freeze_applied",
         "rollback_frozen_confirmed", "source_reactivated",
-        "rollback_checkpointed", "rolled_back"
+        "rollback_checkpointed", "rolled_back", "lease_renewed"
       ]
     },
     "state": {

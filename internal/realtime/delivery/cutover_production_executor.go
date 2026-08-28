@@ -90,27 +90,45 @@ func (e *ProductionCutoverAttemptExecutor) Execute(ctx context.Context, action C
 
 	switch action.EventType {
 	case CutoverEventSourceCheckpointed:
-		return e.captureCheckpoint(ctx, action, e.config.SourceNodes, e.config.InitialTransition)
+		transition, err := e.latestTransition(action)
+		if err != nil {
+			return CutoverAttemptActionResult{}, err
+		}
+		return e.captureCheckpoint(ctx, action, e.config.SourceNodes, transition)
 	case CutoverEventFreezeApplied:
+		transition, err := e.latestTransition(action)
+		if err != nil {
+			return CutoverAttemptActionResult{}, err
+		}
 		bundle, err := latestCutoverPayload[CheckpointBundle](e, action, CutoverEventSourceCheckpointed)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
+		if bundle.Checkpoint.LeaseSHA256 != transition.NextSHA256 {
+			return CutoverAttemptActionResult{}, fmt.Errorf("production cutover source checkpoint does not bind the current lease")
+		}
 		return e.applyTransition(ctx, action, FenceTransitionFreeze, "", bundle.Checkpoint.LeaseSHA256)
 	case CutoverEventFrozenConfirmed:
-		receipt, err := latestCutoverPayload[FenceTransitionReceipt](e, action, CutoverEventFreezeApplied)
+		receipt, err := e.latestTransition(action)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
 		return e.captureObservation(ctx, action, e.config.FrozenNodes, receipt)
 	case CutoverEventTargetActivated:
+		transition, err := e.latestTransition(action)
+		if err != nil {
+			return CutoverAttemptActionResult{}, err
+		}
 		proof, err := latestCutoverPayload[FenceObservationAggregateReceipt](e, action, CutoverEventFrozenConfirmed)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
+		if proof.LeaseSHA256 != transition.NextSHA256 {
+			return CutoverAttemptActionResult{}, fmt.Errorf("production cutover frozen proof does not bind the current lease")
+		}
 		return e.applyTransition(ctx, action, FenceTransitionActivate, action.TargetAuthority, proof.LeaseSHA256)
 	case CutoverEventTargetCheckpointed:
-		receipt, err := latestCutoverPayload[FenceTransitionReceipt](e, action, CutoverEventTargetActivated)
+		receipt, err := e.latestTransition(action)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
@@ -118,18 +136,22 @@ func (e *ProductionCutoverAttemptExecutor) Execute(ctx context.Context, action C
 	case CutoverEventCompleted, CutoverEventRollbackRequested, CutoverEventRolledBack:
 		return e.publishDecision(action)
 	case CutoverEventRollbackFreezeApplied:
-		receipt, err := latestCutoverPayload[FenceTransitionReceipt](e, action, CutoverEventTargetActivated)
+		receipt, err := e.latestTransition(action)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
 		return e.applyTransition(ctx, action, FenceTransitionFreeze, "", receipt.NextSHA256)
 	case CutoverEventRollbackFrozenConfirmed:
-		receipt, err := latestCutoverPayload[FenceTransitionReceipt](e, action, CutoverEventRollbackFreezeApplied)
+		receipt, err := e.latestTransition(action)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
 		return e.captureObservation(ctx, action, e.config.SourceNodes, receipt)
 	case CutoverEventSourceReactivated:
+		transition, err := e.latestTransition(action)
+		if err != nil {
+			return CutoverAttemptActionResult{}, err
+		}
 		proofEvent := CutoverEventRollbackFrozenConfirmed
 		if action.ExpectedEpoch == e.config.Manifest.InitialEpoch+1 {
 			proofEvent = CutoverEventFrozenConfirmed
@@ -138,13 +160,22 @@ func (e *ProductionCutoverAttemptExecutor) Execute(ctx context.Context, action C
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
+		if proof.LeaseSHA256 != transition.NextSHA256 {
+			return CutoverAttemptActionResult{}, fmt.Errorf("production cutover rollback proof does not bind the current lease")
+		}
 		return e.applyTransition(ctx, action, FenceTransitionActivate, action.SourceAuthority, proof.LeaseSHA256)
 	case CutoverEventRollbackCheckpointed:
-		receipt, err := latestCutoverPayload[FenceTransitionReceipt](e, action, CutoverEventSourceReactivated)
+		receipt, err := e.latestTransition(action)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
 		return e.captureCheckpoint(ctx, action, e.config.SourceNodes, receipt)
+	case CutoverEventLeaseRenewed:
+		receipt, err := e.latestTransition(action)
+		if err != nil {
+			return CutoverAttemptActionResult{}, err
+		}
+		return e.applyTransition(ctx, action, FenceTransitionRenew, "", receipt.NextSHA256)
 	default:
 		return CutoverAttemptActionResult{}, fmt.Errorf("production cutover action %q is unsupported", action.EventType)
 	}
@@ -166,6 +197,11 @@ func (e *ProductionCutoverAttemptExecutor) validateAction(action CutoverAttemptA
 }
 
 func validProductionCutoverStateEvent(state CutoverAttemptState, eventType CutoverAttemptEventType) bool {
+	if eventType == CutoverEventLeaseRenewed {
+		projection := CutoverAttemptProjection{State: state}
+		_, _, err := projection.transition(eventType)
+		return err == nil
+	}
 	switch state {
 	case CutoverAttemptCreated:
 		return eventType == CutoverEventSourceCheckpointed
@@ -359,11 +395,50 @@ func validateProductionTransitionReceipt(
 	} else if action.EventType == CutoverEventRollbackFreezeApplied {
 		expectedAuthority = action.TargetAuthority
 	}
+	if transitionAction == FenceTransitionRenew {
+		expectedAuthority = action.SourceAuthority
+		if action.CurrentState == CutoverAttemptTargetActivated || action.CurrentState == CutoverAttemptTargetCheckpointed ||
+			action.CurrentState == CutoverAttemptRollbackFreezeApplied || action.CurrentState == CutoverAttemptRollbackFrozenConfirmed {
+			expectedAuthority = action.TargetAuthority
+		}
+		expectedPhase = FencePhaseActive
+		if action.CurrentState == CutoverAttemptFreezeApplied || action.CurrentState == CutoverAttemptFrozenConfirmed ||
+			action.CurrentState == CutoverAttemptRollbackFreezeApplied || action.CurrentState == CutoverAttemptRollbackFrozenConfirmed {
+			expectedPhase = FencePhaseFrozen
+		}
+	}
 	if receipt.TransitionID != action.ActionID || receipt.Action != transitionAction || receipt.PreviousSHA256 != expectedSHA256 ||
 		receipt.Authority != expectedAuthority || receipt.Phase != expectedPhase || receipt.Epoch != action.ExpectedEpoch {
 		return fmt.Errorf("production cutover transition receipt binding is invalid")
 	}
 	return nil
+}
+
+func (e *ProductionCutoverAttemptExecutor) latestTransition(action CutoverAttemptAction) (FenceTransitionReceipt, error) {
+	if action.LeaseTransitionActionID == "" {
+		return e.config.InitialTransition, nil
+	}
+	artifact, _, err := e.artifacts.LoadByActionID(action.LeaseTransitionActionID)
+	if err != nil {
+		return FenceTransitionReceipt{}, err
+	}
+	if artifact.AttemptID != action.AttemptID || artifact.Sequence >= action.Sequence {
+		return FenceTransitionReceipt{}, fmt.Errorf("production cutover transition artifact binding is invalid")
+	}
+	switch artifact.EventType {
+	case CutoverEventLeaseRenewed, CutoverEventSourceReactivated, CutoverEventRollbackFreezeApplied,
+		CutoverEventTargetActivated, CutoverEventFreezeApplied:
+	default:
+		return FenceTransitionReceipt{}, fmt.Errorf("production cutover transition artifact event is invalid")
+	}
+	receipt, err := DecodeCutoverActionArtifactPayload[FenceTransitionReceipt](artifact)
+	if err != nil {
+		return FenceTransitionReceipt{}, err
+	}
+	if err := validateAggregateTransitionReceipt(receipt); err != nil {
+		return FenceTransitionReceipt{}, err
+	}
+	return receipt, nil
 }
 
 func actionResultFromArtifact(artifact CutoverActionArtifact, digest string) CutoverAttemptActionResult {

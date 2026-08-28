@@ -205,3 +205,36 @@ func TestCutoverAttemptOrchestratorLeavesStateOnActionFailure(t *testing.T) {
 		t.Fatalf("failed action mutated journal: %+v", journal.Projection)
 	}
 }
+
+func TestCutoverAttemptOrchestratorRenewsOneLeaseWithoutResettingFreezeDeadline(t *testing.T) {
+	created := time.Date(2026, 8, 28, 9, 0, 0, 0, time.UTC)
+	journal, err := CreateCutoverAttemptJournal(t.TempDir(), validCutoverAttemptManifest(created))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, eventType := range []CutoverAttemptEventType{
+		CutoverEventSourceCheckpointed, CutoverEventFreezeApplied, CutoverEventFrozenConfirmed,
+	} {
+		if _, err := journal.Append(eventType, strings.Repeat("a", 64), created.Add(time.Duration(index)*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	executor := &fakeCutoverAttemptExecutor{now: created.Add(3 * time.Second), fail: make(map[CutoverAttemptEventType]error)}
+	orchestrator, err := NewCutoverAttemptOrchestrator(journal, executor, func() time.Time { return executor.now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := orchestrator.RenewLease(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.EventType != CutoverEventLeaseRenewed || result.State != CutoverAttemptFreezeApplied || result.Sequence != 4 {
+		t.Fatalf("renew result=%+v", result)
+	}
+	if got := executor.actions[0].ExpectedEpoch; got != 2 {
+		t.Fatalf("renew epoch=%d, want 2", got)
+	}
+	if deadline := executor.actions[0].InterruptionDeadlineUnixMS; deadline != created.Add(time.Minute).Add(time.Second).UnixMilli() {
+		t.Fatalf("renew deadline=%d", deadline)
+	}
+}

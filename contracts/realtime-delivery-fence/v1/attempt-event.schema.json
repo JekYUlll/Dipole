@@ -18,7 +18,7 @@
         "target_activated", "target_checkpointed", "completed",
         "rollback_requested", "rollback_freeze_applied",
         "rollback_frozen_confirmed", "source_reactivated",
-        "rollback_checkpointed", "rolled_back"
+        "rollback_checkpointed", "rolled_back", "lease_renewed"
       ]
     },
     "previous_event_sha256": { "$ref": "#/$defs/sha256" },

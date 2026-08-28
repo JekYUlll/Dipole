@@ -17,6 +17,7 @@ type CutoverAttemptAction struct {
 	SourceAuthority            Authority               `json:"source_authority"`
 	TargetAuthority            Authority               `json:"target_authority"`
 	ExpectedEpoch              uint64                  `json:"expected_epoch"`
+	LeaseTransitionActionID    string                  `json:"lease_transition_action_id"`
 	MaxInterruptionMS          int64                   `json:"max_interruption_ms"`
 	InterruptionDeadlineUnixMS int64                   `json:"interruption_deadline_unix_ms"`
 }
@@ -81,6 +82,13 @@ func (o *CutoverAttemptOrchestrator) RequestRollback(ctx context.Context) (Cutov
 	default:
 		return CutoverAttemptAdvance{}, fmt.Errorf("cutover attempt cannot request rollback from state %q", o.journal.Projection.State)
 	}
+}
+
+func (o *CutoverAttemptOrchestrator) RenewLease(ctx context.Context) (CutoverAttemptAdvance, error) {
+	if err := o.reload(); err != nil {
+		return CutoverAttemptAdvance{}, err
+	}
+	return o.execute(ctx, CutoverEventLeaseRenewed, false)
 }
 
 func (o *CutoverAttemptOrchestrator) reload() error {
@@ -176,13 +184,42 @@ func (o *CutoverAttemptOrchestrator) action(eventType CutoverAttemptEventType) (
 		ActionID: actionID, AttemptID: o.journal.Manifest.AttemptID, Sequence: sequence,
 		EventType: eventType, CurrentState: o.journal.Projection.State,
 		SourceAuthority: o.journal.Manifest.SourceAuthority, TargetAuthority: o.journal.Manifest.TargetAuthority,
-		ExpectedEpoch: o.expectedEpoch(eventType), MaxInterruptionMS: o.journal.Manifest.MaxInterruptionMS,
+		ExpectedEpoch: o.expectedEpoch(eventType), LeaseTransitionActionID: o.leaseTransitionActionID(),
+		MaxInterruptionMS:          o.journal.Manifest.MaxInterruptionMS,
 		InterruptionDeadlineUnixMS: o.interruptionDeadlineUnixMS(),
 	}, nil
 }
 
+func (o *CutoverAttemptOrchestrator) leaseTransitionActionID() string {
+	for index := len(o.journal.Events) - 1; index >= 0; index-- {
+		event := o.journal.Events[index]
+		switch event.EventType {
+		case CutoverEventLeaseRenewed, CutoverEventSourceReactivated, CutoverEventRollbackFreezeApplied,
+			CutoverEventTargetActivated, CutoverEventFreezeApplied:
+			actionID, err := cutoverAttemptActionID(o.journal.Manifest.AttemptID, event.Sequence, event.EventType)
+			if err == nil {
+				return actionID
+			}
+			return ""
+		}
+	}
+	return ""
+}
+
 func (o *CutoverAttemptOrchestrator) expectedEpoch(eventType CutoverAttemptEventType) uint64 {
 	epoch := o.journal.Manifest.InitialEpoch
+	if eventType == CutoverEventLeaseRenewed {
+		switch o.journal.Projection.State {
+		case CutoverAttemptCreated, CutoverAttemptSourceCheckpointed:
+			return epoch
+		case CutoverAttemptRollbackFreezeApplied, CutoverAttemptRollbackFrozenConfirmed,
+			CutoverAttemptSourceReactivated, CutoverAttemptRollbackCheckpointed:
+			if o.hasRollbackFreeze() {
+				return epoch + 2
+			}
+		}
+		return epoch + 1
+	}
 	switch eventType {
 	case CutoverEventFreezeApplied, CutoverEventFrozenConfirmed, CutoverEventTargetActivated,
 		CutoverEventTargetCheckpointed, CutoverEventCompleted, CutoverEventRollbackRequested:

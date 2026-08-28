@@ -168,6 +168,30 @@ func TestCutoverAttemptJournalPersistsRollbackAfterTargetActivation(t *testing.T
 	}
 }
 
+func TestCutoverAttemptLeaseRenewalInvalidatesLeaseBoundEvidence(t *testing.T) {
+	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
+	journal, err := CreateCutoverAttemptJournal(t.TempDir(), validCutoverAttemptManifest(now))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, eventType := range []CutoverAttemptEventType{
+		CutoverEventSourceCheckpointed, CutoverEventFreezeApplied, CutoverEventFrozenConfirmed,
+	} {
+		if _, err := journal.Append(eventType, strings.Repeat("a", 64), now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := journal.Append(CutoverEventLeaseRenewed, strings.Repeat("b", 64), now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if journal.Projection.State != CutoverAttemptFreezeApplied || journal.Projection.LastSequence != 4 {
+		t.Fatalf("renewed projection=%+v", journal.Projection)
+	}
+	if _, err := journal.Append(CutoverEventTargetActivated, strings.Repeat("c", 64), now.Add(2*time.Second)); err == nil {
+		t.Fatal("renewal must require fresh frozen-node confirmation")
+	}
+}
+
 func TestCutoverAttemptJournalRejectsStrictJSONAndBackwardsTime(t *testing.T) {
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	directory := t.TempDir()

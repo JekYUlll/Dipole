@@ -43,7 +43,7 @@ func main() {
 func run(ctx context.Context, args []string, output io.Writer, now func() time.Time, factory executorFactory) error {
 	flags := flag.NewFlagSet("dipole-realtime-cutover", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	operation := flags.String("operation", "status", "create, status, advance, or rollback")
+	operation := flags.String("operation", "status", "create, status, advance, renew, or rollback")
 	directory := flags.String("attempt-dir", "", "durable cutover attempt workspace directory")
 	inputsPath := flags.String("inputs", "", "strict attempt inputs JSON for create")
 	attemptID := flags.String("attempt-id", "", "bounded attempt identity for create")
@@ -77,7 +77,7 @@ func run(ctx context.Context, args []string, output io.Writer, now func() time.T
 			HeadSHA: workspace.Journal.HeadSHA256,
 		})
 	}
-	if *operation != "advance" && *operation != "rollback" {
+	if *operation != "advance" && *operation != "renew" && *operation != "rollback" {
 		return fmt.Errorf("unsupported cutover operation %q", *operation)
 	}
 	if !*confirm {
@@ -103,6 +103,8 @@ func run(ctx context.Context, args []string, output io.Writer, now func() time.T
 	var result realtimeDelivery.CutoverAttemptAdvance
 	if *operation == "advance" {
 		result, err = orchestrator.Advance(ctx)
+	} else if *operation == "renew" {
+		result, err = orchestrator.RenewLease(ctx)
 	} else {
 		result, err = orchestrator.RequestRollback(ctx)
 	}

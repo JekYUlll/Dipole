@@ -163,6 +163,9 @@ func validateAndHashCutoverAction(action CutoverAttemptAction) (string, error) {
 		action.MaxInterruptionMS > int64((10*time.Minute)/time.Millisecond) {
 		return "", fmt.Errorf("cutover attempt action identity or bounds are invalid")
 	}
+	if action.LeaseTransitionActionID != "" && !fenceTransitionIDPattern.MatchString(action.LeaseTransitionActionID) {
+		return "", fmt.Errorf("cutover attempt lease transition action ID is invalid")
+	}
 	if !validCutoverAttemptEventType(action.EventType) {
 		return "", fmt.Errorf("cutover attempt action event type is invalid")
 	}
@@ -250,7 +253,8 @@ func validCutoverAttemptEventType(eventType CutoverAttemptEventType) bool {
 	case CutoverEventSourceCheckpointed, CutoverEventFreezeApplied, CutoverEventFrozenConfirmed,
 		CutoverEventTargetActivated, CutoverEventTargetCheckpointed, CutoverEventCompleted,
 		CutoverEventRollbackRequested, CutoverEventRollbackFreezeApplied, CutoverEventRollbackFrozenConfirmed,
-		CutoverEventSourceReactivated, CutoverEventRollbackCheckpointed, CutoverEventRolledBack:
+		CutoverEventSourceReactivated, CutoverEventRollbackCheckpointed, CutoverEventRolledBack,
+		CutoverEventLeaseRenewed:
 		return true
 	default:
 		return false

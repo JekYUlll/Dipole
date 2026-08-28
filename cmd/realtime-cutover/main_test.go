@@ -112,6 +112,47 @@ func TestRunAdvancesOneDurableStep(t *testing.T) {
 	}
 }
 
+func TestRunRenewsOneDurableLeaseStep(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	directory := createCommandWorkspace(t, now, "cli-renew-a")
+	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (realtimeDelivery.CutoverAttemptActionExecutor, func(), error) {
+		return commandExecutor{workspace: workspace, now: now.Add(time.Second)}, func() {}, nil
+	}
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{
+		"-operation", "renew", "-attempt-dir", directory, "-operator", "operator-a", "-confirm",
+	}, &output, func() time.Time { return now.Add(time.Second) }, factory); err != nil {
+		t.Fatal(err)
+	}
+	var result realtimeDelivery.CutoverAttemptAdvance
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.State != realtimeDelivery.CutoverAttemptCreated || result.EventType != realtimeDelivery.CutoverEventLeaseRenewed || result.Sequence != 1 {
+		t.Fatalf("renew result=%+v", result)
+	}
+}
+
+func createCommandWorkspace(t *testing.T, now time.Time, attemptID string) string {
+	t.Helper()
+	inputsPath := filepath.Join(t.TempDir(), "inputs.json")
+	payload, err := json.Marshal(commandInputs(now))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(inputsPath, payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	directory := filepath.Join(t.TempDir(), "attempt")
+	if err := run(context.Background(), []string{
+		"-operation", "create", "-attempt-dir", directory, "-inputs", inputsPath,
+		"-attempt-id", attemptID, "-source", "go", "-target", "cpp", "-confirm",
+	}, &bytes.Buffer{}, func() time.Time { return now }, nil); err != nil {
+		t.Fatal(err)
+	}
+	return directory
+}
+
 func commandInputs(now time.Time) realtimeDelivery.CutoverAttemptInputs {
 	transition := realtimeDelivery.FenceTransitionReceipt{
 		SchemaVersion: realtimeDelivery.FenceTransitionReceiptSchemaV1,
