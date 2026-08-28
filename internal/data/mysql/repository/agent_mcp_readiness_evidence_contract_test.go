@@ -71,7 +71,11 @@ func TestAgentMCPReadinessEvidenceMySQLAppendOnlyContract(t *testing.T) {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM agent_mcp_readiness_evidence`).Scan(&count); err != nil || count != 2 {
 		t.Fatalf("immutable history count=%d err=%v", count, err)
 	}
-	if err := runner.Down(context.Background(), 1); err != nil {
+	currentVersion, err := runner.CurrentVersion(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runner.Down(context.Background(), int(currentVersion-36)); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_mcp_readiness_evidence'`).Scan(&count); err != nil || count != 0 {

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -62,6 +63,15 @@ func (r *AgentToolInvocationRepository) GetToolInvocation(ctx context.Context, i
 		RequestID: row.RequestID.String, TraceID: row.TraceID.String, ApprovalUUID: row.ApprovalUuid.String, StartedAt: row.StartedAt,
 		ResultSHA256: row.ResultSha256.String, ResultBytes: nullInt64Uint64(row.ResultBytes), LatencyMS: nullInt64Uint64(row.LatencyMs),
 		ErrorCode: row.ErrorCode.String, ActionReference: agentToolActionReference(row), FinishedAt: nullTimePointer(row.FinishedAt),
+	}
+	if record.ArgumentsJSON == "null" {
+		record.ArgumentsJSON = ""
+	} else if record.ArgumentsJSON != "" {
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, row.ArgumentsJson); err != nil {
+			return nil, fmt.Errorf("compact Agent Tool invocation arguments: %w", err)
+		}
+		record.ArgumentsJSON = compact.String()
 	}
 	return record, nil
 }
