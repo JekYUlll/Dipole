@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 47
+const currentMigrationVersion = 49
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,7 +39,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 50)
+		assertTableCount(t, db, 54)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
@@ -55,6 +55,36 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Timeline repair migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 48)
+		assertTableCount(t, db, 53)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Task Timeline migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 47)
+		assertTableCount(t, db, 52)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory promotion migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 46)
+		assertTableCount(t, db, 52)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory review migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 45)
+		assertTableCount(t, db, 51)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory candidate migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 44)
+		assertTableCount(t, db, 50)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Workflow repair execution ledger migration: %v", err)
 		}

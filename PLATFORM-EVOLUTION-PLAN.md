@@ -308,6 +308,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 为 Sync Cassandra primary/fallback hydration 接入低基数运行时计数与耗时 collector，保留原有日志观测和 MySQL 即时回退；真实客户端窗口、共享环境采集、责任人批准与可执行回切仍待完成。
 - [x] 修正 migration 集成测试的最高版本基线至 v47，并通过真实 MySQL/Cassandra smoke 验证 Metadata 回填、hydration 和重复消息恢复。
 - [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
+- [x] 修正 migration integration baseline 至 v49，并在隔离 Cassandra/MySQL smoke 中验证 Metadata backfill、重复响应 hydration 和 Legacy ID 恢复；共享环境主读灰度仍需独立证据。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 
 **验收：** 离线、多设备、热群、重放、Cursor 恢复和客户端升级测试通过；关闭 Redis 后仍可恢复持久同步状态。
