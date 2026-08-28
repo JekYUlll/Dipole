@@ -33,6 +33,7 @@
 
 ### 验证
 
+- C++ projection microbenchmark 使用同一 `message.direct.created` v1 事件和 100,000 次 JSON 解码/投影迭代，Go/C++ 结果计数一致；C++ 吞吐约为 Go 的 `0.10x`，低于默认晋级门槛，报告为 `blocked`。当前保留 Go projection 作为默认实现并停止 C++ projection 替换，证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29/`。
 - C++ Realtime Delivery C3 真实隔离故障演练通过：14/14 C++ build/CTest、5/5 对比测试，以及 Controller 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 C++ primary 停止恢复均通过；报告绑定当前 Git revision、Redis/Kafka 镜像、C++ 二进制、observation 与 journal 哈希。C++ primary、双 group checkpoint 与自动回切证据已具备，生产灰度和性能收益门槛仍保持关闭。
 - Redis Sentinel 三节点真实隔离 smoke 通过：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、Hot Group 和限流语义保持可用，旧 master 重新加入为 replica；切主窗口的 Pub/Sub at-most-once 边界仍由 AD-017 跟踪。
 - Elasticsearch Search Service 真实隔离契约通过，验证 Core-derived scope、内部 RPC 和 Elasticsearch 9.5.2 查询路径；三节点 Kafka + Elasticsearch Search Indexer smoke 通过，created、recalled tombstone 与迟到 edited 事件最终收敛为 revision 3 且 `searchable=false`。
