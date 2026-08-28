@@ -627,7 +627,7 @@
 
 ### 已知问题
 
-- 历史 lineage backfill 已具备 v43 MySQL checkpoint、sqlc source/target、owner-scoped adapter 和隔离数据库测试；当前仍缺少 production-safe operator CLI、共享环境执行审批与真实 migration up/down 回滚证据，不能在共享环境执行回填。sqlc v1.31.1 不支持 inline JSON_TABLE，当前采用 sqlc manifest retrieval、Go 严格展开和 owner-scoped sqlc lookup。
+- 历史 lineage backfill 已具备 v43 MySQL checkpoint、sqlc source/target、owner-scoped adapter、隔离数据库测试和默认 dry-run 的审批 CLI；当前仍缺少共享环境执行审批记录与 production rollout 证据，不能在共享环境执行回填。sqlc v1.31.1 不支持 inline JSON_TABLE，当前采用 sqlc manifest retrieval、Go 严格展开和 owner-scoped sqlc lookup。
 - Memory root 派生影响已具备逐域离线 retention policy 决策，但尚未实现 Shadow plan、Step、Artifact、Agent Message 或 Temporal history 的字段级擦除器；v42 已为受管 Model planner 建立模型前 root attribution，历史/旁路缺口继续由 owner-scoped 未归因计数阻断。公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
 - Memory v1 已提供默认关闭的 owner list/revoke HTTP/Pencil/Vue 闭环和追加式撤销审计；自动写入、append-only 纠正/版本冲突、Observation/Reflection Worker、置信度策略及 hybrid/vector retrieval 仍待完成。共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
 - Event Subscription 已具备默认关闭的公开 Definition 目录、authenticated conversation chooser、owner list/create/revoke HTTP/Pencil/Vue 闭环、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；尚未归档真实 Project Guardian corpus/review report、embedding/小模型 candidate evidence或 subscription Runtime 灰度证据。共享环境继续固定 `direct_target`，详见 `AD-034`。
