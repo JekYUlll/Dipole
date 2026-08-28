@@ -1,6 +1,8 @@
 import { expect, test, type Route } from '@playwright/test'
 
 const listPath = '/api/v1/agent/subscriptions'
+const definitionsPath = '/api/v1/agent/definitions'
+const optionsPath = `${listPath}/options`
 const revokePath = `${listPath}/SUB-1/revoke`
 const active = {
   subscriptionId: 'SUB-1', definitionId: 'DEF-1', definitionVersion: 7, agentId: 'UAI',
@@ -18,13 +20,33 @@ test.beforeEach(async ({ page }) => {
 
 test('lists owner subscriptions and revokes with an exact audited reason', async ({ page }) => {
   let submitted: { path: string; authorization?: string; body: unknown } | undefined
-  await page.route('**/api/v1/agent/subscriptions**', async route => {
+  let created: { path: string; authorization?: string; body: unknown } | undefined
+  await page.route('**/api/v1/agent/**', async route => {
     const request = route.request()
-    const path = new URL(request.url()).pathname
+    const url = new URL(request.url())
+    const path = url.pathname
+	if (request.method() === 'GET' && path === definitionsPath) {
+		await ok(route, { definitions: [{
+			definitionId: 'DEF-1', version: 7, agentId: 'UAI', conversationScopes: ['group:G123'],
+			validFromUnixMs: 1_000, createdAtUnixMs: 1_000, updatedAtUnixMs: 2_000,
+		}], nextCursor: '' })
+		return
+	}
+	if (request.method() === 'GET' && path === optionsPath) {
+		expect(url.searchParams.get('definitionId')).toBe('DEF-1')
+		expect(url.searchParams.get('definitionVersion')).toBe('7')
+		await ok(route, { conversations: [{ conversationKey: 'group:G123', eventType: 'message.group.created' }] })
+		return
+	}
     if (request.method() === 'GET' && path === listPath) {
       await ok(route, { subscriptions: [active], nextCursor: '' })
       return
     }
+	if (request.method() === 'POST' && path === listPath) {
+		created = { path, authorization: request.headers().authorization, body: request.postDataJSON() }
+		await ok(route, { ...active, subscriptionId: 'SUB-CREATED', eventType: 'message.group.created', filterKind: 'all', filter: {} })
+		return
+	}
     if (request.method() === 'POST' && path === revokePath) {
       submitted = { path, authorization: request.headers().authorization, body: request.postDataJSON() }
       await ok(route, {
@@ -39,7 +61,16 @@ test('lists owner subscriptions and revokes with an exact audited reason', async
   await page.goto('/app/agent/subscriptions')
   await expect(page.getByRole('heading', { name: '事件订阅' })).toBeVisible()
   await expect(page.getByText('DIRECT_TARGET').first()).toBeVisible()
-  await expect(page.locator('[data-agent-subscription-create]')).toBeDisabled()
+	await page.locator('[data-agent-subscription-create]').click()
+	await expect(page.getByRole('heading', { name: '创建事件订阅' })).toBeVisible()
+	await expect(page.locator('[data-agent-subscription-conversation]')).toHaveValue('group:G123')
+	await page.locator('[data-agent-subscription-submit]').click()
+	await expect(page.locator('[data-agent-subscription-id="SUB-CREATED"]')).toBeVisible()
+	expect(created).toEqual({
+		path: listPath,
+		authorization: 'Bearer subscription-browser-token',
+		body: { definitionId: 'DEF-1', definitionVersion: 7, conversationKey: 'group:G123', filterKind: 'all', filter: {} },
+	})
   await page.locator('[data-agent-subscription-revoke="SUB-1"]').click()
   await expect(page.locator('[data-agent-subscription-reason]')).toBeFocused()
   await page.locator('[data-agent-subscription-reason]').fill('项目已归档')
