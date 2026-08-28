@@ -694,12 +694,31 @@ func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.Be
 	record, err := s.toolAudits.Begin(grpccommon.Correlation(ctx, request.GetContext()), application.AgentToolInvocationBeginV1{
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Transport: application.AgentToolTransportMCP, ToolName: request.GetToolName(), CapabilityID: request.GetCapabilityId(),
-		ArgumentsSHA256: request.GetArgumentsSha256(), RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), ApprovalUUID: request.GetApprovalId(),
+		ArgumentsSHA256: request.GetArgumentsSha256(), ProfileID: request.GetProfileId(), ServerID: request.GetServerId(), ArgumentsJSON: string(request.GetArgumentsJson()),
+		RequestID: request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), ApprovalUUID: request.GetApprovalId(),
 	})
 	if err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	return &agentv1.BeginMcpToolInvocationResponse{InvocationId: record.InvocationUUID, Status: string(record.Status)}, nil
+}
+
+func (s *Server) ResolveMcpToolCommand(ctx context.Context, request *agentv1.ResolveMcpToolCommandRequest) (*agentv1.ResolveMcpToolCommandResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolAudits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Tool command resolver is unavailable")
+	}
+	command, err := s.toolAudits.ResolveCommand(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId(), request.GetInvocationId())
+	if err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	return &agentv1.ResolveMcpToolCommandResponse{
+		InvocationId: command.InvocationUUID, TenantId: command.TenantID, PrincipalUserId: command.PrincipalUUID, AgentId: command.AgentUUID,
+		TaskId: command.TaskUUID, RunId: command.RunUUID, ProfileId: command.ProfileID, ServerId: command.ServerID,
+		ToolName: command.ToolName, CapabilityId: command.CapabilityID, ArgumentsJson: []byte(command.ArgumentsJSON), ArgumentsSha256: command.ArgumentsSHA256,
+	}, nil
 }
 
 func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.FinishMcpToolInvocationRequest) (*agentv1.FinishMcpToolInvocationResponse, error) {

@@ -11,6 +11,9 @@ export interface McpToolInvocationBegin {
   toolName: string;
   capabilityId: string;
   argumentsSha256: string;
+  profileId?: string;
+  serverId?: string;
+  argumentsJson?: string;
   requestId?: string;
   traceId?: string;
   approvalId?: string;
@@ -49,7 +52,7 @@ export class McpToolInvocationRunner {
   }
 
   execute(
-    tool: { name: string; capabilityId: string; approvalId?: string },
+    tool: { name: string; capabilityId: string; approvalId?: string; profileId?: string; serverId?: string },
     rawArguments: unknown,
     context: ExecutionContext,
     operation: (signal: AbortSignal, invocationId: string) => Promise<unknown>,
@@ -63,9 +66,12 @@ export class McpToolInvocationRunner {
       const startedAt = this.now();
       this.decorateSpan(span, invocationId, tool, context);
       try {
+        const canonicalArguments = canonicalMcpJSON(rawArguments);
+        if ((tool.profileId === undefined) !== (tool.serverId === undefined)) throw new Error("MCP external Tool binding is incomplete");
         await this.audit.begin({
           invocationId, taskId: context.taskId, runId: context.runId, toolName: tool.name,
-          capabilityId: tool.capabilityId, argumentsSha256: sha256(canonicalMcpJSON(rawArguments)),
+          capabilityId: tool.capabilityId, argumentsSha256: sha256(canonicalArguments),
+          ...(tool.profileId === undefined ? {} : { profileId: tool.profileId, serverId: tool.serverId, argumentsJson: canonicalArguments }),
           ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
           ...(context.traceId === undefined ? {} : { traceId: context.traceId }),
           ...(tool.approvalId === undefined ? {} : { approvalId: tool.approvalId })
