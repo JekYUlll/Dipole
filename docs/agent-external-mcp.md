@@ -122,9 +122,11 @@ Invocation ID 由 tenant/principal/Agent/Task/Run/Workflow step/ordinal 的 cano
 
 每次 begin、Activity retry 和 durable resume 都重新调用 Core context resolver，精确核对 Task/Run/principal，再以保存的 canonical 参数重放 `TrustedMcpInvocationProducer`。producer 返回同一 Invocation 后，Activity 仅向 terminal Worker 传递 Task、Run 和 Invocation ID。`wait_input` checkpoint 以 SHA-256 绑定路由版本、Step 坐标、Invocation、参数、关联 ID 和内部 Worker checkpoint；恢复时任何漂移都会在 Worker 调用前失败。
 
-terminal Worker 完成后，Activity 将不可信结果连同 Invocation/Round lineage 交给注入式 projector。projector 必须依据持久命令补齐 Profile/Server/Tool provenance，并使用 content-addressed Artifact 的确定性重放规则；Workflow 输出只保存 Invocation ID、Round ID、Artifact ID/version，不保存外部正文。取消信号在 Core resolve、producer、Worker 和 projector 边界间重复检查，已取消 Activity 不提交新的 directive。
+terminal Worker 完成后，Activity 将不可信结果连同 Invocation/Round lineage 交给注入式 projector。`ExternalMcpArtifactProjector` 会从 Core 重新解析 completed Tool command，核对 tenant/principal/Agent/Task/Run 与 Profile/Server/Tool/Capability，调用 MCP 标准 schema 并要求 raw/parsed canonical JSON 完全一致，结果上限为 128 KiB。Artifact type 由稳定 Invocation 前缀派生，version 固定为 1，因此同一 Task 的不同调用各自拥有独立幂等键；metadata 只保存 untrusted 标记、命令 lineage、参数摘要和结果摘要，不复制参数或凭据。writer 返回的 Artifact ID、内容摘要、大小与 metadata 会再次复算。
 
-该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、生产 Artifact projector 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
+Artifact RPC 已提交后发生取消时，projector 会让当前 Activity 失败；下一次 Activity retry 重新解析命令并精确写入相同内容，现有 content-addressed Store 返回同一收据。Workflow 输出只保存 Invocation ID、Round ID、Artifact ID/version，不保存外部正文。当前普通 Artifact policy 只允许 `dipole-agent` 的 running shadow Run，active MCP 结果会在写入前 fail closed，后续需独立扩展 active Artifact admission 与对应审计。
+
+该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
 
