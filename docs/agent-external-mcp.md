@@ -207,6 +207,12 @@ multi-route factory 返回后，composition 会把每个 route ID/version/manife
 
 `TemporalWorkerActivities` 现允许 additive `executeMcpDispatch`，现有 foundation/persistent/read-shadow Activities 仍可原样注册。生产 `index.ts` 继续只按原三种 mode 构造 Worker，没有加载 deployment plan、调用 composition、创建 MCP RPC/Client 或注册 MCP Activity。后续启动切片必须保证 disabled 路径在 RPC 创建前返回，并为 enabled Shadow deployment 提供启动失败清理、readiness preflight、真实公网证据和明确回滚。
 
+`loadExternalMcpTemporalWorkerStartupPlan` 负责 deployment loader 与 Worker composition 之间的资源所有权。它把 caller 提供或内部创建的 AbortSignal 传入 manifest loader 和 resource factory，严格按 `load -> validate -> resource -> compose` 执行；disabled plan 和静态 composition 冲突都在 resource factory 前返回或拒绝。resource 只暴露 Core/Artifact dependencies 与 `close()`，可由后续启动层封装一个认证 RPC channel，但 startup plan 不依赖具体 transport。
+
+resource 创建后若取消、composition 抛错或返回空结果，startup plan 会先调用一次 rollback close。清理成功时取消保留原 Abort reason，其他构造错误固定为低敏 unavailable；清理本身失败统一报告固定 cleanup failure，避免隐藏潜在资源泄漏或暴露 RPC target。成功返回的 `close()` 缓存首次 Promise，重复关闭以及首次关闭失败后的重试都不会再次触达底层 resource。
+
+成功结果同时保存 exact `deployment` 与 `worker` composition，后续 preflight、Worker registration 和专用 Workflow client 可以基于同一 snapshot 编排停止顺序。该层没有创建 Temporal Worker/Client、启动轮询、执行 readiness preflight/drill 或访问 raw Registry；生产 `index.ts` 和 Compose 尚未调用它。下一步接线仍需代码拥有的真实 read-only Capability definitions、受控 Shadow route manifest、RPC resource factory，以及“先停 Worker/Client、后关 resource”的集成测试。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
