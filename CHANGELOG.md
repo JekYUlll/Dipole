@@ -49,6 +49,7 @@
 - Agent Task Timeline Vue 组件已接入共享 `--dp-*` Pencil token，统一使用设计基线中的颜色、字体、间距和圆角；组件契约测试会阻止核心时间线样式回退为旧硬编码值。
 - Login 页面已接入共享 Pencil token，统一画布、表面、边框、字体、交互色和错误色；新增设计契约测试阻止旧绿色/灰色硬编码回流。
 - Agent Task Timeline 路由页面外壳已接入共享画布、字体、间距和文字 token，确保页面级背景与 Timeline 组件使用同一 Pencil 设计基线。
+- Agent Event Subscription 管理页已将主题变量、字体、状态色、表面和边框映射到共享 Pencil token，并增加组件设计契约测试，减少管理控制面视觉漂移。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
 - 新增 `conversation.read` gRPC/TypeScript 契约测试：验证 Core 从可信 Task/Run 解析身份、拒绝客户端伪造 principal、映射消息字段，并验证 Runtime 权限缺失时不会发起远程调用；`scripts/check-proto.sh`、`node scripts/check-agent-proto-ts.mjs`、Go 定向测试与 Agent Runtime typecheck/测试通过。
 - 新增 Subscription Shadow Collector 响应体边界回归测试，覆盖超过 256 KiB 的 Prometheus 响应 fail-closed；Agent Runtime 定向测试与 typecheck 通过。
