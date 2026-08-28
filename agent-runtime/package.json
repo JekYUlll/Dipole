@@ -20,6 +20,7 @@
     "eval:prefilter": "tsx src/evals/subscription-prefilter-eval-cli.ts",
     "eval:memory-corpus-review": "tsx src/evals/memory-reviewed-corpus-cli.ts",
     "eval:memory-prefilter": "tsx src/evals/memory-prefilter-eval-cli.ts",
+    "eval:memory-prefilter-rollout": "tsx src/evals/memory-prefilter-rollout-cli.ts",
     "eval:prefilter-review": "tsx src/evals/subscription-corpus-review-cli.ts",
     "eval:subscription-rollout": "tsx src/evals/subscription-rollout-eval-cli.ts",
     "eval:subscription-shadow-collect": "tsx src/evals/subscription-shadow-collector-cli.ts",

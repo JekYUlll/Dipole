@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-prefilter/v1/rollout-decision.schema.json",
+  "title": "Dipole Agent Memory Prefilter Rollout Decision v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "decision", "reasons", "corpusSha256", "reviewSha256", "finalLabelsSha256", "candidateEvidenceSha256", "candidate", "metrics"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-prefilter-rollout-decision.v1"}, "decision": {"enum": ["eligible", "blocked"]},
+    "reasons": {"type": "array", "uniqueItems": true, "maxItems": 2, "items": {"enum": ["corpus_review_blocked", "candidate_prefilter_blocked"]}},
+    "corpusSha256": {"$ref": "#/$defs/sha256"}, "reviewSha256": {"$ref": "#/$defs/sha256"}, "finalLabelsSha256": {"$ref": "#/$defs/sha256"}, "candidateEvidenceSha256": {"$ref": "#/$defs/sha256"},
+    "candidate": {"type": "object"},
+    "metrics": {"type": "object", "additionalProperties": false, "required": ["agreementBps", "minimumAgreementBps", "precisionBps", "recallBps", "p95LatencyMicros", "meanCostMicrousd"], "properties": {
+      "agreementBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "minimumAgreementBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "precisionBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "recallBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "p95LatencyMicros": {"type": "integer", "minimum": 0}, "meanCostMicrousd": {"type": "integer", "minimum": 0}
+    }}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
