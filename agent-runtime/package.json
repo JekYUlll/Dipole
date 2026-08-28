@@ -17,6 +17,7 @@
     "eval:prefilter": "tsx src/evals/subscription-prefilter-eval-cli.ts",
     "eval:prefilter-review": "tsx src/evals/subscription-corpus-review-cli.ts",
     "eval:subscription-rollout": "tsx src/evals/subscription-rollout-eval-cli.ts",
+    "eval:subscription-shadow-collect": "tsx src/evals/subscription-shadow-collector-cli.ts",
     "eval:subscription-shadow-evidence": "tsx src/evals/subscription-shadow-evidence-cli.ts",
     "eval:shadow": "tsx src/evals/shadow-eval-cli.ts",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",

@@ -37,6 +37,32 @@
 - 窗口内对两个 counter family 执行 `resets(...[window])` 后汇总的 `counter_resets`；
 - 六个 comparison series 和 candidate counter 的起止累计值。
 
+## 自动采集
+
+`contracts/agent-subscription-shadow/v1/collection.schema.json` 定义只读采集请求。Collector 固定执行 19 次历史 instant query，要求窗口内只有一个 `dipole-agent` series、Shadow 全程启用、所有结果均为非负安全整数，并自动计算抓取覆盖、counter reset 与起止快照。Prometheus URL 仅允许无凭据、无 path/query/fragment 的 HTTP(S) origin。
+
+```json
+{
+  "schema_version": "dipole.agent.subscription-shadow-collection.v1",
+  "prometheus_url": "http://prometheus:9090",
+  "window_start": "2026-08-28T00:00:00.000Z",
+  "window_end": "2026-08-29T00:00:00.000Z",
+  "runtime_revision": "<64-char-sha256>",
+  "prometheus_config_sha256": "<64-char-sha256>",
+  "scrape_interval_seconds": 5
+}
+```
+
+采集并保存 v1 input：
+
+```bash
+cd agent-runtime
+npm run eval:subscription-shadow-collect -- --request=/secure/subscription-shadow-collection.json \
+  > /secure/subscription-shadow-input.json
+```
+
+Collector 不修改 Runtime、Prometheus 或 Trigger mode，也不在输出中保留 Prometheus URL。`runtime_revision` 与 `prometheus_config_sha256` 必须由发布系统根据实际部署 artifact/config 提供；当前指标面无法独立证明远端 revision，审核时仍需核对部署记录。
+
 生成证据：
 
 ```bash
