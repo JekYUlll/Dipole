@@ -497,6 +497,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Agent Approval 与 Elicitation 已增加 Chromium canonical 截图回归，固定主要桌面布局；其余页面和真实 Pencil 增量编辑仍待完成。
   - [x] Agent Subscription 与 Memory 管理页已增加 Chromium canonical 截图回归，固定治理控制面共享 token；其余页面和真实 Pencil 增量编辑仍待完成。
   - [x] Search Workspace 已清理主题硬编码并统一共享 `--dp-*` token，补充设计契约测试；截图级 Search 视觉回归仍待完成。
+  - [x] Search Workspace 已通过 E2E visual harness 固定 Chromium canonical 五态截图，覆盖 Idle、Loading、Results、Empty、Error；真实 Pencil 增量编辑和跨平台截图差异仍待完成。
 
 Pencil CLI 增量任务本轮未形成可提交设计资产，原因和回滚边界记录在 `AD-044`；既有 canonical 文件和批准导出保持不变。
 后续自动化 Pencil 编辑统一通过 `scripts/pencil-safe-edit.mjs`，先在临时路径完成并校验，再替换 canonical 文件。
