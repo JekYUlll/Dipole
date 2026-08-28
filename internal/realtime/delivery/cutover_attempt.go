@@ -333,7 +333,7 @@ func validateCutoverAttemptManifest(manifest CutoverAttemptManifest) (CutoverAtt
 	if parsedTarget != manifest.TargetAuthority {
 		return manifest, "", fmt.Errorf("cutover attempt target authority is not canonical")
 	}
-	if manifest.SourceAuthority == manifest.TargetAuthority || manifest.InitialEpoch == 0 ||
+	if manifest.SourceAuthority == manifest.TargetAuthority || manifest.InitialEpoch == 0 || manifest.InitialEpoch > ^uint64(0)-2 ||
 		manifest.MaxInterruptionMS <= 0 || manifest.MaxInterruptionMS > int64((10*time.Minute)/time.Millisecond) || manifest.CreatedAtUnixMS <= 0 {
 		return manifest, "", fmt.Errorf("cutover attempt manifest transition bounds are invalid")
 	}

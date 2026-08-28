@@ -203,6 +203,11 @@ func TestCutoverAttemptManifestRequiresCanonicalDistinctAuthorities(t *testing.T
 	if _, _, err := validateCutoverAttemptManifest(manifest); err == nil {
 		t.Fatal("identical source and target authorities must fail")
 	}
+	manifest.TargetAuthority = AuthorityCPP
+	manifest.InitialEpoch = ^uint64(0) - 1
+	if _, _, err := validateCutoverAttemptManifest(manifest); err == nil {
+		t.Fatal("epoch without two safe transition increments must fail")
+	}
 }
 
 func validCutoverAttemptManifest(now time.Time) CutoverAttemptManifest {

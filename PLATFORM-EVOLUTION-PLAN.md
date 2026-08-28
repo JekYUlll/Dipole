@@ -427,7 +427,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 实现预期节点聚合和双 group checkpoint receipt；收据绑定短 TTL proof、transition lease hash、完整 assignment、逐分区 committed/log end 与两组一致高水位，并以不可覆盖文件持久化。
   - [ ] 建立共享、租约化 authority fencing 和双 group checkpoint receipt，完成中断后确定性续切或回切。
     - [x] 增加不可变 cutover attempt manifest 与哈希链事件日志，确定性归约正常续切、冻结期直接回退和目标激活后二次冻结回退。
-    - [ ] 接入 Redis lease 续期、transition/checkpoint 执行器、超时自动回退与恢复命令，并完成真实中断演练。
+    - [x] 增加单步恢复 orchestrator、确定性幂等 action ID 与首次冻结超预算自动回退决策，动作失败时保持 journal 原位。
+    - [ ] 接入 Redis lease 续期、transition/checkpoint executor 与恢复命令，并完成真实中断演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
