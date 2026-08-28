@@ -82,9 +82,11 @@ preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatch
 
 `runtime.readinessEvidence({ profileId, tenantId }, signal?)` 串行执行 preflight 和 drill，默认要求 5 分钟内完成，并校验 preflight 覆盖当前全部 Profile、Credential/CA 计数有界、在线 Tool 数等于目标 Profile allowlist、四个时间单调且均落在 collection window。任何收据重放、旧时间、计数漂移、取消或 cleanup 失败都不会生成 bundle；使用测试注入 `transportBuilder` 的 runtime 也固定拒绝出证。
 
-`readiness-evidence.schema.json` 定义多语言归档格式。`bindingSha256` 对排序后的所有 Profile 字段、Catalog/provider/key/secret/CA ref 与路径映射、owner UID 和 Catalog/Secret/CA/TLS/DNS/Auth/Shadow timeout 上限做 canonical SHA-256。bundle 本身只公开 hash、时间和聚合计数。路径存在于 hash preimage 中但不直接输出；token、key、envelope 和 CA 正文不参与摘要，避免把可离线猜测的凭据派生值写入运维记录。原地 token 更新会保留同一 binding，fresh preflight 负责证明采集时文件可解密且 Bearer 有效；推荐的版本化 ref/path 轮换会产生新 binding。
+`contracts/agent-external-mcp/v1/readiness-evidence.schema.json` 保留已发布的 v1 契约；`contracts/agent-external-mcp/v2/readiness-evidence.schema.json` 新增本次持久化要求的 Profile binding，避免在原版本上增加 required 字段。v2 的 `bindingSha256` 对排序后的所有 Profile 字段、Catalog/provider/key/secret/CA ref 与路径映射、owner UID 和 Catalog/Secret/CA/TLS/DNS/Auth/Shadow timeout 上限做 canonical SHA-256；`profileBindingSha256` 独立绑定本次 exact Profile 的 tenant、endpoint、credential version、网络策略与 Tool allowlist。bundle 本身只公开 hash、时间和聚合计数。路径存在于 Runtime binding preimage 中但不直接输出；token、key、envelope 和 CA 正文不参与摘要，避免把可离线猜测的凭据派生值写入运维记录。原地 token 更新会保留同一 binding，fresh preflight 负责证明采集时文件可解密且 Bearer 有效；推荐的版本化 ref/path 轮换会产生新 binding。
 
-该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计存储，不能单独视为远程 attestation。当前 `index.ts`、自动 admission 和 evidence persistence 均未接线；后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。
+MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表。Go Publisher 会严格解析低敏 schema、限制采集窗口最长 10 分钟、规范化毫秒时间、复算 content SHA-256，并把 tenant、Profile/Runtime binding、operator、request/trace、采集时间和最长一小时有效期一起派生为确定性 Evidence ID。表只支持追加：exact content/provenance 重放返回已有记录，binding、收据、窗口或 provenance 漂移生成新记录；历史过期行保留审计，但 fresh 查询必须同时命中 tenant、Profile binding、Runtime binding、`collected_at <= now` 与 `expires_at > now`。该表不依赖 Agent Task/Run，也不写 activation 状态。
+
+该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计导出，不能单独视为远程 attestation。当前 `index.ts`、采集到 Publisher 的认证 RPC、自动 admission 与真实公网 Shadow 归档均未接线；后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。回滚 v37 前应先停止未来的 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
 
 ## Network Guard 边界
 
