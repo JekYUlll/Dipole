@@ -225,6 +225,10 @@ resource 创建后若取消、composition 抛错或返回空结果，startup pla
 
 成功 lifecycle 的 `stop()` 固定先停止 Worker polling 并关闭 Temporal connection，再关闭 startup 持有的 Core/Artifact resource。前一阶段失败不会阻断后一阶段，最终只返回固定低敏 shutdown error；首次成功或失败 Promise 都会缓存，重复 stop 不会再次触达任一 owner。该层仍不加载 manifest、创建 RPC、发布 readiness、启动 Workflow client 或修改生产进程，`index.ts`/Compose 与外部网络继续关闭。
 
+`startExternalMcpShadowWorkerBootstrap` 是当前完整但默认关闭的 Worker startup root。它先创建 seal 的 `repository.issue.read` definition Registry，再把 environment、base Activities 与 lazy RPC resource callback 交给 managed startup plan；只有 enabled deployment 通过 Profile/I/O/route/static composition 校验后，callback 才构造 RPC factory 和 transport。随后 exact startup snapshot 只交给 Temporal lifecycle 一次，成功结果直接公开同一 deployment、Worker composition、host Workflow route catalog 与 stop handle。
+
+bootstrap 在 lifecycle 调用前拥有 startup：load 完成后的取消会先关闭 RPC resource，再传播 Abort reason；关闭失败返回固定 cleanup error。调用 lifecycle 后 ownership 完全转移，bootstrap 不捕获并二次关闭，启动失败由 lifecycle 按 Worker/connection/resource 顺序回滚。disabled deployment 不构造 RPC factory、RPC transport 或 Worker。该 root 当前没有进入 `index.ts`/Compose，不创建 `TemporalMcpTaskClient`，也不自动发布 readiness；未来受控 Shadow 启用后，无 fresh evidence 的外部 egress 仍逐请求 fail closed。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
