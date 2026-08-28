@@ -209,7 +209,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
 		}
-		subscriptionControls, composeErr := appComposition.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
+		subscriptionControls, composeErr := appComposition.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, localMessaging.Core, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
 		}

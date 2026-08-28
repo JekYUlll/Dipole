@@ -99,6 +99,8 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	if dependencies.AgentSubscriptions != nil {
 		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))
+		engine.GET("/api/v1/agent/subscriptions/options", auth, agentSubscriptionConversationOptionsHandler(dependencies.AgentSubscriptions))
+		engine.POST("/api/v1/agent/subscriptions", auth, agentSubscriptionCreateHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
 	}
 	if dependencies.AgentDefinitions != nil {
@@ -126,6 +128,41 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentSubscriptionConversationOptionsHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		definitionID := strings.TrimSpace(c.Query("definitionId"))
+		version, err := strconv.ParseUint(strings.TrimSpace(c.Query("definitionVersion")), 10, 64)
+		if !validAgentSubscriptionPublicID(definitionID, 64) || err != nil || version == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Definition selection"})
+			return
+		}
+		result, err := subscriptions.ListEligibleConversations(c.Request.Context(), user.UUID, definitionID, version)
+		writeAgentSubscriptionResult(c, result, err)
+	}
+}
+
+func agentSubscriptionCreateHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		var input AgentSubscriptionCreateInput
+		if err := decodeStrictAgentSubscriptionBody(c.Request.Body, &input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Subscription create payload"})
+			return
+		}
+		item, err := subscriptions.Create(c.Request.Context(), user.UUID, input)
+		writeAgentSubscriptionResult(c, item, err)
+	}
 }
 
 func agentDefinitionCatalogHandler(catalog AgentDefinitionCatalogApplication) gin.HandlerFunc {

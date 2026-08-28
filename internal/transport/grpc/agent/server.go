@@ -225,6 +225,29 @@ func (s *Server) CreateEventSubscription(ctx context.Context, request *agentv1.C
 	return agentEventSubscriptionResponseV1(*item), nil
 }
 
+func (s *Server) ListEligibleSubscriptionConversations(ctx context.Context, request *agentv1.ListEligibleSubscriptionConversationsRequest) (*agentv1.ListEligibleSubscriptionConversationsResponse, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.subscriptionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription control is unavailable")
+	}
+	items, err := s.subscriptionControls.ListEligibleConversations(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentSubscriptionConversationOptionsRequestV1{
+		TenantID: request.GetTenantId(), DefinitionUUID: request.GetDefinitionId(), DefinitionVersion: request.GetDefinitionVersion(),
+	})
+	if err != nil {
+		return nil, eventSubscriptionControlErrorV1(err)
+	}
+	response := &agentv1.ListEligibleSubscriptionConversationsResponse{Conversations: make([]*agentv1.AgentSubscriptionConversationOption, 0, len(items))}
+	for _, item := range items {
+		response.Conversations = append(response.Conversations, &agentv1.AgentSubscriptionConversationOption{
+			ConversationKey: item.ConversationKey, EventType: item.EventType,
+		})
+	}
+	return response, nil
+}
+
 func (s *Server) ListEventSubscriptions(ctx context.Context, request *agentv1.ListEventSubscriptionsRequest) (*agentv1.ListEventSubscriptionsResponse, error) {
 	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
 	if err != nil {

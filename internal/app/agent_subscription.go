@@ -19,6 +19,10 @@ type agentSubscriptionDefinitionReaderV1 interface {
 	GetDefinitionVersion(ctx context.Context, definitionUUID string, version uint64) (*application.AgentDefinitionVersionV1, error)
 }
 
+type agentSubscriptionConversationReaderV1 interface {
+	ListSearchConversationKeys(userUUID string) ([]string, error)
+}
+
 type PersistentAgentEventSubscriptionResolverV1 struct {
 	store       application.AgentEventSubscriptionStoreV1
 	definitions agentSubscriptionDefinitionReaderV1
@@ -26,19 +30,20 @@ type PersistentAgentEventSubscriptionResolverV1 struct {
 }
 
 type PersistentAgentEventSubscriptionControlV1 struct {
-	store       application.AgentEventSubscriptionStoreV1
-	definitions agentSubscriptionDefinitionReaderV1
-	now         func() time.Time
+	store         application.AgentEventSubscriptionStoreV1
+	definitions   agentSubscriptionDefinitionReaderV1
+	conversations agentSubscriptionConversationReaderV1
+	now           func() time.Time
 }
 
-func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions agentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
-	if store == nil || definitions == nil {
-		return nil, errors.New("Agent Event Subscription store and Definition reader are required")
+func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions agentSubscriptionDefinitionReaderV1, conversations agentSubscriptionConversationReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
+	if store == nil || definitions == nil || conversations == nil {
+		return nil, errors.New("Agent Event Subscription store, Definition reader and conversation reader are required")
 	}
 	if now == nil {
 		now = time.Now
 	}
-	return &PersistentAgentEventSubscriptionControlV1{store: store, definitions: definitions, now: now}, nil
+	return &PersistentAgentEventSubscriptionControlV1{store: store, definitions: definitions, conversations: conversations, now: now}, nil
 }
 
 func (s *PersistentAgentEventSubscriptionControlV1) Create(ctx context.Context, principalUUID string, request application.AgentEventSubscriptionCreateRequestV1) (*application.AgentEventSubscriptionV1, error) {
@@ -75,6 +80,17 @@ func (s *PersistentAgentEventSubscriptionControlV1) Create(ctx context.Context, 
 	if definition.OwnerUUID != principalUUID || !validSubscriptionDefinitionV1(definition, item, matchRequest, s.now().UTC()) {
 		return nil, application.ErrAgentSubscriptionDenied
 	}
+	expectedEventType, validKey := subscriptionConversationEventTypeV1(request.ResourceID)
+	if !validKey || request.EventType != expectedEventType {
+		return nil, application.ErrAgentSubscriptionInvalid
+	}
+	readable, err := s.readableConversationSetV1(principalUUID)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := readable[request.ResourceID]; !ok {
+		return nil, application.ErrAgentSubscriptionDenied
+	}
 	_, err = s.store.CreateEventSubscription(ctx, item)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Event Subscription: %w", err)
@@ -87,6 +103,74 @@ func (s *PersistentAgentEventSubscriptionControlV1) Create(ctx context.Context, 
 		return nil, application.ErrAgentSubscriptionConflict
 	}
 	return stored, nil
+}
+
+func (s *PersistentAgentEventSubscriptionControlV1) ListEligibleConversations(ctx context.Context, principalUUID string, request application.AgentSubscriptionConversationOptionsRequestV1) ([]application.AgentSubscriptionConversationOptionV1, error) {
+	principalUUID, request.TenantID, request.DefinitionUUID = strings.TrimSpace(principalUUID), strings.TrimSpace(request.TenantID), strings.TrimSpace(request.DefinitionUUID)
+	if anySubscriptionControlBlankV1(principalUUID, request.TenantID, request.DefinitionUUID) || request.DefinitionVersion == 0 ||
+		utf8.RuneCountInString(principalUUID) > 24 || utf8.RuneCountInString(request.TenantID) > 64 || utf8.RuneCountInString(request.DefinitionUUID) > 64 {
+		return nil, application.ErrAgentSubscriptionInvalid
+	}
+	definition, err := s.definitions.GetDefinitionVersion(ctx, request.DefinitionUUID, request.DefinitionVersion)
+	if err != nil || definition == nil || definition.OwnerUUID != principalUUID {
+		return nil, application.ErrAgentSubscriptionDenied
+	}
+	readable, err := s.readableConversationSetV1(principalUUID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]application.AgentSubscriptionConversationOptionV1, 0, len(readable))
+	for conversationKey := range readable {
+		eventType, ok := subscriptionConversationEventTypeV1(conversationKey)
+		if !ok {
+			return nil, application.ErrAgentSubscriptionConflict
+		}
+		item := application.AgentEventSubscriptionV1{
+			DefinitionUUID: request.DefinitionUUID, DefinitionVersion: request.DefinitionVersion,
+			TenantID: request.TenantID, AgentUUID: definition.AgentUUID,
+			EventType: eventType, ResourceType: "conversation", ResourceID: conversationKey,
+		}
+		match := application.AgentEventSubscriptionMatchRequestV1{
+			TenantID: request.TenantID, AgentUUID: definition.AgentUUID, EventType: eventType,
+			ResourceType: "conversation", ResourceID: conversationKey,
+		}
+		if validSubscriptionDefinitionV1(definition, item, match, s.now().UTC()) {
+			items = append(items, application.AgentSubscriptionConversationOptionV1{ConversationKey: conversationKey, EventType: eventType})
+		}
+	}
+	sort.Slice(items, func(left, right int) bool { return items[left].ConversationKey < items[right].ConversationKey })
+	return items, nil
+}
+
+func (s *PersistentAgentEventSubscriptionControlV1) readableConversationSetV1(principalUUID string) (map[string]struct{}, error) {
+	keys, err := s.conversations.ListSearchConversationKeys(principalUUID)
+	if err != nil {
+		return nil, fmt.Errorf("list readable conversations: %w", err)
+	}
+	readable := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if _, ok := subscriptionConversationEventTypeV1(key); !ok {
+			return nil, application.ErrAgentSubscriptionConflict
+		}
+		readable[key] = struct{}{}
+	}
+	return readable, nil
+}
+
+func subscriptionConversationEventTypeV1(conversationKey string) (string, bool) {
+	if utf8.RuneCountInString(conversationKey) > 128 || strings.TrimSpace(conversationKey) != conversationKey {
+		return "", false
+	}
+	parts := strings.Split(conversationKey, ":")
+	switch {
+	case len(parts) == 3 && parts[0] == "direct" && parts[1] != "" && parts[2] != "":
+		return "message.direct.created", true
+	case len(parts) == 2 && parts[0] == "group" && parts[1] != "":
+		return "message.group.created", true
+	default:
+		return "", false
+	}
 }
 
 func (s *PersistentAgentEventSubscriptionControlV1) List(ctx context.Context, principalUUID string, request application.AgentEventSubscriptionListRequestV1) (*application.AgentEventSubscriptionPageV1, error) {

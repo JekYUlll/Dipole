@@ -16,6 +16,10 @@ export interface AgentDefinitionCatalogPage {
   nextCursor: string
 }
 
+export interface AgentDefinitionCatalogClient {
+	list(after?: string, limit?: number): Promise<AgentDefinitionCatalogPage>
+}
+
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
 const cursor = /^[A-Za-z0-9_-]{1,384}$/
 const itemKeys = new Set(['definitionId', 'version', 'agentId', 'conversationScopes', 'validFromUnixMs', 'expiresAtUnixMs', 'createdAtUnixMs', 'updatedAtUnixMs'])
@@ -50,7 +54,7 @@ export function parseAgentDefinitionCatalogItem(raw: unknown): AgentDefinitionCa
   return item
 }
 
-export const agentDefinitionCatalogClient = {
+export const agentDefinitionCatalogClient: AgentDefinitionCatalogClient = {
   async list(after = '', limit = 50): Promise<AgentDefinitionCatalogPage> {
     if (after) requireCursor(after)
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Definition page limit is invalid')

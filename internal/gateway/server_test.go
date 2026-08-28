@@ -86,13 +86,18 @@ type gatewayAgentMCPStub struct {
 }
 
 type gatewayAgentSubscriptionStub struct {
-	principal      string
-	after          string
-	limit          int
-	subscriptionID string
-	reason         string
-	listCalls      int
-	revokeCalls    int
+	principal         string
+	after             string
+	limit             int
+	subscriptionID    string
+	reason            string
+	listCalls         int
+	revokeCalls       int
+	createCalls       int
+	optionsCalls      int
+	createInput       AgentSubscriptionCreateInput
+	definitionID      string
+	definitionVersion uint64
 }
 
 type gatewayAgentDefinitionStub struct {
@@ -116,6 +121,22 @@ func (s *gatewayAgentSubscriptionStub) List(_ context.Context, principalUUID, af
 		EventType: "message.created", ResourceType: "conversation", ResourceID: "group:G123",
 		FilterKind: "all", Filter: AgentSubscriptionFilter{}, Status: "active", CreatedByID: principalUUID,
 	}}, NextCursor: "SUB-1"}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) ListEligibleConversations(_ context.Context, principalUUID, definitionID string, definitionVersion uint64) (*AgentSubscriptionConversationOptions, error) {
+	s.principal, s.definitionID, s.definitionVersion = principalUUID, definitionID, definitionVersion
+	s.optionsCalls++
+	return &AgentSubscriptionConversationOptions{Conversations: []AgentSubscriptionConversationOption{{ConversationKey: "group:G123", EventType: "message.group.created"}}}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) Create(_ context.Context, principalUUID string, input AgentSubscriptionCreateInput) (*AgentSubscription, error) {
+	s.principal, s.createInput = principalUUID, input
+	s.createCalls++
+	return &AgentSubscription{
+		SubscriptionID: "SUB-CREATED", DefinitionID: input.DefinitionID, DefinitionVersion: input.DefinitionVersion, AgentID: "UAI",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: input.ConversationKey,
+		FilterKind: input.FilterKind, Filter: input.Filter, Status: "active", CreatedByID: principalUUID,
+	}, nil
 }
 
 func (s *gatewayAgentSubscriptionStub) Revoke(_ context.Context, principalUUID, subscriptionID, reason string) (*AgentSubscription, error) {
@@ -347,6 +368,26 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 		t.Fatalf("unexpected list response: %s", listResponse.Body.String())
 	}
 
+	optionsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions/options?definitionId=DEF-1&definitionVersion=7", nil)
+	optionsRequest.Header.Set("Authorization", "Bearer "+token)
+	optionsResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(optionsResponse, optionsRequest)
+	if optionsResponse.Code != http.StatusOK || subscriptions.optionsCalls != 1 || subscriptions.principal != "U100" ||
+		subscriptions.definitionID != "DEF-1" || subscriptions.definitionVersion != 7 ||
+		!strings.Contains(optionsResponse.Body.String(), `"conversationKey":"group:G123"`) {
+		t.Fatalf("options: code=%d stub=%+v body=%s", optionsResponse.Code, subscriptions, optionsResponse.Body.String())
+	}
+
+	createRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions", strings.NewReader(`{"definitionId":"DEF-1","definitionVersion":7,"conversationKey":"group:G123","filterKind":"message_contains_any","filter":{"terms":["事故","延期"]}}`))
+	createRequest.Header.Set("Authorization", "Bearer "+token)
+	createRequest.Header.Set("Content-Type", "application/json")
+	createResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusOK || subscriptions.createCalls != 1 || subscriptions.createInput.ConversationKey != "group:G123" ||
+		!strings.Contains(createResponse.Body.String(), `"subscriptionId":"SUB-CREATED"`) {
+		t.Fatalf("create: code=%d stub=%+v body=%s", createResponse.Code, subscriptions, createResponse.Body.String())
+	}
+
 	revokeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions/SUB-1/revoke", strings.NewReader(`{"reason":"project archived"}`))
 	revokeRequest.Header.Set("Authorization", "Bearer "+token)
 	revokeRequest.Header.Set("Content-Type", "application/json")
@@ -418,6 +459,30 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 	gateway.Engine().ServeHTTP(response, request)
 	if response.Code != http.StatusBadRequest || subscriptions.listCalls != 0 || subscriptions.revokeCalls != 0 {
 		t.Fatalf("invalid input reached application: code=%d stub=%+v", response.Code, subscriptions)
+	}
+	for _, invalid := range []struct {
+		target string
+		body   string
+	}{
+		{target: "/api/v1/agent/subscriptions/options?definitionId=DEF-1&definitionVersion=0"},
+		{target: "/api/v1/agent/subscriptions", body: `{"definitionId":"DEF-1","definitionVersion":7,"conversationKey":"group:G123","filterKind":"all","filter":{},"principalUserId":"U999"}`},
+	} {
+		method := http.MethodGet
+		var body io.Reader
+		if invalid.body != "" {
+			method, body = http.MethodPost, strings.NewReader(invalid.body)
+		}
+		request := httptest.NewRequest(method, invalid.target, body)
+		request.Header.Set("Authorization", "Bearer "+token)
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		gateway.Engine().ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("expected bad request for %s, got %d: %s", invalid.target, response.Code, response.Body.String())
+		}
+	}
+	if subscriptions.optionsCalls != 0 || subscriptions.createCalls != 0 {
+		t.Fatalf("invalid create authority reached application: %+v", subscriptions)
 	}
 }
 
