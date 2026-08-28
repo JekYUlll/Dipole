@@ -22,3 +22,17 @@ groups:
           severity: warning
         annotations:
           summary: Dipole Agent spans are being refused
+
+      - alert: DipoleAgentSubscriptionShadowErrors
+        expr: increase(dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",subscription="error"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole Agent subscription Shadow matcher is failing
+
+      - alert: DipoleAgentSubscriptionShadowAdmissionDrift
+        expr: increase(dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",direct_target="ignored",subscription="match"}[15m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: Subscription Shadow would admit events ignored by direct-target
