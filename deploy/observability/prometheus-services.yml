@@ -10,6 +10,7 @@ rule_files:
   - /etc/prometheus/duplicate-hydration-alerts.yml
   - /etc/prometheus/service-alerts.yml
   - /etc/prometheus/agent-otel-alerts.yml
+  - /etc/prometheus/agent-timeline-repair-alerts.yml
 
 scrape_configs:
   - job_name: dipole-required
@@ -29,6 +30,8 @@ scrape_configs:
         labels: {service: dipole-search}
       - targets: [search-indexer:9100]
         labels: {service: dipole-search-indexer}
+      - targets: [agent-timeline-repair:9100]
+        labels: {service: dipole-agent-timeline-repair}
 
   - job_name: dipole-otel-collector
     static_configs:
