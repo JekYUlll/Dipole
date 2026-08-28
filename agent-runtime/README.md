@@ -29,6 +29,10 @@ npm start
 
 Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
+## Subscription prefilter rollout gate
+
+`src/evals/subscription-runtime-gate.ts` 提供可复用的 `off/shadow/enforced` 运行时门禁。`off` 保持现有确定性规则路径，`shadow` 允许任务创建并记录观察结果，`enforced` 仅接受与候选、配置、语料、评审及 evidence 精确绑定且状态为 `eligible` 的 rollout decision。非 `off` 模式遇到哈希漂移或证据不完整会 fail closed。该 gate 当前只作为运行时接线边界，默认不连接 Kafka、模型或生产 Task 创建；真实 reviewed corpus 和共享环境灰度完成后再启用。
+
 ## MCP G4 authenticated mount
 
 MCP Server 网络入口默认关闭。受控环境需要同时启用 Runtime 与 Gateway：
