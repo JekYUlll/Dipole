@@ -164,6 +164,11 @@ onMounted(() => {
   --search-soft: var(--dp-ink-soft);
   --search-line: var(--dp-line);
   --search-accent: var(--dp-accent);
+  --search-accent-soft: var(--dp-accent-soft);
+  --search-danger: var(--dp-danger);
+  --search-danger-soft: var(--dp-danger-soft);
+  --search-surface-muted: var(--dp-surface-muted);
+  --search-rail: var(--dp-rail);
   flex: 1;
   min-width: 0;
   height: 100vh;
@@ -172,9 +177,9 @@ onMounted(() => {
   overflow: hidden;
   color: var(--search-ink);
   background:
-    radial-gradient(circle at 82% 10%, rgba(0, 168, 107, 0.08), transparent 26rem),
+    radial-gradient(circle at 82% 10%, color-mix(in srgb, var(--search-accent) 8%, transparent), transparent 26rem),
     var(--search-canvas);
-  font-family: Manrope, "Noto Sans SC", sans-serif;
+  font-family: var(--dp-font-body);
 }
 
 .search-header {
@@ -183,8 +188,8 @@ onMounted(() => {
   align-items: center;
   gap: 14px;
   padding: 0 40px;
-  border-bottom: 1px solid rgba(23, 33, 29, 0.08);
-  background: rgba(255, 254, 251, 0.78);
+  border-bottom: 1px solid color-mix(in srgb, var(--search-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--search-surface) 78%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -220,17 +225,17 @@ onMounted(() => {
   border: 1px solid var(--search-line);
   border-radius: 16px;
   background: var(--search-surface);
-  box-shadow: 0 18px 50px rgba(23, 33, 29, 0.08);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--search-ink) 8%, transparent);
   color: var(--search-soft);
 }
 
-.search-field:focus-within { border-color: var(--search-accent); box-shadow: 0 0 0 3px rgba(0, 168, 107, 0.13); }
+.search-field:focus-within { border-color: var(--search-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--search-accent) 13%, transparent); }
 .search-field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--search-ink); font: inherit; font-size: 15px; }
-.search-field kbd { padding: 4px 8px; border: 1px solid var(--search-line); border-radius: 7px; color: var(--search-soft); background: #f4f5f2; font: 600 11px/1.2 Manrope, sans-serif; }
+.search-field kbd { padding: 4px 8px; border: 1px solid var(--search-line); border-radius: 7px; color: var(--search-soft); background: var(--search-surface-muted); font: 600 11px/1.2 var(--dp-font-body); }
 
 .search-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 2px 12px; }
 .search-toolbar strong { font-size: 13px; }
-.search-toolbar span { color: #98a19d; font-size: 11px; }
+.search-toolbar span { color: var(--dp-ink-faint); font-size: 11px; }
 
 .search-body { min-height: 440px; }
 .search-list { display: flex; flex-direction: column; gap: 10px; }
@@ -250,8 +255,8 @@ onMounted(() => {
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.search-result:hover, .search-result:focus-visible { transform: translateY(-2px); border-color: rgba(0, 168, 107, 0.48); box-shadow: 0 14px 36px rgba(23, 33, 29, 0.08); outline: none; }
-.result-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 13px; color: #007a4e; background: #ddf5e9; font-weight: 800; }
+.search-result:hover, .search-result:focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--search-accent) 48%, transparent); box-shadow: 0 14px 36px color-mix(in srgb, var(--search-ink) 8%, transparent); outline: none; }
+.result-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 13px; color: var(--dp-accent-strong); background: var(--search-accent-soft); font-weight: 800; }
 .result-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .result-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--search-soft); }
 .result-meta strong { color: var(--search-ink); font-size: 13px; }
@@ -261,16 +266,16 @@ onMounted(() => {
 .result-arrow { align-self: center; color: var(--search-accent); font-size: 19px; }
 
 .search-state { min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 36px; border: 1px solid var(--search-line); border-radius: 18px; text-align: center; background: var(--search-surface); }
-.state-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; color: #007a4e; background: #ddf5e9; }
+.state-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; color: var(--dp-accent-strong); background: var(--search-accent-soft); }
 .search-state h2 { margin: 18px 0 8px; font-size: 21px; }
 .search-state p { max-width: 360px; margin: 0; color: var(--search-soft); font-size: 13px; line-height: 1.7; }
-.error-state .state-icon { color: #d94c4c; background: #fde5e2; }
-.error-state button { margin-top: 20px; padding: 10px 16px; border: 0; border-radius: 10px; color: white; background: #172126; cursor: pointer; font-weight: 700; }
+.error-state .state-icon { color: var(--search-danger); background: var(--search-danger-soft); }
+.error-state button { margin-top: 20px; padding: 10px 16px; border: 0; border-radius: 10px; color: var(--dp-text-inverse); background: var(--search-rail); cursor: pointer; font-weight: 700; }
 
 .search-skeleton { min-height: 112px; display: flex; gap: 15px; padding: 18px; box-sizing: border-box; border: 1px solid var(--search-line); border-radius: 15px; background: var(--search-surface); }
-.skeleton-avatar { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 13px; background: #e8ece8; }
+.skeleton-avatar { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 13px; background: var(--search-line); }
 .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 11px; padding-top: 2px; }
-.skeleton-lines i { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #e8ece8, #f4f5f2, #e8ece8); background-size: 200% 100%; animation: search-shimmer 1.4s linear infinite; }
+.skeleton-lines i { height: 10px; border-radius: 999px; background: linear-gradient(90deg, var(--search-line), var(--search-surface-muted), var(--search-line)); background-size: 200% 100%; animation: search-shimmer 1.4s linear infinite; }
 .skeleton-lines i:nth-child(1) { width: 38%; }
 .skeleton-lines i:nth-child(3) { width: 54%; }
 
