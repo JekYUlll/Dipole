@@ -14,10 +14,22 @@ import (
 )
 
 type agentSubscriptionRPCStub struct {
-	listRequest   *agentv1.ListEventSubscriptionsRequest
-	revokeRequest *agentv1.RevokeEventSubscriptionRequest
-	listError     error
-	nilList       bool
+	listRequest       *agentv1.ListEventSubscriptionsRequest
+	revokeRequest     *agentv1.RevokeEventSubscriptionRequest
+	listError         error
+	nilList           bool
+	definitionRequest *agentv1.ListAgentDefinitionsRequest
+}
+
+func (s *agentSubscriptionRPCStub) ListAgentDefinitions(_ context.Context, request *agentv1.ListAgentDefinitionsRequest, _ ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error) {
+	s.definitionRequest = request
+	return &agentv1.ListAgentDefinitionsResponse{
+		Definitions: []*agentv1.AgentDefinitionCatalogItem{{
+			DefinitionId: "DEF-1", Version: 7, AgentId: "UAI", ConversationScopes: []string{"*", "group:G123"},
+			ValidFromUnixMs: 1_000, CreatedAtUnixMs: 1_000, UpdatedAtUnixMs: 2_000,
+		}},
+		NextDefinitionId: "DEF-1", NextVersion: 7,
+	}, nil
 }
 
 func (s *agentSubscriptionRPCStub) ListEventSubscriptions(_ context.Context, request *agentv1.ListEventSubscriptionsRequest, _ ...grpc.CallOption) (*agentv1.ListEventSubscriptionsResponse, error) {
@@ -89,5 +101,29 @@ func TestAgentSubscriptionControlClientRejectsEmptyRPCResponse(t *testing.T) {
 	client, _ := NewAgentSubscriptionControlClient(&agentSubscriptionRPCStub{nilList: true}, "dipole", time.Second)
 	if _, err := client.List(context.Background(), "U100", "", 20); !errors.Is(err, ErrAgentSubscriptionUnavailable) {
 		t.Fatalf("expected empty RPC response to fail closed, got %v", err)
+	}
+}
+
+func TestAgentDefinitionCatalogClientUsesOpaqueCompositeCursor(t *testing.T) {
+	rpc := &agentSubscriptionRPCStub{}
+	client, _ := NewAgentSubscriptionControlClient(rpc, "dipole", time.Second)
+	cursor, err := encodeAgentDefinitionCursor("DEF-0", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := client.ListDefinitions(context.Background(), "U100", cursor, 20)
+	if err != nil {
+		t.Fatalf("list definitions: %v", err)
+	}
+	if rpc.definitionRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.definitionRequest.GetTenantId() != "dipole" ||
+		rpc.definitionRequest.GetAfterDefinitionId() != "DEF-0" || rpc.definitionRequest.GetAfterVersion() != 3 ||
+		len(page.Definitions) != 1 || page.Definitions[0].ConversationScopes[1] != "group:G123" || page.NextCursor == "" {
+		t.Fatalf("unexpected catalog request=%+v page=%+v", rpc.definitionRequest, page)
+	}
+	if _, _, err := decodeAgentDefinitionCursor(page.NextCursor); err != nil {
+		t.Fatalf("decode response cursor: %v", err)
+	}
+	if _, err := client.ListDefinitions(context.Background(), "U100", "not-a-cursor", 20); !errors.Is(err, ErrAgentSubscriptionInvalid) {
+		t.Fatalf("invalid cursor error = %v", err)
 	}
 }

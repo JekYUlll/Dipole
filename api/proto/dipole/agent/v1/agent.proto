@@ -582,6 +582,31 @@ message RevokeEventSubscriptionRequest {
   string reason = 4;
 }
 
+message AgentDefinitionCatalogItem {
+  string definition_id = 1;
+  uint64 version = 2;
+  string agent_id = 3;
+  repeated string conversation_scopes = 4;
+  int64 valid_from_unix_ms = 5;
+  int64 expires_at_unix_ms = 6;
+  int64 created_at_unix_ms = 7;
+  int64 updated_at_unix_ms = 8;
+}
+
+message ListAgentDefinitionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string after_definition_id = 3;
+  uint64 after_version = 4;
+  uint32 limit = 5;
+}
+
+message ListAgentDefinitionsResponse {
+  repeated AgentDefinitionCatalogItem definitions = 1;
+  string next_definition_id = 2;
+  uint64 next_version = 3;
+}
+
 message ListContextMemoriesRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -655,6 +680,7 @@ service AgentCapabilityService {
   rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
   rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
   rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListAgentDefinitions(ListAgentDefinitionsRequest) returns (ListAgentDefinitionsResponse);
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);

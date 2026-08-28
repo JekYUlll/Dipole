@@ -60,6 +60,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil || latest == nil || latest.Version != 2 || len(latest.Permissions) != 1 || len(latest.Scopes) != 1 {
 		t.Fatalf("latest definition: %+v err=%v", latest, err)
 	}
+	catalog, err := store.ListOwnedActiveDefinitions(context.Background(), "dipole", "U100", "", 0, now, 10)
+	if err != nil || len(catalog) != 2 || catalog[0].Version != 1 || catalog[1].Version != 2 {
+		t.Fatalf("owned active Definition catalog: %+v err=%v", catalog, err)
+	}
 	if err := store.RevokeDefinitionVersion(context.Background(), "DEF-1", 2, now.Add(time.Minute)); err != nil {
 		t.Fatalf("revoke definition: %v", err)
 	}
