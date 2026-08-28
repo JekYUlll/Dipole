@@ -15,6 +15,16 @@
 
 ## [Unreleased]
 
+### 新增
+
+- Agent Memory 增加 reviewed corpus v1 语言中立 Schema、双 reviewer/第三方 adjudicator 评测器和 `eval:memory-corpus-review` 离线 CLI。语料只保存候选类型、资源范围、证据数量与内容哈希；CLI 仅输出低敏哈希/计数报告，退出码 `0/2/1` 分别表示通过、门禁失败和输入错误，当前仍需真实脱敏语料与人工签署后才可用于灰度。
+- Agent Memory reviewed corpus 增加 owner-only source manifest loader：加载前校验绝对规范路径、不可跟随符号链接、regular/single-link 文件、owner 权限、2 MiB 大小、审批有效期及 corpus/review SHA-256；失败不会进入评测或晋级。该 loader 仍只服务离线证据，生产自动写入保持关闭。
+- Agent Memory 增加 provider-neutral prefilter evidence v1：embedding/small_model 候选绑定 reviewed corpus SHA-256、revision、configuration SHA-256 和 score/threshold，离线评测输出混淆矩阵、precision/recall、nearest-rank p95、平均/总成本及 fail-closed 门禁原因；新增 `eval:memory-prefilter` 与 policy/evidence/report Schema。该证据不访问模型、Kafka 或数据库，真实语料与在线灰度仍关闭。
+
+- Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
+
+- Agent Memory 增加受认证的 `PromoteMemoryCandidate` Core gRPC 与 Gateway HTTP 控制入口：仅允许已认证 Gateway 绑定 owner principal，服务端重新校验候选/审核哈希并返回幂等的 observational Memory；该入口不启动 Temporal、不消费 Runtime 旁路，也不打开自动写入。
+
 ### 安全
 
 - Agent Workflow repair 增加受控 `prepared` 准备服务：仅接受已批准、未过期且满足审批门槛的提案，复核 proposal/task/executor 绑定后幂等写入执行意图；当前不推进状态、不修改 projection，也未开放公开执行入口。`executor_grant_version` 仍只作为账本绑定值，待 operator grant 版本化后接入运行时授权复核。
@@ -83,6 +93,10 @@
 
 ### 新增
 
+- Agent Memory 增加 v47 Core-owned accepted candidate promotion seam：服务端重新加载并校验候选、owner review、exact hash、范围与 30 天证据窗口，在同一 sqlc/MySQL 事务中创建摘要型 observational Memory 并记录 promotion receipt；重复 promote 可恢复同一 Memory，漂移与缺失均回滚。当前没有公开 Runtime 旁路或自动写入开关。
+- Agent Memory 增加 v46 append-only candidate review ledger：`accepted|rejected` 审核绑定候选哈希、reviewer、有限理由、时间和 review hash，候选状态与审核记录在同一事务中更新；精确重放返回 duplicate，哈希漂移、候选缺失和重复决策冲突均回滚。该阶段仍不将候选投影到 `agent_memories`。
+- Agent Memory 增加 v45 candidate ledger：持久化 Observation/Reflection 候选的摘要、来源/证据 ID、策略版本、规范 SHA-256 和待审状态；候选唯一 ID 重放时执行哈希冲突校验，完整对话正文不会写入 ledger，且不会自动投影到 `agent_memories`。Migration 可回滚，后续 accepted 投影仍需 reviewer、策略和 durable receipt 门禁。
+- Agent Runtime 增加默认 shadow-only 的 Observation/Reflection Memory worker：按事件生成有界、确定性、可去重的 `observational` candidate，再按唯一 evidence window 聚合 reflection candidate；输入超限或凭据模式 fail closed，候选不自动写入 Memory、不调用模型或外部系统。详见 `docs/agent-memory-observation.md`。
 - Agent Workflow repair 增加 `repair:plan` dry-run 执行计划编译器：仅接受已批准提案、双人审批、独立 executor grant 和重新采集的当前/目标/回滚投影，生成带三组 CAS SHA-256、15 分钟有效期和确定性 plan ID 的语言中立 v1 计划。计划生成不连接 MySQL/Temporal、不提供 apply/execute/rollback 字段，身份复用、回滚证据漂移和窗口外重放均 fail closed。
 - 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
 - 增加语言中立 `dipole.agent.memory-derived-lineage` v1 manifest/report、严格 Zod 解析器和 `audit:memory-derived` CLI。owner 授权 manifest 保持本地敏感输入，标准输出省略 tenant、principal、Memory ID 与全部正文；MySQL 审计账号仅新增 Memory 与 lineage 两张表的只读权限。
@@ -362,6 +376,8 @@
 
 ### 变更
 
+- Sync 增加默认关闭的 `sync.cassandra_primary_hydration`：启用后按同一 `conversation_key + message_seq + message_uuid` locator 优先从 Cassandra 补全消息，查询失败立即回退 MySQL；与 `cassandra_shadow_hydration` 互斥，默认配置、旧 Offline 和 MySQL 主读行为保持不变。
+- 前端 F4 增加 `.pen` Foundations 到 Vue 的 token 映射：全局 `--dp-*` CSS token 覆盖颜色、字体、间距和圆角，App 壳层与 Search 工作区开始复用；Vitest 直接读取 canonical `.pen` variables 校验实现值，避免设计稿与页面样式静默漂移。
 - Eino 从 `v0.9.15` 升级至 `v0.9.17`；保持 OpenAI 扩展 `v0.1.13` 不变。Go 全量测试、sqlc drift、Agent Runtime 测试、typecheck 与 build 均通过，未发现 API 兼容性回归。
 - 更新正式技术架构图以匹配当前实现：补充 Core/Message/Gateway/Sync/Search/Agent Runtime 边界、`user_sync_inbox` Sync Timeline、sqlc 数据访问及 Cassandra/Elasticsearch 影子投影；移除 `AutoMigrate`、单体无 Inbox 和旧 Eino 主链路等过时描述。该图仅记录当前已实现或明确默认关闭的能力，不改变运行配置。
 

@@ -3,12 +3,25 @@ import type { AgentRunTerminalStatus } from "../capabilities/agent-capability-rp
 import type { AgentApprovalBinding } from "../capabilities/agent-capability-rpc.js";
 import type { AgentTaskWorkflowHistoryInput, AgentTaskWorkflowInput } from "./temporal-task-client.js";
 import type { AgentElicitationForm, AgentElicitationSource } from "../task/agent-elicitation.js";
+import {
+  createAgentMemoryPromotionReceipt,
+  type AgentMemoryPromotionIntent,
+  type AgentMemoryPromotionReceipt
+} from "../memory/agent-memory-promotion-receipt.js";
 
 export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
   runId: string;
   step: number;
   checkpoint?: unknown;
   resume?: AgentTaskResume;
+}
+
+export interface AgentMemoryPromotionReceiptActivityInput extends AgentMemoryPromotionIntent {
+  readonly createdAt: string;
+}
+
+export interface AgentMemoryPromotionActivities {
+  prepareAgentMemoryPromotion(input: AgentMemoryPromotionReceiptActivityInput): Promise<AgentMemoryPromotionReceipt>;
 }
 
 export type AgentTaskDirective =
@@ -58,7 +71,7 @@ export interface AgentTaskLifecycleActivities {
 
 export type AgentTaskWorkerActivities = AgentTaskActivities & AgentTaskLifecycleActivities;
 
-export const foundationAgentTaskActivities: AgentTaskWorkerActivities = {
+export const foundationAgentTaskActivities: AgentTaskWorkerActivities & AgentMemoryPromotionActivities = {
   async admitAgentTask(input): Promise<AgentTaskRunBinding> {
     return { taskId: input.taskId, runId: `foundation:${input.taskId}`, runStatus: "running" };
   },
@@ -66,6 +79,10 @@ export const foundationAgentTaskActivities: AgentTaskWorkerActivities = {
   async projectAgentTaskState(): Promise<void> {},
   async requestAgentTaskApproval(): Promise<void> {},
   async resolveAgentTaskApproval(): Promise<void> {},
+  async prepareAgentMemoryPromotion(input: AgentMemoryPromotionReceiptActivityInput): Promise<AgentMemoryPromotionReceipt> {
+    const { createdAt, ...intent } = input;
+    return createAgentMemoryPromotionReceipt(intent, new Date(createdAt));
+  },
   async executeAgentTaskStep(): Promise<AgentTaskDirective> {
     return { kind: "failed", message: "Temporal Agent Task execution is not connected" };
   }

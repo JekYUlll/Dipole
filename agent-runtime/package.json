@@ -18,6 +18,8 @@
     "audit:memory-derived": "tsx src/memory/memory-derived-lineage-cli.ts",
     "audit:memory-derived-retention": "tsx src/memory/memory-derived-retention-policy-cli.ts",
     "eval:prefilter": "tsx src/evals/subscription-prefilter-eval-cli.ts",
+    "eval:memory-corpus-review": "tsx src/evals/memory-reviewed-corpus-cli.ts",
+    "eval:memory-prefilter": "tsx src/evals/memory-prefilter-eval-cli.ts",
     "eval:prefilter-review": "tsx src/evals/subscription-corpus-review-cli.ts",
     "eval:subscription-rollout": "tsx src/evals/subscription-rollout-eval-cli.ts",
     "eval:subscription-shadow-collect": "tsx src/evals/subscription-shadow-collector-cli.ts",

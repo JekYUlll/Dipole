@@ -17,6 +17,8 @@ type gatewayAgentMemoryRPCStub struct {
 	listResponse    *agentv1.ListOwnedMemoriesResponse
 	revokeResponse  *agentv1.AgentOwnedMemory
 	correctResponse *agentv1.CorrectOwnedMemoryResponse
+	promoteRequest  *agentv1.PromoteMemoryCandidateRequest
+	promoteResponse *agentv1.AgentOwnedMemory
 }
 
 func (s *gatewayAgentMemoryRPCStub) ListOwnedMemories(_ context.Context, request *agentv1.ListOwnedMemoriesRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedMemoriesResponse, error) {
@@ -32,6 +34,11 @@ func (s *gatewayAgentMemoryRPCStub) RevokeOwnedMemory(_ context.Context, request
 func (s *gatewayAgentMemoryRPCStub) CorrectOwnedMemory(_ context.Context, request *agentv1.CorrectOwnedMemoryRequest, _ ...grpc.CallOption) (*agentv1.CorrectOwnedMemoryResponse, error) {
 	s.correctRequest = request
 	return s.correctResponse, nil
+}
+
+func (s *gatewayAgentMemoryRPCStub) PromoteMemoryCandidate(_ context.Context, request *agentv1.PromoteMemoryCandidateRequest, _ ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error) {
+	s.promoteRequest = request
+	return s.promoteResponse, nil
 }
 
 func TestAgentMemoryControlClientBindsPrincipalAndCanonicalCursor(t *testing.T) {
@@ -92,6 +99,21 @@ func TestAgentMemoryControlClientRequiresCanonicalCorrectionLineage(t *testing.T
 	rpc.correctResponse.Corrected.MemoryRootId = "MEM-FORGED"
 	if _, err = client.Correct(context.Background(), "U100", "MEM-1", 1, "Owner is Bob", "Owner: Bob", "fix owner"); !errors.Is(err, ErrAgentMemoryUnavailable) {
 		t.Fatalf("forged correction lineage error = %v", err)
+	}
+}
+
+func TestAgentMemoryControlClientPromotesCandidateWithBoundPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	rpc := &gatewayAgentMemoryRPCStub{promoteResponse: gatewayAgentMemoryProtoFixture(now)}
+	rpc.promoteResponse.MemoryId = "MEM-CAND-1"
+	rpc.promoteResponse.MemoryRootId = "MEM-CAND-1"
+	rpc.promoteResponse.Provenance.SourceType = "memory_candidate"
+	rpc.promoteResponse.Provenance.SourceId = "CAND-1"
+	rpc.promoteResponse.Provenance.Sequence = "REV-1"
+	client, _ := NewAgentMemoryControlClient(rpc, "dipole", time.Second)
+	item, err := client.PromoteCandidate(context.Background(), "U100", "CAND-1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "REV-1")
+	if err != nil || item.MemoryID != "MEM-CAND-1" || rpc.promoteRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.promoteRequest.GetCandidateSha256() == "" {
+		t.Fatalf("promotion item=%+v request=%+v err=%v", item, rpc.promoteRequest, err)
 	}
 }
 

@@ -106,6 +106,17 @@ type agentMemoryOwnerControlStub struct {
 	correction        application.AgentMemoryOwnerCorrectionResultV1
 }
 
+type agentMemoryCandidatePromotionStub struct {
+	request application.AgentMemoryCandidatePromotionRequestV1
+	item    application.AgentMemoryV1
+}
+
+func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request application.AgentMemoryCandidatePromotionRequestV1) (*application.AgentMemoryV1, error) {
+	s.request = request
+	item := s.item
+	return &item, nil
+}
+
 func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) (*application.AgentMemoryOwnerPageV1, error) {
 	s.listRequest = request
 	copy := s.page
@@ -835,6 +846,38 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 		return server.ListOwnedMemories(ctx, &agentv1.ListOwnedMemoriesRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent data-plane owner Memory code = %s", status.Code(err))
+	}
+}
+
+func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	promotion := &agentMemoryCandidatePromotionStub{item: application.AgentMemoryV1{
+		MemoryUUID: "MEM-CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeObservational, Status: application.AgentMemoryStatusActive,
+		ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: "CAND-1", Sequence: "REV-1"},
+		ValidFrom:  now, CreatedAt: now,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemoryCandidatePromotions(promotion)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", CandidateId: "CAND-1",
+			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1",
+		})
+	})
+	if err != nil {
+		t.Fatalf("promote candidate: %v", err)
+	}
+	item := response.(*agentv1.AgentOwnedMemory)
+	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || item.GetMemoryId() != "MEM-CAND-1" {
+		t.Fatalf("unexpected promotion request=%+v response=%+v", promotion.request, item)
+	}
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
 	}
 }
 

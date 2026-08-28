@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-prefilter/v1/policy.schema.json",
+  "title": "Dipole Agent Memory Prefilter Policy v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["minimumPrecisionBps", "minimumRecallBps", "maximumP95LatencyMicros", "maximumMeanCostMicrousd"],
+  "properties": {"minimumPrecisionBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "minimumRecallBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumP95LatencyMicros": {"type": "integer", "exclusiveMinimum": 0, "maximum": 60000000}, "maximumMeanCostMicrousd": {"type": "integer", "minimum": 0, "maximum": 1000000000}}
+}

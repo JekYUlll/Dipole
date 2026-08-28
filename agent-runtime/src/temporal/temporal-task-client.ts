@@ -7,6 +7,7 @@ import {
   TemporalMcpWorkflowExecutionCatalog,
   type TemporalMcpWorkflowExecutionV1
 } from "./mcp-workflow-envelope.js";
+import type { AgentMemoryPromotionIntent } from "../memory/agent-memory-promotion-receipt.js";
 
 export interface AgentTaskWorkflowInput {
   taskId: string;
@@ -14,6 +15,7 @@ export interface AgentTaskWorkflowInput {
   maxSteps?: number;
   admission?: AgentTaskAdmissionInput;
   shadowEvent?: AgentEvent;
+  memoryPromotion?: AgentMemoryPromotionIntent;
   execution?: never;
 }
 

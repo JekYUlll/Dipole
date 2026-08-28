@@ -120,6 +120,15 @@
 - **风险：** v42 已消除受管 Model planner 的 Context 到模型调用归因窗口，逐域策略也已可离线判定，但尚未证明字段级副本或实现 Shadow plan summary、Step input/output、Artifact body/metadata、Agent Message 与 Temporal history 的擦除/到期执行器。历史回填虽已具备可验证的有界索引链路，仍未获得共享环境 rollout 证据，任何旁路/旧 Runtime 产生的无 lineage 模型结果仍会阻断完整声明。真实多次纠正、语义冲突和 retrieval ranking 标注语料仍缺失，仅按 priority 的精确 scope 检索无法衡量生产 recall、precision 和 context 成本。
 - **建议方向：** 下一步定义 owner 可见的派生治理收据和有界历史 lineage 回填，再按逐域策略分别设计字段级执行器与故障恢复；在执行能力启用前归档真实 correction/retrieval corpus并增加离线 Observation/Reflection Worker。写入策略要求来源证据、置信度、TTL、幂等键和冲突合并；基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker。
 - **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回、开放 owner 擦除 API或根据 Memory 自动执行动作前，完成派生域删除语义、历史索引完整性、Temporal/对象存储治理、真实 owner correction/retrieval 验收及安全评审；当前仅允许受控 seed、Shadow 读取、只读影响审计及默认关闭的 owner 查看、撤销和追加纠正，内部擦除方法没有外部调用路径。
+- **本轮进展：** 新增默认 shadow-only 的 Observation/Reflection worker 与 `memory-candidate.v1` 严格契约。Observation 以事件 ID 幂等提取决定、任务和风险片段，Reflection 仅聚合同租户/主体/Agent/资源范围内的唯一 evidence window；两者都不访问模型、数据库、Kafka 或 Memory sink。超限、凭据模式、跨范围和重复窗口均 fail closed，后续仍需 candidate ledger、人工评审、Temporal durable 编排和真实 reviewed corpus。
+- **本轮进展：** migration v45 与 TS MySQL ledger 持久化候选摘要、来源/证据 ID、策略版本、规范哈希和 `pending|accepted|rejected` 状态；重复候选必须通过 exact hash，冲突 fail closed，完整 candidate content 不进入 SQL 参数。ledger 仍不授予 `agent_memories` 写权限，人工评审、accepted 投影、Temporal receipt 和真实 corpus 继续待完成。
+- **本轮进展：** migration v46 增加 append-only review ledger；`accepted|rejected` 记录绑定 candidate hash、reviewer、有限理由、时间和 review hash，并与候选状态在同一事务内更新。精确重复审查可重放，candidate/hash/status 漂移回滚；v46 回滚保留 v45 候选且不删除 Memory。accepted 到 `agent_memories` 的 Core 投影、Temporal receipt、双人/owner 策略和真实 reviewed corpus 仍未接线。
+- **本轮进展：** migration v47 增加 promotion receipt，Core-owned service 与 sqlc Repository 在同一事务中锁定 accepted candidate/review、写入摘要型 observational Memory 并记录 `promoted_memory_uuid`；稳定重试返回既有 Memory，候选/审核/状态漂移回滚。公开 RPC、Temporal receipt、双人审批策略、真实 corpus 与自动写入开关仍未接线。
+- **本轮进展：** 增加 `PromoteMemoryCandidate` additive gRPC 与 Gateway HTTP 控制入口。Gateway 只提交候选 ID、候选哈希和 review ID，Core 从认证 principal 派生 owner 并调用 v47 promotion service；Gateway/TS client 对返回 Memory 的来源、review 绑定和 active 状态进行复核。Temporal 自动触发、Runtime 旁路、双人审批和真实 reviewed corpus 继续关闭。
+- **本轮进展：** 增加 `agent-memory-promotion-receipt.v1` 语言中立契约和 Temporal preparation Activity。receipt 仅绑定 Task/Run、owner、候选/审核摘要与短时效窗口，支持确定性重放和 fail-closed 过期检查；当前只形成 durable intent，未开放 Runtime 直接写 Memory、自动晋级或生产灰度。
+- **本轮进展：** 增加 Memory reviewed corpus v1、双 reviewer/独立 adjudicator 门禁和离线 CLI。输入不含消息正文，只绑定候选类型、资源、证据数量与内容哈希；报告不输出 case/reviewer 标识，分歧、覆盖不完整、gold drift 或 corpus hash 漂移均 fail closed。当前仓库仅有脱敏测试夹具，真实 owner-approved corpus、retrieval ranking 标注和灰度证据仍待完成。
+- **本轮进展：** 增加 source manifest v1 与安全加载器，要求 owner UID、绝对规范路径、无符号链接、严格文件权限/大小、批准时间窗口以及 corpus/review 双哈希一致；该边界允许后续接入真实脱敏文件，同时阻断任意本地文件冒充已批准语料。当前仍缺真实 owner-approved corpus、发布签名和共享环境评测证据。
+- **本轮进展：** 增加 Memory prefilter evidence v1 与 `eval:memory-prefilter` 离线 CLI，embedding/small_model 候选必须完整绑定 reviewed corpus、配置哈希和 score/threshold；报告仅含聚合分类、延迟、成本指标与门禁原因，缺失 case、哈希漂移或阈值漂移均 fail closed。当前仍缺真实 owner-approved corpus、embedding/小模型采集、retrieval ranking 标注和在线灰度证据。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 
@@ -206,6 +215,7 @@
 - **影响范围：** Cassandra 主读、Sync Timeline、消息幂等、文件授权、搜索重建、迁移回放
 - **现状：** `user_sync_inbox` 已持久化并对外暴露 `conversation_key + message_uuid + message_seq` locator。Sync Service 已建立 storage-neutral hydrator，可在返回 MySQL 正文的同时异步比较 Cassandra Timeline；Cassandra 尚未承担 Sync 主读。Direct 与 Group Timeline 均已具备 `after_seq` HTTP/Message v1 gRPC 增量契约，Local/Remote/Shadow adapters 一致，并复用 Cassandra cohort、连续页校验与 MySQL fallback。Gateway 已增加默认关闭的 `sync.item.notify.v1` body-free shadow 通知，Web verifier 会按会话补拉、去重并验证 locator；现有完整消息投递和热群聚合 notify + pull 保持不变。Web 已增加默认关闭的 IndexedDB Sync Engine、shadow 门禁和热群持久 ACK。migration v12 增加无正文 `message_metadata`，与 Message/Inbox/Outbox 原子提交并回填历史 locator；文件授权已改查 Metadata，删除完整 Message 行后仍可验证访问和过期时间。重复发送先通过 Metadata 校验身份，并可在默认关闭的开关下按会话 Seq 从 Cassandra 恢复原响应，缺失/冲突继续回退 MySQL。Cassandra Backfill/Reconciler 已支持经 SHA-256 校验的不可变完整消息归档，Job 绑定 source identity；真实演练删除 MySQL 正文后仍可恢复和全量对账。Message 最小账号暂时保留 `groups/group_members` 只读权限用于旧 Offline 与群文件授权。
 - **风险：** 提前停止正文写入仍会让多端同步和重复发送响应缺失正文，并丢失 Cassandra 修复与回滚基准。文件授权的正文依赖已解除，但群文件授权仍需 Core 成员关系。
+- **本轮进展：** Sync 新增默认关闭的 Cassandra-first hydration adapter；primary 与 shadow 配置互斥，primary 失败按同一 locator 回退 MySQL，取消或双失败均不返回部分正文。该路径已覆盖命中、回退、双失败和启动配置测试，尚未接入灰度比例、Prometheus 停止门禁或真实主读流量。
 - **建议方向：** A5 Search 与 A4 Cassandra 均已具备不可变归档恢复源；重复发送 hydration 与 Timeline notification shadow 均已具备严格 24 小时晋级规则。Web Sync 观察现可用候选 commit/bundle 哈希绑定的 Session/Evidence 归档，仍需在完整服务 Prometheus 和真实客户端流量上运行并固定对象版本。随后继续通知 shadow 证据归档、Sync Cassandra hydration 主读/fallback 和重复发送 hydration 灰度，再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 
@@ -308,6 +318,7 @@
 - **解决方案：** 建立单一 canonical `design/dipole-ui.pen`、统一设计 token、可复用组件、Login/Chat desktop/mobile、Search 四态、Sync 恢复状态、Agent Workflow Repair 审计状态、关键异常状态、设计日志和评审导出图。
 - **验证：** pen.dev CLI 识别 35 个顶层 frame 和 16 个可复用组件；相较关闭时的 23/10 基线，已增量加入 Repair 与 Elicitation 各三个组件和三张画板。结构检查保持零 placeholder、无新增未命名节点、无裁剪或布局告警；Login、Chat、Search、Sync、Repair、Elicitation 代表画板均完成渲染复核。
 - **后续范围：** Vue token 映射和自动视觉回归继续由 F4 跟踪，不再阻塞 F1 设计基线关闭。
+- **本轮进展：** F4 已新增 `frontend/src/styles/design-tokens.css`，并让 App 壳层与 Search 工作区引用 `--dp-*` token；Vitest 直接读取 `design/dipole-ui.pen` 的 variables 校验颜色、字体、间距和圆角，后续 token 漂移会在测试阶段暴露。页面流程、其余组件迁移和截图视觉回归仍待完成。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 

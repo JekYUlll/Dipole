@@ -292,6 +292,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
 - [ ] 达到观察门槛后为 Cassandra hydration 增加受控主读与 MySQL fallback；切换前补齐告警、灰度比例和无 MySQL 内部 ID 的兼容审计。
+- [x] 增加默认关闭的 `sync.cassandra_primary_hydration`，以 locator 为边界优先读取 Cassandra，失败立即回退 MySQL，并拒绝与 shadow hydration 同时启用；真实灰度和停止门禁仍待完成。
 - [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
 - [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
 - [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
@@ -342,11 +343,14 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
   - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
   - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
-  - [ ] 增加 append-only 纠正/supersession、版本冲突、Observation/Reflection Worker 和 retrieval Eval；证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
+  - [x] 增加 Core-owned accepted candidate promotion seam：服务端重新加载候选与审核、校验 exact hash/owner/状态/30 天证据窗口，并由 sqlc/MySQL 事务写入 Memory 与 promotion receipt；没有公开 Runtime 旁路或自动写入开关。
+  - [x] 增加 append-only 纠正/supersession、版本冲突、默认 shadow-only Observation/Reflection Worker、candidate ledger、append-only review ledger 和 retrieval Eval；Observation/Reflection 只产出有界候选，ledger 只保存摘要/证据/策略/哈希，review 只推进待审状态，不自动写入 Memory。证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
+  - [x] 增加 reviewed corpus v1、双 reviewer/独立 adjudicator 门禁、低敏离线 CLI 和 owner-only source manifest loader；真实语料必须通过固定路径、权限、有效期和 corpus/review SHA-256 校验，仍不触发自动 Memory 写入。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
   - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
   - [x] 增加认证 owner list/create/revoke API、版本化撤销审计、active Definition 目录、readable/scope conversation chooser 和默认关闭的 Agent 配置 UI。
   - [ ] 根据真实 reviewed corpus、Eval 与成本证据引入小模型、embedding 或向量预筛选，并完成 subscription Runtime 灰度/回切门禁（`AD-034`）。
+    - [x] 增加 Memory prefilter provider-neutral evidence v1：embedding/small_model 的逐 case score/threshold、延迟和成本绑定 reviewed corpus SHA-256，并提供低敏离线聚合评测；不接入模型、Kafka 或生产灰度。
     - [x] 增加默认关闭的 direct-target 在线 Shadow 对照、固定低基数指标、Prometheus error/drift 告警和无数据迁移回滚路径；真实 corpus 与晋级决策仍待完成。
     - [x] 增加 24 小时 Prometheus 快照 evidence Schema/CLI，固定覆盖率、样本量、counter reset、零 error、双 authority=false 与 24 小时有效期；真实共享环境归档仍待完成。
     - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
@@ -393,7 +397,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Foundation 与 Durable Activity 使用统一低敏 `AgentTelemetry`；每个 provider attempt 和 native/MCP Tool 调用独立成 span，Temporal Workflow 保持无副作用。SDK/exporter、采样和告警由 `AD-037` 继续跟踪。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
   - [x] 增加 deterministic security suite，以真实 Context、Policy/Capability、EventLedger/lineage 和 MCP Client/Server 验证 provenance、执行前拒绝、去重、循环抑制和有界 egress。
-  - [ ] 使用真实候选模型和人工标注 adversarial corpus 评测语义抗注入、间接注入与值级敏感信息外发（`AD-037`、`AD-038`）。
+- [ ] 使用真实候选模型和人工标注 adversarial corpus 评测语义抗注入、间接注入与值级敏感信息外发（`AD-037`、`AD-038`）。
 - [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
 - [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。
 

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-reviewed-corpus/v1/source-manifest.schema.json",
+  "title": "Dipole Agent Memory Reviewed Corpus Source Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceId", "ownerUid", "corpusPath", "reviewPath", "corpusSha256", "reviewSha256", "approvedAt", "expiresAt"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-reviewed-corpus-source.v1" },
+    "sourceId": { "$ref": "#/$defs/id" },
+    "ownerUid": { "type": "integer", "minimum": 0 },
+    "corpusPath": { "type": "string", "minLength": 1 },
+    "reviewPath": { "type": "string", "minLength": 1 },
+    "corpusSha256": { "$ref": "#/$defs/sha256" },
+    "reviewSha256": { "$ref": "#/$defs/sha256" },
+    "approvedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
