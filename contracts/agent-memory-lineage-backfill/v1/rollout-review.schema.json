@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-lineage-backfill/v1/rollout-review.schema.json",
+  "title": "Dipole Agent Memory Lineage Backfill Rollout Review v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "manifestSha256", "approvalSha256", "expectedMigration", "observedMigration", "runtimeRevision", "configurationSha256", "maintenanceWindowStart", "maintenanceWindowEnd", "rollbackVerified", "backupVerified", "reviewerCount", "sharedExecutionRequested"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-lineage-backfill-rollout-review.v1"},
+    "policyVersion": {"const": "memory-lineage-backfill-v1"},
+    "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "approvalSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "expectedMigration": {"const": 43},
+    "observedMigration": {"const": 43},
+    "runtimeRevision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "configurationSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "maintenanceWindowStart": {"type": "string", "format": "date-time"},
+    "maintenanceWindowEnd": {"type": "string", "format": "date-time"},
+    "rollbackVerified": {"const": true},
+    "backupVerified": {"const": true},
+    "reviewerCount": {"const": 2},
+    "sharedExecutionRequested": {"const": false}
+  }
+}
