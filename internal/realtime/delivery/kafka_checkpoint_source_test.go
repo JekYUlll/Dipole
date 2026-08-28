@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"encoding/hex"
 	"reflect"
 	"strings"
 	"testing"
@@ -57,6 +58,50 @@ func TestNewKafkaGoCheckpointSourceValidatesConfiguration(t *testing.T) {
 	}
 	if _, err := NewKafkaGoCheckpointSource([]string{"broker:9092"}, "", 1); err == nil {
 		t.Fatal("empty client ID must fail")
+	}
+}
+
+func TestDecodeCheckpointMemberAssignmentAcceptsLibrdkafkaExtension(t *testing.T) {
+	payload, err := hex.DecodeString("000000000002001d6469706f6c652e6d6573736167652e6469726563742e637265617465640000000100000000001c6469706f6c652e6d6573736167652e67726f75702e63726561746564000000010000000000000000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assignments, err := decodeCheckpointMemberAssignment(payload)
+	if err != nil {
+		t.Fatalf("decodeCheckpointMemberAssignment(): %v", err)
+	}
+	want := map[string][]int{
+		"dipole.message.direct.created": {0},
+		"dipole.message.group.created":  {0},
+	}
+	if !reflect.DeepEqual(assignments, want) {
+		t.Fatalf("assignments = %v, want %v", assignments, want)
+	}
+}
+
+func TestDecodeCheckpointMemberAssignmentAcceptsKafkaGoVersionOne(t *testing.T) {
+	payload, err := hex.DecodeString("000100000002001d6469706f6c652e6d6573736167652e6469726563742e637265617465640000000100000000001c6469706f6c652e6d6573736167652e67726f75702e637265617465640000000100000000ffffffff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assignments, err := decodeCheckpointMemberAssignment(payload)
+	if err != nil {
+		t.Fatalf("decodeCheckpointMemberAssignment(): %v", err)
+	}
+	if !reflect.DeepEqual(assignments["dipole.message.direct.created"], []int{0}) ||
+		!reflect.DeepEqual(assignments["dipole.message.group.created"], []int{0}) {
+		t.Fatalf("unexpected kafka-go assignments: %v", assignments)
+	}
+}
+
+func TestDecodeCheckpointMemberAssignmentFailsClosed(t *testing.T) {
+	for _, payload := range [][]byte{
+		{0, 4, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 1, 0, 10, 's', 'h', 'o', 'r', 't'},
+	} {
+		if _, err := decodeCheckpointMemberAssignment(payload); err == nil {
+			t.Fatal("invalid member assignment must fail")
+		}
 	}
 }
 

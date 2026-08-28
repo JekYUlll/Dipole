@@ -1,8 +1,11 @@
 package delivery
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"sort"
 	"strconv"
@@ -10,6 +13,7 @@ import (
 	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/protocol/describegroups"
 )
 
 type KafkaGoCheckpointSource struct {
@@ -132,15 +136,132 @@ func (s *KafkaGoCheckpointSource) describeGroup(
 		return nil, "", nil, fmt.Errorf("Kafka checkpoint group %s coordinator is unavailable", groupID)
 	}
 	address := kafkago.TCP(net.JoinHostPort(coordinator.Coordinator.Host, strconv.Itoa(coordinator.Coordinator.Port)))
-	description, err := client.DescribeGroups(ctx, &kafkago.DescribeGroupsRequest{Addr: address, GroupIDs: []string{groupID}})
+	description, err := checkpointDescribeGroup(ctx, client, address, groupID)
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("describe Kafka checkpoint group %s: %w", groupID, err)
 	}
-	state, assignments, err := checkpointGroupDescription(description, groupID)
-	if err != nil {
-		return nil, "", nil, err
+	return address, description.State, description.Assignments, nil
+}
+
+type rawCheckpointGroupDescription struct {
+	State       string
+	Assignments map[string][]int
+}
+
+func checkpointDescribeGroup(
+	ctx context.Context,
+	client *kafkago.Client,
+	address net.Addr,
+	groupID string,
+) (rawCheckpointGroupDescription, error) {
+	roundTripper := client.Transport
+	if roundTripper == nil {
+		roundTripper = kafkago.DefaultTransport
 	}
-	return address, state, assignments, nil
+	message, err := roundTripper.RoundTrip(ctx, address, &describegroups.Request{Groups: []string{groupID}})
+	if err != nil {
+		return rawCheckpointGroupDescription{}, err
+	}
+	response, ok := message.(*describegroups.Response)
+	if !ok {
+		return rawCheckpointGroupDescription{}, fmt.Errorf("Kafka checkpoint group response type is invalid")
+	}
+	for _, group := range response.Groups {
+		if group.GroupID != groupID {
+			continue
+		}
+		if group.ErrorCode != 0 {
+			return rawCheckpointGroupDescription{}, kafkago.Error(group.ErrorCode)
+		}
+		assignments := make(map[string][]int)
+		for _, member := range group.Members {
+			memberAssignments, err := decodeCheckpointMemberAssignment(member.MemberAssignment)
+			if err != nil {
+				return rawCheckpointGroupDescription{}, fmt.Errorf("decode Kafka checkpoint group %s member %s assignment: %w", groupID, member.MemberID, err)
+			}
+			for topic, partitions := range memberAssignments {
+				assignments[topic] = append(assignments[topic], partitions...)
+			}
+		}
+		for topic := range assignments {
+			sort.Ints(assignments[topic])
+		}
+		return rawCheckpointGroupDescription{State: group.GroupState, Assignments: assignments}, nil
+	}
+	return rawCheckpointGroupDescription{}, fmt.Errorf("Kafka checkpoint group %s was not described", groupID)
+}
+
+func decodeCheckpointMemberAssignment(payload []byte) (map[string][]int, error) {
+	if len(payload) < 6 || len(payload) > 1<<20 {
+		return nil, fmt.Errorf("member assignment size is invalid")
+	}
+	reader := bytes.NewReader(payload)
+	var version int16
+	if err := binary.Read(reader, binary.BigEndian, &version); err != nil {
+		return nil, err
+	}
+	if version < 0 || version > 3 {
+		return nil, fmt.Errorf("member assignment version %d is unsupported", version)
+	}
+	var topicCount int32
+	if err := binary.Read(reader, binary.BigEndian, &topicCount); err != nil {
+		return nil, err
+	}
+	if topicCount < 0 || topicCount > 1024 {
+		return nil, fmt.Errorf("member assignment topic count is invalid")
+	}
+	assignments := make(map[string][]int, topicCount)
+	for range topicCount {
+		topic, err := readCheckpointKafkaString(reader)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := assignments[topic]; exists {
+			return nil, fmt.Errorf("member assignment contains duplicate topic %s", topic)
+		}
+		var partitionCount int32
+		if err := binary.Read(reader, binary.BigEndian, &partitionCount); err != nil {
+			return nil, err
+		}
+		if partitionCount < 0 || partitionCount > 100000 {
+			return nil, fmt.Errorf("member assignment partition count is invalid")
+		}
+		partitions := make([]int, 0, partitionCount)
+		seen := make(map[int32]struct{}, partitionCount)
+		for range partitionCount {
+			var partition int32
+			if err := binary.Read(reader, binary.BigEndian, &partition); err != nil {
+				return nil, err
+			}
+			if partition < 0 {
+				return nil, fmt.Errorf("member assignment partition is invalid")
+			}
+			if _, exists := seen[partition]; exists {
+				return nil, fmt.Errorf("member assignment contains duplicate partition")
+			}
+			seen[partition] = struct{}{}
+			partitions = append(partitions, int(partition))
+		}
+		assignments[topic] = partitions
+	}
+	// Consumer clients append opaque user data and version-specific extensions.
+	// The canonical assignment is the bounded version/topic/partition prefix.
+	return assignments, nil
+}
+
+func readCheckpointKafkaString(reader *bytes.Reader) (string, error) {
+	var length int16
+	if err := binary.Read(reader, binary.BigEndian, &length); err != nil {
+		return "", err
+	}
+	if length <= 0 || length > 249 || int(length) > reader.Len() {
+		return "", fmt.Errorf("member assignment topic length is invalid")
+	}
+	value := make([]byte, length)
+	if _, err := io.ReadFull(reader, value); err != nil {
+		return "", err
+	}
+	return string(value), nil
 }
 
 func checkpointTopicMetadata(metadata *kafkago.MetadataResponse, expectedTopics []string) (map[string][]int, map[string][]kafkago.OffsetRequest, error) {
