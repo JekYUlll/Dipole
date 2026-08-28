@@ -19,7 +19,7 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('condition: service_completed_successfully', compose)
         self.assertIn('COPY dist/dipole-agent-task-timeline-repair', dockerfile)
         self.assertIn('./cmd/agent-task-timeline-repair', build)
-        self.assertIn('timeout 5s', smoke)
+        self.assertIn('-once', smoke)
         self.assertIn('agent_task_timeline_repairs', smoke)
         self.assertIn('agent_task_timeline_events', smoke)
 
