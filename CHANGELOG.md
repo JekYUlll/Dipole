@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Workflow repair 增加 migration v44 prepared execution ledger 与 sqlc 访问边界：以唯一 plan 记录执行意图、提案/任务/执行人绑定、CAS 摘要和回滚摘要；当前仅允许 `prepared` 创建/读取，未提供状态推进、apply、execute 或 rollback RPC，现有运行流量不受影响。
 - Agent Workflow repair 增加默认无副作用的 `repair:preflight`：在未来执行器前重新核对 plan 摘要、批准提案证据、executor grant 版本和当前投影 CAS，仅输出低敏 `ready|blocked` 收据；过期、漂移和绑定不一致统一阻断，继续不提供 projection 写入。
 - 收紧 Agent Workflow repair dry-run 计划绑定：当前投影与目标投影必须属于同一 Workflow/Run，跨任务证据在生成 plan 前 fail closed；不改变 v1 仅 dry-run、无 projection 写入的边界。
 - Agent Memory lineage rollout 增加 deployment evidence v1 与只读 `agent-memory-lineage-deployment-evidence` CLI：外部共享环境记录必须绑定 rollout review receipt、运行版本、配置摘要、migration 43、健康检查和回滚演练 ID；输出仅保存 deployment ID 摘要与通过标志，`executionAuthority`、`contentRead`、`deletionAuthority`、`runtimeAuthority` 固定为 false。该工具不连接共享环境、不执行回填，缺少真实部署与回滚记录时继续 fail closed。
