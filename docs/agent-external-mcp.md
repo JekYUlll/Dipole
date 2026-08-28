@@ -201,6 +201,12 @@ factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`
 
 本地 Temporal Server 已验证 MCP begin、durable Elicitation、Worker replacement 和 resume，并回归现有 retry、approval、cancel、input expiry、step budget 与 read-shadow recovery。当前生产 `AgentTaskWorkerActivities` 未注册 `executeMcpDispatch`，专用 MCP client 也未装配到 `index.ts`；只有测试 Worker 显式提供 Activity。下一步仍需受控 Capability definition、真实 route manifest 和独立启动/回滚门禁。
 
+`createExternalMcpTemporalWorkerComposition` 进一步把 deployment plan、multi-route runtime、普通 lifecycle Activities 与 Workflow execution catalog 收敛成一个 default-off bundle。plan 为 undefined 时函数在检查 base Activities 或解析依赖前直接返回；enabled 时先复算 Profile/I/O/readiness options 的 Runtime binding，验证 route binding、Capability egress policy、重复 route 与 `executeMcpDispatch` 名称冲突，然后才调用一次 Core/Artifact 端口 provider。该 provider 只交付端口，composition 不拥有或创建 gRPC resource。
+
+multi-route factory 返回后，composition 会把每个 route ID/version/manifest digest 与预先计算的部署 binding 逐项比较，再公开冻结的 `activities`、`routeBindings`、`workflowExecutions` 和 `runtimeBindingSha256`。因此 Worker 注册和专用 Workflow client 可以消费同一份 authority snapshot，无法分别拼接 route catalog 或替换摘要。构造过程只实例化闭包和内存映射；测试使用真实默认 factory 证明没有 Core、Artifact 或 raw Registry 调用。
+
+`TemporalWorkerActivities` 现允许 additive `executeMcpDispatch`，现有 foundation/persistent/read-shadow Activities 仍可原样注册。生产 `index.ts` 继续只按原三种 mode 构造 Worker，没有加载 deployment plan、调用 composition、创建 MCP RPC/Client 或注册 MCP Activity。后续启动切片必须保证 disabled 路径在 RPC 创建前返回，并为 enabled Shadow deployment 提供启动失败清理、readiness preflight、真实公网证据和明确回滚。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
