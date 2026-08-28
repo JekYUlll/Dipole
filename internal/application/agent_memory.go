@@ -11,11 +11,13 @@ import (
 const (
 	AgentMemoryContentMaxBytesV1        = 16 * 1024
 	AgentMemoryCompactContentMaxBytesV1 = 4 * 1024
+	AgentMemoryRevokeReasonMaxRunesV1   = 1000
 )
 
 var (
-	ErrAgentMemoryInvalid = errors.New("Agent Memory is invalid")
-	ErrAgentMemoryDenied  = errors.New("Agent Memory access denied")
+	ErrAgentMemoryInvalid  = errors.New("Agent Memory is invalid")
+	ErrAgentMemoryDenied   = errors.New("Agent Memory access denied")
+	ErrAgentMemoryConflict = errors.New("Agent Memory changed concurrently")
 )
 
 type AgentMemoryTypeV1 string
@@ -55,6 +57,8 @@ type AgentMemoryV1 struct {
 	ValidFrom      time.Time               `json:"valid_from"`
 	ExpiresAt      *time.Time              `json:"expires_at,omitempty"`
 	RevokedAt      *time.Time              `json:"revoked_at,omitempty"`
+	RevokedByUUID  string                  `json:"revoked_by_uuid,omitempty"`
+	RevokeReason   string                  `json:"revoke_reason,omitempty"`
 	CreatedAt      time.Time               `json:"created_at,omitempty"`
 }
 
@@ -75,6 +79,38 @@ type AgentMemoryStoreV1 interface {
 	RevokeMemory(ctx context.Context, memoryUUID string, revokedAt time.Time) error
 }
 
+type AgentMemoryOwnerListRequestV1 struct {
+	TenantID       string
+	PrincipalUUID  string
+	AfterCreatedAt time.Time
+	AfterUUID      string
+	Limit          int
+}
+
+type AgentMemoryOwnerPageV1 struct {
+	Memories       []AgentMemoryV1
+	NextCreatedAt  time.Time
+	NextMemoryUUID string
+}
+
+type AgentMemoryOwnerRevokeRequestV1 struct {
+	TenantID      string
+	PrincipalUUID string
+	MemoryUUID    string
+	Reason        string
+}
+
+type AgentMemoryOwnerStoreV1 interface {
+	ListOwnedMemories(ctx context.Context, request AgentMemoryOwnerListRequestV1) ([]AgentMemoryV1, error)
+	GetOwnedMemory(ctx context.Context, tenantID, principalUUID, memoryUUID string) (*AgentMemoryV1, error)
+	RevokeOwnedMemory(ctx context.Context, tenantID, principalUUID, memoryUUID, revokedByUUID, reason string, revokedAt time.Time) error
+}
+
+type AgentMemoryOwnerControlServiceV1 interface {
+	ListOwnedMemories(ctx context.Context, request AgentMemoryOwnerListRequestV1) (*AgentMemoryOwnerPageV1, error)
+	RevokeOwnedMemory(ctx context.Context, request AgentMemoryOwnerRevokeRequestV1) (*AgentMemoryV1, error)
+}
+
 type AgentMemoryContextResolverV1 interface {
 	ResolveContextMemories(ctx context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]AgentMemoryV1, error)
 }
@@ -90,7 +126,9 @@ func (m AgentMemoryV1) Validate() error {
 		utf8.RuneCountInString(strings.TrimSpace(m.Provenance.URI)) > 512 || utf8.RuneCountInString(strings.TrimSpace(m.Provenance.Sequence)) > 128 ||
 		!validAgentMemoryTypeV1(m.MemoryType) || !validAgentMemoryStatusV1(m.Status) ||
 		(m.ExpiresAt != nil && !m.ExpiresAt.After(m.ValidFrom)) ||
-		(m.Status == AgentMemoryStatusActive && m.RevokedAt != nil) || (m.Status == AgentMemoryStatusRevoked && m.RevokedAt == nil) {
+		utf8.RuneCountInString(strings.TrimSpace(m.RevokedByUUID)) > 64 || utf8.RuneCountInString(strings.TrimSpace(m.RevokeReason)) > AgentMemoryRevokeReasonMaxRunesV1 ||
+		(m.Status == AgentMemoryStatusActive && (m.RevokedAt != nil || m.RevokedByUUID != "" || m.RevokeReason != "")) ||
+		(m.Status == AgentMemoryStatusRevoked && (m.RevokedAt == nil || strings.TrimSpace(m.RevokedByUUID) == "" || strings.TrimSpace(m.RevokeReason) == "")) {
 		return ErrAgentMemoryInvalid
 	}
 	return nil

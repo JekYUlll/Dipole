@@ -26,6 +26,8 @@ const (
 	AgentCapabilityService_RevokeEventSubscription_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/RevokeEventSubscription"
 	AgentCapabilityService_ListAgentDefinitions_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ListAgentDefinitions"
 	AgentCapabilityService_ListContextMemories_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
+	AgentCapabilityService_ListOwnedMemories_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListOwnedMemories"
+	AgentCapabilityService_RevokeOwnedMemory_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RevokeOwnedMemory"
 	AgentCapabilityService_AdmitRun_FullMethodName                              = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
 	AgentCapabilityService_FinishRun_FullMethodName                             = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
@@ -70,6 +72,8 @@ type AgentCapabilityServiceClient interface {
 	RevokeEventSubscription(ctx context.Context, in *RevokeEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
 	ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error)
+	ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error)
+	RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -175,6 +179,26 @@ func (c *agentCapabilityServiceClient) ListContextMemories(ctx context.Context, 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListContextMemoriesResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ListContextMemories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnedMemoriesResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListOwnedMemories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentOwnedMemory)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RevokeOwnedMemory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -502,6 +526,8 @@ type AgentCapabilityServiceServer interface {
 	RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error)
 	ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error)
+	ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error)
+	RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -563,6 +589,12 @@ func (UnimplementedAgentCapabilityServiceServer) ListAgentDefinitions(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContextMemories not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnedMemories not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeOwnedMemory not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdmitRun not implemented")
@@ -801,6 +833,42 @@ func _AgentCapabilityService_ListContextMemories_Handler(srv interface{}, ctx co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ListContextMemories(ctx, req.(*ListContextMemoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListOwnedMemories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnedMemoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListOwnedMemories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListOwnedMemories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListOwnedMemories(ctx, req.(*ListOwnedMemoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RevokeOwnedMemory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeOwnedMemoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RevokeOwnedMemory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RevokeOwnedMemory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RevokeOwnedMemory(ctx, req.(*RevokeOwnedMemoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1397,6 +1465,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListContextMemories",
 			Handler:    _AgentCapabilityService_ListContextMemories_Handler,
+		},
+		{
+			MethodName: "ListOwnedMemories",
+			Handler:    _AgentCapabilityService_ListOwnedMemories_Handler,
+		},
+		{
+			MethodName: "RevokeOwnedMemory",
+			Handler:    _AgentCapabilityService_RevokeOwnedMemory_Handler,
 		},
 		{
 			MethodName: "AdmitRun",

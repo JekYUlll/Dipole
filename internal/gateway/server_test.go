@@ -105,6 +105,23 @@ type gatewayAgentDefinitionStub struct {
 	limit            int
 }
 
+type gatewayAgentMemoryStub struct {
+	principal, after, memoryID, reason string
+	limit, listCalls, revokeCalls      int
+}
+
+func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentMemoryPage{Memories: []AgentMemory{{MemoryID: "MEM-1", Status: "active", Content: "Owner is Alice"}}, NextCursor: "CURSOR-1"}, nil
+}
+
+func (s *gatewayAgentMemoryStub) Revoke(_ context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error) {
+	s.principal, s.memoryID, s.reason = principalUUID, memoryID, reason
+	s.revokeCalls++
+	return &AgentMemory{MemoryID: memoryID, Status: "revoked", RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
 func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
 	s.principal, s.after, s.limit = principalUUID, after, limit
 	return &AgentDefinitionCatalogPage{Definitions: []AgentDefinitionCatalogItem{{
@@ -395,6 +412,52 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 	gateway.Engine().ServeHTTP(revokeResponse, revokeRequest)
 	if revokeResponse.Code != http.StatusOK || subscriptions.subscriptionID != "SUB-1" || subscriptions.reason != "project archived" || subscriptions.revokeCalls != 1 {
 		t.Fatalf("revoke: code=%d stub=%+v body=%s", revokeResponse.Code, subscriptions, revokeResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	memories := &gatewayAgentMemoryStub{}
+	gateway, err := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMemories: memories, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/memories", nil))
+	if unauthorized.Code != http.StatusUnauthorized || memories.listCalls != 0 {
+		t.Fatalf("unauthorized list code=%d calls=%d", unauthorized.Code, memories.listCalls)
+	}
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/memories?after=CURSOR-0&limit=20", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK || memories.principal != "U100" || memories.after != "CURSOR-0" || memories.limit != 20 ||
+		!strings.Contains(listResponse.Body.String(), `"memoryId":"MEM-1"`) {
+		t.Fatalf("list code=%d stub=%+v body=%s", listResponse.Code, memories, listResponse.Body.String())
+	}
+	forged := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/revoke", strings.NewReader(`{"reason":"outdated","principalUserId":"U999"}`))
+	forged.Header.Set("Authorization", "Bearer "+token)
+	forged.Header.Set("Content-Type", "application/json")
+	forgedResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(forgedResponse, forged)
+	if forgedResponse.Code != http.StatusBadRequest || memories.revokeCalls != 0 {
+		t.Fatalf("forged revoke code=%d calls=%d", forgedResponse.Code, memories.revokeCalls)
+	}
+	revoke := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/revoke", strings.NewReader(`{"reason":"outdated"}`))
+	revoke.Header.Set("Authorization", "Bearer "+token)
+	revoke.Header.Set("Content-Type", "application/json")
+	revokeResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(revokeResponse, revoke)
+	if revokeResponse.Code != http.StatusOK || memories.principal != "U100" || memories.memoryID != "MEM-1" || memories.reason != "outdated" || memories.revokeCalls != 1 {
+		t.Fatalf("revoke code=%d stub=%+v body=%s", revokeResponse.Code, memories, revokeResponse.Body.String())
 	}
 }
 
