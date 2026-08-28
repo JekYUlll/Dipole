@@ -5,6 +5,7 @@ import { createPool, type Pool } from "mysql2/promise";
 
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
+import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -345,13 +346,14 @@ export function createKafkaShadowRuntime(
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!)
+    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!)
     : new MetadataShadowPlanner();
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
   if (usesLocalModel) {
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
+    registry.register(new ConversationReadCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
   const consumer = buildKafkaShadowRuntime(
