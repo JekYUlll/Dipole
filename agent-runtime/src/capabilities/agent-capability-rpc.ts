@@ -2,7 +2,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js";
+import type { ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
@@ -556,6 +556,33 @@ export class AgentCapabilityRPCClient {
           workflowRevision: safeRevision(response.workflowRevision)
         };
         resolve({ taskId: response.taskId, taskStatus: response.taskStatus, ...(workflow === undefined ? {} : { workflow }) });
+      });
+    });
+  }
+
+  async listAgentTaskTimeline(taskId: string, principalUserId: string, afterSeq: bigint, limit: number, context?: { requestId?: string; traceId?: string }): Promise<import("../control/agent-task-control.js").AgentTaskTimeline> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.listAgentTaskTimeline({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, principalUserId, afterSeq, limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response: ListAgentTaskTimelineResponse | undefined) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Task Timeline returned no response"));
+          return;
+        }
+        if (response.taskId !== taskId || response.schemaVersion.trim().length === 0 || response.nextCursor.trim().length > 384) {
+          reject(new Error("Agent Task Timeline returned a conflicting binding"));
+          return;
+        }
+        resolve({
+          schemaVersion: response.schemaVersion, taskId: response.taskId, revision: response.revision,
+          events: response.events.map(event => ({
+            eventSeq: event.eventSeq, eventId: event.eventId, runId: event.runId, kind: event.kind,
+            status: event.status, capabilityId: event.capabilityId, approvalId: event.approvalId,
+            occurredAtUnixMs: event.occurredAtUnixMs
+          })),
+          nextCursor: response.nextCursor
+        });
       });
     });
   }
