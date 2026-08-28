@@ -22,6 +22,7 @@
 
 ### 新增
 
+- canonical Pencil 增加 Agent Workflow Repair v1：desktop evidence review、`proposed|approved|rejected|expired|unavailable` 六态矩阵、mobile 双人审批层及三类可复用组件；界面明确批准只形成审计结论，不执行 projection repair，2x 评审图归档于 `design/exports/agent-repair-v1/`。
 - 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。
 - C3 增加持续 cutover controller 并关闭 `AD-041`：`dipole-realtime-cutover -operation run` 在一个同步循环中统一拥有状态推进、冻结超时回切、阻塞重试与临近到期的 authority lease 续期。Redis attempt-scoped ownership 通过 owner token 的 acquire/renew/release Lua 比较阻止并发 controller；control lease 至少覆盖两倍 action timeout。当前 authority deadline 只从 initial input 或最新 journal-bound transition artifact 恢复，拒绝采用未入 journal 的孤儿 transition；`rollback_requested` 续租保留回切意图和二次冻结要求。隔离 Docker Redis + race 演练证明 Controller A 无 release 退出后，B 在 5 秒 TTL 前被阻断、到期后从 sequence 1 继续到 completed sequence 6，证据归档于 `benchmarks/c3-cutover-controller-2026-08-28/`。
 - C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
