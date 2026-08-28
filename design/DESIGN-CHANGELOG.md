@@ -30,6 +30,7 @@
 
 ### 设计决策
 
+- Pencil 增量编辑必须通过 `scripts/pencil-safe-edit.mjs`：真实 CLI 调用写入临时 `.pen`，同时校验文档结构和导出资产，成功后才原子替换 canonical 文件；CLI 超时、进程异常或导出缺失均保留现有设计并进入 `AD-044` 记录。
 - Subscription create 只允许选择 owner active Definition 和 Core 返回的 readable/scope 交集；principal、tenant、event type 与 resource 均由认证上下文和 conversation key 派生，页面不提供手填入口。
 - 创建成功只表示控制记录已持久化。Runtime 与共享环境继续固定 `direct_target`，语义预筛与事件消费晋级需要独立证据。
 - Subscription owner list/create/revoke 已映射到默认关闭的 Gateway HTTP 与 Vue 页面；实现必须同时启用服务端和前端开关，Runtime 继续使用 `direct_target`。
