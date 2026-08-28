@@ -97,7 +97,7 @@ FROM ai_call_logs WHERE trigger_message_uuid = ?`, trigger).Scan(
 	}
 }
 
-func openContractDatabase(t *testing.T) (*sql.DB, string) {
+func openContractDatabase(t testing.TB) (*sql.DB, string) {
 	t.Helper()
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
 	if adminDSN == "" {
