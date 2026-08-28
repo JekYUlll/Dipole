@@ -9,7 +9,7 @@
 ## Operator flow
 
 1. Run `dipole-agent-memory-lineage-backfill -manifest-out manifest.json -batch-size 100` to create a fixed high-water manifest. This mode only reads the source watermark.
-2. A separately reviewed operator creates an approval matching the manifest hash, job name and operator identity. Its shape is defined by `approval.schema.json`; the CLI never self-approves.
-3. Run with `-execute -manifest manifest.json -approval approval.json -operator <reviewed-operator> -receipt-out receipt.json`. The command requires the current schema, uses the manifest batch size and emits a low-sensitive receipt.
+2. A separately reviewed approver creates an approval matching the manifest hash, job name and execution operator. The approver and operator must be distinct. Its shape is defined by `approval.schema.json`; the CLI never self-approves.
+3. Run with `-execute -manifest manifest.json -approval approval.json -operator <operator> -approver <approver> -receipt-out receipt.json`. The command requires the current schema, uses the manifest batch size and emits a low-sensitive receipt.
 
 The command is intentionally unsuitable for shared execution until the deployment owner records the maintenance window and approval evidence. All contract files are capped at 64 KiB and are written with owner-only permissions.
