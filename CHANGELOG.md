@@ -37,6 +37,7 @@
 - Agent Policy 生产事务装配已将 Task/Run 创建与状态迁移和 Timeline 事件写入绑定在同一 MySQL 事务中；事件写入失败会回滚对应状态变化，旧兼容构造保持可用。
 - Core Agent RPC 新增 owner-scoped `ListAgentTaskTimeline` v1：服务端复核 Task principal，按 `event_seq` 提供低敏增量事件与 `next_cursor`，Timeline 仓储已接入生产 Core 装配；Gateway 代理和前端完整时间线仍待后续阶段。
 - Agent Task Timeline 已贯通 Runtime/Gateway 只读链路：Runtime 通过认证控制接口校验 `after/limit` 并调用 Core，Gateway 暴露 `GET /api/v1/agent/tasks/:task_id/timeline`；旧控制实现保持兼容，未提供 Timeline 能力时显式返回不可用。
+- 前端新增默认关闭的 Agent Task Timeline 页面 `/agent/tasks/:taskId/timeline`，支持 v1 低敏事件展示、稳定 cursor 分页、空态、失败清空和重试；开关为 `VITE_AGENT_TIMELINE_ENABLED=true`，未开启时继续回到聊天页。
 
 ### 验证
 
@@ -54,6 +55,7 @@
 - Agent Runtime 追加 `npm run typecheck` 与生产 `npm run build` 验证通过；`ModelRouter` 继续通过 `StructuredModelClient` 隔离具体 AI SDK，保持后续 Eino/provider 替换的适配边界。
 - Core Agent Timeline RPC 契约测试通过：覆盖 schema/revision/cursor、foreign Task 隐藏和 Timeline 未配置时的 `FailedPrecondition`；Proto Go/TypeScript 生成检查通过。受当前环境配置文件缺失影响，`internal/app` 全包测试仍在既有配置读取处 panic，未归因于本次改动。
 - Agent Runtime Timeline control 通过 TypeScript 类型检查和原生 Vitest：`122` 个测试文件、`627` 个测试通过，7 个文件、27 个测试按既定条件跳过；Go Gateway 受当前环境缺失 `configs/config` 影响未能完成全包运行验证。
+- 前端 Timeline 验证通过：`24` 个测试文件、`96` 个测试通过，`vue-tsc` 与 Vite 生产构建通过；构建产物已同步到嵌入式 Web 服务目录。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
