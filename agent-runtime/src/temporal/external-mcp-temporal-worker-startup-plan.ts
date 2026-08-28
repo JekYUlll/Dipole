@@ -11,10 +11,12 @@ import {
   validateExternalMcpTemporalWorkerCompositionPlan
 } from "./external-mcp-temporal-worker-composition.js";
 import type { TemporalMcpMultiRouteRuntimeDependencies } from "./mcp-multi-route-runtime.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
 
 export interface ExternalMcpTemporalWorkerResource {
   readonly dependencies: TemporalMcpMultiRouteRuntimeDependencies;
   readonly workerActivities?: AgentTaskWorkerActivities;
+  readonly subscriptionMatcher?: ShadowSubscriptionMatcher;
   close(): Promise<void> | void;
 }
 
@@ -26,6 +28,7 @@ export type ExternalMcpTemporalWorkerResourceFactory = (
 export interface ExternalMcpTemporalWorkerStartupPlan {
   readonly deployment: ExternalMcpDeploymentPlan;
   readonly worker: ExternalMcpTemporalWorkerComposition;
+  readonly subscriptionMatcher?: ShadowSubscriptionMatcher;
   close(): Promise<void>;
 }
 
@@ -72,6 +75,7 @@ export async function loadExternalMcpTemporalWorkerStartupPlan(
     return {
       deployment,
       worker,
+      ...(resource.subscriptionMatcher === undefined ? {} : { subscriptionMatcher: resource.subscriptionMatcher }),
       close: closeOnce(resource)
     };
   } catch {

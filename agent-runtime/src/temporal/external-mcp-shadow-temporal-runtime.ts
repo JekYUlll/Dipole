@@ -3,7 +3,7 @@ import type {
   ExternalMcpDeploymentPlanOptions
 } from "../mcp/external-mcp-deployment-composition.js";
 import type { AgentEvent, AgentIdentity, ShadowTaskDispatcher } from "../events/shadow-processor.js";
-import type { ShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import type { ShadowRuntimeConfig, ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import {
   startExternalMcpTemporalClientLifecycle,
@@ -20,6 +20,7 @@ export interface ExternalMcpShadowTemporalRuntime extends ShadowTaskDispatcher {
   readonly deployment: ExternalMcpDeploymentPlan;
   readonly worker: ExternalMcpTemporalWorkerComposition;
   readonly temporal: Readonly<TemporalRuntimeConfig>;
+  readonly subscriptionMatcher?: ShadowSubscriptionMatcher;
   stop(): Promise<void>;
 }
 
@@ -72,6 +73,7 @@ export async function startExternalMcpShadowTemporalRuntime(
     deployment: worker.deployment,
     worker: worker.worker,
     temporal: worker.temporal,
+    ...(worker.subscriptionMatcher === undefined ? {} : { subscriptionMatcher: worker.subscriptionMatcher }),
     dispatch: (event: AgentEvent, identity: AgentIdentity, taskId: string) => client.dispatch(event, identity, taskId),
     stop: stopOnce(client, worker)
   };
