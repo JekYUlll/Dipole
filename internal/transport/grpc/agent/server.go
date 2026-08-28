@@ -568,6 +568,10 @@ func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArti
 	if err != nil {
 		return nil, mapAgentArtifactErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("artifact:%s:create", artifact.ArtifactUUID), TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
+		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", OccurredAt: artifact.CreatedAt,
+	})
 	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
 }
 
