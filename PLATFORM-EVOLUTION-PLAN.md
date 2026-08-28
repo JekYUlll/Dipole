@@ -330,7 +330,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### G2：建立 TypeScript Agent Runtime
 
-- [ ] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
+- [x] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
   - [x] 建立 `agent-runtime/` Node 22+ foundation：Fastify 健康面、Zod trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine 与只读 shadow processor。
   - [x] 增加 KafkaJS adapter、兼容 v1 Message decoder、独立 `dipole-agent-shadow-*` group、冷启动有界重连与 Compose 服务。
 - [x] 实现 `ExecutionContext`、Capability Registry、Policy Engine、provider-neutral 模型路由与每 Run 调用预算；AI SDK adapter 关闭内部 retry，模型模式默认关闭。
@@ -339,10 +339,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] migration v19 与 MySQL ModelAuditStore 持久化 Task 唯一 Run、预算快照、原子 call slot 和模型调用终态；ModelRouter 每次 provider 调用均先占 slot，跨 Kafka 重投共享 Task 上限（`AD-029` 已关闭）。
 - [x] migration v20 持久化不可变 Shadow Plan 与有序结构化 Step；同一 Task 并发重放幂等收敛，plan/event 绑定漂移 fail closed。
 - [x] migration v21 将 Task 与 Runtime Run 分离，并为 Step 增加 lease/token claim 和终态 CAS；同一事件的 Go Embedded 与 TS Shadow Run 可独立审计。
-- [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。
+- [x] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。
   - [x] metadata-only shadow plan 已通过真实 Kafka 3.9 事件与重复投递验证；模型结构化 Plan/Step 已持久化。
   - [x] 通过受认证 Agent Capability RPC 执行首个 `conversation.list` 只读 Step，并持久化 claim/result/error；公开 HTTP 旁路保持禁止（`AD-030` 已关闭）。
-- [ ] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter。
+- [x] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter；模型调用通过 provider-neutral `ModelRouter`，AI SDK 仅位于 adapter 边界。
 
 ### G3：Durable Task、Context 与 Memory
 
