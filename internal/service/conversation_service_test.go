@@ -222,6 +222,8 @@ func TestConversationServiceUpdateGroupConversationsUsesBatchRepository(t *testi
 	repo := &batchConversationRepository{stubConversationRepository: &stubConversationRepository{}}
 	groupRepo := &stubConversationGroupRepository{members: []*model.GroupMember{{UserUUID: "U100"}, {UserUUID: "U200"}}}
 	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+	var observedProjection string
+	service.SetProjectionWriteObserver(func(projection string, _ time.Duration, _ error) { observedProjection = projection })
 	message := &model.Message{
 		UUID: "M-batch", ConversationKey: "group:G100", SenderUUID: "U100", TargetType: model.MessageTargetGroup,
 		TargetUUID: "G100", MessageType: model.MessageTypeText, Content: "hello", Seq: 7, SentAt: time.Now().UTC(),
@@ -235,6 +237,9 @@ func TestConversationServiceUpdateGroupConversationsUsesBatchRepository(t *testi
 	}
 	if len(repo.upsertCalls) != 0 {
 		t.Fatalf("expected no per-member upserts, got %d", len(repo.upsertCalls))
+	}
+	if observedProjection != "group_message" {
+		t.Fatalf("batch path must preserve group_message metric label, got %q", observedProjection)
 	}
 }
 
