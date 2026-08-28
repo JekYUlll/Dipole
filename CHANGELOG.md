@@ -83,6 +83,7 @@
 
 ### 新增
 
+- Agent Memory 增加 v47 Core-owned accepted candidate promotion seam：服务端重新加载并校验候选、owner review、exact hash、范围与 30 天证据窗口，在同一 sqlc/MySQL 事务中创建摘要型 observational Memory 并记录 promotion receipt；重复 promote 可恢复同一 Memory，漂移与缺失均回滚。当前没有公开 Runtime 旁路或自动写入开关。
 - Agent Memory 增加 v46 append-only candidate review ledger：`accepted|rejected` 审核绑定候选哈希、reviewer、有限理由、时间和 review hash，候选状态与审核记录在同一事务中更新；精确重放返回 duplicate，哈希漂移、候选缺失和重复决策冲突均回滚。该阶段仍不将候选投影到 `agent_memories`。
 - Agent Memory 增加 v45 candidate ledger：持久化 Observation/Reflection 候选的摘要、来源/证据 ID、策略版本、规范 SHA-256 和待审状态；候选唯一 ID 重放时执行哈希冲突校验，完整对话正文不会写入 ledger，且不会自动投影到 `agent_memories`。Migration 可回滚，后续 accepted 投影仍需 reviewer、策略和 durable receipt 门禁。
 - Agent Runtime 增加默认 shadow-only 的 Observation/Reflection Memory worker：按事件生成有界、确定性、可去重的 `observational` candidate，再按唯一 evidence window 聚合 reflection candidate；输入超限或凭据模式 fail closed，候选不自动写入 Memory、不调用模型或外部系统。详见 `docs/agent-memory-observation.md`。
