@@ -299,6 +299,7 @@
 - **风险：** 提前停止正文写入仍会让多端同步和重复发送响应缺失正文，并丢失 Cassandra 修复与回滚基准。文件授权的正文依赖已解除，但群文件授权仍需 Core 成员关系。
 - **本轮进展：** Sync 新增默认关闭的 Cassandra-first hydration adapter；primary 与 shadow 配置互斥，primary 失败按同一 locator 回退 MySQL，取消或双失败均不返回部分正文。该路径已覆盖命中、回退、双失败和启动配置测试，尚未接入灰度比例、Prometheus 停止门禁或真实主读流量。
 - **本轮进展：** 增加 Sync Cassandra hydration evidence v1 与 Go CLI，按窗口和部署 revision 绑定 shadow/primary 聚合指标，重算命中、fallback、缺失、冲突、错误与 p95 门禁。真实客户端流量、Prometheus 原始快照、责任人批准和主读回切证据仍缺失。
+- **本轮进展：** 修正 migration integration test 从 v47 漂移到实际 v49 的基线与逐步回滚断言；重新执行隔离 Cassandra/MySQL hydration smoke，Metadata backfill、重复响应恢复、Legacy ID 恢复和 shadow comparison 均通过。该证据仍不替代共享环境主读窗口、责任人批准和可执行回切。
 - **建议方向：** A5 Search 与 A4 Cassandra 均已具备不可变归档恢复源；重复发送 hydration 与 Timeline notification shadow 均已具备严格 24 小时晋级规则。Web Sync 观察现可用候选 commit/bundle 哈希绑定的 Session/Evidence 归档，仍需在完整服务 Prometheus 和真实客户端流量上运行并固定对象版本。随后继续通知 shadow 证据归档、Sync Cassandra hydration 主读/fallback 和重复发送 hydration 灰度，再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 
