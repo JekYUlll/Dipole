@@ -19,9 +19,10 @@ INSERT INTO agent_shadow_steps (
 -- name: InsertAgentMemoryTaskLineage :exec
 INSERT INTO agent_memory_task_lineage (
     memory_uuid, task_uuid, representation, source
-) VALUES (?, ?, ?, 'runtime_write')
+) VALUES (?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE
-    representation = IF(representation = VALUES(representation), representation, NULL);
+    representation = IF(representation = VALUES(representation), representation, NULL),
+    source = IF(VALUES(source) = 'context_pre_model', 'context_pre_model', source);
 
 -- name: ClaimAgentShadowStep :execrows
 UPDATE agent_shadow_steps

@@ -59,11 +59,12 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
     for (const migrationFile of ["000023_agent_model_output_replay", "000026_agent_artifacts", "000030_agent_tool_invocations", "000031_agent_tool_action_lineage"]) {
       await pool.query(await readFile(new URL(`../../../db/migrations/${migrationFile}.up.sql`, import.meta.url), "utf8"));
     }
-    for (const version of [29, 38, 39, 40, 41]) {
-      const name = ({ 29: "agent_memories", 38: "agent_memory_owner_governance", 39: "agent_memory_corrections", 40: "agent_memory_content_erasure", 41: "agent_memory_task_lineage" } as const)[version as 29 | 38 | 39 | 40 | 41];
+    for (const version of [29, 38, 39, 40, 41, 42]) {
+      const name = ({ 29: "agent_memories", 38: "agent_memory_owner_governance", 39: "agent_memory_corrections", 40: "agent_memory_content_erasure", 41: "agent_memory_task_lineage", 42: "agent_memory_pre_model_lineage" } as const)[version as 29 | 38 | 39 | 40 | 41 | 42];
       await pool.query(await readFile(new URL(`../../../db/migrations/${String(version).padStart(6, "0")}_${name}.up.sql`, import.meta.url), "utf8"));
     }
     await pool.query("INSERT INTO agent_memories (memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, priority, source_type, source_id, valid_from, memory_root_uuid, memory_version) VALUES ('MEM-PLAN-1', 'dipole', 'U100', 'UAI', 'semantic', 'active', 'conversation', 'group:G1', 'private fact', 80, 'message', 'M1', UTC_TIMESTAMP(3), 'MEM-PLAN-1', 1)");
+    await pool.query("INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES ('TASK-PLAN-1', 'DEF-PLAN-1', 1, 'dipole', 'U100', 'UAI', 'running', 'message.direct.created', 'M-PLAN-1', 'test plan')");
   });
 
   afterAll(async () => {
@@ -101,6 +102,7 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
       }
     } as const;
 
+    await sink.recordMemoryContext(record.taskId, record.plan.model.context);
     await Promise.all(Array.from({ length: 8 }, () => sink.append(record)));
 
     const [plans] = await pool.query<Array<RowDataPacket & {
@@ -126,7 +128,7 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
       expect.objectContaining({ step_no: 2, capability_id: "conversation.read", status: "planned" })
     ]);
     expect(steps[0]!.input_json).toEqual({ limit: 20 });
-    expect(lineage).toEqual([{ memory_uuid: "MEM-PLAN-1", task_uuid: record.taskId, representation: "compact", source: "runtime_write" }]);
+    expect(lineage).toEqual([{ memory_uuid: "MEM-PLAN-1", task_uuid: record.taskId, representation: "compact", source: "context_pre_model" }]);
     await expect(new MySQLMemoryDerivedLineageStore(pool).load({
       schemaVersion: "dipole.agent.memory-derived-lineage-manifest.v1", tenantId: "dipole", principalId: "U100", memoryId: "MEM-PLAN-1"
     })).resolves.toMatchObject({
@@ -146,6 +148,17 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
 
     await expect(sink.append({ ...base, plan: { ...base.plan, summary: "changed" } })).rejects.toThrow(/plan conflict/);
     await expect(sink.append({ ...base, eventType: "message.group.created" })).rejects.toThrow(/plan conflict/);
+  });
+
+  it("fails closed before model lineage can reference an unknown Task", async () => {
+    const sink = new MySQLShadowAuditSink(pool);
+    await expect(sink.recordMemoryContext("TASK-MISSING", {
+      selected: [{ id: "memory:MEM-PLAN-1", representation: "full" }]
+    })).rejects.toThrow();
+    const [rows] = await pool.query<Array<RowDataPacket & { count: number }>>(
+      "SELECT COUNT(*) AS count FROM agent_memory_task_lineage WHERE task_uuid = 'TASK-MISSING'"
+    );
+    expect(rows[0]?.count).toBe(0);
   });
 
   it("finds exact historical Context references without underscore wildcard matches", async () => {
@@ -202,6 +215,21 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
       directTaskReferences: 1,
       unattributedModelTasks: 1,
       lineageComplete: false
+    });
+  });
+
+  it("restores root attribution before a Plan exists", async () => {
+    const sink = new MySQLShadowAuditSink(pool);
+    await sink.recordMemoryContext("TASK-ORPHAN-41", {
+      selected: [{ id: "memory:MEM-PLAN-1", representation: "compact" }]
+    });
+    await expect(new MySQLMemoryDerivedLineageStore(pool).load({
+      schemaVersion: "dipole.agent.memory-derived-lineage-manifest.v1", tenantId: "dipole", principalId: "U100", memoryId: "MEM-PLAN-1"
+    })).resolves.toMatchObject({
+      directTaskReferences: 2,
+      unattributedModelTasks: 0,
+      lineageComplete: true,
+      domains: { modelCalls: 1, shadowPlans: 1, temporalHistoryPotentialTasks: 2 }
     });
   });
 });

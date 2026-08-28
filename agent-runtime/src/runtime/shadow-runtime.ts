@@ -330,24 +330,29 @@ export function createKafkaShadowRuntime(
   const factory = new KafkaJSConsumerFactory(config.clientId, config.brokers);
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
-  const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
+  const persistentAudit = pool === undefined ? undefined : new MySQLShadowAuditSink(pool);
+  const audit = persistentAudit ?? new ConsoleShadowAuditSink();
   const rpcTransport = config.capabilityRpc.enabled && (
     dispatcher === undefined || (config.triggerMode === "subscription" && subscriptionMatcher === undefined) ||
     (config.subscriptionShadowEnabled && subscriptionMatcher === undefined)
   )
     ? createAgentCapabilityRPC(config)
     : undefined;
-  const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
+  const usesLocalModel = config.modelMode === "ai_sdk" && dispatcher === undefined;
+  if (usesLocalModel && persistentAudit === undefined) {
+    throw new Error("AI SDK mode requires persistent pre-model Memory lineage");
+  }
+  const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
-    ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined)
+    ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!)
     : new MetadataShadowPlanner();
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
-  if (config.modelMode === "ai_sdk" && dispatcher === undefined) {
+  if (usesLocalModel) {
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
-    trajectory = audit as MySQLShadowAuditSink;
+    trajectory = persistentAudit!;
   }
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
@@ -405,7 +410,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationListCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool)
-  ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined);
+  ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
