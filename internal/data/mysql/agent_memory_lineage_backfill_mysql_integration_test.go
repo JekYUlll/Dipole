@@ -108,6 +108,25 @@ func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {
 	if _, err := checkpoints.Acquire(ctx, "memory-lineage-contract", "owner-b", highWatermark-1, time.Minute); !errors.Is(err, mysqlStore.ErrMemoryLineageBackfillSourceMismatch) {
 		t.Fatalf("expected fixed high-water mismatch, got %v", err)
 	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("rollback v43: %v", err)
+	}
+	assertMemoryLineageBackfillTable(t, db, false)
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("reapply v43: %v", err)
+	}
+	assertMemoryLineageBackfillTable(t, db, true)
+}
+
+func assertMemoryLineageBackfillTable(t *testing.T, db *sql.DB, want bool) {
+	t.Helper()
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_memory_lineage_backfill_jobs'`).Scan(&count); err != nil {
+		t.Fatalf("check v43 table: %v", err)
+	}
+	if (count == 1) != want {
+		t.Fatalf("v43 table exists=%v want=%v", count == 1, want)
+	}
 }
 
 func insertMemoryLineageFixture(t *testing.T, db *sql.DB, memoryUUID, tenantID, principalUUID string) {
