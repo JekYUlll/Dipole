@@ -233,6 +233,10 @@ resource 创建后若取消、composition 抛错或返回空结果，startup pla
 
 bootstrap 在 lifecycle 调用前拥有 startup：load 完成后的取消会先关闭 RPC resource，再传播 Abort reason；关闭失败返回固定 cleanup error。调用 lifecycle 后 ownership 完全转移，bootstrap 不捕获并二次关闭，启动失败由 lifecycle 按 Worker/connection/resource 顺序回滚。disabled deployment 不构造 RPC factory、RPC transport 或 Worker。该 root 当前没有进入 `index.ts`/Compose，不创建 `TemporalMcpTaskClient`，也不自动发布 readiness；未来受控 Shadow 启用后，无 fresh evidence 的外部 egress 仍逐请求 fail closed。
 
+`TemporalMcpShadowTaskDispatcher` 提供事件驱动路径的可信 Workflow start boundary。它重新解析 `AgentEvent` 与 `AgentIdentity`，按 tenant、Agent、event type 和 aggregate 复算确定性 Task ID；不匹配会在 route selector 与 Temporal Client 前拒绝。admission 与固定 goal 在 selector 调用前由 Runtime 固化，事件和身份快照也会冻结，因此 selector 只能根据受信宿主逻辑返回 strict `{routeId, arguments}`，不能覆盖 tenant、principal、Agent、trigger、request/trace 或 goal。
+
+dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalog 注入 route version 与 manifest digest，再写入 `external_mcp_v1` history。业务参数仍会经过 16 KiB canonical JSON、route-local Capability schema、egress policy、Core Context 与资源权限复核。当前该类仅是可测试原语，没有创建 Temporal connection，也没有进入 `index.ts`、Compose 或 Shadow bootstrap。Kafka subscription match 目前只把 `subscriptionId` 投影到事件，未把持久 definition 映射为代码/部署拥有的 route selection；在补齐该映射和受管 Client 生命周期前不得直接以消息正文、模型输出或事件 payload 选择 route。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
