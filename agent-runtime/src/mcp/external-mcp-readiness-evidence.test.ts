@@ -6,25 +6,40 @@ import type { ExternalMcpProductionIoConfig } from "./external-mcp-production-io
 import {
   createExternalMcpReadinessEvidenceCollector,
   externalMcpReadinessBindingSha256,
+  externalMcpReadinessProfileBindingSha256,
   externalMcpReadinessEvidenceSchemaVersion
 } from "./external-mcp-readiness-evidence.js";
 
 describe("external MCP readiness evidence", () => {
   it("keeps the language-neutral evidence contract aligned with Runtime output", async () => {
-    const path = new URL("../../../contracts/agent-external-mcp/v1/readiness-evidence.schema.json", import.meta.url);
+    const path = new URL("../../../contracts/agent-external-mcp/v2/readiness-evidence.schema.json", import.meta.url);
     const schema = JSON.parse(await readFile(path, "utf8")) as {
       $id: string;
       "x-dipole-version": string;
       required: string[];
       properties: { schemaVersion: { const: string } };
     };
-    expect(schema.$id).toMatch(/agent-external-mcp\/v1\/readiness-evidence\.schema\.json$/);
+    expect(schema.$id).toMatch(/agent-external-mcp\/v2\/readiness-evidence\.schema\.json$/);
     expect(schema["x-dipole-version"]).toBe(externalMcpReadinessEvidenceSchemaVersion);
     expect(schema.properties.schemaVersion.const).toBe(externalMcpReadinessEvidenceSchemaVersion);
     expect(schema.required.sort()).toEqual([
-      "bindingSha256", "caBundleCount", "completedAt", "connectivityCheckedAt", "credentialCount",
+      "bindingSha256", "caBundleCount", "completedAt", "connectivityCheckedAt", "credentialCount", "profileBindingSha256",
       "preflightCheckedAt", "profileCount", "schemaVersion", "startedAt", "toolCount"
     ].sort());
+  });
+
+  it("binds the exact Profile independently from unrelated Runtime topology", () => {
+    const profile = enabledConfig().profiles[0]!;
+    const reordered = {
+      ...profile,
+      allowedHosts: [...profile.allowedHosts].reverse(),
+      allowedPorts: [...profile.allowedPorts].reverse(),
+      allowedTools: [...profile.allowedTools].reverse()
+    };
+    const baseline = externalMcpReadinessProfileBindingSha256(profile);
+    expect(externalMcpReadinessProfileBindingSha256(reordered)).toBe(baseline);
+    expect(externalMcpReadinessProfileBindingSha256({ ...profile, credentialVersion: 4 })).not.toBe(baseline);
+    expect(externalMcpReadinessProfileBindingSha256({ ...profile, tenantId: "other" })).not.toBe(baseline);
   });
 
   it("canonicalizes equivalent Profile and I/O map order into one binding", () => {
@@ -102,6 +117,7 @@ describe("external MCP readiness evidence", () => {
     expect(evidence).toEqual({
       schemaVersion: externalMcpReadinessEvidenceSchemaVersion,
       bindingSha256: externalMcpReadinessBindingSha256(enabledConfig(), productionIo(), bindingOptions()),
+      profileBindingSha256: externalMcpReadinessProfileBindingSha256(enabledConfig().profiles[0]!),
       startedAt: "2026-08-28T14:00:00.000Z",
       completedAt: "2026-08-28T14:00:03.000Z",
       preflightCheckedAt: "2026-08-28T14:00:01.000Z",
