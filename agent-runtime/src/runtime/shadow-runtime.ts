@@ -199,9 +199,11 @@ export interface ShadowRuntime {
   stop(): Promise<void>;
 }
 
-interface ShadowSubscriptionAdmission extends ShadowRunAdmission {
+export interface ShadowSubscriptionMatcher {
   matchEventSubscriptions(event: AgentEvent, identity: AgentIdentity): Promise<AgentEventSubscription[]>;
 }
+
+interface ShadowSubscriptionAdmission extends ShadowRunAdmission, ShadowSubscriptionMatcher {}
 
 export interface TemporalReadActivityResources {
   readonly activities: AgentTaskActivities;
@@ -235,7 +237,8 @@ export function buildKafkaShadowRuntime(
   admission?: ShadowSubscriptionAdmission,
   registry?: CapabilityRegistry,
   trajectory?: MySQLShadowAuditSink,
-  dispatcher?: ShadowTaskDispatcher
+  dispatcher?: ShadowTaskDispatcher,
+  subscriptionMatcher?: ShadowSubscriptionMatcher
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
   return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
@@ -257,10 +260,11 @@ export function buildKafkaShadowRuntime(
     };
     let event = decoded.event;
     if (config.triggerMode === "subscription") {
-      if (admission === undefined) {
+      const matcher = subscriptionMatcher ?? admission;
+      if (matcher === undefined) {
         throw new Error("Subscription trigger mode has no Agent Capability RPC admission client");
       }
-      const matches = matchEventSubscriptions(event, await admission.matchEventSubscriptions(event, identity));
+      const matches = matchEventSubscriptions(event, await matcher.matchEventSubscriptions(event, identity));
       if (matches.length === 0) return;
       const match = matches[0]!;
       event = {
@@ -279,7 +283,11 @@ export function buildKafkaShadowRuntime(
   }, failureRouter);
 }
 
-export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher?: ShadowTaskDispatcher): ShadowRuntime {
+export function createKafkaShadowRuntime(
+  config: ShadowRuntimeConfig,
+  dispatcher?: ShadowTaskDispatcher,
+  subscriptionMatcher?: ShadowSubscriptionMatcher
+): ShadowRuntime {
   let pool: Pool | undefined;
   let ledger: EventLedger;
   if (config.ledgerMode === "mysql") {
@@ -295,7 +303,9 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher
   const failurePublisher = factory.createFailurePublisher();
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
-  const rpcTransport = config.capabilityRpc.enabled && (dispatcher === undefined || config.triggerMode === "subscription")
+  const rpcTransport = config.capabilityRpc.enabled && (
+    dispatcher === undefined || (config.triggerMode === "subscription" && subscriptionMatcher === undefined)
+  )
     ? createAgentCapabilityRPC(config)
     : undefined;
   const planner = config.modelMode === "ai_sdk" && dispatcher === undefined
@@ -311,7 +321,8 @@ export function createKafkaShadowRuntime(config: ShadowRuntimeConfig, dispatcher
     trajectory = audit as MySQLShadowAuditSink;
   }
   const consumer = buildKafkaShadowRuntime(
-    config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory, dispatcher
+    config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
+    dispatcher, subscriptionMatcher
   );
   const mainTopic = physicalTopic(config);
   return {
