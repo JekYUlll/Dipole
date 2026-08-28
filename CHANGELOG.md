@@ -58,6 +58,8 @@
 
 ### 验证
 
+- Agent Runtime 独立服务完成全量回归：Vitest 124 个测试文件通过、650 个测试通过，TypeScript typecheck 与生产构建通过；同时 `CGO_ENABLED=0 go test ./internal/...` 全部通过，确认 TS Runtime 的 shadow/协议边界未破坏 Go Core、存储和微服务路径。
+
 - 存储架构隔离 smoke 已通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO 的健康检查及 CRUD 验证；Elasticsearch lab 编排显式使用仅测试环境的磁盘水位参数，健康检查要求 yellow/green，生产配置保持不变。
 
 - Go 微服务测试显式绑定版本化 `configs/config.dist.yaml`，修复干净 worktree 缺少隐式 `config.yaml` 导致的测试失败；`CGO_ENABLED=0 go test ./internal/...` 全部通过，生产配置搜索路径未改变。

@@ -349,6 +349,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] metadata-only shadow plan 已通过真实 Kafka 3.9 事件与重复投递验证；模型结构化 Plan/Step 已持久化。
   - [x] 通过受认证 Agent Capability RPC 执行首个 `conversation.list` 只读 Step，并持久化 claim/result/error；公开 HTTP 旁路保持禁止（`AD-030` 已关闭）。
 - [x] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter；模型调用通过 provider-neutral `ModelRouter`，AI SDK 仅位于 adapter 边界。
+- [x] Agent Runtime 独立服务完成 Vitest、TypeScript typecheck、生产构建和 Go Core 全量回归；该证据只确认当前 shadow/协议边界稳定，不改变默认关闭的生产切流门禁。
 
 ### G3：Durable Task、Context 与 Memory
 
