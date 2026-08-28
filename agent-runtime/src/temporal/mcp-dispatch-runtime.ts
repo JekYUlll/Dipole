@@ -1,10 +1,10 @@
-import type { McpActivityExternalTransportRegistry, McpActivityModernClientFactory } from "../mcp/mcp-input-required-activity.js";
+import type { McpActivityModernClientFactory } from "../mcp/mcp-input-required-activity.js";
 import type { McpInvocationBeginClient } from "../mcp/mcp-invocation-producer.js";
 import { ExternalMcpCapabilityRouteRegistry, TrustedMcpInvocationProducer } from "../mcp/mcp-invocation-producer.js";
 import type { ExternalMcpArtifactCommandResolver, ExternalMcpArtifactWriter } from "../mcp/external-mcp-artifact-projector.js";
 import { ExternalMcpArtifactProjector } from "../mcp/external-mcp-artifact-projector.js";
 import type { McpInvocationTerminalClient } from "../mcp/mcp-terminal-worker-runtime.js";
-import type { McpWorkerCoreClient } from "../mcp/mcp-worker-runtime.js";
+import type { McpWorkerCoreClient, McpWorkerExternalMcpDependencies } from "../mcp/mcp-worker-runtime.js";
 import { createMcpTerminalWorkerRuntime } from "../mcp/mcp-worker-runtime.js";
 import {
   createTemporalMcpDispatchActivities,
@@ -25,7 +25,7 @@ export interface TemporalMcpDispatchRuntimeCore extends
 export interface TemporalMcpDispatchRuntimeDependencies {
   readonly routes: ExternalMcpCapabilityRouteRegistry;
   readonly core: TemporalMcpDispatchRuntimeCore;
-  readonly transports: McpActivityExternalTransportRegistry;
+  readonly externalMcp: McpWorkerExternalMcpDependencies;
   readonly artifacts: ExternalMcpArtifactWriter;
   readonly requestTimeoutMs?: number;
   readonly inputWindowMs?: number;
@@ -46,7 +46,7 @@ export function createTemporalMcpDispatchRuntime(
 ): TemporalMcpDispatchRuntime {
   const worker = createMcpTerminalWorkerRuntime({
     core: dependencies.core,
-    transports: dependencies.transports,
+    externalMcp: dependencies.externalMcp,
     egressPolicies: dependencies.routes.workerEgressPolicies(route.capabilityId),
     ...(dependencies.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: dependencies.requestTimeoutMs }),
     ...(dependencies.inputWindowMs === undefined ? {} : { inputWindowMs: dependencies.inputWindowMs }),
