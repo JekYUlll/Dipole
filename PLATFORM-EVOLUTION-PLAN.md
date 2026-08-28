@@ -2,9 +2,9 @@
 
 > 状态：计划中
 >
-> 基线：`d61a88c merge: verify agent timeline repair recovery`
+> 基线：`7a209ae merge: record eino agentic capability assessment`
 >
-> 更新日期：2026-08-27
+> 更新日期：2026-08-29
 
 ## 1. 目标
 
