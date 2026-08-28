@@ -35,6 +35,7 @@ type Dependencies struct {
 	AgentTasks         AgentTaskControlApplication
 	AgentSubscriptions AgentSubscriptionControlApplication
 	AgentDefinitions   AgentDefinitionCatalogApplication
+	AgentMemories      AgentMemoryControlApplication
 	AgentMCP           AgentMCPApplication
 	Presence           wsTransport.PresenceTracker
 	Limiter            MessageRateLimiter
@@ -107,6 +108,11 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/definitions", auth, agentDefinitionCatalogHandler(dependencies.AgentDefinitions))
 	}
+	if dependencies.AgentMemories != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
+	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
@@ -128,6 +134,95 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentMemoryListHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		rawAfter, hasAfter := c.GetQuery("after")
+		after := strings.TrimSpace(rawAfter)
+		if hasAfter && (after != rawAfter || !validAgentSubscriptionPublicID(after, 256)) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory cursor"})
+			return
+		}
+		limit := 50
+		if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory limit must be between 1 and 100"})
+				return
+			}
+			limit = parsed
+		}
+		page, err := memories.List(c.Request.Context(), user.UUID, after, limit)
+		writeAgentMemoryResult(c, page, err)
+	}
+}
+
+func agentMemoryRevokeHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Reason string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		memoryID := strings.TrimSpace(c.Param("memory_id"))
+		if !validAgentSubscriptionPublicID(memoryID, 64) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory revoke request"})
+			return
+		}
+		body.Reason = strings.TrimSpace(body.Reason)
+		if body.Reason == "" || utf8.RuneCountInString(body.Reason) > 1000 || strings.IndexFunc(body.Reason, unicode.IsControl) >= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory revoke reason is invalid"})
+			return
+		}
+		item, err := memories.Revoke(c.Request.Context(), user.UUID, memoryID, body.Reason)
+		writeAgentMemoryResult(c, item, err)
+	}
+}
+
+func writeAgentMemoryResult(c *gin.Context, value any, err error) {
+	if err != nil || value == nil {
+		statusCode := AgentMemoryHTTPStatus(err)
+		message := "Agent Memory control is unavailable"
+		switch statusCode {
+		case http.StatusBadRequest:
+			message = "Agent Memory request is invalid"
+		case http.StatusForbidden:
+			message = "Agent Memory access denied"
+		case http.StatusConflict:
+			message = "Agent Memory changed concurrently"
+		}
+		c.JSON(statusCode, gin.H{"code": statusCode, "message": message})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": value})
+}
+
+func AgentMemoryHTTPStatus(err error) int {
+	switch {
+	case errors.Is(err, ErrAgentMemoryInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, ErrAgentMemoryDenied):
+		return http.StatusForbidden
+	case errors.Is(err, ErrAgentMemoryConflict):
+		return http.StatusConflict
+	default:
+		return http.StatusServiceUnavailable
+	}
 }
 
 func agentSubscriptionConversationOptionsHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
