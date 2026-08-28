@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CapabilityRegistry } from "./registry.js";
 import { executionContextSchema } from "../runtime/execution-context.js";
+import { ConversationListCapability } from "./conversation-list.js";
 
 describe("CapabilityRegistry", () => {
   it("rejects duplicate IDs and authorizes before executing", async () => {
@@ -54,5 +55,24 @@ describe("CapabilityRegistry", () => {
     expect(registry.descriptors()[0]?.inputSchema).toEqual({ type: "object", properties: { limit: { type: "integer", maximum: 100 } } });
     expect(Object.isFrozen(registry.descriptors()[0])).toBe(true);
     expect(Object.isFrozen(registry.descriptors()[0]?.inputSchema)).toBe(true);
+  });
+
+  it("preserves prototype methods when registering class-based capabilities", async () => {
+    const listConversations = vi.fn(async (_context: unknown, limit: number) => [{
+      conversationKey: "group:G1", targetId: "G1", targetType: 2,
+      lastMessageId: "M1", lastMessageSeq: "1", lastMessagePreview: "hello",
+      lastMessageAtUnixMs: "1787817600000", readSeq: "0", unreadCount: limit
+    }]);
+    const registry = new CapabilityRegistry();
+    registry.register(new ConversationListCapability({ listConversations }));
+    const context = executionContextSchema.parse({
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "shadow",
+      permissions: ["conversation.list"],
+      resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }],
+      approvedCapabilities: []
+    });
+
+    await expect(registry.execute("conversation.list", { limit: 3 }, context)).resolves.toEqual([expect.objectContaining({ unreadCount: 3 })]);
+    expect(listConversations).toHaveBeenCalledOnce();
   });
 });

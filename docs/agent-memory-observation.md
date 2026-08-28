@@ -41,12 +41,12 @@ Runtime binding v1 将该决策映射为 `off/shadow/enforced` 三态。接线�
 
 ## 不变量
 
-- Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
+- Observation 以 `tenant/principal/agent/resource/eventId` scope 幂等；同一 scope 重复收到事件不会生成第二个候选，不同租户或资源复用事件 ID 不会互相丢弃。
 - Candidate ID 由租户、主体、资源、事件/窗口和证据 ID 的规范字节计算，重放不会产生漂移 ID。
 - 候选固定为 `observational` 和 `untrusted` 语义，provenance 只保存消息或窗口引用，不复制凭据。
 - 输入超限、凭据模式和无法识别的观察内容 fail closed；上游坏数据不会中断消费循环。
 - Reflection 需要最少两个唯一观察，拒绝跨租户、跨 Agent、跨资源和重复证据。
-- Reflection 窗口只能成功一次；重复窗口返回空结果，避免重复长期记忆。
+- Reflection 窗口以 `tenant/principal/agent/resource/windowId` scope 只能成功一次；重复窗口返回空结果，避免重复长期记忆。
 
 ## 后续接线顺序
 
