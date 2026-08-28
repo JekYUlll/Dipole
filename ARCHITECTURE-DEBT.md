@@ -366,6 +366,7 @@
 - **解决方式：** 建立默认 Go 的 `go|shadow|cpp` 本地 authority、跨语言 Redis epoch lease 与 fail-closed reader、短 TTL 节点 observation、双 Kafka group 零 lag checkpoint、不可变 attempt workspace、哈希链 journal、幂等 action artifact 与 production executor。`dipole-realtime-cutover run` 在单一同步循环中统一 advance、条件续租、冻结超时回切和阻塞重试，并以 attempt-scoped Redis owner token 排除并发 controller；回切必须先确认 source nodes，且 `rollback_requested` 续租保留回切意图。
 - **验证：** 隔离证据覆盖 Go/C++ 各一条客户端 frame、跨客户端 checkpoint、controller artifact 崩溃恢复、Redis outage、Kafka member loss、500 ms expired-freeze 回切、真实 C++ Primary lease/observation/assignment/readiness，以及 Controller A 无 release 进程退出后 B 在 5 秒 TTL 前被拒、到期后从同一 journal 完成。证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`、`benchmarks/c3-cutover-checkpoint-2026-08-28/`、`benchmarks/c3-cutover-faults-2026-08-28/`、`benchmarks/c3-cutover-cpp-primary-2026-08-28/` 与 `benchmarks/c3-cutover-controller-2026-08-28/`。
 - **追加验证：** 2026-08-29 使用当前分支重新运行 C3 真实故障演练，C++ build/CTest 14/14、对比测试 5/5、Controller/C++ 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 primary 停止恢复全部通过；生产部署仍保持默认 Go authority。
+- **性能门禁：** 2026-08-29 对同一 direct created v1 事件执行 100,000 次 Go/C++ JSON 解码与投影，结果计数一致但 C++/Go ops ratio 约为 `0.10`，低于 `1.0` 晋级门槛；当前保留 Go projection，C++ 仅保留故障隔离、authority 和后续连接/批处理数据面评估边界。
 - **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 
 ### AD-039：Gateway Kafka assignment 未纳入 readiness
