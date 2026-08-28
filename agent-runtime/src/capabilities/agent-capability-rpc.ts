@@ -562,8 +562,12 @@ export class AgentCapabilityRPCClient {
           reject(error ?? new Error("Agent conversation read returned no response"));
           return;
         }
-        if (response.found && response.targetId !== targetId) {
+        if (response.targetId !== targetId) {
           reject(new Error("Agent conversation read returned conflicting target"));
+          return;
+        }
+        if (response.messages.length > limit) {
+          reject(new Error("Agent conversation read returned too many messages"));
           return;
         }
         resolve({

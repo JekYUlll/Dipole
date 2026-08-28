@@ -39,7 +39,7 @@ describe("AgentCapabilityRPCClient", () => {
       .resolves.toEqual({ found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: [] });
   });
 
-  it("rejects invalid scopes and conflicting RPC responses", async () => {
+  it("rejects invalid scopes, oversized responses, and conflicting RPC responses", async () => {
     const readConversation = vi.fn((_input, _metadata, _options, callback) => {
       callback(null, { found: true, reason: "", targetId: "U999", targetType: 1, messages: [] });
       return {};
@@ -51,6 +51,12 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.readConversation(context, "group:G123", 101)).rejects.toThrow("request is invalid");
     await expect(client.readConversation(context, "direct:U100:U200", 20)).rejects.toThrow("conflicting target");
     expect(readConversation).toHaveBeenCalledTimes(1);
+
+    readConversation.mockImplementationOnce((_input, _metadata, _options, callback) => {
+      callback(null, { found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: Array.from({ length: 2 }, () => ({})) });
+      return {};
+    });
+    await expect(client.readConversation(context, "direct:U100:U200", 1)).rejects.toThrow("too many messages");
   });
 
   it("resolves only an exact low-sensitive fresh readiness receipt", async () => {
