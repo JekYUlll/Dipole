@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "dipole.agent.memory-derived-lineage-report.v1",
+  "policyVersion": "memory-derived-lineage-v1",
+  "memoryRootSha256": "07137db02a1204b9ef19912692de4925e800a8bd4d91aa762c9c002b97e1de8f",
+  "lineageVersions": 2,
+  "directTaskReferences": 1,
+  "unindexedContextPlans": 0,
+  "unattributedModelTasks": 0,
+  "lineageComplete": true,
+  "domains": {
+    "modelCalls": 1,
+    "shadowPlans": 1,
+    "shadowSteps": 2,
+    "artifacts": 1,
+    "toolInvocations": 1,
+    "messageActions": 1,
+    "temporalHistoryPotentialTasks": 1
+  },
+  "contentRead": false,
+  "deletionAuthority": false,
+  "runtimeAuthority": false,
+  "reportSha256": "a1bc71222db8ba09b2aaf2098c7c5e25646a305daa6eb1f8b9d2b9c0380b52ef"
+}

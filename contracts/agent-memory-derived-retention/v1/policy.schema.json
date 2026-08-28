@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-derived-retention/v1/policy.schema.json",
+  "title": "Dipole Agent Memory Derived Retention Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "domains", "contentRead", "deletionAuthority", "runtimeAuthority"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-derived-retention-policy.v1" },
+    "policyVersion": { "const": "memory-derived-retention-v1" },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "shadowPlans", "shadowSteps", "artifacts", "toolInvocations", "messageActions", "temporalHistoryPotentialTasks"],
+      "properties": {
+        "modelCalls": { "$ref": "#/$defs/action" },
+        "shadowPlans": { "$ref": "#/$defs/action" },
+        "shadowSteps": { "$ref": "#/$defs/action" },
+        "artifacts": { "$ref": "#/$defs/action" },
+        "toolInvocations": { "$ref": "#/$defs/action" },
+        "messageActions": { "$ref": "#/$defs/action" },
+        "temporalHistoryPotentialTasks": { "$ref": "#/$defs/action" }
+      }
+    },
+    "contentRead": { "const": false },
+    "deletionAuthority": { "const": false },
+    "runtimeAuthority": { "const": false }
+  },
+  "$defs": {
+    "action": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["action"], "properties": { "action": { "const": "erase_derived_content" } } },
+        { "type": "object", "additionalProperties": false, "required": ["action"], "properties": { "action": { "const": "retain_minimal_audit" } } },
+        { "type": "object", "additionalProperties": false, "required": ["action", "retentionDays"], "properties": { "action": { "const": "expire_after_days" }, "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 } } },
+        { "type": "object", "additionalProperties": false, "required": ["action"], "properties": { "action": { "const": "manual_review" } } }
+      ]
+    }
+  }
+}
