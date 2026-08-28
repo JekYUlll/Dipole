@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Memory correction 增加纯离线五类 Eval 门禁：严格 manifest/observation 绑定 predecessor/successor、完整 lineage、精确重放、漂移冲突、owner/foreign 权限与 successor-only retrieval，并要求模型、Tool、Token 和模型成本全部为零；输入各限 64 KiB，错误与标准报告不回显 Memory、principal 或正文，也不连接生产数据库或写入 Memory。
 - Agent Memory owner correction 继续沿用认证派生权限：公开请求只提交 Memory ID、期望版本、纠正内容与原因，tenant/principal/corrector 由 Gateway/Core 认证链绑定；响应省略内部 provenance URI，并同时返回权威 predecessor 与 successor，客户端不推断并发结果。
 - Agent Memory 增加 owner-scoped 治理边界：公开 HTTP 不接收 tenant/principal，Gateway 从已认证会话构造 Core RequestContext；Core 只允许认证 `dipole-gateway` 调用并再次按 tenant、principal 与 Memory ID 约束查询和撤销。公开 DTO 省略内部 provenance URI，撤销必须提交有界原因并保存 revoker、原因和时间；不同原因的终态重放返回冲突。
 - Gin HTTP 访问日志统一脱敏敏感查询参数：WebSocket 兼容的 `token`/`access_token` 及 refresh/id token、Authorization、API key、client secret、密码和签名类键按大小写无关识别，重复值全部替换为 `REDACTED`；非法 query 编码整段关闭，普通参数继续规范化记录。真实 WebSocket 握手日志捕获测试同时证明查询凭据与 Authorization Header 不进入结构化字段。
