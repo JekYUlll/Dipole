@@ -62,7 +62,7 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 ## Production I/O 组合
 
-`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry` 与 `preflight`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry`、local `preflight` 与受约束 `shadowConnectivityDrill`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
 
 构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
 
@@ -74,7 +74,11 @@ loader 输出的 typed `io/options` 可直接传给 composition，并把同一 e
 
 `runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
 
-preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatcher，因此不会创建 Transport、DNS client 或 socket。它证明本地策略与文件依赖可用，无法证明远端 DNS、证书链、网络路由或 MCP 协议响应。当前 loader、composition 与 preflight 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、隔离连通演练和回滚证据。
+preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatcher，因此不会创建 Transport、DNS client 或 socket。它证明本地策略与文件依赖可用，无法证明远端 DNS、证书链、网络路由或 MCP 协议响应。
+
+`runtime.shadowConnectivityDrill({ profileId, tenantId }, signal?)` 是独立的只读在线证据边界。它重新通过 Registry 解析 exact Profile/Catalog，创建正式 guarded Transport 和 modern allowlisted Client，只执行协议 discovery/list；Server identity 必须匹配，全部 configured Tool 必须被发现。演练器不暴露 Client 的 Tool 调用方法，成功或失败都会收敛关闭连接。成功收据只保存 schema、checked-at 与 Tool 数量；Profile、tenant、Server、Tool、地址和证书信息留在受控运维输入/网络审计中。
+
+本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。当前 loader、composition、preflight 与 drill 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
 
 ## Network Guard 边界
 
