@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 Agent Workflow Repair desktop 审计页、六态契约矩阵和 mobile 审批底部层，并保存 `exports/agent-repair-v1/` 的 2x 评审基线。
+- 增加 Repair Status、Evidence Diff 和 Approval Step 三个可复用组件；canonical 文件扩展为 29 个顶层 Frame 和 13 个可复用组件。
 - 建立 canonical Pencil F1 基线，增加 foundations、可复用 IM 组件、Login/Chat desktop/mobile、离线恢复、只读权限、空态、加载、错误、Agent Approval 和设计评审清单。
 - 合并 F1 与后续 Search/Sync 画板为单一 canonical 文件，统一同名 token，并保留 23 个顶层 Frame 和 10 个可复用组件。
 - Sync 状态矩阵增加 Storage Full，明确浏览器配额不足时本地消息仍可读、安全游标不会前移，并提供释放空间后的重试入口。
@@ -18,6 +20,9 @@
 
 ### 设计决策
 
+- Repair 审批固定采用双人控制：提案人不能审批、两位审批人必须互异、任一拒绝立即终止，证据最长一小时后过期。
+- Repair `approved` 只表达不可变审计结论；在独立、可回滚且再次授权的 executor 落地前，界面不提供执行入口，也不声称 projection 已修复。
+- Repair evidence unavailable 时禁止创建或批准提案，先恢复 Worker/Temporal 并重新采集 canonical evidence。
 - 本地缓存采用高低水位淘汰；容量压缩属于本地保留策略，不改变服务端设备 Cursor 或已提交的安全 `sync_seq`。
 - 同步恢复固定采用“读取安全游标 → 写入本地消息 → 提交设备游标”的可见顺序，避免界面暗示尚未持久化的消息已经安全同步。
 - 同步故障局部降级；本地消息继续可读，错误状态提供重试入口，显式退出时清理当前账号本地数据。
