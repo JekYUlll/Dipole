@@ -31,6 +31,7 @@
 
 ### 验证
 
+- 新增 `scripts/pencil-safe-edit.test.mjs`，用 fake Pencil CLI 覆盖有效 `.pen` 与导出原子提交、超时清理临时文件并保持 canonical 不变两条回归路径；测试 `2/2` 通过。
 - 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。
 - Pencil CLI `0.3.5` 认证和版本检查通过；Agent Task Timeline 增量任务在画布调用阶段超时终止，未产生 `.pen` 或导出图，canonical 设计文件保持不变，记录为 `AD-044`。
 - 增加 `scripts/pencil-safe-edit.mjs`：Pencil 增量编辑具备默认超时、临时输出、`.pen` JSON 结构校验、导出文件校验和成功后原子替换，失败不会覆盖 canonical 设计。
