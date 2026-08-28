@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS agent_task_timeline_events (
+    event_seq BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    event_uuid VARCHAR(64) NOT NULL,
+    task_uuid VARCHAR(64) NOT NULL,
+    run_uuid VARCHAR(64) NULL,
+    event_kind VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    capability_id VARCHAR(128) NULL,
+    approval_uuid VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (event_seq),
+    UNIQUE KEY uk_agent_task_timeline_event_uuid (event_uuid),
+    KEY idx_agent_task_timeline_task_cursor (task_uuid, event_seq),
+    KEY idx_agent_task_timeline_run (run_uuid, event_seq),
+    CONSTRAINT fk_agent_task_timeline_task FOREIGN KEY (task_uuid) REFERENCES agent_tasks(task_uuid) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_task_timeline_run FOREIGN KEY (run_uuid) REFERENCES agent_runs(run_uuid) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_task_timeline_approval FOREIGN KEY (approval_uuid) REFERENCES agent_approvals(approval_uuid) ON DELETE SET NULL,
+    CONSTRAINT chk_agent_task_timeline_kind CHECK (event_kind IN ('task', 'run', 'context_compile', 'model_call', 'tool_invocation', 'approval', 'input_request', 'artifact', 'terminal')),
+    CONSTRAINT chk_agent_task_timeline_identity CHECK (event_uuid <> '' AND task_uuid <> '' AND status <> '')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -441,6 +441,19 @@ type AgentTask struct {
 	TriggerSubscriptionUuid sql.NullString
 }
 
+type AgentTaskTimelineEvent struct {
+	EventSeq     uint64
+	EventUuid    string
+	TaskUuid     string
+	RunUuid      sql.NullString
+	EventKind    string
+	Status       string
+	CapabilityID sql.NullString
+	ApprovalUuid sql.NullString
+	OccurredAt   time.Time
+	CreatedAt    time.Time
+}
+
 type AgentToolInvocation struct {
 	ID                 uint64
 	InvocationUuid     string
