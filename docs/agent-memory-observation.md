@@ -33,6 +33,8 @@ Memory reviewed corpus v1 采用与订阅语义评测一致的双 reviewer + 独
 
 真实来源通过 source manifest v1 接入：loader 在读取前校验 owner UID、绝对规范路径、父目录 canonical、`O_NOFOLLOW`、regular/single-link、0600 权限、2 MiB 上限、批准窗口及 corpus/review SHA-256。manifest 只授权离线评测，不授予 Memory 写入、Runtime 切流或晋级权限。
 
+Memory prefilter evidence v1 进一步将 embedding/small_model 的逐 case 分数、阈值、延迟和成本绑定 reviewed corpus。`eval:memory-prefilter` 只生成低敏聚合报告，供候选比较和后续灰度门禁使用；当前不调用真实模型、不消费 Kafka，也不改变自动 Memory 写入开关。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
