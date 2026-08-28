@@ -18,7 +18,8 @@ import type { TemporalMcpDispatchCheckpointV1 } from "./mcp-dispatch-activity.js
 import { createTemporalMcpDispatchRuntime, type TemporalMcpDispatchRuntimeCore } from "./mcp-dispatch-runtime.js";
 
 const route = {
-  routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read", workflowStep: 3, ordinal: 1
+  routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read", workflowStep: 3, ordinal: 1,
+  deploymentBindingSha256: "d".repeat(64)
 };
 const context: ExecutionContext = {
   tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1",

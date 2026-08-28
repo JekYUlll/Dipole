@@ -18,7 +18,10 @@ const context: ExecutionContext = {
   resourceScopes: [{ resourceType: "calendar", resourceId: "CAL-1", actions: ["read"] }],
   approvedCapabilities: [], requestId: "REQ-1", traceId: "TRACE-1"
 };
-const route = { routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read", workflowStep: 3, ordinal: 1 };
+const route = {
+  routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read",
+  workflowStep: 3, ordinal: 1, deploymentBindingSha256: "d".repeat(64)
+};
 const routeBinding = temporalMcpDispatchRouteBinding(route);
 const invocationId = "a".repeat(64);
 const roundId = "b".repeat(64);
@@ -115,6 +118,10 @@ describe("Temporal MCP dispatch Activity", () => {
       taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
     })).rejects.toThrow(/route binding/i);
     await expect(new TemporalMcpDispatchActivity({ ...route, capabilityId: "calendar.event.list" }, dependencies).execute({
+      kind: "begin", ...routeBinding,
+      taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
+    })).rejects.toThrow(/route binding/i);
+    await expect(new TemporalMcpDispatchActivity({ ...route, deploymentBindingSha256: "e".repeat(64) }, dependencies).execute({
       kind: "begin", ...routeBinding,
       taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
     })).rejects.toThrow(/route binding/i);
