@@ -37,7 +37,15 @@ type GatewayRuntime struct {
 	metrics                *platformObservability.MetricsServer
 	deliveryObservationRPC *InternalRPCServer
 	deliveryObserver       *deliverygrpc.ShadowServer
+	fenceHeartbeatCancel   context.CancelFunc
+	fenceHeartbeatDone     chan struct{}
 }
+
+const (
+	gatewayFenceObservationTTL = 15 * time.Second
+	gatewayFenceHeartbeat      = 5 * time.Second
+	gatewayFenceCheckTimeout   = 2 * time.Second
+)
 
 type gatewayObservationSink struct {
 	batches     atomic.Uint64
@@ -111,19 +119,45 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	runtime := &GatewayRuntime{redis: store.RDB}
 	cleanup := func() { runtime.Close() }
+	presence := platformPresence.NewRedisPresence()
 	var deliveryFence realtimeDelivery.AuthorityFence
+	var deliveryObservationFence realtimeDelivery.AuthorityFence
 	if realtimeCfg.FencingEnabled {
-		deliveryFence, err = realtimeDelivery.NewRedisAuthorityFence(
+		if presence == nil || presence.NodeID() == "" {
+			cleanup()
+			return nil, fmt.Errorf("realtime delivery fencing requires Redis Presence node identity")
+		}
+		reader, fenceErr := realtimeDelivery.NewRedisAuthorityFence(
 			store.RDB, realtimeCfg.FencingKey, realtimeCfg.FencingEpoch, time.Now,
 		)
-		if err != nil {
+		if fenceErr != nil {
 			cleanup()
-			return nil, fmt.Errorf("initialize realtime delivery authority fence: %w", err)
+			return nil, fmt.Errorf("initialize realtime delivery authority fence: %w", fenceErr)
 		}
-		if err = deliveryFence.Assert(ctx, deliveryAuthority); err != nil {
+		deliveryFence = reader
+		deliveryObservationFence, fenceErr = realtimeDelivery.NewRedisObservedAuthorityFence(
+			reader, store.RDB, realtimeCfg.FencingKey+":observation:", "gateway", presence.NodeID(),
+			gatewayFenceObservationTTL, time.Now,
+		)
+		if fenceErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize realtime delivery authority observation: %w", fenceErr)
+		}
+		if err = deliveryObservationFence.Assert(ctx, deliveryAuthority); err != nil {
 			cleanup()
 			return nil, fmt.Errorf("verify realtime delivery authority fence: %w", err)
 		}
+		heartbeatCtx, heartbeatCancel := context.WithCancel(context.Background())
+		runtime.fenceHeartbeatCancel = heartbeatCancel
+		runtime.fenceHeartbeatDone = make(chan struct{})
+		go func() {
+			defer close(runtime.fenceHeartbeatDone)
+			realtimeDelivery.RunAuthorityFenceHeartbeat(
+				heartbeatCtx, deliveryObservationFence, deliveryAuthority,
+				gatewayFenceHeartbeat, gatewayFenceCheckTimeout,
+				func(err error) { logger.Warn("realtime delivery authority heartbeat denied", zap.Error(err)) },
+			)
+		}()
 	}
 
 	if err := platformKafka.Init(); err != nil {
@@ -173,7 +207,6 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		}
 	}
 
-	presence := platformPresence.NewRedisPresence()
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
 		Messages:        messages,
 		Core:            core,
@@ -254,13 +287,17 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(),
+	readinessProbes := []platformObservability.DependencyProbe{
 		redisReadinessProbe("redis", runtime.redis),
 		grpcReadinessProbe("core-rpc", runtime.coreConn),
 		grpcReadinessProbe("message-rpc", runtime.messageConn),
 		kafkaReadinessProbe("kafka", platformKafka.Client),
 		kafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber),
-	); err != nil {
+	}
+	if deliveryObservationFence != nil {
+		readinessProbes = append(readinessProbes, authorityFenceReadinessProbe("delivery-authority", deliveryObservationFence, deliveryAuthority))
+	}
+	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("configure Gateway dependency readiness: %w", err)
 	}
@@ -286,6 +323,14 @@ func (r *GatewayRuntime) Server() *gateway.Server {
 func (r *GatewayRuntime) Close() {
 	if r == nil {
 		return
+	}
+	if r.fenceHeartbeatCancel != nil {
+		r.fenceHeartbeatCancel()
+		if r.fenceHeartbeatDone != nil {
+			<-r.fenceHeartbeatDone
+		}
+		r.fenceHeartbeatCancel = nil
+		r.fenceHeartbeatDone = nil
 	}
 	if r.deliveryObservationRPC != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), GatewayShutdownTimeout())

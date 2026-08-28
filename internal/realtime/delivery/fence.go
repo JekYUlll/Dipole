@@ -58,31 +58,42 @@ func NewRedisAuthorityFence(client redis.Cmdable, key string, expectedEpoch uint
 }
 
 func (f *RedisAuthorityFence) Assert(ctx context.Context, local Authority) error {
-	payload, err := f.client.Get(ctx, f.key).Bytes()
-	if err != nil {
-		return fmt.Errorf("read delivery authority fence: %w", err)
-	}
-	record, err := decodeFenceRecord(payload)
-	if err != nil {
-		return err
-	}
-	return validateFenceRecord(record, local, f.expectedEpoch, f.now())
+	_, _, _, err := f.inspect(ctx, local)
+	return err
 }
 
-func validateFenceRecord(record FenceRecord, local Authority, expectedEpoch uint64, now time.Time) error {
+func (f *RedisAuthorityFence) inspect(ctx context.Context, local Authority) (FenceRecord, string, FenceReasonCode, error) {
+	payload, err := f.client.Get(ctx, f.key).Bytes()
+	if err != nil {
+		code := FenceReasonRedisUnavailable
+		if err == redis.Nil {
+			code = FenceReasonMissing
+		}
+		return FenceRecord{}, "", code, fmt.Errorf("read delivery authority fence: %w", err)
+	}
+	payloadSHA256 := hashBytes(payload)
+	record, err := decodeFenceRecord(payload)
+	if err != nil {
+		return FenceRecord{}, payloadSHA256, FenceReasonInvalidRecord, err
+	}
+	code, err := validateFenceRecord(record, local, f.expectedEpoch, f.now())
+	return record, payloadSHA256, code, err
+}
+
+func validateFenceRecord(record FenceRecord, local Authority, expectedEpoch uint64, now time.Time) (FenceReasonCode, error) {
 	if record.Epoch != expectedEpoch {
-		return fmt.Errorf("delivery authority fence epoch %d does not match expected epoch %d", record.Epoch, expectedEpoch)
+		return FenceReasonEpochMismatch, fmt.Errorf("delivery authority fence epoch %d does not match expected epoch %d", record.Epoch, expectedEpoch)
 	}
 	if record.Phase != FencePhaseActive {
-		return fmt.Errorf("delivery authority fence phase %q denies delivery", record.Phase)
+		return FenceReasonFrozen, fmt.Errorf("delivery authority fence phase %q denies delivery", record.Phase)
 	}
 	if record.Authority != local {
-		return fmt.Errorf("delivery authority fence grants %q, local authority is %q", record.Authority, local)
+		return FenceReasonAuthorityMismatch, fmt.Errorf("delivery authority fence grants %q, local authority is %q", record.Authority, local)
 	}
 	if record.LeaseUntilUnixMS <= now.UnixMilli() {
-		return fmt.Errorf("delivery authority fence lease expired")
+		return FenceReasonExpired, fmt.Errorf("delivery authority fence lease expired")
 	}
-	return nil
+	return FenceReasonAuthorized, nil
 }
 
 func decodeFenceRecord(payload []byte) (FenceRecord, error) {

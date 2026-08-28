@@ -6,9 +6,9 @@ The Redis value at the configured fencing key is one strict JSON object matching
 - `phase=active` permits the matching local authority. `phase=frozen` denies all client-write and checkpoint handlers so a controller can establish a no-authority transition window.
 - Missing, malformed, expired, unknown-field, duplicate-field, authority-mismatched or epoch-mismatched values fail closed. Redis read failure has the same result.
 - Readers revalidate before every message-created side effect. A denied Gateway handler waits on the current Kafka record until the lease becomes valid or the process context is cancelled; authority pauses do not enter the business retry/DLQ path.
-- A future controller must renew leases, gather per-node observations and wait for in-flight work before changing phases.
+- A controller must renew leases, gather live per-node observations and wait for in-flight work before changing phases.
 
-The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`. The operator CLI below writes guarded transitions, while tracked automation, node-confirmed checkpoint receipts and automatic rollback remain absent; this contract alone does not close `AD-041`.
+The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`. An enabled Go Gateway also writes `observation.schema.json` records at startup and on an idle heartbeat. Each 15-second Redis record is keyed by component and stable Presence node ID, binds the expected mode/epoch to the exact observed lease SHA-256, and reports a bounded authorization reason. Observation persistence is fail-closed; message handlers still use the read-only lease reader to avoid per-message observation writes. The operator CLI below writes guarded transitions, while C++ observations, tracked automation, node-confirmed checkpoint receipts and automatic rollback remain absent; this contract alone does not close `AD-041`.
 
 ## Operator transition state machine
 
@@ -36,4 +36,4 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-authority \
   -confirm
 ```
 
-This CLI relies on OS and Redis access controls; `operator_id` is an audit label and is not independently authenticated. Receipts remain in Redis for seven days. Per-node observations, durable checkpoint receipts and automatic rollback are still required before shared cutover.
+This CLI relies on OS and Redis access controls; `operator_id` is an audit label and is not independently authenticated. Receipts remain in Redis for seven days. Go observations alone do not authorize a transition; C++ observations, durable checkpoint receipts, expected-node aggregation and automatic rollback are still required before shared cutover.

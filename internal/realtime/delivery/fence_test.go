@@ -39,7 +39,7 @@ func TestAuthorityFenceSharedVectors(t *testing.T) {
 			}
 			record, err := decodeFenceRecord([]byte(test.Payload))
 			if err == nil {
-				err = validateFenceRecord(record, authority, test.ExpectedEpoch, time.UnixMilli(test.NowUnixMS))
+				_, err = validateFenceRecord(record, authority, test.ExpectedEpoch, time.UnixMilli(test.NowUnixMS))
 			}
 			if (err == nil) != test.Authorized {
 				t.Fatalf("authorized = %v, error = %v", err == nil, err)
