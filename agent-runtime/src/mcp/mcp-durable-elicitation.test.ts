@@ -13,6 +13,7 @@ describe("MCP durable Elicitation adapter", () => {
 
     expect(wait.directive).toEqual({
       kind: "wait_input", requestId: "INPUT-1", prompt: "Choose event settings", expiresAtUnixMs: 2_000,
+      source: { kind: "mcp", serverId: "calendar.example", toolName: "calendar.create", invocationId: "INV-1", trust: "untrusted" },
       form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [
         { id: "title", label: "Event title", type: "text", required: true, maxLength: 120 },
         { id: "visibility", label: "Visibility", type: "select", required: true, options: ["team", "private"] },

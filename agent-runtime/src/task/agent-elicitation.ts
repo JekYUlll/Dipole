@@ -1,5 +1,9 @@
 export const agentElicitationSchemaVersion = "dipole.agent.elicitation.v1" as const;
 
+export type AgentElicitationSource =
+  | { kind: "agent" }
+  | { kind: "mcp"; serverId: string; toolName: string; invocationId: string; trust: "untrusted" };
+
 type ElicitationFieldBase = { id: string; label: string; required: boolean };
 export type AgentElicitationField =
   | (ElicitationFieldBase & { type: "text"; maxLength?: number })
@@ -15,6 +19,31 @@ export interface AgentElicitationForm {
 export type AgentElicitationValue = Readonly<Record<string, string | boolean | readonly string[]>>;
 
 const identifier = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/;
+const sourceIdentifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+const sensitiveFieldNames = new Set([
+  "password", "passwd", "secret", "secretkey", "token", "apikey", "apitoken", "authkey", "authtoken",
+  "accesskey", "accesstoken", "refreshtoken", "sessionid", "sessiontoken", "bearertoken", "authorization",
+  "cookie", "credential", "credentials", "privatekey", "clientsecret", "payment", "creditcard"
+]);
+
+export function validateElicitationSource(raw: unknown): AgentElicitationSource {
+  if (!isRecord(raw)) throw new Error("Agent Elicitation source is invalid");
+  if (raw.kind === "agent") {
+    rejectUnknownKeys(raw, ["kind"], "Agent Elicitation source");
+    return { kind: "agent" };
+  }
+  if (raw.kind !== "mcp" || raw.trust !== "untrusted" ||
+      typeof raw.serverId !== "string" || !sourceIdentifier.test(raw.serverId) ||
+      typeof raw.toolName !== "string" || !sourceIdentifier.test(raw.toolName) ||
+      typeof raw.invocationId !== "string" || !sourceIdentifier.test(raw.invocationId)) {
+    throw new Error("Agent Elicitation MCP source is invalid");
+  }
+  rejectUnknownKeys(raw, ["kind", "serverId", "toolName", "invocationId", "trust"], "Agent Elicitation MCP source");
+  return {
+    kind: "mcp", serverId: raw.serverId, toolName: raw.toolName,
+    invocationId: raw.invocationId, trust: "untrusted"
+  };
+}
 
 export function validateElicitationForm(raw: unknown): AgentElicitationForm {
   if (!isRecord(raw) || raw.schemaVersion !== agentElicitationSchemaVersion || !Array.isArray(raw.fields) || raw.fields.length < 1 || raw.fields.length > 16) {
@@ -72,6 +101,9 @@ function validateField(raw: unknown): AgentElicitationField {
   if (!isRecord(raw) || typeof raw.id !== "string" || !identifier.test(raw.id) || typeof raw.label !== "string" || raw.label.trim().length < 1 || raw.label.length > 256 || typeof raw.required !== "boolean") {
     throw new Error("Agent Elicitation field identity is invalid");
   }
+  if (isSensitiveField(raw.id) || isSensitiveField(raw.label)) {
+    throw new Error(`Agent Elicitation field ${raw.id} is sensitive`);
+  }
   const base = { id: raw.id, label: raw.label, required: raw.required };
   switch (raw.type) {
     case "text": {
@@ -116,4 +148,8 @@ function byteLength(value: unknown): number {
 function rejectUnknownKeys(value: Record<string, unknown>, allowed: readonly string[], label: string): void {
   const unknown = Object.keys(value).find((key) => !allowed.includes(key));
   if (unknown !== undefined) throw new Error(`${label} contains unknown field ${unknown}`);
+}
+
+function isSensitiveField(value: string): boolean {
+  return sensitiveFieldNames.has(value.toLowerCase().replace(/[^a-z0-9]/g, ""));
 }
