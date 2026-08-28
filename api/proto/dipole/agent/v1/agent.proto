@@ -183,11 +183,36 @@ message BeginMcpToolInvocationRequest {
   string capability_id = 6;
   string arguments_sha256 = 7;
   string approval_id = 8;
+  string profile_id = 9;
+  string server_id = 10;
+  bytes arguments_json = 11;
 }
 
 message BeginMcpToolInvocationResponse {
   string invocation_id = 1;
   string status = 2;
+}
+
+message ResolveMcpToolCommandRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+}
+
+message ResolveMcpToolCommandResponse {
+  string invocation_id = 1;
+  string tenant_id = 2;
+  string principal_user_id = 3;
+  string agent_id = 4;
+  string task_id = 5;
+  string run_id = 6;
+  string profile_id = 7;
+  string server_id = 8;
+  string tool_name = 9;
+  string capability_id = 10;
+  bytes arguments_json = 11;
+  string arguments_sha256 = 12;
 }
 
 message AgentToolActionReference {
@@ -554,6 +579,7 @@ service AgentCapabilityService {
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
+  rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
   rpc ExecuteMcpMessageCommand(ExecuteMcpMessageCommandRequest) returns (ExecuteMcpMessageCommandResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);

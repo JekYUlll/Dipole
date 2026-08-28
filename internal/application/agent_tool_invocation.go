@@ -2,7 +2,11 @@ package application
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"math"
 	"regexp"
 	"strings"
@@ -45,6 +49,9 @@ type AgentToolInvocationV1 struct {
 	ToolName        string
 	CapabilityID    string
 	ArgumentsSHA256 string
+	ProfileID       string
+	ServerID        string
+	ArgumentsJSON   string
 	Status          AgentToolInvocationStatusV1
 	RequestID       string
 	TraceID         string
@@ -60,9 +67,27 @@ type AgentToolInvocationBeginV1 struct {
 	ToolName        string
 	CapabilityID    string
 	ArgumentsSHA256 string
+	ProfileID       string
+	ServerID        string
+	ArgumentsJSON   string
 	RequestID       string
 	TraceID         string
 	ApprovalUUID    string
+}
+
+type AgentMCPToolCommandV1 struct {
+	InvocationUUID  string
+	TenantID        string
+	PrincipalUUID   string
+	AgentUUID       string
+	TaskUUID        string
+	RunUUID         string
+	ProfileID       string
+	ServerID        string
+	ToolName        string
+	CapabilityID    string
+	ArgumentsJSON   string
+	ArgumentsSHA256 string
 }
 
 type AgentToolInvocationFinishV1 struct {
@@ -95,6 +120,7 @@ type AgentToolApprovalReaderV1 interface {
 type AgentToolInvocationAuditServiceV1 interface {
 	Begin(ctx context.Context, begin AgentToolInvocationBeginV1) (*AgentToolInvocationV1, error)
 	Finish(ctx context.Context, finish AgentToolInvocationFinishV1) error
+	ResolveCommand(ctx context.Context, taskUUID, runUUID, invocationUUID string) (*AgentMCPToolCommandV1, error)
 }
 
 var agentToolNamePatternV1 = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]{0,63}$`)
@@ -108,7 +134,79 @@ func (v AgentToolInvocationBeginV1) Validate() error {
 		!validOptionalAgentToolValueV1(v.RequestID, 128) || !validOptionalAgentToolValueV1(v.TraceID, 128) || !validOptionalAgentToolValueV1(v.ApprovalUUID, 64) {
 		return ErrAgentToolInvocationInvalid
 	}
+	if err := ValidateAgentMCPToolCommandV1(v.ProfileID, v.ServerID, v.ArgumentsJSON, v.ArgumentsSHA256); err != nil {
+		return err
+	}
 	return nil
+}
+
+func ValidateAgentMCPToolCommandV1(profileID, serverID, argumentsJSON, argumentsSHA256 string) error {
+	present := 0
+	for _, value := range []string{profileID, serverID, argumentsJSON} {
+		if value != "" {
+			present++
+		}
+	}
+	if present == 0 {
+		return nil
+	}
+	if present != 3 || !validAgentToolIdentifierV1(profileID, 128) || !validAgentToolIdentifierV1(serverID, 128) || len(argumentsJSON) > 16*1024 {
+		return ErrAgentToolInvocationInvalid
+	}
+	decoder := json.NewDecoder(strings.NewReader(argumentsJSON))
+	decoder.UseNumber()
+	var arguments map[string]any
+	if err := decoder.Decode(&arguments); err != nil || arguments == nil {
+		return ErrAgentToolInvocationInvalid
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return ErrAgentToolInvocationInvalid
+	}
+	canonical, err := json.Marshal(arguments)
+	if err != nil || string(canonical) != argumentsJSON || rejectAgentToolCredentialFieldsV1(arguments, 0) {
+		return ErrAgentToolInvocationInvalid
+	}
+	want := fmt.Sprintf("%x", sha256.Sum256(canonical))
+	if want != argumentsSHA256 {
+		return ErrAgentToolInvocationInvalid
+	}
+	return nil
+}
+
+var agentToolSensitiveFieldNamesV1 = map[string]struct{}{
+	"password": {}, "passwd": {}, "secret": {}, "secretkey": {}, "token": {}, "apikey": {}, "apitoken": {},
+	"authorization": {}, "cookie": {}, "credential": {}, "credentials": {}, "privatekey": {}, "clientsecret": {},
+	"accesstoken": {}, "refreshtoken": {}, "sessiontoken": {}, "bearertoken": {},
+}
+
+func rejectAgentToolCredentialFieldsV1(value any, depth int) bool {
+	if depth > 16 {
+		return true
+	}
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			if rejectAgentToolCredentialFieldsV1(item, depth+1) {
+				return true
+			}
+		}
+	case map[string]any:
+		for key, item := range typed {
+			normalized := strings.Map(func(r rune) rune {
+				if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+					return r
+				}
+				if r >= 'A' && r <= 'Z' {
+					return r + ('a' - 'A')
+				}
+				return -1
+			}, key)
+			if _, denied := agentToolSensitiveFieldNamesV1[normalized]; denied || rejectAgentToolCredentialFieldsV1(item, depth+1) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (v AgentToolInvocationFinishV1) Validate() error {

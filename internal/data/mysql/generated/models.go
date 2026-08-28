@@ -332,6 +332,9 @@ type AgentToolInvocation struct {
 	ActionResourceUuid sql.NullString
 	ActionCommandKind  sql.NullString
 	ActionCommandID    sql.NullString
+	ProfileID          sql.NullString
+	ServerID           sql.NullString
+	ArgumentsJson      json.RawMessage
 }
 
 type AgentWorkflowRepairDecision struct {

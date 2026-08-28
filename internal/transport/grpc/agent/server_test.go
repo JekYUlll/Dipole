@@ -79,9 +79,10 @@ type agentMemoryResolverStub struct {
 }
 
 type agentToolAuditStub struct {
-	begin  application.AgentToolInvocationBeginV1
-	finish application.AgentToolInvocationFinishV1
-	err    error
+	begin   application.AgentToolInvocationBeginV1
+	finish  application.AgentToolInvocationFinishV1
+	command *application.AgentMCPToolCommandV1
+	err     error
 }
 
 type agentMessageCommandExecutionStub struct {
@@ -106,6 +107,10 @@ func (s *agentToolAuditStub) Begin(_ context.Context, begin application.AgentToo
 func (s *agentToolAuditStub) Finish(_ context.Context, finish application.AgentToolInvocationFinishV1) error {
 	s.finish = finish
 	return s.err
+}
+
+func (s *agentToolAuditStub) ResolveCommand(_ context.Context, _, _, _ string) (*application.AgentMCPToolCommandV1, error) {
+	return s.command, s.err
 }
 
 func (s *agentMemoryResolverStub) ResolveContextMemories(_ context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]application.AgentMemoryV1, error) {
@@ -302,7 +307,11 @@ func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testi
 }
 
 func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
-	audit := &agentToolAuditStub{}
+	audit := &agentToolAuditStub{command: &application.AgentMCPToolCommandV1{
+		InvocationUUID: "INV-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", TaskUUID: "TASK-1", RunUUID: "RUN-1",
+		ProfileID: "calendar-prod", ServerID: "calendar.example", ToolName: "calendar.create", CapabilityID: application.AgentCapabilityConversationsList,
+		ArgumentsJSON: `{"calendarId":"CAL-1"}`, ArgumentsSHA256: strings.Repeat("c", 64),
+	}}
 	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	if err != nil {
 		t.Fatalf("new server: %v", err)
@@ -319,6 +328,12 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	})
 	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP || audit.begin.ApprovalUUID != "APR-1" {
 		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
+	}
+	command, err := server.ResolveMcpToolCommand(context.Background(), &agentv1.ResolveMcpToolCommandRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
+	})
+	if err != nil || command.GetProfileId() != "calendar-prod" || string(command.GetArgumentsJson()) != `{"calendarId":"CAL-1"}` || command.GetPrincipalUserId() != "U100" {
+		t.Fatalf("unexpected Tool command: response=%+v err=%v", command, err)
 	}
 	finishResponse, err := server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", Status: "completed",
