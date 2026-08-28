@@ -21,6 +21,7 @@ RUN apt-get update \
 
 WORKDIR /src
 COPY api/proto /src/api/proto
+COPY contracts/realtime-delivery-fence /src/contracts/realtime-delivery-fence
 COPY realtime-delivery /src/realtime-delivery
 
 RUN cmake \
