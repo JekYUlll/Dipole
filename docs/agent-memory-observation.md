@@ -37,6 +37,8 @@ Memory prefilter evidence v1 进一步将 embedding/small_model 的逐 case 分�
 
 在进入后续灰度前使用 `eval:memory-prefilter-rollout`。该 CLI 不信任调用方传入的 review/report 摘要，会重新计算 review agreement、gold label 和候选门禁，并输出绑定哈希的 `eligible|blocked` 决策；`eligible` 仅表示离线证据满足策略，不授予 Runtime 或生产写入权。
 
+Runtime binding v1 将该决策映射为 `off/shadow/enforced` 三态。接线前必须复核 decision、候选配置、corpus 和 review 哈希；`shadow` 不改变现有任务创建，`enforced` 只在 `eligible` 时放行，三态均保持 Memory 写权限关闭。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。

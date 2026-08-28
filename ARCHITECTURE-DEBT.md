@@ -130,6 +130,7 @@
 - **本轮进展：** 增加 source manifest v1 与安全加载器，要求 owner UID、绝对规范路径、无符号链接、严格文件权限/大小、批准时间窗口以及 corpus/review 双哈希一致；该边界允许后续接入真实脱敏文件，同时阻断任意本地文件冒充已批准语料。当前仍缺真实 owner-approved corpus、发布签名和共享环境评测证据。
 - **本轮进展：** 增加 Memory prefilter evidence v1 与 `eval:memory-prefilter` 离线 CLI，embedding/small_model 候选必须完整绑定 reviewed corpus、配置哈希和 score/threshold；报告仅含聚合分类、延迟、成本指标与门禁原因，缺失 case、哈希漂移或阈值漂移均 fail closed。当前仍缺真实 owner-approved corpus、embedding/小模型采集、retrieval ranking 标注和在线灰度证据。
 - **本轮进展：** 增加 Memory prefilter rollout decision v1 与 `eval:memory-prefilter-rollout`，在发布判定前重新计算双 reviewer/gold 与 candidate evidence，绑定 corpus/review/final-label/evidence 哈希并以 `eligible|blocked` 输出。该门禁仍为离线证据，真实语料、候选采集、审批授权和在线灰度继续关闭。
+- **本轮进展：** 增加 `runtime-binding.v1` 与 provider-neutral 三态 gate：`shadow` 只观察、`enforced` 仅接受精确绑定的 `eligible` 决策，所有模式固定无 Memory 写权。该 gate 尚未接入真实模型、Kafka subscription 或自动晋级，仍需真实语料和在线回切证据。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 
