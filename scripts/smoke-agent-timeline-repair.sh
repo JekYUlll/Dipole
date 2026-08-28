@@ -77,19 +77,12 @@ if [[ "$seed_count" != "1" ]]; then
   exit 1
 fi
 
-set +e
 DIPOLE_CONFIG_FILE="$config_file" DIPOLE_MYSQL_HOST=127.0.0.1 DIPOLE_MYSQL_PORT="$mysql_port" \
   DIPOLE_MYSQL_USER=root DIPOLE_MYSQL_PASSWORD=repair-root DIPOLE_MYSQL_DBNAME=dipole \
-  timeout 5s "$work_dir/dipole-agent-task-timeline-repair" \
-  -batch-size 10 -lease 2s -retry-backoff 1s -interval 100ms \
-  -metrics-address 127.0.0.1:0 >/dev/null 2>"$work_dir/repair.log"
-worker_status=$?
-set -e
-if [[ "$worker_status" -ne 124 ]]; then
-  cat "$work_dir/repair.log" >&2
-  printf 'Expected the bounded smoke worker to be stopped by timeout, got %d\n' "$worker_status" >&2
-  exit 1
-fi
+  "$work_dir/dipole-agent-task-timeline-repair" \
+  -once -batch-size 10 -lease 2s -retry-backoff 1s -interval 100ms \
+  -metrics-address 127.0.0.1:0 >"$work_dir/repair.log" 2>&1
+grep -q 'claimed=1 repaired=1 retried=0' "$work_dir/repair.log"
 
 repair_state=$(docker exec "$mysql_container" mysql -N -uroot -prepair-root dipole \
   -e "SELECT repair_status, COUNT(*) FROM agent_task_timeline_repairs WHERE event_uuid = 'EVENT-SMOKE-REPAIR' GROUP BY repair_status;")
