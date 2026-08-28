@@ -33,6 +33,7 @@
 - **风险：** 未完成共享环境 operator 灰度、指标抓取和告警演练前，Timeline repair intent 仍可能停留在 pending/retry，不能宣称生产自动修复闭环。
 - **下一步：** 在隔离环境启用 profile，验证 readiness、repair counter、重启恢复与回滚；证据完整后再评估默认拓扑或告警策略。
 - **运维约束：** 启用、暂停和回切步骤已收敛到 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`；当前仍要求显式 profile、完整窗口和原始指标快照，未满足时保持默认关闭。
+- **本轮进展：** repair binary 增加 `-once` 有界执行模式，已由隔离 smoke 真实验证单批次完成；共享环境仍需 operator 灰度和告警演练。
 
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 
