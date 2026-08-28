@@ -129,7 +129,7 @@ describe("ModelShadowPlanner", () => {
         context: {
           compilerVersion: "v1", estimatedTokens: expect.any(Number), omitted: [],
           selected: expect.arrayContaining([
-            expect.objectContaining({ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } })
+            expect.objectContaining({ id: "event:E1", contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/), provenance: { sourceType: "kafka_event", sourceId: "E1" } })
           ])
         }
       }
