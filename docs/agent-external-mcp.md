@@ -213,6 +213,10 @@ resource 创建后若取消、composition 抛错或返回空结果，startup pla
 
 成功结果同时保存 exact `deployment` 与 `worker` composition，后续 preflight、Worker registration 和专用 Workflow client 可以基于同一 snapshot 编排停止顺序。该层没有创建 Temporal Worker/Client、启动轮询、执行 readiness preflight/drill 或访问 raw Registry；生产 `index.ts` 和 Compose 尚未调用它。下一步接线仍需代码拥有的真实 read-only Capability definitions、受控 Shadow route manifest、RPC resource factory，以及“先停 Worker/Client、后关 resource”的集成测试。
 
+`startExternalMcpTemporalWorkerLifecycle` 将 managed startup snapshot 与现有 `TemporalWorkerRuntime` 收敛为一个 owner。undefined snapshot 在读取 Temporal config 状态或创建 Worker 前返回；enabled snapshot 要求 Temporal config 同时 enabled，并把 composition 的 exact Activities 交给 Runtime。Runtime factory 同步失败、Worker 未进入 RUNNING 或后续启动失败都会先停止已创建的 Runtime，再关闭 startup resource；若 Runtime 尚未构造，则直接归还 resource。
+
+成功 lifecycle 的 `stop()` 固定先停止 Worker polling 并关闭 Temporal connection，再关闭 startup 持有的 Core/Artifact resource。前一阶段失败不会阻断后一阶段，最终只返回固定低敏 shutdown error；首次成功或失败 Promise 都会缓存，重复 stop 不会再次触达任一 owner。该层仍不加载 manifest、创建 RPC、发布 readiness、启动 Workflow client 或修改生产进程，`index.ts`/Compose 与外部网络继续关闭。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
