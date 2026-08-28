@@ -34,6 +34,7 @@ import {
   validateExternalMcpProductionShadowMode
 } from "./runtime/external-mcp-production-shadow.js";
 import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
+import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
@@ -41,6 +42,7 @@ let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
+const subscriptionShadowMetrics = new SubscriptionShadowMetrics(shadowConfig.subscriptionShadowEnabled);
 const externalMcpEnvironment = Object.freeze({ ...process.env });
 const externalMcpShadowEnabled = validateExternalMcpProductionShadowMode(
   externalMcpEnvironment,
@@ -81,7 +83,10 @@ if (temporalConfig.enabled && ((temporalConfig.activityMode === "read_shadow" &&
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
 const shadowRuntime = shadowConfig.enabled && !externalMcpShadowEnabled
-  ? createKafkaShadowRuntime(shadowConfig, temporalDispatcher)
+  ? createKafkaShadowRuntime(
+    shadowConfig, temporalDispatcher, undefined,
+    shadowConfig.subscriptionShadowEnabled ? subscriptionShadowMetrics : undefined
+  )
   : undefined;
 let externalMcpShadowProcess: ExternalMcpShadowProcess | undefined;
 let serverStarted = false;
@@ -127,7 +132,8 @@ const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHa
 const server = buildServer(
   { isReady: () => ready },
   controlService === undefined ? undefined : { secret: controlSecret, service: controlService },
-  mcpHandler === undefined ? undefined : { secret: mcpSecret, resource: mcpResource, handler: mcpHandler }
+  mcpHandler === undefined ? undefined : { secret: mcpSecret, resource: mcpResource, handler: mcpHandler },
+  subscriptionShadowMetrics
 );
 const stop = (): Promise<void> => {
   stopPromise ??= (async () => {

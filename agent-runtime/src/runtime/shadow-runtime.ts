@@ -31,6 +31,7 @@ import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
+import type { SubscriptionShadowObserver } from "../observability/subscription-shadow-metrics.js";
 import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
@@ -49,6 +50,7 @@ const shadowRuntimeConfigSchema = z.object({
   tenantId: z.string().trim().min(1),
   agentUuid: z.string().trim().min(1),
   triggerMode: z.enum(["direct_target", "subscription"]),
+  subscriptionShadowEnabled: z.boolean(),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
@@ -128,6 +130,15 @@ const shadowRuntimeConfigSchema = z.object({
       path: ["capabilityRpc", "enabled"]
     });
   }
+  if (config.subscriptionShadowEnabled && !config.enabled) {
+    refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires Kafka", path: ["subscriptionShadowEnabled"] });
+  }
+  if (config.subscriptionShadowEnabled && config.triggerMode !== "direct_target") {
+    refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires direct-target primary mode", path: ["triggerMode"] });
+  }
+  if (config.subscriptionShadowEnabled && !config.capabilityRpc.enabled) {
+    refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
+  }
   if (config.modelMode === "ai_sdk" && !config.capabilityRpc.enabled) {
     refinement.addIssue({ code: "custom", message: "AI SDK mode requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
   }
@@ -159,6 +170,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     tenantId: env.DIPOLE_AGENT_TENANT_ID ?? "dipole",
     agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
     triggerMode: env.DIPOLE_AGENT_TRIGGER_MODE?.trim().toLowerCase() || "direct_target",
+    subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
@@ -238,7 +250,8 @@ export function buildKafkaShadowRuntime(
   registry?: CapabilityRegistry,
   trajectory?: MySQLShadowAuditSink,
   dispatcher?: ShadowTaskDispatcher,
-  subscriptionMatcher?: ShadowSubscriptionMatcher
+  subscriptionMatcher?: ShadowSubscriptionMatcher,
+  subscriptionShadowObserver?: SubscriptionShadowObserver
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
   return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
@@ -248,9 +261,7 @@ export function buildKafkaShadowRuntime(
     } catch (error) {
       throw new PermanentKafkaEventError(error);
     }
-    if (config.triggerMode === "direct_target" && decoded.targetUuid !== config.agentUuid) {
-      return;
-    }
+    const directTargetAccepted = decoded.targetUuid === config.agentUuid;
     const identity: AgentIdentity = {
       tenantId: config.tenantId,
       principalUuid: decoded.principalUuid,
@@ -259,6 +270,22 @@ export function buildKafkaShadowRuntime(
       ...(decoded.traceId === undefined ? {} : { traceId: decoded.traceId })
     };
     let event = decoded.event;
+    if (config.subscriptionShadowEnabled) {
+      if (subscriptionMatcher === undefined || subscriptionShadowObserver === undefined) {
+        throw new Error("Subscription Shadow observation dependencies are unavailable");
+      }
+      try {
+        const matches = matchEventSubscriptions(event, await subscriptionMatcher.matchEventSubscriptions(event, identity));
+        subscriptionShadowObserver.observe({
+          directTargetAccepted,
+          subscriptionOutcome: matches.length === 0 ? "miss" : "match",
+          candidateCount: matches.length
+        });
+      } catch {
+        subscriptionShadowObserver.observe({ directTargetAccepted, subscriptionOutcome: "error", candidateCount: 0 });
+      }
+    }
+    if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
     if (config.triggerMode === "subscription") {
       const matcher = subscriptionMatcher ?? admission;
       if (matcher === undefined) {
@@ -286,7 +313,8 @@ export function buildKafkaShadowRuntime(
 export function createKafkaShadowRuntime(
   config: ShadowRuntimeConfig,
   dispatcher?: ShadowTaskDispatcher,
-  subscriptionMatcher?: ShadowSubscriptionMatcher
+  subscriptionMatcher?: ShadowSubscriptionMatcher,
+  subscriptionShadowObserver?: SubscriptionShadowObserver
 ): ShadowRuntime {
   let pool: Pool | undefined;
   let ledger: EventLedger;
@@ -304,7 +332,8 @@ export function createKafkaShadowRuntime(
   const failureRouter = new KafkaFailureRouter(failurePublisher, config.failureMaxAttempts);
   const audit = pool === undefined ? new ConsoleShadowAuditSink() : new MySQLShadowAuditSink(pool);
   const rpcTransport = config.capabilityRpc.enabled && (
-    dispatcher === undefined || (config.triggerMode === "subscription" && subscriptionMatcher === undefined)
+    dispatcher === undefined || (config.triggerMode === "subscription" && subscriptionMatcher === undefined) ||
+    (config.subscriptionShadowEnabled && subscriptionMatcher === undefined)
   )
     ? createAgentCapabilityRPC(config)
     : undefined;
@@ -322,7 +351,7 @@ export function createKafkaShadowRuntime(
   }
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
-    dispatcher, subscriptionMatcher
+    dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
   );
   const mainTopic = physicalTopic(config);
   return {

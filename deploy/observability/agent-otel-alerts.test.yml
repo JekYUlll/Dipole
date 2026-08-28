@@ -12,6 +12,10 @@ tests:
         values: '0 0 1 1 1 1'
       - series: 'otelcol_processor_refused_spans_total{job="dipole-otel-collector",processor="memory_limiter"}'
         values: '0 0 0 1 1 1'
+      - series: 'dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",instance="agent:8091",direct_target="accepted",subscription="error"}'
+        values: '0 0 1 1 1 1'
+      - series: 'dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",instance="agent:8091",direct_target="ignored",subscription="match"}'
+        values: '0 0 0 1 1 1'
     alert_rule_test:
       - eval_time: 2m
         alertname: DipoleAgentOTelCollectorDown
@@ -40,3 +44,25 @@ tests:
               job: dipole-otel-collector
             exp_annotations:
               summary: Dipole Agent spans are being refused
+      - eval_time: 5m
+        alertname: DipoleAgentSubscriptionShadowErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: agent:8091
+              job: dipole-agent
+              direct_target: accepted
+              subscription: error
+            exp_annotations:
+              summary: Dipole Agent subscription Shadow matcher is failing
+      - eval_time: 5m
+        alertname: DipoleAgentSubscriptionShadowAdmissionDrift
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              instance: agent:8091
+              job: dipole-agent
+              direct_target: ignored
+              subscription: match
+            exp_annotations:
+              summary: Subscription Shadow would admit events ignored by direct-target
