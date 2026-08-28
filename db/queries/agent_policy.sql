@@ -248,3 +248,12 @@ WHERE p.proposal_uuid = ? AND p.status = 'proposed'
 UPDATE agent_workflow_repair_proposals
 SET status = 'expired', decided_at = UTC_TIMESTAMP()
 WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP();
+
+-- name: InsertAgentWorkflowRepairExecution :execrows
+INSERT IGNORE INTO agent_workflow_repair_executions (
+    execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version,
+    expected_current_sha256, target_sha256, rollback_sha256, status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'prepared');
+
+-- name: GetAgentWorkflowRepairExecution :one
+SELECT * FROM agent_workflow_repair_executions WHERE execution_uuid = ? LIMIT 1;

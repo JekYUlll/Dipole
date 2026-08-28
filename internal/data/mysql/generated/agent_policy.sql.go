@@ -397,6 +397,33 @@ func (q *Queries) GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAge
 	return i, err
 }
 
+const getAgentWorkflowRepairExecution = `-- name: GetAgentWorkflowRepairExecution :one
+SELECT execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version, expected_current_sha256, target_sha256, rollback_sha256, status, started_at, finished_at, failure_code, created_at, updated_at FROM agent_workflow_repair_executions WHERE execution_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairExecution(ctx context.Context, executionUuid string) (AgentWorkflowRepairExecution, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairExecution, executionUuid)
+	var i AgentWorkflowRepairExecution
+	err := row.Scan(
+		&i.ExecutionUuid,
+		&i.PlanID,
+		&i.ProposalUuid,
+		&i.TaskUuid,
+		&i.ExecutorUuid,
+		&i.ExecutorGrantVersion,
+		&i.ExpectedCurrentSha256,
+		&i.TargetSha256,
+		&i.RollbackSha256,
+		&i.Status,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.FailureCode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAgentWorkflowRepairOperatorGrant = `-- name: GetAgentWorkflowRepairOperatorGrant :one
 SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
 `
@@ -753,6 +780,43 @@ func (q *Queries) InsertAgentWorkflowRepairDecision(ctx context.Context, arg Ins
 		arg.Decision,
 		arg.ProposalUuid_2,
 		arg.ProposerUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentWorkflowRepairExecution = `-- name: InsertAgentWorkflowRepairExecution :execrows
+INSERT IGNORE INTO agent_workflow_repair_executions (
+    execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version,
+    expected_current_sha256, target_sha256, rollback_sha256, status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'prepared')
+`
+
+type InsertAgentWorkflowRepairExecutionParams struct {
+	ExecutionUuid         string
+	PlanID                string
+	ProposalUuid          string
+	TaskUuid              string
+	ExecutorUuid          string
+	ExecutorGrantVersion  uint64
+	ExpectedCurrentSha256 sql.NullString
+	TargetSha256          string
+	RollbackSha256        sql.NullString
+}
+
+func (q *Queries) InsertAgentWorkflowRepairExecution(ctx context.Context, arg InsertAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairExecution,
+		arg.ExecutionUuid,
+		arg.PlanID,
+		arg.ProposalUuid,
+		arg.TaskUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+		arg.ExpectedCurrentSha256,
+		arg.TargetSha256,
+		arg.RollbackSha256,
 	)
 	if err != nil {
 		return 0, err
