@@ -10,12 +10,13 @@ go run ./cmd/sync-cassandra-hydration-evidence -evidence=/path/evidence.json -po
 
 ```bash
 go run ./cmd/sync-cassandra-hydration-snapshot \
-  -metrics=/path/sync.metrics \
+  -metrics-start=/path/sync-start.metrics \
+  -metrics-end=/path/sync-end.metrics \
   -service=sync-service -revision=sync@REVISION -mode=primary \
   -window-start=2026-08-29T00:00:00Z -window-end=2026-08-29T01:00:00Z \
   > /path/evidence.json
 ```
 
-转换器只信任显式传入的窗口元数据，不把 Prometheus 标签当作身份来源；取消请求归入 `error`，hit p95 使用满足 95% 样本的有限桶上界，无法计算时拒绝生成 evidence。
+转换器只信任显式传入的窗口元数据，不把 Prometheus 标签当作身份来源；CLI 对生命周期累计 counter 和 histogram 做起止快照差分，计数回退、进程重启导致的桶缺失或桶漂移均 fail closed。取消请求归入 `error`，hit p95 使用满足 95% 样本的有限桶上界，无法计算时拒绝生成 evidence。
 
 `shadow` 和 `primary` 均需经过相同门禁；退出码 `0/2/1` 分别表示达标、门禁失败和输入无效。`eligible` 只表示观测窗口满足策略，不能单独开启生产主读或停止 MySQL fallback。
