@@ -38,7 +38,8 @@ describe("external MCP Temporal Worker lifecycle", () => {
       createRuntime
     );
 
-    expect(lifecycle).toMatchObject({ deployment: startup.deployment, worker: startup.worker });
+    expect(lifecycle).toMatchObject({ deployment: startup.deployment, worker: startup.worker, temporal: config });
+    expect(Object.isFrozen(lifecycle!.temporal)).toBe(true);
     expect(createRuntime).toHaveBeenCalledWith(config, startup.worker.activities, onFailure);
     expect(runtime.start).toHaveBeenCalledOnce();
 
