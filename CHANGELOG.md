@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Workflow repair 增加默认无副作用的 `repair:preflight`：在未来执行器前重新核对 plan 摘要、批准提案证据、executor grant 版本和当前投影 CAS，仅输出低敏 `ready|blocked` 收据；过期、漂移和绑定不一致统一阻断，继续不提供 projection 写入。
 - 收紧 Agent Workflow repair dry-run 计划绑定：当前投影与目标投影必须属于同一 Workflow/Run，跨任务证据在生成 plan 前 fail closed；不改变 v1 仅 dry-run、无 projection 写入的边界。
 - Agent Memory lineage rollout 增加 deployment evidence v1 与只读 `agent-memory-lineage-deployment-evidence` CLI：外部共享环境记录必须绑定 rollout review receipt、运行版本、配置摘要、migration 43、健康检查和回滚演练 ID；输出仅保存 deployment ID 摘要与通过标志，`executionAuthority`、`contentRead`、`deletionAuthority`、`runtimeAuthority` 固定为 false。该工具不连接共享环境、不执行回填，缺少真实部署与回滚记录时继续 fail closed。
 - Agent Memory 增加有界历史 lineage backfill v1 的语言中立 manifest/receipt 与 Go runner：游标固定为 Shadow Plan ID high-water mark，引用仅允许 exact `memory:<id>` 与 `full|compact`，runner 在目标成功后推进 checkpoint，重复写返回 duplicate 并保持可收敛。Receipt 仅保存 hash、游标和计数，固定不读取正文、不授予删除或 Runtime 权威；MySQL checkpoint/source/target 尚未接线。
