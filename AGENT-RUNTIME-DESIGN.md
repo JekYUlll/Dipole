@@ -136,6 +136,7 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 每次记忆写入需要来源、作用域、版本、置信度和过期策略；用户可查看、纠正和撤销长期记忆，物理删除需服从审计与隐私保留策略。
 
 G3 v1 使用 migration v29 建立读取基础：`agent_memories` 按 tenant、principal、Agent 和精确 conversation scope 保存五类不可变记录、full/compact representation、priority、有效期与 provenance。Runtime 只提交 Task/Run 和资源，Core 从运行中的固定 Definition 解析身份、`conversation.read` permission 与 read scope；模型无法指定 principal。Task 创建时间固定可见记录上界，避免重试吸收后续新增记忆；撤销和过期立即移除，已存在的不可变 Plan 因此会在漂移时 fail closed。migration v38 进一步保存 revoker、撤销原因和时间；Gateway-only additive RPC 从认证 RequestContext 派生 owner，稳定分页和 owner-scoped revoke 均由 Core 二次约束，公开响应不携带内部 provenance URI。canonical Pencil 与默认关闭的 Vue 页面展示 `UNTRUSTED MEMORY`、来源和六类生命周期状态，并以权威撤销响应更新记录。v39-v42 依次增加 append-only correction、root 内容擦除、Task 直接 lineage 和模型前归因；derived-retention v1 将低敏影响报告转换为七域离线策略决策，固定无内容读取、删除执行或 Runtime 权威。`DIPOLE_AGENT_MEMORY_ENABLED` 默认与 Compose 固定为 `false`，受控 Shadow 显式启用后，Context Compiler 仅在命中记录时使用 Memory 独立预算，并将内容统一标记为 `untrusted` 数据。字段级派生擦除器、有界历史回填、自动写入、Observation/Reflection 压缩和 hybrid/vector retrieval 由 `AD-035` 跟踪。
+历史 lineage 回填使用独立的 `dipole.agent.memory-lineage-backfill-manifest.v1` 与 receipt v1：游标绑定 `agent_shadow_plans.id` 的固定 high-water mark，批次和结果只保留低敏计数/hash。Go runner 要求 source ID 单调、引用身份与 representation 合法，目标写入成功后才推进 checkpoint，并允许 duplicate 精确重放；v43 MySQL checkpoint/source/target 接线完成前，该 runner 不由生产启动链调用。
 
 ## 5. Event Trigger
 
