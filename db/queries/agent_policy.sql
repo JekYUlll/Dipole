@@ -16,6 +16,22 @@ SELECT * FROM agent_definition_versions
 WHERE definition_uuid = ? AND version = ?
 LIMIT 1;
 
+-- name: ListOwnedActiveAgentDefinitions :many
+SELECT d.*
+FROM agent_definition_versions AS d
+WHERE d.tenant_id = sqlc.arg(tenant_id)
+  AND d.owner_uuid = sqlc.arg(owner_uuid)
+  AND d.status = 'active' AND d.revoked_at IS NULL
+  AND d.valid_from <= sqlc.arg(valid_at)
+  AND (d.expires_at IS NULL OR d.expires_at > sqlc.arg(expires_after))
+  AND JSON_CONTAINS(d.permissions_json, JSON_QUOTE('conversation.read'), '$')
+  AND (JSON_CONTAINS(d.scopes_json, JSON_OBJECT('resource_type', 'conversation', 'actions', JSON_ARRAY('read')), '$')
+    OR JSON_CONTAINS(d.scopes_json, JSON_OBJECT('resource_type', 'conversation', 'actions', JSON_ARRAY('*')), '$'))
+  AND (d.definition_uuid > sqlc.arg(after_definition_uuid)
+    OR (d.definition_uuid = sqlc.arg(after_definition_uuid) AND d.version > sqlc.arg(after_version)))
+ORDER BY d.definition_uuid ASC, d.version ASC
+LIMIT ?;
+
 -- name: RevokeAgentDefinitionVersion :execrows
 UPDATE agent_definition_versions
 SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)

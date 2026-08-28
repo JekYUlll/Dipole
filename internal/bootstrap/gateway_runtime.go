@@ -207,7 +207,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)
 		}
 	}
-	var agentSubscriptions gateway.AgentSubscriptionControlApplication
+	var agentSubscriptions *gateway.AgentSubscriptionControlClient
 	if gatewayCfg.AgentSubscriptionEnabled {
 		agentSubscriptions, err = gateway.NewAgentSubscriptionControlClient(
 			agentv1.NewAgentCapabilityServiceClient(coreConn), gatewayCfg.AgentSubscriptionTenantID,
@@ -225,6 +225,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		Search:             search,
 		AgentTasks:         agentTasks,
 		AgentSubscriptions: agentSubscriptions,
+		AgentDefinitions:   agentSubscriptions,
 		AgentMCP:           agentMCP,
 		Presence:           wsTransport.NewRedisPresenceTracker(presence),
 		Limiter:            platformRateLimit.NewLimiter(),
