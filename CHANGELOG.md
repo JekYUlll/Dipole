@@ -26,6 +26,7 @@
 
 ### 验证
 
+- 新增 `scripts/smoke-agent-timeline-repair-compose.sh` 部署级隔离演练：先校验 v49 migration 和 Timeline 表，再通过 opt-in Compose profile 启动专用权限与 repair worker，验证 `readyz`、持续 replay 和 event UUID 幂等；使用源码构建镜像后完整通过。演练同时发现并修复 MySQL `Asia/Shanghai` 与 Go UTC lease/retry 的 DATETIME 偏移，将微服务 Compose MySQL 固定为 UTC，并避免把一次性 migration job 交给长期服务等待语义。
 - Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
 - 新增 `scripts/smoke-agent-timeline-repair.sh` 进程级隔离演练：使用临时 MySQL、真实迁移和独立 repair 二进制，验证 repair intent 被 claim/replay、状态收敛为 `completed` 且 Timeline 事件保持单份；worker 由 timeout 有界停止，演练不会启用共享环境服务。
