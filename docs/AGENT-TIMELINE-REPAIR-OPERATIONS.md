@@ -7,12 +7,21 @@ worker 支持常驻轮询和显式 `-once` 两种模式。常驻模式适合 Com
 ## 前置检查
 
 1. 确认当前镜像包含 `/app/dipole-agent-task-timeline-repair`，并记录发布 revision。
-2. 确认 migration 已完成到 v49，`mysql-permissions` 使用已替换的 repair 账号密码。
+2. 确认 migration 已完成到 v49，`mysql-permissions` 使用已替换的 repair 账号密码；repair ledger 的 `DATETIME` 由 Compose MySQL 以 UTC 提供，生产数据库也必须保持 UTC session/default time zone。
 3. 为共享环境注入 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，不要把真实密码写入仓库或命令历史；Compose 会在授权 SQL 完成后用同一变量更新账号密码，单引号和反斜杠会被 fail closed。
 4. 确认 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 已注入；Compose 配置检查应通过。
 5. 启用前保存 repair ledger 数量、Prometheus 快照和当前告警状态。
 
 ## 隔离启用
+
+从源码构建候选镜像后，先执行完整 profile 级部署验收：
+
+```bash
+BUILD_IMAGE=1 DIPOLE_IMAGE=dipole-server:timeline-repair-smoke \
+  scripts/smoke-agent-timeline-repair-compose.sh
+```
+
+该 smoke 使用随机 Compose project 和临时 volume，完成后自动清理；它会先同步执行一次性 migration，校验 v49 和 Timeline 表，再启动权限容器与常驻 worker。旧镜像或非 UTC 数据库会在 preflight 阶段失败，不得跳过该检查。
 
 ```bash
 docker compose --profile agent-timeline-repair up -d agent-timeline-repair
