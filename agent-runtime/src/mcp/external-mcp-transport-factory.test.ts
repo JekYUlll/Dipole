@@ -124,6 +124,20 @@ describe("external MCP Streamable HTTP Transport Factory", () => {
     expect(test.create.mock.calls[0]![1].fetch).not.toBe(test.create.mock.calls[1]![1].fetch);
   });
 
+  it("applies the reviewed Secret byte bound to every AuthProvider", async () => {
+    const test = harness();
+    const factory = createExternalMcpStreamableHttpTransportFactory({
+      secretProvider: { read: vi.fn(async () => Buffer.from("12345678901234567")) },
+      resolver: test.resolver,
+      dispatcher: test.dispatcher,
+      transportBuilder: { create: test.create },
+      authProviderOptions: { maximumBytes: 16 }
+    });
+    await factory.connect({ profile, credential });
+    const auth = test.create.mock.calls[0]![1].authProvider as AuthProvider;
+    await expect(auth.token()).rejects.toMatchObject({ code: "secret_invalid" });
+  });
+
   it.each([
     ["tenant", { tenantId: "other-tenant" }],
     ["reference", { credentialRef: "CRED-FEDCBA9876543210" }],

@@ -14,6 +14,10 @@ import {
   type ExternalMcpStreamableHttpTransportBuilder
 } from "./external-mcp-transport-factory.js";
 import {
+  createExternalMcpProductionIoPreflight,
+  type ExternalMcpProductionIoPreflight
+} from "./external-mcp-production-io-preflight.js";
+import {
   createEncryptedFileExternalMcpSecretProvider,
   type EncryptedFileExternalMcpSecretProviderConfig
 } from "./node-external-mcp-encrypted-secret-provider.js";
@@ -37,16 +41,33 @@ export interface ExternalMcpProductionIoOptions {
   readonly now?: () => Date;
 }
 
+export interface ExternalMcpProductionIoRuntime {
+  readonly registry: ExternalMcpTransportRegistry;
+  readonly preflight: ExternalMcpProductionIoPreflight;
+}
+
 export function createExternalMcpProductionIoRegistry(
   config: ExternalMcpConfig,
   io?: ExternalMcpProductionIoConfig,
   options: ExternalMcpProductionIoOptions = {}
 ): ExternalMcpTransportRegistry {
+  return createExternalMcpProductionIoRuntime(config, io, options).registry;
+}
+
+export function createExternalMcpProductionIoRuntime(
+  config: ExternalMcpConfig,
+  io?: ExternalMcpProductionIoConfig,
+  options: ExternalMcpProductionIoOptions = {}
+): ExternalMcpProductionIoRuntime {
   if (!config.enabled) {
-    return new ExternalMcpTransportRegistry(config, disabledCatalog, disabledFactory, options.now);
+    return {
+      registry: new ExternalMcpTransportRegistry(config, disabledCatalog, disabledFactory, options.now),
+      preflight: createExternalMcpProductionIoPreflight(config, undefined, options.now)
+    };
   }
   if (io === undefined) throw new Error("Enabled external MCP requires production I/O configuration");
 
+  const maximumSecretBytes = options.maximumSecretBytes ?? 4096;
   const owner = options.expectedOwnerUid === undefined ? {} : { expectedOwnerUid: options.expectedOwnerUid };
   const catalog = createFileExternalMcpCredentialCatalog(io.credentialCatalogPath, {
     ...owner,
@@ -54,7 +75,7 @@ export function createExternalMcpProductionIoRegistry(
   });
   const secretProvider = createEncryptedFileExternalMcpSecretProvider(io.secretProvider, {
     ...owner,
-    ...(options.maximumSecretBytes === undefined ? {} : { maximumSecretBytes: options.maximumSecretBytes })
+    maximumSecretBytes
   });
   const caBundles = createFileExternalMcpCaBundleProvider(io.caBundles, {
     ...owner,
@@ -68,9 +89,18 @@ export function createExternalMcpProductionIoRegistry(
     secretProvider,
     resolver,
     dispatcher,
+    authProviderOptions: { maximumBytes: maximumSecretBytes },
     ...(options.transportBuilder === undefined ? {} : { transportBuilder: options.transportBuilder })
   });
-  return new ExternalMcpTransportRegistry(config, catalog, factory, options.now);
+  return {
+    registry: new ExternalMcpTransportRegistry(config, catalog, factory, options.now),
+    preflight: createExternalMcpProductionIoPreflight(config, {
+      catalog,
+      secretProvider,
+      caBundles,
+      maximumSecretBytes
+    }, options.now)
+  };
 }
 
 const disabledCatalog: ExternalMcpCredentialCatalog = {
