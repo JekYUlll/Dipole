@@ -3,6 +3,8 @@ package kafka
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -195,5 +197,59 @@ func TestConsumerCollectStatsIncludesCumulativeOutcomes(t *testing.T) {
 	stats := consumer.CollectStats()
 	if stats.ClientID != "core" || stats.GroupID != "core-consumer" || stats.Fetched != 7 || stats.Handled != 6 || stats.Committed != 5 || stats.CommitErrors != 1 || stats.RetryPublished != 2 || stats.DeadPublished != 1 {
 		t.Fatalf("unexpected consumer stats: %+v", stats)
+	}
+}
+
+func TestValidateConsumerGroupReadinessRequiresStableCompleteAssignments(t *testing.T) {
+	t.Parallel()
+	expected := []string{"dipole.message.direct.created", "dipole.message.direct.created.retry"}
+
+	if err := validateConsumerGroupReadiness("dipole-gateway-consumer", expected, consumerGroupSnapshot{
+		State: "Stable",
+		AssignedPartitions: map[string]int{
+			"dipole.message.direct.created":       6,
+			"dipole.message.direct.created.retry": 6,
+		},
+	}); err != nil {
+		t.Fatalf("stable complete assignment rejected: %v", err)
+	}
+
+	cases := []struct {
+		name     string
+		snapshot consumerGroupSnapshot
+		want     string
+	}{
+		{name: "empty", snapshot: consumerGroupSnapshot{}, want: "state"},
+		{name: "rebalance", snapshot: consumerGroupSnapshot{State: "PreparingRebalance"}, want: "PreparingRebalance"},
+		{name: "missing topic", snapshot: consumerGroupSnapshot{State: "Stable", AssignedPartitions: map[string]int{
+			"dipole.message.direct.created": 6,
+		}}, want: "message.direct.created.retry"},
+		{name: "zero partitions", snapshot: consumerGroupSnapshot{State: "Stable", AssignedPartitions: map[string]int{
+			"dipole.message.direct.created": 6, "dipole.message.direct.created.retry": 0,
+		}}, want: "message.direct.created.retry"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateConsumerGroupReadiness("dipole-gateway-consumer", expected, test.snapshot)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("readiness error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestConsumerRegisteredTopicsAreSortedAndIsolated(t *testing.T) {
+	t.Parallel()
+	consumer := &Consumer{handlers: map[string][]Handler{
+		"dipole.message.group.created":  {func(context.Context, Event) error { return nil }},
+		"dipole.message.direct.created": {func(context.Context, Event) error { return nil }},
+	}}
+	topics := consumer.registeredTopics()
+	if expected := []string{"dipole.message.direct.created", "dipole.message.group.created"}; !reflect.DeepEqual(topics, expected) {
+		t.Fatalf("registered topics = %v, want %v", topics, expected)
+	}
+	topics[0] = "mutated"
+	if consumer.registeredTopics()[0] != "dipole.message.direct.created" {
+		t.Fatal("registered topic snapshot aliases consumer state")
 	}
 }

@@ -79,6 +79,34 @@ func TestDependencyReadinessCachesTimeoutAndCannotOverrideDrain(t *testing.T) {
 	assertProbe(t, server, "/readyz", http.StatusServiceUnavailable, "not ready")
 }
 
+func TestDependencyReadinessCanRequireInitialSuccess(t *testing.T) {
+	server := newDependencyTestServer(t)
+	var healthy atomic.Bool
+	probe := DependencyProbe{
+		Name:                  "kafka-assignment",
+		RequireInitialSuccess: true,
+		Check: func(context.Context) error {
+			if healthy.Load() {
+				return nil
+			}
+			return errors.New("consumer group has no assignment")
+		},
+	}
+	if err := server.MonitorDependencies([]DependencyProbe{probe}, DependencyReadinessPolicy{
+		Interval: time.Hour, Timeout: time.Second, FailureThreshold: 3, SuccessThreshold: 2,
+	}); err != nil {
+		t.Fatalf("monitor dependencies: %v", err)
+	}
+	server.MarkReady()
+	assertProbe(t, server, "/readyz", http.StatusServiceUnavailable, "not ready")
+
+	healthy.Store(true)
+	server.RefreshDependencyReadiness(t.Context())
+	assertProbe(t, server, "/readyz", http.StatusServiceUnavailable, "not ready")
+	server.RefreshDependencyReadiness(t.Context())
+	assertProbe(t, server, "/readyz", http.StatusOK, "ready")
+}
+
 func TestDependencyReadinessRejectsInvalidPolicyAndProbeSet(t *testing.T) {
 	server := newDependencyTestServer(t)
 	check := func(context.Context) error { return nil }

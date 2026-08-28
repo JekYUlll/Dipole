@@ -1,0 +1,38 @@
+{
+  "candidates": {
+    "cpp_revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+    "go_revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc"
+  },
+  "comparison": {
+    "deferred_attempts": 0,
+    "filtered_out_kafka_records": 40,
+    "final_projected": 40,
+    "final_transport_backpressured": 0,
+    "final_transport_duplicate": 0,
+    "final_transport_observed": 40,
+    "final_transport_rejected": 0,
+    "final_transport_requested": 40,
+    "observed_kafka_records": 80,
+    "unique_kafka_records": 40
+  },
+  "decision": "eligible",
+  "go_workload": {
+    "accepted": 40,
+    "attempted": 40,
+    "expected_receipts": 40,
+    "persisted": 40,
+    "received": 40,
+    "rejected": 0
+  },
+  "inputs": {
+    "cpp_evidence_sha256": "42db0e995c5c97d13c07d35623c23e53fc21de6f104377c84a66835591962221",
+    "go_baseline_sha256": "0fdcbbddf5846ccc91636de3f9d5fd7209d66e99cfe787ed7006cc1f88d74ac3"
+  },
+  "issues": [],
+  "report_sha256": "ed167d09619bfd7380783eb23ff8199b5ae49492084a914e24c085d3a8f0cb44",
+  "run_id": "c2-go-cpp-concurrent-20-v3",
+  "schema_version": "dipole.realtime.delivery-comparison-report.v1",
+  "workload_filter": {
+    "message_type": 0
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/checkpoint-receipt.schema.json",
+  "title": "Dipole Realtime Delivery Dual Group Checkpoint Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "decision", "manifest_id", "manifest_sha256",
+    "observation_aggregate_sha256", "transition_id", "lease_sha256", "authority",
+    "phase", "epoch", "cluster_id", "captured_at_unix_ms", "groups"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-checkpoint-receipt.v1" },
+    "decision": { "const": "eligible" },
+    "manifest_id": { "$ref": "#/$defs/id" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "observation_aggregate_sha256": { "$ref": "#/$defs/sha256" },
+    "transition_id": { "$ref": "#/$defs/id" },
+    "lease_sha256": { "$ref": "#/$defs/sha256" },
+    "authority": { "enum": ["go", "shadow", "cpp"] },
+    "phase": { "enum": ["active", "frozen"] },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "cluster_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "captured_at_unix_ms": { "type": "integer", "minimum": 1 },
+    "groups": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "group_id", "state", "partitions"],
+        "properties": {
+          "role": { "enum": ["compatibility", "primary"] },
+          "group_id": { "$ref": "#/$defs/id" },
+          "state": { "const": "Stable" },
+          "partitions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["topic", "partition", "committed_offset", "log_end_offset", "lag"],
+              "allOf": [
+                {
+                  "if": { "properties": { "committed_offset": { "const": -1 } }, "required": ["committed_offset"] },
+                  "then": { "properties": { "log_end_offset": { "const": 0 }, "lag": { "const": 0 } } }
+                }
+              ],
+              "properties": {
+                "topic": { "$ref": "#/$defs/id" },
+                "partition": { "type": "integer", "minimum": 0 },
+                "committed_offset": { "type": "integer", "minimum": -1 },
+                "log_end_offset": { "type": "integer", "minimum": 0 },
+                "lag": { "const": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

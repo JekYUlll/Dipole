@@ -114,6 +114,10 @@ export interface Device {
 // WS packet
 export interface WsPacket {
   type: string
+  request_id?: string
+  trace_id?: string
+  event_id?: string
+  delivery_id?: string
   data: Record<string, unknown>
 }
 

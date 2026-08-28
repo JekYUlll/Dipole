@@ -1,0 +1,84 @@
+#include <csignal>
+#include <iostream>
+#include <string>
+
+#include "contract_validator.hpp"
+#include "health_server.hpp"
+#include "primary_probe.hpp"
+#include "shadow_runtime.hpp"
+
+namespace {
+
+volatile std::sig_atomic_t running = 1;
+
+void Stop(int) {
+  running = 0;
+}
+
+int ValidateGoldens(const std::string& directory) {
+  if (const auto error = dipole::realtime::ValidateGoldenDirectory(directory); error.has_value()) {
+    std::cerr << *error << '\n';
+    return 1;
+  }
+
+  std::cout << "delivery contract v1 golden vectors valid\n";
+  return 0;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  if (argc == 3 && std::string(argv[1]) == "validate") {
+    return ValidateGoldens(argv[2]);
+  }
+  if (argc == 3 && std::string(argv[1]) == "serve") {
+    if (ValidateGoldens(argv[2]) != 0) {
+      return 1;
+    }
+    dipole::realtime::RuntimeConfig config;
+    if (const auto error = dipole::realtime::LoadRuntimeConfig(&config); error.has_value()) {
+      std::cerr << *error << '\n';
+      return 2;
+    }
+    std::signal(SIGINT, Stop);
+    std::signal(SIGTERM, Stop);
+    return dipole::realtime::ServeHealth(config, running);
+  }
+  if (argc == 3 && std::string(argv[1]) == "shadow") {
+    if (ValidateGoldens(argv[2]) != 0) {
+      return 1;
+    }
+    dipole::realtime::ShadowRuntimeConfig config;
+    if (const auto error = dipole::realtime::LoadShadowRuntimeConfig(&config); error) {
+      std::cerr << *error << '\n';
+      return 2;
+    }
+    std::signal(SIGINT, Stop);
+    std::signal(SIGTERM, Stop);
+    return dipole::realtime::RunShadow(config, running);
+  }
+  if (argc == 3 && std::string(argv[1]) == "primary") {
+    if (ValidateGoldens(argv[2]) != 0) {
+      return 1;
+    }
+    dipole::realtime::PrimaryRuntimeConfig config;
+    if (const auto error = dipole::realtime::LoadPrimaryRuntimeConfig(&config); error) {
+      std::cerr << *error << '\n';
+      return 2;
+    }
+    std::signal(SIGINT, Stop);
+    std::signal(SIGTERM, Stop);
+    return dipole::realtime::RunPrimary(config, running);
+  }
+  if (argc == 4 && std::string(argv[1]) == "deliver_probe") {
+    if (ValidateGoldens(argv[2]) != 0) {
+      return 1;
+    }
+    return dipole::realtime::RunPrimaryProbe(argv[3]);
+  }
+  std::cerr << "usage: dipole-realtime-delivery "
+               "<validate|serve|shadow|primary> <testdata-dir>\n"
+            << "       dipole-realtime-delivery deliver_probe <testdata-dir> "
+               "<batch-json>\n";
+  return 2;
+}

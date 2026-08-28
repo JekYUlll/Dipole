@@ -5,15 +5,19 @@ import type { LocalSyncSnapshot, LocalSyncStore, SyncPage } from './syncEngine'
 const messageStoreName = 'messages'
 const stateStoreName = 'state'
 const groupStateStoreName = 'group_state'
+const deliveryReplayStoreName = 'delivery_replay'
 const userIndexName = 'by_user'
 const userSyncIndexName = 'by_user_sync_seq'
 const userConversationSyncIndexName = 'by_user_conversation_sync_seq'
-const databaseVersion = 3
+const userDeliveryIndexName = 'by_user_delivery'
+const userDeliverySequenceIndexName = 'by_user_sequence'
+const databaseVersion = 4
 
 export interface IndexedDBSyncStoreOptions {
   highWaterMessages?: number
   lowWaterMessages?: number
   minimumMessagesPerConversation?: number
+  deliveryReplayCapacity?: number
 }
 
 export function isLocalSyncCapacityError(error: unknown) {
@@ -45,6 +49,12 @@ interface StoredGroupState {
   message_seq: number
 }
 
+interface StoredDeliveryReplay {
+  sequence?: number
+  user_uuid: string
+  delivery_id: string
+}
+
 export interface LocalSyncManifest {
   syncSeq: number
   messageCount: number
@@ -56,6 +66,7 @@ export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
   private readonly highWaterMessages: number
   private readonly lowWaterMessages: number
   private readonly minimumMessagesPerConversation: number
+  private readonly deliveryReplayCapacity: number
 
   constructor(
     private readonly factory: IDBFactory = indexedDB,
@@ -71,6 +82,50 @@ export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
       0,
       this.lowWaterMessages,
     )
+    this.deliveryReplayCapacity = boundedInteger(options.deliveryReplayCapacity, 4_096, 1, 100_000)
+  }
+
+  async claimDelivery(userUUID: string, deliveryID: string): Promise<boolean> {
+    const normalizedUserUUID = userUUID.trim()
+    const normalizedDeliveryID = deliveryID.trim()
+    if (!normalizedUserUUID || !normalizedDeliveryID) throw new Error('delivery replay identity is required')
+
+    const database = await this.open()
+    const transaction = database.transaction(deliveryReplayStoreName, 'readwrite')
+    const replays = transaction.objectStore(deliveryReplayStoreName)
+    const deliveries = replays.index(userDeliveryIndexName)
+    let accepted = false
+
+    deliveries.get([normalizedUserUUID, normalizedDeliveryID]).onsuccess = event => {
+      const existing = (event.target as IDBRequest<StoredDeliveryReplay | undefined>).result
+      if (existing) return
+
+      accepted = true
+      replays.add({
+        user_uuid: normalizedUserUUID,
+        delivery_id: normalizedDeliveryID,
+      } satisfies StoredDeliveryReplay)
+      const countRequest = replays.index(userIndexName).count(normalizedUserUUID)
+      countRequest.onsuccess = () => {
+        let excess = countRequest.result - this.deliveryReplayCapacity
+        if (excess <= 0) return
+        const range = this.keyRange.bound(
+          [normalizedUserUUID, 0],
+          [normalizedUserUUID, Number.MAX_SAFE_INTEGER],
+        )
+        const cursorRequest = replays.index(userDeliverySequenceIndexName).openKeyCursor(range)
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result
+          if (!cursor || excess <= 0) return
+          replays.delete(cursor.primaryKey)
+          excess -= 1
+          cursor.continue()
+        }
+      }
+    }
+
+    await transactionResult(transaction)
+    return accepted
   }
 
   async load(userUUID: string): Promise<LocalSyncSnapshot> {
@@ -204,7 +259,10 @@ export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
 
   async clearUser(userUUID: string): Promise<void> {
     const database = await this.open()
-    const transaction = database.transaction([messageStoreName, stateStoreName, groupStateStoreName], 'readwrite')
+    const transaction = database.transaction(
+      [messageStoreName, stateStoreName, groupStateStoreName, deliveryReplayStoreName],
+      'readwrite',
+    )
     const messages = transaction.objectStore(messageStoreName)
     const cursorRequest = messages.index(userIndexName).openKeyCursor(this.keyRange.only(userUUID))
     cursorRequest.onsuccess = () => {
@@ -220,6 +278,14 @@ export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
       const cursor = groupCursorRequest.result
       if (!cursor) return
       groupStates.delete(cursor.primaryKey)
+      cursor.continue()
+    }
+    const deliveryReplays = transaction.objectStore(deliveryReplayStoreName)
+    const deliveryCursorRequest = deliveryReplays.index(userIndexName).openKeyCursor(userUUID)
+    deliveryCursorRequest.onsuccess = () => {
+      const cursor = deliveryCursorRequest.result
+      if (!cursor) return
+      deliveryReplays.delete(cursor.primaryKey)
       cursor.continue()
     }
     await transactionResult(transaction)
@@ -268,6 +334,15 @@ export class IndexedDBSyncStore implements LocalSyncStore, LocalGroupSyncStore {
             .createIndex(userConversationSyncIndexName, ['user_uuid', 'conversation_key', 'sync_seq'], { unique: false })
           const groupStates = database.createObjectStore(groupStateStoreName, { keyPath: 'key' })
           groupStates.createIndex(userIndexName, 'user_uuid', { unique: false })
+        }
+        if (event.oldVersion < 4) {
+          const deliveryReplays = database.createObjectStore(deliveryReplayStoreName, {
+            keyPath: 'sequence',
+            autoIncrement: true,
+          })
+          deliveryReplays.createIndex(userIndexName, 'user_uuid', { unique: false })
+          deliveryReplays.createIndex(userDeliveryIndexName, ['user_uuid', 'delivery_id'], { unique: true })
+          deliveryReplays.createIndex(userDeliverySequenceIndexName, ['user_uuid', 'sequence'], { unique: true })
         }
       }
       request.onsuccess = () => resolve(request.result)
