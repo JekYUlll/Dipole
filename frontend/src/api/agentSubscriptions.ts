@@ -28,8 +28,27 @@ export interface AgentSubscriptionPage {
 }
 
 export interface AgentSubscriptionClient {
-  list(after?: string, limit?: number): Promise<AgentSubscriptionPage>
+	create(input: AgentSubscriptionCreateInput): Promise<AgentSubscription>
+	listEligibleConversations(definitionId: string, definitionVersion: number): Promise<AgentSubscriptionConversationOptions>
+	list(after?: string, limit?: number): Promise<AgentSubscriptionPage>
   revoke(subscriptionId: string, reason: string): Promise<AgentSubscription>
+}
+
+export interface AgentSubscriptionConversationOption {
+	conversationKey: string
+	eventType: 'message.direct.created' | 'message.group.created'
+}
+
+export interface AgentSubscriptionConversationOptions {
+	conversations: AgentSubscriptionConversationOption[]
+}
+
+export interface AgentSubscriptionCreateInput {
+	definitionId: string
+	definitionVersion: number
+	conversationKey: string
+	filterKind: AgentSubscriptionFilterKind
+	filter: { terms?: string[] }
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
@@ -87,7 +106,45 @@ export function parseAgentSubscriptionResponse(raw: unknown): AgentSubscription 
   }
 }
 
+export function parseAgentSubscriptionConversationOptions(raw: unknown): AgentSubscriptionConversationOptions {
+	if (!isRecord(raw) || !exactKeys(raw, new Set(['conversations'])) || !Array.isArray(raw.conversations)) {
+		throw new Error('Agent Subscription conversation options shape is invalid')
+	}
+	const seen = new Set<string>()
+	return { conversations: raw.conversations.map(item => {
+		if (!isRecord(item) || !exactKeys(item, new Set(['conversationKey', 'eventType']))) {
+			throw new Error('Agent Subscription conversation option is invalid')
+		}
+		const conversationKey = requireIdentifier(item.conversationKey, 'conversation')
+		const expected = conversationKey.startsWith('group:') ? 'message.group.created' : conversationKey.startsWith('direct:') ? 'message.direct.created' : ''
+		if (!expected || item.eventType !== expected || seen.has(conversationKey)) {
+			throw new Error('Agent Subscription conversation authority is invalid')
+		}
+		seen.add(conversationKey)
+		return { conversationKey, eventType: expected } as AgentSubscriptionConversationOption
+	}) }
+}
+
 export const agentSubscriptionClient: AgentSubscriptionClient = {
+	async listEligibleConversations(definitionId, definitionVersion) {
+		requireIdentifier(definitionId, 'Definition')
+		requirePositiveInteger(definitionVersion, 'Definition version')
+		const query = new URLSearchParams({ definitionId, definitionVersion: String(definitionVersion) })
+		return parseAgentSubscriptionConversationOptions(await api.get(`/api/v1/agent/subscriptions/options?${query.toString()}`))
+	},
+	async create(input) {
+		requireIdentifier(input.definitionId, 'Definition')
+		requirePositiveInteger(input.definitionVersion, 'Definition version')
+		requireIdentifier(input.conversationKey, 'conversation')
+		const filter = parseFilter(input.filterKind, input.filter)
+		return parseAgentSubscriptionResponse(await api.post('/api/v1/agent/subscriptions', {
+			definitionId: input.definitionId,
+			definitionVersion: input.definitionVersion,
+			conversationKey: input.conversationKey,
+			filterKind: input.filterKind,
+			filter,
+		}))
+	},
   async list(after = '', limit = 50) {
     if (after) requireIdentifier(after, 'cursor')
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Subscription page limit is invalid')

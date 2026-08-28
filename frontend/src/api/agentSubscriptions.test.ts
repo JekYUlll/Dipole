@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseAgentSubscriptionPage, parseAgentSubscriptionResponse } from './agentSubscriptions'
+import { parseAgentSubscriptionConversationOptions, parseAgentSubscriptionPage, parseAgentSubscriptionResponse } from './agentSubscriptions'
 
 const active = {
   subscriptionId: 'SUB-1', definitionId: 'DEF-1', definitionVersion: 7, agentId: 'UAI',
@@ -19,11 +19,24 @@ describe('Agent Subscription response parser', () => {
     })).toMatchObject({ status: 'revoked', revokeReason: 'project archived' })
   })
 
-  it('rejects malformed filters, authority drift and inconsistent revocation state', () => {
+	it('rejects malformed filters, authority drift and inconsistent revocation state', () => {
     expect(() => parseAgentSubscriptionPage({ subscriptions: [{ ...active, filter: { terms: [] } }] })).toThrow(/filter/i)
     expect(() => parseAgentSubscriptionPage({ subscriptions: [{ ...active, filter: { terms: [' 延期'] } }] })).toThrow(/filter/i)
     expect(() => parseAgentSubscriptionPage({ subscriptions: [{ ...active, principalUserId: 'U999' }] })).toThrow(/shape/i)
     expect(() => parseAgentSubscriptionPage({ subscriptions: [{ ...active, revokedById: 'U100' }] })).toThrow(/active/i)
     expect(() => parseAgentSubscriptionPage({ subscriptions: [], nextCursor: ' ' })).toThrow(/cursor/i)
-  })
+	})
+
+	it('accepts only exact conversation authority options with derived event types', () => {
+		expect(parseAgentSubscriptionConversationOptions({ conversations: [
+			{ conversationKey: 'direct:U100:U200', eventType: 'message.direct.created' },
+			{ conversationKey: 'group:G123', eventType: 'message.group.created' },
+		] }).conversations).toHaveLength(2)
+		expect(() => parseAgentSubscriptionConversationOptions({ conversations: [
+			{ conversationKey: 'group:G123', eventType: 'message.direct.created' },
+		] })).toThrow(/authority/i)
+		expect(() => parseAgentSubscriptionConversationOptions({ conversations: [
+			{ conversationKey: 'group:G123', eventType: 'message.group.created', principalUserId: 'U999' },
+		] })).toThrow(/option/i)
+	})
 })
