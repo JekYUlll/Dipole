@@ -205,6 +205,11 @@ func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUI
 	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "status": "running"}), nil
 }
 
+func (s *gatewayAgentTaskStub) GetTimeline(_ context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID = principalUUID, taskUUID
+	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "after": after, "limit": limit, "events": []any{}}), nil
+}
+
 func (s *gatewayAgentTaskStub) CancelTask(_ context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error) {
 	s.principal, s.taskID, s.reason = principalUUID, taskUUID, reason
 	return agentControlJSON(http.StatusAccepted, map[string]any{"status": "cancellation_requested"}), nil
