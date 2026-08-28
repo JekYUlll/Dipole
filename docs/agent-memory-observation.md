@@ -31,6 +31,8 @@ Temporal preparation Activity 现使用 `agent-memory-promotion-receipt.v1` 记�
 
 Memory reviewed corpus v1 采用与订阅语义评测一致的双 reviewer + 独立 adjudicator 机制。Corpus 只保存候选类型、资源范围、证据数量、脱敏内容哈希和 gold label；`eval:memory-corpus-review` 仅输出 SHA-256、计数、agreement 和门禁原因。当前夹具用于验证协议，真实语料接入前仍需隐私审查、owner 批准和 retrieval 标注验收。
 
+真实来源通过 source manifest v1 接入：loader 在读取前校验 owner UID、绝对规范路径、父目录 canonical、`O_NOFOLLOW`、regular/single-link、0600 权限、2 MiB 上限、批准窗口及 corpus/review SHA-256。manifest 只授权离线评测，不授予 Memory 写入、Runtime 切流或晋级权限。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
