@@ -68,8 +68,10 @@ export interface ExternalMcpResolvedCapabilityDefinition {
 
 export class ExternalMcpCapabilityDefinitionRegistry {
   readonly #definitions = new Map<string, ExternalMcpResolvedCapabilityDefinition>();
+  #sealed = false;
 
   register<I>(definition: ExternalMcpCapabilityDefinition<I>): void {
+    if (this.#sealed) throw new Error("External MCP Capability definitions are sealed");
     const capabilityId = definition.descriptor.id.trim();
     if (!identitySchema.safeParse(capabilityId).success || this.#definitions.has(capabilityId)) {
       throw new Error("External MCP Capability definition ID is invalid or duplicated");
@@ -80,16 +82,25 @@ export class ExternalMcpCapabilityDefinitionRegistry {
       throw new Error("External MCP Capability definition descriptor is invalid");
     }
     const egressCeiling = validateMcpToolEgressPolicy(capabilityId, definition.egressCeiling);
-    this.#definitions.set(capabilityId, {
-      descriptor: { ...definition.descriptor, id: capabilityId },
+    const resolveResource = definition.resolveResource;
+    this.#definitions.set(capabilityId, Object.freeze({
+      descriptor: Object.freeze({ ...definition.descriptor, id: capabilityId }),
       inputSchema: definition.inputSchema as InputSchema<unknown>,
-      egressCeiling,
-      resolveResource: (input, context) => definition.resolveResource(input as I, context)
-    });
+      egressCeiling: Object.freeze({
+        allowedArgumentNames: Object.freeze([...egressCeiling.allowedArgumentNames]),
+        maximumBytes: egressCeiling.maximumBytes
+      }),
+      resolveResource: (input: unknown, context: ExecutionContext) => resolveResource(input as I, context)
+    }));
   }
 
   resolve(capabilityId: string): ExternalMcpResolvedCapabilityDefinition | undefined {
     return this.#definitions.get(capabilityId);
+  }
+
+  seal(): this {
+    this.#sealed = true;
+    return this;
   }
 }
 

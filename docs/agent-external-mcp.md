@@ -72,6 +72,10 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。`maximum_secret_bytes` 会同时约束 encrypted Provider、请求期 AuthProvider 和 readiness preflight，避免部署上限与真实请求行为漂移。
 
+`createExternalMcpReadCapabilityDefinitions` 提供代码拥有的外部只读 authority。当前唯一 definition 为 `repository.issue.read`：输入只接受 `owner`、`repo`、`issue_number`，仓库坐标规范化为小写，resource scope 固定为 `repository_issue/{owner}/{repo}#{issue_number}:read`，权限同 Capability ID，风险固定为 read。代码 egress ceiling 为 1 KiB 且只允许上述三个参数；route manifest 只能缩小字段集合或字节上限，无法改写 descriptor、schema 与 resource resolver。
+
+factory 每次返回独立 Registry，并在注册后 seal；descriptor、ceiling 及参数名 snapshot 同时冻结。调用方不能在 deployment load 前后追加 write/destructive 或其他外部 definition。factory 本身没有环境、manifest、RPC、凭据或网络依赖；生产 startup 尚未调用它，真实 Shadow route 仍需显式受控 manifest 与 Profile。
+
 `loadExternalMcpDeploymentPlan` 在启动接线之前提供唯一的 default-off 部署组合边界。它先解析一次 Profile，再以同一 owner UID 和 AbortSignal 顺序加载 production I/O 与 deployment route manifest；两者全部通过后才构造 production I/O runtime。返回值只包含 exact config、route Registry/routes、production runtime、Worker external-MCP 依赖和低敏 Runtime binding。readiness collector 与 gated Worker 因而共享同一 I/O snapshot、raw Registry 和有效上限，装配调用方无需重复拼接 binding options。
 
 deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 当前未注册到 `index.ts`、Compose 或任何自动启动路径。
