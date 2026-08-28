@@ -598,6 +598,7 @@
 
 - 真实 MySQL 验证通过：`AgentPolicy`、Runtime Promotion 和 Timeline repair recovery contract 均通过，覆盖最大长度身份、故障 retry、恢复 completed 与单事件收敛。
 - Agent MySQL contract 分组验证通过：`TestAgent*` 与 `TestAICallLogRepositoryContract` 共 13 个 contract 在真实 MySQL 上完成，耗时约 149 秒；完整 repository 分组仍单独受数据库清理等待影响。
+- Repository contract 分领域验证通过：基础实体、消息/同步/序列、Outbox/Search 三组在真实 MySQL 上分别通过；与 Agent 组结果合并后覆盖全部 repository contract。共享 MySQL 下的串行整包仍受测试数据库清理耗时影响，未作为单次整包证据。
 
 - Agent Workflow repair v44 repository 合同测试在隔离 MySQL 8.4.8 中验证 `prepared` execution 创建、精确重放和同 plan 目标哈希漂移拒绝；当前测试不推进状态，也不修改 Workflow projection。
 - MySQL migration integration baseline 更新至 v44，并覆盖 v44 execution ledger、v43 lineage backfill、v42 pre-model lineage 的连续回滚与表数量断言；避免新迁移已发布但集成测试仍停留在 v42 的验证盲区。
