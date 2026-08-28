@@ -1,5 +1,5 @@
 <template>
-  <section class="elicitation-shell" :data-agent-elicit-state="viewState" aria-live="polite">
+  <section class="elicitation-shell" :data-agent-elicit-state="viewState" :aria-busy="busy" aria-live="polite">
     <header class="elicitation-header">
       <div>
         <p class="eyebrow">DIPOLE AGENT / INPUT REQUEST</p>
@@ -8,12 +8,12 @@
       <span class="task-badge">{{ shortTaskId }}</span>
     </header>
 
-    <div v-if="viewState === 'loading'" class="state-card">
+    <div v-if="viewState === 'loading'" class="state-card" role="status">
       <span class="pulse-dot" aria-hidden="true"></span>
       正在确认当前输入请求
     </div>
 
-    <div v-else-if="viewState === 'unavailable'" class="state-card state-card-danger">
+    <div v-else-if="viewState === 'unavailable'" class="state-card state-card-danger" role="alert">
       <p class="state-title">无法确认当前输入请求</p>
       <p>为避免向失效任务提交数据，表单已暂时隐藏。</p>
       <button type="button" class="secondary-button" data-agent-retry @click="loadTask">重新确认</button>
@@ -54,7 +54,7 @@
 
         <div class="fields">
           <fieldset v-for="field in pending.form.fields" :key="field.id" class="field-group">
-            <legend>
+            <legend :id="fieldLegendId(field.id)">
               {{ field.label }}
               <span v-if="field.required" class="required">必填</span>
             </legend>
@@ -62,25 +62,39 @@
             <input
               v-if="field.type === 'text'"
               v-model="values[field.id] as string"
+              :id="fieldControlId(field.id)"
               :data-agent-field="field.id"
               :maxlength="field.maxLength"
+              :aria-labelledby="fieldLegendId(field.id)"
+              :aria-describedby="fieldAriaDescribedBy(field.id)"
+              :aria-invalid="Boolean(errors[field.id])"
               type="text"
               autocomplete="off"
             />
 
             <div v-else-if="field.type === 'select'" class="select-wrap">
-              <select v-model="values[field.id] as string" :data-agent-field="field.id">
+              <select
+                v-model="values[field.id] as string"
+                :id="fieldControlId(field.id)"
+                :data-agent-field="field.id"
+                :aria-labelledby="fieldLegendId(field.id)"
+                :aria-describedby="fieldAriaDescribedBy(field.id)"
+                :aria-invalid="Boolean(errors[field.id])"
+              >
                 <option value="" disabled>请选择</option>
                 <option v-for="option in field.options" :key="option" :value="option">{{ option }}</option>
               </select>
             </div>
 
             <div v-else-if="field.type === 'multiselect'" class="option-grid">
-              <label v-for="option in field.options" :key="option" class="check-option">
+              <label v-for="(option, optionIndex) in field.options" :key="option" class="check-option" :for="fieldOptionId(field.id, optionIndex)">
                 <input
                   v-model="values[field.id] as string[]"
+                  :id="fieldOptionId(field.id, optionIndex)"
                   :data-agent-field="field.id"
                   :value="option"
+                  :aria-describedby="fieldAriaDescribedBy(field.id)"
+                  :aria-invalid="Boolean(errors[field.id])"
                   type="checkbox"
                 />
                 <span>{{ option }}</span>
@@ -88,12 +102,19 @@
               <small v-if="field.maxSelections">最多选择 {{ field.maxSelections }} 项</small>
             </div>
 
-            <label v-else class="boolean-option">
-              <input v-model="values[field.id] as boolean" :data-agent-field="field.id" type="checkbox" />
+            <label v-else class="boolean-option" :for="fieldControlId(field.id)">
+              <input
+                v-model="values[field.id] as boolean"
+                :id="fieldControlId(field.id)"
+                :data-agent-field="field.id"
+                :aria-describedby="fieldAriaDescribedBy(field.id)"
+                :aria-invalid="Boolean(errors[field.id])"
+                type="checkbox"
+              />
               <span>启用</span>
             </label>
 
-            <p v-if="errors[field.id]" class="field-error">{{ errors[field.id] }}</p>
+            <p v-if="errors[field.id]" :id="fieldErrorId(field.id)" class="field-error" role="alert">{{ errors[field.id] }}</p>
           </fieldset>
         </div>
 
@@ -115,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   agentTaskClient,
   type AgentElicitationField,
@@ -224,6 +245,9 @@ async function submit(): Promise<void> {
   for (const field of current.form.fields) validateField(field)
   if (Object.keys(errors).length > 0) {
     viewState.value = 'validation_error'
+    await nextTick()
+    const firstInvalid = current.form.fields.find(field => errors[field.id] !== undefined)
+    if (firstInvalid) document.getElementById(fieldFocusId(firstInvalid))?.focus()
     return
   }
   viewState.value = 'submitting'
@@ -269,6 +293,30 @@ function snapshotValues(input: AgentInputPending): AgentElicitationValue {
     const value = values[field.id]
     return [field.id, Array.isArray(value) ? [...value] : value]
   })) as AgentElicitationValue
+}
+
+function fieldControlId(fieldId: string): string {
+  return `agent-elicit-${fieldId}`
+}
+
+function fieldLegendId(fieldId: string): string {
+  return `${fieldControlId(fieldId)}-label`
+}
+
+function fieldErrorId(fieldId: string): string {
+  return `${fieldControlId(fieldId)}-error`
+}
+
+function fieldOptionId(fieldId: string, optionIndex: number): string {
+  return `${fieldControlId(fieldId)}-${optionIndex}`
+}
+
+function fieldFocusId(field: AgentElicitationField): string {
+  return field.type === 'multiselect' ? fieldOptionId(field.id, 0) : fieldControlId(field.id)
+}
+
+function fieldAriaDescribedBy(fieldId: string): string | undefined {
+  return errors[fieldId] ? fieldErrorId(fieldId) : undefined
 }
 
 function clearObject(value: Record<string, unknown>): void {
@@ -320,6 +368,7 @@ function clearObject(value: Record<string, unknown>): void {
 .required { margin-left: 7px; color: var(--accent); font-size: 10px; font-weight: 700; }
 input[type="text"], select { box-sizing: border-box; width: 100%; height: 44px; padding: 0 13px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: #fff; font: inherit; outline: none; }
 input[type="text"]:focus, select:focus { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(25,61,50,.09); }
+button:focus-visible, .link-button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(212,83,47,.35); outline-offset: 3px; }
 .select-wrap { position: relative; }
 .select-wrap::after { content: "↓"; position: absolute; right: 13px; top: 12px; pointer-events: none; color: var(--accent); }
 select { appearance: none; }
