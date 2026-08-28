@@ -1,7 +1,6 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,18 +18,7 @@ func (stubCoreCapability) GetOwnedFile(string, string) (*model.UploadedFile, err
 func (stubCoreCapability) ListSearchConversationKeys(string) ([]string, error)       { return nil, nil }
 
 func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
-	workingDirectory, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("get working directory: %v", err)
-	}
-	if err := os.Chdir(filepath.Join(workingDirectory, "..", "..")); err != nil {
-		t.Fatalf("change to repository root: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(workingDirectory); err != nil {
-			t.Errorf("restore working directory: %v", err)
-		}
-	})
+	setMessagingTestConfig(t)
 
 	services := NewMessagingServices(&Repositories{}, MessagingDependencies{})
 
@@ -53,6 +41,7 @@ func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 }
 
 func TestNewMessagingServicesAcceptsRemoteCompatibleCoreCapability(t *testing.T) {
+	setMessagingTestConfig(t)
 	services := NewMessagingServices(&Repositories{}, MessagingDependencies{Core: stubCoreCapability{}})
 	if services == nil || services.Messages == nil || services.Core == nil {
 		t.Fatal("expected messaging services with injected core capability")
@@ -60,4 +49,13 @@ func TestNewMessagingServicesAcceptsRemoteCompatibleCoreCapability(t *testing.T)
 	if _, ok := services.Core.(stubCoreCapability); !ok {
 		t.Fatalf("injected Core capability was not preserved: %T", services.Core)
 	}
+}
+
+func setMessagingTestConfig(t *testing.T) {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
+	}
+	t.Setenv("DIPOLE_CONFIG_FILE", filepath.Join(root, "configs", "config.dist.yaml"))
 }
