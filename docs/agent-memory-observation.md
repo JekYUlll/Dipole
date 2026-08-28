@@ -29,6 +29,8 @@ v47 增加 promotion receipt 字段。Core 在事务内锁定 accepted candidate
 
 Temporal preparation Activity 现使用 `agent-memory-promotion-receipt.v1` 记录可恢复晋级意图。receipt 不复制 candidate summary 或 evidence，绑定 Task/Run、owner、候选/审核哈希、策略版本和最多 15 分钟租约；它可以在 Workflow 重放时复用，不能替代 Core v47 事务，也不能单独证明 Memory 已写入。
 
+Memory reviewed corpus v1 采用与订阅语义评测一致的双 reviewer + 独立 adjudicator 机制。Corpus 只保存候选类型、资源范围、证据数量、脱敏内容哈希和 gold label；`eval:memory-corpus-review` 仅输出 SHA-256、计数、agreement 和门禁原因。当前夹具用于验证协议，真实语料接入前仍需隐私审查、owner 批准和 retrieval 标注验收。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
