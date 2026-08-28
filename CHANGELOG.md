@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Memory migration v42 将 direct lineage 外键从 Shadow Plan 提前到权威 Agent Task；受管 Model planner 在 Context 编译后、模型调用前写入 `context_pre_model`，失败时模型零调用。Plan-time repair 保持幂等且不能降级来源；只有同时缺少 Plan 与任何 Memory lineage 的 owner 模型结果才进入未归因缺口。
 - Agent Memory migration v41 增加保守的派生影响边界：Shadow Plan 事务同步保存 `Memory -> Task` 直接引用，精确重放补齐索引，representation 漂移 fail closed；只读审计按 root 统计模型调用、Plan/Step、Artifact、Tool、Message Action 与 Temporal 潜在 Task。报告只含 root SHA-256、有界计数和完整性标志，固定不读取内容、不授予删除或 Runtime 权威；历史未索引 Context 或已完成模型调用缺少 Plan 的未归因 Task 都会返回 `lineageComplete=false`。
 - Agent Memory migration v40 增加 root-wide 内容擦除基础：内部 sqlc/Core 事务锁定完整纠正链，撤销 active 版本，并清除正文、compact、URI、resource binding、root 原始来源与自由文本审计原因；只保留 owner、root/version/predecessor、擦除时间和枚举原因码。语言中立 policy/receipt 明确无自动执行或公开 API 权威，当前没有 Proto、Gateway、Vue 或 retention Worker 入口。
 - Agent Memory correction 增加纯离线五类 Eval 门禁：严格 manifest/observation 绑定 predecessor/successor、完整 lineage、精确重放、漂移冲突、owner/foreign 权限与 successor-only retrieval，并要求模型、Tool、Token 和模型成本全部为零；输入各限 64 KiB，错误与标准报告不回显 Memory、principal 或正文，也不连接生产数据库或写入 Memory。
@@ -437,6 +438,7 @@
 
 ### 迁移说明
 
+- v42 把 `agent_memory_task_lineage.task_uuid` 外键从 `agent_shadow_plans` 改为 `agent_tasks`，并增加 `context_pre_model` 来源。发布顺序为 migration、Runtime writer、模型流量；旧 Runtime 的 Plan-time `runtime_write` 继续兼容。Down 会删除尚无 Plan 的 pre-model lineage，并把其余来源归一为 `runtime_write` 后恢复 v41 Plan 外键，因此回滚前必须保留低敏影响报告并停止模型 admission。
 - v41 新增 `agent_memory_task_lineage`，以 Memory/Task 主键和 Shadow Plan 外键保存 direct Context reference；发布顺序为 migration、sqlc/TS query、Agent Runtime Shadow writer，旧 Runtime 可继续写 Plan 但会被审计标记为历史未索引。回滚前停止新 Runtime 写入；Down 只删除 direct-reference 索引，不修改 Memory、Plan、Step 或其他派生数据。该迁移不执行历史回填，也不启用删除 Worker、公开 API 或生产 Runtime。
 - v40 为 `agent_memories` 增加内容擦除审计列与固定 tombstone 约束。Down migration 只删除 v40 列和约束，已被擦除的正文、来源及自由文本不会恢复；回滚仍保留 revoked 状态和 v39 纠正链，因此执行擦除前必须按隐私策略确认不可逆影响。
 - v39 在 `agent_memories` 上追加 lineage 与 correction 审计列，并把历史记录回填为 `root=self/version=1`。发布顺序为 migration/sqlc 与 Core transaction、additive gRPC/Gateway、最后显式开启 `VITE_AGENT_MEMORY_CORRECTION_ENABLED`；回滚前先关闭前端入口，Down 会删除纠正 lineage 字段，执行前需确认是否保留已产生的版本链审计。
@@ -508,6 +510,7 @@
 
 ### 验证
 
+- Agent Memory pre-model lineage 通过 Planner 顺序/失败单测与真实 MySQL 20/20 contract：Context 来源优先、Plan repair 不降级、未知 Task 原子拒绝、foreign owner 隔离、无 Plan 模型结果先 fail closed 再由 lineage 恢复 root attribution；v1→v42 与 v42→v41 回滚删除无 Plan 行均通过。完整 Agent Runtime 为 580 passed / 26 expected skipped，Go test/vet、typecheck/build 与生产依赖零漏洞门禁通过。
 - Agent Memory 派生血缘测试覆盖 Context 引用排序/去重、非法 ID、representation 冲突、报告 hash/不变量、CLI 脱敏、并发 Plan 重放、历史缺口、下划线相似 ID 与无 Plan 模型结果；真实 MySQL 8.4 通过 12/12 Runtime contract，并验证 migration v1→v41、48 张表及 v41/v40/v39 分步回滚。完整 Agent Runtime 为 579 passed / 24 expected skipped，Go test/vet、Go/TS Proto、sqlc、Compose、架构文档、观测规则、typecheck/build 与生产依赖零漏洞门禁通过。
 - Agent Memory privacy retention 通过领域/Core/sqlc 聚焦测试和真实 MySQL 8.4 contract：两版本 root 全量 tombstone、原字段清除、Context 零召回、越权拒绝、精确重放，以及 v40/v39 分步回滚均通过。
 - Agent Memory correction 通过应用/事务/传输/Gateway/Vue 聚焦测试、canonical Go 全仓测试、前端 85 项 Vitest、工具链 3 项与生产构建；真实 MySQL 8.4 完整 migration v1→v39、v39→v38→后续逐级回滚及 owner repository 并发精确重放通过。真实测试同时修复显式 migration 目标版本、SQL NULL Tool arguments 与 MySQL JSON compact 的兼容基线。
@@ -620,7 +623,7 @@
 
 ### 已知问题
 
-- Memory root 擦除尚未覆盖模型派生的 Shadow plan、Step、Artifact、Agent Message 或 Temporal history；v41 已提供新 Task 的规范化直接引用、历史引用缺口与无 Plan 模型结果的 owner-scoped 未归因计数，字段级副本、模型前 root attribution 和删除语义尚未建立。公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
+- Memory root 擦除尚未覆盖模型派生的 Shadow plan、Step、Artifact、Agent Message 或 Temporal history；v42 已为受管 Model planner 建立模型前 root attribution，历史/旁路缺口继续由 owner-scoped 未归因计数阻断。字段级副本与删除语义尚未建立，公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
 - Memory v1 已提供默认关闭的 owner list/revoke HTTP/Pencil/Vue 闭环和追加式撤销审计；自动写入、append-only 纠正/版本冲突、Observation/Reflection Worker、置信度策略及 hybrid/vector retrieval 仍待完成。共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
 - Event Subscription 已具备默认关闭的公开 Definition 目录、authenticated conversation chooser、owner list/create/revoke HTTP/Pencil/Vue 闭环、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；尚未归档真实 Project Guardian corpus/review report、embedding/小模型 candidate evidence或 subscription Runtime 灰度证据。共享环境继续固定 `direct_target`，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。

@@ -28,6 +28,12 @@ export interface ContextMemoryReader {
   listContextMemories(context: Parameters<ShadowPlanner["plan"]>[1], resourceType: string, resourceId: string, limit?: number): Promise<AgentContextMemory[]>;
 }
 
+export interface MemoryContextLineageWriter {
+  recordMemoryContext(taskId: string, context: {
+    readonly selected: readonly { readonly id: string; readonly representation: "full" | "compact" }[];
+  }): Promise<void>;
+}
+
 export class ModelShadowPlanner implements ShadowPlanner {
   readonly #allowedCapabilityIds: ReadonlySet<string>;
 
@@ -36,7 +42,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
     allowedCapabilityIds: readonly string[],
     private readonly compiler: ContextCompiler = new DeterministicContextCompiler(),
     private readonly memories?: ContextMemoryReader,
-    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
+    private readonly lineage?: MemoryContextLineageWriter
   ) {
     this.#allowedCapabilityIds = new Set(allowedCapabilityIds.map((id) => id.trim()).filter(Boolean));
   }
@@ -57,6 +64,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
       span.setAttribute("dipole.agent.context.omitted_count", value.omitted.length);
       return value;
     });
+    await this.lineage?.recordMemoryContext(context.taskId, compiled);
     const result = await this.telemetry.withSpan("agent.model.route", {
       taskId: context.taskId, runId: context.runId, attributes: { "dipole.agent.mode": context.mode }
     }, async span => {
