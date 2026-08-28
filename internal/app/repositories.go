@@ -121,7 +121,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
 	}
 	repos.AICallLogs = adapter
-	agentPolicy, err := sqlcRepository.NewAgentPolicyRepository(generated.New(db))
+	agentPolicy, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
 	}
