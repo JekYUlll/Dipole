@@ -23,6 +23,17 @@
 
 ## 待处理
 
+### AD-045：Agent Task Timeline 缺少 Core 聚合只读适配器
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** Agent Task UI、Core/Gateway 只读 API、Run/Step/Tool/Artifact 审计
+- **现状：** Task、Run、Shadow Step、Model Call、Tool Invocation、Approval 和 Artifact 已分别持久化；Gateway 当前只提供权威 Task 当前状态、输入和审批控制。已建立 `contracts/agent-task-timeline/v1/`，规定 Core principal 复核、稳定 `event_seq`、增量游标和低敏事件 DTO。
+- **风险：** 若由 Gateway 直接拼接多张 Agent 表或读取 Temporal 历史，会绕过服务 ownership、产生跨 Run 顺序歧义并泄露 prompt、参数或外部结果；当前前端不能声称展示完整执行历史。
+- **建议方向：** 由 Core 提供按 Task owner-scoped 的 Timeline RPC/adapter，在同一一致性读取中聚合已持久化事件；先只返回低敏元数据和状态，再按证据逐步加入 Artifact 引用与视觉回归。
+- **处理门槛：** Core/Gateway 契约测试覆盖 foreign Task、游标重复/漂移、跨 Run 事件、事件缺失和字段脱敏；前端默认关闭，未收到 v1 response 时保持当前 Task Query 页面。
+
 ### AD-043：Sync Cassandra hydration 缺少共享环境运行时证据闭环
 
 - **优先级：** P1
