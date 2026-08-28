@@ -31,6 +31,10 @@ func TestRedisAuthorityFenceWriterTransitionLifecycle(t *testing.T) {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	assertFenceReceipt(t, bootstrap, FenceTransitionBootstrap, AuthorityGo, FencePhaseActive, 1)
+	recovered, err := writer.GetReceipt(context.Background(), "T-bootstrap")
+	if err != nil || recovered != bootstrap {
+		t.Fatalf("GetReceipt() = %+v, %v", recovered, err)
+	}
 	if server.TTL("dipole:test:fence") <= 0 || server.TTL("dipole:test:fence:receipt:T-bootstrap") <= 0 {
 		t.Fatal("lease and transition receipt must both have bounded Redis retention")
 	}
@@ -75,6 +79,29 @@ func TestRedisAuthorityFenceWriterTransitionLifecycle(t *testing.T) {
 	assertFenceReceipt(t, renewed, FenceTransitionRenew, AuthorityCPP, FencePhaseActive, 2)
 	if renewed.PreviousSHA256 != activated.NextSHA256 || renewed.NextSHA256 == activated.NextSHA256 {
 		t.Fatal("renewal must bind the previous lease and produce a new lease hash")
+	}
+}
+
+func TestRedisAuthorityFenceWriterGetReceiptFailsClosed(t *testing.T) {
+	now := time.Date(2026, 8, 28, 2, 0, 0, 0, time.UTC)
+	server := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	writer, err := NewRedisAuthorityFenceWriter(
+		client, "dipole:test:fence", "dipole:test:fence:receipt:", time.Hour, func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.GetReceipt(context.Background(), "missing"); err == nil {
+		t.Fatal("missing receipt must fail")
+	}
+	server.Set("dipole:test:fence:receipt:T-bad", `{"schema_version":"dipole.realtime.delivery-fence-receipt.v1","transition_id":"T-bad","transition_id":"T-other"}`)
+	if _, err := writer.GetReceipt(context.Background(), "T-bad"); err == nil {
+		t.Fatal("duplicate or malformed receipt must fail")
+	}
+	if _, err := writer.GetReceipt(context.Background(), "../escape"); err == nil {
+		t.Fatal("invalid transition ID must fail before Redis lookup")
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -185,6 +184,28 @@ func (w *RedisAuthorityFenceWriter) Apply(ctx context.Context, request FenceTran
 	}
 }
 
+func (w *RedisAuthorityFenceWriter) GetReceipt(ctx context.Context, transitionID string) (FenceTransitionReceipt, error) {
+	transitionID = strings.TrimSpace(transitionID)
+	if !fenceTransitionIDPattern.MatchString(transitionID) {
+		return FenceTransitionReceipt{}, fmt.Errorf("delivery authority transition ID is invalid")
+	}
+	payload, err := w.client.Get(ctx, w.receiptPrefix+transitionID).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence receipt is missing")
+		}
+		return FenceTransitionReceipt{}, fmt.Errorf("read delivery authority fence receipt: %w", err)
+	}
+	receipt, err := decodeFenceReceipt(payload)
+	if err != nil {
+		return FenceTransitionReceipt{}, err
+	}
+	if receipt.TransitionID != transitionID {
+		return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence receipt transition ID does not match key")
+	}
+	return receipt, nil
+}
+
 func validateFenceTransitionRequest(request FenceTransitionRequest) (FenceTransitionRequest, string, error) {
 	request.TransitionID = strings.TrimSpace(request.TransitionID)
 	request.OperatorID = strings.TrimSpace(request.OperatorID)
@@ -267,17 +288,23 @@ func nextFenceRecord(previous FenceRecord, request FenceTransitionRequest) (Fenc
 }
 
 func decodeMatchingFenceReceipt(payload []byte, requestHash string) (FenceTransitionReceipt, error) {
-	decoder := json.NewDecoder(strings.NewReader(string(payload)))
-	decoder.DisallowUnknownFields()
-	var receipt FenceTransitionReceipt
-	if err := decoder.Decode(&receipt); err != nil {
+	receipt, err := decodeFenceReceipt(payload)
+	if err != nil {
+		return FenceTransitionReceipt{}, err
+	}
+	if receipt.RequestSHA256 != requestHash {
+		return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence transition ID conflicts with another request")
+	}
+	return receipt, nil
+}
+
+func decodeFenceReceipt(payload []byte) (FenceTransitionReceipt, error) {
+	receipt, err := DecodeStrictJSON[FenceTransitionReceipt](payload)
+	if err != nil {
 		return FenceTransitionReceipt{}, fmt.Errorf("decode delivery authority fence receipt: %w", err)
 	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return FenceTransitionReceipt{}, fmt.Errorf("decode delivery authority fence receipt: trailing data")
-	}
-	if receipt.SchemaVersion != FenceTransitionReceiptSchemaV1 || receipt.RequestSHA256 != requestHash {
-		return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence transition ID conflicts with another request")
+	if receipt.SchemaVersion != FenceTransitionReceiptSchemaV1 {
+		return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence receipt schema is invalid")
 	}
 	if !fenceTransitionIDPattern.MatchString(receipt.TransitionID) ||
 		!fenceTransitionIDPattern.MatchString(receipt.OperatorID) || !validSHA256(receipt.RequestSHA256) ||

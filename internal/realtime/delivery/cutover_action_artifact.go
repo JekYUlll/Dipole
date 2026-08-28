@@ -21,6 +21,7 @@ type CutoverActionArtifact struct {
 	SchemaVersion    string                  `json:"schema_version"`
 	ActionID         string                  `json:"action_id"`
 	ActionSHA256     string                  `json:"action_sha256"`
+	Action           CutoverAttemptAction    `json:"action"`
 	AttemptID        string                  `json:"attempt_id"`
 	Sequence         uint64                  `json:"sequence"`
 	EventType        CutoverAttemptEventType `json:"event_type"`
@@ -77,7 +78,7 @@ func (s *CutoverActionArtifactStore) Publish(
 	}
 	artifact := CutoverActionArtifact{
 		SchemaVersion: CutoverActionArtifactSchemaV1,
-		ActionID:      action.ActionID, ActionSHA256: actionSHA256,
+		ActionID:      action.ActionID, ActionSHA256: actionSHA256, Action: action,
 		AttemptID: action.AttemptID, Sequence: action.Sequence, EventType: action.EventType,
 		PayloadSHA256: payloadSHA256, Payload: canonicalPayload, RecordedAtUnixMS: recordedAt.UTC().UnixMilli(),
 	}
@@ -98,10 +99,26 @@ func (s *CutoverActionArtifactStore) Publish(
 }
 
 func (s *CutoverActionArtifactStore) Load(action CutoverAttemptAction) (CutoverActionArtifact, string, error) {
-	if _, err := validateAndHashCutoverAction(action); err != nil {
+	actionSHA256, err := validateAndHashCutoverAction(action)
+	if err != nil {
 		return CutoverActionArtifact{}, "", err
 	}
-	payload, err := os.ReadFile(s.path(action.ActionID))
+	artifact, digest, err := s.LoadByActionID(action.ActionID)
+	if err != nil {
+		return CutoverActionArtifact{}, "", err
+	}
+	if artifact.ActionSHA256 != actionSHA256 {
+		return CutoverActionArtifact{}, "", fmt.Errorf("cutover action artifact action conflicts with expected action")
+	}
+	return artifact, digest, nil
+}
+
+func (s *CutoverActionArtifactStore) LoadByActionID(actionID string) (CutoverActionArtifact, string, error) {
+	actionID = strings.TrimSpace(actionID)
+	if !fenceTransitionIDPattern.MatchString(actionID) {
+		return CutoverActionArtifact{}, "", fmt.Errorf("cutover action artifact action ID is invalid")
+	}
+	payload, err := os.ReadFile(s.path(actionID))
 	if err != nil {
 		return CutoverActionArtifact{}, "", fmt.Errorf("read cutover action artifact: %w", err)
 	}
@@ -109,7 +126,10 @@ func (s *CutoverActionArtifactStore) Load(action CutoverAttemptAction) (CutoverA
 	if err != nil {
 		return CutoverActionArtifact{}, "", fmt.Errorf("decode cutover action artifact: %w", err)
 	}
-	digest, err := validateAndHashCutoverActionArtifact(artifact, action)
+	if artifact.ActionID != actionID {
+		return CutoverActionArtifact{}, "", fmt.Errorf("cutover action artifact filename binding is invalid")
+	}
+	digest, err := validateAndHashCutoverActionArtifact(artifact, artifact.Action)
 	if err != nil {
 		return CutoverActionArtifact{}, "", err
 	}
@@ -189,7 +209,8 @@ func validateAndHashCutoverActionArtifact(artifact CutoverActionArtifact, action
 		return "", err
 	}
 	if artifact.SchemaVersion != CutoverActionArtifactSchemaV1 || artifact.ActionID != action.ActionID ||
-		artifact.ActionSHA256 != actionSHA256 || artifact.AttemptID != action.AttemptID || artifact.Sequence != action.Sequence ||
+		artifact.ActionSHA256 != actionSHA256 || artifact.Action != action ||
+		artifact.AttemptID != action.AttemptID || artifact.Sequence != action.Sequence ||
 		artifact.EventType != action.EventType || !validSHA256(artifact.PayloadSHA256) ||
 		artifact.PayloadSHA256 != hashBytes(canonicalPayload) || artifact.RecordedAtUnixMS <= 0 {
 		return "", fmt.Errorf("cutover action artifact binding is invalid")

@@ -46,6 +46,13 @@ func TestCutoverActionArtifactStorePublishesAndReplaysIdempotently(t *testing.T)
 	if loadedSHA != firstSHA || decoded != payload {
 		t.Fatalf("loaded artifact mismatch: artifact=%+v payload=%+v", loaded, decoded)
 	}
+	standalone, standaloneSHA, err := store.LoadByActionID(action.ActionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if standaloneSHA != firstSHA || standalone.Action != action {
+		t.Fatalf("standalone artifact mismatch: %+v", standalone)
+	}
 	info, err := os.Stat(filepath.Join(directory, action.ActionID+cutoverActionArtifactSuffix))
 	if err != nil {
 		t.Fatal(err)
