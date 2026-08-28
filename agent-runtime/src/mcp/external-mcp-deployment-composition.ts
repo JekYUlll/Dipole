@@ -35,6 +35,7 @@ export interface ExternalMcpDeploymentPlan {
   readonly productionIo: ExternalMcpProductionIoRuntime;
   readonly routeRegistry: LoadedExternalMcpDeploymentRoutes["registry"];
   readonly routes: readonly TemporalMcpDispatchRoute[];
+  readonly subscriptionRoutes: LoadedExternalMcpDeploymentRoutes["subscriptionRoutes"];
   readonly workerExternalMcp: McpWorkerExternalMcpDependencies;
   readonly runtimeBindingSha256: string;
 }
@@ -87,6 +88,7 @@ export async function loadExternalMcpDeploymentPlan(
       productionIo,
       routeRegistry: loadedRoutes.registry,
       routes: loadedRoutes.routes,
+      subscriptionRoutes: loadedRoutes.subscriptionRoutes,
       workerExternalMcp,
       runtimeBindingSha256: externalMcpReadinessBindingSha256(config, loadedIo.io, bindingOptions)
     };
