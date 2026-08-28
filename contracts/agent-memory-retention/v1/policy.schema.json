@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-retention/v1/policy.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "contentErasureScope", "tombstone", "erasedFields", "retainedFields", "reasonCodes", "automaticExecutionAuthority", "publicApiAuthority"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-retention-policy.v1"},
+    "policyVersion": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"},
+    "contentErasureScope": {"const": "memory_root"},
+    "tombstone": {"const": "[erased]"},
+    "erasedFields": {"const": ["compact_content", "content", "correction_reason", "original_source_identity", "resource_binding", "revoke_reason", "source_uri"]},
+    "retainedFields": {"const": ["agent_uuid", "content_erased_at", "content_erased_by_uuid", "content_erasure_reason_code", "memory_root_uuid", "memory_uuid", "memory_version", "principal_uuid", "supersedes_memory_uuid", "tenant_id"]},
+    "reasonCodes": {"const": ["owner_request", "policy_violation", "retention_expired"]},
+    "automaticExecutionAuthority": {"const": false},
+    "publicApiAuthority": {"const": false}
+  }
+}

@@ -61,6 +61,7 @@ type Querier interface {
 	EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error
 	EnsureSyncReplayJob(ctx context.Context, arg EnsureSyncReplayJobParams) error
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
+	EraseOwnedAgentMemoryRoot(ctx context.Context, arg EraseOwnedAgentMemoryRootParams) (int64, error)
 	ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	FailAgentModelCall(ctx context.Context, arg FailAgentModelCallParams) (int64, error)
 	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)
@@ -183,6 +184,7 @@ type Querier interface {
 	ListOwnedActiveAgentDefinitions(ctx context.Context, arg ListOwnedActiveAgentDefinitionsParams) ([]AgentDefinitionVersion, error)
 	ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgentMemoriesParams) ([]AgentMemory, error)
+	ListOwnedAgentMemoryRootForUpdate(ctx context.Context, arg ListOwnedAgentMemoryRootForUpdateParams) ([]AgentMemory, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
 	ListSyncInboxBaselineEntries(ctx context.Context, jobName string) ([]ListSyncInboxBaselineEntriesRow, error)
 	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)
