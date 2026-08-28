@@ -1,0 +1,27 @@
+rule_files:
+  - agent-timeline-repair-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'dipole_agent_task_timeline_repair_total{outcome="projection_error"}'
+        values: '0 1 2 3'
+      - series: 'dipole_agent_task_timeline_repair_total{outcome="repaired"}'
+        values: '0 1 2 3'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DipoleAgentTimelineRepairFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Agent Task Timeline repair worker reported a failure
+      - eval_time: 3m
+        alertname: DipoleAgentTimelineRepairNotConverging
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Agent Task Timeline repair projection keeps retrying
