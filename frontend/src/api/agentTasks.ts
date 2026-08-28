@@ -50,6 +50,7 @@ export type AgentElicitationValue = Record<string, string | boolean | string[]>
 export interface AgentTaskClient {
   getTask(taskId: string): Promise<AgentTaskState>
   provideInput(taskId: string, requestId: string, value: AgentElicitationValue): Promise<void>
+  resolveApproval(taskId: string, approvalId: string, decision: 'approved' | 'denied'): Promise<void>
   cancelTask(taskId: string): Promise<void>
 }
 
@@ -91,6 +92,12 @@ export const agentTaskClient: AgentTaskClient = {
     requireIdentity(taskId, 'Task')
     requireIdentity(requestId, 'request')
     await api.post(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}/inputs/${encodeURIComponent(requestId)}`, { value })
+  },
+  async resolveApproval(taskId, approvalId, decision) {
+    requireIdentity(taskId, 'Task')
+    requireIdentity(approvalId, 'approval')
+    if (decision !== 'approved' && decision !== 'denied') throw new Error('Agent approval decision is invalid')
+    await api.post(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}/approvals/${encodeURIComponent(approvalId)}`, { decision })
   },
   async cancelTask(taskId) {
     requireIdentity(taskId, 'Task')

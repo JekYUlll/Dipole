@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { parseAgentTaskResponse } from './agentTasks'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import api from './index'
+import { agentTaskClient, parseAgentTaskResponse } from './agentTasks'
 
 const waitingTask = {
   taskId: 'TASK-1', status: 'waiting_input', revision: 22, persistentStatus: 'running',
@@ -17,6 +18,7 @@ const waitingTask = {
 }
 
 describe('Agent Task response parser', () => {
+  afterEach(() => vi.restoreAllMocks())
   it('accepts an exact source-bound ordinary Form', () => {
     expect(parseAgentTaskResponse(waitingTask)).toMatchObject({
       taskId: 'TASK-1', status: 'waiting_input',
@@ -49,5 +51,13 @@ describe('Agent Task response parser', () => {
     })
     expect(() => parseAgentTaskResponse({ ...task, pending: { ...task.pending, summary: '' } })).toThrow(/approval/i)
     expect(() => parseAgentTaskResponse({ ...task, pending: { ...task.pending, approvalId: 'bad approval id' } })).toThrow(/approval/i)
+  })
+
+  it('posts approval decisions with the authenticated Task binding', async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({} as never)
+    await agentTaskClient.resolveApproval('TASK-1', 'APPROVAL-1', 'approved')
+    expect(post).toHaveBeenCalledWith('/api/v1/agent/tasks/TASK-1/approvals/APPROVAL-1', { decision: 'approved' })
+    await expect(agentTaskClient.resolveApproval('TASK-1', 'bad approval id', 'approved')).rejects.toThrow(/approval/i)
+    await expect(agentTaskClient.resolveApproval('TASK-1', 'APPROVAL-1', 'invalid' as 'approved')).rejects.toThrow(/decision/i)
   })
 })
