@@ -150,11 +150,12 @@ type Search struct {
 }
 
 type Sync struct {
-	Transport                string `mapstructure:"transport"`
-	ShadowQueries            bool   `mapstructure:"shadow_queries"`
-	ProjectorEnabled         bool   `mapstructure:"projector_enabled"`
-	EnforceDBPermissions     bool   `mapstructure:"enforce_db_permissions"`
-	CassandraShadowHydration bool   `mapstructure:"cassandra_shadow_hydration"`
+	Transport                 string `mapstructure:"transport"`
+	ShadowQueries             bool   `mapstructure:"shadow_queries"`
+	ProjectorEnabled          bool   `mapstructure:"projector_enabled"`
+	EnforceDBPermissions      bool   `mapstructure:"enforce_db_permissions"`
+	CassandraShadowHydration  bool   `mapstructure:"cassandra_shadow_hydration"`
+	CassandraPrimaryHydration bool   `mapstructure:"cassandra_primary_hydration"`
 }
 
 type InternalRPC struct {
@@ -433,6 +434,7 @@ func Load() error {
 		v.SetDefault("sync.projector_enabled", false)
 		v.SetDefault("sync.enforce_db_permissions", false)
 		v.SetDefault("sync.cassandra_shadow_hydration", false)
+		v.SetDefault("sync.cassandra_primary_hydration", false)
 		v.SetDefault("internal_rpc.enabled", false)
 		v.SetDefault("internal_rpc.shared_secret", "")
 		v.SetDefault("internal_rpc.core_listen_address", "127.0.0.1:9091")
@@ -947,11 +949,12 @@ func SearchMySQLConfig() MySQL {
 func SyncConfig() Sync {
 	MustLoad()
 	return Sync{
-		Transport:                strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
-		ShadowQueries:            cfg.GetBool("sync.shadow_queries"),
-		ProjectorEnabled:         cfg.GetBool("sync.projector_enabled"),
-		EnforceDBPermissions:     cfg.GetBool("sync.enforce_db_permissions"),
-		CassandraShadowHydration: cfg.GetBool("sync.cassandra_shadow_hydration"),
+		Transport:                 strings.ToLower(strings.TrimSpace(cfg.GetString("sync.transport"))),
+		ShadowQueries:             cfg.GetBool("sync.shadow_queries"),
+		ProjectorEnabled:          cfg.GetBool("sync.projector_enabled"),
+		EnforceDBPermissions:      cfg.GetBool("sync.enforce_db_permissions"),
+		CassandraShadowHydration:  cfg.GetBool("sync.cassandra_shadow_hydration"),
+		CassandraPrimaryHydration: cfg.GetBool("sync.cassandra_primary_hydration"),
 	}
 }
 

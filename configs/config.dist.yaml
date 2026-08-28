@@ -158,6 +158,8 @@ sync:
   enforce_db_permissions: false
   # Compare MySQL-hydrated Sync payloads with Cassandra asynchronously; MySQL remains primary.
   cassandra_shadow_hydration: false
+  # Opt in to Cassandra-first hydration; any Cassandra failure immediately reads the same locators from MySQL.
+  cassandra_primary_hydration: false
   # Empty values inherit the global mysql block for backward-compatible local development.
   mysql:
     host: ""
