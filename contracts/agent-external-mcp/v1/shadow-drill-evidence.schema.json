@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-external-mcp/v1/shadow-drill-evidence.schema.json",
+  "title": "Dipole Agent External MCP Shadow Drill Evidence v1",
+  "description": "Low-sensitivity, expiring evidence for the isolated external MCP full-stack Shadow drill.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.external-mcp-shadow-drill.v1",
+  "required": [
+    "schema_version",
+    "outcome",
+    "isolation",
+    "collected_at",
+    "expires_at",
+    "event_count",
+    "ledger_completed_event_count",
+    "tool_call_count",
+    "artifact_count",
+    "restart_duplicate_suppressed",
+    "expired_readiness_denied",
+    "production_authority",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.external-mcp-shadow-drill.v1"},
+    "outcome": {"const": "passed"},
+    "isolation": {"const": "disposable_mysql_kafka_temporal_and_local_mcp"},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "event_count": {"const": 2},
+    "ledger_completed_event_count": {"const": 2},
+    "tool_call_count": {"const": 1},
+    "artifact_count": {"const": 1},
+    "restart_duplicate_suppressed": {"const": true},
+    "expired_readiness_denied": {"const": true},
+    "production_authority": {"const": false},
+    "content_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "additionalProperties": false
+}
