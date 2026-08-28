@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
 import { loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { foundationAgentTaskActivities } from "./agent-task-activities.js";
 import {
   createExternalMcpAgentCapabilityRPCResourceFactory,
   type ExternalMcpAgentCapabilityRPCFactory
@@ -12,7 +13,7 @@ describe("external MCP Agent Capability RPC resource", () => {
   it("stays lazy until an enabled startup plan requests the resource", () => {
     const createRPC = vi.fn<ExternalMcpAgentCapabilityRPCFactory>();
 
-    createExternalMcpAgentCapabilityRPCResourceFactory(config(), createRPC);
+    createExternalMcpAgentCapabilityRPCResourceFactory(config(), { createRPC });
 
     expect(createRPC).not.toHaveBeenCalled();
   });
@@ -22,7 +23,7 @@ describe("external MCP Agent Capability RPC resource", () => {
     const close = vi.fn();
     const createRPC = vi.fn<ExternalMcpAgentCapabilityRPCFactory>(() => ({ client, close }));
     const runtimeConfig = config();
-    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(runtimeConfig, createRPC);
+    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(runtimeConfig, { createRPC });
 
     const resource = await createResource(deployment("dipole"), new AbortController().signal);
 
@@ -30,6 +31,8 @@ describe("external MCP Agent Capability RPC resource", () => {
     expect(resource.dependencies).toEqual({ core: client, artifacts: client });
     expect(resource.dependencies.core).toBe(resource.dependencies.artifacts);
     expect(Object.isFrozen(resource.dependencies)).toBe(true);
+    expect(resource.workerActivities?.executeAgentTaskStep).toBe(foundationAgentTaskActivities.executeAgentTaskStep);
+    expect(Object.isFrozen(resource.workerActivities)).toBe(true);
     await resource.close();
     await resource.close();
     expect(close).toHaveBeenCalledOnce();
@@ -45,7 +48,7 @@ describe("external MCP Agent Capability RPC resource", () => {
 
     for (const candidate of cases) {
       const createRPC = vi.fn<ExternalMcpAgentCapabilityRPCFactory>();
-      const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(candidate.runtime, createRPC);
+      const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(candidate.runtime, { createRPC });
       await expect(createResource(candidate.deployment, new AbortController().signal))
         .rejects.toThrow(/^External MCP Agent Capability RPC resource is unavailable$/);
       expect(createRPC).not.toHaveBeenCalled();
@@ -56,7 +59,7 @@ describe("external MCP Agent Capability RPC resource", () => {
     const controller = new AbortController();
     controller.abort(new Error("cancelled before RPC resource"));
     const createRPC = vi.fn<ExternalMcpAgentCapabilityRPCFactory>();
-    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), createRPC);
+    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), { createRPC });
 
     await expect(createResource(deployment("dipole"), controller.signal))
       .rejects.toThrow(/cancelled before RPC resource/i);
@@ -66,9 +69,11 @@ describe("external MCP Agent Capability RPC resource", () => {
   it("closes a constructed transport when cancellation wins after creation", async () => {
     const controller = new AbortController();
     const close = vi.fn();
-    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), () => {
-      controller.abort(new Error("cancelled after RPC resource"));
-      return { client: {} as AgentCapabilityRPCClient, close };
+    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), {
+      createRPC: () => {
+        controller.abort(new Error("cancelled after RPC resource"));
+        return { client: {} as AgentCapabilityRPCClient, close };
+      }
     });
 
     await expect(createResource(deployment("dipole"), controller.signal))
@@ -77,19 +82,21 @@ describe("external MCP Agent Capability RPC resource", () => {
   });
 
   it("returns fixed construction and rollback cleanup failures", async () => {
-    const failedConstruction = createExternalMcpAgentCapabilityRPCResourceFactory(config(), () => {
-      throw new Error("sensitive RPC target");
+    const failedConstruction = createExternalMcpAgentCapabilityRPCResourceFactory(config(), {
+      createRPC: () => { throw new Error("sensitive RPC target"); }
     });
     await expect(failedConstruction(deployment("dipole"), new AbortController().signal))
       .rejects.toThrow(/^External MCP Agent Capability RPC resource is unavailable$/);
 
     const controller = new AbortController();
-    const failedCleanup = createExternalMcpAgentCapabilityRPCResourceFactory(config(), () => {
-      controller.abort(new Error("sensitive cancellation"));
-      return {
-        client: {} as AgentCapabilityRPCClient,
-        close: () => { throw new Error("sensitive close target"); }
-      };
+    const failedCleanup = createExternalMcpAgentCapabilityRPCResourceFactory(config(), {
+      createRPC: () => {
+        controller.abort(new Error("sensitive cancellation"));
+        return {
+          client: {} as AgentCapabilityRPCClient,
+          close: () => { throw new Error("sensitive close target"); }
+        };
+      }
     });
     await expect(failedCleanup(deployment("dipole"), controller.signal))
       .rejects.toThrow(/^External MCP Agent Capability RPC resource cleanup failed$/);
@@ -97,15 +104,44 @@ describe("external MCP Agent Capability RPC resource", () => {
 
   it("memoizes explicit close failure without touching the transport twice", async () => {
     const close = vi.fn(() => { throw new Error("sensitive explicit close"); });
-    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), () => ({
-      client: {} as AgentCapabilityRPCClient,
-      close
-    }));
+    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), {
+      createRPC: () => ({ client: {} as AgentCapabilityRPCClient, close })
+    });
     const resource = await createResource(deployment("dipole"), new AbortController().signal);
 
     await expect(resource.close()).rejects.toThrow(/^External MCP Agent Capability RPC resource cleanup failed$/);
     await expect(resource.close()).rejects.toThrow(/^External MCP Agent Capability RPC resource cleanup failed$/);
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("derives persistent lifecycle Activities from the same RPC client and preserves the host Step", async () => {
+    const executeAgentTaskStep = vi.fn(async () => ({ kind: "complete" as const, output: "host-step" }));
+    const admitRun = vi.fn(async () => ({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" as const }));
+    const client = {
+      admitRun,
+      finish: vi.fn(),
+      projectTaskWorkflowState: vi.fn(),
+      requestApproval: vi.fn(),
+      resolveApproval: vi.fn()
+    } as unknown as AgentCapabilityRPCClient;
+    const createResource = createExternalMcpAgentCapabilityRPCResourceFactory(config(), {
+      createRPC: () => ({ client, close: vi.fn() }),
+      baseActivities: { ...foundationAgentTaskActivities, executeAgentTaskStep }
+    });
+
+    const resource = await createResource(deployment("dipole"), new AbortController().signal);
+
+    expect(resource.workerActivities?.executeAgentTaskStep).toBe(executeAgentTaskStep);
+    expect(resource.workerActivities?.admitAgentTask).not.toBe(foundationAgentTaskActivities.admitAgentTask);
+    await expect(resource.workerActivities?.admitAgentTask({
+      taskId: "TASK-1",
+      goal: "read issue",
+      admission: {
+        tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+        triggerType: "user_request", triggerRef: "CONV-1", eventId: "EVENT-1"
+      }
+    })).resolves.toEqual({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
+    expect(admitRun).toHaveBeenCalledOnce();
   });
 });
 

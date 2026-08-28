@@ -3,6 +3,11 @@ import {
   createAgentCapabilityRPC,
   type ShadowRuntimeConfig
 } from "../runtime/shadow-runtime.js";
+import {
+  foundationAgentTaskActivities,
+  type AgentTaskWorkerActivities
+} from "./agent-task-activities.js";
+import { createPersistentAgentTaskLifecycleActivities } from "./agent-task-lifecycle-activities.js";
 import type {
   ExternalMcpTemporalWorkerResource,
   ExternalMcpTemporalWorkerResourceFactory
@@ -17,10 +22,17 @@ export type ExternalMcpAgentCapabilityRPCFactory = (
   config: ShadowRuntimeConfig
 ) => ExternalMcpAgentCapabilityRPCResource;
 
+export interface ExternalMcpAgentCapabilityRPCResourceFactoryOptions {
+  readonly createRPC?: ExternalMcpAgentCapabilityRPCFactory;
+  readonly baseActivities?: AgentTaskWorkerActivities;
+}
+
 export function createExternalMcpAgentCapabilityRPCResourceFactory(
   config: ShadowRuntimeConfig,
-  createRPC: ExternalMcpAgentCapabilityRPCFactory = createAgentCapabilityRPC
+  options: ExternalMcpAgentCapabilityRPCResourceFactoryOptions = {}
 ): ExternalMcpTemporalWorkerResourceFactory {
+  const createRPC = options.createRPC ?? createAgentCapabilityRPC;
+  const baseActivities = options.baseActivities ?? foundationAgentTaskActivities;
   return async (plan, signal) => {
     signal.throwIfAborted();
     let rpc: ExternalMcpAgentCapabilityRPCResource | undefined;
@@ -34,6 +46,10 @@ export function createExternalMcpAgentCapabilityRPCResourceFactory(
       signal.throwIfAborted();
       return {
         dependencies: Object.freeze({ core: rpc.client, artifacts: rpc.client }),
+        workerActivities: Object.freeze({
+          ...baseActivities,
+          ...createPersistentAgentTaskLifecycleActivities(rpc.client)
+        }),
         close: closeOnce(rpc)
       } satisfies ExternalMcpTemporalWorkerResource;
     } catch {

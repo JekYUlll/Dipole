@@ -60,7 +60,9 @@ describe("external MCP Shadow Worker bootstrap", () => {
       expect.any(Function),
       { signal }
     );
-    expect(harness.createResourceFactory).toHaveBeenCalledWith(shadow);
+    expect(harness.createResourceFactory).toHaveBeenCalledWith(shadow, {
+      baseActivities: harness.baseActivities
+    });
     expect(harness.startLifecycle).toHaveBeenCalledWith(harness.startup, temporal, onFailure);
   });
 

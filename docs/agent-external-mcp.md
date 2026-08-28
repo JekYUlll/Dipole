@@ -211,9 +211,13 @@ multi-route factory 返回后，composition 会把每个 route ID/version/manife
 
 `TemporalWorkerActivities` 现允许 additive `executeMcpDispatch`，现有 foundation/persistent/read-shadow Activities 仍可原样注册。生产 `index.ts` 继续只按原三种 mode 构造 Worker，没有加载 deployment plan、调用 composition、创建 MCP RPC/Client 或注册 MCP Activity。后续启动切片必须保证 disabled 路径在 RPC 创建前返回，并为 enabled Shadow deployment 提供启动失败清理、readiness preflight、真实公网证据和明确回滚。
 
-`loadExternalMcpTemporalWorkerStartupPlan` 负责 deployment loader 与 Worker composition 之间的资源所有权。它把 caller 提供或内部创建的 AbortSignal 传入 manifest loader 和 resource factory，严格按 `load -> validate -> resource -> compose` 执行；disabled plan 和静态 composition 冲突都在 resource factory 前返回或拒绝。resource 只暴露 Core/Artifact dependencies 与 `close()`，可由后续启动层封装一个认证 RPC channel，但 startup plan 不依赖具体 transport。
+`loadExternalMcpTemporalWorkerStartupPlan` 负责 deployment loader 与 Worker composition 之间的资源所有权。它把 caller 提供或内部创建的 AbortSignal 传入 manifest loader 和 resource factory，严格按 `load -> validate -> resource -> compose` 执行；disabled plan 和静态 composition 冲突都在 resource factory 前返回或拒绝。resource 暴露 Core/Artifact dependencies、可选 Worker Activity snapshot 与 `close()`，可由后续启动层封装一个认证 RPC channel，但 startup plan 不依赖具体 transport。
+
+startup 的第一次 validation 使用 host base Activities，保证 disabled/静态错误在 RPC 前拒绝；resource 返回后，composition 改用 `workerActivities`（若存在）并重新执行 Runtime digest、route、egress、Workflow catalog 与 Activity collision 校验。旧的通用 resource 没有 Activity snapshot 时继续使用 host base，实现保持兼容。任何 post-resource Activity 冲突都会走既有 rollback close。
 
 `createExternalMcpAgentCapabilityRPCResourceFactory` 提供该认证 RPC resource 的生产 adapter。factory 构造本身没有 I/O；startup 真正请求 resource 时，它要求 Agent Capability RPC enabled、deployment 至少包含一个 Profile，并逐项确认 Profile tenant 等于 Shadow Runtime tenant。随后只创建一个 `AgentCapabilityRPCClient`，将同一实例同时作为 MCP Context/Invocation/Round/readiness/terminal Core port 与 Artifact writer，防止两个连接看到不同的授权或持久状态。
+
+resource 还从该 client 派生 persistent `admitAgentTask`、`finishAgentTask`、Workflow projection 与 Approval Activities，并与 host 的 `executeAgentTaskStep` 合成冻结 `workerActivities` snapshot。这样 MCP Workflow 的 Run admission、Context resolve、Invocation、readiness 与 Artifact 都观察同一认证 Core transport；未来 `index.ts` 接线无需为 lifecycle 另建 `temporalRPC`。host 若提供 read-shadow Step Activity，该 Step 仍保持原实现，五个 lifecycle Activity 则始终由 resource client 覆盖。
 
 RPC 构造后若 AbortSignal 已取消，factory 会先关闭 transport 再传播取消；构造错误固定为 unavailable，回滚或显式 close 错误固定为 cleanup failed。成功 resource 的 dependencies snapshot 冻结，close Promise 对成功和失败都只执行一次。该 adapter 没有修改 Proto，也不加载 deployment、启动 Worker、执行 readiness 或访问外部 MCP 网络；生产 `index.ts` 尚未调用它。
 
