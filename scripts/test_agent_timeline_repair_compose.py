@@ -22,6 +22,9 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('-once', smoke)
         self.assertIn('agent_task_timeline_repairs', smoke)
         self.assertIn('agent_task_timeline_events', smoke)
+        self.assertIn('ALTER USER', compose)
+        self.assertIn('DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD', compose)
+        self.assertIn('unsupported SQL quoting characters', compose)
 
 
 if __name__ == "__main__":
