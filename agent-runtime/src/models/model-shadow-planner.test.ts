@@ -150,13 +150,17 @@ describe("ModelShadowPlanner", () => {
     }));
     const planner = new ModelShadowPlanner(
       { generate } as unknown as ModelRouter, ["conversation.read"], undefined, undefined, undefined, undefined, undefined,
-      [{ id: "conversation.read", risk: "read", requiredPermission: "conversation.read" }]
+      [{ id: "conversation.read", risk: "read", requiredPermission: "conversation.read", inputSchema: {
+        type: "object", properties: { conversationId: { type: "string", maxLength: 256 } }, additionalProperties: false
+      } }]
     );
 
     await planner.plan(event(), context());
 
     const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
-    expect(request?.prompt).toContain('\\"capabilities\\":[{\\"id\\":\\"conversation.read\\",\\"risk\\":\\"read\\",\\"requiredPermission\\":\\"conversation.read\\"}]');
+    expect(request?.prompt).toContain('\\"inputSchema\\":{\\"type\\":\\"object\\"');
+    expect(request?.prompt).toContain('\\"conversationId\\":{\\"type\\":\\"string\\",\\"maxLength\\":256}');
+    expect(request?.prompt).toContain('\\"additionalProperties\\":false');
     expect(request?.prompt).not.toContain('\\"id\\":\\"message.send\\"');
   });
 
