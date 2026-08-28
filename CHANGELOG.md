@@ -32,6 +32,7 @@
 - Event Subscription matcher 增加 256 条候选上限，超限集合在 Schema 解析和关键词匹配前 fail-closed，避免异常订阅配置放大单条 Kafka 事件的 CPU/内存开销。
 - 修正 Subscription Shadow 观测的候选计数：指标现在记录 Core 返回的原始候选数，不再使用匹配结果数低估 miss 场景的预筛选成本；matcher 错误会保留已取得的候选计数。
 - Subscription Shadow metrics observer 增加运行时 outcome 枚举校验，仅接受 `match`、`miss`、`error`，拒绝未注册的低基数标签进入 Prometheus 输出。
+- Subscription Shadow 的 HTTP Prometheus Collector 增加 256 KiB 响应体上限，使用流式读取并在超限、截断或 JSON 无效时返回固定错误，避免外部响应放大 Collector 内存占用。
 - 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
 - Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
 
@@ -47,6 +48,7 @@
 - Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
 - 新增 `conversation.read` gRPC/TypeScript 契约测试：验证 Core 从可信 Task/Run 解析身份、拒绝客户端伪造 principal、映射消息字段，并验证 Runtime 权限缺失时不会发起远程调用；`scripts/check-proto.sh`、`node scripts/check-agent-proto-ts.mjs`、Go 定向测试与 Agent Runtime typecheck/测试通过。
+- 新增 Subscription Shadow Collector 响应体边界回归测试，覆盖超过 256 KiB 的 Prometheus 响应 fail-closed；Agent Runtime 定向测试与 typecheck 通过。
 - 新增 Context Compiler 会话 evidence 测试：验证消息 provenance、sequence、full/compact 表示和远程读取调用边界；Agent Runtime 全量测试此前通过，当前 Planner/Capability 定向测试 `15 passed`。
 - 新增 `scripts/smoke-agent-timeline-repair.sh` 进程级隔离演练：使用临时 MySQL、真实迁移和独立 repair 二进制，验证 repair intent 被 claim/replay、状态收敛为 `completed` 且 Timeline 事件保持单份；worker 由 timeout 有界停止，演练不会启用共享环境服务。
 - `smoke-agent-timeline-repair.sh` 真实运行通过：隔离 MySQL、migration、repair process 和幂等事件计数均通过，失败时会保留状态诊断并自动清理临时资源。
