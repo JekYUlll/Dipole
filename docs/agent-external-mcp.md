@@ -1,6 +1,6 @@
 # Agent 外部 MCP 连接边界
 
-本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前仅交付默认关闭的 Profile 契约与 Transport 抽象，生产 Runtime 不会创建外部连接。
+本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory 与可注入网络策略，生产 Runtime 仍不会创建外部连接。
 
 ## 信任边界
 
@@ -36,7 +36,7 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 在启动阶段返回错误，因为 credential-aware、public-DNS-only Transport Factory 尚未配置。这一行为用于避免配置人员把契约 foundation 误认为已可安全接入生产 Server。
+关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误，因为生产 Secret Provider、DNS Resolver 与 TLS pinned Dispatcher 尚未配置。这一行为用于避免配置人员把策略完整的 Factory 误认为已具备生产 I/O backend。
 
 ## 轮换与吊销
 
@@ -52,7 +52,7 @@ Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路
 
 Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；轮换继续由 Catalog 与 Provider 控制。Adapter 也不缓存 token。MCP SDK 需要把 token 转换成 JavaScript string 并构造 Header，这些副本由 GC 管理，无法提供强零化保证；生产凭据必须短期、最小权限，并支持 Server 端快速吊销。
 
-当前没有 Vault/KMS/Secret Manager backend，也没有把 adapter 装配进 Transport Factory。测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
+`createExternalMcpStreamableHttpTransportFactory` 已把 adapter 装配进官方 Streamable HTTP Transport，并且每次连接创建新的 AuthProvider。当前没有 Vault/KMS/Secret Manager backend；测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
 
 ## Network Guard 边界
 
@@ -100,12 +100,12 @@ migration v36 为每个外部 Tool Invocation 保存最多两个 round。Round I
 
 Activity 取得 `claimed` 后才建立全新 Client/Transport。远端返回结果后，Runtime 先把最多 128 KiB 的 canonical JSON、摘要和字节数写成 `completed`，随后才向 Temporal 返回；Activity completion 丢失时，新尝试读取 `replay_completed` 并跳过网络。已知失败以稳定错误码重放。已有 `executing` 一律返回 `ambiguous`，即使新尝试持有相同参数也不会自动重发。传输异常保存为 `remote_outcome_unknown`，将不确定调用收敛为 at-most-once 失败。
 
-该收据仍无法证明远端已执行、但响应尚未到达 Runtime 或本地终态尚未提交的极小窗口。未来只有 Profile 显式声明且验证了服务端幂等键或查询收据协议时，才能对这类调用增加恢复策略。当前 Worker、生产 Transport Factory 与外部网络开关保持关闭，禁止通过缩短 lease 或手工修改 `executing` 记录来重试。
+该收据仍无法证明远端已执行、但响应尚未到达 Runtime 或本地终态尚未提交的极小窗口。未来只有 Profile 显式声明且验证了服务端幂等键或查询收据协议时，才能对这类调用增加恢复策略。当前 Worker 与外部网络开关保持关闭，禁止通过缩短 lease 或手工修改 `executing` 记录来重试。
 
 Worker command dispatcher 只接受 Task、Run 和 Invocation ID。它通过认证 Core RPC 重新取得持久 Profile、Server、Tool、Capability、canonical 参数摘要和 Invocation 开始时间；稳定 input request ID 与绝对截止时间均由这些权威字段派生。`wait_input` 外层 checkpoint 绑定完整命令摘要和 Activity checkpoint，进程替换后先重新解析并比较，任何参数或 authority 漂移都会在建连前拒绝。连接 Session Factory 只得到 tenant/profile/server/tool 四字段，不接收 Task/Run/Invocation、参数或 principal。
 
 ## 后续实现门槛
 
-生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。
+Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、真实 DNS Resolver、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
