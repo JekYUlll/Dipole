@@ -343,7 +343,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
   - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
   - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
-  - [x] 增加 append-only 纠正/supersession、版本冲突、默认 shadow-only Observation/Reflection Worker、candidate ledger 和 retrieval Eval；Observation/Reflection 只产出有界候选，ledger 只保存摘要/证据/策略/哈希，不自动写入 Memory。证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
+  - [x] 增加 append-only 纠正/supersession、版本冲突、默认 shadow-only Observation/Reflection Worker、candidate ledger、append-only review ledger 和 retrieval Eval；Observation/Reflection 只产出有界候选，ledger 只保存摘要/证据/策略/哈希，review 只推进待审状态，不自动写入 Memory。证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
   - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
   - [x] 增加认证 owner list/create/revoke API、版本化撤销审计、active Definition 目录、readable/scope conversation chooser 和默认关闭的 Agent 配置 UI。
