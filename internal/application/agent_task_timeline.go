@@ -41,6 +41,29 @@ type AgentTaskTimelineStoreV1 interface {
 	ListAgentTaskTimelineEvents(context.Context, string, uint64, int) ([]AgentTaskTimelineEventV1, error)
 }
 
+type AgentTaskTimelineRepairV1 struct {
+	EventUUID    string
+	TaskUUID     string
+	RunUUID      string
+	Kind         AgentTaskTimelineEventKindV1
+	Status       string
+	CapabilityID string
+	ApprovalUUID string
+	OccurredAt   time.Time
+	RepairStatus string
+	RetryCount   uint32
+	LastError    string
+	NextRetryAt  *time.Time
+	LockedAt     *time.Time
+}
+
+type AgentTaskTimelineRepairStoreV1 interface {
+	EnqueueAgentTaskTimelineRepair(context.Context, AgentTaskTimelineEventV1, error) error
+	ClaimAgentTaskTimelineRepairs(int, time.Time, time.Duration) ([]AgentTaskTimelineRepairV1, error)
+	MarkAgentTaskTimelineRepairCompleted(string) error
+	MarkAgentTaskTimelineRepairRetry(string, uint32, time.Time, error) error
+}
+
 func (e AgentTaskTimelineEventV1) Validate() error {
 	if strings.TrimSpace(e.EventUUID) == "" || strings.TrimSpace(e.TaskUUID) == "" || strings.TrimSpace(e.Status) == "" || e.OccurredAt.IsZero() {
 		return errors.New("Agent Task Timeline event identity, status and timestamp are required")
