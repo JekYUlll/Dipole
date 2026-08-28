@@ -6,6 +6,10 @@
 
 ### 新增
 
+- 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。
+- 增加 Subscription Create Option 与 Authority Summary 两个可复用组件；canonical 文件扩展为 44 个顶层 Frame 和 21 个可复用组件。
+- 增加 Agent Event Subscription desktop owner 管理页、六态契约矩阵和 mobile 撤销确认层，并保存 `exports/agent-subscription-v1/` 的 2x 评审基线。
+- 增加 Subscription Status、Filter 和 Row 三个可复用组件；canonical 文件扩展为 41 个顶层 Frame 和 19 个可复用组件。
 - 增加 Agent Elicitation desktop 普通 Form、七态契约矩阵和 mobile 表单，并保存 `exports/agent-elicitation-v1/` 的 2x 评审基线。
 - 增加 Elicitation Source、Field 和 Status 三个可复用组件；canonical 文件扩展为 35 个顶层 Frame 和 16 个可复用组件。
 - 增加 Agent Workflow Repair desktop 审计页、六态契约矩阵和 mobile 审批底部层，并保存 `exports/agent-repair-v1/` 的 2x 评审基线。
@@ -22,6 +26,12 @@
 
 ### 设计决策
 
+- Subscription create 只允许选择 owner active Definition 和 Core 返回的 readable/scope 交集；principal、tenant、event type 与 resource 均由认证上下文和 conversation key 派生，页面不提供手填入口。
+- 创建成功只表示控制记录已持久化。Runtime 与共享环境继续固定 `direct_target`，语义预筛与事件消费晋级需要独立证据。
+- Subscription owner list/create/revoke 已映射到默认关闭的 Gateway HTTP 与 Vue 页面；实现必须同时启用服务端和前端开关，Runtime 继续使用 `direct_target`。
+- Subscription 管理固定披露 owner、精确 Definition version、conversation scope、确定性 filter 和审计状态；列表中的 `active` 只表示控制记录有效，不能表达 Runtime 已消费事件。
+- Runtime 继续显示 `direct_target` Shadow 边界。公开 Definition 目录交付前关闭创建入口，禁止要求用户手填内部 Definition ID；撤销必须提交精确原因并保留审计记录。
+- `definition_stale`、依赖不可用和撤销中的状态均 fail closed；界面不启用共享事件触发，也不声称关键词过滤已经具备语义等价召回能力。
 - Elicitation Form 固定披露 Server、Tool、Invocation 与不可信来源，提交前以当前 Workflow Query 的 schema 和 `request_id` 再校验；缓存 Form 不能在依赖不可用时继续提交。
 - 普通 Elicitation 只渲染 `text|select|multiselect|boolean`；密码、Token、支付、Cookie、文件和 URL 授权进入独立安全设计，不复用当前 Form。
 - `submitting` 不提前显示恢复成功；只有同一 Temporal Signal 被接受并进入 `running` 后才移除旧表单。取消或过期均进入可审计终态。

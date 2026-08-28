@@ -209,13 +209,21 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
 		}
-		subscriptionControls, composeErr := appComposition.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
+		subscriptionControls, composeErr := appComposition.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, localMessaging.Core, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
+		}
+		definitionCatalog, composeErr := appComposition.NewPersistentAgentDefinitionCatalogV1(repos.AgentDefinitionCatalog, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Definition catalog: %w", composeErr)
 		}
 		memoryResolver, composeErr := appComposition.NewPersistentAgentMemoryResolverV1(repos.AgentMemories, resolver, repos.AgentPolicy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
+		}
+		memoryControls, composeErr := appComposition.NewPersistentAgentMemoryOwnerControlV1(repos.AgentMemoryOwners, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Memory owner control: %w", composeErr)
 		}
 		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
 		if composeErr != nil {
@@ -257,7 +265,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

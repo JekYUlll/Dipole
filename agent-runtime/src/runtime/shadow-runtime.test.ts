@@ -5,6 +5,7 @@ import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-proce
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import type { ExecutionContext } from "./execution-context.js";
 import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runtime.js";
+import { SubscriptionShadowMetrics } from "../observability/subscription-shadow-metrics.js";
 
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
@@ -82,6 +83,17 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_TRIGGER_MODE: "subscription"
     })).toThrow(/subscription.*Capability RPC/i);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true" })).toThrow(/Kafka/i);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true"
+    })).toThrow(/Capability RPC/i);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_TRIGGER_MODE: "subscription", DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+    })).toThrow(/direct.target/i);
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {
@@ -164,10 +176,76 @@ describe("shadow runtime composition", () => {
     await fixture.eachMessage()(payload(messageEnvelope("U200")));
 
     expect(subscriptions.admit).toHaveBeenCalledWith(
-      expect.objectContaining({ eventId: "E1", subscriptionId: "SUB-A" }),
+      expect.objectContaining({
+        eventId: "E1",
+        subscriptionId: "SUB-A",
+        subscriptionBinding: {
+          subscriptionId: "SUB-A",
+          definitionId: "DEF-1",
+          definitionVersion: 1,
+          tenantId: "dipole",
+          agentId: "UAI"
+        }
+      }),
       expect.objectContaining({ agentUuid: "UAI" })
     );
     expect(fixture.planner.plan).toHaveBeenCalledOnce();
+  });
+
+  it("uses a borrowed subscription matcher with an independent dispatcher", async () => {
+    const fixture = runtimeFixture();
+    const matcher = {
+      matchEventSubscriptions: vi.fn(async () => [subscription("SUB-A", "all", {})])
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const runtime = buildKafkaShadowRuntime(
+      subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
+      undefined, undefined, undefined, undefined, dispatcher, matcher
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U200")));
+
+    expect(matcher.matchEventSubscriptions).toHaveBeenCalledOnce();
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionId: "SUB-A",
+        subscriptionBinding: expect.objectContaining({ subscriptionId: "SUB-A" })
+      }),
+      expect.objectContaining({ agentUuid: "UAI" }),
+      expect.any(String)
+    );
+    expect(fixture.planner.plan).not.toHaveBeenCalled();
+  });
+
+  it("observes subscription match, miss, and errors before the ledger without changing direct-target admission", async () => {
+    const fixture = runtimeFixture();
+    const matcher = { matchEventSubscriptions: vi.fn()
+      .mockResolvedValueOnce([subscription("SUB-A", "all", {})])
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("Core unavailable")) };
+    const metrics = new SubscriptionShadowMetrics();
+    const config = loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI",
+      DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+      DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091", DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+    });
+    const runtime = buildKafkaShadowRuntime(
+      config, fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
+      undefined, undefined, undefined, undefined, undefined, matcher, metrics
+    );
+    await runtime.start();
+
+    await fixture.eachMessage()(payload(messageEnvelope("OTHER", "E1")));
+    await fixture.eachMessage()(payload(messageEnvelope("OTHER", "E2")));
+    await fixture.eachMessage()(payload(messageEnvelope("UAI", "E3")));
+
+    expect(matcher.matchEventSubscriptions).toHaveBeenCalledTimes(3);
+    expect(fixture.ledger.claim).toHaveBeenCalledTimes(1);
+    expect(fixture.planner.plan).toHaveBeenCalledTimes(1);
+    expect(metrics.render()).toContain('direct_target="ignored",subscription="match"} 1');
+    expect(metrics.render()).toContain('direct_target="ignored",subscription="miss"} 1');
+    expect(metrics.render()).toContain('direct_target="accepted",subscription="error"} 1');
   });
 });
 
@@ -228,9 +306,9 @@ function subscription(subscriptionId: string, filterKind: "all" | "message_conta
   };
 }
 
-function messageEnvelope(targetUuid = "UAI"): object {
+function messageEnvelope(targetUuid = "UAI", eventId = "E1"): object {
   return {
-    event_id: "E1", request_id: "R1", trace_id: "T1",
+    event_id: eventId, request_id: "R1", trace_id: "T1",
     event_type: "message.direct.created", version: "v1", source: "dipole",
     occurred_at: "2026-08-27T08:00:00.000Z",
     payload: {

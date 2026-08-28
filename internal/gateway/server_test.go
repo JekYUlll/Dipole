@@ -85,6 +85,85 @@ type gatewayAgentMCPStub struct {
 	calls     int
 }
 
+type gatewayAgentSubscriptionStub struct {
+	principal         string
+	after             string
+	limit             int
+	subscriptionID    string
+	reason            string
+	listCalls         int
+	revokeCalls       int
+	createCalls       int
+	optionsCalls      int
+	createInput       AgentSubscriptionCreateInput
+	definitionID      string
+	definitionVersion uint64
+}
+
+type gatewayAgentDefinitionStub struct {
+	principal, after string
+	limit            int
+}
+
+type gatewayAgentMemoryStub struct {
+	principal, after, memoryID, reason string
+	limit, listCalls, revokeCalls      int
+}
+
+func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentMemoryPage{Memories: []AgentMemory{{MemoryID: "MEM-1", Status: "active", Content: "Owner is Alice"}}, NextCursor: "CURSOR-1"}, nil
+}
+
+func (s *gatewayAgentMemoryStub) Revoke(_ context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error) {
+	s.principal, s.memoryID, s.reason = principalUUID, memoryID, reason
+	s.revokeCalls++
+	return &AgentMemory{MemoryID: memoryID, Status: "revoked", RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
+func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	return &AgentDefinitionCatalogPage{Definitions: []AgentDefinitionCatalogItem{{
+		DefinitionID: "DEF-1", Version: 7, AgentID: "UAI", ConversationScopes: []string{"group:G123"},
+		ValidFromUnixMS: 1_000, CreatedAtUnixMS: 1_000, UpdatedAtUnixMS: 2_000,
+	}}}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentSubscriptionPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentSubscriptionPage{Subscriptions: []AgentSubscription{{
+		SubscriptionID: "SUB-1", DefinitionID: "DEF-1", DefinitionVersion: 7, AgentID: "UAI",
+		EventType: "message.created", ResourceType: "conversation", ResourceID: "group:G123",
+		FilterKind: "all", Filter: AgentSubscriptionFilter{}, Status: "active", CreatedByID: principalUUID,
+	}}, NextCursor: "SUB-1"}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) ListEligibleConversations(_ context.Context, principalUUID, definitionID string, definitionVersion uint64) (*AgentSubscriptionConversationOptions, error) {
+	s.principal, s.definitionID, s.definitionVersion = principalUUID, definitionID, definitionVersion
+	s.optionsCalls++
+	return &AgentSubscriptionConversationOptions{Conversations: []AgentSubscriptionConversationOption{{ConversationKey: "group:G123", EventType: "message.group.created"}}}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) Create(_ context.Context, principalUUID string, input AgentSubscriptionCreateInput) (*AgentSubscription, error) {
+	s.principal, s.createInput = principalUUID, input
+	s.createCalls++
+	return &AgentSubscription{
+		SubscriptionID: "SUB-CREATED", DefinitionID: input.DefinitionID, DefinitionVersion: input.DefinitionVersion, AgentID: "UAI",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: input.ConversationKey,
+		FilterKind: input.FilterKind, Filter: input.Filter, Status: "active", CreatedByID: principalUUID,
+	}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) Revoke(_ context.Context, principalUUID, subscriptionID, reason string) (*AgentSubscription, error) {
+	s.principal, s.subscriptionID, s.reason = principalUUID, subscriptionID, reason
+	s.revokeCalls++
+	return &AgentSubscription{SubscriptionID: subscriptionID, DefinitionID: "DEF-1", DefinitionVersion: 7, AgentID: "UAI",
+		EventType: "message.created", ResourceType: "conversation", ResourceID: "group:G123", FilterKind: "all",
+		Filter: AgentSubscriptionFilter{}, Status: "revoked", CreatedByID: principalUUID, RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
 func (s *gatewayAgentMCPStub) ServeMCP(writer http.ResponseWriter, _ *http.Request, principalUUID, taskUUID, runUUID string) {
 	s.principal, s.taskID, s.runID = principalUUID, taskUUID, runUUID
 	s.calls++
@@ -256,6 +335,217 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `"message_id":"M1"`) {
 		t.Fatalf("unexpected Search response: %s", response.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = store.RDB.Close()
+		store.RDB = previousRedis
+	})
+	proxied := 0
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		proxied++
+		writer.WriteHeader(http.StatusTeapot)
+	}))
+	defer core.Close()
+	subscriptions := &gatewayAgentSubscriptionStub{}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions", nil))
+	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 || subscriptions.listCalls != 0 {
+		t.Fatalf("unauthorized list: code=%d proxied=%d calls=%d", unauthorized.Code, proxied, subscriptions.listCalls)
+	}
+	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	if err != nil {
+		t.Fatalf("issue token: %v", err)
+	}
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions?after=SUB-0&limit=20", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK || proxied != 0 || subscriptions.principal != "U100" || subscriptions.after != "SUB-0" || subscriptions.limit != 20 {
+		t.Fatalf("list: code=%d proxied=%d stub=%+v body=%s", listResponse.Code, proxied, subscriptions, listResponse.Body.String())
+	}
+	if !strings.Contains(listResponse.Body.String(), `"subscriptionId":"SUB-1"`) || !strings.Contains(listResponse.Body.String(), `"nextCursor":"SUB-1"`) {
+		t.Fatalf("unexpected list response: %s", listResponse.Body.String())
+	}
+
+	optionsRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions/options?definitionId=DEF-1&definitionVersion=7", nil)
+	optionsRequest.Header.Set("Authorization", "Bearer "+token)
+	optionsResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(optionsResponse, optionsRequest)
+	if optionsResponse.Code != http.StatusOK || subscriptions.optionsCalls != 1 || subscriptions.principal != "U100" ||
+		subscriptions.definitionID != "DEF-1" || subscriptions.definitionVersion != 7 ||
+		!strings.Contains(optionsResponse.Body.String(), `"conversationKey":"group:G123"`) {
+		t.Fatalf("options: code=%d stub=%+v body=%s", optionsResponse.Code, subscriptions, optionsResponse.Body.String())
+	}
+
+	createRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions", strings.NewReader(`{"definitionId":"DEF-1","definitionVersion":7,"conversationKey":"group:G123","filterKind":"message_contains_any","filter":{"terms":["事故","延期"]}}`))
+	createRequest.Header.Set("Authorization", "Bearer "+token)
+	createRequest.Header.Set("Content-Type", "application/json")
+	createResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(createResponse, createRequest)
+	if createResponse.Code != http.StatusOK || subscriptions.createCalls != 1 || subscriptions.createInput.ConversationKey != "group:G123" ||
+		!strings.Contains(createResponse.Body.String(), `"subscriptionId":"SUB-CREATED"`) {
+		t.Fatalf("create: code=%d stub=%+v body=%s", createResponse.Code, subscriptions, createResponse.Body.String())
+	}
+
+	revokeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions/SUB-1/revoke", strings.NewReader(`{"reason":"project archived"}`))
+	revokeRequest.Header.Set("Authorization", "Bearer "+token)
+	revokeRequest.Header.Set("Content-Type", "application/json")
+	revokeResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(revokeResponse, revokeRequest)
+	if revokeResponse.Code != http.StatusOK || subscriptions.subscriptionID != "SUB-1" || subscriptions.reason != "project archived" || subscriptions.revokeCalls != 1 {
+		t.Fatalf("revoke: code=%d stub=%+v body=%s", revokeResponse.Code, subscriptions, revokeResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	memories := &gatewayAgentMemoryStub{}
+	gateway, err := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMemories: memories, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/memories", nil))
+	if unauthorized.Code != http.StatusUnauthorized || memories.listCalls != 0 {
+		t.Fatalf("unauthorized list code=%d calls=%d", unauthorized.Code, memories.listCalls)
+	}
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/memories?after=CURSOR-0&limit=20", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK || memories.principal != "U100" || memories.after != "CURSOR-0" || memories.limit != 20 ||
+		!strings.Contains(listResponse.Body.String(), `"memoryId":"MEM-1"`) {
+		t.Fatalf("list code=%d stub=%+v body=%s", listResponse.Code, memories, listResponse.Body.String())
+	}
+	forged := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/revoke", strings.NewReader(`{"reason":"outdated","principalUserId":"U999"}`))
+	forged.Header.Set("Authorization", "Bearer "+token)
+	forged.Header.Set("Content-Type", "application/json")
+	forgedResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(forgedResponse, forged)
+	if forgedResponse.Code != http.StatusBadRequest || memories.revokeCalls != 0 {
+		t.Fatalf("forged revoke code=%d calls=%d", forgedResponse.Code, memories.revokeCalls)
+	}
+	revoke := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/revoke", strings.NewReader(`{"reason":"outdated"}`))
+	revoke.Header.Set("Authorization", "Bearer "+token)
+	revoke.Header.Set("Content-Type", "application/json")
+	revokeResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(revokeResponse, revoke)
+	if revokeResponse.Code != http.StatusOK || memories.principal != "U100" || memories.memoryID != "MEM-1" || memories.reason != "outdated" || memories.revokeCalls != 1 {
+		t.Fatalf("revoke code=%d stub=%+v body=%s", revokeResponse.Code, memories, revokeResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	catalog := &gatewayAgentDefinitionStub{}
+	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentDefinitions: catalog, Limiter: gatewayLimiterStub{}})
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions", nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized code=%d", unauthorized.Code)
+	}
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions?limit=20", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || catalog.principal != "U100" || catalog.limit != 20 || !strings.Contains(response.Body.String(), `"definitionId":"DEF-1"`) {
+		t.Fatalf("catalog code=%d stub=%+v body=%s", response.Code, catalog, response.Body.String())
+	}
+}
+
+func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = store.RDB.Close()
+		store.RDB = previousRedis
+	})
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	subscriptions := &gatewayAgentSubscriptionStub{}
+	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{}})
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+
+	for _, target := range []string{
+		"/api/v1/agent/subscriptions?limit=101",
+		"/api/v1/agent/subscriptions?after=%20",
+	} {
+		request := httptest.NewRequest(http.MethodGet, target, nil)
+		request.Header.Set("Authorization", "Bearer "+token)
+		response := httptest.NewRecorder()
+		gateway.Engine().ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("expected bad request for %s, got %d: %s", target, response.Code, response.Body.String())
+		}
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions/SUB-1/revoke", strings.NewReader(`{"reason":" "}`))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest || subscriptions.listCalls != 0 || subscriptions.revokeCalls != 0 {
+		t.Fatalf("invalid input reached application: code=%d stub=%+v", response.Code, subscriptions)
+	}
+	for _, invalid := range []struct {
+		target string
+		body   string
+	}{
+		{target: "/api/v1/agent/subscriptions/options?definitionId=DEF-1&definitionVersion=0"},
+		{target: "/api/v1/agent/subscriptions", body: `{"definitionId":"DEF-1","definitionVersion":7,"conversationKey":"group:G123","filterKind":"all","filter":{},"principalUserId":"U999"}`},
+	} {
+		method := http.MethodGet
+		var body io.Reader
+		if invalid.body != "" {
+			method, body = http.MethodPost, strings.NewReader(invalid.body)
+		}
+		request := httptest.NewRequest(method, invalid.target, body)
+		request.Header.Set("Authorization", "Bearer "+token)
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		gateway.Engine().ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("expected bad request for %s, got %d: %s", invalid.target, response.Code, response.Body.String())
+		}
+	}
+	if subscriptions.optionsCalls != 0 || subscriptions.createCalls != 0 {
+		t.Fatalf("invalid create authority reached application: %+v", subscriptions)
 	}
 }
 

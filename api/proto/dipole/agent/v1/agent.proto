@@ -563,6 +563,22 @@ message CreateEventSubscriptionRequest {
   bytes filter_json = 9;
 }
 
+message ListEligibleSubscriptionConversationsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string definition_id = 3;
+  uint64 definition_version = 4;
+}
+
+message AgentSubscriptionConversationOption {
+  string conversation_key = 1;
+  string event_type = 2;
+}
+
+message ListEligibleSubscriptionConversationsResponse {
+  repeated AgentSubscriptionConversationOption conversations = 1;
+}
+
 message ListEventSubscriptionsRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -580,6 +596,31 @@ message RevokeEventSubscriptionRequest {
   string tenant_id = 2;
   string subscription_id = 3;
   string reason = 4;
+}
+
+message AgentDefinitionCatalogItem {
+  string definition_id = 1;
+  uint64 version = 2;
+  string agent_id = 3;
+  repeated string conversation_scopes = 4;
+  int64 valid_from_unix_ms = 5;
+  int64 expires_at_unix_ms = 6;
+  int64 created_at_unix_ms = 7;
+  int64 updated_at_unix_ms = 8;
+}
+
+message ListAgentDefinitionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string after_definition_id = 3;
+  uint64 after_version = 4;
+  uint32 limit = 5;
+}
+
+message ListAgentDefinitionsResponse {
+  repeated AgentDefinitionCatalogItem definitions = 1;
+  string next_definition_id = 2;
+  uint64 next_version = 3;
 }
 
 message ListContextMemoriesRequest {
@@ -609,6 +650,46 @@ message AgentContextMemory {
 
 message ListContextMemoriesResponse {
   repeated AgentContextMemory memories = 1;
+}
+
+message ListOwnedMemoriesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  int64 after_created_at_unix_ms = 3;
+  string after_memory_id = 4;
+  uint32 limit = 5;
+}
+
+message AgentOwnedMemory {
+  string memory_id = 1;
+  string agent_id = 2;
+  string memory_type = 3;
+  string status = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+  string content = 7;
+  string compact_content = 8;
+  int32 priority = 9;
+  AgentMemoryProvenance provenance = 10;
+  int64 valid_from_unix_ms = 11;
+  int64 expires_at_unix_ms = 12;
+  int64 revoked_at_unix_ms = 13;
+  string revoked_by_id = 14;
+  string revoke_reason = 15;
+  int64 created_at_unix_ms = 16;
+}
+
+message ListOwnedMemoriesResponse {
+  repeated AgentOwnedMemory memories = 1;
+  int64 next_created_at_unix_ms = 2;
+  string next_memory_id = 3;
+}
+
+message RevokeOwnedMemoryRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string memory_id = 3;
+  string reason = 4;
 }
 
 message PublishMcpReadinessEvidenceRequest {
@@ -653,9 +734,13 @@ message ResolveFreshMcpReadinessEvidenceResponse {
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
   rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListEligibleSubscriptionConversations(ListEligibleSubscriptionConversationsRequest) returns (ListEligibleSubscriptionConversationsResponse);
   rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
   rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListAgentDefinitions(ListAgentDefinitionsRequest) returns (ListAgentDefinitionsResponse);
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
+  rpc ListOwnedMemories(ListOwnedMemoriesRequest) returns (ListOwnedMemoriesResponse);
+  rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);

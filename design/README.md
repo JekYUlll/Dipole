@@ -72,6 +72,20 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 `/agent/tasks/:taskId/input`，由 `VITE_AGENT_ELICITATION_ENABLED=true` 显式启用。页面只使用 authenticated Gateway Task query/input/cancel API；查询失败时清空缓存 Form，提交后重新查询权威 Workflow 状态。MCP continuation、敏感输入和 URL mode 仍未接入。
 
+### Agent Event Subscription v1
+
+- `Agent Subscription/Desktop/Manage`：展示 owner 的订阅历史、精确 Definition version、conversation scope、确定性过滤器、当前状态和撤销/审计入口。
+- `Agent Subscription/State Matrix`：覆盖 `loading`、`empty`、`unavailable`、`definition_stale`、`revoking` 和 `revoked` 六态。
+- `Agent Subscription/Mobile/Revoke`：以单列订阅摘要和底部确认层展示精确撤销原因与审计边界。
+- `Agent Subscription/Desktop/Create`：从 owner active Definition 与 Core 计算的 `principal readable ∩ Definition scope` 中选择精确绑定，并配置确定性过滤器。
+- `Agent Subscription/Create State Matrix`：覆盖 catalog/conversation loading、empty scope、Definition stale、scope denied、submitting 和 unavailable。
+- `Agent Subscription/Mobile/Create`：在 390x844 单列布局中保留精确 authority 摘要、过滤器校验与 Runtime 边界。
+- `Component/Subscription Status`、`Component/Subscription Filter`、`Component/Subscription Row`、`Component/Subscription Create Option`、`Component/Subscription Authority Summary`：供后续 Agent Definition、Task timeline 和 Trigger 管理页面复用。
+
+批准的管理预览位于 `exports/agent-subscription-v1/`，创建预览位于 `exports/agent-subscription-create-v1/`。当前稿固定展示 `OWNER CONTROL / DIRECT_TARGET` 边界：订阅控制状态可以持久化，Runtime 仍保持默认关闭，页面不得暗示已经启动共享事件触发或语义模型预筛。创建订阅必须选择经过 Gateway 鉴权的 active Definition version 与 Core 返回的可读 conversation scope；用户无需也不能手填内部 Definition ID、event type、resource 或 principal。撤销要求精确原因并保留审计信息，撤销动作不改变模型 Runtime 生命周期。
+
+公开 Gateway owner list/create/revoke HTTP adapter、Vue 管理页、owner-scoped active Definition 目录和 authenticated conversation chooser 已按本设计默认关闭接入，分别由 `gateway.agent_subscription_enabled=false|true` 和 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false|true` 控制。服务端从认证会话派生 principal、固定 tenant，并在创建前后由 Core 复核 Definition、可读会话与 scope；页面查询失败时清空旧候选，创建和撤销均以权威响应收敛。本设计和管理页面不能用于声明 `subscription` Runtime 模式已经可用。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

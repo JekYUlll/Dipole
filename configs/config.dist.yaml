@@ -21,6 +21,12 @@ gateway:
   # Keep disabled until the Agent Runtime and Temporal control plane are ready.
   agent_control_enabled: false
   agent_control_target: http://127.0.0.1:8091
+  # Exposes owner-derived Event Subscription list/revoke through Core gRPC. Creation stays closed until Definition discovery exists.
+  agent_subscription_enabled: false
+  agent_subscription_tenant_id: dipole
+  # Exposes owner-visible Memory list/revoke control. Automatic Observation writes remain disabled.
+  agent_memory_enabled: false
+  agent_memory_tenant_id: dipole
   # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
   agent_mcp_enabled: false
   agent_mcp_target: http://127.0.0.1:8091

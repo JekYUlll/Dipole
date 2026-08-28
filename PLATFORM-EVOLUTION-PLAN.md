@@ -341,10 +341,15 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] G2 基线实现框架中立 Context Compiler v1：全局/section 预算、full/compact/omit、trust boundary、provenance manifest 和 v22 持久审计；会话检索、Memory 与 route-specific tokenizer 在 G3 继续扩展。
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
   - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
-  - [ ] 增加认证查看/纠正/撤销 API、版本与删除审计、Observation/Reflection Worker 和 retrieval Eval；证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
+  - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
+  - [ ] 增加 append-only 纠正/supersession、版本冲突、Observation/Reflection Worker 和 retrieval Eval；证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
   - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
-  - [ ] 增加认证管理 API、版本化变更/撤销审计和 Agent 配置 UI；根据 Eval 与成本证据再引入小模型、embedding 或向量预筛选（`AD-034`）。
+  - [x] 增加认证 owner list/create/revoke API、版本化撤销审计、active Definition 目录、readable/scope conversation chooser 和默认关闭的 Agent 配置 UI。
+  - [ ] 根据真实 reviewed corpus、Eval 与成本证据引入小模型、embedding 或向量预筛选，并完成 subscription Runtime 灰度/回切门禁（`AD-034`）。
+    - [x] 增加默认关闭的 direct-target 在线 Shadow 对照、固定低基数指标、Prometheus error/drift 告警和无数据迁移回滚路径；真实 corpus 与晋级决策仍待完成。
+    - [x] 增加 24 小时 Prometheus 快照 evidence Schema/CLI，固定覆盖率、样本量、counter reset、零 error、双 authority=false 与 24 小时有效期；真实共享环境归档仍待完成。
+    - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
 - [x] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact；产品 UI 与敏感输入隔离仍按独立门槛推进。
   - [x] `dipole.agent.elicitation.v1`、Gateway JWT API、Core Task owner 复核与 Temporal Signal 已实现持久 `WAITING_INPUT`；无效/旧 request fail closed，Worker 替换后可恢复。Pencil UI、敏感输入和 MCP adapter 由 `AD-036` 跟踪。
   - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。

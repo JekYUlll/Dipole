@@ -19,42 +19,46 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AgentCapabilityService_MatchEventSubscriptions_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/MatchEventSubscriptions"
-	AgentCapabilityService_CreateEventSubscription_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/CreateEventSubscription"
-	AgentCapabilityService_ListEventSubscriptions_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ListEventSubscriptions"
-	AgentCapabilityService_RevokeEventSubscription_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/RevokeEventSubscription"
-	AgentCapabilityService_ListContextMemories_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
-	AgentCapabilityService_AdmitRun_FullMethodName                            = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
-	AgentCapabilityService_CompleteRun_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
-	AgentCapabilityService_FinishRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
-	AgentCapabilityService_RequestApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
-	AgentCapabilityService_ResolveApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
-	AgentCapabilityService_ConsumeApproval_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
-	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
-	AgentCapabilityService_ListConversations_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
-	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
-	AgentCapabilityService_ResolveMcpContext_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
-	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
-	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
-	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
-	AgentCapabilityService_FinishMcpToolRound_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolRound"
-	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
-	AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocationFromRound"
-	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
-	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
-	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
-	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
-	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
-	AgentCapabilityService_GetWorkflowRepair_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
-	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
-	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
-	AgentCapabilityService_GetRuntimePromotion_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
-	AgentCapabilityService_GetRuntimePromotionEvidence_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotionEvidence"
-	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
-	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
-	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
-	AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/PublishMcpReadinessEvidence"
-	AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/ResolveFreshMcpReadinessEvidence"
+	AgentCapabilityService_MatchEventSubscriptions_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/MatchEventSubscriptions"
+	AgentCapabilityService_CreateEventSubscription_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/CreateEventSubscription"
+	AgentCapabilityService_ListEligibleSubscriptionConversations_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListEligibleSubscriptionConversations"
+	AgentCapabilityService_ListEventSubscriptions_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ListEventSubscriptions"
+	AgentCapabilityService_RevokeEventSubscription_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/RevokeEventSubscription"
+	AgentCapabilityService_ListAgentDefinitions_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ListAgentDefinitions"
+	AgentCapabilityService_ListContextMemories_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
+	AgentCapabilityService_ListOwnedMemories_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListOwnedMemories"
+	AgentCapabilityService_RevokeOwnedMemory_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RevokeOwnedMemory"
+	AgentCapabilityService_AdmitRun_FullMethodName                              = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
+	AgentCapabilityService_CompleteRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
+	AgentCapabilityService_FinishRun_FullMethodName                             = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
+	AgentCapabilityService_RequestApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
+	AgentCapabilityService_ResolveApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
+	AgentCapabilityService_ConsumeApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
+	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
+	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
+	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
+	AgentCapabilityService_ResolveMcpContext_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
+	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
+	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
+	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
+	AgentCapabilityService_FinishMcpToolRound_FullMethodName                    = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolRound"
+	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
+	AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocationFromRound"
+	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
+	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
+	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName   = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
+	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
+	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
+	AgentCapabilityService_GetWorkflowRepair_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
+	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
+	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
+	AgentCapabilityService_GetRuntimePromotion_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
+	AgentCapabilityService_GetRuntimePromotionEvidence_FullMethodName           = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotionEvidence"
+	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
+	AgentCapabilityService_CreateArtifact_FullMethodName                        = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
+	AgentCapabilityService_GetArtifact_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
+	AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName           = "/dipole.agent.v1.AgentCapabilityService/PublishMcpReadinessEvidence"
+	AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/ResolveFreshMcpReadinessEvidence"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -63,9 +67,13 @@ const (
 type AgentCapabilityServiceClient interface {
 	MatchEventSubscriptions(ctx context.Context, in *MatchEventSubscriptionsRequest, opts ...grpc.CallOption) (*MatchEventSubscriptionsResponse, error)
 	CreateEventSubscription(ctx context.Context, in *CreateEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
+	ListEligibleSubscriptionConversations(ctx context.Context, in *ListEligibleSubscriptionConversationsRequest, opts ...grpc.CallOption) (*ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(ctx context.Context, in *ListEventSubscriptionsRequest, opts ...grpc.CallOption) (*ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(ctx context.Context, in *RevokeEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
+	ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error)
+	ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error)
+	RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -127,6 +135,16 @@ func (c *agentCapabilityServiceClient) CreateEventSubscription(ctx context.Conte
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ListEligibleSubscriptionConversations(ctx context.Context, in *ListEligibleSubscriptionConversationsRequest, opts ...grpc.CallOption) (*ListEligibleSubscriptionConversationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListEligibleSubscriptionConversationsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListEligibleSubscriptionConversations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ListEventSubscriptions(ctx context.Context, in *ListEventSubscriptionsRequest, opts ...grpc.CallOption) (*ListEventSubscriptionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListEventSubscriptionsResponse)
@@ -147,10 +165,40 @@ func (c *agentCapabilityServiceClient) RevokeEventSubscription(ctx context.Conte
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentDefinitionsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListAgentDefinitions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListContextMemoriesResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ListContextMemories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnedMemoriesResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListOwnedMemories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentOwnedMemory)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RevokeOwnedMemory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -473,9 +521,13 @@ func (c *agentCapabilityServiceClient) ResolveFreshMcpReadinessEvidence(ctx cont
 type AgentCapabilityServiceServer interface {
 	MatchEventSubscriptions(context.Context, *MatchEventSubscriptionsRequest) (*MatchEventSubscriptionsResponse, error)
 	CreateEventSubscription(context.Context, *CreateEventSubscriptionRequest) (*AgentEventSubscription, error)
+	ListEligibleSubscriptionConversations(context.Context, *ListEligibleSubscriptionConversationsRequest) (*ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(context.Context, *ListEventSubscriptionsRequest) (*ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error)
+	ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error)
+	ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error)
+	RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -523,14 +575,26 @@ func (UnimplementedAgentCapabilityServiceServer) MatchEventSubscriptions(context
 func (UnimplementedAgentCapabilityServiceServer) CreateEventSubscription(context.Context, *CreateEventSubscriptionRequest) (*AgentEventSubscription, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateEventSubscription not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) ListEligibleSubscriptionConversations(context.Context, *ListEligibleSubscriptionConversationsRequest) (*ListEligibleSubscriptionConversationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListEligibleSubscriptionConversations not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) ListEventSubscriptions(context.Context, *ListEventSubscriptionsRequest) (*ListEventSubscriptionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListEventSubscriptions not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeEventSubscription not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgentDefinitions not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContextMemories not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnedMemories not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeOwnedMemory not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdmitRun not implemented")
@@ -683,6 +747,24 @@ func _AgentCapabilityService_CreateEventSubscription_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ListEligibleSubscriptionConversations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEligibleSubscriptionConversationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListEligibleSubscriptionConversations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListEligibleSubscriptionConversations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListEligibleSubscriptionConversations(ctx, req.(*ListEligibleSubscriptionConversationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ListEventSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListEventSubscriptionsRequest)
 	if err := dec(in); err != nil {
@@ -719,6 +801,24 @@ func _AgentCapabilityService_RevokeEventSubscription_Handler(srv interface{}, ct
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ListAgentDefinitions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentDefinitionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListAgentDefinitions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListAgentDefinitions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListAgentDefinitions(ctx, req.(*ListAgentDefinitionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ListContextMemories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListContextMemoriesRequest)
 	if err := dec(in); err != nil {
@@ -733,6 +833,42 @@ func _AgentCapabilityService_ListContextMemories_Handler(srv interface{}, ctx co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ListContextMemories(ctx, req.(*ListContextMemoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListOwnedMemories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnedMemoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListOwnedMemories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListOwnedMemories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListOwnedMemories(ctx, req.(*ListOwnedMemoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RevokeOwnedMemory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeOwnedMemoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RevokeOwnedMemory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RevokeOwnedMemory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RevokeOwnedMemory(ctx, req.(*RevokeOwnedMemoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1311,6 +1447,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_CreateEventSubscription_Handler,
 		},
 		{
+			MethodName: "ListEligibleSubscriptionConversations",
+			Handler:    _AgentCapabilityService_ListEligibleSubscriptionConversations_Handler,
+		},
+		{
 			MethodName: "ListEventSubscriptions",
 			Handler:    _AgentCapabilityService_ListEventSubscriptions_Handler,
 		},
@@ -1319,8 +1459,20 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_RevokeEventSubscription_Handler,
 		},
 		{
+			MethodName: "ListAgentDefinitions",
+			Handler:    _AgentCapabilityService_ListAgentDefinitions_Handler,
+		},
+		{
 			MethodName: "ListContextMemories",
 			Handler:    _AgentCapabilityService_ListContextMemories_Handler,
+		},
+		{
+			MethodName: "ListOwnedMemories",
+			Handler:    _AgentCapabilityService_ListOwnedMemories_Handler,
+		},
+		{
+			MethodName: "RevokeOwnedMemory",
+			Handler:    _AgentCapabilityService_RevokeOwnedMemory_Handler,
 		},
 		{
 			MethodName: "AdmitRun",

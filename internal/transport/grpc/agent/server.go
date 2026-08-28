@@ -33,7 +33,9 @@ type Server struct {
 	artifacts            application.AgentArtifactServiceV1
 	subscriptions        application.AgentEventSubscriptionResolverV1
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
+	definitionCatalog    application.AgentDefinitionCatalogServiceV1
 	memories             application.AgentMemoryContextResolverV1
+	memoryControls       application.AgentMemoryOwnerControlServiceV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
 	toolRounds           application.AgentMCPToolRoundServiceV1
 	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
@@ -61,6 +63,14 @@ func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSu
 		return nil, errors.New("Agent Event Subscription control service is required")
 	}
 	s.subscriptionControls = controls
+	return s, nil
+}
+
+func (s *Server) WithDefinitionCatalog(catalog application.AgentDefinitionCatalogServiceV1) (*Server, error) {
+	if s == nil || catalog == nil {
+		return nil, errors.New("Agent Definition catalog service is required")
+	}
+	s.definitionCatalog = catalog
 	return s, nil
 }
 
@@ -126,6 +136,103 @@ func (s *Server) WithMemories(memories application.AgentMemoryContextResolverV1)
 	}
 	s.memories = memories
 	return s, nil
+}
+
+func (s *Server) WithMemoryOwnerControls(controls application.AgentMemoryOwnerControlServiceV1) (*Server, error) {
+	if s == nil || controls == nil {
+		return nil, errors.New("Agent Memory owner control service is required")
+	}
+	s.memoryControls = controls
+	return s, nil
+}
+
+func (s *Server) ListOwnedMemories(ctx context.Context, request *agentv1.ListOwnedMemoriesRequest) (*agentv1.ListOwnedMemoriesResponse, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory owner control is unavailable")
+	}
+	var afterCreatedAt time.Time
+	if request.GetAfterCreatedAtUnixMs() > 0 {
+		afterCreatedAt = time.UnixMilli(request.GetAfterCreatedAtUnixMs()).UTC()
+	}
+	page, err := s.memoryControls.ListOwnedMemories(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryOwnerListRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, AfterCreatedAt: afterCreatedAt,
+		AfterUUID: request.GetAfterMemoryId(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		return nil, agentMemoryOwnerErrorV1(err)
+	}
+	response := &agentv1.ListOwnedMemoriesResponse{Memories: make([]*agentv1.AgentOwnedMemory, 0, len(page.Memories))}
+	for _, item := range page.Memories {
+		response.Memories = append(response.Memories, agentOwnedMemoryResponseV1(item))
+	}
+	if !page.NextCreatedAt.IsZero() {
+		response.NextCreatedAtUnixMs = page.NextCreatedAt.UnixMilli()
+		response.NextMemoryId = page.NextMemoryUUID
+	}
+	return response, nil
+}
+
+func (s *Server) RevokeOwnedMemory(ctx context.Context, request *agentv1.RevokeOwnedMemoryRequest) (*agentv1.AgentOwnedMemory, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory owner control is unavailable")
+	}
+	item, err := s.memoryControls.RevokeOwnedMemory(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryOwnerRevokeRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, MemoryUUID: request.GetMemoryId(), Reason: request.GetReason(),
+	})
+	if err != nil {
+		return nil, agentMemoryOwnerErrorV1(err)
+	}
+	return agentOwnedMemoryResponseV1(*item), nil
+}
+
+func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return "", status.Error(codes.PermissionDenied, "only the authenticated Gateway may manage Agent Memories")
+	}
+	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
+		return "", err
+	}
+	return grpccommon.Principal(requestContext)
+}
+
+func agentMemoryOwnerErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMemoryDenied):
+		return status.Error(codes.PermissionDenied, "Agent Memory access denied")
+	case errors.Is(err, application.ErrAgentMemoryConflict):
+		return status.Error(codes.Aborted, "Agent Memory changed concurrently")
+	case errors.Is(err, application.ErrAgentMemoryInvalid):
+		return status.Error(codes.FailedPrecondition, "Agent Memory request is invalid")
+	default:
+		return status.Error(codes.Internal, "Agent Memory owner control failed")
+	}
+}
+
+func agentOwnedMemoryResponseV1(item application.AgentMemoryV1) *agentv1.AgentOwnedMemory {
+	response := &agentv1.AgentOwnedMemory{
+		MemoryId: item.MemoryUUID, AgentId: item.AgentUUID, MemoryType: string(item.MemoryType), Status: string(item.Status),
+		ResourceType: item.ResourceType, ResourceId: item.ResourceID, Content: item.Content, CompactContent: item.CompactContent,
+		Priority: item.Priority, Provenance: &agentv1.AgentMemoryProvenance{
+			SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Sequence: item.Provenance.Sequence,
+		}, ValidFromUnixMs: item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(),
+		RevokedById: item.RevokedByUUID, RevokeReason: item.RevokeReason,
+	}
+	if item.ExpiresAt != nil {
+		response.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
+	}
+	if item.RevokedAt != nil {
+		response.RevokedAtUnixMs = item.RevokedAt.UnixMilli()
+	}
+	return response
 }
 
 func (s *Server) ListContextMemories(ctx context.Context, request *agentv1.ListContextMemoriesRequest) (*agentv1.ListContextMemoriesResponse, error) {
@@ -216,6 +323,29 @@ func (s *Server) CreateEventSubscription(ctx context.Context, request *agentv1.C
 	return agentEventSubscriptionResponseV1(*item), nil
 }
 
+func (s *Server) ListEligibleSubscriptionConversations(ctx context.Context, request *agentv1.ListEligibleSubscriptionConversationsRequest) (*agentv1.ListEligibleSubscriptionConversationsResponse, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.subscriptionControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Event Subscription control is unavailable")
+	}
+	items, err := s.subscriptionControls.ListEligibleConversations(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentSubscriptionConversationOptionsRequestV1{
+		TenantID: request.GetTenantId(), DefinitionUUID: request.GetDefinitionId(), DefinitionVersion: request.GetDefinitionVersion(),
+	})
+	if err != nil {
+		return nil, eventSubscriptionControlErrorV1(err)
+	}
+	response := &agentv1.ListEligibleSubscriptionConversationsResponse{Conversations: make([]*agentv1.AgentSubscriptionConversationOption, 0, len(items))}
+	for _, item := range items {
+		response.Conversations = append(response.Conversations, &agentv1.AgentSubscriptionConversationOption{
+			ConversationKey: item.ConversationKey, EventType: item.EventType,
+		})
+	}
+	return response, nil
+}
+
 func (s *Server) ListEventSubscriptions(ctx context.Context, request *agentv1.ListEventSubscriptionsRequest) (*agentv1.ListEventSubscriptionsResponse, error) {
 	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -252,6 +382,46 @@ func (s *Server) RevokeEventSubscription(ctx context.Context, request *agentv1.R
 		return nil, eventSubscriptionControlErrorV1(err)
 	}
 	return agentEventSubscriptionResponseV1(*item), nil
+}
+
+func (s *Server) ListAgentDefinitions(ctx context.Context, request *agentv1.ListAgentDefinitionsRequest) (*agentv1.ListAgentDefinitionsResponse, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.definitionCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Definition catalog is unavailable")
+	}
+	page, err := s.definitionCatalog.List(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentDefinitionCatalogListRequestV1{
+		TenantID: request.GetTenantId(), AfterDefinitionUUID: request.GetAfterDefinitionId(),
+		AfterVersion: request.GetAfterVersion(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentDefinitionCatalogInvalid):
+			return nil, status.Error(codes.FailedPrecondition, "Agent Definition catalog request is invalid")
+		case errors.Is(err, application.ErrAgentDefinitionCatalogConflict):
+			return nil, status.Error(codes.Aborted, "Agent Definition catalog authority changed")
+		default:
+			return nil, status.Error(codes.Internal, "Agent Definition catalog lookup failed")
+		}
+	}
+	response := &agentv1.ListAgentDefinitionsResponse{
+		Definitions:      make([]*agentv1.AgentDefinitionCatalogItem, 0, len(page.Definitions)),
+		NextDefinitionId: page.NextDefinitionUUID, NextVersion: page.NextVersion,
+	}
+	for _, item := range page.Definitions {
+		definition := &agentv1.AgentDefinitionCatalogItem{
+			DefinitionId: item.DefinitionUUID, Version: item.Version, AgentId: item.AgentUUID,
+			ConversationScopes: append([]string(nil), item.ConversationScopes...),
+			ValidFromUnixMs:    item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(), UpdatedAtUnixMs: item.UpdatedAt.UnixMilli(),
+		}
+		if item.ExpiresAt != nil {
+			definition.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
+		}
+		response.Definitions = append(response.Definitions, definition)
+	}
+	return response, nil
 }
 
 func eventSubscriptionOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

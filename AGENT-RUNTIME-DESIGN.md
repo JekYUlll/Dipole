@@ -133,21 +133,27 @@ G2 已落地框架中立 v1：每个 fragment 固定 section、trust、priority�
 - Procedural Memory：可复用工作流与 Skill。
 - Observational Memory：将持续消息流压缩为 observation 和 reflection，降低长会话上下文衰减。
 
-每次记忆写入需要来源、作用域、版本、置信度和过期策略；用户可查看、纠正和删除长期记忆。
+每次记忆写入需要来源、作用域、版本、置信度和过期策略；用户可查看、纠正和撤销长期记忆，物理删除需服从审计与隐私保留策略。
 
-G3 v1 使用 migration v29 建立读取基础：`agent_memories` 按 tenant、principal、Agent 和精确 conversation scope 保存五类不可变记录、full/compact representation、priority、有效期与 provenance。Runtime 只提交 Task/Run 和资源，Core 从运行中的固定 Definition 解析身份、`conversation.read` permission 与 read scope；模型无法指定 principal。Task 创建时间固定可见记录上界，避免重试吸收后续新增记忆；撤销和过期立即移除，已存在的不可变 Plan 因此会在漂移时 fail closed。`DIPOLE_AGENT_MEMORY_ENABLED` 默认与 Compose 固定为 `false`，受控 Shadow 显式启用后，Context Compiler 仅在命中记录时使用 Memory 独立预算，并将内容统一标记为 `untrusted` 数据。自动写入、版本冲突、Observation/Reflection 压缩、用户纠正/删除和 hybrid/vector retrieval 由 `AD-035` 跟踪，当前仅允许受控 seed 与 Shadow 读取。
+G3 v1 使用 migration v29 建立读取基础：`agent_memories` 按 tenant、principal、Agent 和精确 conversation scope 保存五类不可变记录、full/compact representation、priority、有效期与 provenance。Runtime 只提交 Task/Run 和资源，Core 从运行中的固定 Definition 解析身份、`conversation.read` permission 与 read scope；模型无法指定 principal。Task 创建时间固定可见记录上界，避免重试吸收后续新增记忆；撤销和过期立即移除，已存在的不可变 Plan 因此会在漂移时 fail closed。migration v38 进一步保存 revoker、撤销原因和时间；Gateway-only additive RPC 从认证 RequestContext 派生 owner，稳定分页和 owner-scoped revoke 均由 Core 二次约束，公开响应不携带内部 provenance URI。canonical Pencil 与默认关闭的 Vue 页面展示 `UNTRUSTED MEMORY`、来源和六类生命周期状态，并以权威撤销响应更新记录。`DIPOLE_AGENT_MEMORY_ENABLED` 默认与 Compose 固定为 `false`，受控 Shadow 显式启用后，Context Compiler 仅在命中记录时使用 Memory 独立预算，并将内容统一标记为 `untrusted` 数据。自动写入、append-only 纠正/版本冲突、Observation/Reflection 压缩和 hybrid/vector retrieval 由 `AD-035` 跟踪。
 
 ## 5. Event Trigger
 
 `AgentSubscription` 描述 Agent、资源范围、事件类型、过滤策略和 Capability 授权。事件先经过规则、小模型或向量召回做低成本筛选，相关事件才创建 Durable Task。
 
-G3 v1 使用 migration v28 的 `agent_event_subscriptions` 保存 Subscription 与精确 Definition version。Core 通过受认证的 additive RPC 按 tenant、Agent、event type 和 conversation resource 查询候选，并重新校验 Definition 有效期、撤销状态、`conversation.read` permission 和 read scope。G4 migration v34 增加 creator/revoker、撤销原因和更新时间；Gateway-only 控制 RPC 从认证 principal 派生 owner，创建时再次复核固定 Definition 和 scope，并将大小写无关关键词集合规范化为稳定 SHA-256 Subscription ID。等价创建与同原因撤销可重放，payload 或撤销原因漂移冲突。TS Runtime 的 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 只执行严格 `all|message_contains_any` 规则，零匹配时在 EventLedger、Temporal 和模型之前返回；多匹配按 Subscription ID 排序，并把首个 ID 固定到 Task。默认 `direct_target` 保留既有行为。公开 HTTP/Pencil 管理页和语义/向量预筛由 `AD-034` 继续跟踪。
+G3 v1 使用 migration v28 的 `agent_event_subscriptions` 保存 Subscription 与精确 Definition version。Core 通过受认证的 additive RPC 按 tenant、Agent、event type 和 conversation resource 查询候选，并重新校验 Definition 有效期、撤销状态、`conversation.read` permission 和 read scope。G4 migration v34 增加 creator/revoker、撤销原因和更新时间；Gateway-only 控制 RPC 从认证 principal 派生 owner，创建时再次复核固定 Definition 和 scope，并将大小写无关关键词集合规范化为稳定 SHA-256 Subscription ID。等价创建与同原因撤销可重放，payload 或撤销原因漂移冲突。TS Runtime 的 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 只执行严格 `all|message_contains_any` 规则，零匹配时在 EventLedger、Temporal 和模型之前返回；多匹配按 Subscription ID 排序，并把首个 ID 固定到 Task。默认 `direct_target` 保留既有行为。canonical Pencil、默认关闭的公开 Gateway/Vue owner list/create/revoke、owner-scoped active Definition 目录和 authenticated conversation chooser 已接入；候选由 Core 对 principal readable 与 Definition scope 求交集，公开 create 无 principal/tenant/event/resource 输入。语义/向量预筛与 Runtime 晋级继续由 `AD-034` 跟踪。
 
 G4 预筛评测使用独立 `dipole.agent.subscription-prefilter-*.v1` 合同。受控 corpus 保存最多 10000 条事件与人工相关性标签；candidate evidence 将 `rule|embedding|small_model` 的 revision/configuration SHA-256 绑定到逐 case 决策、basis-point 分数、微秒耗时和微美元成本。纯 evaluator 不访问模型、数据库或网络，输出 corpus/evidence SHA-256、混淆矩阵、向下取整的 precision/recall bps、nearest-rank p95、向上取整平均成本和误判 case ID，不回显消息正文。首个 rule adapter 直接复用生产 `matchEventSubscriptions`，防止测试基线与部署语义分叉。synthetic 示例只验证合同和规则链；真实 Project Guardian corpus 及 embedding/小模型 evidence 达标前，生产仍固定 `direct_target`。
 
 Corpus review v1 将同一 corpus SHA-256 绑定到两个独立 reviewer 的完整逐 case 标签。两个标签集有分歧时，第三个独立 adjudicator 必须精确裁决全部分歧 case；身份复用、缺失/多余 case、无分歧时的多余裁决和最终标签漂移均 fail closed。离线 CLI 输出 review/final-label SHA-256、向下取整 agreement bps、计数与异常 case ID，不回显事件正文或 reviewer 身份。该合同只提供评审 provenance；真实事件收集、脱敏和 reviewer 操作仍由受控流程负责。
 
 Subscription rollout gate 不信任调用方预先聚合的报告，而是从 corpus、review 与 candidate evidence 重新执行两个 evaluator。只有同一 corpus 的 review 和 candidate 均通过才输出 `eligible`，决策绑定 corpus/review/final-label/candidate evidence/configuration 哈希及 agreement、precision、recall、p95、成本指标。`eligible` 只进入 operator review，不修改 Runtime mode、Trigger mode 或 Capability authority。
+
+默认关闭的 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED` 为 `direct_target` 增加在线确定性对照：同一 Kafka 事件在 EventLedger 前调用 Core matcher，只累计固定 `accepted|ignored × match|miss|error` 指标和候选总数，随后仍按 direct-target 结果执行。matcher 失败只记录 error，不能阻断主路径，也不能创建第二个 Task、Workflow 或模型调用。运维与回滚见 `docs/agent-subscription-shadow.md`；该观察证据不能替代 reviewed corpus 与离线 precision/recall 门槛。
+
+在线对照的 `dipole.agent.subscription-shadow-evidence.v1` 只接受 24 小时以上的 Prometheus 起止快照，绑定 Runtime/config SHA-256、query revision、抓取覆盖率和 `resets()` 结果；至少 100 个事件、95% 抓取、零 reset、零 matcher error 才能形成最多有效 24 小时的 passing evidence。Schema 与 CLI 固定双 authority 为 false，Runtime 启动链不读取该证据。
+
+只读 `dipole.agent.subscription-shadow-collection.v1` Collector 固定历史查询集合并生成上述 input：单 Agent series、全窗口 Shadow enabled、Prometheus envelope 与安全整数均 fail closed，URL 不得携带凭据。Collector 不写远端状态，也无法从现有指标证明部署 artifact revision；Runtime/config SHA-256 继续由受控发布记录提供。
 
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 

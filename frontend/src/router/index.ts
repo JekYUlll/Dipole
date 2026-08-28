@@ -24,6 +24,24 @@ const router = createRouter({
         ? true
         : { name: 'chat' },
     },
+    {
+      path: '/agent/subscriptions',
+      name: 'agent-subscriptions',
+      component: () => import('@/views/AgentSubscriptionsView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
+      path: '/agent/memories',
+      name: 'agent-memories',
+      component: () => import('@/views/AgentMemoriesView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
   ],
 })
 

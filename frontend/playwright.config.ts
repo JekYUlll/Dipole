@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const webkitPreload = process.env.DIPOLE_WEBKIT_LD_PRELOAD
+const webkitExecutablePath = process.env.DIPOLE_WEBKIT_EXECUTABLE_PATH
 
 export default defineConfig({
   testDir: './e2e',
@@ -12,7 +13,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    command: 'VITE_AGENT_ELICITATION_ENABLED=true VITE_AGENT_SUBSCRIPTIONS_ENABLED=true VITE_AGENT_MEMORIES_ENABLED=true npm run dev -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/app/e2e/indexeddb.html',
     reuseExistingServer: false,
   },
@@ -23,7 +24,10 @@ export default defineConfig({
       name: 'webkit',
       use: {
         ...devices['Desktop Safari'],
-        launchOptions: webkitPreload ? { env: { LD_PRELOAD: webkitPreload } } : undefined,
+        launchOptions: webkitPreload || webkitExecutablePath ? {
+          ...(webkitExecutablePath ? { executablePath: webkitExecutablePath } : {}),
+          ...(webkitPreload ? { env: { LD_PRELOAD: webkitPreload } } : {}),
+        } : undefined,
       },
     },
   ],

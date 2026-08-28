@@ -1000,6 +1000,80 @@ func (q *Queries) ListMatchingAgentEventSubscriptions(ctx context.Context, arg L
 	return items, nil
 }
 
+const listOwnedActiveAgentDefinitions = `-- name: ListOwnedActiveAgentDefinitions :many
+SELECT d.id, d.definition_uuid, d.version, d.tenant_id, d.status, d.permissions_json, d.scopes_json, d.valid_from, d.expires_at, d.revoked_at, d.created_at, d.updated_at, d.owner_uuid, d.agent_uuid
+FROM agent_definition_versions AS d
+WHERE d.tenant_id = ?
+  AND d.owner_uuid = ?
+  AND d.status = 'active' AND d.revoked_at IS NULL
+  AND d.valid_from <= ?
+  AND (d.expires_at IS NULL OR d.expires_at > ?)
+  AND JSON_CONTAINS(d.permissions_json, JSON_QUOTE('conversation.read'), '$')
+  AND (JSON_CONTAINS(d.scopes_json, JSON_OBJECT('resource_type', 'conversation', 'actions', JSON_ARRAY('read')), '$')
+    OR JSON_CONTAINS(d.scopes_json, JSON_OBJECT('resource_type', 'conversation', 'actions', JSON_ARRAY('*')), '$'))
+  AND (d.definition_uuid > ?
+    OR (d.definition_uuid = ? AND d.version > ?))
+ORDER BY d.definition_uuid ASC, d.version ASC
+LIMIT ?
+`
+
+type ListOwnedActiveAgentDefinitionsParams struct {
+	TenantID            string
+	OwnerUuid           string
+	ValidAt             time.Time
+	ExpiresAfter        sql.NullTime
+	AfterDefinitionUuid string
+	AfterVersion        uint64
+	Limit               int32
+}
+
+func (q *Queries) ListOwnedActiveAgentDefinitions(ctx context.Context, arg ListOwnedActiveAgentDefinitionsParams) ([]AgentDefinitionVersion, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedActiveAgentDefinitions,
+		arg.TenantID,
+		arg.OwnerUuid,
+		arg.ValidAt,
+		arg.ExpiresAfter,
+		arg.AfterDefinitionUuid,
+		arg.AfterDefinitionUuid,
+		arg.AfterVersion,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentDefinitionVersion{}
+	for rows.Next() {
+		var i AgentDefinitionVersion
+		if err := rows.Scan(
+			&i.ID,
+			&i.DefinitionUuid,
+			&i.Version,
+			&i.TenantID,
+			&i.Status,
+			&i.PermissionsJson,
+			&i.ScopesJson,
+			&i.ValidFrom,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerUuid,
+			&i.AgentUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOwnedAgentEventSubscriptions = `-- name: ListOwnedAgentEventSubscriptions :many
 SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at, s.revoked_by_uuid, s.revoke_reason, s.updated_at, s.created_by_uuid
 FROM agent_event_subscriptions AS s

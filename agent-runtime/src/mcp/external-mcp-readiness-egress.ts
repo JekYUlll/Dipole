@@ -30,16 +30,19 @@ export class ExternalMcpReadinessEgressAuthorizer {
   readonly #config: ExternalMcpConfig;
   readonly #runtimeBindingSha256: string;
   readonly #resolver: ExternalMcpFreshReadinessResolver;
+  readonly #now: () => number;
 
   constructor(
     config: ExternalMcpConfig,
     io: ExternalMcpProductionIoConfig,
     resolver: ExternalMcpFreshReadinessResolver,
-    options: ExternalMcpReadinessBindingOptions = {}
+    options: ExternalMcpReadinessBindingOptions = {},
+    now: () => number = Date.now
   ) {
     this.#config = config;
     this.#runtimeBindingSha256 = externalMcpReadinessBindingSha256(config, io, options);
     this.#resolver = resolver;
+    this.#now = now;
   }
 
   async authorize(profileId: string, tenantId: string, signal?: AbortSignal): Promise<AgentMCPReadinessEvidenceResolution> {
@@ -57,7 +60,7 @@ export class ExternalMcpReadinessEgressAuthorizer {
         this.#runtimeBindingSha256
       );
       signal?.throwIfAborted();
-      assertExactReceipt(receipt, profileBindingSha256, this.#runtimeBindingSha256);
+      assertExactReceipt(receipt, profileBindingSha256, this.#runtimeBindingSha256, this.#now());
       return receipt;
     } catch {
       if (signal?.aborted) signal.throwIfAborted();
@@ -75,10 +78,11 @@ export class ExternalMcpReadinessGatedTransportRegistry implements ExternalMcpRe
     io: ExternalMcpProductionIoConfig,
     underlying: ExternalMcpReadinessUnderlyingRegistry,
     resolver: ExternalMcpFreshReadinessResolver,
-    options: ExternalMcpReadinessBindingOptions = {}
+    options: ExternalMcpReadinessBindingOptions = {},
+    now: () => number = Date.now
   ) {
     this.#underlying = underlying;
-    this.#authorizer = new ExternalMcpReadinessEgressAuthorizer(config, io, resolver, options);
+    this.#authorizer = new ExternalMcpReadinessEgressAuthorizer(config, io, resolver, options, now);
   }
 
   describe(profileId: string, tenantId: string): ExternalMcpProfile {
@@ -105,7 +109,8 @@ export class ExternalMcpReadinessGatedTransportRegistry implements ExternalMcpRe
 function assertExactReceipt(
   receipt: AgentMCPReadinessEvidenceResolution | undefined,
   profileBindingSha256: string,
-  runtimeBindingSha256: string
+  runtimeBindingSha256: string,
+  nowUnixMs: number
 ): asserts receipt is AgentMCPReadinessEvidenceResolution {
   if (receipt === undefined ||
       receipt.profileBindingSha256 !== profileBindingSha256 ||
@@ -118,7 +123,7 @@ function assertExactReceipt(
   const expiresAt = new Date(receipt.expiresAt);
   if (!Number.isFinite(collectedAt.getTime()) || !Number.isFinite(expiresAt.getTime()) ||
       collectedAt.toISOString() !== receipt.collectedAt || expiresAt.toISOString() !== receipt.expiresAt ||
-      collectedAt.getTime() >= expiresAt.getTime()) {
+      collectedAt.getTime() >= expiresAt.getTime() || !Number.isFinite(nowUnixMs) || expiresAt.getTime() <= nowUnixMs) {
     throw new Error("readiness receipt time is invalid");
   }
 }
