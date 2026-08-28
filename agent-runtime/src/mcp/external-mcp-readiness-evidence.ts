@@ -15,8 +15,9 @@ import type {
 } from "./external-mcp-shadow-connectivity.js";
 
 export const externalMcpReadinessEvidenceSchemaVersion =
-  "dipole.agent.external-mcp-readiness-evidence.v1" as const;
+  "dipole.agent.external-mcp-readiness-evidence.v2" as const;
 const bindingSchemaVersion = "dipole.agent.external-mcp-readiness-binding.v1" as const;
+const profileBindingSchemaVersion = "dipole.agent.external-mcp-readiness-profile-binding.v1" as const;
 
 export interface ExternalMcpReadinessBindingOptions {
   readonly expectedOwnerUid?: number;
@@ -40,6 +41,7 @@ export interface ExternalMcpReadinessEvidenceDependencies {
 export interface ExternalMcpReadinessEvidence {
   readonly schemaVersion: typeof externalMcpReadinessEvidenceSchemaVersion;
   readonly bindingSha256: string;
+  readonly profileBindingSha256: string;
   readonly startedAt: string;
   readonly completedAt: string;
   readonly preflightCheckedAt: string;
@@ -87,6 +89,7 @@ export function createExternalMcpReadinessEvidenceCollector(
       return {
         schemaVersion: externalMcpReadinessEvidenceSchemaVersion,
         bindingSha256,
+        profileBindingSha256: externalMcpReadinessProfileBindingSha256(profile),
         startedAt: startedAt.toISOString(),
         completedAt: completedAt.toISOString(),
         preflightCheckedAt: preflight.checkedAt,
@@ -101,6 +104,27 @@ export function createExternalMcpReadinessEvidenceCollector(
       throw new Error("External MCP readiness evidence failed");
     }
   };
+}
+
+export function externalMcpReadinessProfileBindingSha256(profile: ExternalMcpProfile): string {
+  const binding = {
+    schema_version: profileBindingSchemaVersion,
+    profile_id: profile.profileId,
+    tenant_id: profile.tenantId,
+    server_id: profile.serverId,
+    endpoint: profile.endpoint,
+    credential_ref: profile.credentialRef,
+    credential_version: profile.credentialVersion,
+    allowed_hosts: [...profile.allowedHosts].sort(),
+    allowed_ports: [...profile.allowedPorts].sort((left, right) => left - right),
+    dns_resolution: profile.dnsResolution,
+    tls_server_name: profile.tlsServerName,
+    ca_bundle_ref: profile.caBundleRef,
+    allowed_tools: [...profile.allowedTools].sort()
+  };
+  return createHash("sha256")
+    .update(`${profileBindingSchemaVersion}\n${canonicalMcpJSON(binding)}`, "utf8")
+    .digest("hex");
 }
 
 export function externalMcpReadinessBindingSha256(

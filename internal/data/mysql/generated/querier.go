@@ -80,6 +80,7 @@ type Querier interface {
 	GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDefinitionVersionParams) (AgentDefinitionVersion, error)
 	GetAgentEvalObservationHeader(ctx context.Context, arg GetAgentEvalObservationHeaderParams) (GetAgentEvalObservationHeaderRow, error)
 	GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error)
+	GetAgentMCPReadinessEvidence(ctx context.Context, arg GetAgentMCPReadinessEvidenceParams) (AgentMcpReadinessEvidence, error)
 	GetAgentMCPToolRound(ctx context.Context, roundUuid string) (AgentMcpToolRound, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
@@ -106,6 +107,7 @@ type Querier interface {
 	GetConversationByUserAndKey(ctx context.Context, arg GetConversationByUserAndKeyParams) (Conversation, error)
 	GetConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
 	GetDeviceSyncCheckpoint(ctx context.Context, arg GetDeviceSyncCheckpointParams) (DeviceSyncCheckpoint, error)
+	GetFreshAgentMCPReadinessEvidence(ctx context.Context, arg GetFreshAgentMCPReadinessEvidenceParams) (AgentMcpReadinessEvidence, error)
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
 	GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error)
@@ -135,6 +137,7 @@ type Querier interface {
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
 	InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) (int64, error)
+	InsertAgentMCPReadinessEvidence(ctx context.Context, arg InsertAgentMCPReadinessEvidenceParams) (int64, error)
 	InsertAgentMCPToolRound(ctx context.Context, arg InsertAgentMCPToolRoundParams) (int64, error)
 	InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
