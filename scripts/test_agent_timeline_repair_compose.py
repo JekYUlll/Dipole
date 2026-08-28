@@ -31,7 +31,10 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('compose run --rm --no-deps migrate', compose_smoke)
         self.assertIn('migration preflight failed', compose_smoke)
         self.assertIn('timeline_table', compose_smoke)
-        self.assertIn('compose up -d --wait mysql-permissions agent-timeline-repair', compose_smoke)
+        self.assertIn('@@global.time_zone, @@session.time_zone', compose_smoke)
+        self.assertIn('timezone_state', compose_smoke)
+        self.assertIn('compose up -d --wait mysql-permissions', compose_smoke)
+        self.assertIn('pending_state', compose_smoke)
         self.assertIn('/readyz', compose_smoke)
         self.assertIn('EVENT-SMOKE-COMPOSE-REPAIR', compose_smoke)
 

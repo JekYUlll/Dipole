@@ -41,15 +41,17 @@ migration_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e 'SELECT MAX(version), COUNT(*) FROM schema_migrations;')
 timeline_table=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'dipole' AND table_name = 'agent_task_timeline_events';")
-if [[ "${migration_state}" != $'49\t49' || "${timeline_table}" != "1" ]]; then
+timezone_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
+  -e 'SELECT @@global.time_zone, @@session.time_zone;')
+if [[ "${migration_state}" != $'49\t49' || "${timeline_table}" != "1" || "${timezone_state}" != $'+00:00\t+00:00' ]]; then
   printf 'Compose migration preflight failed: state=%q timeline_table=%q (want version/count 49/49 and table=1)\n' \
     "${migration_state}" "${timeline_table}" >&2
+  printf 'Compose timezone preflight failed: timezone_state=%q (want +00:00/+00:00)\n' "${timezone_state}" >&2
   compose logs migrate >&2 || true
   exit 1
 fi
 
-compose up -d --wait mysql-permissions agent-timeline-repair
-compose exec -T agent-timeline-repair wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
+compose up -d --wait mysql-permissions
 
 compose exec -T mysql mysql -uroot -proot123 dipole <<'SQL'
 INSERT INTO agent_definition_versions (
@@ -79,6 +81,16 @@ INSERT INTO agent_task_timeline_repairs (
 );
 SQL
 
+pending_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
+  -e "SELECT repair_status, COUNT(*) FROM agent_task_timeline_repairs WHERE event_uuid = 'EVENT-SMOKE-COMPOSE-REPAIR' GROUP BY repair_status;")
+if [[ "${pending_state}" != $'pending\t1' ]]; then
+  printf 'Compose repair persistence preflight failed: state=%q (want pending/1 before worker startup)\n' "${pending_state}" >&2
+  exit 1
+fi
+
+compose up -d --wait agent-timeline-repair
+compose exec -T agent-timeline-repair wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
+
 for _ in $(seq 1 30); do
   repair_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
     -e "SELECT repair_status, COUNT(*) FROM agent_task_timeline_repairs WHERE event_uuid = 'EVENT-SMOKE-COMPOSE-REPAIR' GROUP BY repair_status;")
@@ -96,4 +108,4 @@ if [[ "${repair_state}" != $'completed\t1' || "${event_count}" != "1" ]]; then
   exit 1
 fi
 
-printf 'Agent Timeline repair Compose smoke passed: opt-in profile became ready and replayed one intent idempotently.\n'
+printf 'Agent Timeline repair Compose smoke passed: persisted pending intent survived opt-in startup and replayed idempotently.\n'
