@@ -401,6 +401,7 @@
 - **后续范围：** Vue token 映射和自动视觉回归继续由 F4 跟踪，不再阻塞 F1 设计基线关闭。
 - **本轮进展：** F4 已新增 `frontend/src/styles/design-tokens.css`，并让 App 壳层与 Search 工作区引用 `--dp-*` token；Vitest 直接读取 `design/dipole-ui.pen` 的 variables 校验颜色、字体、间距和圆角，后续 token 漂移会在测试阶段暴露。页面流程、其余组件迁移和截图视觉回归仍待完成。
 - **本轮进展：** Agent Task Timeline 已迁移至共享 `--dp-*` token，并用组件契约测试锁定核心颜色、字体和表面样式；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
+- **本轮进展：** Login 页面已迁移至共享 `--dp-*` token，并增加源码契约测试；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 
