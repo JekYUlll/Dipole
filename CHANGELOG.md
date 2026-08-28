@@ -33,6 +33,7 @@
 
 ### 验证
 
+- Cassandra Message Store 真实隔离读路由 smoke 通过：migration v47、Cassandra Timeline 主读、payload 损坏回退和缺行回退均完成验证；Sync hydration smoke 同时通过 Metadata 回填、重复消息恢复和 Legacy ID 恢复。
 - 修正 MySQL migration 集成测试版本基线：迁移已扩展至 v47，测试此前仍按 v44 计算回滚步数，导致 Metadata v12 未被重新执行、回填断言读不到记录；当前按实际最高迁移版本验证回滚和重放。
 - 新增 `scripts/pencil-safe-edit.test.mjs`，用 fake Pencil CLI 覆盖有效 `.pen` 与导出原子提交、超时清理临时文件并保持 canonical 不变两条回归路径；测试 `2/2` 通过。
 - 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。

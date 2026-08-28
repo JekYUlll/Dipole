@@ -235,6 +235,8 @@
 
 ### AD-019：MySQL 消息正文退役缺少完整替代读契约
 
+- **本轮验证：** 真实隔离 Cassandra 读路由与 Sync hydration smoke 均通过主读、缺失/损坏回退和 Metadata 回填；证据仍属于隔离环境，未满足共享环境长期观测、责任人批准和兼容窗口退出条件。
+
 - **本轮进展：** 真实隔离 MySQL/Cassandra smoke 已通过 hydration shadow、重复消息恢复、Legacy ID 恢复和 Metadata 回填；测试版本基线已修正至迁移 v47。共享环境主读灰度和旧 Offline 兼容窗口仍待完成。
 
 - **本轮进展：** Gateway/WS 已接受 `message.timeline_notify_mode=primary` 并与 Web `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐；通知仍只携带 locator，客户端验证完整序列后补拉。Cassandra 主读比例、共享环境 Prometheus 窗口和旧 Offline 兼容期仍未晋级，故该债务保持进行中。
