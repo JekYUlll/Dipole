@@ -7,8 +7,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -25,14 +29,15 @@ import (
 )
 
 type Dependencies struct {
-	Messages        application.MessageApplication
-	Core            application.CoreCapability
-	Search          application.SearchApplication
-	AgentTasks      AgentTaskControlApplication
-	AgentMCP        AgentMCPApplication
-	Presence        wsTransport.PresenceTracker
-	Limiter         MessageRateLimiter
-	AgentMCPLimiter AgentMCPRateLimiter
+	Messages           application.MessageApplication
+	Core               application.CoreCapability
+	Search             application.SearchApplication
+	AgentTasks         AgentTaskControlApplication
+	AgentSubscriptions AgentSubscriptionControlApplication
+	AgentMCP           AgentMCPApplication
+	Presence           wsTransport.PresenceTracker
+	Limiter            MessageRateLimiter
+	AgentMCPLimiter    AgentMCPRateLimiter
 }
 
 type MessageRateLimiter interface {
@@ -90,6 +95,11 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
+	if dependencies.AgentSubscriptions != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))
+		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
+	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
@@ -111,6 +121,95 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentSubscriptionListHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		rawAfter, hasAfter := c.GetQuery("after")
+		after := strings.TrimSpace(rawAfter)
+		if hasAfter && !validAgentSubscriptionPublicID(after, 64) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Subscription cursor"})
+			return
+		}
+		limit := 50
+		if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Subscription limit must be between 1 and 100"})
+				return
+			}
+			limit = parsed
+		}
+		page, err := subscriptions.List(c.Request.Context(), user.UUID, after, limit)
+		writeAgentSubscriptionResult(c, page, err)
+	}
+}
+
+func agentSubscriptionRevokeHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		subscriptionID := strings.TrimSpace(c.Param("subscription_id"))
+		if !validAgentSubscriptionPublicID(subscriptionID, 64) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Subscription identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Subscription revoke request"})
+			return
+		}
+		body.Reason = strings.TrimSpace(body.Reason)
+		if body.Reason == "" || utf8.RuneCountInString(body.Reason) > 1000 || strings.IndexFunc(body.Reason, unicode.IsControl) >= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Subscription revoke reason is invalid"})
+			return
+		}
+		item, err := subscriptions.Revoke(c.Request.Context(), user.UUID, subscriptionID, body.Reason)
+		writeAgentSubscriptionResult(c, item, err)
+	}
+}
+
+func validAgentSubscriptionPublicID(value string, maximum int) bool {
+	if value == "" || len(value) > maximum {
+		return false
+	}
+	for index, char := range value {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') ||
+			(index > 0 && (char == '_' || char == '.' || char == ':' || char == '-')) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func writeAgentSubscriptionResult(c *gin.Context, value any, err error) {
+	if err != nil || value == nil {
+		statusCode := AgentSubscriptionHTTPStatus(err)
+		message := "Agent Subscription control is unavailable"
+		if statusCode == http.StatusBadRequest {
+			message = "Agent Subscription request is invalid"
+		} else if statusCode == http.StatusForbidden {
+			message = "Agent Subscription access denied"
+		} else if statusCode == http.StatusConflict {
+			message = "Agent Subscription changed concurrently"
+		}
+		c.JSON(statusCode, gin.H{"code": statusCode, "message": message})
+		return
+	}
+	c.JSON(http.StatusOK, value)
 }
 
 func agentMCPHandler(proxy AgentMCPApplication, limiter AgentMCPRateLimiter) gin.HandlerFunc {
