@@ -134,6 +134,8 @@ factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`
 
 ## 后续实现门槛
 
-Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、真实 DNS Resolver、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。
+Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。`NodeExternalMcpDnsResolver` 现提供真实 Node DNS 适配器：每个 fetch 使用独立 Resolver 并行请求 A/AAAA，不保留跨请求缓存；`ENODATA/ENOTFOUND` 只表示当前 family 无记录，任何其他单族错误会使完整解析失败。调用取消会执行 request-local `Resolver.cancel()`，不会影响其他并发请求。Network Guard 随后继续执行公网、family、重复和数量复核。
+
+生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 DNS Resolver 也未注册到 `index.ts` 或 Worker startup，单独存在不会发起查询。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
