@@ -34,6 +34,7 @@
 - **下一步：** 在隔离环境启用 profile，验证 readiness、repair counter、重启恢复与回滚；证据完整后再评估默认拓扑或告警策略。
 - **运维约束：** 启用、暂停和回切步骤已收敛到 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`；当前仍要求显式 profile、完整窗口和原始指标快照，未满足时保持默认关闭。
 - **本轮进展：** repair binary 增加 `-once` 有界执行模式，已由隔离 smoke 真实验证单批次完成；共享环境仍需 operator 灰度和告警演练。
+- **本轮进展：** Compose repair 权限初始化已收敛为同一密码变量，覆盖值会在授权 SQL 后显式更新，危险 SQL 字符 fail closed；仍需共享环境轮换和回滚演练。
 
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 

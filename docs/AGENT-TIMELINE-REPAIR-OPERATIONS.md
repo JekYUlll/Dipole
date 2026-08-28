@@ -8,7 +8,7 @@ worker 支持常驻轮询和显式 `-once` 两种模式。常驻模式适合 Com
 
 1. 确认当前镜像包含 `/app/dipole-agent-task-timeline-repair`，并记录发布 revision。
 2. 确认 migration 已完成到 v49，`mysql-permissions` 使用已替换的 repair 账号密码。
-3. 为共享环境注入 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，不要把真实密码写入仓库或命令历史。
+3. 为共享环境注入 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，不要把真实密码写入仓库或命令历史；Compose 会在授权 SQL 完成后用同一变量更新账号密码，单引号和反斜杠会被 fail closed。
 4. 确认 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 已注入；Compose 配置检查应通过。
 5. 启用前保存 repair ledger 数量、Prometheus 快照和当前告警状态。
 
