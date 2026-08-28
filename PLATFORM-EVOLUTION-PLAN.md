@@ -421,6 +421,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 在隔离 Go/C++ topology 中证明目标事件各只有一个客户端 frame，并确认 Go checkpoint group 与 C++ primary group 均达到 log end/lag 0；证据包保留应用 readiness 与临时 Compose health 探针误报诊断。
   - [x] 冻结 `epoch + authority + phase + lease expiry` 共享 fence v1，并让 Go Gateway 在启动及每条消息副作用前 fail closed 核验；默认保持关闭。
   - [x] 让 C++ shadow/primary 消费同一 fence golden vectors，在创建 Kafka consumer 及每个 pending record 投影前核验，并在拒绝时保留坐标和撤销 readiness。
+  - [x] 增加 operator-driven Redis Lua CAS writer，强制 freeze 中间态、单调 epoch、精确 previous hash、幂等 transition ID 和低敏有 TTL receipt；保留身份认证与持久 receipt 加固。
   - [ ] 建立共享、租约化 authority fencing 和双 group checkpoint receipt，完成中断后确定性续切或回切。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
