@@ -14,6 +14,7 @@ import type { TemporalMcpMultiRouteRuntimeDependencies } from "./mcp-multi-route
 
 export interface ExternalMcpTemporalWorkerResource {
   readonly dependencies: TemporalMcpMultiRouteRuntimeDependencies;
+  readonly workerActivities?: AgentTaskWorkerActivities;
   close(): Promise<void> | void;
 }
 
@@ -60,7 +61,11 @@ export async function loadExternalMcpTemporalWorkerStartupPlan(
     signal.throwIfAborted();
     resource = await createResource(deployment, signal);
     signal.throwIfAborted();
-    const worker = seams.compose(deployment, baseActivities, () => resource!.dependencies);
+    const worker = seams.compose(
+      deployment,
+      resource.workerActivities ?? baseActivities,
+      () => resource!.dependencies
+    );
     signal.throwIfAborted();
     if (worker === undefined) throw new Error("missing Worker composition");
 
