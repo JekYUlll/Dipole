@@ -79,6 +79,7 @@
 
 ### 新增
 
+- 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
 - 增加语言中立 `dipole.agent.memory-derived-lineage` v1 manifest/report、严格 Zod 解析器和 `audit:memory-derived` CLI。owner 授权 manifest 保持本地敏感输入，标准输出省略 tenant、principal、Memory ID 与全部正文；MySQL 审计账号仅新增 Memory 与 lineage 两张表的只读权限。
 - Agent Memory 增加 append-only owner correction：migration v39 为每条记录保存 root/version/predecessor/corrector/reason，唯一 predecessor 与 `(tenant, root, version)` 约束阻止分叉；sqlc transaction 在同一事务中撤销前序版本并追加 successor，稳定 correction ID 支持精确重放，payload 或期望版本漂移返回冲突。additive gRPC、Gateway 与 Vue 已形成完整闭环，`VITE_AGENT_MEMORY_CORRECTION_ENABLED=false` 默认关闭纠正入口，Pencil 文件维护 desktop/mobile 与六类纠正状态。
 - Agent G3 增加默认关闭的 Memory owner 管理闭环：migration v38 与 sqlc 提供稳定 cursor 分页、owner 隔离的 authoritative get/revoke 和完整撤销审计；additive Agent gRPC 由 Gateway-only 控制面调用，公开 list/revoke API 与 canonical Pencil desktop/mobile 设计、Vue 页面覆盖 loading、ready、empty、inactive、expired、unavailable、revoking 和 conflict 状态。长期 Memory 始终显示 `UNTRUSTED MEMORY`、owner provenance 与自动写入关闭状态；纠正入口等待 append-only 版本模型后再开放。

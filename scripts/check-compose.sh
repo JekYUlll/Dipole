@@ -11,6 +11,30 @@ for file in docker-compose*.yml; do
   docker compose -f "$file" config --quiet
 done
 
+default_microservices_config="$(docker compose -f docker-compose.microservices.yml config --format json)"
+jq -e '
+  (.services["realtime-cpp"] == null)
+  and .services.gateway.environment.DIPOLE_REALTIME_DELIVERY == "go"
+  and .services.gateway.environment.DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED == "false"
+' <<<"${default_microservices_config}" >/dev/null
+
+cpp_microservices_config="$(
+  DIPOLE_REALTIME_DELIVERY=cpp \
+  DIPOLE_DELIVERY_PRIMARY_ENABLED=true \
+  DIPOLE_REALTIME_FENCING_ENABLED=true \
+  DIPOLE_REALTIME_FENCING_EPOCH=7 \
+    docker compose --profile realtime-cpp -f docker-compose.microservices.yml config --format json
+)"
+jq -e '
+  .services["realtime-cpp"].profiles == ["realtime-cpp"]
+  and .services["realtime-cpp"].environment.DIPOLE_REALTIME_DELIVERY == "cpp"
+  and .services["realtime-cpp"].environment.DIPOLE_REALTIME_PRIMARY_ENABLED == "true"
+  and .services["realtime-cpp"].environment.DIPOLE_REALTIME_FENCING_EPOCH == "7"
+  and .services["realtime-cpp"].environment.DIPOLE_REALTIME_NODE_TRANSPORT_MODE == "primary"
+  and .services.gateway.environment.DIPOLE_REALTIME_DELIVERY == "cpp"
+  and .services.gateway.environment.DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED == "true"
+' <<<"${cpp_microservices_config}" >/dev/null
+
 DIPOLE_AGENT_DRILL_MYSQL_PORT=23306 \
 DIPOLE_AGENT_DRILL_KAFKA_PORT=29092 \
   docker compose -f deploy/agent/external-mcp-shadow-drill.compose.yml config --quiet
