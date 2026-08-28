@@ -18,6 +18,7 @@
 ### 新增
 
 - Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
+- `conversation.read` 输入统一采用 canonical `conversationId`（`direct:<user>:<user>` 或 `group:<group>`）；Runtime 先执行精确 scope 检查并解析目标，Core 继续以 principal 的会话关系作为最终授权依据。
 - 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
 - Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
 
