@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-derived-retention/v1/decision.schema.json",
+  "title": "Dipole Agent Memory Derived Retention Decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "memoryRootSha256", "lineageReportSha256", "policySha256", "lineageComplete", "policyComplete", "blockedReasons", "domains", "contentRead", "deletionExecuted", "deletionAuthority", "runtimeAuthority", "decisionSha256"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-derived-retention-decision.v1" },
+    "policyVersion": { "const": "memory-derived-retention-v1" },
+    "memoryRootSha256": { "$ref": "#/$defs/sha256" },
+    "lineageReportSha256": { "$ref": "#/$defs/sha256" },
+    "policySha256": { "$ref": "#/$defs/sha256" },
+    "lineageComplete": { "type": "boolean" },
+    "policyComplete": { "type": "boolean" },
+    "blockedReasons": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "enum": ["lineage_incomplete", "manual_review_required"] }
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "shadowPlans", "shadowSteps", "artifacts", "toolInvocations", "messageActions", "temporalHistoryPotentialTasks"],
+      "properties": {
+        "modelCalls": { "$ref": "#/$defs/domainDecision" },
+        "shadowPlans": { "$ref": "#/$defs/domainDecision" },
+        "shadowSteps": { "$ref": "#/$defs/domainDecision" },
+        "artifacts": { "$ref": "#/$defs/domainDecision" },
+        "toolInvocations": { "$ref": "#/$defs/domainDecision" },
+        "messageActions": { "$ref": "#/$defs/domainDecision" },
+        "temporalHistoryPotentialTasks": { "$ref": "#/$defs/domainDecision" }
+      }
+    },
+    "contentRead": { "const": false },
+    "deletionExecuted": { "const": false },
+    "deletionAuthority": { "const": false },
+    "runtimeAuthority": { "const": false },
+    "decisionSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "blockedReasons": { "type": "array", "maxItems": 0 } }, "required": ["blockedReasons"] },
+      "then": { "properties": { "policyComplete": { "const": true } } },
+      "else": { "properties": { "policyComplete": { "const": false } } }
+    },
+    {
+      "if": { "properties": { "lineageComplete": { "const": true } }, "required": ["lineageComplete"] },
+      "then": { "properties": { "blockedReasons": { "type": "array", "not": { "contains": { "const": "lineage_incomplete" } } } } },
+      "else": { "properties": { "blockedReasons": { "type": "array", "contains": { "const": "lineage_incomplete" } } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "domains": {
+            "type": "object",
+            "anyOf": [
+              { "type": "object", "properties": { "modelCalls": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "shadowPlans": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "shadowSteps": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "artifacts": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "toolInvocations": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "messageActions": { "$ref": "#/$defs/affectedManualReview" } } },
+              { "type": "object", "properties": { "temporalHistoryPotentialTasks": { "$ref": "#/$defs/affectedManualReview" } } }
+            ]
+          }
+        },
+        "required": ["domains"]
+      },
+      "then": { "properties": { "blockedReasons": { "type": "array", "contains": { "const": "manual_review_required" } } } },
+      "else": { "properties": { "blockedReasons": { "type": "array", "not": { "contains": { "const": "manual_review_required" } } } } }
+    }
+  ],
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "affectedManualReview": {
+      "type": "object",
+      "required": ["count", "action"],
+      "properties": { "count": { "type": "integer", "minimum": 1 }, "action": { "const": "manual_review" } }
+    },
+    "domainDecision": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["count", "action"], "properties": { "count": { "$ref": "#/$defs/count" }, "action": { "const": "erase_derived_content" } } },
+        { "type": "object", "additionalProperties": false, "required": ["count", "action"], "properties": { "count": { "$ref": "#/$defs/count" }, "action": { "const": "retain_minimal_audit" } } },
+        { "type": "object", "additionalProperties": false, "required": ["count", "action", "retentionDays"], "properties": { "count": { "$ref": "#/$defs/count" }, "action": { "const": "expire_after_days" }, "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 } } },
+        { "type": "object", "additionalProperties": false, "required": ["count", "action"], "properties": { "count": { "$ref": "#/$defs/count" }, "action": { "const": "manual_review" } } }
+      ]
+    }
+  }
+}
