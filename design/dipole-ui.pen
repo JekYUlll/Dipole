@@ -10978,6 +10978,2449 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "SQ54b",
+      "x": 0,
+      "y": 3940,
+      "name": "Component/Repair Status",
+      "reusable": true,
+      "width": 156,
+      "height": 34,
+      "fill": "$warning-soft",
+      "cornerRadius": 17,
+      "gap": 8,
+      "padding": [
+        7,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "QH2s9",
+          "name": "Repair Status Dot",
+          "fill": "$warning",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "O1ziQO",
+          "name": "Repair Status Label",
+          "fill": "$warning",
+          "content": "等待复核",
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "700"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "u5UiIz",
+      "x": 190,
+      "y": 3940,
+      "name": "Component/Repair Evidence Diff",
+      "reusable": true,
+      "width": 568,
+      "height": 92,
+      "fill": "$surface-panel",
+      "cornerRadius": "$radius-md",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "gap": 16,
+      "padding": 16,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "pExcq",
+          "name": "Projected Evidence",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "GWTeV",
+              "name": "Projected Evidence Label",
+              "fill": "$text-muted",
+              "content": "PROJECTED",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "kNutg",
+              "name": "Projected Evidence Value",
+              "fill": "$danger",
+              "content": "running · rev 17",
+              "fontFamily": "$font-data",
+              "fontSize": 14,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vvs6p",
+          "name": "Evidence Direction",
+          "width": 38,
+          "height": 38,
+          "fill": "$surface-muted",
+          "cornerRadius": 19,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "gKhOX",
+              "name": "Evidence Direction Icon",
+              "width": 18,
+              "height": 18,
+              "icon": "arrow_forward",
+              "library": "Material Symbols Outlined",
+              "fill": "$text-secondary"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SZxLZ",
+          "name": "Temporal Evidence",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "FjOSw",
+              "name": "Temporal Evidence Label",
+              "fill": "$text-muted",
+              "content": "TEMPORAL",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "hbTqD",
+              "name": "Temporal Evidence Value",
+              "fill": "$brand-deep",
+              "content": "completed · rev 18",
+              "fontFamily": "$font-data",
+              "fontSize": 14,
+              "fontWeight": "600"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "QUwWD",
+      "x": 790,
+      "y": 3940,
+      "name": "Component/Repair Approval Step",
+      "reusable": true,
+      "width": 310,
+      "height": 72,
+      "gap": 12,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "j1VPl",
+          "name": "Approval Step Badge",
+          "width": 34,
+          "height": 34,
+          "fill": "$rail",
+          "cornerRadius": 17,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ijriX",
+              "name": "Approval Step Number",
+              "fill": "$text-inverse",
+              "content": "1",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "gY3LR",
+          "name": "Approval Step Copy",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 3,
+          "children": [
+            {
+              "type": "text",
+              "id": "E355V",
+              "name": "Approval Step Title",
+              "fill": "$text-primary",
+              "content": "等待第二位审批人",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "A4oYGy",
+              "name": "Approval Step Meta",
+              "fill": "$text-secondary",
+              "content": "独立审批 · 不可由提案人完成",
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "C99qS",
+      "x": 0,
+      "y": 4132,
+      "name": "Agent Repair/Desktop/Proposed",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$surface-app",
+      "children": [
+        {
+          "type": "frame",
+          "id": "kQUhV",
+          "name": "Repair Navigation Rail",
+          "width": 238,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "padding": [
+            30,
+            24
+          ],
+          "justifyContent": "space_between",
+          "children": [
+            {
+              "type": "frame",
+              "id": "jyXgl",
+              "name": "Repair Rail Top",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 34,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lovMh",
+                  "name": "Repair Brand",
+                  "width": "fill_container",
+                  "gap": 11,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zyctx",
+                      "name": "Repair Brand Mark",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$brand",
+                      "cornerRadius": 10,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "zBlPz",
+                          "name": "Repair Brand Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "hub",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$text-inverse"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "taH4N",
+                      "name": "Repair Brand Label",
+                      "fill": "$text-inverse",
+                      "content": "DIPOLE / OPS",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 15,
+                      "fontWeight": "800",
+                      "letterSpacing": 0.6
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Qe0VH",
+                  "name": "Repair Navigation",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "bZ6i7",
+                      "name": "Navigation 任务运行",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#00000000",
+                      "cornerRadius": 10,
+                      "gap": 11,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "a2eycg",
+                          "name": "任务运行 Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "route",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$text-muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "hRhMn",
+                          "name": "任务运行 Label",
+                          "fill": "$text-muted",
+                          "content": "任务运行",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DH9NA",
+                      "name": "Navigation 评测证据",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#00000000",
+                      "cornerRadius": 10,
+                      "gap": 11,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "T9B5Q3",
+                          "name": "评测证据 Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "fact_check",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$text-muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "eKT9u",
+                          "name": "评测证据 Label",
+                          "fill": "$text-muted",
+                          "content": "评测证据",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XpIIa",
+                      "name": "Navigation 修复审计",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "$rail-soft",
+                      "cornerRadius": 10,
+                      "gap": 11,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Lxz76",
+                          "name": "修复审计 Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "rule",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$brand"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pb6Kh",
+                          "name": "修复审计 Label",
+                          "fill": "$text-inverse",
+                          "content": "修复审计",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "d2Vu83",
+                      "name": "Navigation 权限策略",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#00000000",
+                      "cornerRadius": 10,
+                      "gap": 11,
+                      "padding": [
+                        0,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "f8DFV",
+                          "name": "权限策略 Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "shield",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$text-muted"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qIKB1",
+                          "name": "权限策略 Label",
+                          "fill": "$text-muted",
+                          "content": "权限策略",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UfxeV",
+              "name": "Repair Operator Identity",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y5Dou",
+                  "name": "Operator Role",
+                  "fill": "$text-muted",
+                  "content": "REPAIR REVIEWER",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.1
+                },
+                {
+                  "type": "text",
+                  "id": "X9vLyh",
+                  "name": "Operator Name",
+                  "fill": "$text-inverse",
+                  "content": "Lin · Platform Safety",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "v85kXi",
+          "name": "Repair Review Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 26,
+          "padding": [
+            32,
+            38
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "NEOaY",
+              "name": "Repair Review Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TunwJ",
+                  "name": "Repair Review Intro",
+                  "width": 780,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RAWos",
+                      "name": "Repair Review Eyebrow",
+                      "fill": "$brand-deep",
+                      "content": "WORKFLOW REPAIR / REVIEW",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.3
+                    },
+                    {
+                      "type": "text",
+                      "id": "lCZw3",
+                      "name": "Repair Review Title",
+                      "fill": "$text-primary",
+                      "content": "Task 投影与 Temporal 历史不一致",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 30,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "sGnEp",
+                      "name": "Repair Review Subtitle",
+                      "fill": "$text-secondary",
+                      "content": "逐项核对不可变证据，再决定是否允许进入双人批准终态。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "bd6N4",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Repair Proposed Status",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$warning"
+                    },
+                    "O1ziQO": {
+                      "content": "等待复核",
+                      "fill": "$warning"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GMBe2",
+              "name": "Repair Review Body",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 28,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "DdLEG",
+                  "name": "Repair Evidence Column",
+                  "width": 710,
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 18,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "QyVBY",
+                      "name": "Repair Mismatch Alert",
+                      "width": "fill_container",
+                      "fill": "$warning-soft",
+                      "cornerRadius": "$radius-md",
+                      "gap": 13,
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "jsoxo",
+                          "name": "Repair Mismatch Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "difference",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$warning"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "I4n9hc",
+                          "name": "Repair Mismatch Copy",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 3,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "pGJhN",
+                              "name": "Repair Mismatch Title",
+                              "fill": "$text-primary",
+                              "content": "stale projection · 建议动作 reproject_from_temporal",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "xbl6B",
+                              "name": "Repair Mismatch Detail",
+                              "fill": "$text-secondary",
+                              "content": "当前仅允许形成审计提案，执行器未注册。",
+                              "fontFamily": "$font-body",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "doH5a",
+                      "name": "Evidence Section Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Nr0oU",
+                          "name": "Evidence Section Title",
+                          "fill": "$text-primary",
+                          "content": "证据对照",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 19,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zXM1M",
+                          "name": "Evidence Freshness",
+                          "fill": "$text-secondary",
+                          "content": "采集于 09:42:17 · 23 分钟后过期",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "USRMt",
+                      "type": "ref",
+                      "ref": "u5UiIz",
+                      "name": "Primary Repair Evidence Diff",
+                      "width": "fill_container",
+                      "descendants": {
+                        "kNutg": {
+                          "content": "running · rev 17",
+                          "fill": "$danger"
+                        },
+                        "hbTqD": {
+                          "content": "completed · rev 18",
+                          "fill": "$brand-deep"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P3ziLi",
+                      "name": "Workflow Identity Strip",
+                      "width": "fill_container",
+                      "fill": "$surface-panel",
+                      "cornerRadius": "$radius-md",
+                      "stroke": "$border",
+                      "strokeWidth": 1,
+                      "gap": 22,
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ODzcv",
+                          "name": "TASK Identity",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "LyJxS",
+                              "name": "TASK Label",
+                              "fill": "$text-muted",
+                              "content": "TASK",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "DqJAQ",
+                              "name": "TASK Value",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "T-01HZX9A",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Gfdwr",
+                          "name": "WORKFLOW Identity",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SqaDm",
+                              "name": "WORKFLOW Label",
+                              "fill": "$text-muted",
+                              "content": "WORKFLOW",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "B2gg6B",
+                              "name": "WORKFLOW Value",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "dipole-agent-task/T-01HZX9A",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hWTfa",
+                          "name": "RUN Identity",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "uLGGM",
+                              "name": "RUN Label",
+                              "fill": "$text-muted",
+                              "content": "RUN",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "nnWfD",
+                              "name": "RUN Value",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "WR-7E21",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JuOHi",
+                      "name": "Evidence Hash Block",
+                      "width": "fill_container",
+                      "fill": "$rail",
+                      "cornerRadius": "$radius-md",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 18,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ooVZD",
+                          "name": "Evidence Hash Header",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VGJA3",
+                              "name": "Evidence Hash Label",
+                              "fill": "$text-muted",
+                              "content": "CANONICAL EVIDENCE SHA-256",
+                              "fontFamily": "$font-data",
+                              "fontSize": 10,
+                              "fontWeight": "700",
+                              "letterSpacing": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "jNy7a",
+                              "name": "Evidence Hash Verified",
+                              "fill": "$brand",
+                              "content": "VERIFIED",
+                              "fontFamily": "$font-data",
+                              "fontSize": 10,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "z4IHT",
+                          "name": "Evidence Hash Value",
+                          "fill": "$text-inverse",
+                          "content": "8d942988c2c8c2bf...516c3ff7",
+                          "fontFamily": "$font-data",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "JJ2a6",
+                      "name": "Repair Reason",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "E97W4R",
+                          "name": "Repair Reason Label",
+                          "fill": "$text-muted",
+                          "content": "提案依据 · INC-2841",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 1
+                        },
+                        {
+                          "type": "text",
+                          "id": "xYxle",
+                          "name": "Repair Reason Body",
+                          "fill": "$text-primary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Temporal 已确认 Workflow 完成，但 MySQL Task 投影仍停留在 running。重投影必须沿用已归档的 Run 与 revision 18。",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "APNlZ",
+                  "name": "Repair Approval Panel",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface-panel",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 22,
+                  "padding": 24,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mwrEX",
+                      "name": "Approval Panel Header",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 5,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "u96tQ",
+                          "name": "Approval Panel Eyebrow",
+                          "fill": "$brand-deep",
+                          "content": "TWO-PERSON CONTROL",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 1.2
+                        },
+                        {
+                          "type": "text",
+                          "id": "uOdDa",
+                          "name": "Approval Panel Title",
+                          "fill": "$text-primary",
+                          "content": "审批链 1 / 2",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 23,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "deE5j",
+                          "name": "Approval Panel Subtitle",
+                          "fill": "$text-secondary",
+                          "content": "提案人不可审批；拒绝将立即终止。",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "SvSU6",
+                      "type": "ref",
+                      "ref": "QUwWD",
+                      "name": "First Approval Complete",
+                      "width": "fill_container",
+                      "descendants": {
+                        "j1VPl": {
+                          "fill": "$brand"
+                        },
+                        "ijriX": {
+                          "content": "✓"
+                        },
+                        "E355V": {
+                          "content": "第一位审批人已确认"
+                        },
+                        "A4oYGy": {
+                          "content": "Ming · 09:48 · evidence matched"
+                        }
+                      }
+                    },
+                    {
+                      "id": "LJVHK",
+                      "type": "ref",
+                      "ref": "QUwWD",
+                      "name": "Second Approval Pending",
+                      "width": "fill_container",
+                      "descendants": {
+                        "j1VPl": {
+                          "fill": "$rail"
+                        },
+                        "ijriX": {
+                          "content": "2"
+                        },
+                        "E355V": {
+                          "content": "等待第二位审批人"
+                        },
+                        "A4oYGy": {
+                          "content": "必须与提案人、第一位审批人不同"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "N3m8Zm",
+                      "name": "Approved Execution Boundary",
+                      "width": "fill_container",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 10,
+                      "padding": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "tMND1",
+                          "name": "Approved Execution Boundary Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "lock",
+                          "library": "Material Symbols Outlined",
+                          "fill": "$danger"
+                        },
+                        {
+                          "type": "text",
+                          "id": "LTqdG",
+                          "name": "Approved Execution Boundary Text",
+                          "fill": "$danger",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "即使达到 2 / 2，当前系统也不会修改 Workflow projection。",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bodjY",
+                      "name": "Approval Panel Spacer",
+                      "width": "fill_container",
+                      "height": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vUbM0",
+                      "name": "Repair Review Actions",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "mHlNO",
+                          "name": "Reject Repair Button",
+                          "width": "fill_container",
+                          "height": 46,
+                          "fill": "$surface-panel",
+                          "cornerRadius": "$radius-sm",
+                          "stroke": "$danger",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "WBXv9",
+                              "name": "Reject Repair Label",
+                              "fill": "$danger",
+                              "content": "拒绝提案",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LpL3n",
+                          "name": "Approve Repair Button",
+                          "width": "fill_container",
+                          "height": 46,
+                          "fill": "$brand",
+                          "cornerRadius": "$radius-sm",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "hKb9K",
+                              "name": "Approve Repair Label",
+                              "fill": "$text-inverse",
+                              "content": "批准证据",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "HfNHv",
+      "x": 0,
+      "y": 5256,
+      "name": "Agent Repair/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 780,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        34,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Wdn0P",
+          "name": "Repair State Matrix Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "L2FqYv",
+              "name": "Repair State Matrix Intro",
+              "width": 780,
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "f8nMR",
+                  "name": "Repair State Matrix Eyebrow",
+                  "fill": "$brand-deep",
+                  "content": "AGENT WORKFLOW REPAIR / STATE CONTRACT",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.4
+                },
+                {
+                  "type": "text",
+                  "id": "LvpiD",
+                  "name": "Repair State Matrix Title",
+                  "fill": "$text-primary",
+                  "content": "每一个状态都必须说明下一步",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 30,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "naPLj",
+                  "name": "Repair State Matrix Subtitle",
+                  "fill": "$text-secondary",
+                  "content": "状态来自持久审计记录；界面不推测执行结果，也不隐藏证据失效。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vcNa7",
+              "name": "Repair State Matrix Count",
+              "fill": "$rail",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 3,
+              "padding": [
+                12,
+                16
+              ],
+              "alignItems": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UmHeD",
+                  "name": "Repair State Matrix Count Value",
+                  "fill": "$text-inverse",
+                  "content": "6",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 24,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "gJPyH",
+                  "name": "Repair State Matrix Count Label",
+                  "fill": "$text-muted",
+                  "content": "audited states",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GJZzg",
+          "name": "Repair State Table",
+          "width": "fill_container",
+          "fill": "$surface-panel",
+          "cornerRadius": "$radius-md",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "w1dA4G",
+              "name": "Repair State Table Header",
+              "width": "fill_container",
+              "height": 42,
+              "fill": "$rail",
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "yHwZE",
+                  "name": "Header 状态",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 190,
+                  "content": "状态",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "text",
+                  "id": "sIqb6",
+                  "name": "Header 证据与审批",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "证据与审批",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "text",
+                  "id": "d1u7qB",
+                  "name": "Header 允许动作",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 260,
+                  "content": "允许动作",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "text",
+                  "id": "C7nnOK",
+                  "name": "Header 界面承诺",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "界面承诺",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fqKgH",
+              "name": "Repair State Row proposed · 0 / 2",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$surface-panel",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "wm5CZ",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status proposed · 0 / 2",
+                  "width": 190,
+                  "fill": "$warning-soft",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$warning"
+                    },
+                    "O1ziQO": {
+                      "content": "proposed · 0 / 2",
+                      "fill": "$warning"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "o6OcAf",
+                  "name": "Evidence proposed · 0 / 2",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "等待两位独立审批",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "Z4nJyo",
+                  "name": "Action proposed · 0 / 2",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iaCVx",
+                      "name": "Action Pill proposed · 0 / 2",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s7vIjW",
+                          "name": "Action Label proposed · 0 / 2",
+                          "fill": "$text-secondary",
+                          "content": "批准 / 拒绝",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "bsR7n",
+                  "name": "Promise proposed · 0 / 2",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "提案人在有效期内不可审批",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QCmEX",
+              "name": "Repair State Row proposed · 1 / 2",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "#F9FAF8",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "WM2ys",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status proposed · 1 / 2",
+                  "width": 190,
+                  "fill": "$warning-soft",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$warning"
+                    },
+                    "O1ziQO": {
+                      "content": "proposed · 1 / 2",
+                      "fill": "$warning"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "Itfjk",
+                  "name": "Evidence proposed · 1 / 2",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "首位已批准，仍未达门槛",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "n3ukQ",
+                  "name": "Action proposed · 1 / 2",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W9Aymd",
+                      "name": "Action Pill proposed · 1 / 2",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "kUf7m",
+                          "name": "Action Label proposed · 1 / 2",
+                          "fill": "$text-secondary",
+                          "content": "批准 / 拒绝",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "i7mEDd",
+                  "name": "Promise proposed · 1 / 2",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "显示第一位决定及剩余有效期",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zbFYk",
+              "name": "Repair State Row approved · 2 / 2",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$surface-panel",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "H3Fd0J",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status approved · 2 / 2",
+                  "width": 190,
+                  "fill": "$accent-soft",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$accent-strong"
+                    },
+                    "O1ziQO": {
+                      "content": "approved · 2 / 2",
+                      "fill": "$accent-strong"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "as0Dw",
+                  "name": "Evidence approved · 2 / 2",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "双人审计门槛满足",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "H4PIK",
+                  "name": "Action approved · 2 / 2",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PL2qv",
+                      "name": "Action Pill approved · 2 / 2",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HegX6",
+                          "name": "Action Label approved · 2 / 2",
+                          "fill": "$text-secondary",
+                          "content": "查看证据",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Uk5gR",
+                  "name": "Promise approved · 2 / 2",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "执行器不可用；projection 未改变",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JQ7DH",
+              "name": "Repair State Row rejected",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "#F9FAF8",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "dHqth",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status rejected",
+                  "width": 190,
+                  "fill": "$danger-soft",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$danger"
+                    },
+                    "O1ziQO": {
+                      "content": "rejected",
+                      "fill": "$danger"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "C5clD",
+                  "name": "Evidence rejected",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "任一审批人拒绝后终止",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "w2eKa",
+                  "name": "Action rejected",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "THQAN",
+                      "name": "Action Pill rejected",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "FMEyV",
+                          "name": "Action Label rejected",
+                          "fill": "$text-secondary",
+                          "content": "查看拒绝记录",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "MvV21",
+                  "name": "Promise rejected",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "不再显示审批操作",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AaVAH",
+              "name": "Repair State Row expired",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$surface-panel",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "deufv",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status expired",
+                  "width": 190,
+                  "fill": "$surface-muted",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$text-secondary"
+                    },
+                    "O1ziQO": {
+                      "content": "expired",
+                      "fill": "$text-secondary"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "m9OG50",
+                  "name": "Evidence expired",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "超过 expires_at，证据窗口失效",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "J5QLDj",
+                  "name": "Action expired",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MLrF3",
+                      "name": "Action Pill expired",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Tz5Ej",
+                          "name": "Action Label expired",
+                          "fill": "$text-secondary",
+                          "content": "重新采证",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Ze4tk",
+                  "name": "Promise expired",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "旧提案保持只读",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ujIjS",
+              "name": "Repair State Row unavailable",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "#F9FAF8",
+              "stroke": "$border",
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "BRpnW",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Status unavailable",
+                  "width": 190,
+                  "fill": "$rail",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$text-inverse"
+                    },
+                    "O1ziQO": {
+                      "content": "unavailable",
+                      "fill": "$text-inverse"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "rDeTu",
+                  "name": "Evidence unavailable",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 330,
+                  "content": "Worker / Temporal 无法提供可信证据",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "hdFZv",
+                  "name": "Action unavailable",
+                  "width": 260,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "f2ZYP",
+                      "name": "Action Pill unavailable",
+                      "fill": "$rail-soft",
+                      "cornerRadius": 16,
+                      "padding": [
+                        7,
+                        11
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "k9Lbi",
+                          "name": "Action Label unavailable",
+                          "fill": "$text-muted",
+                          "content": "恢复依赖",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SONZR",
+                  "name": "Promise unavailable",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "禁止创建或批准提案",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uYupH",
+          "name": "Repair State Safety Legend",
+          "width": "fill_container",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "x7mju",
+              "name": "Repair State Safety Icon",
+              "width": 34,
+              "height": 34,
+              "fill": "$danger-soft",
+              "cornerRadius": 17,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "trGf1",
+                  "name": "Repair State Safety Lock",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "lock",
+                  "library": "Material Symbols Outlined",
+                  "fill": "$danger"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ymXTL",
+              "name": "Repair State Safety Text",
+              "fill": "$text-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "所有状态只表达审计事实。执行 repair 需要后续独立、可回滚、再次授权的 executor 里程碑。",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "pYyNu",
+      "x": 1540,
+      "y": 5256,
+      "name": "Agent Repair/Mobile/Approval",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ataQE",
+          "name": "Mobile Repair Top Bar",
+          "width": "fill_container",
+          "height": 72,
+          "fill": "$rail",
+          "padding": [
+            0,
+            18
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Fz27s",
+              "name": "Mobile Repair Back",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "KQ1rB",
+                  "name": "Mobile Repair Back Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow_back",
+                  "library": "Material Symbols Outlined",
+                  "fill": "$text-inverse"
+                },
+                {
+                  "type": "text",
+                  "id": "d1NFOJ",
+                  "name": "Mobile Repair Back Label",
+                  "fill": "$text-inverse",
+                  "content": "修复审计",
+                  "fontFamily": "$font-body",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "U0xCjy",
+              "name": "Mobile Repair Ticket",
+              "fill": "$brand",
+              "content": "INC-2841",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "W4JAK",
+          "name": "Mobile Repair Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            20,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "QNNTV",
+              "name": "Mobile Repair Heading",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "id": "h3BrR",
+                  "type": "ref",
+                  "ref": "SQ54b",
+                  "name": "Mobile Repair Proposed Status",
+                  "descendants": {
+                    "QH2s9": {
+                      "fill": "$warning"
+                    },
+                    "O1ziQO": {
+                      "content": "等待复核",
+                      "fill": "$warning"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "ayltd",
+                  "name": "Mobile Repair Title",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Task 投影落后于 Temporal",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 24,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "yMAv6",
+                  "name": "Mobile Repair Meta",
+                  "fill": "$text-secondary",
+                  "content": "T-01HZX9A · 23 分钟后过期",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ObuDU",
+              "name": "Mobile Repair Mismatch",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Tu2Ft",
+                  "name": "Mobile Mismatch Header",
+                  "width": "fill_container",
+                  "gap": 9,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "kU6QT",
+                      "name": "Mobile Mismatch Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "difference",
+                      "library": "Material Symbols Outlined",
+                      "fill": "$warning"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gutaZ",
+                      "name": "Mobile Mismatch Label",
+                      "fill": "$warning",
+                      "content": "stale · reproject_from_temporal",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LpSTl",
+                  "name": "Mobile Evidence Pair",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VXK1K",
+                      "name": "Mobile PROJECTED",
+                      "width": "fill_container",
+                      "fill": "$surface-panel",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "luwRq",
+                          "name": "Mobile PROJECTED Label",
+                          "fill": "$text-muted",
+                          "content": "PROJECTED",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.8
+                        },
+                        {
+                          "type": "text",
+                          "id": "U7CfK9",
+                          "name": "Mobile PROJECTED Value",
+                          "fill": "$danger",
+                          "content": "running · 17",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "XNjxm",
+                      "name": "Mobile TEMPORAL",
+                      "width": "fill_container",
+                      "fill": "$surface-panel",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "L4EnIB",
+                          "name": "Mobile TEMPORAL Label",
+                          "fill": "$text-muted",
+                          "content": "TEMPORAL",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.8
+                        },
+                        {
+                          "type": "text",
+                          "id": "SsTc1",
+                          "name": "Mobile TEMPORAL Value",
+                          "fill": "$brand-deep",
+                          "content": "completed · 18",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xXPua",
+              "name": "Mobile Evidence Hash",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ADzcb",
+                  "name": "Mobile Hash Icon",
+                  "width": 32,
+                  "height": 32,
+                  "fill": "$rail",
+                  "cornerRadius": 9,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "D45cdF",
+                      "name": "Mobile Hash Verified Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "verified",
+                      "library": "Material Symbols Outlined",
+                      "fill": "$brand"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "I337y",
+                  "name": "Mobile Hash Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C2HAF",
+                      "name": "Mobile Hash Label",
+                      "fill": "$text-muted",
+                      "content": "EVIDENCE SHA-256",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "xDqrZ",
+                      "name": "Mobile Hash Value",
+                      "fill": "$text-primary",
+                      "content": "8d942988...516c3ff7",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FWcv9",
+          "name": "Mobile Approval Sheet",
+          "width": "fill_container",
+          "fill": "$surface-panel",
+          "cornerRadius": [
+            22,
+            22,
+            0,
+            0
+          ],
+          "stroke": "$border",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            18,
+            18,
+            22,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Fpu2t",
+              "name": "Mobile Sheet Handle Row",
+              "width": "fill_container",
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "f2jUXd",
+                  "name": "Mobile Sheet Handle",
+                  "fill": "$border",
+                  "width": 42,
+                  "height": 4
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zLOfX",
+              "name": "Mobile Approval Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g2n8vX",
+                  "name": "Mobile Approval Header Copy",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "M7hJE",
+                      "name": "Mobile Approval Title",
+                      "fill": "$text-primary",
+                      "content": "双人审批 · 1 / 2",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "yMTGx",
+                      "name": "Mobile Approval Subtitle",
+                      "fill": "$text-secondary",
+                      "content": "你将成为第二位独立审批人",
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "K1aMUM",
+                  "name": "Mobile Approval Shield",
+                  "width": 36,
+                  "height": 36,
+                  "fill": "$accent-soft",
+                  "cornerRadius": 18,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Omfkn",
+                      "name": "Mobile Approval Shield Icon",
+                      "width": 19,
+                      "height": 19,
+                      "icon": "verified_user",
+                      "library": "Material Symbols Outlined",
+                      "fill": "$accent-strong"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ozelw",
+              "name": "Mobile First Approval",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J6jQwB",
+                  "name": "Mobile First Approval Done",
+                  "width": 28,
+                  "height": 28,
+                  "fill": "$brand",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "MCxLK",
+                      "name": "Mobile First Approval Check",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "check",
+                      "library": "Material Symbols Outlined",
+                      "fill": "$text-inverse"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "udE2c",
+                  "name": "Mobile First Approval Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gse6Z",
+                      "name": "Mobile First Approval Title",
+                      "fill": "$text-primary",
+                      "content": "Ming 已确认",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "x0HLvq",
+                      "name": "Mobile First Approval Time",
+                      "fill": "$text-secondary",
+                      "content": "09:48 · evidence matched",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aaalq",
+              "name": "Mobile Execution Boundary",
+              "width": "fill_container",
+              "fill": "$danger-soft",
+              "cornerRadius": "$radius-sm",
+              "gap": 9,
+              "padding": 11,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "yH3iH",
+                  "name": "Mobile Execution Boundary Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "lock",
+                  "library": "Material Symbols Outlined",
+                  "fill": "$danger"
+                },
+                {
+                  "type": "text",
+                  "id": "ibsMt",
+                  "name": "Mobile Execution Boundary Text",
+                  "fill": "$danger",
+                  "content": "批准后仍不会执行 repair",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ghrQU",
+              "name": "Mobile Approval Actions",
+              "width": "fill_container",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JYk9m",
+                  "name": "Mobile Reject Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface-panel",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$danger",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lBIQS",
+                      "name": "Mobile Reject Label",
+                      "fill": "$danger",
+                      "content": "拒绝",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J91NFr",
+                  "name": "Mobile Approve Button",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$brand",
+                  "cornerRadius": "$radius-sm",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xgUz1",
+                      "name": "Mobile Approve Label",
+                      "fill": "$text-inverse",
+                      "content": "批准证据",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
