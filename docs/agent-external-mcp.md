@@ -88,7 +88,20 @@ MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表�
 
 Agent Capability 的 additive `PublishMcpReadinessEvidence` RPC 已连接上述 MySQL Publisher。它只允许 transport 认证的 `dipole-agent` 且 RequestContext principal 必须为空；operator 固定取认证 service identity，request/trace 从已验证上下文派生。请求不提供 Evidence ID、Runtime binding、content hash、status 或 activation 字段。Core 限制 evidence JSON 为 16 KiB 并严格解析 v2；TS adapter 会在发送前规范化字段与时间、复算 content SHA-256，并对响应的确定性 Evidence ID、双 binding、状态和时间逐项复核。exact replay 只改变 `created` 为 false。
 
-该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计导出，不能单独视为远程 attestation。当前 `index.ts` 自动采集/发布调度、admission consumer 与真实公网 Shadow 归档均未接线；RPC 可用不会自动建立外部连接或激活 Profile。后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。回滚 v37 前应先停止 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
+受控 Shadow 环境可通过独立单次命令采集并发布：
+
+```bash
+npm --prefix agent-runtime run mcp:readiness:publish -- \
+  --tenant=TENANT-A \
+  --profile=PROFILE-A \
+  --valid-for-seconds=1800 \
+  --request-id=CHANGE-REQUEST-123 \
+  --trace-id=TRACE-123
+```
+
+执行前必须设置 enabled Profile、production I/O manifest 和 Agent Capability RPC/mTLS 环境。CLI 在任何文件或网络访问前严格校验五个参数；随后重新加载安全 manifest，构造 production adapters，串行执行全部 Profile local preflight 与 exact Profile 的只读 discovery，并在成功后调用一次 Publisher。有效期从 evidence `completedAt` 派生且限制为 60 至 3600 秒。采集、取消、清理、RPC 或收据校验失败只输出固定错误且不会自动重试。RPC 发出后若响应丢失，先按 request/trace 核对 Core 审计；重新运行命令会产生新的采集时间和 Evidence ID，作为追加历史保存。
+
+该命令没有注册到常驻 `index.ts` 或 Compose，不会随 Agent 启动执行，也不读取 admission 或 activation 状态。当前仍无自动调度、fresh evidence admission consumer、KMS 签名、可信时间戳或独立审计导出；bundle 只能作为可复算的运维完整性证据，需在隔离 Shadow tenant 与 trace/audit 联查。回滚 v37 前应先停止 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
 
 ## Network Guard 边界
 
