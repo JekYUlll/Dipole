@@ -24,13 +24,45 @@ type PrometheusSnapshotMetadata struct {
 	WindowEnd          string
 }
 
-// EvidenceFromPrometheus converts runtime collector output into the existing low-sensitivity evidence contract.
+// EvidenceFromPrometheus converts one cumulative collector output into evidence.
+// Call EvidenceFromPrometheusWindow for a bounded rollout window.
 func EvidenceFromPrometheus(data []byte, metadata PrometheusSnapshotMetadata) (Evidence, error) {
-	if len(bytes.TrimSpace(data)) == 0 {
-		return Evidence{}, fmt.Errorf("Prometheus snapshot is empty")
+	snapshot, err := parsePrometheusSnapshot(data, true)
+	if err != nil {
+		return Evidence{}, err
 	}
-	if metadata.Service == "" || metadata.DeploymentRevision == "" || metadata.Mode == "" || metadata.WindowStart == "" || metadata.WindowEnd == "" {
-		return Evidence{}, fmt.Errorf("Prometheus snapshot metadata is incomplete")
+	return evidenceFromSnapshot(snapshot.routes, snapshot.hitHistogram, metadata)
+}
+
+// EvidenceFromPrometheusWindow converts two cumulative collector outputs into bounded-window evidence.
+func EvidenceFromPrometheusWindow(startData, endData []byte, metadata PrometheusSnapshotMetadata) (Evidence, error) {
+	start, err := parsePrometheusSnapshot(startData, false)
+	if err != nil {
+		return Evidence{}, fmt.Errorf("parse start snapshot: %w", err)
+	}
+	end, err := parsePrometheusSnapshot(endData, true)
+	if err != nil {
+		return Evidence{}, fmt.Errorf("parse end snapshot: %w", err)
+	}
+	delta, err := subtractCounts(end.routes, start.routes)
+	if err != nil {
+		return Evidence{}, err
+	}
+	hitHistogram, err := subtractHistograms(end.hitHistogram, start.hitHistogram)
+	if err != nil {
+		return Evidence{}, err
+	}
+	return evidenceFromSnapshot(delta, hitHistogram, metadata)
+}
+
+type prometheusSnapshot struct {
+	routes       Counts
+	hitHistogram *dto.Histogram
+}
+
+func parsePrometheusSnapshot(data []byte, requireRequests bool) (prometheusSnapshot, error) {
+	if len(bytes.TrimSpace(data)) == 0 {
+		return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot is empty")
 	}
 	var routeCounts Counts
 	var hitHistogram *dto.Histogram
@@ -41,12 +73,12 @@ func EvidenceFromPrometheus(data []byte, metadata PrometheusSnapshotMetadata) (E
 			if err == io.EOF {
 				break
 			}
-			return Evidence{}, fmt.Errorf("decode Prometheus snapshot: %w", err)
+			return prometheusSnapshot{}, fmt.Errorf("decode Prometheus snapshot: %w", err)
 		}
 		switch family.GetName() {
 		case routeMetricName:
 			if err := collectRouteCounts(&routeCounts, family.GetMetric()); err != nil {
-				return Evidence{}, err
+				return prometheusSnapshot{}, err
 			}
 		case durationMetricName:
 			for _, metric := range family.GetMetric() {
@@ -54,25 +86,61 @@ func EvidenceFromPrometheus(data []byte, metadata PrometheusSnapshotMetadata) (E
 					continue
 				}
 				if hitHistogram != nil {
-					return Evidence{}, fmt.Errorf("Prometheus snapshot contains duplicate hit histograms")
+					return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot contains duplicate hit histograms")
 				}
 				hitHistogram = metric.GetHistogram()
 			}
 		}
 	}
-	if routeCounts.Total == 0 {
-		return Evidence{}, fmt.Errorf("Prometheus snapshot has no hydration requests")
+	if requireRequests && routeCounts.Total == 0 {
+		return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot has no hydration requests")
+	}
+	return prometheusSnapshot{routes: routeCounts, hitHistogram: hitHistogram}, nil
+}
+
+func evidenceFromSnapshot(counts Counts, hitHistogram *dto.Histogram, metadata PrometheusSnapshotMetadata) (Evidence, error) {
+	if metadata.Service == "" || metadata.DeploymentRevision == "" || metadata.Mode == "" || metadata.WindowStart == "" || metadata.WindowEnd == "" {
+		return Evidence{}, fmt.Errorf("Prometheus snapshot metadata is incomplete")
 	}
 	p95, err := histogramP95Micros(hitHistogram)
 	if err != nil {
 		return Evidence{}, err
 	}
-	evidence := Evidence{SchemaVersion: "dipole.sync-cassandra-hydration-evidence.v1", Service: metadata.Service, DeploymentRevision: metadata.DeploymentRevision, Mode: metadata.Mode, WindowStart: metadata.WindowStart, WindowEnd: metadata.WindowEnd, Requests: routeCounts, Latency: Latency{CassandraP95Micros: p95}}
+	evidence := Evidence{SchemaVersion: "dipole.sync-cassandra-hydration-evidence.v1", Service: metadata.Service, DeploymentRevision: metadata.DeploymentRevision, Mode: metadata.Mode, WindowStart: metadata.WindowStart, WindowEnd: metadata.WindowEnd, Requests: counts, Latency: Latency{CassandraP95Micros: p95}}
 	if err := validateEvidence(evidence); err != nil {
 		return Evidence{}, err
 	}
 	return evidence, nil
 }
+
+func subtractCounts(end, start Counts) (Counts, error) {
+	if end.Total < start.Total || end.CassandraHit < start.CassandraHit || end.MySQLFallback < start.MySQLFallback || end.Missing < start.Missing || end.Conflict < start.Conflict || end.Error < start.Error {
+		return Counts{}, fmt.Errorf("Prometheus counters moved backwards")
+	}
+	return Counts{Total: end.Total - start.Total, CassandraHit: end.CassandraHit - start.CassandraHit, MySQLFallback: end.MySQLFallback - start.MySQLFallback, Missing: end.Missing - start.Missing, Conflict: end.Conflict - start.Conflict, Error: end.Error - start.Error}, nil
+}
+
+func subtractHistograms(end, start *dto.Histogram) (*dto.Histogram, error) {
+	if end == nil || start == nil || end.GetSampleCount() < start.GetSampleCount() {
+		return nil, fmt.Errorf("Prometheus hit latency histograms are missing or moved backwards")
+	}
+	if len(end.GetBucket()) != len(start.GetBucket()) {
+		return nil, fmt.Errorf("Prometheus hit latency histogram buckets changed")
+	}
+	result := &dto.Histogram{SampleCount: uint64Ptr(end.GetSampleCount() - start.GetSampleCount()), SampleSum: float64Ptr(end.GetSampleSum() - start.GetSampleSum())}
+	for i, bucket := range end.GetBucket() {
+		previous := start.GetBucket()[i]
+		if bucket.GetUpperBound() != previous.GetUpperBound() || bucket.GetCumulativeCount() < previous.GetCumulativeCount() {
+			return nil, fmt.Errorf("Prometheus hit latency histogram buckets moved backwards or changed")
+		}
+		result.Bucket = append(result.Bucket, &dto.Bucket{UpperBound: float64Ptr(bucket.GetUpperBound()), CumulativeCount: uint64Ptr(bucket.GetCumulativeCount() - previous.GetCumulativeCount())})
+	}
+	return result, nil
+}
+
+func uint64Ptr(value uint64) *uint64 { return &value }
+
+func float64Ptr(value float64) *float64 { return &value }
 
 func collectRouteCounts(counts *Counts, metrics []*dto.Metric) error {
 	for _, metric := range metrics {
