@@ -350,6 +350,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 建立 Agent Task Timeline v1：Core owner-scoped cursor API、Runtime/Gateway 只读代理、前端默认关闭展示，以及 Task/Run/Model/Tool/Approval/Artifact 的低敏确定性事件。
 - [x] 建立 Timeline repair ledger 与显式 `agent-task-timeline-repair` 运维进程；投影失败可 durable claim、重放、完成或 retry，Prometheus 观测默认关闭；真实 MySQL 故障注入已验证 retry 到 completed 和单事件收敛。
 - [ ] 完成 repair worker 的 operator 灰度、告警阈值和默认生产开关；在此之前继续保留 MySQL Timeline 主存储和前端关闭状态。
+  - [x] 增加 Compose profile 级隔离 smoke：校验 v49 migration、UTC 时间基准、最小权限、worker readiness、持续 replay 和 event UUID 幂等；共享环境 operator 灰度与默认生产开关仍待完成。
 - [ ] 实现 Context Compiler，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
   - [x] G2 基线实现框架中立 Context Compiler v1：全局/section 预算、full/compact/omit、trust boundary、provenance manifest 和 v22 持久审计；会话检索、Memory 与 route-specific tokenizer 在 G3 继续扩展。
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
