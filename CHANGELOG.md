@@ -17,6 +17,10 @@
 
 ### 安全
 
+- Agent Workflow repair 增加受控 `prepared` 准备服务：仅接受已批准、未过期且满足审批门槛的提案，复核 proposal/task/executor 绑定后幂等写入执行意图；当前不推进状态、不修改 projection，也未开放公开执行入口。`executor_grant_version` 仍只作为账本绑定值，待 operator grant 版本化后接入运行时授权复核。
+- Agent Workflow repair 增加 migration v44 prepared execution ledger 与 sqlc 访问边界：以唯一 plan 记录执行意图、提案/任务/执行人绑定、CAS 摘要和回滚摘要；当前仅允许 `prepared` 创建/读取，未提供状态推进、apply、execute 或 rollback RPC，现有运行流量不受影响。
+- Agent Workflow repair 增加默认无副作用的 `repair:preflight`：在未来执行器前重新核对 plan 摘要、批准提案证据、executor grant 版本和当前投影 CAS，仅输出低敏 `ready|blocked` 收据；过期、漂移和绑定不一致统一阻断，继续不提供 projection 写入。
+- 收紧 Agent Workflow repair dry-run 计划绑定：当前投影与目标投影必须属于同一 Workflow/Run，跨任务证据在生成 plan 前 fail closed；不改变 v1 仅 dry-run、无 projection 写入的边界。
 - Agent Memory lineage rollout 增加 deployment evidence v1 与只读 `agent-memory-lineage-deployment-evidence` CLI：外部共享环境记录必须绑定 rollout review receipt、运行版本、配置摘要、migration 43、健康检查和回滚演练 ID；输出仅保存 deployment ID 摘要与通过标志，`executionAuthority`、`contentRead`、`deletionAuthority`、`runtimeAuthority` 固定为 false。该工具不连接共享环境、不执行回填，缺少真实部署与回滚记录时继续 fail closed。
 - Agent Memory 增加有界历史 lineage backfill v1 的语言中立 manifest/receipt 与 Go runner：游标固定为 Shadow Plan ID high-water mark，引用仅允许 exact `memory:<id>` 与 `full|compact`，runner 在目标成功后推进 checkpoint，重复写返回 duplicate 并保持可收敛。Receipt 仅保存 hash、游标和计数，固定不读取正文、不授予删除或 Runtime 权威；MySQL checkpoint/source/target 尚未接线。
 - Agent Memory 增加纯离线派生数据 retention policy 决策：严格覆盖 Model Call、Shadow Plan/Step、Artifact、Tool Invocation、Message Action 与 Temporal potential Task，输入绑定已验证的低敏 lineage report，输出绑定 policy/report/decision 三个 SHA-256。parser 会从 lineage 完整性和受影响的人工复核域重新推导阻断原因；CLI 不连接数据库或网络，固定不读取正文、不执行删除且不授予删除或 Runtime 权威。
@@ -79,6 +83,7 @@
 
 ### 新增
 
+- Agent Workflow repair 增加 `repair:plan` dry-run 执行计划编译器：仅接受已批准提案、双人审批、独立 executor grant 和重新采集的当前/目标/回滚投影，生成带三组 CAS SHA-256、15 分钟有效期和确定性 plan ID 的语言中立 v1 计划。计划生成不连接 MySQL/Temporal、不提供 apply/execute/rollback 字段，身份复用、回滚证据漂移和窗口外重放均 fail closed。
 - 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
 - 增加语言中立 `dipole.agent.memory-derived-lineage` v1 manifest/report、严格 Zod 解析器和 `audit:memory-derived` CLI。owner 授权 manifest 保持本地敏感输入，标准输出省略 tenant、principal、Memory ID 与全部正文；MySQL 审计账号仅新增 Memory 与 lineage 两张表的只读权限。
 - Agent Memory 增加 append-only owner correction：migration v39 为每条记录保存 root/version/predecessor/corrector/reason，唯一 predecessor 与 `(tenant, root, version)` 约束阻止分叉；sqlc transaction 在同一事务中撤销前序版本并追加 successor，稳定 correction ID 支持精确重放，payload 或期望版本漂移返回冲突。additive gRPC、Gateway 与 Vue 已形成完整闭环，`VITE_AGENT_MEMORY_CORRECTION_ENABLED=false` 默认关闭纠正入口，Pencil 文件维护 desktop/mobile 与六类纠正状态。
@@ -357,6 +362,7 @@
 
 ### 变更
 
+- Eino 从 `v0.9.15` 升级至 `v0.9.17`；保持 OpenAI 扩展 `v0.1.13` 不变。Go 全量测试、sqlc drift、Agent Runtime 测试、typecheck 与 build 均通过，未发现 API 兼容性回归。
 - 更新正式技术架构图以匹配当前实现：补充 Core/Message/Gateway/Sync/Search/Agent Runtime 边界、`user_sync_inbox` Sync Timeline、sqlc 数据访问及 Cassandra/Elasticsearch 影子投影；移除 `AutoMigrate`、单体无 Inbox 和旧 Eino 主链路等过时描述。该图仅记录当前已实现或明确默认关闭的能力，不改变运行配置。
 
 - Core RPC Agent 方法 allowlist 补齐 readiness evidence publish/resolve；此前真实 RPC 部署会在 MCP egress freshness 查询时返回 `PermissionDenied`。全栈演练中的 subscription、Run、Workflow projection、MCP Invocation/Round、readiness 和 Artifact 均改由正式 TS `AgentCapabilityRPCClient` 访问隔离 Go mTLS fixture。
@@ -517,6 +523,8 @@
 
 ### 验证
 
+- Agent Workflow repair v44 repository 合同测试在隔离 MySQL 8.4.8 中验证 `prepared` execution 创建、精确重放和同 plan 目标哈希漂移拒绝；当前测试不推进状态，也不修改 Workflow projection。
+- MySQL migration integration baseline 更新至 v44，并覆盖 v44 execution ledger、v43 lineage backfill、v42 pre-model lineage 的连续回滚与表数量断言；避免新迁移已发布但集成测试仍停留在 v42 的验证盲区。
 - 发布级隔离门禁通过：`scripts/check-compose.sh` 校验全部根目录 Compose 与 Agent Shadow 配置；`scripts/smoke-microservices.sh` 使用独立项目启动并清理 Core、Message、Sync、Gateway、Agent、MySQL、Kafka、Redis 和 MinIO，验证 readiness/metrics、mTLS、Gateway 认证代理与远程 WS ownership。Agent 镜像在隔离构建中通过 `npm ci`、构建和零漏洞审计。
 - 发布级回归重新通过：Go 全量包、Agent Runtime `580 passed / 26 skipped`、前端 `85 passed` 与生产构建、sqlc 漂移和架构文档门禁均通过；修正 Agent Runtime README 对 Subscription 管理 API 的过时描述。Vitest 使用项目原生命令运行，未使用不兼容的 Jest `--runInBand` 参数。
 

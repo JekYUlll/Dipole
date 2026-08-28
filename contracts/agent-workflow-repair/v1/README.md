@@ -1,6 +1,6 @@
 # Agent Workflow Repair Execution Plan v1
 
-该契约描述一次可审计的 Workflow projection 修复预演。v1 的 `mode` 固定为 `dry_run`，仓库当前没有 apply、execute 或 rollback RPC，也没有会修改 projection 的 executor 实现。
+该契约描述一次可审计的 Workflow projection 修复预演。v1 的 `mode` 固定为 `dry_run`，仓库当前没有 apply、execute 或 rollback RPC，也没有会修改 projection 的 executor 实现。Agent Runtime 提供 `repair:plan` 离线命令，将已批准提案和重新采集的 CAS 证据确定性编译为执行计划；`repair:preflight` 再以最新投影、审批摘要和 executor grant 版本执行无副作用的二次核对。两个命令均不会连接数据库、Temporal 或执行写入。
 
 预演必须满足以下边界：
 
