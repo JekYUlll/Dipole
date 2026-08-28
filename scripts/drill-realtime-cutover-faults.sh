@@ -6,6 +6,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/deploy/realtime/cutover-fault-drill.compose.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-c3-cutover-fault-$RANDOM}"
 REPORT_FILE="${DIPOLE_CUTOVER_DRILL_REPORT:-/tmp/dipole-c3-cutover-fault-report.json}"
+CPP_COMPILER="${CXX:-/usr/bin/g++}"
+CPP_COMPILER_ID="$(basename "${CPP_COMPILER}" | tr -cd '[:alnum:]_.+-')"
+CPP_BUILD_DIR="${DIPOLE_CPP_BUILD_DIR:-/tmp/dipole-cpp-realtime-build-${CPP_COMPILER_ID}}"
 
 pick_port() {
   local port
@@ -33,12 +36,23 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$(dirname "${REPORT_FILE}")"
+if [[ "${DIPOLE_CUTOVER_DRILL_BUILD_CPP:-1}" == "1" ]]; then
+  CXX="${CPP_COMPILER}" DIPOLE_CPP_BUILD_DIR="${CPP_BUILD_DIR}" \
+    "${ROOT_DIR}/scripts/check-cpp-realtime.sh"
+fi
+CPP_BINARY="${DIPOLE_CUTOVER_DRILL_CPP_BINARY:-${CPP_BUILD_DIR}/dipole-realtime-delivery}"
+if [[ ! -x "${CPP_BINARY}" ]]; then
+  echo "C++ realtime primary binary is missing: ${CPP_BINARY}" >&2
+  exit 1
+fi
 compose config --quiet
 compose up -d --wait
 
 export DIPOLE_CUTOVER_DRILL_REDIS_ADDR="127.0.0.1:${DIPOLE_CUTOVER_DRILL_REDIS_PORT}"
 export DIPOLE_CUTOVER_DRILL_KAFKA_ADDR="127.0.0.1:${DIPOLE_CUTOVER_DRILL_KAFKA_PORT}"
 export DIPOLE_CUTOVER_DRILL_REPORT="${REPORT_FILE}"
+export DIPOLE_CUTOVER_DRILL_CPP_BINARY="${CPP_BINARY}"
+export DIPOLE_CUTOVER_DRILL_GOLDEN_DIR="${ROOT_DIR}/api/proto/dipole/delivery/v1/testdata"
 export DIPOLE_CUTOVER_DRILL_REVISION="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
 export DIPOLE_CUTOVER_DRILL_REDIS_IMAGE="$(docker inspect --format '{{.Image}}' "$(compose ps -q redis)")"
 export DIPOLE_CUTOVER_DRILL_KAFKA_IMAGE="$(docker inspect --format '{{.Image}}' "$(compose ps -q kafka)")"
@@ -57,6 +71,13 @@ jq -e '
   .controller_crash_recovered == true and
   .redis_outage_blocked == true and
   .kafka_rebalance_blocked == true and
+  .cpp_primary_ready == true and
+  .cpp_primary_stopped_cleanly == true and
+  (.cpp_primary_binary_sha256 | test("^[a-f0-9]{64}$")) and
+  (.cpp_primary_instance_id | test("^cpp-[a-z0-9-]+$")) and
+  (.cpp_primary_group_id | startswith("dipole-realtime-primary-")) and
+  (.cpp_primary_observation_key | contains(":observation:realtime-delivery:")) and
+  (.cpp_primary_observation_sha256 | test("^[a-f0-9]{64}$")) and
   .expired_freeze_rolled_back == true and
   .rollback_final_sequence == 7 and
   (.rollback_journal_head_sha256 | test("^[a-f0-9]{64}$")) and

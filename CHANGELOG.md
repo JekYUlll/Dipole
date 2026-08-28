@@ -22,6 +22,7 @@
 
 ### 新增
 
+- C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
 - C3 增加 production cutover executor：启动时校验 attempt 对初始 lease、三阶段节点清单和双组 checkpoint 清单的 SHA-256 绑定；每个动作固定执行 `artifact lookup -> Redis receipt recovery -> new side effect`，只有明确缺失 receipt 才允许新的 CAS。source/target/rollback checkpoint 复用节点聚合器和双组 collector，正常切换、冻结期源恢复及目标激活后二次冻结回退均验证 authority、epoch、phase、lease 与 manifest。完成、回退意图和回退完成使用版本化 decision artifact。真实 Redis writer + 模拟 observation/Kafka collector 集成覆盖 forward、两条 rollback 和 transition 成功但 artifact 缺失的恢复。恢复 CLI、租约续期和真实 crash/rebalance/Redis 故障演练仍待完成。
 - C3 增加自包含 cutover attempt workspace：创建时 canonicalize 并不可覆盖保存 initial transition、source/frozen/target 节点清单与 checkpoint 清单，由代码生成精确绑定 initial lease 和全部输入摘要的 `attempt.json`；重试创建只接受完全相同的 canonical 输入。恢复加载会严格解码并重算每个绑定，再打开独立 artifacts 目录，避免操作员在续切时重新提供已漂移的外部文件。
 - C3 增加 `dipole-realtime-cutover` 恢复命令：`create` 在 initial lease 有效期内生成 workspace，`status` 无需 Redis/Kafka 即可回放状态，`advance` 每次只执行一个外部动作并落盘一个事件，`rollback` 从合法状态记录回退意图。变更操作要求显式确认与 operator，单动作 30 秒超时；模糊失败后重复调用会恢复同一 artifact/receipt，禁止一次进程跨多个未持久化副作用。

@@ -3,13 +3,18 @@
 package delivery
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -29,6 +34,13 @@ type cutoverFaultDrillReport struct {
 	ControllerCrashRecovered bool                `json:"controller_crash_recovered"`
 	RedisOutageBlocked       bool                `json:"redis_outage_blocked"`
 	KafkaRebalanceBlocked    bool                `json:"kafka_rebalance_blocked"`
+	CPPPrimaryReady          bool                `json:"cpp_primary_ready"`
+	CPPPrimaryStoppedCleanly bool                `json:"cpp_primary_stopped_cleanly"`
+	CPPPrimaryBinarySHA256   string              `json:"cpp_primary_binary_sha256"`
+	CPPPrimaryInstanceID     string              `json:"cpp_primary_instance_id"`
+	CPPPrimaryGroupID        string              `json:"cpp_primary_group_id"`
+	CPPPrimaryObservationKey string              `json:"cpp_primary_observation_key"`
+	CPPPrimaryObservationSHA string              `json:"cpp_primary_observation_sha256"`
 	ExpiredFreezeRolledBack  bool                `json:"expired_freeze_rolled_back"`
 	RollbackFinalSequence    uint64              `json:"rollback_final_sequence"`
 	RollbackJournalHead      string              `json:"rollback_journal_head_sha256"`
@@ -120,14 +132,18 @@ func (p *cutoverFaultProxy) track(conn net.Conn, add bool) {
 }
 
 type cutoverDrillAggregator struct {
-	client redis.Cmdable
-	key    string
-	now    func() time.Time
-	inner  *RedisFenceObservationAggregator
+	client                      redis.Cmdable
+	key                         string
+	now                         func() time.Time
+	inner                       *RedisFenceObservationAggregator
+	externalObservationManifest string
 }
 
 func (a cutoverDrillAggregator) Aggregate(ctx context.Context, manifest FenceExpectedNodeManifest, transition FenceTransitionReceipt) (FenceObservationAggregateReceipt, error) {
 	for _, node := range manifest.Nodes {
+		if manifest.ManifestID == a.externalObservationManifest && node.Component == "realtime-delivery" {
+			continue
+		}
 		reader, err := NewRedisAuthorityFence(a.client, a.key, transition.Epoch, a.now)
 		if err != nil {
 			return FenceObservationAggregateReceipt{}, err
@@ -142,6 +158,18 @@ func (a cutoverDrillAggregator) Aggregate(ctx context.Context, manifest FenceExp
 		}
 	}
 	return a.inner.Aggregate(ctx, manifest, transition)
+}
+
+type cutoverCPPPrimary struct {
+	cmd            *exec.Cmd
+	output         bytes.Buffer
+	healthAddress  string
+	evidencePath   string
+	instanceID     string
+	groupID        string
+	observationKey string
+	binarySHA256   string
+	done           chan error
 }
 
 type cutoverDrillGroup struct {
@@ -172,11 +200,130 @@ func (g *cutoverDrillGroup) Close() {
 	<-g.done
 }
 
+func startCutoverCPPPrimary(
+	t *testing.T,
+	ctx context.Context,
+	binary, goldenDir, kafkaAddr, redisAddr, groupID, fenceKey, instanceID string,
+	epoch uint64,
+) *cutoverCPPPrimary {
+	t.Helper()
+	binaryPayload, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	healthListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	healthAddress := healthListener.Addr().String()
+	_ = healthListener.Close()
+	_, healthPort, err := net.SplitHostPort(healthAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unusedNodeListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unusedNodeTarget := unusedNodeListener.Addr().String()
+	_ = unusedNodeListener.Close()
+
+	process := &cutoverCPPPrimary{
+		healthAddress:  healthAddress,
+		evidencePath:   filepath.Join(t.TempDir(), "cpp-primary.ndjson"),
+		instanceID:     instanceID,
+		groupID:        groupID,
+		observationKey: fenceKey + ":observation:realtime-delivery:" + instanceID,
+		binarySHA256:   fmt.Sprintf("%x", sha256.Sum256(binaryPayload)),
+		done:           make(chan error, 1),
+	}
+	process.cmd = exec.CommandContext(ctx, binary, "primary", goldenDir)
+	process.cmd.Env = append(os.Environ(),
+		"DIPOLE_REALTIME_DELIVERY=cpp",
+		"DIPOLE_REALTIME_PRIMARY_ENABLED=true",
+		"DIPOLE_REALTIME_HOST=127.0.0.1",
+		"DIPOLE_REALTIME_PORT="+healthPort,
+		"DIPOLE_REALTIME_KAFKA_BROKERS="+kafkaAddr,
+		"DIPOLE_REALTIME_KAFKA_CLIENT_ID="+instanceID,
+		"DIPOLE_REALTIME_KAFKA_GROUP_ID="+groupID,
+		"DIPOLE_REALTIME_EVIDENCE_FILE="+process.evidencePath,
+		"DIPOLE_REALTIME_POLL_TIMEOUT_MS=50",
+		"DIPOLE_REALTIME_ERROR_BACKOFF_MS=50",
+		"DIPOLE_REALTIME_PRESENCE_MODE=primary",
+		"DIPOLE_REALTIME_REDIS_ENDPOINT="+redisAddr,
+		"DIPOLE_REALTIME_REDIS_TIMEOUT_MS=500",
+		"DIPOLE_REALTIME_FENCING_ENABLED=true",
+		"DIPOLE_REALTIME_FENCING_KEY="+fenceKey,
+		"DIPOLE_REALTIME_FENCING_EPOCH="+strconv.FormatUint(epoch, 10),
+		"DIPOLE_REALTIME_INSTANCE_ID="+instanceID,
+		"DIPOLE_REALTIME_NODE_TRANSPORT_MODE=primary",
+		"DIPOLE_REALTIME_NODE_TARGETS=gateway-a="+unusedNodeTarget,
+		"DIPOLE_INTERNAL_RPC_SHARED_SECRET=cutover-fault-drill",
+	)
+	process.cmd.Stdout = &process.output
+	process.cmd.Stderr = &process.output
+	if err := process.cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	go func() { process.done <- process.cmd.Wait() }()
+	waitCutoverCPPPrimaryReady(t, ctx, process)
+	return process
+}
+
+func waitCutoverCPPPrimaryReady(t *testing.T, ctx context.Context, process *cutoverCPPPrimary) {
+	t.Helper()
+	waitCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	for {
+		select {
+		case err := <-process.done:
+			t.Fatalf("C++ primary exited before readiness: %v\n%s", err, process.output.String())
+		default:
+		}
+		request, err := http.NewRequestWithContext(waitCtx, http.MethodGet, "http://"+process.healthAddress+"/readyz", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := client.Do(request)
+		if err == nil {
+			_ = response.Body.Close()
+			if response.StatusCode == http.StatusOK {
+				return
+			}
+		}
+		select {
+		case <-waitCtx.Done():
+			t.Fatalf("wait for C++ primary readiness: %v\n%s", waitCtx.Err(), process.output.String())
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func (p *cutoverCPPPrimary) Stop() error {
+	if p == nil || p.cmd == nil || p.cmd.Process == nil {
+		return nil
+	}
+	if err := p.cmd.Process.Signal(os.Interrupt); err != nil {
+		return err
+	}
+	select {
+	case err := <-p.done:
+		return err
+	case <-time.After(5 * time.Second):
+		_ = p.cmd.Process.Kill()
+		<-p.done
+		return fmt.Errorf("C++ primary did not stop within deadline")
+	}
+}
+
 func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	redisAddr := os.Getenv("DIPOLE_CUTOVER_DRILL_REDIS_ADDR")
 	kafkaAddr := os.Getenv("DIPOLE_CUTOVER_DRILL_KAFKA_ADDR")
 	reportPath := os.Getenv("DIPOLE_CUTOVER_DRILL_REPORT")
-	if redisAddr == "" || kafkaAddr == "" || reportPath == "" {
+	cppBinary := os.Getenv("DIPOLE_CUTOVER_DRILL_CPP_BINARY")
+	goldenDir := os.Getenv("DIPOLE_CUTOVER_DRILL_GOLDEN_DIR")
+	if redisAddr == "" || kafkaAddr == "" || reportPath == "" || cppBinary == "" || goldenDir == "" {
 		t.Skip("isolated cutover drill endpoints are not configured")
 	}
 
@@ -190,8 +337,8 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	}
 
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
-	topics := []string{"dipole.c3.direct." + suffix, "dipole.c3.group." + suffix}
-	groups := []string{"dipole-c3-compat-" + suffix, "dipole-c3-primary-" + suffix}
+	topics := []string{"dipole.message.direct.created", "dipole.message.group.created"}
+	groups := []string{"dipole-c3-compat-" + suffix, "dipole-realtime-primary-fault-" + suffix}
 	createCutoverDrillTopics(t, kafkaAddr, topics)
 	writer := &kafka.Writer{Addr: kafka.TCP(kafkaAddr), RequiredAcks: kafka.RequireAll}
 	for _, topic := range topics {
@@ -257,7 +404,10 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	aggregator := cutoverDrillAggregator{client: client, key: key, now: now, inner: innerAggregator}
+	aggregator := cutoverDrillAggregator{
+		client: client, key: key, now: now, inner: innerAggregator,
+		externalObservationManifest: targetNodes.ManifestID,
+	}
 	source, err := NewKafkaGoCheckpointSource([]string{kafkaAddr}, "c3-fault-drill", time.Second)
 	if err != nil {
 		t.Fatal(err)
@@ -339,7 +489,14 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	if current.Projection.LastSequence != beforeRebalance {
 		t.Fatal("Kafka rebalance failure advanced the journal")
 	}
-	primary = startCutoverDrillGroup(t, kafkaAddr, groups[1], topics)
+	cppPrimary := startCutoverCPPPrimary(
+		t, ctx, cppBinary, goldenDir, kafkaAddr, proxy.Addr(), groups[1], key, "cpp-a", manifest.InitialEpoch+1,
+	)
+	defer func() {
+		if cppPrimary != nil {
+			_ = cppPrimary.Stop()
+		}
+	}()
 	stableSnapshot = waitCutoverDrillGroups(t, ctx, source, checkpointManifest)
 	if _, err := orchestrator.Advance(ctx); err != nil {
 		t.Fatal(err)
@@ -351,6 +508,29 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cppObservationPayload, err := client.Get(ctx, cppPrimary.observationKey).Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cppObservation FenceObservation
+	if err := json.Unmarshal(cppObservationPayload, &cppObservation); err != nil {
+		t.Fatal(err)
+	}
+	if cppObservation.Status != FenceObservationAuthorized || cppObservation.ObserverID != cppPrimary.instanceID ||
+		cppObservation.Component != "realtime-delivery" || cppObservation.ExpectedAuthority != AuthorityCPP ||
+		cppObservation.ObservedAuthority != AuthorityCPP || cppObservation.ExpectedEpoch != manifest.InitialEpoch+1 ||
+		cppObservation.ObservedEpoch != manifest.InitialEpoch+1 || cppObservation.ObservedPhase != FencePhaseActive {
+		t.Fatalf("C++ primary observation identity drifted: %+v", cppObservation)
+	}
+	cppObservationSHA := fmt.Sprintf("%x", sha256.Sum256(cppObservationPayload))
+	cppStoppedCleanly := cppPrimary.Stop() == nil
+	if !cppStoppedCleanly {
+		t.Fatalf("stop C++ primary:\n%s", cppPrimary.output.String())
+	}
+	cppPrimaryForReport := cppPrimary
+	cppPrimary = nil
+	primary = startCutoverDrillGroup(t, kafkaAddr, groups[1], topics)
+	stableSnapshot = waitCutoverDrillGroups(t, ctx, source, checkpointManifest)
 	rollbackJournal := runExpiredFreezeRollbackDrill(t, ctx, client, source, topics, groups, suffix+"-rollback")
 	report := cutoverFaultDrillReport{
 		SchemaVersion: "dipole.realtime.cutover-fault-drill.v1",
@@ -358,7 +538,12 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 		KafkaImage: os.Getenv("DIPOLE_CUTOVER_DRILL_KAFKA_IMAGE"), KafkaClusterID: stableSnapshot.ClusterID,
 		AttemptID: manifest.AttemptID, ControllerCrashArtifact: crashResult.ArtifactSHA256,
 		ControllerCrashRecovered: true, RedisOutageBlocked: true, KafkaRebalanceBlocked: true,
-		ExpiredFreezeRolledBack: true, RollbackFinalSequence: rollbackJournal.Projection.LastSequence,
+		CPPPrimaryReady: true, CPPPrimaryStoppedCleanly: cppStoppedCleanly,
+		CPPPrimaryBinarySHA256: cppPrimaryForReport.binarySHA256,
+		CPPPrimaryInstanceID:   cppPrimaryForReport.instanceID, CPPPrimaryGroupID: cppPrimaryForReport.groupID,
+		CPPPrimaryObservationKey: cppPrimaryForReport.observationKey,
+		CPPPrimaryObservationSHA: cppObservationSHA,
+		ExpiredFreezeRolledBack:  true, RollbackFinalSequence: rollbackJournal.Projection.LastSequence,
 		RollbackJournalHead: rollbackJournal.HeadSHA256,
 		FinalState:          current.Projection.State, FinalSequence: current.Projection.LastSequence,
 		FinalJournalHeadSHA256: current.HeadSHA256, CompletedAtUnixMS: now().UnixMilli(),
