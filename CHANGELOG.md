@@ -15,8 +15,14 @@
 
 ## [Unreleased]
 
+### 安全
+
+- 修复内部开发证书生成脚本的权限覆盖顺序：公开证书保持 `0644`，CA 与服务私钥最终固定为 `0600`；新增临时目录回归测试，防止后续演练或本地部署生成可被其他用户读取的私钥。
+
 ### 新增
 
+- C3 归档本地互斥 delivery authority 实测到 `benchmarks/c3-delivery-authority-2026-08-28/`：隔离 `go` 模式对目标消息只产生一条无 delivery ID 的客户端 frame；隔离 `cpp` 模式只产生一条带稳定 C++ delivery ID 的 frame。两种模式的 Gateway authority 指标均与配置一致，`cpp` 下 Go checkpoint group 与 C++ primary group 同时追至 log end/lag 0，terminal evidence 为 `ENQUEUED(1)/commit`。自动报告 12/12 通过，隔离资源已清理且共享三节点持续运行。本证据完成本地单帧门槛；共享动态 fencing、双 group receipt 和自动回切仍由 `AD-041` 阻断。
+- C3 增加默认 `go` 的 `realtime.delivery=go|shadow|cpp` 本地 authority 契约：Gateway 在启动副作用前校验 observation/primary 能力组合，并以有界 Prometheus 标签暴露当前 ownership；`go` 与 `shadow` 保留 Go 消息客户端写入，`cpp` 对消息 Topic 仅验证 v1 事件并推进原 Go consumer group checkpoint，继续处理踢下线、已读和群变更等非消息事件。C++ `shadow`/`primary` 命令分别要求 `shadow`/`cpp` authority，配置错配会在连接 Kafka 前 fail closed。该切片尚未提供跨副本共享 fencing、双 group 切换 receipt 或自动回切，`AD-041` 保持处理中且 tracked Compose 继续为 Go authority。
 - C2 归档显式 primary runtime 的真实证据到 `benchmarks/c2-primary-runtime-2026-08-28/`：干净同 revision Go/C++ 镜像在隔离 topology 中完成 `ENQUEUED(1)` 后 offset commit；600 KiB C++ probe 将真实 WebSocket queue 压至 16/16 并返回 `PARTIAL/BACKPRESSURED/QUEUE_FULL`；错误 gRPC target worker 对同一 Kafka 坐标写 deferred/retain，`SIGKILL` 前 lag 为 1，正常 worker 重放后 commit 且 lag 归零。报告 8/8、校验和与低敏扫描通过。并行运行的 Go consumer 同时产生 legacy frame，暴露双投递并登记 P0 `AD-041`，因此 C2 runtime evidence eligible，C3 cutover blocked。
 - C2 增加默认关闭的显式 C++ primary runtime：`primary` CLI 要求命令入口、`DIPOLE_REALTIME_PRIMARY_ENABLED=true`、Presence primary 与 node transport primary 同时成立，并使用独立 `dipole-realtime-primary-*` Kafka group。Runner 固定 `poll -> project -> Presence -> DeliverNodeBatch -> primary-evidence.v1 -> commit`；只有完整 terminal `ENQUEUED|OFFLINE` ACK 集合或全部 Presence offline 才提交，partial/backpressure/rejected/failed、身份漂移、RPC 或 evidence 故障均保留同一 pending record。shadow v3 schema、命令和默认 Compose 保持不变；真实 consume-to-ACK commit、queue saturation 与进程崩溃重放仍待归档。
 - C2 冻结 primary runtime 的 Kafka offset 决策边界：C++ 对完整 `NodeDeliveryBatch/DeliveryAck` 集合复核 batch/delivery identity，仅当所有结果均为 terminal `ENQUEUED|OFFLINE` 时给出 `commit`；`PARTIAL/BACKPRESSURED`、`REJECTED`、`FAILED` 与任何身份/数量漂移均给出 `retain` 或 fail closed。该纯分类器同时约束 one-shot probe 与显式 primary runner。

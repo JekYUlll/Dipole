@@ -15,11 +15,13 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -84,6 +86,13 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	gatewayCfg := config.GatewayConfig()
 	kafkaCfg := config.KafkaConfig()
+	deliveryAuthority, err := realtimeDelivery.ParseAuthority(config.RealtimeConfig().Delivery)
+	if err != nil {
+		return nil, err
+	}
+	if err := deliveryAuthority.ValidateGatewayCapabilities(rpcCfg.DeliveryObservationEnabled, rpcCfg.DeliveryPrimaryEnabled); err != nil {
+		return nil, err
+	}
 	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
 		return nil, err
 	}
@@ -209,7 +218,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			eventSender = runtime.router
 		}
 	}
-	if err := RegisterGatewayKafkaHandlers(eventSender); err != nil {
+	if err := RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register gateway kafka handlers: %w", err)
 	}
@@ -219,7 +228,13 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("start gateway kafka consumer: %w", err)
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber)
+	authorityMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:        "dipole_realtime_delivery_authority",
+		Help:        "Current Gateway realtime message delivery authority.",
+		ConstLabels: prometheus.Labels{"authority": string(deliveryAuthority)},
+	})
+	authorityMetric.Set(1)
+	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber, authorityMetric)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
@@ -241,6 +256,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		zap.String("core_http_target", gatewayCfg.CoreHTTPTarget),
 		zap.Bool("kafka_enabled", kafkaCfg.Enabled),
 		zap.String("kafka_consumer", gatewayServiceName),
+		zap.String("realtime_delivery_authority", string(deliveryAuthority)),
 	)
 	return runtime, nil
 }

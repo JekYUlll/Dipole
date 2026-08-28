@@ -25,12 +25,14 @@ DIPOLE_REALTIME_REDIS_ENDPOINT=127.0.0.1:6379 \
   DIPOLE_REALTIME_NODE_TRANSPORT_MODE=shadow \
   DIPOLE_REALTIME_NODE_TARGETS=gateway-1=127.0.0.1:9095 \
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=replace-me \
-  dipole-realtime-delivery shadow api/proto/dipole/delivery/v1/testdata
+  DIPOLE_REALTIME_DELIVERY=shadow dipole-realtime-delivery shadow api/proto/dipole/delivery/v1/testdata
 ```
 
 Node transport requires Presence shadow and remains opt-in. Plaintext targets must use loopback. Remote targets require `DIPOLE_REALTIME_NODE_TLS_ENABLED=true` together with `DIPOLE_REALTIME_NODE_TLS_CA_FILE`, `DIPOLE_REALTIME_NODE_TLS_CERT_FILE`, `DIPOLE_REALTIME_NODE_TLS_KEY_FILE`, and `DIPOLE_REALTIME_NODE_TLS_SERVER_NAME`.
 
-The transport library also exposes `Deliver` for the additive `DeliverNodeBatch` RPC and validates every returned `DeliveryAck`. The executable and `ShadowRunner` do not call this method. Gateway primary delivery additionally requires `internal_rpc.delivery_primary_enabled=true`; the tracked default is false. This separation keeps cross-language ACK compatibility testable without granting the C++ process client-write authority.
+The long-running commands also require the shared local authority contract: `shadow` accepts only `DIPOLE_REALTIME_DELIVERY=shadow`, while `primary` accepts only `DIPOLE_REALTIME_DELIVERY=cpp`. This startup gate prevents an accidental local Go/C++ mode mismatch; cluster-wide shared authority fencing remains a separate C3 gate.
+
+The transport library exposes `Deliver` for the additive `DeliverNodeBatch` RPC and validates every returned `DeliveryAck`. Shadow mode continues to call only `ObserveNodeBatch`; the explicit primary runner calls `DeliverNodeBatch`. Gateway primary delivery additionally requires `internal_rpc.delivery_primary_enabled=true`; the tracked default is false.
 
 An explicit one-shot probe is available for isolated failure drills. It validates the golden contract and a strict protobuf JSON batch, sends exactly one `DeliverNodeBatch` request, prints the ACK as JSON, and exits. It reads the same `DIPOLE_REALTIME_NODE_*` mTLS variables and `DIPOLE_INTERNAL_RPC_SHARED_SECRET` as the shadow transport:
 
@@ -38,9 +40,9 @@ An explicit one-shot probe is available for isolated failure drills. It validate
 dipole-realtime-delivery deliver_probe api/proto/dipole/delivery/v1/testdata batch.json
 ```
 
-Primary ACK classification is shared with the transport: only a complete set of terminal `ENQUEUED` or `OFFLINE` results permits a future Kafka commit. Partial/backpressured, rejected, failed, incomplete or identity-drifted responses retain the offset. No Kafka primary loop consumes this decision yet.
+Primary ACK classification is shared with the transport: only a complete set of terminal `ENQUEUED` or `OFFLINE` results permits Kafka commit. Partial/backpressured, rejected, failed, incomplete or identity-drifted responses retain the offset in the explicit primary runner.
 
-`/livez`, `/readyz`, and `/health` return service identity after all golden contracts pass. Contract-only readiness is immediate. Shadow readiness requires a live Kafka partition assignment and a healthy latest poll/project/evidence/commit operation. The Web client persists stable delivery claims in its account-scoped IndexedDB store before invoking the packet handler; storage failures fail open and Sync Timeline remains the recovery path. Client-delivery `cpp` runtime mode remains unavailable pending cross-process failure-replay evidence.
+`/livez`, `/readyz`, and `/health` return service identity after all golden contracts pass. Contract-only readiness is immediate. Shadow and primary readiness require a live Kafka partition assignment and a healthy latest operation. The Web client persists stable delivery claims in its account-scoped IndexedDB store before invoking the packet handler; storage failures fail open and Sync Timeline remains the recovery path. Production `cpp` cutover remains unavailable pending shared authority fencing and rollback evidence.
 
 Requirements: CMake 3.21+, `/usr/bin/g++` with C++20, Ninja, clang-tidy, pkg-config, Protobuf compiler/C++ library 3.21+, gRPC C++ 1.51+, nlohmann/json 3.11+, hiredis 1.2+, and librdkafka 2.3+. `CXX`, `CLANG_TIDY_BIN`, `DIPOLE_CPP_COMPILER_PATH`, and `DIPOLE_CPP_BUILD_DIR` provide explicit toolchain overrides. Unpacked Debian package roots can be supplied through `DIPOLE_RDKAFKA_ROOT` and `DIPOLE_GRPC_ROOT` without installing host packages.
 

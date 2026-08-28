@@ -38,6 +38,10 @@ type Gateway struct {
 	AgentMCPTarget      string `mapstructure:"agent_mcp_target"`
 }
 
+type Realtime struct {
+	Delivery string `mapstructure:"delivery"`
+}
+
 type TLS struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	CertFile string `mapstructure:"cert_file"`
@@ -346,6 +350,7 @@ func Load() error {
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
+		v.SetDefault("realtime.delivery", "go")
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
@@ -514,6 +519,7 @@ func Load() error {
 			"gateway.agent_control_target",
 			"gateway.agent_mcp_enabled",
 			"gateway.agent_mcp_target",
+			"realtime.delivery",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
@@ -742,6 +748,11 @@ func GatewayConfig() Gateway {
 		AgentMCPEnabled:     cfg.GetBool("gateway.agent_mcp_enabled"),
 		AgentMCPTarget:      strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
 	}
+}
+
+func RealtimeConfig() Realtime {
+	MustLoad()
+	return Realtime{Delivery: strings.ToLower(strings.TrimSpace(cfg.GetString("realtime.delivery")))}
 }
 
 func MySQLConfig() MySQL {
