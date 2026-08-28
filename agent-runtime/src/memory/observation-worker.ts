@@ -58,15 +58,16 @@ export class ObservationWorker {
     const parsed = observationInputSchema.safeParse(raw);
     if (!parsed.success) return [];
     const input = parsed.data;
-    if (this.#seenEvents.has(input.eventId)) return [];
+    const eventKey = scopeKey(input, input.eventId);
+    if (this.#seenEvents.has(eventKey)) return [];
 
     const content = safeObservationContent(input.content);
     if (content === undefined) {
-      this.#seenEvents.add(input.eventId);
+      this.#seenEvents.add(eventKey);
       return [];
     }
 
-    this.#seenEvents.add(input.eventId);
+    this.#seenEvents.add(eventKey);
     const canonical = [input.tenantId, input.principalId, input.agentId, input.resourceId, input.eventId, input.messageId, input.messageSequence, content].join("\n");
     const memoryId = `OBS-${sha256(canonical)}`;
     const compactContent = compact(content);
@@ -109,7 +110,8 @@ export class ReflectionWorker {
     if (!parsed.success) return undefined;
     const input = parsed.data;
     const windowId = identifier.parse(raw.windowId);
-    if (this.#reflectedWindows.has(windowId)) return undefined;
+    const windowKey = scopeKey(input, windowId);
+    if (this.#reflectedWindows.has(windowKey)) return undefined;
     const observations = raw.observations.map(parseMemoryCandidate);
     const ids = new Set(observations.map((item) => item.memoryId));
     if (observations.length < this.#minimumObservations || ids.size !== observations.length) return undefined;
@@ -117,7 +119,7 @@ export class ReflectionWorker {
 
     const lines = observations.map((item) => item.content).join(" ");
     const canonical = [input.tenantId, input.principalId, input.agentId, input.resourceId, windowId, ...[...ids].sort()].join("\n");
-    this.#reflectedWindows.add(windowId);
+    this.#reflectedWindows.add(windowKey);
     return parseMemoryCandidate({
       schemaVersion: "dipole.agent.memory-candidate.v1",
       memoryId: `REF-${sha256(canonical)}`,
@@ -152,6 +154,10 @@ function priorityFor(content: string): number {
   if (/风险|延期|阻塞|事故/u.test(content)) return 90;
   if (/截止|负责|完成/u.test(content)) return 80;
   return 60;
+}
+
+function scopeKey(input: Pick<MemoryObservationInput, "tenantId" | "principalId" | "agentId" | "resourceType" | "resourceId">, id: string): string {
+  return [input.tenantId, input.principalId, input.agentId, input.resourceType, input.resourceId, id].join("\n");
 }
 
 function sha256(value: string): string {

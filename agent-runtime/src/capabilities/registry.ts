@@ -34,7 +34,9 @@ export class CapabilityRegistry {
     }
     validateInputSchemaDescriptor(capability.descriptor.inputSchema);
     const descriptor = deepFreeze({ ...capability.descriptor }) as CapabilityDescriptor;
-    this.#capabilities.set(id, { ...capability, descriptor } as AgentCapability<unknown, unknown>);
+    // Preserve prototype methods on class-based capabilities while isolating the descriptor snapshot.
+    const registered = Object.assign(Object.create(Object.getPrototypeOf(capability)), capability, { descriptor });
+    this.#capabilities.set(id, registered as AgentCapability<unknown, unknown>);
   }
 
   async execute(id: string, rawInput: unknown, context: ExecutionContext): Promise<unknown> {
