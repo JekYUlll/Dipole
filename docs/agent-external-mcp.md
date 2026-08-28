@@ -112,6 +112,12 @@ Invocation begin/finish 现支持精确重放。Begin 的稳定 ID 已存在时�
 
 该组合器当前没有进入 `index.ts` 或 Temporal Worker Activity mode。现有系统也没有“查找下一条外部 Invocation”的轮询入口；后续应由受信 Agent Step 在同一持久 Run 内先创建 exact Invocation，再把三 ID 交给组合器。禁止从 Task goal、模型输出、Kafka payload 或客户端参数直接选择 Profile/Server/Tool，也不为此增加重复命令权威的 dispatch 表。
 
+`TrustedMcpInvocationProducer` 提供上述受信创建边界。运行时输入是 strict `{workflowStep, ordinal, capabilityId, arguments, approvalId?}`；ExecutionContext 提供身份与 Task/Run，`ExternalMcpCapabilityRouteRegistry` 按 Capability 固定 Profile、Server、Tool、输入 schema、Resource resolver 和 egress policy。模型无法提交或覆盖 authority 字段。
+
+Invocation ID 由 tenant/principal/Agent/Task/Run/Workflow step/ordinal 的 canonical v1 绑定计算为 SHA-256。参数、Profile、Server、Tool、Approval 和 trace 不参与 ID 分叉；这些字段发生漂移时，相同 ID 会进入 Core exact begin 比较并 fail closed。这样 Activity retry 保持同一命令意图，显式增加 ordinal 才代表同一步内新的 Tool 调用。producer 可接收 Core 返回的 running/completed/failed 状态，为后续 receipt-only 恢复保留依据。
+
+当前启动链未注册外部 Capability route，也未把 producer 接入 Temporal Activity。Worker 完成结果尚未由专用 server-owned finish API 收敛到 Invocation terminal；在该终态所有者完成前，生产 Worker 和外部网络开关继续关闭。
+
 ## 后续实现门槛
 
 Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、真实 DNS Resolver、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。
