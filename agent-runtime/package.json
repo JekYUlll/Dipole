@@ -30,6 +30,7 @@
     "mcp:credential-drill:check": "tsx src/runtime/external-mcp-credential-lifecycle-evidence-cli.ts",
     "mcp:shadow-drill:check": "tsx src/runtime/external-mcp-shadow-drill-evidence-cli.ts",
     "repair:propose": "tsx src/promotion/workflow-repair-proposal-cli.ts",
+    "repair:plan": "tsx src/promotion/workflow-repair-execution-plan-cli.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
