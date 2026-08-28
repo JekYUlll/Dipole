@@ -3,6 +3,7 @@ package agentgrpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -1113,6 +1114,11 @@ func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.Be
 	if err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("tool:%s:begin", record.InvocationUUID), TaskUUID: record.TaskUUID, RunUUID: record.RunUUID,
+		Kind: application.AgentTaskTimelineEventToolInvocation, Status: string(record.Status), CapabilityID: record.CapabilityID,
+		ApprovalUUID: record.ApprovalUUID, OccurredAt: record.StartedAt,
+	})
 	return &agentv1.BeginMcpToolInvocationResponse{InvocationId: record.InvocationUUID, Status: string(record.Status)}, nil
 }
 
@@ -1204,6 +1210,11 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("tool:%s:finish", finish.InvocationUUID), TaskUUID: finish.TaskUUID, RunUUID: finish.RunUUID,
+		Kind: application.AgentTaskTimelineEventToolInvocation, Status: string(finish.Status), CapabilityID: command.CapabilityID,
+		OccurredAt: time.Now().UTC(),
+	})
 	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
 }
 
@@ -1374,6 +1385,11 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 	if err != nil {
 		return nil, mapApprovalError(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("approval:%s:request", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
+		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
+	})
 	return approvalResponse(approval), nil
 }
 
@@ -1391,7 +1407,19 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 	if err != nil {
 		return nil, mapApprovalError(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("approval:%s:resolve", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
+		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
+	})
 	return approvalResponse(approval), nil
+}
+
+func (s *Server) appendTimelineEvent(ctx context.Context, event application.AgentTaskTimelineEventV1) {
+	if s.timeline == nil {
+		return
+	}
+	_, _ = s.timeline.AppendAgentTaskTimelineEvent(ctx, event)
 }
 
 func (s *Server) ConsumeApproval(ctx context.Context, request *agentv1.ConsumeApprovalRequest) (*agentv1.ConsumeApprovalResponse, error) {
