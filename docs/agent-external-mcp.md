@@ -243,7 +243,11 @@ subscription mode 现在将 Core 返回且经本地 filter 选中的 subscriptio
 
 `startExternalMcpTemporalClientLifecycle` 提供受管 Workflow start connection。它只接受已启动的 `ExternalMcpTemporalWorkerLifecycle`，因此直接复用 Worker owner 冻结的 address、namespace、task queue 和 `workflowExecutions`；调用方没有第二份 Temporal config 或 route catalog 输入。Worker disabled 时 selector factory 与 Client resource factory 均不会调用；enabled 时先构造无网络 selector，再连接 Temporal。连接期间取消或后续构造失败会回滚 resource，错误只暴露固定 startup/cleanup 分类。
 
-Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立即关闭新 dispatch admission，等待已接受的 Workflow start 全部收敛后关闭独立 Client connection，并对成功或失败缓存同一 Promise。它不停止 Worker，也不关闭 Worker 持有的 Core/Artifact RPC；未来进程 owner 应先停止 Kafka consumer，再停止该 Client，最后停止 Worker lifecycle。当前该 owner没有进入 bootstrap 或 `index.ts`，没有生产 route registration，也不会建立外部 MCP 网络连接。
+Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立即关闭新 dispatch admission，等待已接受的 Workflow start 全部收敛后关闭独立 Client connection，并对成功或失败缓存同一 Promise。它不停止 Worker，也不关闭 Worker 持有的 Core/Artifact RPC；未来进程 owner 应先停止 Kafka consumer，再停止该 Client，最后停止 Worker lifecycle。当前该 owner 没有进入 bootstrap 或 `index.ts`，没有生产 route registration，也不会建立外部 MCP 网络连接。
+
+`startExternalMcpShadowTemporalRuntime` 是 Worker 与 Client 的单一 Temporal process owner。它先调用完整 Shadow Worker bootstrap，disabled deployment 直接返回；enabled 时把同一 Worker owner、route selector factory 和 AbortSignal 交给 managed Client。Client 构造失败会停止 Worker，Client 已交接后的取消会依次停止 Client 与 Worker。任何 rollback 阶段失败统一报告 cleanup failure，避免把半关闭状态误报为普通 startup failure。
+
+成功结果只公开 exact deployment、Worker composition、冻结 Temporal config、可信 `dispatch` 与幂等 `stop`。stop 固定先让 Client 拒绝新请求并 drain 已接受 Workflow start，再停止 Worker polling、Temporal connections 和同一 RPC resource；Client 或 Worker 失败都不会阻断后续清理。该 owner 不创建 Kafka consumer，也没有进入 `index.ts`/Compose；未来进程接线仍须把 Kafka 停止放在 owner.stop 之前，并提供受控 production route/resolver 与真实 readiness/Shadow 证据。
 
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
