@@ -20,13 +20,14 @@ int ProjectedMessageType(const delivery::v1::DeliveryEnvelope& envelope) {
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
                            PresenceReader* presence_reader, NodeBatchTransport* node_transport,
-                           NodeTransportMode node_transport_mode)
+                           NodeTransportMode node_transport_mode, AuthorityFenceReader* authority_fence)
     : consumer_(consumer),
       evidence_sink_(evidence_sink),
       poll_timeout_ms_(poll_timeout_ms),
       presence_reader_(presence_reader),
       node_transport_(node_transport),
-      node_transport_mode_(node_transport_mode) {
+      node_transport_mode_(node_transport_mode),
+      authority_fence_(authority_fence) {
 }
 
 ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
@@ -67,6 +68,14 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
     }
     ++stats_.polled;
     pending_record_ = result.record;
+  }
+
+  if (authority_fence_ != nullptr) {
+    if (const auto fence_error = authority_fence_->Assert(); fence_error) {
+      ++stats_.fence_errors;
+      healthy_.store(false);
+      return "delivery authority fence denied: " + *fence_error;
+    }
   }
 
   delivery::v1::DeliveryEnvelope envelope;

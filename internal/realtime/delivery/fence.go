@@ -66,8 +66,12 @@ func (f *RedisAuthorityFence) Assert(ctx context.Context, local Authority) error
 	if err != nil {
 		return err
 	}
-	if record.Epoch != f.expectedEpoch {
-		return fmt.Errorf("delivery authority fence epoch %d does not match expected epoch %d", record.Epoch, f.expectedEpoch)
+	return validateFenceRecord(record, local, f.expectedEpoch, f.now())
+}
+
+func validateFenceRecord(record FenceRecord, local Authority, expectedEpoch uint64, now time.Time) error {
+	if record.Epoch != expectedEpoch {
+		return fmt.Errorf("delivery authority fence epoch %d does not match expected epoch %d", record.Epoch, expectedEpoch)
 	}
 	if record.Phase != FencePhaseActive {
 		return fmt.Errorf("delivery authority fence phase %q denies delivery", record.Phase)
@@ -75,7 +79,7 @@ func (f *RedisAuthorityFence) Assert(ctx context.Context, local Authority) error
 	if record.Authority != local {
 		return fmt.Errorf("delivery authority fence grants %q, local authority is %q", record.Authority, local)
 	}
-	if record.LeaseUntilUnixMS <= f.now().UnixMilli() {
+	if record.LeaseUntilUnixMS <= now.UnixMilli() {
 		return fmt.Errorf("delivery authority fence lease expired")
 	}
 	return nil

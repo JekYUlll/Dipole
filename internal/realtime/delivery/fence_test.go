@@ -3,12 +3,50 @@ package delivery
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
+
+func TestAuthorityFenceSharedVectors(t *testing.T) {
+	type vector struct {
+		Name              string `json:"name"`
+		Payload           string `json:"payload"`
+		ExpectedAuthority string `json:"expected_authority"`
+		ExpectedEpoch     uint64 `json:"expected_epoch"`
+		NowUnixMS         int64  `json:"now_unix_ms"`
+		Authorized        bool   `json:"authorized"`
+	}
+	var vectors struct {
+		Cases []vector `json:"cases"`
+	}
+	payload, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "realtime-delivery-fence", "v1", "testdata", "authority.v1.json"))
+	if err != nil {
+		t.Fatalf("read shared vectors: %v", err)
+	}
+	if err := json.Unmarshal(payload, &vectors); err != nil {
+		t.Fatalf("decode shared vectors: %v", err)
+	}
+	for _, test := range vectors.Cases {
+		t.Run(test.Name, func(t *testing.T) {
+			authority, err := ParseAuthority(test.ExpectedAuthority)
+			if err != nil {
+				t.Fatal(err)
+			}
+			record, err := decodeFenceRecord([]byte(test.Payload))
+			if err == nil {
+				err = validateFenceRecord(record, authority, test.ExpectedEpoch, time.UnixMilli(test.NowUnixMS))
+			}
+			if (err == nil) != test.Authorized {
+				t.Fatalf("authorized = %v, error = %v", err == nil, err)
+			}
+		})
+	}
+}
 
 func TestRedisAuthorityFenceAssert(t *testing.T) {
 	now := time.Date(2026, 8, 28, 0, 0, 0, 0, time.UTC)

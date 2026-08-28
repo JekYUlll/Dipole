@@ -99,7 +99,7 @@ primary 顺序固定为 `poll -> project -> Presence -> DeliverNodeBatch -> prim
 
 C3 本地 authority 证据位于 `benchmarks/c3-delivery-authority-2026-08-28/`。两个独立 Compose 项目使用相同 probe 契约：`go` 模式只收到一条 legacy frame，`cpp` 模式只收到一条带稳定 delivery ID 的 frame；Gateway 指标分别确认 `go`/`cpp` ownership。`cpp` 项目中原 Go group 以 checkpoint-only 路径消费，C++ primary group 在 terminal `ENQUEUED(1)` evidence 后提交，两个 group 的有记录分区均为 log end/lag 0。该结果完成本地互斥单帧门槛，未覆盖共享实例动态切换。
 
-共享 fence v1 定义在 `contracts/realtime-delivery-fence/v1/`。Redis 值以 `epoch` 防止旧进程在同 authority 回切后重新获得权限，以 `active|frozen` 建立显式无写入窗口，并用绝对 lease 截止时间约束控制面失联。Go Gateway 仅在 `realtime.fencing_enabled=true` 时装配 reader，要求部署提供精确非零 epoch；启动和每条 message-created 副作用前都会重新读取。任何不可验证状态都使 handler 停留在当前 Kafka record 上等待，直至 lease 恢复或进程上下文取消，避免 authority 暂停被现有 consumer 转移到业务 retry/DLQ。当前没有 tracked writer 或 C++ reader，不能只开启该配置完成切流。
+共享 fence v1 定义在 `contracts/realtime-delivery-fence/v1/`，Go/C++ 共同执行其 golden vectors。Redis 值以 `epoch` 防止旧进程在同 authority 回切后重新获得权限，以 `active|frozen` 建立显式无写入窗口，并用绝对 lease 截止时间约束控制面失联。Go Gateway 仅在 `realtime.fencing_enabled=true` 时装配 reader，要求部署提供精确非零 epoch；启动和每条 message-created 副作用前都会重新读取。任何不可验证状态都使 handler 停留在当前 Kafka record 上等待，直至 lease 恢复或进程上下文取消，避免 authority 暂停被现有 consumer 转移到业务 retry/DLQ。C++ 使用对应 `DIPOLE_REALTIME_FENCING_*` 配置，在 evidence/Kafka 初始化及每个 pending record 投影前核验；`shadow` 只接受共享 `shadow`，`primary` 只接受 `cpp`，拒绝会撤销 readiness 且保留坐标。当前没有 tracked writer、节点确认或 receipt，不能只开启 reader 完成切流。
 
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
 

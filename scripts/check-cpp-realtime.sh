@@ -33,6 +33,7 @@ cmake --build "${build_dir}" --parallel
   --header-filter="${root_dir}/realtime-delivery/(src|tests)/.*" \
   --exclude-header-filter='.*generated.*' \
   -p "${build_dir}" \
+  "${root_dir}/realtime-delivery/src/authority_fence.cpp" \
   "${root_dir}/realtime-delivery/src/contract_validator.cpp" \
   "${root_dir}/realtime-delivery/src/event_projection.cpp" \
   "${root_dir}/realtime-delivery/src/health_server.cpp" \
@@ -45,6 +46,7 @@ cmake --build "${build_dir}" --parallel
   "${root_dir}/realtime-delivery/src/shadow_evidence.cpp" \
   "${root_dir}/realtime-delivery/src/shadow_runner.cpp" \
   "${root_dir}/realtime-delivery/src/shadow_runtime.cpp" \
+  "${root_dir}/realtime-delivery/tests/authority_fence_test.cpp" \
   "${root_dir}/realtime-delivery/tests/contract_test.cpp" \
   "${root_dir}/realtime-delivery/tests/event_projection_test.cpp" \
   "${root_dir}/realtime-delivery/tests/hiredis_presence_reader_test.cpp" \

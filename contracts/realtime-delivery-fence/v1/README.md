@@ -8,4 +8,4 @@ The Redis value at the configured fencing key is one strict JSON object matching
 - Readers revalidate before every message-created side effect. A denied Gateway handler waits on the current Kafka record until the lease becomes valid or the process context is cancelled; authority pauses do not enter the business retry/DLQ path.
 - A future controller must renew leases, gather per-node observations and wait for in-flight work before changing phases.
 
-The current Go Gateway reader is opt-in. No tracked writer, C++ reader, transition receipt or automatic rollback exists yet, so this contract alone does not close `AD-041`.
+The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`. No tracked writer, transition receipt or automatic rollback exists yet, so this contract alone does not close `AD-041`.

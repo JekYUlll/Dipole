@@ -30,7 +30,7 @@ DIPOLE_REALTIME_REDIS_ENDPOINT=127.0.0.1:6379 \
 
 Node transport requires Presence shadow and remains opt-in. Plaintext targets must use loopback. Remote targets require `DIPOLE_REALTIME_NODE_TLS_ENABLED=true` together with `DIPOLE_REALTIME_NODE_TLS_CA_FILE`, `DIPOLE_REALTIME_NODE_TLS_CERT_FILE`, `DIPOLE_REALTIME_NODE_TLS_KEY_FILE`, and `DIPOLE_REALTIME_NODE_TLS_SERVER_NAME`.
 
-The long-running commands also require the shared local authority contract: `shadow` accepts only `DIPOLE_REALTIME_DELIVERY=shadow`, while `primary` accepts only `DIPOLE_REALTIME_DELIVERY=cpp`. This startup gate prevents an accidental local Go/C++ mode mismatch; cluster-wide shared authority fencing remains a separate C3 gate.
+The long-running commands also require the local authority contract: `shadow` accepts only `DIPOLE_REALTIME_DELIVERY=shadow`, while `primary` accepts only `DIPOLE_REALTIME_DELIVERY=cpp`. Shared fencing is opt-in with `DIPOLE_REALTIME_FENCING_ENABLED=true`, a positive `DIPOLE_REALTIME_FENCING_EPOCH`, and optional `DIPOLE_REALTIME_FENCING_KEY`; it reuses the configured direct/Sentinel Redis connection. Startup validates the lease before opening evidence or Kafka, and every pending record revalidates before projection. `shadow` expects shared authority `shadow`; `primary` expects `cpp`. The writer, node acknowledgements and transition receipt remain separate C3 gates.
 
 The transport library exposes `Deliver` for the additive `DeliverNodeBatch` RPC and validates every returned `DeliveryAck`. Shadow mode continues to call only `ObserveNodeBatch`; the explicit primary runner calls `DeliverNodeBatch`. Gateway primary delivery additionally requires `internal_rpc.delivery_primary_enabled=true`; the tracked default is false.
 

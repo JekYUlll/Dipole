@@ -184,6 +184,19 @@ ValidationError HiredisPresenceReader::ReadUsers(const std::vector<std::string>&
   return std::nullopt;
 }
 
+ValidationError HiredisPresenceReader::ReadString(const std::string& key, std::string* value) {
+  if (key.empty() || value == nullptr) return "Redis string key and destination are required";
+  value->clear();
+  if (auto error = EnsureConnected()) return error;
+  const auto reply = Command(context_, {"GET", key});
+  if (!reply || reply->type != REDIS_REPLY_STRING) {
+    if (!reply || reply->type == REDIS_REPLY_ERROR) Close();
+    return "Redis string value is unavailable";
+  }
+  value->assign(reply->str, reply->len);
+  return std::nullopt;
+}
+
 void HiredisPresenceReader::Close() {
   if (context_ != nullptr) redisFree(context_);
   context_ = nullptr;

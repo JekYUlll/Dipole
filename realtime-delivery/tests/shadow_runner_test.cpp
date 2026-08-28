@@ -144,6 +144,17 @@ class FakeNodeTransport final : public dipole::realtime::NodeBatchTransport {
   dipole::realtime::ValidationError primary_error;
 };
 
+class FakeAuthorityFence final : public dipole::realtime::AuthorityFenceReader {
+ public:
+  dipole::realtime::ValidationError Assert() override {
+    ++attempts;
+    return error;
+  }
+
+  int attempts = 0;
+  dipole::realtime::ValidationError error;
+};
+
 void TestProjectedRecordCommitsAfterEvidence() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -413,6 +424,31 @@ void TestEvidenceFailureKeepsOffsetUncommitted() {
   Check(!runner.Ready(), "processing failure removes readiness");
 }
 
+void TestAuthorityFenceRetriesPendingRecordBeforeProjection() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PolledRecord());
+  FakeEvidenceSink sink;
+  FakeAuthorityFence fence;
+  fence.error = "frozen";
+  dipole::realtime::ShadowRunner runner(
+      &consumer, &sink, 100, nullptr, nullptr, dipole::realtime::NodeTransportMode::kObserve, &fence);
+
+  const auto denied = runner.RunOnce({});
+  Check(denied.has_value() && denied->find("fence") != std::string::npos,
+        "fence denial reaches the runtime loop");
+  Check(sink.entries.empty() && consumer.commit_attempts.empty(),
+        "fence denial precedes projection, evidence and commit");
+  Check(runner.Stats().fence_errors == 1 && !runner.Ready(),
+        "fence denial advances bounded stats and removes readiness");
+
+  fence.error = std::nullopt;
+  const auto recovered = runner.RunOnce({});
+  Check(!recovered, "same pending record continues after fence recovery");
+  Check(fence.attempts == 2 && sink.entries.size() == 1 &&
+            consumer.commit_attempts == std::vector<std::int64_t>{99},
+        "recovered fence projects and commits without another poll");
+}
+
 void TestCommitFailureReachesCaller() {
   FakeConsumer consumer;
   consumer.results.push_back(PolledRecord());
@@ -470,6 +506,7 @@ int main() {
     TestPrimaryFullyOfflineCommitsWithoutTransportCall();
     TestInvalidPresenceWritesEvidenceAndCommits();
     TestEvidenceFailureKeepsOffsetUncommitted();
+    TestAuthorityFenceRetriesPendingRecordBeforeProjection();
     TestCommitFailureReachesCaller();
     TestTimeoutAndPollError();
     TestInvalidConstruction();
