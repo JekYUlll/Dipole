@@ -120,7 +120,7 @@ export interface TemporalMcpResultProjector {
     readonly invocationId: string;
     readonly roundId: string;
     readonly result: unknown;
-  }): Promise<{ readonly artifactId: string; readonly artifactVersion: number }>;
+  }, signal?: AbortSignal): Promise<{ readonly artifactId: string; readonly artifactVersion: number }>;
 }
 
 export interface TemporalMcpDispatchDependencies {
@@ -258,7 +258,7 @@ export class TemporalMcpDispatchActivity {
       invocationId: produced.invocationId,
       roundId: result.receipt.roundId,
       result: result.result
-    }));
+    }, signal));
     signal.throwIfAborted();
     return {
       kind: "complete",
