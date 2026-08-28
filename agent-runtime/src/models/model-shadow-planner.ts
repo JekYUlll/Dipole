@@ -4,6 +4,7 @@ import { DeterministicContextCompiler, type ContextCompiler, type ContextFragmen
 import type { ShadowPlanner } from "../events/shadow-processor.js";
 import type { ModelRouter } from "./model-router.js";
 import type { AgentContextMemory, ConversationReadResult } from "../capabilities/agent-capability-rpc.js";
+import type { CapabilityDescriptor } from "../policy/policy-engine.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const modelPlanSchema = z.object({
@@ -51,7 +52,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
     private readonly memories?: ContextMemoryReader,
     private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
     private readonly lineage?: MemoryContextLineageWriter,
-    private readonly conversationReader?: ConversationEvidenceReader
+    private readonly conversationReader?: ConversationEvidenceReader,
+    private readonly capabilityDescriptors?: readonly CapabilityDescriptor[]
   ) {
     this.#allowedCapabilityIds = new Set(allowedCapabilityIds.map((id) => id.trim()).filter(Boolean));
   }
@@ -67,7 +69,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
       taskId: context.taskId, runId: context.runId,
       attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
     }, async span => {
-      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories, conversation) });
+      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories, conversation, this.capabilityDescriptors) });
       span.setAttribute("dipole.agent.context.compiler_version", value.compilerVersion);
       span.setAttribute("dipole.agent.context.estimated_tokens", value.estimatedTokens);
       span.setAttribute("dipole.agent.context.selected_count", value.selected.length);
@@ -124,7 +126,8 @@ function contextFragments(
   context: Parameters<ShadowPlanner["plan"]>[1],
   allowedCapabilityIds: readonly string[],
   memories: readonly AgentContextMemory[],
-  conversation: ConversationReadResult | undefined
+  conversation: ConversationReadResult | undefined,
+  capabilityDescriptors: readonly CapabilityDescriptor[] | undefined
 ): ContextFragment[] {
   return [
     ...(conversation?.found === true ? conversation.messages.slice(0, maxConversationEvidenceMessages).map((message, index): ContextFragment => {
@@ -179,7 +182,9 @@ function contextFragments(
     },
     {
       id: "capabilities:shadow-v1", section: "capability", trust: "trusted", priority: 100, required: true,
-      content: JSON.stringify({ allowedCapabilityIds }),
+      content: JSON.stringify(capabilityDescriptors === undefined
+        ? { allowedCapabilityIds }
+        : { capabilities: capabilityDescriptors.filter((descriptor) => allowedCapabilityIds.includes(descriptor.id)).sort((left, right) => left.id.localeCompare(right.id)) }),
       provenance: { sourceType: "capability_registry", sourceId: "shadow-v1" }
     }
   ];

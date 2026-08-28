@@ -143,6 +143,23 @@ describe("ModelShadowPlanner", () => {
     expect(plan.model?.context).not.toHaveProperty("estimatorId");
   });
 
+  it("compiles registered capability metadata into trusted context", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.read"], undefined, undefined, undefined, undefined, undefined,
+      [{ id: "conversation.read", risk: "read", requiredPermission: "conversation.read" }]
+    );
+
+    await planner.plan(event(), context());
+
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
+    expect(request?.prompt).toContain('\\"capabilities\\":[{\\"id\\":\\"conversation.read\\",\\"risk\\":\\"read\\",\\"requiredPermission\\":\\"conversation.read\\"}]');
+    expect(request?.prompt).not.toContain('\\"id\\":\\"message.send\\"');
+  });
+
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },
