@@ -116,4 +116,43 @@ func TestAgentMemoryRepositoryContract(t *testing.T) {
 	if err := store.RevokeOwnedMemory(context.Background(), "dipole", "U100", "MEM-A", "U100", "outdated", now); !errors.Is(err, application.ErrAgentMemoryConflict) {
 		t.Fatalf("second revoke error=%v", err)
 	}
+	erasureReceipts := make(chan *application.AgentMemoryOwnerErasureReceiptV1, 2)
+	erasureErrors := make(chan error, 2)
+	for index, memoryID := range []string{"MEM-B", "MEM-CORR-B"} {
+		go func() {
+			receipt, eraseErr := store.EraseOwnedMemoryRoot(context.Background(), "dipole", "U100", memoryID, "U100", application.AgentMemoryErasureReasonOwnerRequest, now.Add(time.Duration(index+1)*time.Minute))
+			erasureReceipts <- receipt
+			erasureErrors <- eraseErr
+		}()
+	}
+	var receipt *application.AgentMemoryOwnerErasureReceiptV1
+	for range 2 {
+		if err = <-erasureErrors; err != nil {
+			t.Fatalf("concurrent erase corrected root: %v", err)
+		}
+		current := <-erasureReceipts
+		if current == nil || current.MemoryRootUUID != "MEM-B" || current.Versions != 2 || current.ErasedByUUID != "U100" {
+			t.Fatalf("erasure receipt=%+v", current)
+		}
+		if receipt == nil {
+			receipt = current
+		} else if !receipt.ErasedAt.Equal(current.ErasedAt) {
+			t.Fatalf("erasure receipts diverged: first=%+v current=%+v", receipt, current)
+		}
+	}
+	var erasedRows, leakedRows int
+	if err = db.QueryRow(`SELECT COUNT(*), SUM(content <> '[erased]' OR compact_content IS NOT NULL OR source_uri IS NOT NULL OR resource_type <> 'erased' OR resource_id <> '[erased]' OR revoke_reason <> 'privacy erasure' OR (memory_version = 1 AND (source_type <> 'erased' OR source_id <> '[erased]' OR source_sequence IS NOT NULL)) OR (memory_version > 1 AND correction_reason <> 'privacy erasure')) FROM agent_memories WHERE memory_root_uuid = 'MEM-B' AND content_erased_at IS NOT NULL AND content_erasure_reason_code = 'owner_request'`).Scan(&erasedRows, &leakedRows); err != nil || erasedRows != 2 || leakedRows != 0 {
+		t.Fatalf("erased rows=%d leaked=%d err=%v", erasedRows, leakedRows, err)
+	}
+	items, err = store.ListContextMemories(context.Background(), query)
+	if err != nil || len(items) != 0 {
+		t.Fatalf("erased root remained in Context: items=%+v err=%v", items, err)
+	}
+	replayed, err := store.EraseOwnedMemoryRoot(context.Background(), "dipole", "U100", "MEM-B", "U100", application.AgentMemoryErasureReasonOwnerRequest, now.Add(2*time.Minute))
+	if err != nil || replayed == nil || !replayed.ErasedAt.Equal(receipt.ErasedAt) {
+		t.Fatalf("exact erasure replay: receipt=%+v err=%v", replayed, err)
+	}
+	if _, err = store.EraseOwnedMemoryRoot(context.Background(), "dipole", "U999", "MEM-B", "U999", application.AgentMemoryErasureReasonOwnerRequest, now); !errors.Is(err, application.ErrAgentMemoryDenied) {
+		t.Fatalf("foreign erasure error=%v", err)
+	}
 }

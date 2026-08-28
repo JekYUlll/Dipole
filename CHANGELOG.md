@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Memory migration v40 增加 root-wide 内容擦除基础：内部 sqlc/Core 事务锁定完整纠正链，撤销 active 版本，并清除正文、compact、URI、resource binding、root 原始来源与自由文本审计原因；只保留 owner、root/version/predecessor、擦除时间和枚举原因码。语言中立 policy/receipt 明确无自动执行或公开 API 权威，当前没有 Proto、Gateway、Vue 或 retention Worker 入口。
 - Agent Memory correction 增加纯离线五类 Eval 门禁：严格 manifest/observation 绑定 predecessor/successor、完整 lineage、精确重放、漂移冲突、owner/foreign 权限与 successor-only retrieval，并要求模型、Tool、Token 和模型成本全部为零；输入各限 64 KiB，错误与标准报告不回显 Memory、principal 或正文，也不连接生产数据库或写入 Memory。
 - Agent Memory owner correction 继续沿用认证派生权限：公开请求只提交 Memory ID、期望版本、纠正内容与原因，tenant/principal/corrector 由 Gateway/Core 认证链绑定；响应省略内部 provenance URI，并同时返回权威 predecessor 与 successor，客户端不推断并发结果。
 - Agent Memory 增加 owner-scoped 治理边界：公开 HTTP 不接收 tenant/principal，Gateway 从已认证会话构造 Core RequestContext；Core 只允许认证 `dipole-gateway` 调用并再次按 tenant、principal 与 Memory ID 约束查询和撤销。公开 DTO 省略内部 provenance URI，撤销必须提交有界原因并保存 revoker、原因和时间；不同原因的终态重放返回冲突。
@@ -433,6 +434,7 @@
 
 ### 迁移说明
 
+- v40 为 `agent_memories` 增加内容擦除审计列与固定 tombstone 约束。Down migration 只删除 v40 列和约束，已被擦除的正文、来源及自由文本不会恢复；回滚仍保留 revoked 状态和 v39 纠正链，因此执行擦除前必须按隐私策略确认不可逆影响。
 - v39 在 `agent_memories` 上追加 lineage 与 correction 审计列，并把历史记录回填为 `root=self/version=1`。发布顺序为 migration/sqlc 与 Core transaction、additive gRPC/Gateway、最后显式开启 `VITE_AGENT_MEMORY_CORRECTION_ENABLED`；回滚前先关闭前端入口，Down 会删除纠正 lineage 字段，执行前需确认是否保留已产生的版本链审计。
 - migration v38 为 `agent_memories` 增加 `revoked_by_uuid` 与 `revoke_reason`，并约束 active 记录审计字段为空、revoked 记录同时具备时间、revoker 和原因。历史 revoked 记录以原 principal 和固定 `legacy internal revocation` 回填。发布顺序为 Core migration/sqlc 与 additive gRPC、Gateway、最后显式开启 `gateway.agent_memory_enabled` 和前端 `VITE_AGENT_MEMORIES_ENABLED`；回滚先关闭两个入口，Down 会移除新增撤销审计列，需先确认审计保留要求。
 - Agent Subscription owner create 使用 additive `ListEligibleSubscriptionConversations` RPC，无数据库迁移。先确认 Core 已应用 migration v34，再滚动 Core/Go Proto、Gateway/Web 和 TS 生成客户端；旧 Runtime 不调用该 RPC。`gateway.agent_subscription_enabled=false` 与 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false` 仍需同时显式启用。回滚先关闭前端入口，再关闭 Gateway adapter；该流程不修改 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。
@@ -502,6 +504,7 @@
 
 ### 验证
 
+- Agent Memory privacy retention 通过领域/Core/sqlc 聚焦测试和真实 MySQL 8.4 contract：两版本 root 全量 tombstone、原字段清除、Context 零召回、越权拒绝、精确重放，以及 v40/v39 分步回滚均通过。
 - Agent Memory correction 通过应用/事务/传输/Gateway/Vue 聚焦测试、canonical Go 全仓测试、前端 85 项 Vitest、工具链 3 项与生产构建；真实 MySQL 8.4 完整 migration v1→v39、v39→v38→后续逐级回滚及 owner repository 并发精确重放通过。真实测试同时修复显式 migration 目标版本、SQL NULL Tool arguments 与 MySQL JSON compact 的兼容基线。
 - Agent Memory owner 治理测试覆盖稳定分页、并发精确撤销重放、不同原因冲突、owner/tenant 隔离、Gateway 服务身份、客户端 principal 注入拒绝、公开 URI 省略、严格前端响应解析和 authoritative row replacement；Vue 21 个文件共 83 项 Vitest、生产构建及 Chromium、Firefox、WebKit 共 6 项 desktop/mobile E2E 通过。真实 MySQL 8.4 验证 migration v1→v38、v38→v37 回滚、生命周期 CHECK、历史审计回填和 owner sqlc contract；canonical Go test/vet、完整 Agent Runtime 566 项通过且 22 项按环境预期跳过，双端构建与官方 npm audit 零高危漏洞。
 - Agent Subscription Shadow Collector 与 evidence 聚焦测试通过 `13/13`，完整 Runtime 通过 `566 passed / 22 expected skipped`；覆盖固定查询/时间、单 series、持续启用、URL 凭据、缺失/多值/非整数/error envelope、CLI 低敏失败、三类严格 Schema 及 Collector-to-evidence 兼容。typecheck/build、官方 npm 源 `0 vulnerabilities`、canonical Go、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
@@ -612,6 +615,7 @@
 
 ### 已知问题
 
+- Memory root 擦除尚未覆盖模型派生的 Shadow plan、Step、Artifact 或 Agent Message；Context manifest 可定位直接引用 Task，但缺少贯穿全部派生数据的字段级 lineage。公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
 - Memory v1 已提供默认关闭的 owner list/revoke HTTP/Pencil/Vue 闭环和追加式撤销审计；自动写入、append-only 纠正/版本冲突、Observation/Reflection Worker、置信度策略及 hybrid/vector retrieval 仍待完成。共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
 - Event Subscription 已具备默认关闭的公开 Definition 目录、authenticated conversation chooser、owner list/create/revoke HTTP/Pencil/Vue 闭环、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；尚未归档真实 Project Guardian corpus/review report、embedding/小模型 candidate evidence或 subscription Runtime 灰度证据。共享环境继续固定 `direct_target`，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
