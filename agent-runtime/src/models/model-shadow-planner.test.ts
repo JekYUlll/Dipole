@@ -16,6 +16,10 @@ describe("ModelShadowPlanner", () => {
     }));
     const router = { generate } as unknown as ModelRouter;
     const requested: Array<{ taskId: string; runId: string; resourceType: string; resourceId: string }> = [];
+    const recordMemoryContext = vi.fn(async (_taskId: string, selected: { selected: readonly { id: string }[] }) => {
+      expect(generate).not.toHaveBeenCalled();
+      expect(selected.selected).toEqual(expect.arrayContaining([expect.objectContaining({ id: "memory:MEM-1" })]));
+    });
     const planner = new ModelShadowPlanner(router, [], new DeterministicContextCompiler(), {
       listContextMemories: async (context, resourceType, resourceId) => {
         requested.push({ taskId: context.taskId, runId: context.runId, resourceType, resourceId });
@@ -24,16 +28,30 @@ describe("ModelShadowPlanner", () => {
           provenance: { sourceType: "message", sourceId: "M100", sequence: "42" }
         }];
       }
-    });
+    }, undefined, { recordMemoryContext });
 
     await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
 
     expect(requested).toEqual([{ taskId: "TASK-1", runId: "RUN-1", resourceType: "conversation", resourceId: "group:G1" }]);
+    expect(recordMemoryContext).toHaveBeenCalledWith("TASK-1", expect.objectContaining({ compilerVersion: "v1" }));
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
     expect(prompt).toContain('"id":"memory:MEM-1"');
     expect(prompt).toContain('"section":"memory"');
     expect(prompt).toContain('"trust":"untrusted"');
     expect(prompt).toContain('"sourceId":"M100"');
+  });
+
+  it("does not call the model when pre-model lineage persistence fails", async () => {
+    const generate = vi.fn();
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, [], new DeterministicContextCompiler(), {
+      listContextMemories: async () => [{
+        memoryId: "MEM-1", memoryType: "semantic", content: "private", priority: 80,
+        provenance: { sourceType: "message", sourceId: "M1" }
+      }]
+    }, undefined, { recordMemoryContext: async () => { throw new Error("lineage unavailable"); } });
+
+    await expect(planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context())).rejects.toThrow(/lineage unavailable/);
+    expect(generate).not.toHaveBeenCalled();
   });
   it("returns a budgeted model plan with routing evidence", async () => {
     const generate = vi.fn(async () => ({

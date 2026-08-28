@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 41
+const currentMigrationVersion = 42
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -55,6 +55,12 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory pre-model lineage migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 41)
+		assertTableCount(t, db, 48)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)
 		}
@@ -524,6 +530,24 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	}
 	if _, err := db.Exec(`UPDATE agent_memories SET content_erased_at = UTC_TIMESTAMP(3), content_erased_by_uuid = 'U100', content_erasure_reason_code = 'owner_request' WHERE memory_uuid = 'MEM-2'`); err == nil {
 		t.Fatal("expected incomplete content erasure to fail")
+	}
+	if _, err := db.Exec(`INSERT INTO agent_tasks (
+		task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid,
+		status, trigger_type, trigger_ref, goal
+	) VALUES ('TASK-MEM-LINEAGE', 'DEF-MEM-LINEAGE', 1, 'dipole', 'U100', 'UAI000000000000000001',
+		'running', 'message.direct.created', 'M-LINEAGE', 'pre-model lineage')`); err != nil {
+		t.Fatalf("insert Agent Memory lineage Task: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memory_task_lineage (memory_uuid, task_uuid, representation, source)
+		VALUES ('MEM-2', 'TASK-MEM-LINEAGE', 'full', 'context_pre_model')`); err != nil {
+		t.Fatalf("insert pre-model Agent Memory lineage: %v", err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory pre-model lineage migration: %v", err)
+	}
+	var preModelRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = 'TASK-MEM-LINEAGE'`).Scan(&preModelRows); err != nil || preModelRows != 0 {
+		t.Fatalf("pre-model Agent Memory rollback rows=%d err=%v", preModelRows, err)
 	}
 	if err := runner.Down(ctx, 1); err != nil {
 		t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)

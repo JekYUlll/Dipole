@@ -67,7 +67,7 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
         }
       }
       for (const reference of memoryReferences) {
-        await connection.execute(INSERT_AGENT_MEMORY_TASK_LINEAGE, [reference.memoryId, record.taskId, reference.representation]);
+        await connection.execute(INSERT_AGENT_MEMORY_TASK_LINEAGE, [reference.memoryId, record.taskId, reference.representation, "runtime_write"]);
       }
       if (inserted) {
         for (const [index, step] of record.plan.steps.entries()) {
@@ -75,6 +75,26 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
             record.taskId, index + 1, required(step.capabilityId, "capability ID"), canonicalJSON(step.input)
           ]);
         }
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback().catch(() => undefined);
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  async recordMemoryContext(taskId: string, context: MemoryContextSelection): Promise<void> {
+    const references = memoryContextReferences(context);
+    if (references.length === 0) return;
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      for (const reference of references) {
+        await connection.execute(INSERT_AGENT_MEMORY_TASK_LINEAGE, [
+          reference.memoryId, required(taskId, "Task ID"), reference.representation, "context_pre_model"
+        ]);
       }
       await connection.commit();
     } catch (error) {
@@ -127,7 +147,14 @@ export interface MemoryContextReference {
   readonly representation: "full" | "compact";
 }
 
-export function memoryContextReferences(context: NonNullable<NonNullable<ShadowPlan["model"]>["context"]> | undefined): readonly MemoryContextReference[] {
+export interface MemoryContextSelection {
+  readonly selected: readonly {
+    readonly id: string;
+    readonly representation: "full" | "compact";
+  }[];
+}
+
+export function memoryContextReferences(context: MemoryContextSelection | NonNullable<NonNullable<ShadowPlan["model"]>["context"]> | undefined): readonly MemoryContextReference[] {
   if (context === undefined) return [];
   const references = new Map<string, "full" | "compact">();
   for (const item of context.selected) {
