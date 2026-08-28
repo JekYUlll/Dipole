@@ -83,6 +83,7 @@
 
 ### 新增
 
+- Agent Runtime 增加默认 shadow-only 的 Observation/Reflection Memory worker：按事件生成有界、确定性、可去重的 `observational` candidate，再按唯一 evidence window 聚合 reflection candidate；输入超限或凭据模式 fail closed，候选不自动写入 Memory、不调用模型或外部系统。详见 `docs/agent-memory-observation.md`。
 - Agent Workflow repair 增加 `repair:plan` dry-run 执行计划编译器：仅接受已批准提案、双人审批、独立 executor grant 和重新采集的当前/目标/回滚投影，生成带三组 CAS SHA-256、15 分钟有效期和确定性 plan ID 的语言中立 v1 计划。计划生成不连接 MySQL/Temporal、不提供 apply/execute/rollback 字段，身份复用、回滚证据漂移和窗口外重放均 fail closed。
 - 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
 - 增加语言中立 `dipole.agent.memory-derived-lineage` v1 manifest/report、严格 Zod 解析器和 `audit:memory-derived` CLI。owner 授权 manifest 保持本地敏感输入，标准输出省略 tenant、principal、Memory ID 与全部正文；MySQL 审计账号仅新增 Memory 与 lineage 两张表的只读权限。
