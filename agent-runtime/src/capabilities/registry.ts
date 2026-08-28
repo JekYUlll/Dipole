@@ -32,6 +32,7 @@ export class CapabilityRegistry {
     if (this.#capabilities.has(id)) {
       throw new Error(`capability ${id} is already registered`);
     }
+    validateInputSchemaDescriptor(capability.descriptor.inputSchema);
     this.#capabilities.set(id, capability as AgentCapability<unknown, unknown>);
   }
 
@@ -57,5 +58,37 @@ export class CapabilityRegistry {
 
   descriptors(): readonly CapabilityDescriptor[] {
     return [...this.#capabilities.values()].map((capability) => capability.descriptor);
+  }
+}
+
+const inputSchemaKeys = new Set([
+  "type", "properties", "required", "additionalProperties", "minimum", "maximum", "minLength", "maxLength", "default", "enum"
+]);
+const inputSchemaMaxBytes = 4 * 1024;
+
+function validateInputSchemaDescriptor(value: Readonly<Record<string, unknown>> | undefined): void {
+  if (value === undefined) return;
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    throw new Error("capability input schema descriptor is invalid");
+  }
+  if (Buffer.byteLength(serialized, "utf8") > inputSchemaMaxBytes) {
+    throw new Error("capability input schema descriptor is too large");
+  }
+  visitInputSchemaValue(value, 0, false);
+}
+
+function visitInputSchemaValue(value: unknown, depth: number, propertyMap: boolean): void {
+  if (depth > 8 || value === null) return;
+  if (Array.isArray(value)) {
+    for (const item of value) visitInputSchemaValue(item, depth + 1, false);
+    return;
+  }
+  if (typeof value !== "object") return;
+  for (const [key, item] of Object.entries(value)) {
+    if (!propertyMap && !inputSchemaKeys.has(key)) throw new Error(`capability input schema key ${key} is not allowed`);
+    visitInputSchemaValue(item, depth + 1, !propertyMap && key === "properties");
   }
 }
