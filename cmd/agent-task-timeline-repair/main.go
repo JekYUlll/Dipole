@@ -24,6 +24,7 @@ func main() {
 	backoff := flag.Duration("retry-backoff", time.Second, "delay before a failed repair is retried")
 	interval := flag.Duration("interval", time.Second, "poll interval")
 	metricsAddress := flag.String("metrics-address", "", "optional Prometheus metrics listen address")
+	once := flag.Bool("once", false, "process one repair batch and exit")
 	flag.Parse()
 
 	if err := config.Load(); err != nil {
@@ -59,6 +60,14 @@ func main() {
 		metrics.MarkReady()
 		defer func() { _ = metrics.Close(context.Background()) }()
 		repairer.WithObserver(collector)
+	}
+	if *once {
+		report, err := repairer.RunOnce(ctx, time.Now().UTC())
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("agent timeline repair once: claimed=%d repaired=%d retried=%d\n", report.Claimed, report.Repaired, report.Retried)
+		return
 	}
 	if err := repairer.Run(ctx); err != nil && !signalContextError(err) {
 		fatal(err)
