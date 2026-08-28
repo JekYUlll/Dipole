@@ -52,7 +52,10 @@ describe('AgentElicitationForm', () => {
 
   it('keeps local values and the durable request pending after validation fails', async () => {
     const service = client([waitingTask])
-    const wrapper = mount(AgentElicitationForm, { props: { taskId: 'TASK-1', client: service, now: () => 1_000 } })
+    const wrapper = mount(AgentElicitationForm, {
+      attachTo: document.body,
+      props: { taskId: 'TASK-1', client: service, now: () => 1_000 },
+    })
     await flushPromises()
     await wrapper.get('[data-agent-field="title"]').setValue('')
     await wrapper.get('[data-agent-submit]').trigger('submit')
@@ -61,7 +64,12 @@ describe('AgentElicitationForm', () => {
     expect(service.provideInput).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Event title为必填项')
     expect((wrapper.get('[data-agent-field="title"]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.get('[data-agent-field="title"]').attributes()).toMatchObject({
+      'aria-invalid': 'true', 'aria-describedby': 'agent-elicit-title-error',
+    })
+    expect(document.activeElement).toBe(wrapper.get('[data-agent-field="title"]').element)
     expect(wrapper.get('[data-agent-elicit-state]').attributes('data-agent-elicit-state')).toBe('validation_error')
+    wrapper.unmount()
   })
 
   it('fails closed without rendering a cached Form when Task Query is unavailable', async () => {
