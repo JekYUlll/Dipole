@@ -158,12 +158,12 @@ onMounted(() => {
 
 <style scoped>
 .search-workspace {
-  --search-canvas: #f3f1ea;
-  --search-surface: #fffefb;
-  --search-ink: #17211d;
-  --search-soft: #66716c;
-  --search-line: #dde2dc;
-  --search-accent: #00a86b;
+  --search-canvas: var(--dp-canvas);
+  --search-surface: var(--dp-surface);
+  --search-ink: var(--dp-ink);
+  --search-soft: var(--dp-ink-soft);
+  --search-line: var(--dp-line);
+  --search-accent: var(--dp-accent);
   flex: 1;
   min-width: 0;
   height: 100vh;
