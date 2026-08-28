@@ -8,7 +8,11 @@ The Redis value at the configured fencing key is one strict JSON object matching
 - Readers revalidate before every message-created side effect. A denied Gateway handler waits on the current Kafka record until the lease becomes valid or the process context is cancelled; authority pauses do not enter the business retry/DLQ path.
 - A controller must renew leases, gather live per-node observations and wait for in-flight work before changing phases.
 
-The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`, including exact bounded reason codes. Both runtimes write `observation.schema.json` records at startup and on idle heartbeats. Each 15-second Redis record is keyed by component and stable instance ID, binds the expected mode/epoch to the exact observed lease SHA-256, and reports a bounded authorization reason. Observation persistence is fail-closed. Go message handlers keep the read-only lease reader, while the C++ observed reader throttles publication to five seconds; neither path adds per-message observation writes. The operator CLI below writes guarded transitions, while expected-node aggregation, tracked automation, node-confirmed checkpoint receipts and automatic rollback remain absent; this contract alone does not close `AD-041`.
+The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`, including exact bounded reason codes. Both runtimes write `observation.schema.json` records at startup and on idle heartbeats. Each 15-second Redis record is keyed by component and stable instance ID, binds the expected mode/epoch to the exact observed lease SHA-256, and reports a bounded authorization reason. Observation persistence is fail-closed. Go message handlers keep the read-only lease reader, while the C++ observed reader throttles publication to five seconds; neither path adds per-message observation writes.
+
+`expected-nodes.schema.json` freezes the exact deployment membership used for one proof. The aggregator reads each named Redis key directly, requires a live Redis TTL and an internally valid observation lifetime, and binds every record to the transition receipt's authority, epoch, phase, lease deadline and `next_sha256`. An active transition accepts only `authorized/authorized`; a frozen transition accepts only `denied/frozen`. The output follows `observation-aggregate.schema.json` and is eligible-only, with canonical node ordering and manifest SHA-256. Redis key discovery cannot replace the manifest because it cannot prove a missing intended node. The operator CLI below writes guarded transitions, while tracked automation, dual-group checkpoint receipts and automatic rollback remain absent; this contract alone does not close `AD-041`.
+
+`checkpoint-manifest.schema.json` names the compatibility and primary Kafka groups plus the exact message topics. A checkpoint collector requires both groups to be `Stable`, assigned to every named partition, committed at the read-committed log end, and in agreement on every log end. `checkpoint-receipt.schema.json` binds this partition-level zero-lag snapshot to the observation aggregate SHA-256 and lease identity. `checkpoint-bundle.schema.json` stores both records together so the short-lived Redis proof remains independently reviewable.
 
 ## Operator transition state machine
 
@@ -36,4 +40,49 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-authority \
   -confirm
 ```
 
-This CLI relies on OS and Redis access controls; `operator_id` is an audit label and is not independently authenticated. Receipts remain in Redis for seven days. Per-node observations alone do not authorize a transition; durable checkpoint receipts, expected-node aggregation and automatic rollback are still required before shared cutover.
+This CLI relies on OS and Redis access controls; `operator_id` is an audit label and is not independently authenticated. Transition receipts remain in Redis for seven days. Per-node observations alone do not authorize a transition; the node-confirmed checkpoint below must succeed, and automatic rollback plus shared-topology interruption drills remain required before production cutover.
+
+## Node-confirmed checkpoint
+
+Prepare an expected-node manifest from the exact deployment inventory:
+
+```json
+{
+  "schema_version": "dipole.realtime.delivery-fence-expected-nodes.v1",
+  "manifest_id": "cutover-20260828-nodes",
+  "nodes": [
+    {"component": "gateway", "observer_id": "gateway-a"},
+    {"component": "realtime-delivery", "observer_id": "cpp-a"}
+  ]
+}
+```
+
+Prepare the two group identities and fully qualified message topics:
+
+```json
+{
+  "schema_version": "dipole.realtime.delivery-checkpoint-manifest.v1",
+  "manifest_id": "cutover-20260828-checkpoint",
+  "topics": [
+    "dipole.message.direct.created",
+    "dipole.message.group.created"
+  ],
+  "groups": [
+    {"role": "compatibility", "group_id": "dipole-gateway-consumer"},
+    {"role": "primary", "group_id": "dipole-realtime-primary-v1"}
+  ]
+}
+```
+
+Run the collector while the named topics are quiescent and every expected node is refreshing its observation:
+
+```bash
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover-checkpoint \
+  -transition-receipt /path/to/transition-receipt.json \
+  -expected-nodes /path/to/expected-nodes.json \
+  -checkpoint-manifest /path/to/checkpoint-manifest.json \
+  -output /path/to/new-checkpoint-bundle.json \
+  -confirm
+```
+
+The output path must be new. The command rejects missing nodes, stale proof, expired lease, rebalance, incomplete assignments, uncommitted non-empty partitions, nonzero lag, unequal group high water, and log-end movement during the capture window. An empty partition may retain Kafka's raw `committed_offset=-1` only when its read-committed log end is zero. The command never commits offsets or changes the authority lease. Preserve the bundle in the deployment evidence archive before the next transition.

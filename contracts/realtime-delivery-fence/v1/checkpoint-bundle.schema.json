@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/checkpoint-bundle.schema.json",
+  "title": "Dipole Realtime Delivery Checkpoint Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_aggregate", "checkpoint"],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-checkpoint-bundle.v1" },
+    "observation_aggregate": { "$ref": "observation-aggregate.schema.json" },
+    "checkpoint": { "$ref": "checkpoint-receipt.schema.json" }
+  }
+}

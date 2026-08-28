@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/expected-nodes.schema.json",
+  "title": "Dipole Realtime Delivery Fence Expected Nodes v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "nodes"],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-fence-expected-nodes.v1" },
+    "manifest_id": { "$ref": "#/$defs/id" },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "observer_id"],
+        "properties": {
+          "component": { "$ref": "#/$defs/id" },
+          "observer_id": { "$ref": "#/$defs/id" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" }
+  }
+}
