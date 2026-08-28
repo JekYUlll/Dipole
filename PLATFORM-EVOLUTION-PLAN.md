@@ -297,6 +297,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加默认关闭的 `sync.cassandra_primary_hydration`，以 locator 为边界优先读取 Cassandra，失败立即回退 MySQL，并拒绝与 shadow hydration 同时启用；真实灰度和停止门禁仍待完成。
 - [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
 - [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
+- [x] 为 Sync Cassandra primary/fallback hydration 接入低基数运行时计数与耗时 collector，保留原有日志观测和 MySQL 即时回退；真实客户端窗口、共享环境采集、责任人批准与可执行回切仍待完成。
 - [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 
