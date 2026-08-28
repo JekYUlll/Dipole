@@ -57,6 +57,7 @@
 - **本轮进展：** Context Compiler capability section 已从运行时 Registry 注入排序稳定的 descriptor 元数据，并只投影允许集合；模型仍无法获得输入 schema、凭据或 authority 字段，后续按 route-specific schema 证据继续扩展。
 - **本轮进展：** 两个只读 Capability 已提供低敏输入 Schema 摘要并进入 Context Compiler；Schema 仍由代码拥有且执行侧保留 Zod 最终校验，其他 Capability 和 route-specific tokenizer 继续按门禁扩展。
 - **本轮进展：** Registry 已在注册边界校验 Schema 摘要关键字、`properties` 映射和 4 KiB 上限，阻止未知描述字段或异常膨胀进入 Context；后续新增 Capability 仍需补齐 descriptor 与契约测试。
+- **本轮进展：** Registry 现在深度冻结注册 descriptor 及嵌套 Schema，形成稳定的 capability authority snapshot；新增 Capability 仍需通过 descriptor、Schema 和权限契约测试。
 - **建议方向：** 以已验证的 repair contract 为基础补齐 operator 灰度、运行时告警和全套件稳定运行证据，再以共享环境证据开启前端 flag；继续只返回低敏元数据，随后按证据逐步加入 Artifact 引用与 Pencil/视觉回归。
 - **处理门槛：** Core/Gateway 契约测试覆盖 foreign Task、游标重复/漂移、跨 Run 事件、事件缺失和字段脱敏；前端默认关闭，未收到 v1 response 时保持当前 Task Query 页面。
 

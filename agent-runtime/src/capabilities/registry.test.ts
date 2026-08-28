@@ -39,4 +39,20 @@ describe("CapabilityRegistry", () => {
     expect(() => new CapabilityRegistry().register(capability({ type: "object", properties: { value: { type: "string" } }, x: true }))).toThrow(/key x/);
     expect(() => new CapabilityRegistry().register(capability({ type: "object", default: "x".repeat(5 * 1024) }))).toThrow(/too large/);
   });
+
+  it("freezes the registered descriptor snapshot against external mutation", () => {
+    const inputSchema = { type: "object", properties: { limit: { type: "integer", maximum: 100 } } };
+    const registry = new CapabilityRegistry();
+    registry.register({
+      descriptor: { id: "conversation.read", risk: "read" as const, requiredPermission: "conversation.read", inputSchema },
+      inputSchema: { parse: (input: unknown) => input },
+      resolveResource: () => ({ resourceType: "conversation", resourceId: "*", action: "read" }),
+      execute: async () => undefined
+    });
+
+    expect(() => { inputSchema.type = "string"; }).toThrow();
+    expect(registry.descriptors()[0]?.inputSchema).toEqual({ type: "object", properties: { limit: { type: "integer", maximum: 100 } } });
+    expect(Object.isFrozen(registry.descriptors()[0])).toBe(true);
+    expect(Object.isFrozen(registry.descriptors()[0]?.inputSchema)).toBe(true);
+  });
 });
