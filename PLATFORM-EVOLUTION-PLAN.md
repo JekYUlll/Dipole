@@ -350,6 +350,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
   - [x] 增加认证 owner list/create/revoke API、版本化撤销审计、active Definition 目录、readable/scope conversation chooser 和默认关闭的 Agent 配置 UI。
   - [ ] 根据真实 reviewed corpus、Eval 与成本证据引入小模型、embedding 或向量预筛选，并完成 subscription Runtime 灰度/回切门禁（`AD-034`）。
+    - [x] 增加 Memory prefilter provider-neutral evidence v1：embedding/small_model 的逐 case score/threshold、延迟和成本绑定 reviewed corpus SHA-256，并提供低敏离线聚合评测；不接入模型、Kafka 或生产灰度。
     - [x] 增加默认关闭的 direct-target 在线 Shadow 对照、固定低基数指标、Prometheus error/drift 告警和无数据迁移回滚路径；真实 corpus 与晋级决策仍待完成。
     - [x] 增加 24 小时 Prometheus 快照 evidence Schema/CLI，固定覆盖率、样本量、counter reset、零 error、双 authority=false 与 24 小时有效期；真实共享环境归档仍待完成。
     - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
