@@ -110,6 +110,10 @@ add_executable(dipole-realtime-delivery src/main.cpp)
 target_link_libraries(dipole-realtime-delivery PRIVATE delivery_contract)
 target_compile_options(dipole-realtime-delivery PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+add_executable(dipole-realtime-projection-benchmark benchmarks/projection_benchmark.cpp)
+target_link_libraries(dipole-realtime-projection-benchmark PRIVATE delivery_contract)
+target_compile_options(dipole-realtime-projection-benchmark PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
 include(CTest)
 if(BUILD_TESTING)
   add_executable(delivery_authority_fence_test tests/authority_fence_test.cpp)
