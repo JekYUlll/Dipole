@@ -51,7 +51,7 @@ export class AllowlistedMcpToolClient {
     if (policyNames.length !== sortedTools.length || !policyNames.every((name, index) => name === sortedTools[index])) {
       throw new Error("MCP Tool egress policies must exactly match the Tool allowlist");
     }
-    this.#egressPolicies = new Map(normalizedTools.map((name) => [name, validateEgressPolicy(name, egressPolicies[name])]));
+    this.#egressPolicies = new Map(normalizedTools.map((name) => [name, validateMcpToolEgressPolicy(name, egressPolicies[name])]));
     this.#allowedTools = new Set(normalizedTools);
     this.#serverId = normalizedServerId;
     if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 100 || requestTimeoutMs > 60_000) {
@@ -86,7 +86,7 @@ export class AllowlistedMcpToolClient {
 
   async callTool(name: string, arguments_: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<CallToolResult> {
     if (!this.#allowedTools.has(name) || !this.#discovered.has(name)) throw new Error(`MCP Tool ${name} is not allowlisted and discovered`);
-    const safeArguments = enforceEgressPolicy(arguments_, this.#egressPolicies.get(name)!);
+    const safeArguments = enforceMcpToolEgressPolicy(arguments_, this.#egressPolicies.get(name)!);
     const result = await this.#client.callTool({ name, arguments: safeArguments }, {
       timeout: this.#requestTimeoutMs, maxTotalTimeout: this.#requestTimeoutMs, ...(signal === undefined ? {} : { signal })
     });
@@ -101,7 +101,7 @@ export class AllowlistedMcpToolClient {
     if (!this.#allowedTools.has(params.name) || !this.#discovered.has(params.name)) {
       throw new Error(`MCP Tool ${params.name} is not allowlisted and discovered`);
     }
-    const safeArguments = enforceEgressPolicy(params.arguments, this.#egressPolicies.get(params.name)!);
+    const safeArguments = enforceMcpToolEgressPolicy(params.arguments, this.#egressPolicies.get(params.name)!);
     const continuation = validateRoundContinuation(params.inputResponses, params.requestState);
     // Keep SDK auto-fulfilment disabled: Temporal persists the wait, then a fresh
     // Activity sends the exact continuation parameters produced by the checkpoint.
@@ -140,7 +140,7 @@ const sensitiveArgumentNames = new Set([
   "authorization", "cookie", "credential", "credentials", "privatekey", "clientsecret"
 ]);
 
-function validateEgressPolicy(name: string, policy: McpToolEgressPolicy | undefined): McpToolEgressPolicy {
+export function validateMcpToolEgressPolicy(name: string, policy: McpToolEgressPolicy | undefined): McpToolEgressPolicy {
   if (policy === undefined || !Number.isSafeInteger(policy.maximumBytes) || policy.maximumBytes < 2 || policy.maximumBytes > 64 * 1024) {
     throw new Error(`MCP Tool ${name} egress policy has an invalid byte limit`);
   }
@@ -151,7 +151,7 @@ function validateEgressPolicy(name: string, policy: McpToolEgressPolicy | undefi
   return { allowedArgumentNames: allowed, maximumBytes: policy.maximumBytes };
 }
 
-function enforceEgressPolicy(arguments_: Readonly<Record<string, unknown>>, policy: McpToolEgressPolicy): Record<string, unknown> {
+export function enforceMcpToolEgressPolicy(arguments_: Readonly<Record<string, unknown>>, policy: McpToolEgressPolicy): Record<string, unknown> {
   let encoded: string;
   try {
     encoded = JSON.stringify(arguments_);
