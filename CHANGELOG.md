@@ -23,6 +23,7 @@
 - Agent Memory 增加 prefilter rollout decision v1 与 `eval:memory-prefilter-rollout`：重新计算双 reviewer/adjudicator 结果和候选 evidence 门禁，绑定 corpus/review/final-label/evidence 哈希后输出 `eligible|blocked`；该决策仍只作为离线发布前置证据，不开启 Runtime、Kafka 或自动 Memory 写入。
 - Agent Memory 增加 provider-neutral Runtime binding v1：`off/shadow/enforced` 三态 gate 精确校验 rollout decision、candidate/configuration/corpus/review 哈希；只有 `enforced + eligible` 才允许后续任务创建，所有模式均固定无 Memory 写权限，默认不接入生产 Runtime。
 - Cassandra Message Store 增加 read rollout evidence v1 与 `cassandra-read-rollout-evidence` CLI：绑定服务部署 revision、窗口、配置比例、Cassandra/MySQL/fallback/verification 聚合计数和 p95 延迟，按样本、fallback、核验和延迟门槛输出 `eligible|blocked`。报告不含会话或消息标识，仍只支持离线归档，不改变默认 Cassandra 路由。
+- Sync Service 增加 Cassandra hydration evidence v1 与 `sync-cassandra-hydration-evidence` CLI：分别记录 `shadow|primary` 窗口的 Cassandra 命中、MySQL fallback、缺失/冲突/错误和 p95，按统一策略输出低敏 `eligible|blocked`；该证据不改变 `sync.cassandra_primary_hydration` 默认关闭状态。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
