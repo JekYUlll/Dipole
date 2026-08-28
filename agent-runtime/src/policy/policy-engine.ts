@@ -7,6 +7,8 @@ export interface CapabilityDescriptor {
   readonly risk: CapabilityRisk;
   readonly requiredPermission: string;
   readonly approvalRequired?: boolean;
+  /** A low-sensitivity JSON Schema summary safe to expose to the model. */
+  readonly inputSchema?: Readonly<Record<string, unknown>>;
 }
 
 export interface ResourceRequest {

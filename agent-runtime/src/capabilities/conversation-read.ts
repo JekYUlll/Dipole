@@ -9,9 +9,15 @@ const inputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20)
 }).strict();
 type ConversationReadInput = z.infer<typeof inputSchema>;
+const inputSchemaDescriptor = {
+  type: "object", properties: {
+    conversationId: { type: "string", minLength: 1, maxLength: 256 },
+    limit: { type: "integer", minimum: 1, maximum: 100, default: 20 }
+  }, required: ["conversationId"], additionalProperties: false
+} as const;
 
 export class ConversationReadCapability implements AgentCapability<ConversationReadInput, ConversationReadResult> {
-  readonly descriptor = { id: "conversation.read", risk: "read" as const, requiredPermission: "conversation.read" };
+  readonly descriptor = { id: "conversation.read", risk: "read" as const, requiredPermission: "conversation.read", inputSchema: inputSchemaDescriptor };
   readonly inputSchema = inputSchema;
 
   constructor(private readonly client: Pick<AgentCapabilityRPCClient, "readConversation">) {}
