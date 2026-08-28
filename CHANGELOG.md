@@ -30,6 +30,7 @@
 - 新增 `scripts/smoke-agent-timeline-repair.sh` 进程级隔离演练：使用临时 MySQL、真实迁移和独立 repair 二进制，验证 repair intent 被 claim/replay、状态收敛为 `completed` 且 Timeline 事件保持单份；worker 由 timeout 有界停止，演练不会启用共享环境服务。
 - `smoke-agent-timeline-repair.sh` 真实运行通过：隔离 MySQL、migration、repair process 和幂等事件计数均通过，失败时会保留状态诊断并自动清理临时资源。
 - 增加 Timeline repair 的 Prometheus 告警规则和 promtool 测试：区分短窗口失败与持续 projection retry，profile 启用时由 observability 配置按可选服务抓取；默认拓扑和 repair 开关保持关闭。
+- 新增正式运维手册 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`：统一记录 repair worker 的前置检查、隔离启用、指标验收、暂停回切和低敏证据归档要求；明确禁止 down migration、手工修改状态和删除 Timeline 事件。
 
 - Gateway/WS 新增 `message.timeline_notify_mode=primary`：与客户端 `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐，继续发送无正文 `sync.item.notify.v1` locator，支持客户端按会话序号向 Cassandra 主读路径补拉；`off|shadow` 行为保持兼容，回切只需恢复原模式。
 - Sync Web 客户端支持 `VITE_TIMELINE_NOTIFY_MODE=primary`：收到经过严格校验的 `sync.item.notify.v1` 后，按会话 `message_seq` 串行补拉缺口，只有目标序号和 `message_uuid` 完整匹配才合并消息；事件去重、失败隔离和 shadow/off 兼容行为保持不变。服务端 Cassandra 主读仍需独立灰度证据才能启用。
