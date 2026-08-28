@@ -36,7 +36,7 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误，因为已实现的 Secret、DNS、CA 与 TLS I/O adapters 尚未组合进受控 startup。这一行为用于避免配置人员把独立适配器误认为已具备生产链路。
+关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O composition 已实现，但尚未由受控环境配置构造并注册到 `index.ts`。这一行为用于避免配置人员把独立组合器误认为已具备灰度上线条件。
 
 ## 轮换与吊销
 
@@ -59,6 +59,14 @@ envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte 
 key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
 
 凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或主动吊销连接，encrypted-file Provider 也尚未装配到启动链。
+
+## Production I/O 组合
+
+`createExternalMcpProductionIoRegistry` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只返回 `ExternalMcpTransportRegistry`。调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+
+构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
+
+组合器当前接受显式 typed config，尚未从环境变量、ConfigMap 或 Secret volume 加载路径映射，也未注册到 `index.ts` 或 Temporal Worker。上线接线需要独立实现严格配置 loader、启动前 manifest 审核、provider owner 授权与灰度 tenant allowlist；不要直接把任意 JSON 反序列化后传入组合器。
 
 ## Network Guard 边界
 
@@ -146,6 +154,6 @@ Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 
 
 文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
 
-生产接入仍至少需要：每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 encrypted-file Secret Provider、DNS Resolver、CA provider 和 pinned Dispatcher 均未注册到 `index.ts` 或 Worker startup，单独存在不会读取凭据、发起查询或建立连接。
+生产接入仍至少需要：严格启动配置 loader、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。当前 composition 未注册到 `index.ts` 或 Worker startup，不会读取凭据、发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
