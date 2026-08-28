@@ -26,6 +26,7 @@ const runningTask: AgentTaskState = {
 const client = (states: AgentTaskState[]): AgentTaskClient => ({
   getTask: vi.fn().mockImplementation(async () => states.shift() ?? runningTask),
   provideInput: vi.fn().mockResolvedValue(undefined),
+  resolveApproval: vi.fn().mockResolvedValue(undefined),
   cancelTask: vi.fn().mockResolvedValue(undefined),
 })
 
