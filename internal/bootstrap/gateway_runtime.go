@@ -19,6 +19,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
+	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/prometheus/client_golang/prometheus"
@@ -206,16 +207,28 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)
 		}
 	}
+	var agentSubscriptions gateway.AgentSubscriptionControlApplication
+	if gatewayCfg.AgentSubscriptionEnabled {
+		agentSubscriptions, err = gateway.NewAgentSubscriptionControlClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn), gatewayCfg.AgentSubscriptionTenantID,
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Subscription control client: %w", err)
+		}
+	}
 
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages:        messages,
-		Core:            core,
-		Search:          search,
-		AgentTasks:      agentTasks,
-		AgentMCP:        agentMCP,
-		Presence:        wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:         platformRateLimit.NewLimiter(),
-		AgentMCPLimiter: platformRateLimit.NewLimiter(),
+		Messages:           messages,
+		Core:               core,
+		Search:             search,
+		AgentTasks:         agentTasks,
+		AgentSubscriptions: agentSubscriptions,
+		AgentMCP:           agentMCP,
+		Presence:           wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:            platformRateLimit.NewLimiter(),
+		AgentMCPLimiter:    platformRateLimit.NewLimiter(),
 	})
 	if err != nil {
 		cleanup()
