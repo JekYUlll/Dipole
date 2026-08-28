@@ -5,6 +5,7 @@ import type { McpWorkerDispatchCheckpointV1 } from "../mcp/mcp-worker-dispatch.j
 import {
   TemporalMcpDispatchActivity,
   createTemporalMcpDispatchActivities,
+  temporalMcpDispatchRouteBinding,
   type TemporalMcpContextResolver,
   type TemporalMcpInvocationProducer,
   type TemporalMcpResultProjector,
@@ -18,7 +19,7 @@ const context: ExecutionContext = {
   approvedCapabilities: [], requestId: "REQ-1", traceId: "TRACE-1"
 };
 const route = { routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read", workflowStep: 3, ordinal: 1 };
-const routeBinding = { routeId: route.routeId, routeVersion: route.routeVersion };
+const routeBinding = temporalMcpDispatchRouteBinding(route);
 const invocationId = "a".repeat(64);
 const roundId = "b".repeat(64);
 
@@ -105,7 +106,16 @@ describe("Temporal MCP dispatch Activity", () => {
     })).rejects.toThrow(/input is invalid/i);
     expect(dependencies.contexts.resolveMcpContext).not.toHaveBeenCalled();
     await expect(activity.execute({
-      kind: "begin", routeId: route.routeId, routeVersion: 2,
+      kind: "begin", ...routeBinding, routeVersion: 2,
+      taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
+    })).rejects.toThrow(/route binding/i);
+    expect(dependencies.contexts.resolveMcpContext).not.toHaveBeenCalled();
+    await expect(new TemporalMcpDispatchActivity({ ...route, ordinal: 2 }, dependencies).execute({
+      kind: "begin", ...routeBinding,
+      taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
+    })).rejects.toThrow(/route binding/i);
+    await expect(new TemporalMcpDispatchActivity({ ...route, capabilityId: "calendar.event.list" }, dependencies).execute({
+      kind: "begin", ...routeBinding,
       taskId: "TASK-1", runId: "RUN-1", principalUserId: "U100", arguments: {}
     })).rejects.toThrow(/route binding/i);
     expect(dependencies.contexts.resolveMcpContext).not.toHaveBeenCalled();
