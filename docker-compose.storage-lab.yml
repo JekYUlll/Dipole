@@ -27,10 +27,21 @@ services:
       discovery.type: single-node
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: -Xms512m -Xmx512m
+    # The lab runs on constrained hosts; keep this override isolated from production.
+    command:
+      - elasticsearch
+      - -Ecluster.routing.allocation.disk.watermark.low=85%
+      - -Ecluster.routing.allocation.disk.watermark.high=95%
+      - -Ecluster.routing.allocation.disk.watermark.flood_stage=97%
     volumes:
       - elasticsearch_lab_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS
+          'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=1s'
+          | grep -Eq '"status":"(yellow|green)"'
       interval: 10s
       timeout: 5s
       retries: 30
