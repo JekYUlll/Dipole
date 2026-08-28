@@ -33,6 +33,7 @@ import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
 import type { SubscriptionShadowObserver } from "../observability/subscription-shadow-metrics.js";
+import type { SubscriptionRuntimeResult } from "../evals/subscription-runtime-gate.js";
 import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
@@ -216,6 +217,10 @@ export interface ShadowSubscriptionMatcher {
   matchEventSubscriptions(event: AgentEvent, identity: AgentIdentity): Promise<AgentEventSubscription[]>;
 }
 
+export interface SubscriptionRuntimeGate {
+  evaluate(): SubscriptionRuntimeResult;
+}
+
 interface ShadowSubscriptionAdmission extends ShadowRunAdmission, ShadowSubscriptionMatcher {}
 
 export interface TemporalReadActivityResources {
@@ -252,7 +257,8 @@ export function buildKafkaShadowRuntime(
   trajectory?: MySQLShadowAuditSink,
   dispatcher?: ShadowTaskDispatcher,
   subscriptionMatcher?: ShadowSubscriptionMatcher,
-  subscriptionShadowObserver?: SubscriptionShadowObserver
+  subscriptionShadowObserver?: SubscriptionShadowObserver,
+  subscriptionRuntimeGate?: SubscriptionRuntimeGate
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
   return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
@@ -291,6 +297,7 @@ export function buildKafkaShadowRuntime(
     }
     if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
     if (config.triggerMode === "subscription") {
+      if (subscriptionRuntimeGate !== undefined && !subscriptionRuntimeGate.evaluate().taskCreationAllowed) return;
       const matcher = subscriptionMatcher ?? admission;
       if (matcher === undefined) {
         throw new Error("Subscription trigger mode has no Agent Capability RPC admission client");
