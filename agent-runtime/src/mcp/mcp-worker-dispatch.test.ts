@@ -99,6 +99,26 @@ describe("MCP Worker command dispatch", () => {
     expect(resolver.resolveMcpToolCommand).toHaveBeenCalledTimes(2);
     expect(sessions.open).toHaveBeenCalledTimes(2);
   });
+
+  it("stops cancellation during Core resolution before claiming a Tool round", async () => {
+    const controller = new AbortController();
+    const resolver = {
+      resolveMcpToolCommand: vi.fn(async () => {
+        controller.abort(new Error("cancelled during resolution"));
+        return externalCommand();
+      })
+    };
+    const receipts = receiptClient();
+    const dispatcher = new McpWorkerCommandDispatcher(
+      resolver,
+      new McpInputRequiredActivity({ open: vi.fn() }, receipts),
+      () => 1_100
+    );
+
+    await expect(dispatcher.begin({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" }, controller.signal))
+      .rejects.toThrow(/cancelled during resolution/i);
+    expect(receipts.claimMcpToolRound).not.toHaveBeenCalled();
+  });
 });
 
 function externalCommand(): AgentMcpToolCommand {
