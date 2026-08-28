@@ -193,6 +193,28 @@ func (s *Server) RevokeOwnedMemory(ctx context.Context, request *agentv1.RevokeO
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
+func (s *Server) CorrectOwnedMemory(ctx context.Context, request *agentv1.CorrectOwnedMemoryRequest) (*agentv1.CorrectOwnedMemoryResponse, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory owner control is unavailable")
+	}
+	result, err := s.memoryControls.CorrectOwnedMemory(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryOwnerCorrectionRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, MemoryUUID: request.GetMemoryId(),
+		ExpectedVersion: request.GetExpectedVersion(), Content: request.GetContent(),
+		CompactContent: request.GetCompactContent(), Reason: request.GetReason(),
+	})
+	if err != nil {
+		return nil, agentMemoryOwnerErrorV1(err)
+	}
+	return &agentv1.CorrectOwnedMemoryResponse{
+		Previous:  agentOwnedMemoryResponseV1(result.Previous),
+		Corrected: agentOwnedMemoryResponseV1(result.Corrected),
+	}, nil
+}
+
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	authenticated, ok := grpcauth.CallerService(ctx)
 	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
@@ -225,6 +247,9 @@ func agentOwnedMemoryResponseV1(item application.AgentMemoryV1) *agentv1.AgentOw
 			SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Sequence: item.Provenance.Sequence,
 		}, ValidFromUnixMs: item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(),
 		RevokedById: item.RevokedByUUID, RevokeReason: item.RevokeReason,
+		MemoryRootId: item.MemoryRootUUID, MemoryVersion: item.MemoryVersion,
+		SupersedesMemoryId: item.SupersedesMemoryUUID, CorrectedById: item.CorrectedByUUID,
+		CorrectionReason: item.CorrectionReason,
 	}
 	if item.ExpiresAt != nil {
 		response.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()

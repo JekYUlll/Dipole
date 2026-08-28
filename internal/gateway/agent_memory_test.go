@@ -11,10 +11,12 @@ import (
 )
 
 type gatewayAgentMemoryRPCStub struct {
-	listRequest    *agentv1.ListOwnedMemoriesRequest
-	revokeRequest  *agentv1.RevokeOwnedMemoryRequest
-	listResponse   *agentv1.ListOwnedMemoriesResponse
-	revokeResponse *agentv1.AgentOwnedMemory
+	listRequest     *agentv1.ListOwnedMemoriesRequest
+	revokeRequest   *agentv1.RevokeOwnedMemoryRequest
+	correctRequest  *agentv1.CorrectOwnedMemoryRequest
+	listResponse    *agentv1.ListOwnedMemoriesResponse
+	revokeResponse  *agentv1.AgentOwnedMemory
+	correctResponse *agentv1.CorrectOwnedMemoryResponse
 }
 
 func (s *gatewayAgentMemoryRPCStub) ListOwnedMemories(_ context.Context, request *agentv1.ListOwnedMemoriesRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedMemoriesResponse, error) {
@@ -25,6 +27,11 @@ func (s *gatewayAgentMemoryRPCStub) ListOwnedMemories(_ context.Context, request
 func (s *gatewayAgentMemoryRPCStub) RevokeOwnedMemory(_ context.Context, request *agentv1.RevokeOwnedMemoryRequest, _ ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error) {
 	s.revokeRequest = request
 	return s.revokeResponse, nil
+}
+
+func (s *gatewayAgentMemoryRPCStub) CorrectOwnedMemory(_ context.Context, request *agentv1.CorrectOwnedMemoryRequest, _ ...grpc.CallOption) (*agentv1.CorrectOwnedMemoryResponse, error) {
+	s.correctRequest = request
+	return s.correctResponse, nil
 }
 
 func TestAgentMemoryControlClientBindsPrincipalAndCanonicalCursor(t *testing.T) {
@@ -66,11 +73,34 @@ func TestAgentMemoryControlClientRequiresAuditedRevokeResponse(t *testing.T) {
 	}
 }
 
+func TestAgentMemoryControlClientRequiresCanonicalCorrectionLineage(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	previous := gatewayAgentMemoryProtoFixture(now)
+	previous.Status, previous.RevokedAtUnixMs, previous.RevokedById, previous.RevokeReason = "revoked", now.UnixMilli(), "U100", "superseded by MEM-2"
+	corrected := gatewayAgentMemoryProtoFixture(now)
+	corrected.MemoryId, corrected.MemoryVersion = "MEM-2", 2
+	corrected.MemoryRootId, corrected.SupersedesMemoryId = "MEM-1", "MEM-1"
+	corrected.CorrectedById, corrected.CorrectionReason = "U100", "fix owner"
+	corrected.Content, corrected.CompactContent = "Owner is Bob", "Owner: Bob"
+	corrected.Provenance = &agentv1.AgentMemoryProvenance{SourceType: "owner_correction", SourceId: "MEM-1", Sequence: "2"}
+	rpc := &gatewayAgentMemoryRPCStub{correctResponse: &agentv1.CorrectOwnedMemoryResponse{Previous: previous, Corrected: corrected}}
+	client, _ := NewAgentMemoryControlClient(rpc, "dipole", time.Second)
+	result, err := client.Correct(context.Background(), "U100", "MEM-1", 1, "Owner is Bob", "Owner: Bob", "fix owner")
+	if err != nil || result.Corrected.MemoryVersion != 2 || rpc.correctRequest.GetContext().GetPrincipalUserId() != "U100" {
+		t.Fatalf("correct result=%+v request=%+v err=%v", result, rpc.correctRequest, err)
+	}
+	rpc.correctResponse.Corrected.MemoryRootId = "MEM-FORGED"
+	if _, err = client.Correct(context.Background(), "U100", "MEM-1", 1, "Owner is Bob", "Owner: Bob", "fix owner"); !errors.Is(err, ErrAgentMemoryUnavailable) {
+		t.Fatalf("forged correction lineage error = %v", err)
+	}
+}
+
 func gatewayAgentMemoryProtoFixture(now time.Time) *agentv1.AgentOwnedMemory {
 	return &agentv1.AgentOwnedMemory{
 		MemoryId: "MEM-1", AgentId: "UAI", MemoryType: "semantic", Status: "active",
 		ResourceType: "conversation", ResourceId: "group:G1", Content: "Owner is Alice", CompactContent: "Owner: Alice", Priority: 80,
 		Provenance:      &agentv1.AgentMemoryProvenance{SourceType: "message", SourceId: "MSG-1", Sequence: "42"},
 		ValidFromUnixMs: now.Add(-time.Hour).UnixMilli(), CreatedAtUnixMs: now.UnixMilli(),
+		MemoryRootId: "MEM-1", MemoryVersion: 1,
 	}
 }

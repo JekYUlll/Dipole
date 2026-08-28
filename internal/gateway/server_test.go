@@ -106,8 +106,10 @@ type gatewayAgentDefinitionStub struct {
 }
 
 type gatewayAgentMemoryStub struct {
-	principal, after, memoryID, reason string
-	limit, listCalls, revokeCalls      int
+	principal, after, memoryID, reason          string
+	content, compactContent                     string
+	expectedVersion                             uint32
+	limit, listCalls, revokeCalls, correctCalls int
 }
 
 func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
@@ -120,6 +122,16 @@ func (s *gatewayAgentMemoryStub) Revoke(_ context.Context, principalUUID, memory
 	s.principal, s.memoryID, s.reason = principalUUID, memoryID, reason
 	s.revokeCalls++
 	return &AgentMemory{MemoryID: memoryID, Status: "revoked", RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
+func (s *gatewayAgentMemoryStub) Correct(_ context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error) {
+	s.principal, s.memoryID, s.expectedVersion = principalUUID, memoryID, expectedVersion
+	s.content, s.compactContent, s.reason = content, compactContent, reason
+	s.correctCalls++
+	return &AgentMemoryCorrection{
+		Previous:  AgentMemory{MemoryID: memoryID, MemoryRootID: memoryID, MemoryVersion: expectedVersion, Status: "revoked"},
+		Corrected: AgentMemory{MemoryID: "MEM-2", MemoryRootID: memoryID, MemoryVersion: expectedVersion + 1, SupersedesID: memoryID, Status: "active", Content: content},
+	}, nil
 }
 
 func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
@@ -458,6 +470,22 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	gateway.Engine().ServeHTTP(revokeResponse, revoke)
 	if revokeResponse.Code != http.StatusOK || memories.principal != "U100" || memories.memoryID != "MEM-1" || memories.reason != "outdated" || memories.revokeCalls != 1 {
 		t.Fatalf("revoke code=%d stub=%+v body=%s", revokeResponse.Code, memories, revokeResponse.Body.String())
+	}
+	forgedCorrection := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/correct", strings.NewReader(`{"expectedVersion":1,"content":"Owner is Bob","compactContent":"Owner: Bob","reason":"fix owner","principalUserId":"U999"}`))
+	forgedCorrection.Header.Set("Authorization", "Bearer "+token)
+	forgedCorrection.Header.Set("Content-Type", "application/json")
+	forgedCorrectionResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(forgedCorrectionResponse, forgedCorrection)
+	if forgedCorrectionResponse.Code != http.StatusBadRequest || memories.correctCalls != 0 {
+		t.Fatalf("forged correction code=%d calls=%d", forgedCorrectionResponse.Code, memories.correctCalls)
+	}
+	correction := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/correct", strings.NewReader(`{"expectedVersion":1,"content":"Owner is Bob","compactContent":"Owner: Bob","reason":"fix owner"}`))
+	correction.Header.Set("Authorization", "Bearer "+token)
+	correction.Header.Set("Content-Type", "application/json")
+	correctionResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(correctionResponse, correction)
+	if correctionResponse.Code != http.StatusOK || memories.principal != "U100" || memories.expectedVersion != 1 || memories.content != "Owner is Bob" || memories.reason != "fix owner" || memories.correctCalls != 1 {
+		t.Fatalf("correction code=%d stub=%+v body=%s", correctionResponse.Code, memories, correctionResponse.Body.String())
 	}
 }
 

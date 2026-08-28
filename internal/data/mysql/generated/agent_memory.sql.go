@@ -11,8 +11,58 @@ import (
 	"time"
 )
 
+const getAgentMemoryBySupersedes = `-- name: GetAgentMemoryBySupersedes :one
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+FROM agent_memories
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND supersedes_memory_uuid = ?
+LIMIT 1
+`
+
+type GetAgentMemoryBySupersedesParams struct {
+	TenantID             string
+	PrincipalUuid        string
+	SupersedesMemoryUuid sql.NullString
+}
+
+func (q *Queries) GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMemoryBySupersedesParams) (AgentMemory, error) {
+	row := q.db.QueryRowContext(ctx, getAgentMemoryBySupersedes, arg.TenantID, arg.PrincipalUuid, arg.SupersedesMemoryUuid)
+	var i AgentMemory
+	err := row.Scan(
+		&i.ID,
+		&i.MemoryUuid,
+		&i.TenantID,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
+		&i.MemoryType,
+		&i.Status,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.Content,
+		&i.CompactContent,
+		&i.Priority,
+		&i.SourceType,
+		&i.SourceID,
+		&i.SourceUri,
+		&i.SourceSequence,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.RevokedByUuid,
+		&i.RevokeReason,
+		&i.MemoryRootUuid,
+		&i.MemoryVersion,
+		&i.SupersedesMemoryUuid,
+		&i.CorrectedByUuid,
+		&i.CorrectionReason,
+	)
+	return i, err
+}
+
 const getOwnedAgentMemory = `-- name: GetOwnedAgentMemory :one
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -52,6 +102,62 @@ func (q *Queries) GetOwnedAgentMemory(ctx context.Context, arg GetOwnedAgentMemo
 		&i.CreatedAt,
 		&i.RevokedByUuid,
 		&i.RevokeReason,
+		&i.MemoryRootUuid,
+		&i.MemoryVersion,
+		&i.SupersedesMemoryUuid,
+		&i.CorrectedByUuid,
+		&i.CorrectionReason,
+	)
+	return i, err
+}
+
+const getOwnedAgentMemoryForUpdate = `-- name: GetOwnedAgentMemoryForUpdate :one
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+FROM agent_memories
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_uuid = ?
+LIMIT 1
+FOR UPDATE
+`
+
+type GetOwnedAgentMemoryForUpdateParams struct {
+	TenantID      string
+	PrincipalUuid string
+	MemoryUuid    string
+}
+
+func (q *Queries) GetOwnedAgentMemoryForUpdate(ctx context.Context, arg GetOwnedAgentMemoryForUpdateParams) (AgentMemory, error) {
+	row := q.db.QueryRowContext(ctx, getOwnedAgentMemoryForUpdate, arg.TenantID, arg.PrincipalUuid, arg.MemoryUuid)
+	var i AgentMemory
+	err := row.Scan(
+		&i.ID,
+		&i.MemoryUuid,
+		&i.TenantID,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
+		&i.MemoryType,
+		&i.Status,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.Content,
+		&i.CompactContent,
+		&i.Priority,
+		&i.SourceType,
+		&i.SourceID,
+		&i.SourceUri,
+		&i.SourceSequence,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.RevokedByUuid,
+		&i.RevokeReason,
+		&i.MemoryRootUuid,
+		&i.MemoryVersion,
+		&i.SupersedesMemoryUuid,
+		&i.CorrectedByUuid,
+		&i.CorrectionReason,
 	)
 	return i, err
 }
@@ -61,29 +167,35 @@ INSERT INTO agent_memories (
     memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
     resource_type, resource_id, content, compact_content, priority,
     source_type, source_id, source_uri, source_sequence,
-    valid_from, expires_at, revoked_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    valid_from, expires_at, revoked_at,
+    memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAgentMemoryParams struct {
-	MemoryUuid     string
-	TenantID       string
-	PrincipalUuid  string
-	AgentUuid      string
-	MemoryType     string
-	Status         string
-	ResourceType   string
-	ResourceID     string
-	Content        string
-	CompactContent sql.NullString
-	Priority       int32
-	SourceType     string
-	SourceID       string
-	SourceUri      sql.NullString
-	SourceSequence sql.NullString
-	ValidFrom      time.Time
-	ExpiresAt      sql.NullTime
-	RevokedAt      sql.NullTime
+	MemoryUuid           string
+	TenantID             string
+	PrincipalUuid        string
+	AgentUuid            string
+	MemoryType           string
+	Status               string
+	ResourceType         string
+	ResourceID           string
+	Content              string
+	CompactContent       sql.NullString
+	Priority             int32
+	SourceType           string
+	SourceID             string
+	SourceUri            sql.NullString
+	SourceSequence       sql.NullString
+	ValidFrom            time.Time
+	ExpiresAt            sql.NullTime
+	RevokedAt            sql.NullTime
+	MemoryRootUuid       string
+	MemoryVersion        uint32
+	SupersedesMemoryUuid sql.NullString
+	CorrectedByUuid      string
+	CorrectionReason     string
 }
 
 func (q *Queries) InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryParams) error {
@@ -106,12 +218,17 @@ func (q *Queries) InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryPa
 		arg.ValidFrom,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.MemoryRootUuid,
+		arg.MemoryVersion,
+		arg.SupersedesMemoryUuid,
+		arg.CorrectedByUuid,
+		arg.CorrectionReason,
 	)
 	return err
 }
 
 const listAgentContextMemories = `-- name: ListAgentContextMemories :many
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -181,6 +298,11 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 			&i.CreatedAt,
 			&i.RevokedByUuid,
 			&i.RevokeReason,
+			&i.MemoryRootUuid,
+			&i.MemoryVersion,
+			&i.SupersedesMemoryUuid,
+			&i.CorrectedByUuid,
+			&i.CorrectionReason,
 		); err != nil {
 			return nil, err
 		}
@@ -196,7 +318,7 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 }
 
 const listOwnedAgentMemories = `-- name: ListOwnedAgentMemories :many
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -255,6 +377,11 @@ func (q *Queries) ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgent
 			&i.CreatedAt,
 			&i.RevokedByUuid,
 			&i.RevokeReason,
+			&i.MemoryRootUuid,
+			&i.MemoryVersion,
+			&i.SupersedesMemoryUuid,
+			&i.CorrectedByUuid,
+			&i.CorrectionReason,
 		); err != nil {
 			return nil, err
 		}
@@ -321,6 +448,46 @@ func (q *Queries) RevokeOwnedAgentMemory(ctx context.Context, arg RevokeOwnedAge
 		arg.TenantID,
 		arg.PrincipalUuid,
 		arg.MemoryUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const supersedeOwnedAgentMemory = `-- name: SupersedeOwnedAgentMemory :execrows
+UPDATE agent_memories
+SET status = 'revoked',
+    revoked_at = ?,
+    revoked_by_uuid = ?,
+    revoke_reason = ?
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_uuid = ?
+  AND memory_version = ?
+  AND status = 'active'
+  AND revoked_at IS NULL
+`
+
+type SupersedeOwnedAgentMemoryParams struct {
+	RevokedAt     sql.NullTime
+	RevokedByUuid string
+	RevokeReason  string
+	TenantID      string
+	PrincipalUuid string
+	MemoryUuid    string
+	MemoryVersion uint32
+}
+
+func (q *Queries) SupersedeOwnedAgentMemory(ctx context.Context, arg SupersedeOwnedAgentMemoryParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, supersedeOwnedAgentMemory,
+		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.MemoryUuid,
+		arg.MemoryVersion,
 	)
 	if err != nil {
 		return 0, err

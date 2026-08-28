@@ -20,6 +20,11 @@ export interface AgentMemory {
   revokedById?: string
   revokeReason?: string
   createdAtUnixMs: number
+  memoryRootId: string
+  memoryVersion: number
+  supersedesMemoryId?: string
+  correctedById?: string
+  correctionReason?: string
 }
 
 export interface AgentMemoryPage {
@@ -30,6 +35,12 @@ export interface AgentMemoryPage {
 export interface AgentMemoryClient {
   list(after?: string, limit?: number): Promise<AgentMemoryPage>
   revoke(memoryId: string, reason: string): Promise<AgentMemory>
+  correct(memoryId: string, expectedVersion: number, content: string, compactContent: string, reason: string): Promise<AgentMemoryCorrection>
+}
+
+export interface AgentMemoryCorrection {
+  previous: AgentMemory
+  corrected: AgentMemory
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
@@ -38,7 +49,7 @@ const memoryTypes = new Set<AgentMemoryType>(['working', 'episodic', 'semantic',
 const memoryKeys = new Set([
   'memoryId', 'agentId', 'memoryType', 'status', 'resourceType', 'resourceId', 'content', 'compactContent',
   'priority', 'provenance', 'validFromUnixMs', 'expiresAtUnixMs', 'revokedAtUnixMs', 'revokedById',
-  'revokeReason', 'createdAtUnixMs',
+  'revokeReason', 'createdAtUnixMs', 'memoryRootId', 'memoryVersion', 'supersedesMemoryId', 'correctedById', 'correctionReason',
 ])
 
 export function parseAgentMemoryPage(raw: unknown): AgentMemoryPage {
@@ -68,8 +79,20 @@ export function parseAgentMemoryResponse(raw: unknown): AgentMemory {
   }
   if (raw.status === 'active' && Object.values(audit).some(value => value !== undefined)) throw new Error('Agent Memory active audit is invalid')
   if (raw.status === 'revoked' && Object.values(audit).some(value => value === undefined)) throw new Error('Agent Memory revoked audit is invalid')
+  const memoryId = requireIdentifier(raw.memoryId, 'identity')
+  const memoryRootId = requireIdentifier(raw.memoryRootId, 'root identity')
+  const memoryVersion = positiveInteger(raw.memoryVersion, 'version')
+  const supersedesMemoryId = optionalIdentifier(raw.supersedesMemoryId, 'predecessor')
+  const correctedById = optionalIdentifier(raw.correctedById, 'corrector')
+  const correctionReason = optionalReason(raw.correctionReason, 'correction')
+  if (memoryVersion === 1) {
+    if (memoryRootId !== memoryId || supersedesMemoryId !== undefined || correctedById !== undefined || correctionReason !== undefined) throw new Error('Agent Memory root lineage is invalid')
+  } else if (supersedesMemoryId === undefined || correctedById === undefined || correctionReason === undefined ||
+    raw.provenance.sourceType !== 'owner_correction' || raw.provenance.sourceId !== supersedesMemoryId || raw.provenance.sequence !== String(memoryVersion)) {
+    throw new Error('Agent Memory correction lineage is invalid')
+  }
   return {
-    memoryId: requireIdentifier(raw.memoryId, 'identity'),
+    memoryId,
     agentId: requireIdentifier(raw.agentId, 'Agent'),
     memoryType: raw.memoryType as AgentMemoryType,
     status: raw.status,
@@ -83,7 +106,8 @@ export function parseAgentMemoryResponse(raw: unknown): AgentMemory {
       sourceId: requireIdentifier(raw.provenance.sourceId, 'source'),
       sequence: optionalIdentifier(raw.provenance.sequence, 'source sequence'),
     },
-    validFromUnixMs, expiresAtUnixMs, createdAtUnixMs, ...audit,
+    validFromUnixMs, expiresAtUnixMs, createdAtUnixMs, memoryRootId, memoryVersion,
+    supersedesMemoryId, correctedById, correctionReason, ...audit,
   }
 }
 
@@ -101,6 +125,31 @@ export const agentMemoryClient: AgentMemoryClient = {
     if (!normalized || [...normalized].length > 1000 || /[\u0000-\u001f\u007f]/u.test(normalized)) throw new Error('Agent Memory revoke reason is invalid')
     return parseAgentMemoryResponse(await api.post(`/api/v1/agent/memories/${encodeURIComponent(memoryId)}/revoke`, { reason: normalized }))
   },
+  async correct(memoryId, expectedVersion, content, compactContent, reason) {
+    requireIdentifier(memoryId, 'identity')
+    if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new Error('Agent Memory expected version is invalid')
+    const normalizedContent = content.trim()
+    const normalizedCompact = compactContent.trim()
+    const normalizedReason = normalizeReason(reason, 'correction')
+    if (!normalizedContent || byteLength(normalizedContent) > 16 * 1024 || byteLength(normalizedCompact) > 4 * 1024) throw new Error('Agent Memory correction content is invalid')
+    return parseAgentMemoryCorrection(await api.post(`/api/v1/agent/memories/${encodeURIComponent(memoryId)}/correct`, {
+      expectedVersion, content: normalizedContent, compactContent: normalizedCompact, reason: normalizedReason,
+    }), memoryId, expectedVersion, normalizedContent, normalizedCompact, normalizedReason)
+  },
+}
+
+export function parseAgentMemoryCorrection(raw: unknown, memoryId: string, expectedVersion: number, content: string, compactContent: string, reason: string): AgentMemoryCorrection {
+  if (!isRecord(raw) || !exactKeys(raw, new Set(['previous', 'corrected'])) || raw.previous === undefined || raw.corrected === undefined) {
+    throw new Error('Agent Memory correction response shape is invalid')
+  }
+  const previous = parseAgentMemoryResponse(raw.previous)
+  const corrected = parseAgentMemoryResponse(raw.corrected)
+  if (previous.memoryId !== memoryId || previous.memoryVersion !== expectedVersion || previous.status !== 'revoked' ||
+    corrected.status !== 'active' || corrected.memoryRootId !== previous.memoryRootId || corrected.memoryVersion !== expectedVersion + 1 ||
+    corrected.supersedesMemoryId !== memoryId || corrected.content !== content || corrected.compactContent !== compactContent || corrected.correctionReason !== reason) {
+    throw new Error('Agent Memory correction response is inconsistent')
+  }
+  return { previous, corrected }
 }
 
 function requireCursor(raw: unknown): string {
@@ -117,10 +166,15 @@ function optionalIdentifier(raw: unknown, label: string): string | undefined {
   return raw === undefined ? undefined : requireIdentifier(raw, label)
 }
 
-function optionalReason(raw: unknown): string | undefined {
+function optionalReason(raw: unknown, label = 'revoke'): string | undefined {
   if (raw === undefined) return undefined
-  if (typeof raw !== 'string' || raw.trim() !== raw || !raw || [...raw].length > 1000 || /[\u0000-\u001f\u007f]/u.test(raw)) throw new Error('Agent Memory revoke reason is invalid')
+  if (typeof raw !== 'string' || raw.trim() !== raw || !raw || [...raw].length > 1000 || /[\u0000-\u001f\u007f]/u.test(raw)) throw new Error(`Agent Memory ${label} reason is invalid`)
   return raw
+}
+
+function normalizeReason(raw: string, label: string): string {
+  const normalized = raw.trim()
+  return optionalReason(normalized, label) ?? ''
 }
 
 function positiveInteger(raw: unknown, label: string): number {
