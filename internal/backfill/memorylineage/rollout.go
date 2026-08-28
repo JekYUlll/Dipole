@@ -64,7 +64,7 @@ func BuildRolloutReviewReceipt(manifest Manifest, approval Approval, input Rollo
 		input.SchemaVersion != RolloutReviewSchemaVersion || input.PolicyVersion != PolicyVersion ||
 		input.ManifestSHA256 != manifest.ManifestSHA256 || input.ApprovalSHA256 != approval.ApprovalSHA256 ||
 		input.ExpectedMigration != 43 || input.ObservedMigration != input.ExpectedMigration ||
-		!validSHA256(input.RuntimeRevision) || !validSHA256(input.ConfigurationSHA256) ||
+		!validRevision(input.RuntimeRevision) || !validSHA256(input.ConfigurationSHA256) ||
 		input.ReviewerCount != 2 || input.SharedExecutionRequested || !input.RollbackVerified || !input.BackupVerified {
 		return RolloutReviewReceipt{}, errors.New("Memory lineage backfill rollout review is incomplete")
 	}
@@ -84,6 +84,15 @@ func BuildRolloutReviewReceipt(manifest Manifest, approval Approval, input Rollo
 	}
 	receipt.ReceiptSHA256 = rolloutReceiptDigest(receipt)
 	return receipt, nil
+}
+
+func validRevision(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func ParseRolloutReviewReceipt(data []byte) (RolloutReviewReceipt, error) {
