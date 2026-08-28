@@ -1,0 +1,11 @@
+{
+  "minimumWindowMinutes": 60,
+  "minimumClaimed": 50,
+  "maximumRetryRatioBps": 500,
+  "maximumProjectionErrorBps": 200,
+  "maximumCompleteErrorBps": 0,
+  "maximumClaimErrorBps": 0,
+  "maximumInvalid": 0,
+  "requireRollbackVerified": true,
+  "requireClearAlerts": true
+}
