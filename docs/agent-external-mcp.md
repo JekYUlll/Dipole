@@ -136,6 +136,10 @@ factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`
 
 Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。`NodeExternalMcpDnsResolver` 现提供真实 Node DNS 适配器：每个 fetch 使用独立 Resolver 并行请求 A/AAAA，不保留跨请求缓存；`ENODATA/ENOTFOUND` 只表示当前 family 无记录，任何其他单族错误会使完整解析失败。调用取消会执行 request-local `Resolver.cancel()`，不会影响其他并发请求。Network Guard 随后继续执行公网、family、重复和数量复核。
 
-生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 DNS Resolver 也未注册到 `index.ts` 或 Worker startup，单独存在不会发起查询。
+`NodeExternalMcpPinnedTlsDispatcher` 接收 Network Guard 当前请求批准的完整地址集合，通过 `https.request` 的自定义 lookup 只返回该集合；`agent=false` 阻止连接复用绕过 fresh DNS，Node 直连路径不会采用环境代理。TLS 固定 ServerName、CA、最低 TLS 1.2 和证书链校验，响应建立后还会把 socket `remoteAddress` 与批准集合再次比较；注入式 client 的 peer 证据也由 Dispatcher 外层复核。请求和响应 body 保持流式，100 ms 至 60 秒的 connect timeout 只覆盖 TLS `secureConnect` 前窗口，取消会销毁当前 request。3xx 不在该层跟随，由 Network Guard 统一拒绝。
+
+文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
+
+生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、低敏审计及真实公网故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 DNS Resolver、CA provider 和 pinned Dispatcher 均未注册到 `index.ts` 或 Worker startup，单独存在不会发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
