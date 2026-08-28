@@ -40,3 +40,41 @@ dipole_sync_hydration_route_total{outcome="hit"} 1
 		t.Fatal("expected missing histogram error")
 	}
 }
+
+func TestEvidenceFromPrometheusWindowUsesCounterAndHistogramDelta(t *testing.T) {
+	start := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 10
+# TYPE dipole_sync_hydration_route_duration_seconds histogram
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="0.005"} 10
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="+Inf"} 10
+dipole_sync_hydration_route_duration_seconds_count{outcome="hit"} 10
+`)
+	end := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 12
+dipole_sync_hydration_route_total{outcome="fallback"} 1
+# TYPE dipole_sync_hydration_route_duration_seconds histogram
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="0.005"} 12
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="+Inf"} 12
+dipole_sync_hydration_route_duration_seconds_count{outcome="hit"} 12
+`)
+	evidence, err := EvidenceFromPrometheusWindow(start, end, PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "primary", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.Requests != (Counts{Total: 3, CassandraHit: 2, MySQLFallback: 1}) || evidence.Latency.CassandraP95Micros != 5000 {
+		t.Fatalf("window evidence = %+v latency=%+v", evidence.Requests, evidence.Latency)
+	}
+}
+
+func TestEvidenceFromPrometheusWindowRejectsCounterReset(t *testing.T) {
+	start := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 2
+`)
+	end := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 1
+`)
+	_, err := EvidenceFromPrometheusWindow(start, end, PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "primary", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"})
+	if err == nil {
+		t.Fatal("expected counter reset error")
+	}
+}
