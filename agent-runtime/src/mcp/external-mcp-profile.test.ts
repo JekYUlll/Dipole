@@ -121,16 +121,24 @@ describe("external MCP profile boundary", () => {
     const transport = {} as Transport;
     const connect = vi.fn(async () => transport);
     const factory: ExternalMcpTransportFactory = { connect };
+    const catalog = credentialCatalog();
+    const resolveCredential = vi.spyOn(catalog, "resolve");
     const registry = new ExternalMcpTransportRegistry(
       config,
-      credentialCatalog(),
+      catalog,
       factory,
       () => new Date("2026-08-27T12:00:00Z")
     );
 
+    expect(registry.describe("github-prod", "dipole")).toMatchObject({
+      profileId: "github-prod", tenantId: "dipole", serverId: "github-mcp"
+    });
+    expect(resolveCredential).not.toHaveBeenCalled();
+
     await expect(registry.connect("github-prod", "other-tenant")).rejects.toThrow(/tenant/i);
     expect(connect).not.toHaveBeenCalled();
     await expect(registry.connect("github-prod", "dipole")).resolves.toBe(transport);
+    expect(resolveCredential).toHaveBeenCalledOnce();
     expect(connect).toHaveBeenCalledWith({
       profile: expect.objectContaining({
         tenantId: "dipole",

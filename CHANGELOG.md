@@ -18,6 +18,7 @@
 ### 安全
 
 - Agent Runtime 增加默认关闭的 MCP `2026-07-28` 手工 `input_required` 续接基础：仅接受一个普通 Form，持久 checkpoint 精确绑定原 Tool 参数、请求键、不透明 `requestState` 与 Server/Tool/Invocation lineage，恢复时由新请求回传同一状态；凭据字段、状态漂移、多请求和超限载荷均 fail closed。生产 Activity 编排、外部连接、多轮与敏感 URL 授权仍未启用。
+- Agent Runtime 增加默认关闭的 MCP Activity-safe round runner：每个首次/恢复轮次均从 tenant-owned Profile 打开全新现代 Client/Transport，并在成功、取消或握手失败后关闭资源；外层 checkpoint 绑定 tenant/profile/server 与内层 continuation，credential 仅在 Registry `connect` 时解析。现有 Worker 模式与外部连接开关保持关闭。
 - Agent Elicitation Task Query 新增受限来源绑定：本地请求标记为 Agent，MCP 请求固定携带不可信的 Server/Tool/Invocation 元数据；Runtime 与 Web 双重拒绝凭据类字段，查询失败时 Web 清空缓存 Form 并隐藏上游错误，避免向失效 request 提交数据。
 - 修复内部开发证书生成脚本的权限覆盖顺序：公开证书保持 `0644`，CA 与服务私钥最终固定为 `0600`；新增临时目录回归测试，防止后续演练或本地部署生成可被其他用户读取的私钥。
 - 修复 C3 首次冻结直接回切的节点证据缺口：`rollback_requested` 现在必须先对当前 frozen lease 使用 source-node manifest 生成独立 `rollback_frozen_confirmed` artifact，再允许 source activation；覆盖 freeze 后尚未完成 target-node confirmation 即超时的路径，避免复用缺失或面向候选节点的旧 proof。
