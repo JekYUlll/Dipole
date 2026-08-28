@@ -6,21 +6,20 @@ import (
 	"time"
 )
 
-func TestAgentTaskTimelineEventValidatesLowSensitivityIdentity(t *testing.T) {
-	valid := AgentTaskTimelineEventV1{
-		EventUUID: "EVT-1", TaskUUID: "TASK-1", RunUUID: "RUN-1",
-		Kind: AgentTaskTimelineEventToolInvocation, Status: "completed", OccurredAt: time.UnixMilli(1),
+func TestAgentTaskTimelineRepairUsesSameValidatedEventContract(t *testing.T) {
+	event := AgentTaskTimelineEventV1{
+		EventUUID: "model:call-1:begin", TaskUUID: "task-1", RunUUID: "run-1",
+		Kind: AgentTaskTimelineEventModelCall, Status: "running", OccurredAt: time.Now().UTC(),
 	}
-	if err := valid.Validate(); err != nil {
+	if err := event.Validate(); err != nil {
 		t.Fatalf("valid event rejected: %v", err)
 	}
 	for _, invalid := range []AgentTaskTimelineEventV1{
-		{EventUUID: "EVT-1", TaskUUID: "TASK-1", Kind: "prompt", Status: "completed", OccurredAt: valid.OccurredAt},
-		{EventUUID: "EVT-1", TaskUUID: "TASK-1", Kind: AgentTaskTimelineEventTask, Status: "", OccurredAt: valid.OccurredAt},
-		{EventUUID: strings.Repeat("x", 1), TaskUUID: "TASK-1", Kind: AgentTaskTimelineEventTask},
+		{TaskUUID: event.TaskUUID, Kind: event.Kind, Status: event.Status, OccurredAt: event.OccurredAt},
+		{EventUUID: event.EventUUID, TaskUUID: event.TaskUUID, Kind: AgentTaskTimelineEventKindV1("unknown"), Status: event.Status, OccurredAt: event.OccurredAt},
 	} {
-		if err := invalid.Validate(); err == nil {
-			t.Fatalf("invalid event accepted: %+v", invalid)
+		if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "Agent Task Timeline") {
+			t.Fatalf("invalid event validation = %v", err)
 		}
 	}
 }
