@@ -407,6 +407,7 @@
 - **本轮进展：** Agent Memory 管理页已通过后置主题覆盖接入共享 `--dp-*` token，兼容保留现有状态结构；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 - **本轮进展：** Agent Task Timeline 已增加 Playwright authenticated mock 流程，固定路由 flag、Bearer 请求、cursor 参数和低敏展示边界；截图级跨浏览器视觉回归仍待完成。
 - **本轮进展：** Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` token，并以源码契约测试锁定画布、表面、字体和状态色边界；截图级视觉回归仍待完成。
+- **本轮进展：** Agent Approval 页面已增加 Playwright authenticated mock 流程，固定审批请求体、Bearer、失败隐藏和移动端布局边界；截图级视觉回归仍待完成。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 
