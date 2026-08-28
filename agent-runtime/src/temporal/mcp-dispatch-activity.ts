@@ -14,10 +14,18 @@ const checkpointSchemaVersion = "dipole.mcp.temporal-dispatch-checkpoint.v1" as 
 const identitySchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const coreIdentitySchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/);
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
+const routeSchema = z.object({
+  routeId: identitySchema,
+  routeVersion: z.number().int().min(1).max(1_000_000),
+  capabilityId: identitySchema,
+  workflowStep: z.number().int().min(0).max(255),
+  ordinal: z.number().int().min(0).max(255)
+}).strict();
 const beginInputSchema = z.object({
   kind: z.literal("begin"),
   routeId: identitySchema,
   routeVersion: z.number().int().min(1).max(1_000_000),
+  routeManifestSha256: sha256Schema,
   taskId: coreIdentitySchema,
   runId: coreIdentitySchema,
   principalUserId: identitySchema,
@@ -37,6 +45,7 @@ const checkpointSchema = z.object({
   principalUserId: identitySchema,
   routeId: identitySchema,
   routeVersion: z.number().int().min(1).max(1_000_000),
+  routeManifestSha256: sha256Schema,
   capabilityId: identitySchema,
   workflowStep: z.number().int().min(0).max(255),
   ordinal: z.number().int().min(0).max(255),
@@ -60,6 +69,12 @@ export interface TemporalMcpDispatchRoute {
   readonly ordinal: number;
 }
 
+export interface TemporalMcpDispatchRouteBinding {
+  readonly routeId: string;
+  readonly routeVersion: number;
+  readonly routeManifestSha256: string;
+}
+
 export interface TemporalMcpDispatchCheckpointV1 {
   readonly schemaVersion: typeof checkpointSchemaVersion;
   readonly taskId: string;
@@ -67,6 +82,7 @@ export interface TemporalMcpDispatchCheckpointV1 {
   readonly principalUserId: string;
   readonly routeId: string;
   readonly routeVersion: number;
+  readonly routeManifestSha256: string;
   readonly capabilityId: string;
   readonly workflowStep: number;
   readonly ordinal: number;
@@ -83,6 +99,7 @@ export type TemporalMcpDispatchActivityInput =
     readonly kind: "begin";
     readonly routeId: string;
     readonly routeVersion: number;
+    readonly routeManifestSha256: string;
     readonly taskId: string;
     readonly runId: string;
     readonly principalUserId: string;
@@ -135,6 +152,15 @@ export interface TemporalMcpDispatchActivities {
   executeMcpDispatch(input: TemporalMcpDispatchActivityInput): Promise<AgentTaskDirective>;
 }
 
+export function temporalMcpDispatchRouteBinding(route: TemporalMcpDispatchRoute): TemporalMcpDispatchRouteBinding {
+  const parsed = routeSchema.parse(route);
+  return {
+    routeId: parsed.routeId,
+    routeVersion: parsed.routeVersion,
+    routeManifestSha256: routeManifestSha256(parsed)
+  };
+}
+
 export function createTemporalMcpDispatchActivities(
   route: TemporalMcpDispatchRoute,
   dependencies: TemporalMcpDispatchDependencies
@@ -147,17 +173,13 @@ export function createTemporalMcpDispatchActivities(
 
 export class TemporalMcpDispatchActivity {
   readonly #route: TemporalMcpDispatchRoute;
+  readonly #routeManifestSha256: string;
   readonly #dependencies: TemporalMcpDispatchDependencies;
 
   constructor(route: TemporalMcpDispatchRoute, dependencies: TemporalMcpDispatchDependencies) {
-    const parsed = z.object({
-      routeId: identitySchema,
-      routeVersion: z.number().int().min(1).max(1_000_000),
-      capabilityId: identitySchema,
-      workflowStep: z.number().int().min(0).max(255),
-      ordinal: z.number().int().min(0).max(255)
-    }).strict().parse(route);
+    const parsed = routeSchema.parse(route);
     this.#route = parsed;
+    this.#routeManifestSha256 = routeManifestSha256(parsed);
     this.#dependencies = dependencies;
   }
 
@@ -166,7 +188,8 @@ export class TemporalMcpDispatchActivity {
     signal.throwIfAborted();
     const input = parseInput(rawInput);
     if (input.kind === "begin") {
-      if (input.routeId !== this.#route.routeId || input.routeVersion !== this.#route.routeVersion) {
+      if (input.routeId !== this.#route.routeId || input.routeVersion !== this.#route.routeVersion ||
+          input.routeManifestSha256 !== this.#routeManifestSha256) {
         throw new Error("Temporal MCP dispatch route binding is invalid");
       }
       const argumentsValue = canonicalArguments(input.arguments);
@@ -279,6 +302,7 @@ function parseInput(rawInput: unknown): TemporalMcpDispatchActivityInput {
       kind: "begin",
       routeId: begin.data.routeId,
       routeVersion: begin.data.routeVersion,
+      routeManifestSha256: begin.data.routeManifestSha256,
       taskId: begin.data.taskId,
       runId: begin.data.runId,
       principalUserId: begin.data.principalUserId,
@@ -315,6 +339,7 @@ function createCheckpoint(
     principalUserId: input.principalUserId,
     routeId: route.routeId,
     routeVersion: route.routeVersion,
+    routeManifestSha256: routeManifestSha256(route),
     capabilityId: route.capabilityId,
     workflowStep: route.workflowStep,
     ordinal: route.ordinal,
@@ -332,7 +357,8 @@ function parseCheckpoint(raw: unknown, route: TemporalMcpDispatchRoute): Tempora
   if (!parsed.success) throw new Error("Temporal MCP dispatch checkpoint is invalid");
   const { bindingSha256, ...binding } = parsed.data;
   if (bindingSha256 !== sha256(canonicalMcpJSON(binding)) || parsed.data.routeId !== route.routeId ||
-      parsed.data.routeVersion !== route.routeVersion || parsed.data.capabilityId !== route.capabilityId ||
+      parsed.data.routeVersion !== route.routeVersion || parsed.data.routeManifestSha256 !== routeManifestSha256(route) ||
+      parsed.data.capabilityId !== route.capabilityId ||
       parsed.data.workflowStep !== route.workflowStep || parsed.data.ordinal !== route.ordinal) {
     throw new Error("Temporal MCP dispatch checkpoint binding is invalid");
   }
@@ -359,6 +385,17 @@ function temporalCancellationSignal(): AbortSignal {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function routeManifestSha256(route: TemporalMcpDispatchRoute): string {
+  return sha256(canonicalMcpJSON({
+    schemaVersion: "dipole.mcp.temporal-dispatch-route.v1",
+    routeId: route.routeId,
+    routeVersion: route.routeVersion,
+    capabilityId: route.capabilityId,
+    workflowStep: route.workflowStep,
+    ordinal: route.ordinal
+  }));
 }
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
