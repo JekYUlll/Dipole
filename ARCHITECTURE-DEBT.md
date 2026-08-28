@@ -35,6 +35,17 @@
 - **建议方向：** 将 Prometheus snapshot 与脱敏客户端/服务 revision、配置比例、窗口和回切演练 ID 合成为 evidence，再交给既有 evaluator；缺少完整窗口或观测断层时保持 blocked，并持续保留 MySQL 完整消息。
 - **处理门槛：** 任何提高 `sync.cassandra_primary_hydration` 比例前，必须归档共享环境 evidence、复核人批准和自动回切记录；未满足前保持默认关闭或人工小比例运行。
 
+### AD-044：Pencil 增量设计任务缺少稳定的 CLI 执行闭环
+
+- **优先级：** P2
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** `design/dipole-ui.pen`、设计导出、F3 Agent Task Timeline、前端视觉回归
+- **现状：** Pencil CLI `0.3.5` 认证和版本检查正常，canonical `.pen` 与既有导出资产可读取；本轮 Agent Task Timeline 增量任务在重复画布调用阶段长时间无输出，未生成新 `.pen` 或导出图，原设计文件保持不变。
+- **风险：** 没有稳定的增量执行与导出结果时，无法把 Agent Task Timeline 设计资产纳入评审，也不能宣称 F3/F4 视觉基线已完成。
+- **建议方向：** 将 Pencil CLI 调用拆成小批次、设置任务超时并在每次调用后校验输出文件、节点命名和导出图；失败时保留原文件并记录 CLI/skill 版本，必要时使用已批准 frame 作为回滚点。
+- **处理门槛：** 新设计必须同时提交 canonical `.pen`、导出预览、`DESIGN-CHANGELOG.md` 条目和结构/视觉检查结果；未满足前不修改现有设计基线。
+
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1
