@@ -34,6 +34,7 @@
 - 前端新增默认关闭的 Agent Task 审批页 `/agent/tasks/:taskId/approval`，通过认证 Task Query 展示 `waiting_approval` 请求，并调用审批决策接口；严格保留过期、不可用和终态的 fail-closed 行为。完整 Run/Step 时间线仍待后端只读契约。
 - 新增 `contracts/agent-task-timeline/v1/`：定义 Agent Task 增量时间线的低敏事件、稳定游标、principal 复核和 fail-closed 边界；当前只建立契约，Core/Gateway 聚合 adapter 与前端完整时间线仍关闭并由 `AD-045` 跟踪。
 - Agent Task Timeline 增加 migration v48 append-only 事件表及 sqlc append/list repository，使用数据库生成的 `event_seq` 保证 Task 内顺序；状态变更事务接入和 Core/Gateway 聚合 API 仍未开放。
+- Agent Policy 生产事务装配已将 Task/Run 创建与状态迁移和 Timeline 事件写入绑定在同一 MySQL 事务中；事件写入失败会回滚对应状态变化，旧兼容构造保持可用。
 
 ### 验证
 
