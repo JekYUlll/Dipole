@@ -1,0 +1,18 @@
+{
+  "contractVersion": "v1",
+  "batchId": "NB-C2-EVIDENCE-ONLINE",
+  "targetNodeId": "gateway-1",
+  "sourceEventId": "E-C2-EVIDENCE-ONLINE",
+  "requestId": "R-C2-EVIDENCE-ONLINE",
+  "traceId": "T-C2-EVIDENCE-ONLINE",
+  "createdAt": "2026-08-28T00:00:00Z",
+  "items": [{
+    "deliveryId": "D-C2-EVIDENCE-ONLINE",
+    "recipientUserId": "U20E2EAB0AA35B218CE5C",
+    "connectionIds": ["CA7548F19EA2ED8F1C1EC"],
+    "eventType": "primary.probe",
+    "payloadJson": "eyJtZXNzYWdlX2lkIjoiTTEiLCJjb250ZW50IjoicHJpbWFyeS1vbmNlIn0=",
+    "orderingKey": "direct:probe:U20E2EAB0AA35B218CE5C",
+    "mode": "DELIVERY_MODE_FULL_EVENT"
+  }]
+}

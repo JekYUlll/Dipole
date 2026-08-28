@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/checkpoint-manifest.schema.json",
+  "title": "Dipole Realtime Delivery Dual Group Checkpoint Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "topics", "groups"],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-checkpoint-manifest.v1" },
+    "manifest_id": { "$ref": "#/$defs/id" },
+    "topics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/id" }
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "group_id"],
+        "properties": {
+          "role": { "enum": ["compatibility", "primary"] },
+          "group_id": { "$ref": "#/$defs/id" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" }
+  }
+}

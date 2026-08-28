@@ -1,0 +1,22 @@
+{
+  "boundaries": [
+    "primary runtime remains absent from tracked Compose defaults",
+    "crash occurred after deferred evidence and before offset commit",
+    "terminal evidence-to-commit crash window remains probabilistic and was not claimed"
+  ],
+  "checks": {
+    "clean_same_revision_images": true,
+    "crash_exit_was_sigkill": true,
+    "crash_retained_offset": true,
+    "real_queue_saturation": true,
+    "replay_committed_same_coordinate": true,
+    "shared_nodes_remained_running": true,
+    "stable_delivery_frames_observed": true,
+    "terminal_ack_committed": true
+  },
+  "cutover_blocker": "AD-041: Go and C++ delivery authorities emit parallel client frames",
+  "cutover_decision": "blocked",
+  "revision": "703725b0185d32a95b83e9fc4c03c5d2402e826a",
+  "runtime_decision": "eligible",
+  "schema_version": "c2-primary-runtime-evidence-v1"
+}

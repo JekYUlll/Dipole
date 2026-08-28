@@ -38,6 +38,13 @@ type Gateway struct {
 	AgentMCPTarget      string `mapstructure:"agent_mcp_target"`
 }
 
+type Realtime struct {
+	Delivery       string `mapstructure:"delivery"`
+	FencingEnabled bool   `mapstructure:"fencing_enabled"`
+	FencingKey     string `mapstructure:"fencing_key"`
+	FencingEpoch   uint64 `mapstructure:"fencing_epoch"`
+}
+
 type TLS struct {
 	Enabled  bool   `mapstructure:"enabled"`
 	CertFile string `mapstructure:"cert_file"`
@@ -147,23 +154,29 @@ type Sync struct {
 }
 
 type InternalRPC struct {
-	Enabled                bool   `mapstructure:"enabled"`
-	SharedSecret           string `mapstructure:"shared_secret"`
-	CoreListenAddress      string `mapstructure:"core_listen_address"`
-	CoreTarget             string `mapstructure:"core_target"`
-	MessageListenAddress   string `mapstructure:"message_listen_address"`
-	MessageTarget          string `mapstructure:"message_target"`
-	SearchListenAddress    string `mapstructure:"search_listen_address"`
-	SearchTarget           string `mapstructure:"search_target"`
-	SyncListenAddress      string `mapstructure:"sync_listen_address"`
-	SyncTarget             string `mapstructure:"sync_target"`
-	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
-	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
-	TLSEnabled             bool   `mapstructure:"tls_enabled"`
-	TLSCertFile            string `mapstructure:"tls_cert_file"`
-	TLSKeyFile             string `mapstructure:"tls_key_file"`
-	TLSCAFile              string `mapstructure:"tls_ca_file"`
-	TLSServerName          string `mapstructure:"tls_server_name"`
+	Enabled                          bool   `mapstructure:"enabled"`
+	SharedSecret                     string `mapstructure:"shared_secret"`
+	CoreListenAddress                string `mapstructure:"core_listen_address"`
+	CoreTarget                       string `mapstructure:"core_target"`
+	MessageListenAddress             string `mapstructure:"message_listen_address"`
+	MessageTarget                    string `mapstructure:"message_target"`
+	SearchListenAddress              string `mapstructure:"search_listen_address"`
+	SearchTarget                     string `mapstructure:"search_target"`
+	SyncListenAddress                string `mapstructure:"sync_listen_address"`
+	SyncTarget                       string `mapstructure:"sync_target"`
+	DeliveryObservationEnabled       bool   `mapstructure:"delivery_observation_enabled"`
+	DeliveryObservationListenAddress string `mapstructure:"delivery_observation_listen_address"`
+	DeliveryObservationCapacity      int    `mapstructure:"delivery_observation_capacity"`
+	DeliveryObservationRetryAfterMS  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DeliveryPrimaryEnabled           bool   `mapstructure:"delivery_primary_enabled"`
+	DeliveryPrimaryReplayCapacity    int    `mapstructure:"delivery_primary_replay_capacity"`
+	DialTimeoutSeconds               int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds           int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled                       bool   `mapstructure:"tls_enabled"`
+	TLSCertFile                      string `mapstructure:"tls_cert_file"`
+	TLSKeyFile                       string `mapstructure:"tls_key_file"`
+	TLSCAFile                        string `mapstructure:"tls_ca_file"`
+	TLSServerName                    string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
@@ -340,6 +353,10 @@ func Load() error {
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
+		v.SetDefault("realtime.delivery", "go")
+		v.SetDefault("realtime.fencing_enabled", false)
+		v.SetDefault("realtime.fencing_key", "dipole:realtime:delivery:authority:v1")
+		v.SetDefault("realtime.fencing_epoch", 0)
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
@@ -418,6 +435,12 @@ func Load() error {
 		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.delivery_observation_enabled", false)
+		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
+		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
+		v.SetDefault("internal_rpc.delivery_observation_retry_after_ms", 25)
+		v.SetDefault("internal_rpc.delivery_primary_enabled", false)
+		v.SetDefault("internal_rpc.delivery_primary_replay_capacity", 8192)
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)
@@ -502,6 +525,7 @@ func Load() error {
 			"gateway.agent_control_target",
 			"gateway.agent_mcp_enabled",
 			"gateway.agent_mcp_target",
+			"realtime.delivery",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
@@ -589,6 +613,12 @@ func Load() error {
 			"internal_rpc.search_target",
 			"internal_rpc.sync_listen_address",
 			"internal_rpc.sync_target",
+			"internal_rpc.delivery_observation_enabled",
+			"internal_rpc.delivery_observation_listen_address",
+			"internal_rpc.delivery_observation_capacity",
+			"internal_rpc.delivery_observation_retry_after_ms",
+			"internal_rpc.delivery_primary_enabled",
+			"internal_rpc.delivery_primary_replay_capacity",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -723,6 +753,16 @@ func GatewayConfig() Gateway {
 		AgentControlTarget:  strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
 		AgentMCPEnabled:     cfg.GetBool("gateway.agent_mcp_enabled"),
 		AgentMCPTarget:      strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
+	}
+}
+
+func RealtimeConfig() Realtime {
+	MustLoad()
+	return Realtime{
+		Delivery:       strings.ToLower(strings.TrimSpace(cfg.GetString("realtime.delivery"))),
+		FencingEnabled: cfg.GetBool("realtime.fencing_enabled"),
+		FencingKey:     strings.TrimSpace(cfg.GetString("realtime.fencing_key")),
+		FencingEpoch:   cfg.GetUint64("realtime.fencing_epoch"),
 	}
 }
 
@@ -942,6 +982,14 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
 	internalRPC.SearchListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.search_listen_address"))
 	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
+	internalRPC.SyncListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.sync_listen_address"))
+	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
+	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
+	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
+	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")
+	internalRPC.DeliveryObservationRetryAfterMS = cfg.GetInt("internal_rpc.delivery_observation_retry_after_ms")
+	internalRPC.DeliveryPrimaryEnabled = cfg.GetBool("internal_rpc.delivery_primary_enabled")
+	internalRPC.DeliveryPrimaryReplayCapacity = cfg.GetInt("internal_rpc.delivery_primary_replay_capacity")
 	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
 	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
 	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")

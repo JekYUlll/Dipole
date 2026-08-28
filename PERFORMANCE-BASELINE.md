@@ -2,6 +2,44 @@
 
 本文档滚动记录可重复的性能基线。微基准用于比较协议与实现开销，端到端基准用于固定消息接受、持久化、投递、Kafka lag 与 Inbox 写放大行为。
 
+## 2026-08-28：C2 C++ Kafka Shadow Replay
+
+候选提交 `ef763a4b9fa090b9ba14c1f43e78ca723f9e2ef6` 使用 librdkafka 2.3.0 和独立 earliest group 回放现有 Kafka 3.9 retained 数据。205 条合法 group created event 全部生成 projected evidence；注入的 1 条无效 JSON 生成 `invalid_event` 后安全推进 offset。双实例共同 ready 并分担 12 个 partition，停止一例后存活实例接管全部 partition 且保持 ready，最终六个有数据 partition lag 全为 0。
+
+本次 direct topic log end 为 0，尚未形成真实 direct broker 样本；证据也不覆盖 Redis Presence、节点批次、Gateway ACK 或吞吐收益。低敏 NDJSON、最终 offset、机器报告和 SHA-256 位于 `benchmarks/c2-cpp-shadow-2026-08-28/`。
+
+## 2026-08-28：C1 Go Realtime Connection Gradient
+
+候选提交 `a6f367fd67d79ace95c730388a5bd95ac70bcb1d` 在隔离 `dipole-c1` project 中以同一不可变镜像完成 20/50/100 个 WebSocket 连接、每连接 2 条 direct message 的梯度。三档 acceptance、persistence 和 delivery 均为 100%，HTTP failure 为 0，Kafka settled lag 均为 0。
+
+| Connections | Messages | Throughput | P50 | P95 | P99 | Peak lag | Summed CPU | Peak RSS | Voluntary CS | Involuntary CS |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 20 | 40 | 2.51 msg/s | 739 ms | 1072 ms | 1118 ms | 26 | 63.12% | 198.70 MiB | 550472 | 2251 |
+| 50 | 100 | 4.14 msg/s | 2620 ms | 3925 ms | 4046 ms | 56 | 75.60% | 206.47 MiB | 755751 | 5627 |
+| 100 | 200 | 4.85 msg/s | 5299 ms | 8084 ms | 8382 ms | 158 | 73.36% | 211.75 MiB | 1321350 | 7016 |
+
+50 到 100 连接间吞吐趋于平台，尾延迟、峰值 lag 和 context switch 继续增长，三节点合计 CPU 仍低于一个完整 CPU core。该证据提示等待、串行化、Projection 或数据库路径需要继续分段定位，不能预设 C++ 数据面会消除端到端瓶颈。原始报告、运行来源和 SHA-256 清单位于 `benchmarks/c1-go-realtime-a6f367f-2026-08-28/`。
+
+## 2026-08-28：C1 Go Realtime Node Recovery
+
+node2 stop/start 首轮演练在 HTTP 恢复后立即发压，40 条消息已接受但均未持久化；broker 约 10 秒后才将 consumer group 稳定到 72 members，`LastOffset` 跳过首次 assignment 前的记录。该失败样本促成 consumer readiness 门禁与 `CURRENT-OFFSET=-` lag 解析修复，没有生成 passing report。
+
+fresh project 复验记录 PID `887973 -> 898410`，故障到 unavailable 为 650 ms，start request 到 HTTP 与 72-member group 连续稳定 5 秒的完整 ready 为 13.526 s。恢复后 40/40 消息持久化并投递，P50/P95/P99 为 `993/1363.4/1413.79 ms`，Kafka peak/settled lag 为 `4/0`。完整失败与通过证据位于 `benchmarks/c1-go-recovery-2026-08-28/`。
+
+## 2026-08-28：C1 Go Realtime Resource Collector
+
+`scripts/bench/process_metrics.py` 为端到端基准增加版本化 `/proc` 资源证据。`run_bench.sh` 在 workload 前、每次 Kafka lag 采样时以及 workload 后记录 Go 服务进程，并由 operations/baseline v4 输出 CPU core%、采样 RSS 峰值、线程峰值及 voluntary/involuntary context-switch 增量。进程 PID 或启动时刻变化、服务集合漂移、计数回退和少于两个样本都会使报告生成失败；v1-v3 历史报告继续可读，并明确显示资源证据不可用。
+
+默认分布式单体拓扑采样三个 Go 节点。独立微服务拓扑可显式指定职责边界：
+
+```bash
+PROCESS_METRICS_SERVICES="gateway core message" \
+COMPOSE_FILE=docker-compose.microservices.yml \
+./scripts/bench/run_bench.sh
+```
+
+RSS 峰值是按 `LAG_SAMPLE_SECONDS` 周期观察到的 sampled peak，context switch 来自采样时 `/proc/<pid>/task/*/status` 中仍存在的线程集合。该证据适合同一机器、拓扑、采样周期和 workload 下的 Go/C++ 对照；它不替代 `perf`、eBPF 或持续 profiler。固定连接梯度和单节点恢复 v4 证据已归档，C2 继续补充 shadow、慢消费者、队列溢出和 Redis/Kafka 故障变量。
+
 ## 2026-08-27：AD-005 Conversation Projection Timing
 
 候选提交 `4343684011a02112eb3e9233e7c4279bf64a4ee9` 在 Service-to-Repository 窄边界记录 `projection × success|error` Histogram。operations/baseline v3 逐节点保存前后快照，先检测 Counter 回退，再聚合成功次数、累计耗时、平均耗时和 P95 桶上界；v1/v2 报告继续可读并明确标记 timing unavailable。

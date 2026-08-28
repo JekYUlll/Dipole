@@ -1,0 +1,109 @@
+{
+  "schema_version": "dipole.realtime.delivery-checkpoint-bundle.v1",
+  "observation_aggregate": {
+    "schema_version": "dipole.realtime.delivery-fence-observation-aggregate.v1",
+    "decision": "eligible",
+    "manifest_id": "c3-real-nodes-a",
+    "manifest_sha256": "fc18d005a20a2af5c0da935b8e65eed98e9080610355a906b42b0fd221ea0859",
+    "transition_id": "c3-real-bootstrap-a",
+    "request_sha256": "6cdeb8edbb9da139f925d324ee3d0c5aa5ce28b37a15b65b86f02553598c1a84",
+    "lease_sha256": "1910b9276432538708635b7f1deb82b770fe31455d9e3b3cd191a3b05043e16e",
+    "authority": "go",
+    "phase": "active",
+    "epoch": 1,
+    "lease_until_unix_ms": 1787883108530,
+    "captured_at_unix_ms": 1787880705843,
+    "observations": [
+      {
+        "schema_version": "dipole.realtime.delivery-fence-observation.v1",
+        "observer_id": "gateway-real-a",
+        "component": "gateway",
+        "expected_authority": "go",
+        "expected_epoch": 1,
+        "observed_authority": "go",
+        "observed_epoch": 1,
+        "observed_phase": "active",
+        "observed_lease_until_unix_ms": 1787883108530,
+        "observed_lease_sha256": "1910b9276432538708635b7f1deb82b770fe31455d9e3b3cd191a3b05043e16e",
+        "status": "authorized",
+        "reason_code": "authorized",
+        "observed_at_unix_ms": 1787880680937,
+        "expires_at_unix_ms": 1787880734247
+      },
+      {
+        "schema_version": "dipole.realtime.delivery-fence-observation.v1",
+        "observer_id": "cpp-real-a",
+        "component": "realtime-delivery",
+        "expected_authority": "go",
+        "expected_epoch": 1,
+        "observed_authority": "go",
+        "observed_epoch": 1,
+        "observed_phase": "active",
+        "observed_lease_until_unix_ms": 1787883108530,
+        "observed_lease_sha256": "1910b9276432538708635b7f1deb82b770fe31455d9e3b3cd191a3b05043e16e",
+        "status": "authorized",
+        "reason_code": "authorized",
+        "observed_at_unix_ms": 1787880680937,
+        "expires_at_unix_ms": 1787880734247
+      }
+    ]
+  },
+  "checkpoint": {
+    "schema_version": "dipole.realtime.delivery-checkpoint-receipt.v1",
+    "decision": "eligible",
+    "manifest_id": "c3-real-checkpoint-librdkafka-a",
+    "manifest_sha256": "359565b6792d7ee4b5b9d66a72552b0a3b4dbc42ddebd76f7b2b9fcbc4302846",
+    "observation_aggregate_sha256": "c7be0b8e6714254120039020093ab42e7e811c11ec6b6fee41fa3d01081374c5",
+    "transition_id": "c3-real-bootstrap-a",
+    "lease_sha256": "1910b9276432538708635b7f1deb82b770fe31455d9e3b3cd191a3b05043e16e",
+    "authority": "go",
+    "phase": "active",
+    "epoch": 1,
+    "cluster_id": "5L6g3nShT-eMCtK--X86sw",
+    "captured_at_unix_ms": 1787880705851,
+    "groups": [
+      {
+        "role": "compatibility",
+        "group_id": "dipole-gateway-consumer",
+        "state": "Stable",
+        "partitions": [
+          {
+            "topic": "dipole.message.direct.created",
+            "partition": 0,
+            "committed_offset": 1,
+            "log_end_offset": 1,
+            "lag": 0
+          },
+          {
+            "topic": "dipole.message.group.created",
+            "partition": 0,
+            "committed_offset": 1,
+            "log_end_offset": 1,
+            "lag": 0
+          }
+        ]
+      },
+      {
+        "role": "primary",
+        "group_id": "dipole-realtime-shadow-checkpoint-v1",
+        "state": "Stable",
+        "partitions": [
+          {
+            "topic": "dipole.message.direct.created",
+            "partition": 0,
+            "committed_offset": 1,
+            "log_end_offset": 1,
+            "lag": 0
+          },
+          {
+            "topic": "dipole.message.group.created",
+            "partition": 0,
+            "committed_offset": 1,
+            "log_end_offset": 1,
+            "lag": 0
+          }
+        ]
+      }
+    ]
+  }
+}

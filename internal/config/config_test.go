@@ -28,6 +28,39 @@ func TestConfigDistDeclaresSafeDependencyReadinessDefaults(t *testing.T) {
 	}
 }
 
+func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("internal_rpc.delivery_observation_enabled") {
+		t.Fatal("C2 delivery observation receiver must remain opt-in")
+	}
+	if got := v.GetString("internal_rpc.delivery_observation_listen_address"); got != "127.0.0.1:9095" {
+		t.Fatalf("delivery observation listener = %q", got)
+	}
+	if v.GetInt("internal_rpc.delivery_observation_capacity") != 1024 ||
+		v.GetInt("internal_rpc.delivery_observation_retry_after_ms") != 25 {
+		t.Fatal("delivery observation queue defaults drifted")
+	}
+	if v.GetBool("internal_rpc.delivery_primary_enabled") {
+		t.Fatal("C2 primary delivery must remain opt-in")
+	}
+	if v.GetInt("internal_rpc.delivery_primary_replay_capacity") != 8192 {
+		t.Fatal("primary delivery replay capacity drifted")
+	}
+	if got := v.GetString("realtime.delivery"); got != "go" {
+		t.Fatalf("safe realtime delivery default = %q, want go", got)
+	}
+	if v.GetBool("realtime.fencing_enabled") || v.GetUint64("realtime.fencing_epoch") != 0 {
+		t.Fatal("shared realtime fencing must remain opt-in")
+	}
+	if got := v.GetString("realtime.fencing_key"); got != "dipole:realtime:delivery:authority:v1" {
+		t.Fatalf("realtime fencing key = %q", got)
+	}
+}
+
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {
 	t.Setenv("DIPOLE_CONFIG_FILE", "/tmp/dipole-explicit-config.yaml")
 	v := viper.New()
@@ -210,6 +243,7 @@ func TestAgentArtifactMaintenancePolicyCanInspectButCannotMutate(t *testing.T) {
 
 func TestSyncConfigLoadsCassandraShadowHydrationFromEnvironment(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
+	t.Setenv("DIPOLE_CONFIG_FILE", filepath.Join("configs", "config.dist.yaml"))
 	t.Setenv("DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION", "true")
 	if err := Load(); err != nil {
 		t.Fatalf("load config: %v", err)
