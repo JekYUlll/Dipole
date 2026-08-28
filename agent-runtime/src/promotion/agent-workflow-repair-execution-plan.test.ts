@@ -39,4 +39,10 @@ describe("Agent Workflow repair execution plan", () => {
     expect(plan.expectedCurrentSha256).toBeNull();
     expect(plan.rollbackSha256).toBeNull();
   });
+
+  it("rejects a target projection from another Workflow Run", () => {
+    expect(() => createAgentWorkflowRepairExecutionPlan({
+      ...input(), targetProjection: { ...target, workflowRunId: "WR-OTHER" }
+    }, new Date("2026-08-28T00:05:00.000Z"))).toThrow(/same Workflow Run/);
+  });
 });
