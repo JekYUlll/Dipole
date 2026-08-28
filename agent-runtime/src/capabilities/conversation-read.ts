@@ -5,7 +5,7 @@ import type { AgentCapabilityRPCClient, ConversationReadResult } from "./agent-c
 import type { AgentCapability } from "./registry.js";
 
 const inputSchema = z.object({
-  targetId: z.string().trim().min(1).max(128),
+  conversationId: z.string().trim().min(1).max(256),
   limit: z.number().int().min(1).max(100).default(20)
 }).strict();
 type ConversationReadInput = z.infer<typeof inputSchema>;
@@ -16,12 +16,11 @@ export class ConversationReadCapability implements AgentCapability<ConversationR
 
   constructor(private readonly client: Pick<AgentCapabilityRPCClient, "readConversation">) {}
 
-  // The Core RPC resolves target type and exact conversation scope authoritatively.
-  resolveResource() {
-    return { resourceType: "conversation", resourceId: "*", action: "read" };
+  resolveResource(input: ConversationReadInput) {
+    return { resourceType: "conversation", resourceId: input.conversationId, action: "read" };
   }
 
   execute(input: ConversationReadInput, context: ExecutionContext): Promise<ConversationReadResult> {
-    return this.client.readConversation(context, input.targetId, input.limit);
+    return this.client.readConversation(context, input.conversationId, input.limit);
   }
 }

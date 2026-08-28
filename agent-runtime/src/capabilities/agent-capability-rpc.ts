@@ -543,9 +543,10 @@ export class AgentCapabilityRPCClient {
     });
   }
 
-  async readConversation(context: ExecutionContext, targetId: string, limit: number): Promise<ConversationReadResult> {
-    const normalizedTargetId = targetId.trim();
-    if (!normalizedTargetId || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+  async readConversation(context: ExecutionContext, conversationId: string, limit: number): Promise<ConversationReadResult> {
+    const normalizedConversationId = conversationId.trim();
+    const targetId = targetIdForConversation(context.principalUuid, normalizedConversationId);
+    if (!targetId || !Number.isInteger(limit) || limit < 1 || limit > 100) {
       throw new Error("Agent conversation read request is invalid");
     }
     const metadata = this.metadata(context.requestId, context.traceId);
@@ -554,14 +555,14 @@ export class AgentCapabilityRPCClient {
         context: this.requestContext(context.requestId, context.traceId),
         taskId: context.taskId,
         runId: context.runId,
-        targetId: normalizedTargetId,
+        targetId,
         limit
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent conversation read returned no response"));
           return;
         }
-        if (response.found && response.targetId !== normalizedTargetId) {
+        if (response.found && response.targetId !== targetId) {
           reject(new Error("Agent conversation read returned conflicting target"));
           return;
         }
@@ -1109,6 +1110,17 @@ export class AgentCapabilityRPCClient {
       callerService
     };
   }
+}
+
+function targetIdForConversation(principalUuid: string, conversationId: string): string {
+  const parts = conversationId.split(":");
+  if (parts[0] === "group" && parts.length === 2) return parts[1]!.trim();
+  if (parts[0] === "direct" && parts.length === 3) {
+    const users = parts.slice(1).map((value) => value.trim());
+    if (users[0] === principalUuid.trim()) return users[1]!;
+    if (users[1] === principalUuid.trim()) return users[0]!;
+  }
+  return "";
 }
 
 function canonicalJSON(value: unknown): string {
