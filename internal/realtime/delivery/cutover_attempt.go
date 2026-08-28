@@ -59,6 +59,7 @@ type CutoverAttemptManifest struct {
 	SourceAuthority           Authority `json:"source_authority"`
 	TargetAuthority           Authority `json:"target_authority"`
 	InitialEpoch              uint64    `json:"initial_epoch"`
+	InitialLeaseSHA256        string    `json:"initial_lease_sha256"`
 	MaxInterruptionMS         int64     `json:"max_interruption_ms"`
 	CreatedAtUnixMS           int64     `json:"created_at_unix_ms"`
 	SourceNodesManifestSHA256 string    `json:"source_nodes_manifest_sha256"`
@@ -338,7 +339,7 @@ func validateCutoverAttemptManifest(manifest CutoverAttemptManifest) (CutoverAtt
 		return manifest, "", fmt.Errorf("cutover attempt manifest transition bounds are invalid")
 	}
 	for _, digest := range []string{
-		manifest.SourceNodesManifestSHA256, manifest.FrozenNodesManifestSHA256,
+		manifest.InitialLeaseSHA256, manifest.SourceNodesManifestSHA256, manifest.FrozenNodesManifestSHA256,
 		manifest.TargetNodesManifestSHA256, manifest.CheckpointManifestSHA256,
 	} {
 		if !validSHA256(digest) {

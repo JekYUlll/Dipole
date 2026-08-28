@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+var ErrFenceTransitionReceiptNotFound = errors.New("delivery authority fence receipt is missing")
 
 const (
 	FenceTransitionSchemaV1        = "dipole.realtime.delivery-fence-transition.v1"
@@ -192,7 +195,7 @@ func (w *RedisAuthorityFenceWriter) GetReceipt(ctx context.Context, transitionID
 	payload, err := w.client.Get(ctx, w.receiptPrefix+transitionID).Bytes()
 	if err != nil {
 		if err == redis.Nil {
-			return FenceTransitionReceipt{}, fmt.Errorf("delivery authority fence receipt is missing")
+			return FenceTransitionReceipt{}, ErrFenceTransitionReceiptNotFound
 		}
 		return FenceTransitionReceipt{}, fmt.Errorf("read delivery authority fence receipt: %w", err)
 	}

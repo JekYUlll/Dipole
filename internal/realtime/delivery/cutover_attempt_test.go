@@ -214,7 +214,8 @@ func validCutoverAttemptManifest(now time.Time) CutoverAttemptManifest {
 	return CutoverAttemptManifest{
 		SchemaVersion: CutoverAttemptManifestSchemaV1,
 		AttemptID:     "attempt-a", SourceAuthority: AuthorityGo, TargetAuthority: AuthorityCPP,
-		InitialEpoch: 1, MaxInterruptionMS: 60000, CreatedAtUnixMS: now.UnixMilli(),
+		InitialEpoch: 1, InitialLeaseSHA256: strings.Repeat("0", 64),
+		MaxInterruptionMS: 60000, CreatedAtUnixMS: now.UnixMilli(),
 		SourceNodesManifestSHA256: strings.Repeat("1", 64),
 		FrozenNodesManifestSHA256: strings.Repeat("2", 64),
 		TargetNodesManifestSHA256: strings.Repeat("3", 64),
