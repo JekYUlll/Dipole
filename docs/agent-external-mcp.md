@@ -253,7 +253,11 @@ Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立�
 
 `startExternalMcpShadowProcess` 进一步拥有 Kafka consumer 与上述 Temporal process。它只接受已启用的 subscription trigger：先启动 Temporal Worker/Client，再创建并启动 Kafka；disabled Kafka 或 Temporal deployment 保持零 Kafka 副作用。Kafka 构造、启动或交接后取消会先回收任何已创建的 Kafka runtime，再回收 Temporal owner。正常 stop 同样先停止 Kafka 接收新事件，再 drain Workflow Client 并关闭 Worker/Core resource，成功或失败均幂等。
 
-subscription matcher 由 Worker 的 Agent Capability RPC resource 从同一个认证 client 投影，并沿 startup plan、Worker lifecycle 和 Temporal owner 保持引用一致；Kafka runtime 只借用该 matcher，不拥有或关闭 transport。这样 subscription 授权、persistent Workflow Activities、MCP Core 与 Artifact writer 共享一条身份和连接视图，同时 Temporal resource 仍是唯一关闭权威。matcher 缺失会在 Kafka 构造前 fail closed 并回收 Temporal。该 process 仍未接入 `index.ts`/Compose，生产没有 route/resolver 注册，也不会自动建立外部 MCP 网络连接。
+subscription matcher 由 Worker 的 Agent Capability RPC resource 从同一个认证 client 投影，并沿 startup plan、Worker lifecycle 和 Temporal owner 保持引用一致；Kafka runtime 只借用该 matcher，不拥有或关闭 transport。这样 subscription 授权、persistent Workflow Activities、MCP Core 与 Artifact writer 共享一条身份和连接视图，同时 Temporal resource 仍是唯一关闭权威。matcher 缺失会在 Kafka 构造前 fail closed 并回收 Temporal。该 process 已由后述独占 mode 接入 `index.ts`，Compose 与生产开关继续关闭，只有显式完整配置才会建立资源。
+
+常驻入口现提供显式 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow`。该 mode 只有在 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=true`、Temporal enabled、Kafka enabled、`DIPOLE_AGENT_TRIGGER_MODE=subscription` 和 Capability RPC enabled 同时成立时才可启动；外部 Profile 开关与 activity mode 只启用一侧也会固定拒绝。入口在该 mode 下不构造原有 Kafka Shadow runtime 或通用 Temporal Worker，完整生命周期只交给 `startExternalMcpProductionShadow` 一次，因此同一 task queue 不会注册两份不同 Activity catalog。
+
+Compose 仍保留 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`、Temporal disabled 与 `foundation`，所以发布后没有默认网络或消费行为。隔离验收组合使用临时 in-memory Temporal Server 与独立 task queue 验证恢复、替换、取消和 MCP history，同时用本地 modern Streamable HTTP Client/Server 只执行 initialize 和 Tool discovery，断言 `tools/call=0`。该证据验证入口策略、Workflow 与协议只读面；真实 Profile/I/O/route manifest、Core/MySQL、Kafka、凭据、public DNS、pinned TLS 与 fresh readiness 仍需独立 Shadow tenant 联合演练。
 
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
