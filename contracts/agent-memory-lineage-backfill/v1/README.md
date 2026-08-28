@@ -13,3 +13,5 @@
 3. Run with `-execute -manifest manifest.json -approval approval.json -operator <operator> -approver <approver> -receipt-out receipt.json`. The command requires the current schema, uses the manifest batch size and emits a low-sensitive receipt.
 
 The command is intentionally unsuitable for shared execution until the deployment owner records the maintenance window and approval evidence. All contract files are capped at 64 KiB and are written with owner-only permissions.
+
+Before any shared-environment decision, run the read-only `dipole-agent-memory-lineage-rollout-review` with `-job`, the fixed manifest, the independent approval, a reviewed rollout input and `-receipt-out`. The rollout review requires migration `43`, two reviewers, verified rollback and backup, 64-character runtime/configuration hashes, a future window no longer than 24 hours, and `sharedExecutionRequested=false`; an eligible receipt still carries `executionAuthority=false`.
