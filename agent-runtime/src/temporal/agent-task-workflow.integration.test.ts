@@ -207,7 +207,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await waitForStatus(env, handle, "waiting_input");
     await controls.provideInput("task-input-1", { requestId: "INPUT-1", value: { scope: "month" } });
     await env.sleep(100);
-    await expect(controls.query("task-input-1")).resolves.toMatchObject({ status: "waiting_input", pending: { requestId: "INPUT-1" } });
+    await expect(controls.query("task-input-1")).resolves.toMatchObject({
+      status: "waiting_input", pending: { requestId: "INPUT-1", source: { kind: "agent" } }
+    });
 
     workerOne.shutdown();
     await workerOneRun;

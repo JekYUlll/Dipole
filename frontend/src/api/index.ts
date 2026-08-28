@@ -36,11 +36,16 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    const { code, data, message } = response.data
-    if (code !== 0) {
-      return Promise.reject(new Error(message || '请求失败'))
+    const payload = response.data
+    if (payload !== null && typeof payload === 'object' && !Array.isArray(payload) &&
+        Object.prototype.hasOwnProperty.call(payload, 'code')) {
+      const { code, data, message } = payload as { code?: unknown; data?: unknown; message?: unknown }
+      if (code !== 0) {
+        return Promise.reject(new Error(typeof message === 'string' && message ? message : '请求失败'))
+      }
+      return data
     }
-    return data
+    return payload
   },
   (error) => {
     if (error.response?.status === 401) {
