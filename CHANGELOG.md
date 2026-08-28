@@ -35,6 +35,7 @@
 - 新增 `contracts/agent-task-timeline/v1/`：定义 Agent Task 增量时间线的低敏事件、稳定游标、principal 复核和 fail-closed 边界；当前只建立契约，Core/Gateway 聚合 adapter 与前端完整时间线仍关闭并由 `AD-045` 跟踪。
 - Agent Task Timeline 增加 migration v48 append-only 事件表及 sqlc append/list repository，使用数据库生成的 `event_seq` 保证 Task 内顺序；状态变更事务接入和 Core/Gateway 聚合 API 仍未开放。
 - Agent Policy 生产事务装配已将 Task/Run 创建与状态迁移和 Timeline 事件写入绑定在同一 MySQL 事务中；事件写入失败会回滚对应状态变化，旧兼容构造保持可用。
+- Core Agent RPC 新增 owner-scoped `ListAgentTaskTimeline` v1：服务端复核 Task principal，按 `event_seq` 提供低敏增量事件与 `next_cursor`，Timeline 仓储已接入生产 Core 装配；Gateway 代理和前端完整时间线仍待后续阶段。
 
 ### 验证
 
@@ -50,6 +51,7 @@
 - Pencil CLI `0.3.5` 认证和版本检查通过；Agent Task Timeline 增量任务在画布调用阶段超时终止，未产生 `.pen` 或导出图，canonical 设计文件保持不变，记录为 `AD-044`。
 - 增加 `scripts/pencil-safe-edit.mjs`：Pencil 增量编辑具备默认超时、临时输出、`.pen` JSON 结构校验、导出文件校验和成功后原子替换，失败不会覆盖 canonical 设计。
 - Agent Runtime 追加 `npm run typecheck` 与生产 `npm run build` 验证通过；`ModelRouter` 继续通过 `StructuredModelClient` 隔离具体 AI SDK，保持后续 Eino/provider 替换的适配边界。
+- Core Agent Timeline RPC 契约测试通过：覆盖 schema/revision/cursor、foreign Task 隐藏和 Timeline 未配置时的 `FailedPrecondition`；Proto Go/TypeScript 生成检查通过。受当前环境配置文件缺失影响，`internal/app` 全包测试仍在既有配置读取处 panic，未归因于本次改动。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 

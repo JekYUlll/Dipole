@@ -31,8 +31,8 @@
 - **影响范围：** Agent Task UI、Core/Gateway 只读 API、Run/Step/Tool/Artifact 审计
 - **现状：** Task、Run、Shadow Step、Model Call、Tool Invocation、Approval 和 Artifact 已分别持久化；Gateway 当前只提供权威 Task 当前状态、输入和审批控制。已建立 `contracts/agent-task-timeline/v1/`，规定 Core principal 复核、稳定 `event_seq`、增量游标和低敏事件 DTO。
 - **风险：** 若由 Gateway 直接拼接多张 Agent 表或读取 Temporal 历史，会绕过服务 ownership、产生跨 Run 顺序歧义并泄露 prompt、参数或外部结果；当前前端不能声称展示完整执行历史。
-- **本轮进展：** migration v48 新增 append-only `agent_task_timeline_events`，以数据库生成的 `event_seq` 保存低敏 Task/Run/Capability/Approval 元数据，并通过 sqlc 提供 append/list 查询与领域校验。生产事务装配现在让 Task/Run 创建和状态迁移与 Timeline append 一起提交；Core/Gateway 聚合 API、其余 Step/Model/Tool/Artifact 写入口仍未开放。
-- **建议方向：** 由 Core 提供按 Task owner-scoped 的 Timeline RPC/adapter，在同一一致性读取中聚合已持久化事件；先只返回低敏元数据和状态，再按证据逐步加入 Artifact 引用与视觉回归。
+- **本轮进展：** migration v48 新增 append-only `agent_task_timeline_events`，以数据库生成的 `event_seq` 保存低敏 Task/Run/Capability/Approval 元数据，并通过 sqlc 提供 append/list 查询与领域校验。生产事务装配现在让 Task/Run 创建和状态迁移与 Timeline append 一起提交；Core 已提供 owner-scoped `ListAgentTaskTimeline` v1 增量 RPC，并接入生产仓储，完成 schema/revision/cursor、foreign Task 隐藏和未配置 fail-closed 测试。Gateway 聚合代理、其余 Step/Model/Tool/Artifact 写入口仍未开放。
+- **建议方向：** 由 Gateway 透传 Core 的 owner-scoped Timeline RPC，并让前端在 feature flag 下消费稳定 cursor；先只返回低敏元数据和状态，再按证据逐步加入 Artifact 引用与视觉回归。
 - **处理门槛：** Core/Gateway 契约测试覆盖 foreign Task、游标重复/漂移、跨 Run 事件、事件缺失和字段脱敏；前端默认关闭，未收到 v1 response 时保持当前 Task Query 页面。
 
 ### AD-043：Sync Cassandra hydration 缺少共享环境运行时证据闭环
