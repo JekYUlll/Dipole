@@ -5,7 +5,7 @@ import { z } from "zod";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 
 export const externalMcpShadowDrillEvidenceSchemaVersion =
-  "dipole.agent.external-mcp-shadow-drill.v1" as const;
+  "dipole.agent.external-mcp-shadow-drill.v2" as const;
 export const externalMcpShadowDrillEvidenceMaximumValidityMs = 24 * 60 * 60 * 1_000;
 
 const outcomeSchema = z.object({
@@ -14,13 +14,16 @@ const outcomeSchema = z.object({
   tool_call_count: z.literal(1),
   artifact_count: z.literal(1),
   restart_duplicate_suppressed: z.literal(true),
-  expired_readiness_denied: z.literal(true)
+  expired_readiness_denied: z.literal(true),
+  core_rpc_type: z.literal("go_internal_grpc_mtls"),
+  core_rpc_authenticated: z.literal(true),
+  core_rpc_identity_denials_verified: z.literal(true)
 }).strict();
 
 const payloadSchema = outcomeSchema.extend({
   schema_version: z.literal(externalMcpShadowDrillEvidenceSchemaVersion),
   outcome: z.literal("passed"),
-  isolation: z.literal("disposable_mysql_kafka_temporal_and_local_mcp"),
+  isolation: z.literal("disposable_mysql_kafka_temporal_go_core_mtls_and_local_mcp"),
   collected_at: z.string(),
   expires_at: z.string(),
   production_authority: z.literal(false)
@@ -55,7 +58,7 @@ export function createExternalMcpShadowDrillEvidence(
   const payload = payloadSchema.parse({
     schema_version: externalMcpShadowDrillEvidenceSchemaVersion,
     outcome: "passed",
-    isolation: "disposable_mysql_kafka_temporal_and_local_mcp",
+    isolation: "disposable_mysql_kafka_temporal_go_core_mtls_and_local_mcp",
     collected_at: collectedAt.toISOString(),
     expires_at: new Date(collectedAt.getTime() + validityMs).toISOString(),
     ...validatedOutcome,
