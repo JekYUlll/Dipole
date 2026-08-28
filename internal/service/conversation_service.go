@@ -147,7 +147,7 @@ func (s *ConversationService) UpdateGroupConversations(message *model.Message) e
 		if batchRepo, ok := s.repo.(conversationBatchRepository); ok {
 			startedAt := time.Now()
 			err := batchRepo.UpsertGroupMessageBatch(message.TargetUUID, message)
-			s.observeProjectionWrite("group_message_batch", time.Since(startedAt), err)
+			s.observeProjectionWrite("group_message", time.Since(startedAt), err)
 			if err != nil {
 				return fmt.Errorf("upsert group conversation batch: %w", err)
 			}
