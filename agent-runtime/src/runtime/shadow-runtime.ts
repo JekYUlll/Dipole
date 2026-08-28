@@ -343,11 +343,6 @@ export function createKafkaShadowRuntime(
   if (usesLocalModel && persistentAudit === undefined) {
     throw new Error("AI SDK mode requires persistent pre-model Memory lineage");
   }
-  const planner = usesLocalModel
-    ? new ModelShadowPlanner(new ModelRouter(
-      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client)
-    : new MetadataShadowPlanner();
   let registry: CapabilityRegistry | undefined;
   let trajectory: MySQLShadowAuditSink | undefined;
   if (usesLocalModel) {
@@ -356,6 +351,11 @@ export function createKafkaShadowRuntime(
     registry.register(new ConversationReadCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
+  const planner = usesLocalModel
+    ? new ModelShadowPlanner(new ModelRouter(
+      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
+    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
     dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
@@ -413,7 +413,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationReadCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client);
+  ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
