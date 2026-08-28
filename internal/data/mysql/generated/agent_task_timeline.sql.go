@@ -44,6 +44,7 @@ const insertAgentTaskTimelineEvent = `-- name: InsertAgentTaskTimelineEvent :exe
 INSERT INTO agent_task_timeline_events (
     event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE event_seq = event_seq
 `
 
 type InsertAgentTaskTimelineEventParams struct {
