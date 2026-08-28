@@ -1,0 +1,28 @@
+{
+  "compiler": "/usr/bin/g++",
+  "cpp": {
+    "elapsed_ns": 2136396102,
+    "item_count": 100000,
+    "iterations": 100000,
+    "language": "cpp",
+    "ops_per_second": 46807.79931511034,
+    "schema_version": "dipole.realtime.projection-benchmark.v1"
+  },
+  "cpp_over_go_ops_ratio": 0.09809149286680358,
+  "decision": "blocked",
+  "git_revision": "449959be1c40c6437476fef7c24507ff701572cf",
+  "go": {
+    "elapsed_ns": 209562283,
+    "item_count": 100000,
+    "iterations": 100000,
+    "language": "go",
+    "ops_per_second": 477185.10491699504,
+    "schema_version": "dipole.realtime.projection-benchmark.v1"
+  },
+  "minimum_cpp_over_go_ops_ratio": 1.0,
+  "schema_version": "dipole.realtime.projection-benchmark-report.v1",
+  "workload": {
+    "event": "message.direct.created",
+    "iterations": 100000
+  }
+}
