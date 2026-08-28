@@ -3,6 +3,7 @@ package agentgrpc
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ type Server struct {
 	approvals            application.AgentApprovalServiceV1
 	approvalGrants       application.AgentApprovalGrantResolverV1
 	controls             application.AgentTaskControlAuthorizerV1
+	timeline             application.AgentTaskTimelineStoreV1
 	projections          application.AgentTaskWorkflowProjectionServiceV1
 	repairs              application.AgentWorkflowRepairAuditServiceV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
@@ -48,6 +50,14 @@ func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMC
 		return nil, errors.New("Agent MCP readiness evidence Publisher is required")
 	}
 	s.readinessPublisher = publisher
+	return s, nil
+}
+
+func (s *Server) WithTaskTimeline(timeline application.AgentTaskTimelineStoreV1) (*Server, error) {
+	if s == nil || timeline == nil {
+		return nil, errors.New("Agent Task Timeline store is required")
+	}
+	s.timeline = timeline
 	return s, nil
 }
 
@@ -1004,6 +1014,48 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 		response.WorkflowRevision = authorization.Workflow.Revision
 	}
 	return response, nil
+}
+
+func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.ListAgentTaskTimelineRequest) (*agentv1.ListAgentTaskTimelineResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.timeline == nil {
+		return nil, status.Error(codes.FailedPrecondition, "Agent Task Timeline is not configured")
+	}
+	if s.controls == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || strings.TrimSpace(request.GetTaskId()) == "" || strings.TrimSpace(request.GetPrincipalUserId()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline request is invalid")
+	}
+	if request.GetLimit() == 0 || request.GetLimit() > 100 {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline limit is invalid")
+	}
+	authorization, err := s.controls.AuthorizeTaskControl(ctx, request.GetTaskId(), request.GetPrincipalUserId())
+	if err != nil || authorization == nil {
+		return nil, status.Error(codes.NotFound, "Agent Task unavailable")
+	}
+	events, err := s.timeline.ListAgentTaskTimelineEvents(ctx, request.GetTaskId(), request.GetAfterSeq(), int(request.GetLimit()))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Agent Task Timeline unavailable")
+	}
+	response := &agentv1.ListAgentTaskTimelineResponse{SchemaVersion: application.AgentTaskTimelineSchemaVersionV1, TaskId: authorization.TaskUUID, Revision: timelineRevision(authorization), Events: make([]*agentv1.AgentTaskTimelineEvent, 0, len(events))}
+	for _, event := range events {
+		response.Events = append(response.Events, &agentv1.AgentTaskTimelineEvent{
+			EventSeq: event.EventSeq, EventId: event.EventUUID, TaskId: event.TaskUUID, RunId: event.RunUUID,
+			Kind: string(event.Kind), Status: event.Status, CapabilityId: event.CapabilityID, ApprovalId: event.ApprovalUUID,
+			OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
+		})
+	}
+	if len(events) == int(request.GetLimit()) {
+		response.NextCursor = strconv.FormatUint(events[len(events)-1].EventSeq, 10)
+	}
+	return response, nil
+}
+
+func timelineRevision(authorization *application.AgentTaskControlAuthorizationV1) uint64 {
+	if authorization != nil && authorization.Workflow != nil {
+		return authorization.Workflow.Revision
+	}
+	return 0
 }
 
 func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.ResolveMcpContextRequest) (*agentv1.ResolveMcpContextResponse, error) {

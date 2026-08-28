@@ -3,6 +3,7 @@ package agentgrpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -251,6 +252,29 @@ type taskControlAuthorizerStub struct {
 	err           error
 }
 
+type taskTimelineStub struct {
+	events []application.AgentTaskTimelineEventV1
+	err    error
+}
+
+func (s *taskTimelineStub) AppendAgentTaskTimelineEvent(_ context.Context, event application.AgentTaskTimelineEventV1) (uint64, error) {
+	s.events = append(s.events, event)
+	return uint64(len(s.events)), s.err
+}
+
+func (s *taskTimelineStub) ListAgentTaskTimelineEvents(_ context.Context, _ string, afterSeq uint64, limit int) ([]application.AgentTaskTimelineEventV1, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	result := make([]application.AgentTaskTimelineEventV1, 0, limit)
+	for _, event := range s.events {
+		if event.EventSeq > afterSeq && len(result) < limit {
+			result = append(result, event)
+		}
+	}
+	return result, nil
+}
+
 type taskWorkflowProjectionStub struct {
 	request application.AgentTaskWorkflowProjectionRequestV1
 	result  application.AgentTaskWorkflowProjectionV1
@@ -347,6 +371,63 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetWorkflowRevision() != 2 ||
 		response.GetWorkflowStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
+	}
+}
+
+func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
+	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
+		TaskUUID: "TASK-1", Status: application.AgentTaskStatusRunning,
+		Workflow: &application.AgentTaskWorkflowProjectionV1{Revision: 7},
+	}}
+	timeline := &taskTimelineStub{events: []application.AgentTaskTimelineEventV1{
+		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventToolInvocation, Status: "completed", OccurredAt: time.UnixMilli(4_000)},
+		{EventSeq: 5, EventUUID: "EV-5", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventTerminal, Status: "completed", OccurredAt: time.UnixMilli(5_000)},
+	}}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	response, err := server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100", AfterSeq: 3, Limit: 1,
+	})
+	if err != nil {
+		t.Fatalf("list timeline: %v", err)
+	}
+	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
+		t.Fatalf("unexpected timeline response: response=%+v controls=%+v", response, controls)
+	}
+}
+
+func TestListAgentTaskTimelineHidesForeignTask(t *testing.T) {
+	controls := &taskControlAuthorizerStub{err: errors.New("foreign task")}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(&taskTimelineStub{}); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	_, err = server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U999", Limit: 20,
+	})
+	if status.Code(err) != codes.NotFound {
+		t.Fatalf("foreign task code = %s, want %s", status.Code(err), codes.NotFound)
+	}
+}
+
+func TestListAgentTaskTimelineFailsClosedWhenUnconfigured(t *testing.T) {
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	_, err = server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100", Limit: 20,
+	})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("unconfigured code = %s, want %s", status.Code(err), codes.FailedPrecondition)
 	}
 }
 

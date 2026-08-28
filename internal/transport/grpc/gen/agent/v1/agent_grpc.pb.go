@@ -39,6 +39,7 @@ const (
 	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
+	AgentCapabilityService_ListAgentTaskTimeline_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListAgentTaskTimeline"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
@@ -87,6 +88,7 @@ type AgentCapabilityServiceClient interface {
 	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
+	ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
@@ -313,6 +315,16 @@ func (c *agentCapabilityServiceClient) AuthorizeTaskControl(ctx context.Context,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthorizeTaskControlResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeTaskControl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentTaskTimelineResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListAgentTaskTimeline_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -563,6 +575,7 @@ type AgentCapabilityServiceServer interface {
 	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
+	ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
@@ -654,6 +667,9 @@ func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Conte
 }
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgentTaskTimeline not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMcpContext not implemented")
@@ -1099,6 +1115,24 @@ func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).AuthorizeTaskControl(ctx, req.(*AuthorizeTaskControlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListAgentTaskTimeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentTaskTimelineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListAgentTaskTimeline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListAgentTaskTimeline_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListAgentTaskTimeline(ctx, req.(*ListAgentTaskTimelineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1585,6 +1619,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AuthorizeTaskControl",
 			Handler:    _AgentCapabilityService_AuthorizeTaskControl_Handler,
+		},
+		{
+			MethodName: "ListAgentTaskTimeline",
+			Handler:    _AgentCapabilityService_ListAgentTaskTimeline_Handler,
 		},
 		{
 			MethodName: "ResolveMcpContext",
