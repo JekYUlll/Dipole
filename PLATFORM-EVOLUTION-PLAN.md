@@ -470,7 +470,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
 - [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成；Contact、Group、File、Device 与 Settings 待完成。
-- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Agent Definition、Subscription、完整 Task timeline、Memory、Artifact、多轮与敏感授权仍由 AD-036 跟踪。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，前端 Task parser 已严格保留 `waiting_approval` pending 状态。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Agent Definition、Subscription、完整 Task timeline、Memory、Artifact、多轮与敏感授权仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
 Pencil CLI 增量任务本轮未形成可提交设计资产，原因和回滚边界记录在 `AD-044`；既有 canonical 文件和批准导出保持不变。
