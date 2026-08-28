@@ -1,18 +1,22 @@
 import type { AuthProvider, StreamableHTTPClientTransportOptions, Transport } from "@modelcontextprotocol/client";
+import { execFile } from "node:child_process";
 import { createCipheriv, randomBytes } from "node:crypto";
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpCredentialBinding } from "./external-mcp-credential-catalog.js";
 import { loadExternalMcpConfig } from "./external-mcp-profile.js";
 import {
   createExternalMcpProductionIoRegistry,
+  createExternalMcpProductionIoRuntime,
   type ExternalMcpProductionIoConfig
 } from "./external-mcp-production-io.js";
 import { externalMcpEncryptedSecretEnvelopeMagic } from "./node-external-mcp-encrypted-secret-provider.js";
 
+const execFileAsync = promisify(execFile);
 const credentialRef = "CRED-0123456789ABCDEF";
 const firstSecretRef = "SECRET-0123456789ABCDEF";
 const secondSecretRef = "SECRET-FEDCBA9876543210";
@@ -25,6 +29,10 @@ let firstKeyPath = "";
 let secondKeyPath = "";
 let firstSecretPath = "";
 let secondSecretPath = "";
+let caPath = "";
+let firstKeyOriginal: Buffer;
+let firstSecretOriginal: Buffer;
+let caOriginal: Buffer;
 
 beforeAll(async () => {
   directory = await mkdtemp(join(tmpdir(), "dipole-mcp-production-io-"));
@@ -33,12 +41,18 @@ beforeAll(async () => {
   secondKeyPath = join(directory, "key-v2.bin");
   firstSecretPath = join(directory, "secret-v1.bin");
   secondSecretPath = join(directory, "secret-v2.bin");
+  caPath = join(directory, "ca.pem");
   const firstKey = randomBytes(32);
   const secondKey = randomBytes(32);
   await writeFile(firstKeyPath, firstKey, { mode: 0o600 });
   await writeFile(secondKeyPath, secondKey, { mode: 0o600 });
   await writeEnvelope(firstSecretPath, "token-first", firstKey, binding(firstSecretRef), firstKeyRef);
   await writeEnvelope(secondSecretPath, "token-second", secondKey, binding(secondSecretRef), secondKeyRef);
+  await generateCertificate(caPath, join(directory, "ca-key.pem"));
+  await chmod(caPath, 0o644);
+  firstKeyOriginal = await readFile(firstKeyPath);
+  firstSecretOriginal = await readFile(firstSecretPath);
+  caOriginal = await readFile(caPath);
   firstKey.fill(0);
   secondKey.fill(0);
 });
@@ -122,6 +136,49 @@ describe("external MCP production I/O composition", () => {
     expect(String(error)).not.toContain(firstSecretRef);
     expect(String(error)).not.toContain("different-provider");
   });
+
+  it("preflights real Catalog, encrypted Secret and CA files without constructing network state", async () => {
+    const create = vi.fn();
+    const now = new Date("2026-08-28T12:00:00Z");
+    await restorePreflightFiles();
+    const runtime = createExternalMcpProductionIoRuntime(enabledProfiles(), productionIo(), {
+      transportBuilder: { create },
+      now: () => now
+    });
+
+    try {
+      await expect(runtime.preflight()).resolves.toEqual({
+        schemaVersion: "dipole.agent.external-mcp-production-io-preflight.v1",
+        enabled: true,
+        checkedAt: now.toISOString(),
+        profileCount: 1,
+        credentialCount: 1,
+        caBundleCount: 1
+      });
+      expect(create).not.toHaveBeenCalled();
+
+      await writeFile(firstKeyPath, randomBytes(32), { mode: 0o600 });
+      await expect(runtime.preflight()).rejects.toThrow("External MCP production I/O preflight failed");
+      await restorePreflightFiles();
+
+      const corruptEnvelope = Buffer.from(firstSecretOriginal);
+      const tagIndex = corruptEnvelope.length - 1;
+      corruptEnvelope[tagIndex] = corruptEnvelope[tagIndex]! ^ 0xff;
+      await writeFile(firstSecretPath, corruptEnvelope, { mode: 0o600 });
+      await expect(runtime.preflight()).rejects.toThrow("External MCP production I/O preflight failed");
+      await restorePreflightFiles();
+
+      await writeFile(caPath, Buffer.alloc(512, "x"), { mode: 0o644 });
+      await expect(runtime.preflight()).rejects.toThrow("External MCP production I/O preflight failed");
+      await restorePreflightFiles();
+
+      await writeCatalog(firstSecretRef, "revoked");
+      await expect(runtime.preflight()).rejects.toThrow("External MCP production I/O preflight failed");
+      expect(create).not.toHaveBeenCalled();
+    } finally {
+      await restorePreflightFiles();
+    }
+  });
 });
 
 function enabledProfiles() {
@@ -157,7 +214,7 @@ function productionIo(): ExternalMcpProductionIoConfig {
         [secondSecretRef]: { keyRef: secondKeyRef, path: secondSecretPath }
       }
     },
-    caBundles: { [caRef]: join(directory, "unused-ca.pem") }
+    caBundles: { [caRef]: caPath }
   };
 }
 
@@ -219,4 +276,23 @@ async function writeEnvelope(
     cipher.getAuthTag()
   ]), { mode: 0o600 });
   await chmod(path, 0o600);
+}
+
+async function generateCertificate(certPath: string, keyPath: string): Promise<void> {
+  await execFileAsync("openssl", [
+    "req", "-x509", "-newkey", "rsa:2048", "-sha256", "-nodes",
+    "-keyout", keyPath, "-out", certPath, "-days", "1", "-subj", "/CN=mcp.github.example",
+    "-addext", "subjectAltName=DNS:mcp.github.example",
+    "-addext", "basicConstraints=critical,CA:TRUE"
+  ]);
+}
+
+async function restorePreflightFiles(): Promise<void> {
+  await writeFile(firstKeyPath, firstKeyOriginal, { mode: 0o600 });
+  await chmod(firstKeyPath, 0o600);
+  await writeFile(firstSecretPath, firstSecretOriginal, { mode: 0o600 });
+  await chmod(firstSecretPath, 0o600);
+  await writeFile(caPath, caOriginal, { mode: 0o644 });
+  await chmod(caPath, 0o644);
+  await writeCatalog(firstSecretRef, "active");
 }
