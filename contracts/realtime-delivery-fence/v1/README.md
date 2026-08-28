@@ -24,6 +24,8 @@ The orchestrator reloads this journal before every step and executes at most one
 
 The production executor validates all four manifest hashes and the initial lease before accepting an action. It follows `artifact lookup -> Redis receipt recovery -> new side effect`: an existing artifact wins, a previously successful transition is recovered by action ID, and only an explicit missing-receipt result permits a new CAS request. Source/target checkpoints compose the expected-node aggregator and dual-group collector; both rollback paths reuse the same components and validate authority, epoch, phase, lease and manifest bindings. `decision-artifact.schema.json` records completion, rollback intent and rollback completion. Redis errors, malformed receipts, rebalance, stale observations, missing predecessors and any state/event drift leave the journal unchanged.
 
+`attempt-inputs.schema.json` makes an attempt directory self-contained. Creation canonicalizes and immutably stores the initial transition, source/frozen/target node manifests and checkpoint manifest in `inputs.json`, then derives `attempt.json` from their hashes. Repeated creation succeeds only for the same canonical inputs and attempt metadata. Loading strictly decodes both files and recomputes every binding before opening `artifacts/`; operators do not resupply mutable external manifests during recovery.
+
 ## Operator transition state machine
 
 `dipole-realtime-authority` is a local operations CLI backed by a Redis Lua compare-and-set. Every non-bootstrap request binds the SHA-256 of the exact current raw lease. The allowed transitions are:

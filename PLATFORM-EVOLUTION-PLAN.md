@@ -430,6 +430,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 增加单步恢复 orchestrator、确定性幂等 action ID 与首次冻结超预算自动回退决策，动作失败时保持 journal 原位。
     - [x] 增加不可覆盖 action artifact envelope，独立绑定 canonical action 与外部 receipt/checkpoint payload，为模糊故障重试提供持久幂等边界。
     - [x] 接入 production transition/checkpoint executor，验证 initial lease 和全部 manifest 绑定，并覆盖 forward、两条 rollback 与 Redis receipt 恢复。
+    - [x] 建立自包含 immutable attempt workspace，持久化 canonical 输入并在恢复时重算全部 manifest/lease 绑定。
     - [ ] 增加恢复命令与 lease renewer，并完成真实 controller crash、Kafka rebalance、Redis 故障演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
