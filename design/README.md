@@ -81,7 +81,7 @@ Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 
 
 批准的 2x 预览位于 `exports/agent-subscription-v1/`。当前稿固定展示 `OWNER CONTROL / DIRECT_TARGET` 边界：订阅控制状态可以持久化，Runtime 仍保持默认关闭，页面不得暗示已经启动共享事件触发或语义模型预筛。创建订阅必须选择经过 Gateway 鉴权的 active Definition version 与可读 conversation scope；在公开 Definition 目录交付前，创建入口保持关闭，用户无需也不能手填内部 Definition ID。撤销要求精确原因并保留审计信息，撤销动作不改变模型 Runtime 生命周期。
 
-公开 Gateway owner list/revoke HTTP adapter 与 Vue 管理页已按本设计默认关闭接入，分别由 `gateway.agent_subscription_enabled=false|true` 和 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false|true` 控制。服务端从认证会话派生 principal、固定 tenant，页面查询失败时清空旧列表，撤销提交精确原因后以权威响应替换当前记录。公开 Definition 目录与 create 尚未接入，本设计和管理页面均不能用于声明 `subscription` 模式已经可用。
+公开 Gateway owner list/revoke HTTP adapter、Vue 管理页与 owner-scoped active Definition 目录已按本设计默认关闭接入，分别由 `gateway.agent_subscription_enabled=false|true` 和 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false|true` 控制。服务端从认证会话派生 principal、固定 tenant，页面查询失败时清空旧列表，撤销提交精确原因后以权威响应替换当前记录。authenticated conversation chooser 与 create 尚未接入，本设计和管理页面均不能用于声明 `subscription` 模式已经可用。
 
 ## Sync 交互契约
 
