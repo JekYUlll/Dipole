@@ -70,6 +70,7 @@
 
 ### 新增
 
+- 增加语言中立 `dipole.agent.subscription-shadow-collection.v1` 与只读 Prometheus Collector：从无凭据 origin 执行固定 19 次历史查询，要求单 Agent series、全窗口 Shadow enabled、vector 单值和非负安全整数，自动生成 evidence v1 所需的起止 counter、抓取覆盖与 reset 输入；Collector 不修改共享状态、不输出 Prometheus URL，也明确保留部署 revision 的发布记录核验门槛。
 - 增加语言中立 `dipole.agent.subscription-shadow-evidence.v1` 与独立 CLI：Prometheus 起止快照绑定 24 小时以上窗口、Runtime/config SHA-256、query revision、抓取覆盖率、六类 comparison、candidate 和 counter resets；至少 95% 抓取、100 个事件、零 reset、零 matcher error 才生成最多有效 24 小时的 canonical-hashed passing evidence。输入/证据 Schema 均拒绝附加字段，收据固定 `production_authority=false` 与 `runtime_change_authority=false`，Runtime 启动链不读取该文件。
 - 增加默认关闭的 Agent Subscription 在线 Shadow 对照：`direct_target` Kafka handler 在 EventLedger 前调用同一 Core matcher，只记录固定 `accepted|ignored × match|miss|error` 矩阵和候选总数；matcher 异常不阻断主路径，且不会创建第二个 Task、Workflow 或模型调用。Agent `/metrics` 暴露低敏零值/开关状态，Prometheus 新增 matcher error 与 admission drift 告警；Compose 固定关闭，启用与回滚见 `docs/agent-subscription-shadow.md`。
 - 增加默认关闭的 Agent Event Subscription owner create 闭环：Core additive RPC 将 authenticated readable conversation 与精确 Definition scope 求交集并派生 direct/group event type；Gateway 只接受 Definition、conversation 与确定性 filter，从 JWT/配置派生 principal/tenant，并在创建时重新派生 resource。Vue 从 active Definition 目录和权威候选中选择绑定，关键词超限显式阻止提交，成功后以 Core 结果更新列表；canonical Pencil 增加 desktop/mobile 创建稿、七类状态和两个复用组件。Runtime 与 Compose 继续固定 `direct_target`。
@@ -494,6 +495,7 @@
 
 ### 验证
 
+- Agent Subscription Shadow Collector 与 evidence 聚焦测试通过 `13/13`，完整 Runtime 通过 `566 passed / 22 expected skipped`；覆盖固定查询/时间、单 series、持续启用、URL 凭据、缺失/多值/非整数/error envelope、CLI 低敏失败、三类严格 Schema 及 Collector-to-evidence 兼容。typecheck/build、官方 npm 源 `0 vulnerabilities`、canonical Go、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
 - Agent Subscription Shadow evidence 合同通过聚焦 `7/7` 与完整 Runtime `560 passed / 22 expected skipped`，覆盖 CLI create/verify、Schema 字段对照、部分窗口、低覆盖、reset、matcher error、低样本、counter 回退、过期和 canonical hash 篡改；typecheck/build、官方 npm 源零高危审计、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
 - Agent Subscription Shadow observation 通过聚焦 `15/15`、完整 Runtime `553 passed / 22 expected skipped`、typecheck/build 和官方 npm 源零高危审计；Prometheus 五条 Agent 规则及测试、Compose、服务观测与架构文档门禁通过。测试固定 matcher match/miss/error、direct-target accepted/ignored、EventLedger 单一路径和默认关闭指标面。
 - Agent Subscription create 权限链通过 canonical Go test/vet、Agent Runtime `549 passed / 22 expected skipped`、前端 `78/78`、工具链 `3/3`、两端生产构建与官方 npm 源零高危审计；Go/TS Proto、sqlc、Compose、架构文档和全部维护中的观测规则门禁通过。Chromium、Firefox、WebKit 完整矩阵为 `34 passed / 8 expected skipped`，覆盖认证 Definition/options/create、精确瘦请求、权威响应、撤销与不可用/mobile 状态；WebKit 使用临时用户态兼容库，未修改系统或仓库配置。

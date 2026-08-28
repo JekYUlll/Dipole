@@ -22,6 +22,18 @@ describe("subscription Shadow language-neutral schemas", () => {
     expect(schema.properties.query_revision.const).toBe("subscription-shadow-v1");
     expect(schema.$defs.counters.properties.candidates.maximum).toBe(Number.MAX_SAFE_INTEGER);
   });
+
+  it("keeps the read-only collection request strict and credential-free", async () => {
+    const schema = JSON.parse(await readFile(new URL("../../../contracts/agent-subscription-shadow/v1/collection.schema.json", import.meta.url), "utf8"));
+    expect(schema.properties.schema_version.const).toBe("dipole.agent.subscription-shadow-collection.v1");
+    expect(schema.properties.prometheus_url.pattern).toBe("^https?://[^/?#@]+/?$");
+    expect(schema.properties.query_revision).toBeUndefined();
+    expect(schema.required).toEqual([
+      "schema_version", "prometheus_url", "window_start", "window_end", "runtime_revision",
+      "prometheus_config_sha256", "scrape_interval_seconds"
+    ]);
+    expect(schema.additionalProperties).toBe(false);
+  });
 });
 
 function input() { return {
