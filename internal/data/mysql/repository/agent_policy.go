@@ -19,6 +19,7 @@ var ErrAgentPolicyConflict = errors.New("agent policy persistence conflict")
 
 type AgentPolicyRepository struct {
 	queries generated.Querier
+	store   transactionStore
 }
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
@@ -34,6 +35,14 @@ func NewAgentPolicyRepository(queries generated.Querier) (*AgentPolicyRepository
 		return nil, errors.New("Agent Policy queries are required")
 	}
 	return &AgentPolicyRepository{queries: queries}, nil
+}
+
+// NewAgentPolicyRepositoryWithTransactions keeps policy writes and timeline events atomic.
+func NewAgentPolicyRepositoryWithTransactions(store transactionStore) (*AgentPolicyRepository, error) {
+	if store == nil || store.Queries() == nil {
+		return nil, errors.New("Agent Policy transaction store is required")
+	}
+	return &AgentPolicyRepository{queries: store.Queries(), store: store}, nil
 }
 
 func (r *AgentPolicyRepository) CreateDefinitionVersion(ctx context.Context, definition application.AgentDefinitionVersionV1) error {
@@ -306,16 +315,39 @@ func (r *AgentPolicyRepository) CreateTask(ctx context.Context, task application
 	if err := task.Validate(); err != nil {
 		return false, fmt.Errorf("validate Agent Task: %w", err)
 	}
-	rows, err := r.queries.InsertAgentTask(ctx, generated.InsertAgentTaskParams{
-		TaskUuid: task.TaskUUID, DefinitionUuid: task.DefinitionUUID, DefinitionVersion: task.DefinitionVersion,
-		TenantID: task.TenantID, PrincipalUuid: task.PrincipalUUID, AgentUuid: task.AgentUUID,
-		Status: string(task.Status), TriggerType: task.TriggerType, TriggerRef: task.TriggerRef, Goal: task.Goal,
-		TriggerSubscriptionUuid: nullableString(task.TriggerSubscriptionUUID),
-	})
-	if err != nil {
-		return false, fmt.Errorf("create Agent Task: %w", err)
+	insert := func(q generated.Querier) (bool, error) {
+		rows, err := q.InsertAgentTask(ctx, generated.InsertAgentTaskParams{
+			TaskUuid: task.TaskUUID, DefinitionUuid: task.DefinitionUUID, DefinitionVersion: task.DefinitionVersion,
+			TenantID: task.TenantID, PrincipalUuid: task.PrincipalUUID, AgentUuid: task.AgentUUID,
+			Status: string(task.Status), TriggerType: task.TriggerType, TriggerRef: task.TriggerRef, Goal: task.Goal,
+			TriggerSubscriptionUuid: nullableString(task.TriggerSubscriptionUUID),
+		})
+		if err != nil {
+			return false, fmt.Errorf("create Agent Task: %w", err)
+		}
+		if rows == 0 {
+			return false, nil
+		}
+		if _, err := appendAgentTaskTimelineEvent(ctx, q, timelineEvent(task.TaskUUID, "", application.AgentTaskTimelineEventTask, string(task.Status))); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-	if rows > 0 {
+	var created bool
+	var err error
+	if r.store != nil {
+		err = r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+			var callbackErr error
+			created, callbackErr = insert(q)
+			return callbackErr
+		})
+	} else {
+		created, err = insert(r.queries)
+	}
+	if err != nil {
+		return false, err
+	}
+	if created {
 		return true, nil
 	}
 	existing, err := r.GetTask(ctx, task.TaskUUID)
@@ -357,13 +389,36 @@ func (r *AgentPolicyRepository) TransitionTaskStatus(ctx context.Context, taskUU
 	if err := application.ValidateAgentTaskTransitionV1(from, to); err != nil {
 		return false, fmt.Errorf("validate Agent Task transition: %w", err)
 	}
-	rows, err := r.queries.TransitionAgentTaskStatus(ctx, generated.TransitionAgentTaskStatusParams{
-		Status: string(to), TaskUuid: taskUUID, Status_2: string(from),
-	})
-	if err != nil {
-		return false, fmt.Errorf("transition Agent Task status: %w", err)
+	transition := func(q generated.Querier) (bool, error) {
+		rows, err := q.TransitionAgentTaskStatus(ctx, generated.TransitionAgentTaskStatusParams{
+			Status: string(to), TaskUuid: taskUUID, Status_2: string(from),
+		})
+		if err != nil {
+			return false, fmt.Errorf("transition Agent Task status: %w", err)
+		}
+		if rows == 0 {
+			return false, nil
+		}
+		if _, err := appendAgentTaskTimelineEvent(ctx, q, timelineEvent(taskUUID, "", application.AgentTaskTimelineEventTask, string(to))); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-	return rows > 0, nil
+	var changed bool
+	var err error
+	if r.store != nil {
+		err = r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+			var callbackErr error
+			changed, callbackErr = transition(q)
+			return callbackErr
+		})
+	} else {
+		changed, err = transition(r.queries)
+	}
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
 }
 
 func (r *AgentPolicyRepository) ProjectTaskWorkflowState(ctx context.Context, projection application.AgentTaskWorkflowProjectionV1) (bool, error) {
@@ -422,10 +477,22 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 	if err := run.Validate(); err != nil {
 		return false, fmt.Errorf("validate Agent Run: %w", err)
 	}
-	_, err := r.queries.InsertAgentRun(ctx, generated.InsertAgentRunParams{
-		RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
-		CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""}, Mode: run.Mode,
-	})
+	insert := func(q generated.Querier) error {
+		_, err := q.InsertAgentRun(ctx, generated.InsertAgentRunParams{
+			RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
+			CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""}, Mode: run.Mode,
+		})
+		if err == nil {
+			_, err = appendAgentTaskTimelineEvent(ctx, q, timelineEvent(run.TaskUUID, run.RunUUID, application.AgentTaskTimelineEventRun, string(application.AgentRunStatusRunning)))
+		}
+		return err
+	}
+	var err error
+	if r.store != nil {
+		err = r.store.WithinTx(ctx, nil, func(q *generated.Queries) error { return insert(q) })
+	} else {
+		err = insert(r.queries)
+	}
 	if err == nil {
 		return true, nil
 	}
@@ -462,13 +529,40 @@ func (r *AgentPolicyRepository) TransitionRunStatus(ctx context.Context, runUUID
 	if from != application.AgentRunStatusRunning || (to != application.AgentRunStatusCompleted && to != application.AgentRunStatusFailed && to != application.AgentRunStatusCancelled) {
 		return false, fmt.Errorf("validate Agent Run transition: %w", application.ErrAgentPolicyInvalid)
 	}
-	rows, err := r.queries.TransitionAgentRunStatus(ctx, generated.TransitionAgentRunStatusParams{
-		Status: string(to), LastError: sql.NullString{String: lastError, Valid: lastError != ""}, RunUuid: runUUID, Status_2: string(from),
-	})
-	if err != nil {
-		return false, fmt.Errorf("transition Agent Run status: %w", err)
+	transition := func(q generated.Querier) (bool, error) {
+		rows, err := q.TransitionAgentRunStatus(ctx, generated.TransitionAgentRunStatusParams{
+			Status: string(to), LastError: sql.NullString{String: lastError, Valid: lastError != ""}, RunUuid: runUUID, Status_2: string(from),
+		})
+		if err != nil {
+			return false, fmt.Errorf("transition Agent Run status: %w", err)
+		}
+		if rows == 0 {
+			return false, nil
+		}
+		run, err := q.GetAgentRun(ctx, runUUID)
+		if err != nil {
+			return false, fmt.Errorf("load Agent Run for timeline: %w", err)
+		}
+		if _, err := appendAgentTaskTimelineEvent(ctx, q, timelineEvent(run.TaskUuid, runUUID, application.AgentTaskTimelineEventRun, string(to))); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
-	return rows > 0, nil
+	var changed bool
+	var err error
+	if r.store != nil {
+		err = r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+			var callbackErr error
+			changed, callbackErr = transition(q)
+			return callbackErr
+		})
+	} else {
+		changed, err = transition(r.queries)
+	}
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
 }
 
 func (r *AgentPolicyRepository) CreateApproval(ctx context.Context, approval application.AgentApprovalV1) error {
