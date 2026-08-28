@@ -91,6 +91,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout；标准化报告归档于 `benchmarks/g0-2026-08-27/`。
 - [x] 补齐 Conversation State 成功 upsert 的三节点计数与 baseline v2，以 20/100 人普通/热群矩阵量化 AD-005，并保留未归因的后续优化门槛。
 - [x] 增加 Conversation projection Repository Histogram、逐节点快照差分与 baseline v3，在 20/100 人普通/热群矩阵中完成 AD-005 的 SQL 边界归因，保留 1000 人和候选行为优化门槛。
+- [x] 增加可选 sqlc 批量群 Conversation upsert，保持旧逐成员路径兼容；真实 MySQL contract 与 1000 人性能对照仍待执行。
 - [x] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
 - [x] 建立服务级健康检查、指标、结构化日志和最小告警规则。
 - [x] 将需要长期维护的架构 Markdown 纳入版本控制，以 manifest 和检查脚本持续约束并关闭 `AD-007`。

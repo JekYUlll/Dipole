@@ -261,6 +261,7 @@ type Querier interface {
 	UpsertAgentMemoryLineageBackfill(ctx context.Context, arg UpsertAgentMemoryLineageBackfillParams) (sql.Result, error)
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 	UpsertConversationMessage(ctx context.Context, arg UpsertConversationMessageParams) (sql.Result, error)
+	UpsertGroupConversationMessageBatch(ctx context.Context, arg UpsertGroupConversationMessageBatchParams) (sql.Result, error)
 	UpsertGroupSyncState(ctx context.Context, arg UpsertGroupSyncStateParams) error
 }
 

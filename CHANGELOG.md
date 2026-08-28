@@ -26,6 +26,7 @@
 - Timeline Repair rollout 契约补充 eligible/blocked 脱敏示例，明确示例仅用于 CLI 回归，不能替代共享环境灰度证据。
 - Event Subscription 增加可复用的 `off/shadow/enforced` 预筛运行时门禁：强制模式精确绑定 rollout decision、候选配置、语料、评审与 evidence 哈希，证据缺失或漂移时 fail closed；默认不接入 Kafka、模型或生产 Task 创建。
 - C++ projection benchmark 在候选 revision `c063594` 上完成 100,000 次固定 workload 复跑，C++/Go ops ratio 为 `0.0976283897`，低于 `1.0` 门槛，继续保留 Go projection 并归档可复现报告。
+- Conversation Projection 增加 sqlc 批量群消息 upsert：在保持 sender `read_seq`、成员未读计算、Seq 单调更新和幂等语义的前提下，将普通群一次消息的数据库写入收敛为单条 `INSERT ... SELECT`；旧 Repository/test double 继续兼容逐成员路径。
 - Kafka Shadow Runtime 增加可选 Subscription gate 注入点；enforced blocked 会在订阅匹配和 EventLedger claim 前停止，默认未注入以保持现有路径兼容。
 
 - Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
@@ -109,6 +110,7 @@
 
 - Agent Runtime G2 foundation 验收状态与实现对齐：`agent-runtime` 已提供 Node 22、Fastify、Zod、KafkaJS、AI SDK adapter 和独立 shadow consumer；Runtime 核心通过 `ModelRouter` 与具体模型 SDK 解耦。现有测试、类型检查和构建门禁保持通过，真实模型、真实语料和生产写入仍按 G3/G4 独立控制。
 - C++ projection microbenchmark 使用同一 `message.direct.created` v1 事件和 100,000 次 JSON 解码/投影迭代，Go/C++ 结果计数一致；C++ 吞吐约为 Go 的 `0.10x`，低于默认晋级门槛，报告为 `blocked`。当前保留 Go projection 作为默认实现并停止 C++ projection 替换，证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29/`。
+- 新增 sqlc `UpsertGroupConversationMessageBatch` 查询及服务层可选批量路径；`CGO_ENABLED=0 go test ./internal/service ./internal/data/mysql/repository`、sqlc 生成和 diff 检查通过，真实 MySQL contract 需在配置 `DIPOLE_TEST_MYSQL_ADMIN_DSN` 后执行。
 - C++ Realtime Delivery C3 真实隔离故障演练通过：14/14 C++ build/CTest、5/5 对比测试，以及 Controller 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 C++ primary 停止恢复均通过；报告绑定当前 Git revision、Redis/Kafka 镜像、C++ 二进制、observation 与 journal 哈希。C++ primary、双 group checkpoint 与自动回切证据已具备，生产灰度和性能收益门槛仍保持关闭。
 - Redis Sentinel 三节点真实隔离 smoke 通过：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、Hot Group 和限流语义保持可用，旧 master 重新加入为 replica；切主窗口的 Pub/Sub at-most-once 边界仍由 AD-017 跟踪。
 - Elasticsearch Search Service 真实隔离契约通过，验证 Core-derived scope、内部 RPC 和 Elasticsearch 9.5.2 查询路径；三节点 Kafka + Elasticsearch Search Indexer smoke 通过，created、recalled tombstone 与迟到 edited 事件最终收敛为 revision 3 且 `searchable=false`。
