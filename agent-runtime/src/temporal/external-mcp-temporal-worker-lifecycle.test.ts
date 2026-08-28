@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import type { ExternalMcpTemporalWorkerStartupPlan } from "./external-mcp-temporal-worker-startup-plan.js";
 import {
@@ -39,6 +40,7 @@ describe("external MCP Temporal Worker lifecycle", () => {
     );
 
     expect(lifecycle).toMatchObject({ deployment: startup.deployment, worker: startup.worker, temporal: config });
+    expect(lifecycle!.subscriptionMatcher).toBe(startup.subscriptionMatcher);
     expect(Object.isFrozen(lifecycle!.temporal)).toBe(true);
     expect(createRuntime).toHaveBeenCalledWith(config, startup.worker.activities, onFailure);
     expect(runtime.start).toHaveBeenCalledOnce();
@@ -162,9 +164,11 @@ function startupPlan(order: string[], closeError?: Error) {
   const worker = {
     activities: Object.freeze({ executeAgentTaskStep: vi.fn() })
   } as unknown as ExternalMcpTemporalWorkerComposition;
+  const subscriptionMatcher = {} as ShadowSubscriptionMatcher;
   const startup = {
     deployment: { deployment: true } as unknown as ExternalMcpDeploymentPlan,
     worker,
+    subscriptionMatcher,
     close
   } satisfies ExternalMcpTemporalWorkerStartupPlan;
   return { startup, close };

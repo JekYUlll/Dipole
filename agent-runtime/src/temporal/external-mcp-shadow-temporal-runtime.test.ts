@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
-import { loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import {
+  loadShadowRuntimeConfig,
+  type ShadowSubscriptionMatcher
+} from "../runtime/shadow-runtime.js";
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import type { ExternalMcpTemporalClientLifecycle } from "./external-mcp-temporal-client-lifecycle.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
@@ -54,7 +57,8 @@ describe("external MCP Shadow Temporal process owner", () => {
     expect(runtime).toMatchObject({
       deployment: harness.worker.deployment,
       worker: harness.worker.worker,
-      temporal: harness.worker.temporal
+      temporal: harness.worker.temporal,
+      subscriptionMatcher: harness.subscriptionMatcher
     });
 
     await runtime!.dispatch({} as never, {} as never, "TASK-1");
@@ -141,6 +145,7 @@ function runtimeHarness(options: {
   const activities = { executeAgentTaskStep: vi.fn() } as unknown as AgentTaskWorkerActivities;
   const deployment = {} as ExternalMcpDeploymentPlan;
   const composition = {} as ExternalMcpTemporalWorkerComposition;
+  const subscriptionMatcher = {} as ShadowSubscriptionMatcher;
   const workerStop = vi.fn(async () => {
     order.push("worker-stop");
     if (options.workerStopError !== undefined) throw options.workerStopError;
@@ -149,6 +154,7 @@ function runtimeHarness(options: {
     deployment,
     worker: composition,
     temporal: Object.freeze({ ...temporal }),
+    subscriptionMatcher,
     stop: workerStop
   } satisfies ExternalMcpTemporalWorkerLifecycle;
   const dispatch = vi.fn(async () => undefined);
@@ -162,7 +168,7 @@ function runtimeHarness(options: {
   const startClient = vi.fn<ExternalMcpShadowTemporalRuntimeSeams["startClient"]>(async () => client);
   const seams = { startWorker, startClient } satisfies ExternalMcpShadowTemporalRuntimeSeams;
   return {
-    order, shadow, temporal, activities, worker, client, dispatch, workerStop, clientStop,
+    order, shadow, temporal, activities, worker, client, subscriptionMatcher, dispatch, workerStop, clientStop,
     createRoutes, startWorker, startClient, seams
   };
 }
