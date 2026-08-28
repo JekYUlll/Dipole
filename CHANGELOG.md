@@ -83,6 +83,7 @@
 
 ### 新增
 
+- Agent Memory 增加 v45 candidate ledger：持久化 Observation/Reflection 候选的摘要、来源/证据 ID、策略版本、规范 SHA-256 和待审状态；候选唯一 ID 重放时执行哈希冲突校验，完整对话正文不会写入 ledger，且不会自动投影到 `agent_memories`。Migration 可回滚，后续 accepted 投影仍需 reviewer、策略和 durable receipt 门禁。
 - Agent Runtime 增加默认 shadow-only 的 Observation/Reflection Memory worker：按事件生成有界、确定性、可去重的 `observational` candidate，再按唯一 evidence window 聚合 reflection candidate；输入超限或凭据模式 fail closed，候选不自动写入 Memory、不调用模型或外部系统。详见 `docs/agent-memory-observation.md`。
 - Agent Workflow repair 增加 `repair:plan` dry-run 执行计划编译器：仅接受已批准提案、双人审批、独立 executor grant 和重新采集的当前/目标/回滚投影，生成带三组 CAS SHA-256、15 分钟有效期和确定性 plan ID 的语言中立 v1 计划。计划生成不连接 MySQL/Temporal、不提供 apply/execute/rollback 字段，身份复用、回滚证据漂移和窗口外重放均 fail closed。
 - 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
