@@ -53,6 +53,31 @@ describe('TimelineNotifyShadowVerifier', () => {
     expect(report).toHaveBeenLastCalledWith('match')
   })
 
+  it('delivers a complete verified gap only after the target sequence matches', async () => {
+    const list = vi.fn(async (_notify: TimelineNotification, afterSeq: number) => {
+      if (afterSeq === 39) return [message(40)]
+      return [message(41), message(42)]
+    })
+    const report = vi.fn()
+    const deliver = vi.fn()
+    const verifier = new TimelineNotifyShadowVerifier({ list }, report, deliver)
+
+    await verifier.observe(notification('E40', 40))
+    await verifier.observe(notification('E42', 42))
+
+    expect(deliver).toHaveBeenLastCalledWith([message(41), message(42)])
+    expect(report).toHaveBeenCalledWith('match')
+  })
+
+  it('does not deliver a page when the target UUID conflicts', async () => {
+    const deliver = vi.fn()
+    const verifier = new TimelineNotifyShadowVerifier({ list: vi.fn(async () => [message(42, 'OTHER')]) }, vi.fn(), deliver)
+
+    await verifier.observe(notification('E42', 42))
+
+    expect(deliver).not.toHaveBeenCalled()
+  })
+
   it('deduplicates replayed and stale notifications without moving the verified cursor backwards', async () => {
     const list = vi.fn(async () => [message(42)])
     const report = vi.fn()
