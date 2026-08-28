@@ -153,7 +153,9 @@ Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根
 
 ## 6. Human-in-the-loop 与 Artifact
 
-高风险动作进入 `WAITING_APPROVAL`，通过 Temporal Signal 接收批准或拒绝。缺少结构化输入时进入 `WAITING_INPUT`。G3 v1 已固定 `dipole.agent.elicitation.v1`：Workflow 持久保存受限 Form、request ID 与绝对截止时间，Gateway 从 JWT 派生 principal，Runtime 经 Core 复核 Task 所有权并按当前 Form 校验响应后发送 Signal。Approval 使用持久 binding 的 expiry；Input 使用 Activity 记录的 deadline。旧 request、跨用户、未知字段与非法选项均 fail closed；Timer 到期后以 `input_expired|approval_expired` 取消并完成持久 Run，Worker 替换后由 Workflow history 恢复等待点和同一 Timer。当前没有 Pencil 表单 UI、敏感凭据输入、URL mode 或 MCP Elicitation adapter，详见 `AD-036`。
+高风险动作进入 `WAITING_APPROVAL`，通过 Temporal Signal 接收批准或拒绝。缺少结构化输入时进入 `WAITING_INPUT`。G3 v1 已固定 `dipole.agent.elicitation.v1`：Workflow 持久保存受限 Form、request ID 与绝对截止时间，Gateway 从 JWT 派生 principal，Runtime 经 Core 复核 Task 所有权并按当前 Form 校验响应后发送 Signal。Approval 使用持久 binding 的 expiry；Input 使用 Activity 记录的 deadline。旧 request、跨用户、未知字段与非法选项均 fail closed；Timer 到期后以 `input_expired|approval_expired` 取消并完成持久 Run，Worker 替换后由 Workflow history 恢复等待点和同一 Timer。canonical Pencil 和默认关闭的 Vue 普通 Form 已完成；MCP 单轮 Form continuation 使用新 Client/Transport 恢复并拒绝敏感字段、URL mode 与第二轮请求，详见 `AD-036`。
+
+外部 MCP Activity 通过 migration v35 的权威 Tool command 和 migration v36 的 durable round receipt 恢复。确定性 Round ID 绑定 Invocation、轮次和 canonical 请求摘要，首次 `claimed` 才允许连接远端；结果先写入 MySQL 终态再返回 Temporal。`replay_completed|replay_failed` 不触达网络，遗留 `executing` 固定为 `ambiguous` 且没有 lease reclaim。远端执行后、本地收据前的窗口采用 `remote_outcome_unknown` at-most-once 失败策略；生产 Worker、Transport Factory 和外部开关继续关闭。
 
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 

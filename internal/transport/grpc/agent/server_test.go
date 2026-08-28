@@ -85,6 +85,23 @@ type agentToolAuditStub struct {
 	err     error
 }
 
+type agentMCPToolRoundStub struct {
+	claim  application.AgentMCPToolRoundClaimV1
+	finish application.AgentMCPToolRoundFinishV1
+	result *application.AgentMCPToolRoundClaimResultV1
+	err    error
+}
+
+func (s *agentMCPToolRoundStub) Claim(_ context.Context, claim application.AgentMCPToolRoundClaimV1) (*application.AgentMCPToolRoundClaimResultV1, error) {
+	s.claim = claim
+	return s.result, s.err
+}
+
+func (s *agentMCPToolRoundStub) Finish(_ context.Context, finish application.AgentMCPToolRoundFinishV1) error {
+	s.finish = finish
+	return s.err
+}
+
 type agentMessageCommandExecutionStub struct {
 	request application.AgentMessageCommandExecutionRequestV1
 	result  application.AgentMessageCommandExecutionResultV1
@@ -353,6 +370,42 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	_, err = server.FinishMcpToolInvocation(context.Background(), &agentv1.FinishMcpToolInvocationRequest{Context: requestContext})
 	if status.Code(err) != codes.Aborted {
 		t.Fatalf("conflict code = %s, want %s", status.Code(err), codes.Aborted)
+	}
+}
+
+func TestMcpToolRoundReceiptUsesAuthenticatedRuntimeContext(t *testing.T) {
+	rounds := &agentMCPToolRoundStub{result: &application.AgentMCPToolRoundClaimResultV1{
+		Outcome: application.AgentMCPToolRoundReplayCompleted, ResultJSON: `{"content":[]}`, ResultSHA256: strings.Repeat("d", 64),
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithMCPToolRounds(rounds); err != nil {
+		t.Fatalf("configure MCP Tool rounds: %v", err)
+	}
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	claimResponse, err := server.ClaimMcpToolRound(context.Background(), &agentv1.ClaimMcpToolRoundRequest{
+		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1", RoundId: strings.Repeat("a", 64),
+		RoundNumber: 1, RequestSha256: strings.Repeat("b", 64), OwnerTokenSha256: strings.Repeat("c", 64),
+	})
+	if err != nil || claimResponse.GetOutcome() != "replay_completed" || rounds.claim.RoundNumber != 1 || string(claimResponse.GetResultJson()) != `{"content":[]}` {
+		t.Fatalf("unexpected Tool round claim: response=%+v claim=%+v err=%v", claimResponse, rounds.claim, err)
+	}
+	finishResponse, err := server.FinishMcpToolRound(context.Background(), &agentv1.FinishMcpToolRoundRequest{
+		Context: requestContext, RoundId: strings.Repeat("a", 64), OwnerTokenSha256: strings.Repeat("c", 64),
+		Status: "failed", ErrorCode: "transport_unavailable",
+	})
+	if err != nil || finishResponse.GetStatus() != "failed" || rounds.finish.ErrorCode != "transport_unavailable" {
+		t.Fatalf("unexpected Tool round finish: response=%+v finish=%+v err=%v", finishResponse, rounds.finish, err)
+	}
+	_, err = server.ClaimMcpToolRound(context.Background(), &agentv1.ClaimMcpToolRoundRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"),
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	rounds.err = application.ErrAgentMCPToolRoundConflict
+	_, err = server.FinishMcpToolRound(context.Background(), &agentv1.FinishMcpToolRoundRequest{Context: requestContext})
+	if status.Code(err) != codes.Aborted {
+		t.Fatalf("round conflict code = %s, want %s", status.Code(err), codes.Aborted)
 	}
 }
 

@@ -675,6 +675,114 @@ export interface ResolveMcpToolCommandResponse {
     argumentsSha256: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ClaimMcpToolRoundRequest
+ */
+export interface ClaimMcpToolRoundRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string invocation_id = 4
+     */
+    invocationId: string;
+    /**
+     * @generated from protobuf field: string round_id = 5
+     */
+    roundId: string;
+    /**
+     * @generated from protobuf field: uint32 round_number = 6
+     */
+    roundNumber: number;
+    /**
+     * @generated from protobuf field: string request_sha256 = 7
+     */
+    requestSha256: string;
+    /**
+     * @generated from protobuf field: string owner_token_sha256 = 8
+     */
+    ownerTokenSha256: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ClaimMcpToolRoundResponse
+ */
+export interface ClaimMcpToolRoundResponse {
+    /**
+     * @generated from protobuf field: string round_id = 1
+     */
+    roundId: string;
+    /**
+     * @generated from protobuf field: string outcome = 2
+     */
+    outcome: string;
+    /**
+     * @generated from protobuf field: bytes result_json = 3
+     */
+    resultJson: Uint8Array;
+    /**
+     * @generated from protobuf field: string result_sha256 = 4
+     */
+    resultSha256: string;
+    /**
+     * @generated from protobuf field: string error_code = 5
+     */
+    errorCode: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolRoundRequest
+ */
+export interface FinishMcpToolRoundRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string round_id = 2
+     */
+    roundId: string;
+    /**
+     * @generated from protobuf field: string owner_token_sha256 = 3
+     */
+    ownerTokenSha256: string;
+    /**
+     * @generated from protobuf field: string status = 4
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: bytes result_json = 5
+     */
+    resultJson: Uint8Array;
+    /**
+     * @generated from protobuf field: string result_sha256 = 6
+     */
+    resultSha256: string;
+    /**
+     * @generated from protobuf field: string error_code = 7
+     */
+    errorCode: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.FinishMcpToolRoundResponse
+ */
+export interface FinishMcpToolRoundResponse {
+    /**
+     * @generated from protobuf field: string round_id = 1
+     */
+    roundId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.AgentToolActionReference
  */
 export interface AgentToolActionReference {
@@ -3821,6 +3929,336 @@ class ResolveMcpToolCommandResponse$Type extends MessageType<ResolveMcpToolComma
  * @generated MessageType for protobuf message dipole.agent.v1.ResolveMcpToolCommandResponse
  */
 export const ResolveMcpToolCommandResponse = new ResolveMcpToolCommandResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ClaimMcpToolRoundRequest$Type extends MessageType<ClaimMcpToolRoundRequest> {
+    constructor() {
+        super("dipole.agent.v1.ClaimMcpToolRoundRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "invocation_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "round_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "round_number", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 7, name: "request_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "owner_token_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ClaimMcpToolRoundRequest>): ClaimMcpToolRoundRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        message.invocationId = "";
+        message.roundId = "";
+        message.roundNumber = 0;
+        message.requestSha256 = "";
+        message.ownerTokenSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<ClaimMcpToolRoundRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ClaimMcpToolRoundRequest): ClaimMcpToolRoundRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                case /* string invocation_id */ 4:
+                    message.invocationId = reader.string();
+                    break;
+                case /* string round_id */ 5:
+                    message.roundId = reader.string();
+                    break;
+                case /* uint32 round_number */ 6:
+                    message.roundNumber = reader.uint32();
+                    break;
+                case /* string request_sha256 */ 7:
+                    message.requestSha256 = reader.string();
+                    break;
+                case /* string owner_token_sha256 */ 8:
+                    message.ownerTokenSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ClaimMcpToolRoundRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string invocation_id = 4; */
+        if (message.invocationId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.invocationId);
+        /* string round_id = 5; */
+        if (message.roundId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.roundId);
+        /* uint32 round_number = 6; */
+        if (message.roundNumber !== 0)
+            writer.tag(6, WireType.Varint).uint32(message.roundNumber);
+        /* string request_sha256 = 7; */
+        if (message.requestSha256 !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.requestSha256);
+        /* string owner_token_sha256 = 8; */
+        if (message.ownerTokenSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.ownerTokenSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ClaimMcpToolRoundRequest
+ */
+export const ClaimMcpToolRoundRequest = new ClaimMcpToolRoundRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ClaimMcpToolRoundResponse$Type extends MessageType<ClaimMcpToolRoundResponse> {
+    constructor() {
+        super("dipole.agent.v1.ClaimMcpToolRoundResponse", [
+            { no: 1, name: "round_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "outcome", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "result_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
+            { no: 4, name: "result_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "error_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ClaimMcpToolRoundResponse>): ClaimMcpToolRoundResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.roundId = "";
+        message.outcome = "";
+        message.resultJson = new Uint8Array(0);
+        message.resultSha256 = "";
+        message.errorCode = "";
+        if (value !== undefined)
+            reflectionMergePartial<ClaimMcpToolRoundResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ClaimMcpToolRoundResponse): ClaimMcpToolRoundResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string round_id */ 1:
+                    message.roundId = reader.string();
+                    break;
+                case /* string outcome */ 2:
+                    message.outcome = reader.string();
+                    break;
+                case /* bytes result_json */ 3:
+                    message.resultJson = reader.bytes();
+                    break;
+                case /* string result_sha256 */ 4:
+                    message.resultSha256 = reader.string();
+                    break;
+                case /* string error_code */ 5:
+                    message.errorCode = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ClaimMcpToolRoundResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string round_id = 1; */
+        if (message.roundId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.roundId);
+        /* string outcome = 2; */
+        if (message.outcome !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.outcome);
+        /* bytes result_json = 3; */
+        if (message.resultJson.length)
+            writer.tag(3, WireType.LengthDelimited).bytes(message.resultJson);
+        /* string result_sha256 = 4; */
+        if (message.resultSha256 !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.resultSha256);
+        /* string error_code = 5; */
+        if (message.errorCode !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.errorCode);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ClaimMcpToolRoundResponse
+ */
+export const ClaimMcpToolRoundResponse = new ClaimMcpToolRoundResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolRoundRequest$Type extends MessageType<FinishMcpToolRoundRequest> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolRoundRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "round_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "owner_token_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "result_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
+            { no: 6, name: "result_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "error_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolRoundRequest>): FinishMcpToolRoundRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.roundId = "";
+        message.ownerTokenSha256 = "";
+        message.status = "";
+        message.resultJson = new Uint8Array(0);
+        message.resultSha256 = "";
+        message.errorCode = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolRoundRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolRoundRequest): FinishMcpToolRoundRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string round_id */ 2:
+                    message.roundId = reader.string();
+                    break;
+                case /* string owner_token_sha256 */ 3:
+                    message.ownerTokenSha256 = reader.string();
+                    break;
+                case /* string status */ 4:
+                    message.status = reader.string();
+                    break;
+                case /* bytes result_json */ 5:
+                    message.resultJson = reader.bytes();
+                    break;
+                case /* string result_sha256 */ 6:
+                    message.resultSha256 = reader.string();
+                    break;
+                case /* string error_code */ 7:
+                    message.errorCode = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolRoundRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string round_id = 2; */
+        if (message.roundId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.roundId);
+        /* string owner_token_sha256 = 3; */
+        if (message.ownerTokenSha256 !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.ownerTokenSha256);
+        /* string status = 4; */
+        if (message.status !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.status);
+        /* bytes result_json = 5; */
+        if (message.resultJson.length)
+            writer.tag(5, WireType.LengthDelimited).bytes(message.resultJson);
+        /* string result_sha256 = 6; */
+        if (message.resultSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.resultSha256);
+        /* string error_code = 7; */
+        if (message.errorCode !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.errorCode);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolRoundRequest
+ */
+export const FinishMcpToolRoundRequest = new FinishMcpToolRoundRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FinishMcpToolRoundResponse$Type extends MessageType<FinishMcpToolRoundResponse> {
+    constructor() {
+        super("dipole.agent.v1.FinishMcpToolRoundResponse", [
+            { no: 1, name: "round_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FinishMcpToolRoundResponse>): FinishMcpToolRoundResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.roundId = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<FinishMcpToolRoundResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FinishMcpToolRoundResponse): FinishMcpToolRoundResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string round_id */ 1:
+                    message.roundId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FinishMcpToolRoundResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string round_id = 1; */
+        if (message.roundId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.roundId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.FinishMcpToolRoundResponse
+ */
+export const FinishMcpToolRoundResponse = new FinishMcpToolRoundResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class AgentToolActionReference$Type extends MessageType<AgentToolActionReference> {
     constructor() {
@@ -7173,6 +7611,8 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
+    { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },
+    { name: "FinishMcpToolRound", options: {}, I: FinishMcpToolRoundRequest, O: FinishMcpToolRoundResponse },
     { name: "FinishMcpToolInvocation", options: {}, I: FinishMcpToolInvocationRequest, O: FinishMcpToolInvocationResponse },
     { name: "ExecuteMcpMessageCommand", options: {}, I: ExecuteMcpMessageCommandRequest, O: ExecuteMcpMessageCommandResponse },
     { name: "ProjectTaskWorkflowState", options: {}, I: ProjectTaskWorkflowStateRequest, O: ProjectTaskWorkflowStateResponse },

@@ -174,6 +174,24 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { invocationId: input.invocationId, status: "running" });
       return {};
     });
+    const claimMcpToolRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundNumber: 0 });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      const resultJSON = `{"content":[]}`;
+      callback(null, {
+        roundId: input.roundId, outcome: "replay_completed", resultJson: Buffer.from(resultJSON),
+        resultSha256: createHash("sha256").update(resultJSON).digest("hex"), errorCode: ""
+      });
+      return {};
+    });
+    const finishMcpToolRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input.status).toBe("completed");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { roundId: input.roundId, status: input.status });
+      return {};
+    });
     const finishMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1", status: "completed", resultBytes: 128n, latencyMs: 12n });
@@ -190,7 +208,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: input.commandKind, commandId }, clientMessageId });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, resolveMcpToolCommand, finishMcpToolInvocation, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, resolveMcpToolCommand, claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocation, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -264,6 +282,17 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.resolveMcpToolCommand("TASK-1", "RUN-1", "INV-EXT-1")).resolves.toMatchObject({
       profileId: "calendar-prod", serverId: "calendar.example", arguments: { calendarId: "CAL-1" }
     });
+    const roundId = "d".repeat(64);
+    const ownerTokenSha256 = "e".repeat(64);
+    await expect(client.claimMcpToolRound({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId, roundNumber: 0,
+      requestSha256: "f".repeat(64), ownerTokenSha256
+    })).resolves.toMatchObject({ outcome: "replay_completed", result: { content: [] } });
+    const roundResultJSON = `{"content":[]}`;
+    await expect(client.finishMcpToolRound({
+      roundId, ownerTokenSha256, status: "completed", resultJSON: roundResultJSON,
+      resultSha256: createHash("sha256").update(roundResultJSON).digest("hex")
+    })).resolves.toBeUndefined();
     await expect(client.finishToolInvocation({
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
       resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12

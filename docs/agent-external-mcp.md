@@ -92,7 +92,15 @@ migration v31 把已消费 Approval 绑定到 Tool Invocation Begin，并在成�
 
 checkpoint 使用 SHA-256 绑定 host-owned Request ID、Server、Tool、Invocation、deadline、完整 Form 和信任级别。返回 MCP `accept` 前必须收到同一 Request 的有效 durable input resume，并再次执行 Form response 校验；`decline/cancel` 同样要求精确 Request，过期或 checkpoint 漂移 fail closed。
 
-当前 adapter 是协议纯函数边界。`AllowlistedMcpToolClient` 没有声明 Elicitation capability，也没有 request handler；Temporal Activity 不会阻塞等待用户。后续接线需要把 MCP input-required continuation 保存为 checkpoint，在 Workflow 恢复后的新 Activity 中继续协议交互，并定义 Server 不支持恢复、连接丢失和用户取消时的稳定结果。
+当前 adapter 与单轮 MRTR continuation 已进入默认关闭的 Activity-safe runner：首次调用可返回 `wait_input` checkpoint，恢复后使用新 Client/Transport 精确回传原参数、用户输入和 opaque request state。生产 Worker 尚未调度这类权威命令；多轮、URL mode、敏感输入和 Server 不支持恢复时的产品策略继续关闭。
+
+## Durable Round Receipt 边界
+
+migration v36 为每个外部 Tool Invocation 保存最多两个 round。Round ID 由 Invocation、轮次和 canonical 请求 SHA-256 确定，表同时绑定 Task、Run、请求摘要和随机 owner token 摘要；`INSERT IGNORE` 只允许首次调用原子取得 `executing`，没有 lease、超时回收或 owner 接管路径。
+
+Activity 取得 `claimed` 后才建立全新 Client/Transport。远端返回结果后，Runtime 先把最多 128 KiB 的 canonical JSON、摘要和字节数写成 `completed`，随后才向 Temporal 返回；Activity completion 丢失时，新尝试读取 `replay_completed` 并跳过网络。已知失败以稳定错误码重放。已有 `executing` 一律返回 `ambiguous`，即使新尝试持有相同参数也不会自动重发。传输异常保存为 `remote_outcome_unknown`，将不确定调用收敛为 at-most-once 失败。
+
+该收据仍无法证明远端已执行、但响应尚未到达 Runtime 或本地终态尚未提交的极小窗口。未来只有 Profile 显式声明且验证了服务端幂等键或查询收据协议时，才能对这类调用增加恢复策略。当前 Worker、生产 Transport Factory 与外部网络开关保持关闭，禁止通过缩短 lease 或手工修改 `executing` 记录来重试。
 
 ## 后续实现门槛
 

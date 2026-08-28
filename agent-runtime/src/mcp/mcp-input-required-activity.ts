@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { isInputRequiredResult, type Tool, type Transport } from "@modelcontextprotocol/client";
 
 import { canonicalMcpJSON } from "./canonical-json.js";
@@ -19,6 +19,8 @@ const identityPattern = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 
 export interface McpInputRequiredActivityCommand {
   readonly requestId: string;
+  readonly taskId: string;
+  readonly runId: string;
   readonly tenantId: string;
   readonly profileId: string;
   readonly serverId: string;
@@ -30,11 +32,31 @@ export interface McpInputRequiredActivityCommand {
 
 export interface McpInputRequiredActivityCheckpointV1 {
   readonly schemaVersion: typeof checkpointSchemaVersion;
+  readonly taskId: string;
+  readonly runId: string;
   readonly tenantId: string;
   readonly profileId: string;
   readonly serverId: string;
   readonly continuation: McpInputRequiredCheckpointV1;
   readonly bindingSha256: string;
+}
+
+export interface McpToolRoundReceiptClient {
+  claimMcpToolRound(input: {
+    readonly taskId: string; readonly runId: string; readonly invocationId: string; readonly roundId: string;
+    readonly roundNumber: 0 | 1; readonly requestSha256: string; readonly ownerTokenSha256: string;
+  }): Promise<
+    | { readonly outcome: "claimed" }
+    | { readonly outcome: "replay_completed"; readonly result: unknown; readonly resultJSON: string; readonly resultSha256: string }
+    | { readonly outcome: "replay_failed"; readonly errorCode: string }
+    | { readonly outcome: "ambiguous" }
+  >;
+  finishMcpToolRound(input: {
+    readonly roundId: string; readonly ownerTokenSha256: string;
+  } & (
+    | { readonly status: "completed"; readonly resultJSON: string; readonly resultSha256: string }
+    | { readonly status: "failed"; readonly errorCode: string }
+  )): Promise<void>;
 }
 
 export interface McpActivityRoundSession {
@@ -141,19 +163,28 @@ export type McpInputRequiredActivityResult =
 
 export class McpInputRequiredActivity {
   readonly #sessions: McpActivityRoundSessionFactory;
+  readonly #receipts: McpToolRoundReceiptClient;
   readonly #continuation: McpInputRequiredContinuation;
+  readonly #ownerTokenSha256: () => string;
 
-  constructor(sessions: McpActivityRoundSessionFactory, now: () => number = Date.now) {
+  constructor(
+    sessions: McpActivityRoundSessionFactory,
+    receipts: McpToolRoundReceiptClient,
+    now: () => number = Date.now,
+    ownerTokenSha256: () => string = () => createHash("sha256").update(randomBytes(32)).digest("hex")
+  ) {
     this.#sessions = sessions;
+    this.#receipts = receipts;
     this.#continuation = new McpInputRequiredContinuation(now);
+    this.#ownerTokenSha256 = ownerTokenSha256;
   }
 
   async begin(command: McpInputRequiredActivityCommand, signal?: AbortSignal): Promise<McpInputRequiredActivityResult> {
     validateCommand(command);
-    const result = await this.#withSession(command, {
+    const result = await this.#executeRound(command, {
       name: command.toolName,
       arguments: command.arguments
-    }, signal);
+    }, 0, signal);
     if (!isInputRequiredResult(result)) return { kind: "complete", result };
 
     const wait = this.#continuation.begin({
@@ -167,6 +198,8 @@ export class McpInputRequiredActivity {
     });
     const binding = {
       schemaVersion: checkpointSchemaVersion,
+      taskId: command.taskId,
+      runId: command.runId,
       tenantId: command.tenantId,
       profileId: command.profileId,
       serverId: command.serverId,
@@ -190,16 +223,62 @@ export class McpInputRequiredActivity {
   ): Promise<Extract<McpInputRequiredActivityResult, { kind: "complete" }>> {
     validateCheckpoint(checkpoint);
     const retry = this.#continuation.retry(checkpoint.continuation, input);
-    const result = await this.#withSession({
+    const result = await this.#executeRound({
+      taskId: checkpoint.taskId,
+      runId: checkpoint.runId,
+      invocationId: checkpoint.continuation.invocationId,
       tenantId: checkpoint.tenantId,
       profileId: checkpoint.profileId,
       serverId: checkpoint.serverId,
       toolName: checkpoint.continuation.toolName
-    }, retry, signal);
+    }, retry, 1, signal);
     if (isInputRequiredResult(result)) {
       throw new Error("MCP Activity does not support an additional input_required round");
     }
     return { kind: "complete", result };
+  }
+
+  async #executeRound(
+    binding: {
+      readonly taskId: string; readonly runId: string; readonly invocationId: string;
+      readonly tenantId: string; readonly profileId: string; readonly serverId: string; readonly toolName: string;
+    },
+    params: McpToolRoundParams,
+    roundNumber: 0 | 1,
+    signal?: AbortSignal
+  ): Promise<McpToolRoundResult> {
+    const requestJSON = canonicalMcpJSON(params);
+    const requestSha256 = sha256(requestJSON);
+    const roundId = sha256(["dipole.mcp.tool-round.v1", binding.invocationId, roundNumber.toString(), requestSha256].join("\n"));
+    const ownerTokenSha256 = this.#ownerTokenSha256();
+    const claim = await this.#receipts.claimMcpToolRound({
+      taskId: binding.taskId, runId: binding.runId, invocationId: binding.invocationId, roundId, roundNumber,
+      requestSha256, ownerTokenSha256
+    });
+    switch (claim.outcome) {
+      case "replay_completed":
+        return claim.result as McpToolRoundResult;
+      case "replay_failed":
+        throw new Error(`MCP Tool round previously failed: ${claim.errorCode}`);
+      case "ambiguous":
+        throw new Error("MCP Tool round outcome is ambiguous; automatic retry is disabled");
+      case "claimed":
+        break;
+    }
+    let result: McpToolRoundResult;
+    try {
+      result = await this.#withSession(binding, params, signal);
+    } catch (error) {
+      await this.#receipts.finishMcpToolRound({
+        roundId, ownerTokenSha256, status: "failed", errorCode: "remote_outcome_unknown"
+      });
+      throw error;
+    }
+    const resultJSON = canonicalMcpJSON(result);
+    await this.#receipts.finishMcpToolRound({
+      roundId, ownerTokenSha256, status: "completed", resultJSON, resultSha256: sha256(resultJSON)
+    });
+    return result;
   }
 
   async #withSession(
@@ -220,6 +299,7 @@ export class McpInputRequiredActivity {
 
 function validateCommand(command: McpInputRequiredActivityCommand): void {
   for (const [label, value] of [
+    ["task", command.taskId], ["run", command.runId], ["invocation", command.invocationId],
     ["tenant", command.tenantId], ["profile", command.profileId], ["server", command.serverId]
   ] as const) {
     if (!identityPattern.test(value)) throw new Error(`MCP Activity ${label} identity is invalid`);
@@ -228,6 +308,7 @@ function validateCommand(command: McpInputRequiredActivityCommand): void {
 
 function validateCheckpoint(checkpoint: McpInputRequiredActivityCheckpointV1): void {
   if (!isRecord(checkpoint) || checkpoint.schemaVersion !== checkpointSchemaVersion ||
+      !identityPattern.test(checkpoint.taskId) || !identityPattern.test(checkpoint.runId) ||
       !identityPattern.test(checkpoint.tenantId) || !identityPattern.test(checkpoint.profileId) ||
       !identityPattern.test(checkpoint.serverId) || !isRecord(checkpoint.continuation)) {
     throw new Error("MCP Activity checkpoint is invalid");
