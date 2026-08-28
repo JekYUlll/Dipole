@@ -81,6 +81,20 @@ describe("external MCP production I/O composition", () => {
     });
     await expect(runtime.shadowConnectivityDrill({ profileId: "github-prod", tenantId: "dipole" }))
       .rejects.toThrow("External MCP Shadow connectivity drill failed");
+    await expect(runtime.readinessEvidence({ profileId: "github-prod", tenantId: "dipole" }))
+      .rejects.toThrow("External MCP readiness evidence failed");
+  });
+
+  it("refuses readiness evidence from an injected Transport builder before file or network access", async () => {
+    const create = vi.fn();
+    const runtime = createExternalMcpProductionIoRuntime(enabledProfiles(), productionIo(), {
+      transportBuilder: { create },
+      now: () => new Date("2026-08-28T14:00:00Z")
+    });
+
+    await expect(runtime.readinessEvidence({ profileId: "github-prod", tenantId: "dipole" }))
+      .rejects.toThrow("External MCP readiness evidence failed");
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("validates enabled construction without reading configured files", () => {
