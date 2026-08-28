@@ -2,7 +2,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type { AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
@@ -583,6 +583,31 @@ export class AgentCapabilityRPCClient {
           })),
           nextCursor: response.nextCursor
         });
+      });
+    });
+  }
+
+  async appendAgentTaskTimelineEvent(input: {
+    readonly eventId: string; readonly taskId: string; readonly runId: string; readonly kind: string; readonly status: string;
+    readonly capabilityId?: string; readonly approvalId?: string; readonly occurredAtUnixMs: number;
+    readonly requestId?: string; readonly traceId?: string;
+  }): Promise<{ readonly eventSeq: bigint; readonly eventId: string }> {
+    const metadata = this.metadata(input.requestId, input.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.appendAgentTaskTimelineEvent({
+        context: this.requestContext(input.requestId, input.traceId), eventId: input.eventId, taskId: input.taskId, runId: input.runId,
+        kind: input.kind, status: input.status, capabilityId: input.capabilityId ?? "", approvalId: input.approvalId ?? "",
+        occurredAtUnixMs: BigInt(input.occurredAtUnixMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response: AppendAgentTaskTimelineEventResponse | undefined) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Task Timeline append returned no response"));
+          return;
+        }
+        if (response.eventId !== input.eventId || response.eventSeq <= 0n) {
+          reject(new Error("Agent Task Timeline append returned a conflicting binding"));
+          return;
+        }
+        resolve({ eventSeq: response.eventSeq, eventId: response.eventId });
       });
     });
   }
