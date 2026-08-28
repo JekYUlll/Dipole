@@ -121,6 +121,15 @@ pen version
 pen interactive --in design/dipole-ui.pen --out design/dipole-ui.pen
 ```
 
+自动化增量任务优先使用仓库内的安全包装器。它将 pen 输出写入临时文件，默认 120 秒超时，校验 `.pen` 结构和导出文件后再原子替换目标；失败时保留原设计：
+
+```bash
+node scripts/pencil-safe-edit.mjs \
+  --input design/dipole-ui.pen --output design/dipole-ui.pen \
+  --export design/exports/review.png --timeout-ms 120000 -- \
+  --prompt-file /path/to/brief.md --agent claude
+```
+
 进入 interactive session 后遵循以下顺序：
 
 1. 调用 `read_skill()` 阅读当前 Pencil skill；CLI 升级后重新确认 schema 和执行约束。
