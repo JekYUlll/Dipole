@@ -80,6 +80,19 @@ export class ExternalMcpCapabilityRouteRegistry {
       arguments: enforceMcpToolEgressPolicy(input as Readonly<Record<string, unknown>>, route.egressPolicy)
     };
   }
+
+  workerEgressPolicies(capabilityId: string): Readonly<Record<string, Readonly<Record<string, McpToolEgressPolicy>>>> {
+    const route = this.#routes.get(capabilityId.trim());
+    if (route === undefined) throw new Error("External MCP Capability route is unavailable");
+    return {
+      [route.profileId]: {
+        [route.toolName]: {
+          allowedArgumentNames: [...route.egressPolicy.allowedArgumentNames],
+          maximumBytes: route.egressPolicy.maximumBytes
+        }
+      }
+    };
+  }
 }
 
 export interface McpInvocationBeginClient {
