@@ -185,6 +185,7 @@ function workerComposition(): ExternalMcpTemporalWorkerComposition {
     activities: {} as ExternalMcpTemporalWorkerComposition["activities"],
     routeBindings: [binding],
     workflowExecutions: new TemporalMcpWorkflowExecutionCatalog([binding]),
+    subscriptionRoutes: [],
     runtimeBindingSha256: "b".repeat(64)
   };
 }
