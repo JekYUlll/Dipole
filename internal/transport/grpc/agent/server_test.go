@@ -223,6 +223,7 @@ func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string
 type capabilityStub struct {
 	application.AgentCapabilityV1
 	invocation application.AgentInvocationV1
+	readTarget string
 }
 
 type approvalServiceStub struct {
@@ -329,6 +330,14 @@ func (s *capabilityStub) ListConversations(_ context.Context, invocation applica
 	return []*model.Conversation{{ConversationKey: "group:G1", TargetUUID: "G1", LastMessageSeq: uint64(limit)}}, nil
 }
 
+func (s *capabilityStub) ReadConversation(_ context.Context, invocation application.AgentInvocationV1, targetUUID string, _ int) (*application.AgentConversationReadV1, error) {
+	s.invocation, s.readTarget = invocation, targetUUID
+	return &application.AgentConversationReadV1{
+		Found: true, TargetUUID: targetUUID, TargetType: model.MessageTargetGroup,
+		Messages: []*model.Message{{UUID: "M1", ConversationKey: "group:" + targetUUID, Seq: 7, Content: "evidence"}},
+	}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -350,6 +359,33 @@ func TestListConversationsRejectsClientPrincipal(t *testing.T) {
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	_, err := server.ListConversations(context.Background(), &agentv1.ListConversationsRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestReadConversationResolvesTrustedTaskIdentityAndMapsMessages(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ReadConversation(context.Background(), &agentv1.ReadConversationRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", TargetId: "G1", Limit: 20,
+	})
+	if err != nil {
+		t.Fatalf("read conversation: %v", err)
+	}
+	if capability.invocation.PrincipalUUID != "U100" || capability.readTarget != "G1" || !response.GetFound() || len(response.GetMessages()) != 1 || response.GetMessages()[0].GetSequence() != 7 {
+		t.Fatalf("unexpected trusted response: invocation=%+v target=%q response=%+v", capability.invocation, capability.readTarget, response)
+	}
+}
+
+func TestReadConversationRejectsClientPrincipal(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.ReadConversation(context.Background(), &agentv1.ReadConversationRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", TargetId: "G1", Limit: 20,
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
