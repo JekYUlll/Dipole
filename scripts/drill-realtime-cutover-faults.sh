@@ -6,6 +6,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/deploy/realtime/cutover-fault-drill.compose.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-c3-cutover-fault-$RANDOM}"
 REPORT_FILE="${DIPOLE_CUTOVER_DRILL_REPORT:-/tmp/dipole-c3-cutover-fault-report.json}"
+if [[ "${REPORT_FILE}" != /* ]]; then
+  REPORT_FILE="${ROOT_DIR}/${REPORT_FILE}"
+fi
 CPP_COMPILER="${CXX:-/usr/bin/g++}"
 CPP_COMPILER_ID="$(basename "${CPP_COMPILER}" | tr -cd '[:alnum:]_.+-')"
 CPP_BUILD_DIR="${DIPOLE_CPP_BUILD_DIR:-/tmp/dipole-cpp-realtime-build-${CPP_COMPILER_ID}}"
