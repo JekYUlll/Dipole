@@ -15,14 +15,33 @@ type agentMCPToolRoundStoreStub struct {
 	created  bool
 	existing *application.AgentMCPToolRoundV1
 	finished bool
+	claims   int
 }
 
 func (s *agentMCPToolRoundStoreStub) ClaimMCPToolRound(context.Context, application.AgentMCPToolRoundClaimV1) (bool, error) {
+	s.claims++
 	return s.created, nil
 }
 
 func (s *agentMCPToolRoundStoreStub) GetMCPToolRound(context.Context, string) (*application.AgentMCPToolRoundV1, error) {
 	return s.existing, nil
+}
+
+func TestPersistentAgentMCPToolRoundTerminalInvocationOnlyReplaysExistingReceipt(t *testing.T) {
+	claim := testAgentMCPToolRoundClaim()
+	invocation := testExternalAgentToolInvocation()
+	invocation.Status = application.AgentToolInvocationStatusCompleted
+	store := &agentMCPToolRoundStoreStub{existing: testAgentMCPToolRound(claim, application.AgentMCPToolRoundStatusCompleted)}
+	service, _ := NewPersistentAgentMCPToolRoundServiceV1(store, &agentToolAuditStoreStub{invocation: invocation})
+	result, err := service.Claim(context.Background(), claim)
+	if err != nil || result.Outcome != application.AgentMCPToolRoundReplayCompleted || store.claims != 0 {
+		t.Fatalf("terminal replay=%+v claims=%d err=%v", result, store.claims, err)
+	}
+
+	store.existing = nil
+	if _, err := service.Claim(context.Background(), claim); !errors.Is(err, application.ErrAgentMCPToolRoundDenied) || store.claims != 0 {
+		t.Fatalf("missing terminal receipt error=%v claims=%d", err, store.claims)
+	}
 }
 
 func (s *agentMCPToolRoundStoreStub) FinishMCPToolRound(context.Context, application.AgentMCPToolRoundFinishV1) (bool, error) {

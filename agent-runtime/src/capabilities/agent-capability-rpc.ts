@@ -34,6 +34,7 @@ export interface AgentMcpToolCommand {
   readonly arguments: Readonly<Record<string, unknown>>;
   readonly argumentsSha256: string;
   readonly startedAtUnixMs: number;
+  readonly status: "running" | "completed" | "failed";
 }
 
 export interface AgentMcpToolRoundClaim {
@@ -589,6 +590,7 @@ export class AgentCapabilityRPCClient {
           const canonical = canonicalMcpJSON(decoded);
           const digest = createHash("sha256").update(canonical).digest("hex");
           const startedAtUnixMs = safeUnixMilliseconds(response.startedAtUnixMs);
+          if (response.status !== "running" && response.status !== "completed" && response.status !== "failed") throw new Error();
           if (response.taskId !== taskId || response.runId !== runId || response.invocationId !== invocationId ||
               Buffer.from(response.argumentsJson).toString("utf8") !== canonical || response.argumentsSha256 !== digest) {
             throw new Error();
@@ -596,7 +598,8 @@ export class AgentCapabilityRPCClient {
           resolve({
             invocationId, tenantId: response.tenantId, principalUserId: response.principalUserId, agentId: response.agentId,
             taskId, runId, profileId: response.profileId, serverId: response.serverId, toolName: response.toolName,
-            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest, startedAtUnixMs
+            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest, startedAtUnixMs,
+            status: response.status
           });
         } catch {
           reject(new Error("Agent MCP Tool command returned conflicting evidence"));
