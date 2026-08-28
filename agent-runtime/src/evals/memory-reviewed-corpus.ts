@@ -117,6 +117,10 @@ export function evaluateMemoryReviewedCorpus(corpus: MemoryReviewedCorpus, rawRe
   };
 }
 
+export function memoryReviewedCorpusReviewSha256(rawReview: MemoryReviewedCorpusReview): string {
+  return digest(parseMemoryReviewedCorpusReview(rawReview));
+}
+
 function requireExactCases(expected: readonly string[], observed: readonly string[]): void {
   if (expected.length !== observed.length || expected.some((value, index) => value !== observed[index])) throw new Error("memory corpus labels must cover exactly the required cases");
 }

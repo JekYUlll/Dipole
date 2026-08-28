@@ -345,6 +345,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
   - [x] 增加 Core-owned accepted candidate promotion seam：服务端重新加载候选与审核、校验 exact hash/owner/状态/30 天证据窗口，并由 sqlc/MySQL 事务写入 Memory 与 promotion receipt；没有公开 Runtime 旁路或自动写入开关。
   - [x] 增加 append-only 纠正/supersession、版本冲突、默认 shadow-only Observation/Reflection Worker、candidate ledger、append-only review ledger 和 retrieval Eval；Observation/Reflection 只产出有界候选，ledger 只保存摘要/证据/策略/哈希，review 只推进待审状态，不自动写入 Memory。证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
+  - [x] 增加 reviewed corpus v1、双 reviewer/独立 adjudicator 门禁、低敏离线 CLI 和 owner-only source manifest loader；真实语料必须通过固定路径、权限、有效期和 corpus/review SHA-256 校验，仍不触发自动 Memory 写入。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
   - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
   - [x] 增加认证 owner list/create/revoke API、版本化撤销审计、active Definition 目录、readable/scope conversation chooser 和默认关闭的 Agent 配置 UI。
@@ -395,7 +396,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Foundation 与 Durable Activity 使用统一低敏 `AgentTelemetry`；每个 provider attempt 和 native/MCP Tool 调用独立成 span，Temporal Workflow 保持无副作用。SDK/exporter、采样和告警由 `AD-037` 继续跟踪。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
   - [x] 增加 deterministic security suite，以真实 Context、Policy/Capability、EventLedger/lineage 和 MCP Client/Server 验证 provenance、执行前拒绝、去重、循环抑制和有界 egress。
-  - [ ] 使用真实候选模型和人工标注 adversarial corpus 评测语义抗注入、间接注入与值级敏感信息外发（`AD-037`、`AD-038`）。
+- [ ] 使用真实候选模型和人工标注 adversarial corpus 评测语义抗注入、间接注入与值级敏感信息外发（`AD-037`、`AD-038`）。
 - [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
 - [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。
 
