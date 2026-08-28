@@ -471,6 +471,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
 Pencil CLI 增量任务本轮未形成可提交设计资产，原因和回滚边界记录在 `AD-044`；既有 canonical 文件和批准导出保持不变。
+后续自动化 Pencil 编辑统一通过 `scripts/pencil-safe-edit.mjs`，先在临时路径完成并校验，再替换 canonical 文件。
 
 当前质量基线：Agent Runtime `npm test` 通过 122 个测试文件/627 个测试；Frontend `npm test`、`vue-tsc` 与 Vite 生产构建通过。该验证不等同于 F2-F4 设计稿和真实浏览器视觉回归全部完成。
 Agent Runtime 的 `npm run typecheck` 与 `npm run build` 也已通过；模型调用仍经 provider-neutral `ModelRouter` 边界。
