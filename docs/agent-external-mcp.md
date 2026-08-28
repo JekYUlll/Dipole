@@ -62,7 +62,7 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 ## Production I/O 组合
 
-`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry`、local `preflight` 与受约束 `shadowConnectivityDrill`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry`、local `preflight`、受约束 `shadowConnectivityDrill` 与组合后的 `readinessEvidence`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
 
 构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
 
@@ -79,6 +79,12 @@ preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatch
 `runtime.shadowConnectivityDrill({ profileId, tenantId }, signal?)` 是独立的只读在线证据边界。它重新通过 Registry 解析 exact Profile/Catalog，创建正式 guarded Transport 和 modern allowlisted Client，只执行协议 discovery/list；Server identity 必须匹配，全部 configured Tool 必须被发现。演练器不暴露 Client 的 Tool 调用方法，成功或失败都会收敛关闭连接。成功收据只保存 schema、checked-at 与 Tool 数量；Profile、tenant、Server、Tool、地址和证书信息留在受控运维输入/网络审计中。
 
 本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。当前 loader、composition、preflight 与 drill 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
+
+`runtime.readinessEvidence({ profileId, tenantId }, signal?)` 串行执行 preflight 和 drill，默认要求 5 分钟内完成，并校验 preflight 覆盖当前全部 Profile、Credential/CA 计数有界、在线 Tool 数等于目标 Profile allowlist、四个时间单调且均落在 collection window。任何收据重放、旧时间、计数漂移、取消或 cleanup 失败都不会生成 bundle；使用测试注入 `transportBuilder` 的 runtime 也固定拒绝出证。
+
+`readiness-evidence.schema.json` 定义多语言归档格式。`bindingSha256` 对排序后的所有 Profile 字段、Catalog/provider/key/secret/CA ref 与路径映射、owner UID 和 Catalog/Secret/CA/TLS/DNS/Auth/Shadow timeout 上限做 canonical SHA-256。bundle 本身只公开 hash、时间和聚合计数。路径存在于 hash preimage 中但不直接输出；token、key、envelope 和 CA 正文不参与摘要，避免把可离线猜测的凭据派生值写入运维记录。原地 token 更新会保留同一 binding，fresh preflight 负责证明采集时文件可解密且 Bearer 有效；推荐的版本化 ref/path 轮换会产生新 binding。
+
+该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计存储，不能单独视为远程 attestation。当前 `index.ts`、自动 admission 和 evidence persistence 均未接线；后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。
 
 ## Network Guard 边界
 

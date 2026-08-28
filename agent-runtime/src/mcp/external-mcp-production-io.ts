@@ -18,6 +18,10 @@ import {
   type ExternalMcpProductionIoPreflight
 } from "./external-mcp-production-io-preflight.js";
 import {
+  createExternalMcpReadinessEvidenceCollector,
+  type ExternalMcpReadinessEvidenceCollector
+} from "./external-mcp-readiness-evidence.js";
+import {
   createExternalMcpShadowConnectivityDrill,
   type ExternalMcpShadowConnectivityDrill
 } from "./external-mcp-shadow-connectivity.js";
@@ -41,6 +45,7 @@ export interface ExternalMcpProductionIoOptions {
   readonly maximumSecretBytes?: number;
   readonly maximumCaBundleBytes?: number;
   readonly connectTimeoutMs?: number;
+  readonly maximumReadinessCollectionMs?: number;
   readonly transportBuilder?: ExternalMcpStreamableHttpTransportBuilder;
   readonly now?: () => Date;
 }
@@ -49,6 +54,7 @@ export interface ExternalMcpProductionIoRuntime {
   readonly registry: ExternalMcpTransportRegistry;
   readonly preflight: ExternalMcpProductionIoPreflight;
   readonly shadowConnectivityDrill: ExternalMcpShadowConnectivityDrill;
+  readonly readinessEvidence: ExternalMcpReadinessEvidenceCollector;
 }
 
 export function createExternalMcpProductionIoRegistry(
@@ -71,7 +77,8 @@ export function createExternalMcpProductionIoRuntime(
       preflight: createExternalMcpProductionIoPreflight(config, undefined, options.now),
       shadowConnectivityDrill: createExternalMcpShadowConnectivityDrill(registry, {
         ...(options.now === undefined ? {} : { now: options.now })
-      })
+      }),
+      readinessEvidence: disabledReadinessEvidence
     };
   }
   if (io === undefined) throw new Error("Enabled external MCP requires production I/O configuration");
@@ -102,15 +109,32 @@ export function createExternalMcpProductionIoRuntime(
     ...(options.transportBuilder === undefined ? {} : { transportBuilder: options.transportBuilder })
   });
   const registry = new ExternalMcpTransportRegistry(config, catalog, factory, options.now);
+  const preflight = createExternalMcpProductionIoPreflight(config, {
+    catalog,
+    secretProvider,
+    caBundles,
+    maximumSecretBytes
+  }, options.now);
+  const shadowConnectivityDrill = createExternalMcpShadowConnectivityDrill(registry, {
+    ...(options.now === undefined ? {} : { now: options.now })
+  });
   return {
     registry,
-    preflight: createExternalMcpProductionIoPreflight(config, {
-      catalog,
-      secretProvider,
-      caBundles,
-      maximumSecretBytes
-    }, options.now),
-    shadowConnectivityDrill: createExternalMcpShadowConnectivityDrill(registry, {
+    preflight,
+    shadowConnectivityDrill,
+    readinessEvidence: createExternalMcpReadinessEvidenceCollector(config, io, {
+      preflight,
+      shadowConnectivityDrill
+    }, {
+      ...(options.expectedOwnerUid === undefined ? {} : { expectedOwnerUid: options.expectedOwnerUid }),
+      ...(options.maximumCatalogBytes === undefined ? {} : { maximumCatalogBytes: options.maximumCatalogBytes }),
+      maximumSecretBytes,
+      ...(options.maximumCaBundleBytes === undefined ? {} : { maximumCaBundleBytes: options.maximumCaBundleBytes }),
+      ...(options.connectTimeoutMs === undefined ? {} : { connectTimeoutMs: options.connectTimeoutMs }),
+      ...(options.maximumReadinessCollectionMs === undefined ? {} : {
+        maximumCollectionMs: options.maximumReadinessCollectionMs
+      }),
+      trustedTransportBuilder: options.transportBuilder === undefined,
       ...(options.now === undefined ? {} : { now: options.now })
     })
   };
@@ -122,4 +146,9 @@ const disabledCatalog: ExternalMcpCredentialCatalog = {
 
 const disabledFactory: ExternalMcpTransportFactory = {
   connect: async (): Promise<Transport> => { throw new Error("External MCP connections are disabled"); }
+};
+
+const disabledReadinessEvidence: ExternalMcpReadinessEvidenceCollector = async (_input, signal) => {
+  signal?.throwIfAborted();
+  throw new Error("External MCP readiness evidence failed");
 };
