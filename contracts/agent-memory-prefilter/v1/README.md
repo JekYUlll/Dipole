@@ -10,3 +10,5 @@ npm run eval:memory-prefilter -- --corpus=../path/corpus.json --evidence=../path
 ```
 
 退出码 `0` 表示达标，`2` 表示有效证据未达门槛，`1` 表示输入无效。该证据仅用于后续候选比较，不能单独开启生产 Memory 自动写入或 Event Subscription 灰度。
+
+Runtime 接入使用 `runtime-binding.schema.json`：`off` 允许兼容路径，`shadow` 允许观察但不改变任务创建，`enforced` 仅接受哈希和候选身份完全匹配且 `eligible` 的 rollout decision。三种模式均不授予 Memory 写权限。
