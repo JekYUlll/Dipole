@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-retention/v1/receipt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "memoryRootSha256", "versions", "erasedAt", "reasonCode", "automaticExecutionAuthority", "publicApiAuthority"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-erasure-receipt.v1"},
+    "policyVersion": {"const": "memory-retention-v1"},
+    "memoryRootSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "versions": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "erasedAt": {"type": "string", "format": "date-time"},
+    "reasonCode": {"enum": ["owner_request", "policy_violation", "retention_expired"]},
+    "automaticExecutionAuthority": {"const": false},
+    "publicApiAuthority": {"const": false}
+  }
+}

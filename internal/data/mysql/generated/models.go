@@ -251,33 +251,36 @@ type AgentMcpToolRound struct {
 }
 
 type AgentMemory struct {
-	ID                   uint64
-	MemoryUuid           string
-	TenantID             string
-	PrincipalUuid        string
-	AgentUuid            string
-	MemoryType           string
-	Status               string
-	ResourceType         string
-	ResourceID           string
-	Content              string
-	CompactContent       sql.NullString
-	Priority             int32
-	SourceType           string
-	SourceID             string
-	SourceUri            sql.NullString
-	SourceSequence       sql.NullString
-	ValidFrom            time.Time
-	ExpiresAt            sql.NullTime
-	RevokedAt            sql.NullTime
-	CreatedAt            time.Time
-	RevokedByUuid        string
-	RevokeReason         string
-	MemoryRootUuid       string
-	MemoryVersion        uint32
-	SupersedesMemoryUuid sql.NullString
-	CorrectedByUuid      string
-	CorrectionReason     string
+	ID                       uint64
+	MemoryUuid               string
+	TenantID                 string
+	PrincipalUuid            string
+	AgentUuid                string
+	MemoryType               string
+	Status                   string
+	ResourceType             string
+	ResourceID               string
+	Content                  string
+	CompactContent           sql.NullString
+	Priority                 int32
+	SourceType               string
+	SourceID                 string
+	SourceUri                sql.NullString
+	SourceSequence           sql.NullString
+	ValidFrom                time.Time
+	ExpiresAt                sql.NullTime
+	RevokedAt                sql.NullTime
+	CreatedAt                time.Time
+	RevokedByUuid            string
+	RevokeReason             string
+	MemoryRootUuid           string
+	MemoryVersion            uint32
+	SupersedesMemoryUuid     sql.NullString
+	CorrectedByUuid          string
+	CorrectionReason         string
+	ContentErasedAt          sql.NullTime
+	ContentErasedByUuid      string
+	ContentErasureReasonCode string
 }
 
 type AgentRun struct {

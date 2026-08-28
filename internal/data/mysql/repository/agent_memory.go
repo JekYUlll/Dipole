@@ -127,6 +127,100 @@ func (r *AgentMemoryRepository) CorrectOwnedMemory(ctx context.Context, write ap
 	return result, nil
 }
 
+func (r *AgentMemoryRepository) EraseOwnedMemoryRoot(ctx context.Context, tenantID, principalUUID, memoryUUID, erasedByUUID string, reason application.AgentMemoryErasureReasonV1, erasedAt time.Time) (*application.AgentMemoryOwnerErasureReceiptV1, error) {
+	if r.store == nil || strings.TrimSpace(tenantID) == "" || strings.TrimSpace(principalUUID) == "" || strings.TrimSpace(memoryUUID) == "" ||
+		strings.TrimSpace(erasedByUUID) == "" || reason != application.AgentMemoryErasureReasonOwnerRequest || erasedAt.IsZero() {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	var receipt *application.AgentMemoryOwnerErasureReceiptV1
+	err := r.store.WithinTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, func(queries *generated.Queries) error {
+		selected, err := queries.GetOwnedAgentMemory(ctx, generated.GetOwnedAgentMemoryParams{TenantID: tenantID, PrincipalUuid: principalUUID, MemoryUuid: memoryUUID})
+		if errors.Is(err, sql.ErrNoRows) {
+			return application.ErrAgentMemoryDenied
+		}
+		if err != nil {
+			return fmt.Errorf("resolve owned Agent Memory for erasure: %w", err)
+		}
+		rows, err := queries.ListOwnedAgentMemoryRootForUpdate(ctx, generated.ListOwnedAgentMemoryRootForUpdateParams{TenantID: tenantID, PrincipalUuid: principalUUID, MemoryRootUuid: selected.MemoryRootUuid})
+		if err != nil {
+			return fmt.Errorf("lock Agent Memory root for erasure: %w", err)
+		}
+		if err := validateAgentMemoryRootForErasure(rows, selected.MemoryRootUuid); err != nil {
+			return err
+		}
+		if rows[0].ContentErasedAt.Valid {
+			receipt = erasureReceipt(rows)
+			if receipt == nil || receipt.ErasedByUUID != erasedByUUID || receipt.Reason != reason {
+				return application.ErrAgentMemoryConflict
+			}
+			return nil
+		}
+		affected, err := queries.EraseOwnedAgentMemoryRoot(ctx, generated.EraseOwnedAgentMemoryRootParams{
+			ContentErasedAt: sql.NullTime{Time: erasedAt, Valid: true}, ContentErasedByUuid: erasedByUUID,
+			ContentErasureReasonCode: string(reason), TenantID: tenantID, PrincipalUuid: principalUUID, MemoryRootUuid: selected.MemoryRootUuid,
+		})
+		if err != nil {
+			return fmt.Errorf("erase owned Agent Memory root: %w", err)
+		}
+		if affected != int64(len(rows)) {
+			return application.ErrAgentMemoryConflict
+		}
+		stored, err := queries.ListOwnedAgentMemoryRootForUpdate(ctx, generated.ListOwnedAgentMemoryRootForUpdateParams{TenantID: tenantID, PrincipalUuid: principalUUID, MemoryRootUuid: selected.MemoryRootUuid})
+		if err != nil {
+			return fmt.Errorf("read erased Agent Memory root: %w", err)
+		}
+		receipt = erasureReceipt(stored)
+		if receipt == nil || !receipt.ErasedAt.Equal(erasedAt) || receipt.ErasedByUUID != erasedByUUID || receipt.Reason != reason {
+			return application.ErrAgentMemoryConflict
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
+func validateAgentMemoryRootForErasure(rows []generated.AgentMemory, root string) error {
+	if len(rows) == 0 {
+		return application.ErrAgentMemoryConflict
+	}
+	active := 0
+	for i, row := range rows {
+		if row.MemoryRootUuid != root || row.MemoryVersion != uint32(i+1) {
+			return application.ErrAgentMemoryConflict
+		}
+		if row.Status == string(application.AgentMemoryStatusActive) {
+			active++
+		}
+		if row.ContentErasedAt.Valid != rows[0].ContentErasedAt.Valid {
+			return application.ErrAgentMemoryConflict
+		}
+	}
+	if !rows[0].ContentErasedAt.Valid && active != 1 {
+		return application.ErrAgentMemoryConflict
+	}
+	return nil
+}
+
+func erasureReceipt(rows []generated.AgentMemory) *application.AgentMemoryOwnerErasureReceiptV1 {
+	if len(rows) == 0 || !rows[0].ContentErasedAt.Valid {
+		return nil
+	}
+	first := rows[0]
+	for _, row := range rows {
+		if !row.ContentErasedAt.Valid || !row.ContentErasedAt.Time.Equal(first.ContentErasedAt.Time) || row.ContentErasedByUuid != first.ContentErasedByUuid ||
+			row.ContentErasureReasonCode != first.ContentErasureReasonCode || row.Content != application.AgentMemoryErasedContentV1 || row.CompactContent.Valid || row.SourceUri.Valid ||
+			row.ResourceType != application.AgentMemorySourceErasedV1 || row.ResourceID != application.AgentMemoryErasedReferenceV1 {
+			return nil
+		}
+		if row.MemoryVersion == 1 && (row.SourceType != application.AgentMemorySourceErasedV1 || row.SourceID != application.AgentMemoryErasedReferenceV1 || row.SourceSequence.Valid) {
+			return nil
+		}
+	}
+	return &application.AgentMemoryOwnerErasureReceiptV1{MemoryRootUUID: first.MemoryRootUuid, Versions: uint32(len(rows)), ErasedAt: first.ContentErasedAt.Time, ErasedByUUID: first.ContentErasedByUuid, Reason: application.AgentMemoryErasureReasonV1(first.ContentErasureReasonCode)}
+}
+
 func insertAgentMemoryV1(ctx context.Context, queries generated.Querier, memory application.AgentMemoryV1) error {
 	return queries.InsertAgentMemory(ctx, generated.InsertAgentMemoryParams{
 		MemoryUuid: memory.MemoryUUID, TenantID: memory.TenantID, PrincipalUuid: memory.PrincipalUUID, AgentUuid: memory.AgentUUID,
@@ -250,5 +344,7 @@ func mapAgentMemory(row generated.AgentMemory) application.AgentMemoryV1 {
 		RevokedByUUID: row.RevokedByUuid, RevokeReason: row.RevokeReason, CreatedAt: row.CreatedAt,
 		MemoryRootUUID: row.MemoryRootUuid, MemoryVersion: row.MemoryVersion, SupersedesMemoryUUID: row.SupersedesMemoryUuid.String,
 		CorrectedByUUID: row.CorrectedByUuid, CorrectionReason: row.CorrectionReason,
+		ContentErasedAt: timePointer(row.ContentErasedAt), ContentErasedByUUID: row.ContentErasedByUuid,
+		ContentErasureReason: application.AgentMemoryErasureReasonV1(row.ContentErasureReasonCode),
 	}
 }
