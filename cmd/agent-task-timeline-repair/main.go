@@ -12,8 +12,10 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/reconcile/agenttimeline"
 	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
@@ -21,6 +23,7 @@ func main() {
 	lease := flag.Duration("lease", 30*time.Second, "claim lease for a repair batch")
 	backoff := flag.Duration("retry-backoff", time.Second, "delay before a failed repair is retried")
 	interval := flag.Duration("interval", time.Second, "poll interval")
+	metricsAddress := flag.String("metrics-address", "", "optional Prometheus metrics listen address")
 	flag.Parse()
 
 	if err := config.Load(); err != nil {
@@ -44,6 +47,18 @@ func main() {
 	repairer, err := agenttimelinereconcile.NewRepairer(policy, policy, *batchSize, *lease, *backoff, *interval)
 	if err != nil {
 		fatal(err)
+	}
+	if *metricsAddress != "" {
+		collector := platformobservability.NewAgentTimelineRepairCollector()
+		registry := prometheus.NewRegistry()
+		registry.MustRegister(collector)
+		metrics, metricsErr := platformobservability.StartServiceMetricsServer(*metricsAddress, "dipole-agent-timeline-repair", registry)
+		if metricsErr != nil {
+			fatal(fmt.Errorf("start repair metrics: %w", metricsErr))
+		}
+		metrics.MarkReady()
+		defer func() { _ = metrics.Close(context.Background()) }()
+		repairer.WithObserver(collector)
 	}
 	if err := repairer.Run(ctx); err != nil && !signalContextError(err) {
 		fatal(err)
