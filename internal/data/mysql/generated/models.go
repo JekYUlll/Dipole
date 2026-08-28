@@ -448,6 +448,24 @@ type AgentWorkflowRepairDecision struct {
 	CreatedAt    time.Time
 }
 
+type AgentWorkflowRepairExecution struct {
+	ExecutionUuid         string
+	PlanID                string
+	ProposalUuid          string
+	TaskUuid              string
+	ExecutorUuid          string
+	ExecutorGrantVersion  uint64
+	ExpectedCurrentSha256 sql.NullString
+	TargetSha256          string
+	RollbackSha256        sql.NullString
+	Status                string
+	StartedAt             sql.NullTime
+	FinishedAt            sql.NullTime
+	FailureCode           sql.NullString
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type AgentWorkflowRepairOperatorGrant struct {
 	UserUuid      string
 	CanPropose    bool
