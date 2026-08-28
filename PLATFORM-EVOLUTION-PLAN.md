@@ -378,6 +378,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加默认关闭的 Activity-safe round runner 与 External Profile adapter：每轮使用全新现代 Client/Transport，tenant/profile/server/tool 漂移、取消、握手失败和第二轮 input request 均 fail closed；生产 Worker mode 与外部 Provider 装配仍关闭。
   - [x] migration v35 与 Resolve RPC 持久化外部 MCP Tool command，绑定 running Task/Run/Invocation、canonical 参数摘要和无凭据 Profile/Server；Worker mode 仍需 round receipt/idempotency 处理远端成功后 Activity completion 丢失窗口。
   - [x] migration v36 与 Core/TS RPC 增加 durable MCP round receipt：确定性请求绑定、原子 Claim、owner-only terminal write、completed/failed replay 和无 reclaim 的 ambiguous fail-closed 语义已接入 Activity；生产 Worker、外部 Provider 与网络开关继续关闭。
+  - [x] 增加默认关闭的 MCP Worker command dispatcher：Workflow 侧只携带 Task/Run/Invocation ID，Core 返回持久开始时间和完整权威命令；固定 request/expiry 与重启前命令复核已覆盖，生产 Worker 仍等待真实 Transport Factory。
   - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
   - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。
