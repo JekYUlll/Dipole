@@ -15,15 +15,15 @@ const context: ExecutionContext = {
 describe("ConversationReadCapability", () => {
   it("validates input and forwards the trusted execution context", async () => {
     const result: ConversationReadResult = { found: true, reason: "", targetId: "G1", targetType: 2, messages: [] };
-    const readConversation = vi.fn(async (receivedContext: ExecutionContext, targetId: string, limit: number) => {
+    const readConversation = vi.fn(async (receivedContext: ExecutionContext, conversationId: string, limit: number) => {
       expect(receivedContext).toBe(context);
-      expect(targetId).toBe("G1");
+      expect(conversationId).toBe("group:G1");
       expect(limit).toBe(20);
       return result;
     });
     const capability = new ConversationReadCapability({ readConversation });
 
-    await expect(capability.execute(capability.inputSchema.parse({ targetId: " G1 " }), context)).resolves.toBe(result);
+    await expect(capability.execute(capability.inputSchema.parse({ conversationId: " group:G1 " }), context)).resolves.toBe(result);
     expect(readConversation).toHaveBeenCalledOnce();
   });
 
@@ -34,7 +34,7 @@ describe("ConversationReadCapability", () => {
     const registry = new CapabilityRegistry();
     registry.register(capability);
 
-    await expect(registry.execute("conversation.read", { targetId: "G1" }, denied)).rejects.toThrow(/missing permission/);
+    await expect(registry.execute("conversation.read", { conversationId: "group:G1" }, denied)).rejects.toThrow(/missing permission/);
     expect(readConversation).not.toHaveBeenCalled();
   });
 });
