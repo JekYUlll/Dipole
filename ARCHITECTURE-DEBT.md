@@ -131,6 +131,7 @@
 - **本轮进展：** 增加 Memory prefilter evidence v1 与 `eval:memory-prefilter` 离线 CLI，embedding/small_model 候选必须完整绑定 reviewed corpus、配置哈希和 score/threshold；报告仅含聚合分类、延迟、成本指标与门禁原因，缺失 case、哈希漂移或阈值漂移均 fail closed。当前仍缺真实 owner-approved corpus、embedding/小模型采集、retrieval ranking 标注和在线灰度证据。
 - **本轮进展：** 增加 Memory prefilter rollout decision v1 与 `eval:memory-prefilter-rollout`，在发布判定前重新计算双 reviewer/gold 与 candidate evidence，绑定 corpus/review/final-label/evidence 哈希并以 `eligible|blocked` 输出。该门禁仍为离线证据，真实语料、候选采集、审批授权和在线灰度继续关闭。
 - **本轮进展：** 增加 `runtime-binding.v1` 与 provider-neutral 三态 gate：`shadow` 只观察、`enforced` 仅接受精确绑定的 `eligible` 决策，所有模式固定无 Memory 写权。该 gate 尚未接入真实模型、Kafka subscription 或自动晋级，仍需真实语料和在线回切证据。
+- **本轮进展：** 增加 Cassandra read rollout evidence v1 与 Go CLI，校验窗口/部署标识、路由计数不变量，并按样本量、观察比例、fallback、verification 和 Cassandra p95 门槛重算 `eligible|blocked`。当前仍缺真实共享环境 Prometheus 快照、责任人批准、快照/回放证据和生产回切窗口。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 

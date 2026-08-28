@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/cassandra-read-rollout/v1/report.schema.json",
+  "title": "Dipole Cassandra Read Rollout Report v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "decision", "reasons", "evidenceSha256", "policySha256", "deploymentRevision", "metrics"],
+  "properties": {"schemaVersion": {"const": "dipole.cassandra-read-rollout-report.v1"}, "decision": {"enum": ["eligible", "blocked"]}, "reasons": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "evidenceSha256": {"$ref": "#/$defs/sha256"}, "policySha256": {"$ref": "#/$defs/sha256"}, "deploymentRevision": {"type": "string"}, "metrics": {"type": "object"}},
+  "$defs": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
