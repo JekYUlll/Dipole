@@ -296,6 +296,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 Sync Cassandra hydration evidence v1 与低敏 Go CLI，统一 shadow/primary 的命中、fallback、缺失/冲突/错误和 p95 门禁；真实客户端窗口、责任人批准和生产主读仍待完成。
 - [x] 增加 Prometheus snapshot adapter 与 `sync-cassandra-hydration-snapshot` CLI，将运行时低敏指标转换为既有 evidence v1；真实共享环境归档、missing/conflict 端到端归因、责任人批准和自动回切仍待完成。
 - [x] 将 snapshot 转换改为起止快照差分，拒绝 counter reset 与 histogram 桶漂移，确保 evidence 计数对应明确窗口；真实共享环境采集与责任人批准仍待完成。
+- [x] 为 snapshot parser 增加 metric family、类型、标签唯一性和 histogram 单调性校验；真实共享环境采集、责任人批准与可执行回切仍待完成。
 - [x] 增加默认关闭的 `sync.cassandra_primary_hydration`，以 locator 为边界优先读取 Cassandra，失败立即回退 MySQL，并拒绝与 shadow hydration 同时启用；真实灰度和停止门禁仍待完成。
 - [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
 - [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
