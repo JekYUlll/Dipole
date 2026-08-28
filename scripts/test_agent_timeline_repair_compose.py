@@ -11,6 +11,7 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         build = (ROOT / "scripts/docker-build.sh").read_text(encoding="utf-8")
         smoke = (ROOT / "scripts/smoke-agent-timeline-repair.sh").read_text(encoding="utf-8")
+        compose_smoke = (ROOT / "scripts/smoke-agent-timeline-repair-compose.sh").read_text(encoding="utf-8")
 
         self.assertIn('agent-timeline-repair:', compose)
         self.assertIn('profiles: ["agent-timeline-repair"]', compose)
@@ -25,6 +26,14 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('ALTER USER', compose)
         self.assertIn('DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD', compose)
         self.assertIn('unsupported SQL quoting characters', compose)
+        self.assertIn('agent-timeline-repair', compose_smoke)
+        self.assertIn('compose up -d --wait mysql', compose_smoke)
+        self.assertIn('compose run --rm --no-deps migrate', compose_smoke)
+        self.assertIn('migration preflight failed', compose_smoke)
+        self.assertIn('timeline_table', compose_smoke)
+        self.assertIn('compose up -d --wait mysql-permissions agent-timeline-repair', compose_smoke)
+        self.assertIn('/readyz', compose_smoke)
+        self.assertIn('EVENT-SMOKE-COMPOSE-REPAIR', compose_smoke)
 
 
 if __name__ == "__main__":
