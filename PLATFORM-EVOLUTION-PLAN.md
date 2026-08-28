@@ -470,6 +470,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Agent Definition、Subscription、完整 Task timeline、Memory、Artifact、多轮与敏感授权仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
+当前质量基线：Agent Runtime `npm test` 通过 122 个测试文件/627 个测试；Frontend `npm test`、`vue-tsc` 与 Vite 生产构建通过。该验证不等同于 F2-F4 设计稿和真实浏览器视觉回归全部完成。
+
 设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
 
 ## 11. 全程测试矩阵
