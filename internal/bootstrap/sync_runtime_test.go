@@ -77,7 +77,7 @@ func TestValidateTimelineNotifyMode(t *testing.T) {
 	}{
 		{mode: "off"},
 		{mode: "shadow"},
-		{mode: "primary", wantError: true},
+		{mode: "primary"},
 		{mode: "", wantError: true},
 	} {
 		err := validateTimelineNotifyMode(config.Message{TimelineNotifyMode: test.mode})
