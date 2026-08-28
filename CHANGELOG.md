@@ -70,6 +70,7 @@
 
 ### 新增
 
+- 增加默认关闭的 Agent Definition catalog：sqlc 按 tenant/owner、服务端有效期、`conversation.read` 与可读 conversation scope 筛选 active 版本，应用层二次复核 authority；additive Core RPC 与 Gateway `/api/v1/agent/definitions` 从认证 principal 派生 owner，并以 opaque 复合 cursor 分页。公开投影不含原始 permissions、owner 或非 conversation scope；前端严格 API parser 已就绪，conversation chooser、create UI 与 Runtime 切换继续关闭。
 - 增加默认关闭的 Agent Event Subscription owner list/revoke Web 闭环：Gateway 复用现有 Core Agent gRPC 连接，从认证会话派生 principal 并固定 tenant；Vue 以严格响应解析展示 Definition version、conversation scope、确定性 filter 与撤销审计，查询失败清空旧状态，撤销要求精确原因并以权威响应收敛。desktop/mobile 路由已通过 Chromium、Firefox 与 WebKit 验收。公开 Definition 目录、create 与 Runtime `subscription` 继续关闭。
 - canonical Pencil 增加 Agent Event Subscription v1：desktop owner 管理页、`loading|empty|unavailable|definition_stale|revoking|revoked` 六态矩阵、mobile 精确撤销确认层及三类可复用组件；设计固定披露 Definition version、conversation scope、确定性 filter、审计原因与 `direct_target` Shadow 边界，2x 评审图归档于 `design/exports/agent-subscription-v1/`。owner list/revoke 已由默认关闭的 Gateway HTTP/Vue 管理页实现；公开 Definition 目录、create 与 Runtime `subscription` 模式仍未启用。
 - Agent G4 全栈 Shadow 演练增加测试专用 Go Core RPC fixture：复用生产 TLS 1.3、双向证书验证、shared-secret metadata、caller allowlist 和证书 CN 绑定；脚本生成临时 `dipole-core`/`dipole-agent` 身份并验证错误 secret、错误 CN 与无客户端证书均失败关闭。

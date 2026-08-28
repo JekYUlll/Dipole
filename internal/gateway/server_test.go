@@ -95,6 +95,19 @@ type gatewayAgentSubscriptionStub struct {
 	revokeCalls    int
 }
 
+type gatewayAgentDefinitionStub struct {
+	principal, after string
+	limit            int
+}
+
+func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	return &AgentDefinitionCatalogPage{Definitions: []AgentDefinitionCatalogItem{{
+		DefinitionID: "DEF-1", Version: 7, AgentID: "UAI", ConversationScopes: []string{"group:G123"},
+		ValidFromUnixMS: 1_000, CreatedAtUnixMS: 1_000, UpdatedAtUnixMS: 2_000,
+	}}}, nil
+}
+
 func (s *gatewayAgentSubscriptionStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentSubscriptionPage, error) {
 	s.principal, s.after, s.limit = principalUUID, after, limit
 	s.listCalls++
@@ -341,6 +354,32 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 	gateway.Engine().ServeHTTP(revokeResponse, revokeRequest)
 	if revokeResponse.Code != http.StatusOK || subscriptions.subscriptionID != "SUB-1" || subscriptions.reason != "project archived" || subscriptions.revokeCalls != 1 {
 		t.Fatalf("revoke: code=%d stub=%+v body=%s", revokeResponse.Code, subscriptions, revokeResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	catalog := &gatewayAgentDefinitionStub{}
+	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentDefinitions: catalog, Limiter: gatewayLimiterStub{}})
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions", nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized code=%d", unauthorized.Code)
+	}
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions?limit=20", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || catalog.principal != "U100" || catalog.limit != 20 || !strings.Contains(response.Body.String(), `"definitionId":"DEF-1"`) {
+		t.Fatalf("catalog code=%d stub=%+v body=%s", response.Code, catalog, response.Body.String())
 	}
 }
 

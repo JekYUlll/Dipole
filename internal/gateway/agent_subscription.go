@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -51,14 +52,116 @@ type AgentSubscriptionPage struct {
 	NextCursor    string              `json:"nextCursor,omitempty"`
 }
 
+type AgentDefinitionCatalogItem struct {
+	DefinitionID       string   `json:"definitionId"`
+	Version            uint64   `json:"version"`
+	AgentID            string   `json:"agentId"`
+	ConversationScopes []string `json:"conversationScopes"`
+	ValidFromUnixMS    int64    `json:"validFromUnixMs"`
+	ExpiresAtUnixMS    int64    `json:"expiresAtUnixMs,omitempty"`
+	CreatedAtUnixMS    int64    `json:"createdAtUnixMs"`
+	UpdatedAtUnixMS    int64    `json:"updatedAtUnixMs"`
+}
+
+type AgentDefinitionCatalogPage struct {
+	Definitions []AgentDefinitionCatalogItem `json:"definitions"`
+	NextCursor  string                       `json:"nextCursor,omitempty"`
+}
+
 type AgentSubscriptionControlApplication interface {
 	List(ctx context.Context, principalUUID, after string, limit int) (*AgentSubscriptionPage, error)
 	Revoke(ctx context.Context, principalUUID, subscriptionID, reason string) (*AgentSubscription, error)
 }
 
+type AgentDefinitionCatalogApplication interface {
+	ListDefinitions(ctx context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error)
+}
+
 type agentSubscriptionRPC interface {
 	ListEventSubscriptions(context.Context, *agentv1.ListEventSubscriptionsRequest, ...grpc.CallOption) (*agentv1.ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(context.Context, *agentv1.RevokeEventSubscriptionRequest, ...grpc.CallOption) (*agentv1.AgentEventSubscription, error)
+	ListAgentDefinitions(context.Context, *agentv1.ListAgentDefinitionsRequest, ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error)
+}
+
+func (c *AgentSubscriptionControlClient) ListDefinitions(ctx context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
+	afterID, afterVersion, err := decodeAgentDefinitionCursor(after)
+	if err != nil {
+		return nil, ErrAgentSubscriptionInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.ListAgentDefinitions(callCtx, &agentv1.ListAgentDefinitionsRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		AfterDefinitionId: afterID, AfterVersion: afterVersion, Limit: uint32(limit),
+	})
+	if err != nil {
+		return nil, mapAgentSubscriptionRPCError(err)
+	}
+	if response == nil || (response.GetNextDefinitionId() == "") != (response.GetNextVersion() == 0) {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
+	page := &AgentDefinitionCatalogPage{Definitions: make([]AgentDefinitionCatalogItem, 0, len(response.GetDefinitions()))}
+	for _, raw := range response.GetDefinitions() {
+		if raw == nil || !validAgentSubscriptionPublicID(raw.GetDefinitionId(), 64) || raw.GetVersion() == 0 ||
+			!validAgentSubscriptionPublicID(raw.GetAgentId(), 24) || len(raw.GetConversationScopes()) == 0 ||
+			raw.GetValidFromUnixMs() <= 0 || raw.GetCreatedAtUnixMs() <= 0 || raw.GetUpdatedAtUnixMs() <= 0 {
+			return nil, ErrAgentSubscriptionUnavailable
+		}
+		scopes := append([]string(nil), raw.GetConversationScopes()...)
+		for _, scope := range scopes {
+			if scope != "*" && !validAgentSubscriptionPublicID(scope, 128) {
+				return nil, ErrAgentSubscriptionUnavailable
+			}
+		}
+		page.Definitions = append(page.Definitions, AgentDefinitionCatalogItem{
+			DefinitionID: raw.GetDefinitionId(), Version: raw.GetVersion(), AgentID: raw.GetAgentId(), ConversationScopes: scopes,
+			ValidFromUnixMS: raw.GetValidFromUnixMs(), ExpiresAtUnixMS: raw.GetExpiresAtUnixMs(),
+			CreatedAtUnixMS: raw.GetCreatedAtUnixMs(), UpdatedAtUnixMS: raw.GetUpdatedAtUnixMs(),
+		})
+	}
+	if response.GetNextDefinitionId() != "" {
+		page.NextCursor, err = encodeAgentDefinitionCursor(response.GetNextDefinitionId(), response.GetNextVersion())
+		if err != nil {
+			return nil, ErrAgentSubscriptionUnavailable
+		}
+	}
+	return page, nil
+}
+
+func encodeAgentDefinitionCursor(definitionID string, version uint64) (string, error) {
+	if !validAgentSubscriptionPublicID(definitionID, 64) || version == 0 {
+		return "", ErrAgentSubscriptionInvalid
+	}
+	encoded, err := json.Marshal(struct {
+		DefinitionID string `json:"definitionId"`
+		Version      uint64 `json:"version"`
+	}{DefinitionID: definitionID, Version: version})
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(encoded), nil
+}
+
+func decodeAgentDefinitionCursor(cursor string) (string, uint64, error) {
+	if cursor == "" {
+		return "", 0, nil
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil || len(decoded) > 256 {
+		return "", 0, ErrAgentSubscriptionInvalid
+	}
+	var value struct {
+		DefinitionID string `json:"definitionId"`
+		Version      uint64 `json:"version"`
+	}
+	if decodeStrictAgentSubscriptionJSON(decoded, &value) != nil || !validAgentSubscriptionPublicID(value.DefinitionID, 64) || value.Version == 0 {
+		return "", 0, ErrAgentSubscriptionInvalid
+	}
+	canonical, err := encodeAgentDefinitionCursor(value.DefinitionID, value.Version)
+	if err != nil || canonical != cursor {
+		return "", 0, ErrAgentSubscriptionInvalid
+	}
+	return value.DefinitionID, value.Version, nil
 }
 
 type AgentSubscriptionControlClient struct {
