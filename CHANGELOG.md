@@ -29,6 +29,10 @@
 - 修正 hydration snapshot 的窗口语义：CLI 现在要求起止 Prometheus 快照，对生命周期累计 counter/histogram 做单调差分；counter reset、histogram 缺失或桶漂移均拒绝生成 evidence，避免把进程累计值误归因到 rollout 窗口。
 - 加固 hydration snapshot 完整性：拒绝重复 route outcome、重复 metric family、错误 metric 类型、额外标签、未知 outcome 和非单调 histogram 桶，避免错误或篡改的 Prometheus 文本被聚合成有效证据。
 
+### 验证
+
+- 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。
+
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
 - Agent Memory 增加受认证的 `PromoteMemoryCandidate` Core gRPC 与 Gateway HTTP 控制入口：仅允许已认证 Gateway 绑定 owner principal，服务端重新校验候选/审核哈希并返回幂等的 observational Memory；该入口不启动 Temporal、不消费 Runtime 旁路，也不打开自动写入。
