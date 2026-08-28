@@ -28,3 +28,19 @@ func TestParseRejectsUnknownFields(t *testing.T) {
 		t.Fatal("expected unknown field rejection")
 	}
 }
+
+func TestParseRejectsTrailingJSON(t *testing.T) {
+	valid := `{"schemaVersion":"dipole.agent.timeline-repair-rollout-evidence.v1","service":"repair","deploymentRevision":"rev","windowStart":"2026-08-29T00:00:00Z","windowEnd":"2026-08-29T01:00:00Z","workerReady":true,"operator":"ops","rollbackVerified":true,"alertState":"clear","outcomes":{"claimed":1,"repaired":1,"retried":0,"projectionError":0,"completeError":0,"claimError":0,"invalid":0}}`
+	if _, err := ParseEvidence([]byte(valid + ` {"extra":true}`)); err == nil {
+		t.Fatal("expected trailing JSON rejection")
+	}
+}
+
+func TestRatioBPSDoesNotOverflowLargeCounters(t *testing.T) {
+	if got := ratioBPS(^uint64(0)-1, ^uint64(0)); got != 9_999 {
+		t.Fatalf("ratio=%d, want 9999", got)
+	}
+	if got := ratioBPS(^uint64(0), ^uint64(0)); got != 10_000 {
+		t.Fatalf("equal ratio=%d, want 10000", got)
+	}
+}
