@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/attempt-manifest.schema.json",
+  "title": "Dipole Realtime Delivery Cutover Attempt Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "attempt_id", "source_authority", "target_authority",
+    "initial_epoch", "max_interruption_ms", "created_at_unix_ms",
+    "source_nodes_manifest_sha256", "frozen_nodes_manifest_sha256",
+    "target_nodes_manifest_sha256", "checkpoint_manifest_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.cutover-attempt-manifest.v1" },
+    "attempt_id": { "$ref": "#/$defs/id" },
+    "source_authority": { "enum": ["go", "shadow", "cpp"] },
+    "target_authority": { "enum": ["go", "shadow", "cpp"] },
+    "initial_epoch": { "type": "integer", "minimum": 1 },
+    "max_interruption_ms": { "type": "integer", "minimum": 1, "maximum": 600000 },
+    "created_at_unix_ms": { "type": "integer", "minimum": 1 },
+    "source_nodes_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "frozen_nodes_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "target_nodes_manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "checkpoint_manifest_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
