@@ -378,7 +378,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 增加 Memory prefilter Runtime binding v1：以 `off/shadow/enforced` 三态和候选/配置/语料/评审哈希建立可复用 gate；仅 `enforced + eligible` 允许后续任务创建，默认未接入生产。
     - [x] 增加默认关闭的 direct-target 在线 Shadow 对照、固定低基数指标、Prometheus error/drift 告警和无数据迁移回滚路径；真实 corpus 与晋级决策仍待完成。
     - [x] 增加 24 小时 Prometheus 快照 evidence Schema/CLI，固定覆盖率、样本量、counter reset、零 error、双 authority=false 与 24 小时有效期；真实共享环境归档仍待完成。
-    - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
+  - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
+    - [x] Runtime matcher 在 Schema 解析前限制最多 256 条订阅候选，超限 fail-closed 并通过回归测试固定有界匹配成本。
 - [x] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact；产品 UI 与敏感输入隔离仍按独立门槛推进。
   - [x] `dipole.agent.elicitation.v1`、Gateway JWT API、Core Task owner 复核与 Temporal Signal 已实现持久 `WAITING_INPUT`；无效/旧 request fail closed，Worker 替换后可恢复。Pencil UI、敏感输入和 MCP adapter 由 `AD-036` 跟踪。
   - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。
