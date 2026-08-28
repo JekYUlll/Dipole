@@ -259,6 +259,16 @@ subscription matcher 由 Worker 的 Agent Capability RPC resource 从同一个�
 
 Compose 仍保留 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`、Temporal disabled 与 `foundation`，所以发布后没有默认网络或消费行为。隔离验收组合使用临时 in-memory Temporal Server 与独立 task queue 验证恢复、替换、取消和 MCP history，同时用本地 modern Streamable HTTP Client/Server 只执行 initialize 和 Tool discovery，断言 `tools/call=0`。该证据验证入口策略、Workflow 与协议只读面；真实 Profile/I/O/route manifest、Core/MySQL、Kafka、凭据、public DNS、pinned TLS 与 fresh readiness 仍需独立 Shadow tenant 联合演练。
 
+### 隔离全栈 Shadow 演练
+
+`scripts/drill-agent-external-mcp-shadow.sh` 提供默认不随单测执行的 owner-only 联合证据入口。脚本使用随机 Compose project、随机 loopback 端口和临时卷启动独立 MySQL 8.4 与 Kafka 3.9；Vitest 再启动临时 Temporal Dev Server、可信 Core 夹具和本地 modern MCP Server。退出时始终删除容器、网络与卷，不读取或重启共享 `dipole-node*` 服务。
+
+演练加载 mode `0600` 的 production route manifest，并复用正式 Capability definition、route/egress policy、Kafka consumer、MySQL EventLedger、Temporal Workflow、MCP Client 与 Artifact projector。Core 夹具只实现受信 subscription、Run/Invocation/Round/readiness/Artifact 状态，MCP 传输通过显式本地测试边界注入，因此不会降低 production `public_only DNS + pinned TLS + encrypted secret` 防线，也不会获得 production authority。
+
+成功路径发送一个 subscription event，要求 exactly one allowlisted `read_issue` Tool 调用及一个 untrusted Artifact。随后以同 consumer group 和持久 ledger 重启 Runtime并重发同 Event ID，确认不启动第二个 Workflow或 Tool；最后让 readiness receipt 过期后发送新事件，要求 Workflow 收敛为 failed 且 Tool count 不增加。fresh gate 现在使用 Worker 当前时钟要求 `expiresAt > now`，因此历史回执会在 raw Registry、Catalog 与 Transport 之前拒绝。
+
+证据默认写入 gitignored 的 `agent-runtime/.artifacts/external-mcp-shadow-drill.json`，文件 mode 为 `0600`，只包含 schema、通过状态、隔离类型、聚合计数和布尔门禁结果，不包含 tenant、Profile、Task、Event、Tool、路径、端口、消息正文、Token 或底层错误。可用 `DIPOLE_AGENT_MCP_DRILL_EVIDENCE` 指向受控归档路径。该本地证据覆盖进程组合和失败关闭语义；真实公网 DNS、证书链、peer pinning、凭据轮换/吊销、Core mTLS 与 provider owner 仍需独立 Shadow tenant 演练。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛

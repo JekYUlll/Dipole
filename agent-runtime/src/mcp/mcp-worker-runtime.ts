@@ -52,7 +52,8 @@ export function createMcpWorkerRuntime(dependencies: McpWorkerRuntimeDependencie
     dependencies.externalMcp.io,
     dependencies.externalMcp.registry,
     dependencies.core,
-    dependencies.externalMcp.readinessBindingOptions
+    dependencies.externalMcp.readinessBindingOptions,
+    dependencies.now
   );
   const sessions = new ExternalMcpActivityRoundSessionFactory(
     transports,
