@@ -9,16 +9,16 @@ import (
 )
 
 type CutoverAttemptAction struct {
-	ActionID                   string
-	AttemptID                  string
-	Sequence                   uint64
-	EventType                  CutoverAttemptEventType
-	CurrentState               CutoverAttemptState
-	SourceAuthority            Authority
-	TargetAuthority            Authority
-	ExpectedEpoch              uint64
-	MaxInterruptionMS          int64
-	InterruptionDeadlineUnixMS int64
+	ActionID                   string                  `json:"action_id"`
+	AttemptID                  string                  `json:"attempt_id"`
+	Sequence                   uint64                  `json:"sequence"`
+	EventType                  CutoverAttemptEventType `json:"event_type"`
+	CurrentState               CutoverAttemptState     `json:"current_state"`
+	SourceAuthority            Authority               `json:"source_authority"`
+	TargetAuthority            Authority               `json:"target_authority"`
+	ExpectedEpoch              uint64                  `json:"expected_epoch"`
+	MaxInterruptionMS          int64                   `json:"max_interruption_ms"`
+	InterruptionDeadlineUnixMS int64                   `json:"interruption_deadline_unix_ms"`
 }
 
 type CutoverAttemptActionResult struct {

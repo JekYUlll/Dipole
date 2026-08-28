@@ -354,15 +354,10 @@ func validateCutoverAttemptEvent(event CutoverAttemptEvent) error {
 		event.Sequence == 0 || !validSHA256(event.PreviousEventSHA256) || !validSHA256(event.ArtifactSHA256) || event.RecordedAtUnixMS <= 0 {
 		return fmt.Errorf("cutover attempt event is invalid")
 	}
-	switch event.EventType {
-	case CutoverEventSourceCheckpointed, CutoverEventFreezeApplied, CutoverEventFrozenConfirmed,
-		CutoverEventTargetActivated, CutoverEventTargetCheckpointed, CutoverEventCompleted,
-		CutoverEventRollbackRequested, CutoverEventRollbackFreezeApplied, CutoverEventRollbackFrozenConfirmed,
-		CutoverEventSourceReactivated, CutoverEventRollbackCheckpointed, CutoverEventRolledBack:
-		return nil
-	default:
+	if !validCutoverAttemptEventType(event.EventType) {
 		return fmt.Errorf("cutover attempt event type %q is invalid", event.EventType)
 	}
+	return nil
 }
 
 func cutoverAttemptEventFilename(sequence uint64) string {
