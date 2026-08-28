@@ -436,7 +436,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加独立 `dipole-realtime-primary-*` authority 和默认关闭的显式 primary CLI；terminal ACK/evidence 后提交，partial/error 保留 pending record，shadow 命令与证据保持兼容。
 - [x] 归档真实 primary queue saturation、consume-to-ACK offset 提交、故障 retain 与进程 `SIGKILL` 重放；报告 8/8，窄 terminal evidence/commit 崩溃窗口保持未声明。
 - [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
-- [ ] 通过压测与故障注入证明收益；收益不足时保留 Go 实现并停止替换。
+- [ ] 通过压测与故障注入证明收益；C3 故障注入已通过，但 2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换；只有新的可复现 workload 证明收益后才重新评估。
 
 ### C3：灰度切换与 Gateway 评估
 
