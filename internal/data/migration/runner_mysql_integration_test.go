@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 40
+const currentMigrationVersion = 41
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,7 +39,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 47)
+		assertTableCount(t, db, 48)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
@@ -55,6 +55,12 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 40)
+		assertTableCount(t, db, 47)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Memory erasure migration: %v", err)
 		}
@@ -518,6 +524,13 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	}
 	if _, err := db.Exec(`UPDATE agent_memories SET content_erased_at = UTC_TIMESTAMP(3), content_erased_by_uuid = 'U100', content_erasure_reason_code = 'owner_request' WHERE memory_uuid = 'MEM-2'`); err == nil {
 		t.Fatal("expected incomplete content erasure to fail")
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)
+	}
+	var lineageTable int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_memory_task_lineage'`).Scan(&lineageTable); err != nil || lineageTable != 0 {
+		t.Fatalf("Agent Memory Task lineage rollback table=%d err=%v", lineageTable, err)
 	}
 	if err := runner.Down(ctx, 1); err != nil {
 		t.Fatalf("roll back Agent Memory erasure migration: %v", err)

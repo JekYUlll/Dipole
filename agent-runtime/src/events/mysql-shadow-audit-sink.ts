@@ -2,13 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
-import type { ShadowAuditRecord, ShadowAuditSink } from "./shadow-processor.js";
+import type { ShadowAuditRecord, ShadowAuditSink, ShadowPlan } from "./shadow-processor.js";
 import {
   CLAIM_AGENT_SHADOW_STEP,
   COMPLETE_AGENT_SHADOW_STEP,
   FAIL_AGENT_SHADOW_STEP,
   GET_AGENT_SHADOW_PLAN,
   GET_AGENT_SHADOW_STEP,
+  INSERT_AGENT_MEMORY_TASK_LINEAGE,
   INSERT_AGENT_SHADOW_PLAN,
   INSERT_AGENT_SHADOW_STEP
 } from "./mysql-shadow-audit-queries.js";
@@ -36,6 +37,7 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
   async append(record: ShadowAuditRecord): Promise<void> {
     const canonicalPlan = canonicalJSON(record.plan);
     const planHash = createHash("sha256").update(canonicalPlan, "utf8").digest("hex");
+    const memoryReferences = memoryContextReferences(record.plan.model?.context);
     const connection = await this.pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -63,13 +65,16 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
         if (existing === undefined || existing.event_id !== record.eventId || existing.event_type !== record.eventType || existing.plan_sha256 !== planHash) {
           throw new Error(`Agent shadow plan conflict for Task ${record.taskId}`);
         }
-        await connection.commit();
-        return;
       }
-      for (const [index, step] of record.plan.steps.entries()) {
-        await connection.execute(INSERT_AGENT_SHADOW_STEP, [
-          record.taskId, index + 1, required(step.capabilityId, "capability ID"), canonicalJSON(step.input)
-        ]);
+      for (const reference of memoryReferences) {
+        await connection.execute(INSERT_AGENT_MEMORY_TASK_LINEAGE, [reference.memoryId, record.taskId, reference.representation]);
+      }
+      if (inserted) {
+        for (const [index, step] of record.plan.steps.entries()) {
+          await connection.execute(INSERT_AGENT_SHADOW_STEP, [
+            record.taskId, index + 1, required(step.capabilityId, "capability ID"), canonicalJSON(step.input)
+          ]);
+        }
       }
       await connection.commit();
     } catch (error) {
@@ -115,6 +120,26 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
       throw new Error(`Agent shadow Step ${taskId}/${stepNo} failure is stale`);
     }
   }
+}
+
+export interface MemoryContextReference {
+  readonly memoryId: string;
+  readonly representation: "full" | "compact";
+}
+
+export function memoryContextReferences(context: NonNullable<NonNullable<ShadowPlan["model"]>["context"]> | undefined): readonly MemoryContextReference[] {
+  if (context === undefined) return [];
+  const references = new Map<string, "full" | "compact">();
+  for (const item of context.selected) {
+    if (!item.id.startsWith("memory:")) continue;
+    const memoryId = item.id.slice("memory:".length);
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/.test(memoryId)) throw new Error("Agent Memory Context identity is invalid");
+    const existing = references.get(memoryId);
+    if (existing !== undefined && existing !== item.representation) throw new Error("Agent Memory Context representation conflicts");
+    references.set(memoryId, item.representation);
+  }
+  return [...references.entries()].sort(([left], [right]) => left.localeCompare(right))
+    .map(([memoryId, representation]) => ({ memoryId, representation }));
 }
 
 function isDuplicateKey(error: unknown): boolean {
