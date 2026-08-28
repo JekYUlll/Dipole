@@ -82,6 +82,7 @@ export interface ShadowPlan {
           readonly uri?: string;
           readonly sequence?: string;
         };
+        readonly contentSha256?: string;
       }[];
       readonly omitted: readonly string[];
     };
