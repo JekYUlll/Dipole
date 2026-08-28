@@ -213,6 +213,10 @@ multi-route factory 返回后，composition 会把每个 route ID/version/manife
 
 `loadExternalMcpTemporalWorkerStartupPlan` 负责 deployment loader 与 Worker composition 之间的资源所有权。它把 caller 提供或内部创建的 AbortSignal 传入 manifest loader 和 resource factory，严格按 `load -> validate -> resource -> compose` 执行；disabled plan 和静态 composition 冲突都在 resource factory 前返回或拒绝。resource 只暴露 Core/Artifact dependencies 与 `close()`，可由后续启动层封装一个认证 RPC channel，但 startup plan 不依赖具体 transport。
 
+`createExternalMcpAgentCapabilityRPCResourceFactory` 提供该认证 RPC resource 的生产 adapter。factory 构造本身没有 I/O；startup 真正请求 resource 时，它要求 Agent Capability RPC enabled、deployment 至少包含一个 Profile，并逐项确认 Profile tenant 等于 Shadow Runtime tenant。随后只创建一个 `AgentCapabilityRPCClient`，将同一实例同时作为 MCP Context/Invocation/Round/readiness/terminal Core port 与 Artifact writer，防止两个连接看到不同的授权或持久状态。
+
+RPC 构造后若 AbortSignal 已取消，factory 会先关闭 transport 再传播取消；构造错误固定为 unavailable，回滚或显式 close 错误固定为 cleanup failed。成功 resource 的 dependencies snapshot 冻结，close Promise 对成功和失败都只执行一次。该 adapter 没有修改 Proto，也不加载 deployment、启动 Worker、执行 readiness 或访问外部 MCP 网络；生产 `index.ts` 尚未调用它。
+
 resource 创建后若取消、composition 抛错或返回空结果，startup plan 会先调用一次 rollback close。清理成功时取消保留原 Abort reason，其他构造错误固定为低敏 unavailable；清理本身失败统一报告固定 cleanup failure，避免隐藏潜在资源泄漏或暴露 RPC target。成功返回的 `close()` 缓存首次 Promise，重复关闭以及首次关闭失败后的重试都不会再次触达底层 resource。
 
 成功结果同时保存 exact `deployment` 与 `worker` composition，后续 preflight、Worker registration 和专用 Workflow client 可以基于同一 snapshot 编排停止顺序。该层没有创建 Temporal Worker/Client、启动轮询、执行 readiness preflight/drill 或访问 raw Registry；生产 `index.ts` 和 Compose 尚未调用它。下一步接线仍需代码拥有的真实 read-only Capability definitions、受控 Shadow route manifest、RPC resource factory，以及“先停 Worker/Client、后关 resource”的集成测试。
