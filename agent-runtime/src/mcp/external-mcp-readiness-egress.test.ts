@@ -70,7 +70,7 @@ describe("external MCP readiness egress gate", () => {
       { ...receipt(profileBinding, runtimeBinding), profileBindingSha256: "f".repeat(64) },
       { ...receipt(profileBinding, runtimeBinding), runtimeBindingSha256: "f".repeat(64) },
       { ...receipt(profileBinding, runtimeBinding), evidenceId: "invalid" },
-      { ...receipt(profileBinding, runtimeBinding), expiresAt: "2026-08-28T13:59:59.000Z" }
+      { ...receipt(profileBinding, runtimeBinding), expiresAt: new Date(Date.now() - 1).toISOString() }
     ];
 
     for (const resolved of cases) {
@@ -194,13 +194,14 @@ function resolverFor(
 }
 
 function receipt(profileBindingSha256: string, runtimeBindingSha256: string): AgentMCPReadinessEvidenceResolution {
+  const now = Date.now();
   return {
     evidenceId: "e".repeat(64),
     profileBindingSha256,
     runtimeBindingSha256,
     contentSha256: "c".repeat(64),
-    collectedAt: "2026-08-28T14:00:00.000Z",
-    expiresAt: "2026-08-28T14:30:00.000Z"
+    collectedAt: new Date(now - 60_000).toISOString(),
+    expiresAt: new Date(now + 30 * 60_000).toISOString()
   };
 }
 

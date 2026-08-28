@@ -11,6 +11,10 @@ for file in docker-compose*.yml; do
   docker compose -f "$file" config --quiet
 done
 
+DIPOLE_AGENT_DRILL_MYSQL_PORT=23306 \
+DIPOLE_AGENT_DRILL_KAFKA_PORT=29092 \
+  docker compose -f deploy/agent/external-mcp-shadow-drill.compose.yml config --quiet
+
 candidate_config="$({
   DIPOLE_CONTAINER_PREFIX=candidate-compose-validation-only \
   DIPOLE_IMAGE=sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \
