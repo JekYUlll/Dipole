@@ -13,6 +13,7 @@ import (
 
 func TestAgentMCPAccessTokenIsAudienceAndScopeBound(t *testing.T) {
 	t.Chdir("../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
@@ -52,6 +53,7 @@ func TestAgentMCPAccessTokenIsAudienceAndScopeBound(t *testing.T) {
 
 func TestAgentMCPAccessTokenRequiresExplicitExactConsent(t *testing.T) {
 	t.Chdir("../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
 	tokens := NewTokenService()
 	for name, testCase := range map[string]struct {
 		resource string
