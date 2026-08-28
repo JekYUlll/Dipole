@@ -67,8 +67,12 @@ export class AllowlistedMcpToolClient {
     } : undefined);
   }
 
-  async connect(transport: Transport): Promise<readonly Tool[]> {
-    const requestOptions = { timeout: this.#requestTimeoutMs, maxTotalTimeout: this.#requestTimeoutMs };
+  async connect(transport: Transport, signal?: AbortSignal): Promise<readonly Tool[]> {
+    const requestOptions = {
+      timeout: this.#requestTimeoutMs,
+      maxTotalTimeout: this.#requestTimeoutMs,
+      ...(signal === undefined ? {} : { signal })
+    };
     await this.#client.connect(transport, requestOptions);
     const server = this.#client.getServerVersion();
     if (server?.name !== this.#serverId) {
