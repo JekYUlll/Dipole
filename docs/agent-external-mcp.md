@@ -191,6 +191,10 @@ Artifact RPC 已提交后发生取消时，projector 会让当前 Activity 失�
 
 factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`。producer、terminal Worker、projector、Profile/Tool policy 和 Transport session 均留在闭包内，调用方不能跳过三 ID handoff 或替换完成权威。组合测试已证明首次成功后 Activity completion 丢失只读取 durable Round 并重放同一 Artifact，`input_required` 使用新 Context 与同一 Invocation 继续第二轮，预取消在 Core/receipt/Transport/Artifact 之前结束。
 
+`createTemporalMcpMultiRouteRuntime` 将 deployment plan 的全部 route-scoped runtime 收敛到唯一 `executeMcpDispatch` Activity 表面，避免多个路由以同名 Activity 覆盖注册。构造阶段先验证非空路由集合、每条完整 route binding 与 route ID 唯一性，再为每条 route 注入同一个 plan Registry、gated external-MCP snapshot、Core port 和 Artifact writer。begin 仅以 payload 的 route ID 选取 runtime；resume 仅以 durable checkpoint 内的 route ID 选取 runtime。dispatcher 不自行接受 Capability/Profile/Tool，也不替代 route-local version、manifest/deployment digest 和 checkpoint 完整性校验。
+
+未知 route、残缺 selector 和重复 route 会在 Core 调用前拒绝；route-local 绑定失败与 Temporal cancellation 不被包装或降级。该组合只创建无启动副作用的闭包和映射，不读取凭据文件、不注册 Worker、不执行 RPC、preflight、DNS 或网络连接。后续 Worker 接线必须只注册这一份 Activity，并由受信版本化 Workflow 写入 plan 返回的 route binding。
+
 该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
