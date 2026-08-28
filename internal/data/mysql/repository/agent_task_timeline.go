@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
@@ -15,7 +16,11 @@ func (r *AgentPolicyRepository) AppendAgentTaskTimelineEvent(ctx context.Context
 	if err := event.Validate(); err != nil {
 		return 0, fmt.Errorf("validate Agent Task Timeline event: %w", err)
 	}
-	result, err := r.queries.InsertAgentTaskTimelineEvent(ctx, generated.InsertAgentTaskTimelineEventParams{
+	return appendAgentTaskTimelineEvent(ctx, r.queries, event)
+}
+
+func appendAgentTaskTimelineEvent(ctx context.Context, queries generated.Querier, event application.AgentTaskTimelineEventV1) (uint64, error) {
+	result, err := queries.InsertAgentTaskTimelineEvent(ctx, generated.InsertAgentTaskTimelineEventParams{
 		EventUuid: event.EventUUID, TaskUuid: event.TaskUUID, RunUuid: nullableString(event.RunUUID),
 		EventKind: string(event.Kind), Status: event.Status, CapabilityID: nullableString(event.CapabilityID),
 		ApprovalUuid: nullableString(event.ApprovalUUID), OccurredAt: event.OccurredAt,
@@ -28,6 +33,13 @@ func (r *AgentPolicyRepository) AppendAgentTaskTimelineEvent(ctx context.Context
 		return 0, fmt.Errorf("read Agent Task Timeline event sequence: %w", err)
 	}
 	return uint64(seq), nil
+}
+
+func timelineEvent(taskUUID, runUUID string, kind application.AgentTaskTimelineEventKindV1, status string) application.AgentTaskTimelineEventV1 {
+	return application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("timeline-%s-%d", taskUUID, time.Now().UTC().UnixNano()),
+		TaskUUID:  taskUUID, RunUUID: runUUID, Kind: kind, Status: status, OccurredAt: time.Now().UTC(),
+	}
 }
 
 func (r *AgentPolicyRepository) ListAgentTaskTimelineEvents(ctx context.Context, taskUUID string, afterSeq uint64, limit int) ([]application.AgentTaskTimelineEventV1, error) {
