@@ -2,6 +2,8 @@
 
 本文用于在隔离或共享环境中启用 `agent-timeline-repair`，不改变默认服务拓扑。worker 只重放低敏 Timeline 事件，不读取消息正文，也不会删除 repair ledger。
 
+worker 支持常驻轮询和显式 `-once` 两种模式。常驻模式适合 Compose service，`-once` 适合 CronJob、发布验证和受控故障演练；两者共享相同的 claim、重放、完成和 retry 语义。
+
 ## 前置检查
 
 1. 确认当前镜像包含 `/app/dipole-agent-task-timeline-repair`，并记录发布 revision。
@@ -17,6 +19,14 @@ docker compose --profile agent-timeline-repair up -d agent-timeline-repair
 docker compose --profile agent-timeline-repair ps agent-timeline-repair
 docker compose --profile agent-timeline-repair logs --tail=100 agent-timeline-repair
 ```
+
+有界执行可直接运行一次批次：
+
+```bash
+/app/dipole-agent-task-timeline-repair -once -batch-size 100
+```
+
+退出码为 `0` 且摘要中的 `repaired`/`retried` 与窗口记录一致时，才可归档该批次；失败时保留 repair ledger 和错误日志，不手工改状态。
 
 启用 observability profile 后，repair 指标由服务版 Prometheus 以可选目标抓取：
 
