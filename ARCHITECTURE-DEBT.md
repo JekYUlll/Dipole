@@ -350,6 +350,7 @@
 - **建议方向：** 保留现有 Counter/Histogram 作为回归门禁；在 1000 人固定 workload 或候选实现中比较逐成员串行写、批量 upsert、异步分层投影与热群摘要读扩散，单独记录数据库累计时间、锁等待和投影恢复语义。
 - **处理门槛：** 候选优化需在固定 workload 下减少 Conversation 累计写成本或端到端 P95，保持 Seq/read state、投影重放和回滚正确性，并通过普通/热群完整投递对照后才能关闭；当前 v3 证据已完成归因基线，尚未完成行为优化。
 - **本轮进展：** 新增 sqlc `INSERT ... SELECT` 批量 upsert seam，服务层仅在 Repository 声明支持时启用，旧实现继续逐成员写入；真实 MySQL 8.4 contract 已验证 sender/recipient Seq、未读计算和重复写入幂等，锁等待与 1000 人 workload 对照仍待完成。
+- **本轮进展：** 在提交 `4ac1540` 上完成真实 MySQL 8.4.8、1000 成员的 serial/batch 及并发对照；batch 数据库层耗时约降低 37.3-353.8 倍，四组投影行数校验通过，`Innodb_row_lock_waits`/`Innodb_row_lock_time` 增量均为零，证据归档于 `benchmarks/ad005-conversation-batch-2026-08-29/`。端到端 P95、多轮统计和共享拓扑容量验证仍待完成。
 
 ### AD-007：架构 Markdown 当前未纳入版本控制
 
