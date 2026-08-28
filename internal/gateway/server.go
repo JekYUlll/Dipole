@@ -34,6 +34,7 @@ type Dependencies struct {
 	Search             application.SearchApplication
 	AgentTasks         AgentTaskControlApplication
 	AgentSubscriptions AgentSubscriptionControlApplication
+	AgentDefinitions   AgentDefinitionCatalogApplication
 	AgentMCP           AgentMCPApplication
 	Presence           wsTransport.PresenceTracker
 	Limiter            MessageRateLimiter
@@ -100,6 +101,10 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
 	}
+	if dependencies.AgentDefinitions != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.GET("/api/v1/agent/definitions", auth, agentDefinitionCatalogHandler(dependencies.AgentDefinitions))
+	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
@@ -121,6 +126,33 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentDefinitionCatalogHandler(catalog AgentDefinitionCatalogApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		rawAfter, hasAfter := c.GetQuery("after")
+		after := strings.TrimSpace(rawAfter)
+		if hasAfter && (after == "" || len(after) > 384) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Definition cursor"})
+			return
+		}
+		limit := 50
+		if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Definition limit must be between 1 and 100"})
+				return
+			}
+			limit = parsed
+		}
+		page, err := catalog.ListDefinitions(c.Request.Context(), user.UUID, after, limit)
+		writeAgentSubscriptionResult(c, page, err)
+	}
 }
 
 func agentSubscriptionListHandler(subscriptions AgentSubscriptionControlApplication) gin.HandlerFunc {
