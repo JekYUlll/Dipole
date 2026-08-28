@@ -51,6 +51,7 @@
 - Agent Task Timeline 路由页面外壳已接入共享画布、字体、间距和文字 token，确保页面级背景与 Timeline 组件使用同一 Pencil 设计基线。
 - Agent Event Subscription 管理页已将主题变量、字体、状态色、表面和边框映射到共享 Pencil token，并增加组件设计契约测试，减少管理控制面视觉漂移。
 - Agent Memory 管理页已覆盖旧主题变量，统一使用共享 Pencil 画布、表面、字体、状态色和数据字体，并增加设计契约测试。
+- Agent Task Timeline 增加 Playwright 浏览器验收：在认证 mock 会话下验证路由开关、Bearer 传递、默认 `limit=50`、稳定 `after` cursor、低敏事件展示和内部 capability ID 不泄露。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
 - 新增 `conversation.read` gRPC/TypeScript 契约测试：验证 Core 从可信 Task/Run 解析身份、拒绝客户端伪造 principal、映射消息字段，并验证 Runtime 权限缺失时不会发起远程调用；`scripts/check-proto.sh`、`node scripts/check-agent-proto-ts.mjs`、Go 定向测试与 Agent Runtime typecheck/测试通过。
 - 新增 Subscription Shadow Collector 响应体边界回归测试，覆盖超过 256 KiB 的 Prometheus 响应 fail-closed；Agent Runtime 定向测试与 typecheck 通过。
