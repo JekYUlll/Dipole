@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "dipole.agent.memory-correction-eval-manifest.v1",
+  "candidateVersion": "agent-memory@correction-v1",
+  "expectedSourceVersion": 1,
+  "expectedTrajectory": ["memory.owner.get", "memory.owner.lock", "memory.predecessor.revoke", "memory.successor.append", "memory.authority.read"],
+  "maximumLatencyMs": 500
+}
