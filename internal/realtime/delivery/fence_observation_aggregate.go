@@ -18,8 +18,9 @@ const (
 )
 
 type FenceExpectedNode struct {
-	Component  string `json:"component"`
-	ObserverID string `json:"observer_id"`
+	Component         string    `json:"component"`
+	ObserverID        string    `json:"observer_id"`
+	ExpectedAuthority Authority `json:"expected_authority,omitempty"`
 }
 
 type FenceExpectedNodeManifest struct {
@@ -77,6 +78,13 @@ func (a *RedisFenceObservationAggregator) Aggregate(
 	if time.UnixMilli(transition.AppliedAtUnixMS).After(now.Add(2 * time.Second)) {
 		return FenceObservationAggregateReceipt{}, fmt.Errorf("delivery authority transition receipt is from the future")
 	}
+	if transition.Phase == FencePhaseActive {
+		for _, node := range nodes {
+			if expectedNodeAuthority(node, transition) != transition.Authority {
+				return FenceObservationAggregateReceipt{}, fmt.Errorf("delivery authority active transition requires every expected node to target %s", transition.Authority)
+			}
+		}
+	}
 	observations := make([]FenceObservation, 0, len(nodes))
 	for _, node := range nodes {
 		key := a.prefix + node.Component + ":" + node.ObserverID
@@ -125,6 +133,11 @@ func validateExpectedNodeManifest(manifest FenceExpectedNodeManifest) ([]FenceEx
 		nodes[index].ObserverID = strings.TrimSpace(nodes[index].ObserverID)
 		if !fenceTransitionIDPattern.MatchString(nodes[index].Component) || !fenceTransitionIDPattern.MatchString(nodes[index].ObserverID) {
 			return nil, "", fmt.Errorf("delivery authority expected node identity is invalid")
+		}
+		if nodes[index].ExpectedAuthority != "" {
+			if _, err := ParseAuthority(string(nodes[index].ExpectedAuthority)); err != nil {
+				return nil, "", fmt.Errorf("delivery authority expected node authority is invalid")
+			}
 		}
 	}
 	sort.Slice(nodes, func(i, j int) bool {
@@ -193,7 +206,7 @@ func validateAggregateObservation(observation FenceObservation, node FenceExpect
 	if observation.SchemaVersion != FenceObservationSchemaV1 || observation.Component != node.Component || observation.ObserverID != node.ObserverID {
 		return fmt.Errorf("identity is invalid")
 	}
-	if observation.ExpectedAuthority != transition.Authority || observation.ObservedAuthority != transition.Authority ||
+	if observation.ExpectedAuthority != expectedNodeAuthority(node, transition) || observation.ObservedAuthority != transition.Authority ||
 		observation.ExpectedEpoch != transition.Epoch || observation.ObservedEpoch != transition.Epoch {
 		return fmt.Errorf("authority or epoch does not match transition")
 	}
@@ -220,4 +233,11 @@ func validateAggregateObservation(observation FenceObservation, node FenceExpect
 		return fmt.Errorf("observation is expired or has invalid lifetime")
 	}
 	return nil
+}
+
+func expectedNodeAuthority(node FenceExpectedNode, transition FenceTransitionReceipt) Authority {
+	if node.ExpectedAuthority != "" {
+		return node.ExpectedAuthority
+	}
+	return transition.Authority
 }

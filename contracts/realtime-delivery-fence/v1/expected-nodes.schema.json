@@ -19,7 +19,8 @@
         "required": ["component", "observer_id"],
         "properties": {
           "component": { "$ref": "#/$defs/id" },
-          "observer_id": { "$ref": "#/$defs/id" }
+          "observer_id": { "$ref": "#/$defs/id" },
+          "expected_authority": { "enum": ["go", "shadow", "cpp"] }
         }
       }
     }

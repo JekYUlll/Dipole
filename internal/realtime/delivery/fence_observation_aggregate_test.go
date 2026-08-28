@@ -59,9 +59,10 @@ func TestRedisFenceObservationAggregatorAcceptsFrozenDenials(t *testing.T) {
 	manifest := FenceExpectedNodeManifest{
 		SchemaVersion: FenceExpectedNodeManifestSchemaV1,
 		ManifestID:    "freeze-a",
-		Nodes:         []FenceExpectedNode{{Component: "gateway", ObserverID: "gateway-a"}},
+		Nodes:         []FenceExpectedNode{{Component: "gateway", ObserverID: "gateway-a", ExpectedAuthority: AuthorityCPP}},
 	}
 	observation := validAggregateObservation(now, transition, "gateway", "gateway-a")
+	observation.ExpectedAuthority = AuthorityCPP
 	observation.Status = FenceObservationDenied
 	observation.ReasonCode = FenceReasonFrozen
 	writeAggregateObservation(t, client, "fence:observation:gateway:gateway-a", observation, 15*time.Second)
@@ -144,6 +145,25 @@ func TestRedisFenceObservationAggregatorRejectsInvalidManifest(t *testing.T) {
 	}
 	if _, err := aggregator.Aggregate(context.Background(), manifest, validAggregateTransition(now, FencePhaseActive)); err == nil {
 		t.Fatal("duplicate expected node must fail")
+	}
+}
+
+func TestRedisFenceObservationAggregatorRejectsActiveNodePreparedForAnotherAuthority(t *testing.T) {
+	now := time.Date(2026, 8, 28, 4, 0, 0, 0, time.UTC)
+	server := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() { _ = client.Close() })
+	aggregator, err := NewRedisFenceObservationAggregator(client, "fence:observation:", func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := FenceExpectedNodeManifest{
+		SchemaVersion: FenceExpectedNodeManifestSchemaV1,
+		ManifestID:    "active-mismatch-a",
+		Nodes:         []FenceExpectedNode{{Component: "gateway", ObserverID: "gateway-a", ExpectedAuthority: AuthorityCPP}},
+	}
+	if _, err := aggregator.Aggregate(context.Background(), manifest, validAggregateTransition(now, FencePhaseActive)); err == nil || !strings.Contains(err.Error(), "active transition") {
+		t.Fatalf("Aggregate() error = %v", err)
 	}
 }
 
