@@ -13421,6 +13421,2220 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "M0M7L",
+      "x": 1540,
+      "y": 6220,
+      "name": "Component/Elicitation Source",
+      "reusable": true,
+      "width": 440,
+      "height": 92,
+      "fill": "$surface-panel",
+      "cornerRadius": "$radius-md",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 8,
+      "padding": 16,
+      "children": [
+        {
+          "type": "frame",
+          "id": "fceu0",
+          "name": "Elicitation Source Header",
+          "width": "fill_container",
+          "gap": 10,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "BGuVs",
+              "name": "Untrusted Source Dot",
+              "fill": "$warning",
+              "width": 9,
+              "height": 9
+            },
+            {
+              "type": "text",
+              "id": "HgnkC",
+              "name": "Untrusted Source Label",
+              "fill": "$warning",
+              "content": "EXTERNAL REQUEST · UNTRUSTED",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "U5DPH",
+          "name": "Elicitation Source Identity",
+          "fill": "$text-primary",
+          "content": "calendar.example / calendar.create",
+          "fontFamily": "$font-body",
+          "fontSize": 14,
+          "fontWeight": "650"
+        },
+        {
+          "type": "text",
+          "id": "jPRlv",
+          "name": "Elicitation Invocation Identity",
+          "fill": "$text-muted",
+          "content": "INV-2841 · INPUT-7",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "YCWBx",
+      "x": 2060,
+      "y": 6220,
+      "name": "Component/Elicitation Field",
+      "reusable": true,
+      "width": 480,
+      "height": 116,
+      "fill": "$surface-panel",
+      "cornerRadius": "$radius-md",
+      "stroke": "$border",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 8,
+      "padding": 16,
+      "children": [
+        {
+          "type": "frame",
+          "id": "jW74N",
+          "name": "Elicitation Field Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "M4BASK",
+              "name": "Elicitation Field Label",
+              "fill": "$text-primary",
+              "content": "事件标题",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "fGQbu",
+              "name": "Elicitation Field Requirement",
+              "fill": "$text-muted",
+              "content": "必填 · 120 字",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "mtzCK",
+          "name": "Elicitation Field Input",
+          "width": "fill_container",
+          "height": 44,
+          "fill": "$surface-muted",
+          "cornerRadius": "$radius-sm",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "padding": [
+            11,
+            14
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "B2QlQ",
+              "name": "Elicitation Field Value",
+              "fill": "$text-primary",
+              "content": "Dipole 迭代复盘",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "q1w1c",
+      "x": 2620,
+      "y": 6220,
+      "name": "Component/Elicitation Status",
+      "reusable": true,
+      "width": 178,
+      "height": 36,
+      "fill": "$warning-soft",
+      "cornerRadius": 18,
+      "gap": 9,
+      "padding": [
+        8,
+        13
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "k90GB",
+          "name": "Elicitation Status Dot",
+          "fill": "$warning",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "JyFHN",
+          "name": "Elicitation Status Label",
+          "fill": "$warning",
+          "content": "等待你的输入",
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "700"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "vNcfV",
+      "x": 2918,
+      "y": 6220,
+      "name": "Agent Elicitation/Desktop/Form",
+      "clip": true,
+      "width": 1440,
+      "height": 1080,
+      "fill": "$surface-app",
+      "children": [
+        {
+          "type": "frame",
+          "id": "yYUWr",
+          "name": "Elicitation Desktop Rail",
+          "width": 272,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            34,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "YZXBR",
+              "name": "Elicitation Desktop Brand",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FcGuX",
+                  "name": "Elicitation Brand Mark",
+                  "width": 38,
+                  "height": 38,
+                  "fill": "$brand",
+                  "cornerRadius": 11,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "m1yeu8",
+                      "name": "Elicitation Brand Glyph",
+                      "fill": "$text-inverse",
+                      "content": "D",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "NByaE",
+                  "name": "Elicitation Brand Name",
+                  "fill": "$text-inverse",
+                  "content": "DIPOLE / AGENT",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 16,
+                  "fontWeight": "750"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "rs3PQ",
+              "name": "Elicitation Rail Section",
+              "fill": "$text-muted",
+              "content": "ACTIVE TASK",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "l9J9Wa",
+              "name": "Elicitation Active Task",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 9,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dWDGo",
+                  "name": "Elicitation Task Name",
+                  "fill": "$text-inverse",
+                  "content": "创建迭代复盘日程",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "u8Vb8o",
+                  "name": "Elicitation Task Id",
+                  "fill": "$text-muted",
+                  "content": "TASK-01HZX9A · REV 22",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GZQcX",
+              "name": "Elicitation Waiting Navigation",
+              "width": "fill_container",
+              "fill": "#314039",
+              "cornerRadius": 10,
+              "gap": 10,
+              "padding": [
+                12,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "fa4U3",
+                  "name": "Elicitation Waiting Nav Dot",
+                  "fill": "$brand",
+                  "width": 8,
+                  "height": 8
+                },
+                {
+                  "type": "text",
+                  "id": "iDdyb",
+                  "name": "Elicitation Waiting Nav Label",
+                  "fill": "$text-inverse",
+                  "content": "等待输入",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "iKx5J",
+              "name": "Elicitation Rail Boundary",
+              "fill": "$text-muted",
+              "content": "仅普通表单\n禁止敏感凭据\n最长等待 24 小时",
+              "lineHeight": 1.8,
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YmpOT",
+          "name": "Elicitation Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            40,
+            48
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "JiQSs",
+              "name": "Elicitation Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NqtFY",
+                  "name": "Elicitation Desktop Heading",
+                  "layout": "vertical",
+                  "gap": 9,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qcR6C",
+                      "name": "Elicitation Desktop Eyebrow",
+                      "fill": "$brand-deep",
+                      "content": "AGENT TASK / INPUT REQUIRED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "hvCVZ",
+                      "name": "Elicitation Desktop Title",
+                      "fill": "$text-primary",
+                      "content": "Agent 需要你补充日程设置",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 36,
+                      "fontWeight": "760"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ewQG6",
+                      "name": "Elicitation Desktop Subtitle",
+                      "fill": "$text-secondary",
+                      "content": "提交后 Task 将从同一个 Temporal 等待点继续。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "kTzq5",
+                  "type": "ref",
+                  "ref": "q1w1c",
+                  "name": "Elicitation Desktop Status"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eXp5f",
+              "name": "Elicitation Desktop Columns",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MRLKh",
+                  "name": "Elicitation Form Card",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface-panel",
+                  "cornerRadius": 18,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 18,
+                  "padding": 28,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "brg45",
+                      "name": "Elicitation Form Prompt",
+                      "fill": "$text-primary",
+                      "content": "选择活动设置。必填项会在提交前由当前 Workflow Form 再次校验。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 15,
+                      "fontWeight": "650"
+                    },
+                    {
+                      "id": "YMLjz",
+                      "type": "ref",
+                      "ref": "YCWBx",
+                      "name": "Elicitation Title Field",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "su72w",
+                      "name": "Elicitation Visibility Field",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "IGXm6",
+                          "name": "Elicitation Visibility Header",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CFPC3",
+                              "name": "Elicitation Visibility Label",
+                              "fill": "$text-primary",
+                              "content": "可见范围",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "RCnGz",
+                              "name": "Elicitation Visibility Required",
+                              "fill": "$text-muted",
+                              "content": "必填 · 单选",
+                              "fontFamily": "$font-data",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "jTDFU",
+                          "name": "Elicitation Visibility Select",
+                          "width": "fill_container",
+                          "height": 48,
+                          "fill": "$surface-muted",
+                          "cornerRadius": "$radius-sm",
+                          "stroke": "$border",
+                          "strokeWidth": 1,
+                          "padding": [
+                            12,
+                            14
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "X7ascG",
+                              "name": "Elicitation Visibility Value",
+                              "fill": "$text-primary",
+                              "content": "团队可见",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "V5LWC",
+                              "name": "Elicitation Visibility Chevron",
+                              "fill": "$text-secondary",
+                              "content": "v",
+                              "fontFamily": "$font-data",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YVo63",
+                      "name": "Elicitation Labels Field",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "OGADw",
+                          "name": "Elicitation Labels Header",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "VPxn4",
+                              "name": "Elicitation Labels Label",
+                              "fill": "$text-primary",
+                              "content": "标签",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "BetBO",
+                              "name": "Elicitation Labels Limit",
+                              "fill": "$text-muted",
+                              "content": "可选 · 最多 2 项",
+                              "fontFamily": "$font-data",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "R45AxD",
+                          "name": "Elicitation Label Options",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "imwqL",
+                              "name": "Elicitation Label 发布",
+                              "fill": "$accent-soft",
+                              "cornerRadius": 18,
+                              "stroke": "$accent",
+                              "strokeWidth": 1,
+                              "padding": [
+                                9,
+                                13
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "o0TxET",
+                                  "name": "Elicitation Label 发布 Text",
+                                  "fill": "$accent-strong",
+                                  "content": "✓ 发布",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "650"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ciCng",
+                              "name": "Elicitation Label 事故",
+                              "fill": "$surface-muted",
+                              "cornerRadius": 18,
+                              "stroke": "$border",
+                              "strokeWidth": 1,
+                              "padding": [
+                                9,
+                                13
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "cB1mN",
+                                  "name": "Elicitation Label 事故 Text",
+                                  "fill": "$text-secondary",
+                                  "content": "事故",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "650"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Spexx",
+                              "name": "Elicitation Label 复盘",
+                              "fill": "$accent-soft",
+                              "cornerRadius": 18,
+                              "stroke": "$accent",
+                              "strokeWidth": 1,
+                              "padding": [
+                                9,
+                                13
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "PoLnN",
+                                  "name": "Elicitation Label 复盘 Text",
+                                  "fill": "$accent-strong",
+                                  "content": "✓ 复盘",
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 12,
+                                  "fontWeight": "650"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "V5tOa",
+                      "name": "Elicitation Notify Field",
+                      "width": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-md",
+                      "padding": 16,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Q2dny2",
+                          "name": "Elicitation Notify Copy",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "DVE1V",
+                              "name": "Elicitation Notify Label",
+                              "fill": "$text-primary",
+                              "content": "通知参与者",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Ighu8",
+                              "name": "Elicitation Notify Detail",
+                              "fill": "$text-muted",
+                              "content": "Boolean · 可选",
+                              "fontFamily": "$font-data",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "fheQY",
+                          "name": "Elicitation Notify Toggle",
+                          "width": 46,
+                          "height": 26,
+                          "fill": "$brand",
+                          "cornerRadius": 13,
+                          "padding": 3,
+                          "justifyContent": "end",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "la0hs",
+                              "name": "Elicitation Notify Knob",
+                              "fill": "$surface-panel",
+                              "width": 20,
+                              "height": 20
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Tdyo5",
+                      "name": "Elicitation Form Actions",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VqyeO",
+                          "name": "Elicitation Cancel Button",
+                          "width": 140,
+                          "height": 48,
+                          "cornerRadius": 10,
+                          "stroke": "$danger",
+                          "strokeWidth": 1,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "V4V5Z",
+                              "name": "Elicitation Cancel Button Label",
+                              "fill": "$danger",
+                              "content": "取消 Task",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wIIbw",
+                          "name": "Elicitation Submit Button",
+                          "width": 180,
+                          "height": 48,
+                          "fill": "$brand",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "WEdMo",
+                              "name": "Elicitation Submit Button Label",
+                              "fill": "$text-inverse",
+                              "content": "提交并继续",
+                              "fontFamily": "$font-body",
+                              "fontSize": 13,
+                              "fontWeight": "750"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "bYF4b",
+                  "name": "Elicitation Trust Sidebar",
+                  "width": 330,
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 18,
+                  "children": [
+                    {
+                      "id": "llc5x",
+                      "type": "ref",
+                      "ref": "M0M7L",
+                      "name": "Elicitation Source Disclosure",
+                      "width": "fill_container",
+                      "descendants": {
+                        "U5DPH": {
+                          "content": "calendar.example / calendar.create"
+                        },
+                        "jPRlv": {
+                          "content": "INV-2841 · INPUT-7"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "bQiok",
+                      "name": "Elicitation Deadline Card",
+                      "width": "fill_container",
+                      "fill": "$warning-soft",
+                      "cornerRadius": "$radius-md",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "swWvI",
+                          "name": "Elicitation Deadline Label",
+                          "fill": "$warning",
+                          "content": "RESPONSE WINDOW",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "rmKi2",
+                          "name": "Elicitation Deadline Value",
+                          "fill": "$text-primary",
+                          "content": "23:41",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 32,
+                          "fontWeight": "780"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Ydmzz",
+                          "name": "Elicitation Deadline Detail",
+                          "fill": "$text-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "到期后 Task 将以 input_expired 取消，旧 request 不可重用。",
+                          "lineHeight": 1.5,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GNYqg",
+                      "name": "Elicitation Safety Card",
+                      "width": "fill_container",
+                      "fill": "$surface-inverse",
+                      "cornerRadius": "$radius-md",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A6xdnl",
+                          "name": "Elicitation Safety Title",
+                          "fill": "$text-inverse",
+                          "content": "此表单绝不会索取",
+                          "fontFamily": "$font-body",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "N8NQ5",
+                          "name": "Elicitation Safety Items",
+                          "fill": "$text-muted",
+                          "content": "密码 / Token / API Key\n支付信息 / Cookie\n文件上传 / URL 授权",
+                          "lineHeight": 1.8,
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "POl1d",
+                          "name": "Elicitation Safety Exit",
+                          "fill": "#FF9C94",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "看到敏感请求？立即取消并报告来源。",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "650"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "K6gJvh",
+      "x": 2918,
+      "y": 7420,
+      "name": "Agent Elicitation/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        38,
+        44
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "I3tob",
+          "name": "Elicitation Matrix Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "AsQHV",
+              "name": "Elicitation Matrix Heading",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wq97K",
+                  "name": "Elicitation Matrix Eyebrow",
+                  "fill": "$brand-deep",
+                  "content": "AGENT ELICITATION / STATE CONTRACT",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "text",
+                  "id": "PcW8e",
+                  "name": "Elicitation Matrix Title",
+                  "fill": "$text-primary",
+                  "content": "每一次输入请求都必须可解释、可退出",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 34,
+                  "fontWeight": "780"
+                },
+                {
+                  "type": "text",
+                  "id": "c0NvH",
+                  "name": "Elicitation Matrix Subtitle",
+                  "fill": "$text-secondary",
+                  "content": "状态来自当前 Workflow Query；旧 request 与敏感字段始终拒绝。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pAQx3",
+              "name": "Elicitation Matrix Count",
+              "width": 124,
+              "height": 76,
+              "fill": "$surface-inverse",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 3,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MUNsE",
+                  "name": "Elicitation Matrix Count Value",
+                  "fill": "$text-inverse",
+                  "content": "7",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 28,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "j5nmnQ",
+                  "name": "Elicitation Matrix Count Label",
+                  "fill": "$text-muted",
+                  "content": "audited states",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uFHqO",
+          "name": "Elicitation State Table",
+          "clip": true,
+          "width": "fill_container",
+          "fill": "$surface-panel",
+          "cornerRadius": 14,
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ofp8c",
+              "name": "Elicitation Table Header",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "$surface-inverse",
+              "padding": [
+                17,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n6NEny",
+                  "name": "Elicitation Header State",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 220,
+                  "content": "状态",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "HjRZb",
+                  "name": "Elicitation Header Meaning",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "Workflow 语义",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "qtiLh",
+                  "name": "Elicitation Header Action",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "允许动作",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "cBPKA",
+                  "name": "Elicitation Header Promise",
+                  "fill": "$text-muted",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "界面承诺",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w3HCnp",
+              "name": "Elicitation State waiting_input",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "y6G4V",
+                  "name": "Elicitation State waiting_input Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "exABG",
+                      "name": "Elicitation State waiting_input Pill",
+                      "fill": "$warning-soft",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "x1ddAu",
+                          "name": "Elicitation State waiting_input Dot",
+                          "fill": "$warning",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "fgNVl",
+                          "name": "Elicitation State waiting_input Label",
+                          "fill": "$warning",
+                          "content": "waiting_input",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "FAUh7",
+                  "name": "Elicitation State waiting_input Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "等待当前 request 的表单响应",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "f8IQz",
+                  "name": "Elicitation State waiting_input Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "提交 / 取消 Task",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "TZSNw",
+                  "name": "Elicitation State waiting_input Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "显示来源、deadline 与字段约束",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZArgg",
+              "name": "Elicitation State validation_error",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Pu0co",
+                  "name": "Elicitation State validation_error Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "V0UGZF",
+                      "name": "Elicitation State validation_error Pill",
+                      "fill": "$danger-soft",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "SwCg3",
+                          "name": "Elicitation State validation_error Dot",
+                          "fill": "$danger",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "henR5",
+                          "name": "Elicitation State validation_error Label",
+                          "fill": "$danger",
+                          "content": "validation_error",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "hewZQ",
+                  "name": "Elicitation State validation_error Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "响应不符合当前 Form",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "eiceh",
+                  "name": "Elicitation State validation_error Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "修正后重试 / 取消",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "glLIU",
+                  "name": "Elicitation State validation_error Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "保留输入；定位首个错误字段",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S3zZXi",
+              "name": "Elicitation State submitting",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r9GVW9",
+                  "name": "Elicitation State submitting Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "UDg6C",
+                      "name": "Elicitation State submitting Pill",
+                      "fill": "$accent-soft",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "M9GWW",
+                          "name": "Elicitation State submitting Dot",
+                          "fill": "$accent-strong",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "qxtxP",
+                          "name": "Elicitation State submitting Label",
+                          "fill": "$accent-strong",
+                          "content": "submitting",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "y1H85B",
+                  "name": "Elicitation State submitting Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "已绑定 Task + request 发送",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "Q502Rj",
+                  "name": "Elicitation State submitting Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "取消重复点击",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "K2gcqu",
+                  "name": "Elicitation State submitting Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "冻结控件；不提前宣告恢复",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GT2WD",
+              "name": "Elicitation State running",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pqB6X",
+                  "name": "Elicitation State running Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "KbGOj",
+                      "name": "Elicitation State running Pill",
+                      "fill": "$accent-soft",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "BNGnR",
+                          "name": "Elicitation State running Dot",
+                          "fill": "$accent-strong",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "PRfyS",
+                          "name": "Elicitation State running Label",
+                          "fill": "$accent-strong",
+                          "content": "running",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "QIy9Y",
+                  "name": "Elicitation State running Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "Temporal 已接受同一 Signal",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "WIgi2",
+                  "name": "Elicitation State running Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "返回 Task timeline",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "OCtkC",
+                  "name": "Elicitation State running Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "明确已继续，不保留旧表单",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qYgEh",
+              "name": "Elicitation State cancelled",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AKxo2",
+                  "name": "Elicitation State cancelled Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "D6XtO",
+                      "name": "Elicitation State cancelled Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "Uzufe",
+                          "name": "Elicitation State cancelled Dot",
+                          "fill": "$text-secondary",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "I4XAS",
+                          "name": "Elicitation State cancelled Label",
+                          "fill": "$text-secondary",
+                          "content": "cancelled",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "GRB5V",
+                  "name": "Elicitation State cancelled Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "用户主动取消 Task",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "CtJsD",
+                  "name": "Elicitation State cancelled Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "查看取消审计",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "lrMvn",
+                  "name": "Elicitation State cancelled Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "终态；输入内容不再提交",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VV1eg",
+              "name": "Elicitation State expired",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Q1hnV",
+                  "name": "Elicitation State expired Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "X7tTKc",
+                      "name": "Elicitation State expired Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "V1SDM",
+                          "name": "Elicitation State expired Dot",
+                          "fill": "$text-secondary",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "plJNL",
+                          "name": "Elicitation State expired Label",
+                          "fill": "$text-secondary",
+                          "content": "expired",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "wxU2v",
+                  "name": "Elicitation State expired Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "deadline 到达并取消",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "jm4P8",
+                  "name": "Elicitation State expired Action",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "查看 input_expired",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "b9dpIF",
+                  "name": "Elicitation State expired Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "旧 request 只读且不可重用",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BPt5l",
+              "name": "Elicitation State unavailable",
+              "width": "fill_container",
+              "height": 76,
+              "stroke": "$border",
+              "strokeWidth": 1,
+              "padding": [
+                16,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NFoic",
+                  "name": "Elicitation State unavailable Badge",
+                  "width": 220,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "F17jF",
+                      "name": "Elicitation State unavailable Pill",
+                      "fill": "$surface-inverse",
+                      "cornerRadius": 18,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "yzvtf",
+                          "name": "Elicitation State unavailable Dot",
+                          "fill": "$text-inverse",
+                          "width": 8,
+                          "height": 8
+                        },
+                        {
+                          "type": "text",
+                          "id": "Ba3E2",
+                          "name": "Elicitation State unavailable Label",
+                          "fill": "$text-inverse",
+                          "content": "unavailable",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "P62Oit",
+                  "name": "Elicitation State unavailable Meaning",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "无法取得可信 Workflow Query",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "xW6N0",
+                  "name": "Elicitation State unavailable Action",
+                  "fill": "$danger",
+                  "textGrowth": "fixed-width",
+                  "width": 240,
+                  "content": "恢复依赖 / 重试",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "650"
+                },
+                {
+                  "type": "text",
+                  "id": "XqWPg",
+                  "name": "Elicitation State unavailable Promise",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": 492,
+                  "content": "不渲染可提交的缓存表单",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Z4JdBz",
+          "name": "Elicitation Matrix Safety Note",
+          "width": "fill_container",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Xmpms",
+              "name": "Elicitation Matrix Lock",
+              "width": 42,
+              "height": 42,
+              "fill": "$danger-soft",
+              "cornerRadius": 21,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tA73V",
+                  "name": "Elicitation Matrix Lock Glyph",
+                  "fill": "$danger",
+                  "content": "!",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "T76Ja",
+              "name": "Elicitation Matrix Boundary",
+              "fill": "$text-secondary",
+              "content": "普通 Form 禁止密码、Token、支付、文件和 URL 授权；MCP continuation 与敏感授权仍未接入。",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "650"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "U1OHgf",
+      "x": 4478,
+      "y": 7420,
+      "name": "Agent Elicitation/Mobile/Form",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "NdogS",
+          "name": "Elicitation Mobile Header",
+          "width": "fill_container",
+          "height": 76,
+          "fill": "$rail",
+          "padding": [
+            20,
+            18
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Yh2Y1",
+              "name": "Elicitation Mobile Header Left",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wHzTx",
+                  "name": "Elicitation Mobile Back",
+                  "fill": "$text-inverse",
+                  "content": "‹",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 30,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "G7r5yG",
+                  "name": "Elicitation Mobile Title",
+                  "fill": "$text-inverse",
+                  "content": "补充 Agent 输入",
+                  "fontFamily": "$font-body",
+                  "fontSize": 17,
+                  "fontWeight": "750"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "RyHri",
+              "name": "Elicitation Mobile Task Id",
+              "fill": "$brand",
+              "content": "REV 22",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "a7RM7",
+          "name": "Elicitation Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            20,
+            18
+          ],
+          "children": [
+            {
+              "id": "nfmjX",
+              "type": "ref",
+              "ref": "q1w1c",
+              "name": "Elicitation Mobile Status"
+            },
+            {
+              "type": "frame",
+              "id": "QjG9f",
+              "name": "Elicitation Mobile Source",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Ww0ri",
+                  "name": "Elicitation Mobile Source Top",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "rUJ2L",
+                      "name": "Elicitation Mobile Source Dot",
+                      "fill": "$warning",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "Dm5QW",
+                      "name": "Elicitation Mobile Source Trust",
+                      "fill": "$warning",
+                      "content": "外部 MCP 请求 · 不可信内容",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ifGQu",
+                  "name": "Elicitation Mobile Source Identity",
+                  "fill": "$text-secondary",
+                  "content": "calendar.example / calendar.create",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AXQzO",
+              "name": "Elicitation Mobile Prompt",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kYAcy",
+                  "name": "Elicitation Mobile Prompt Title",
+                  "fill": "$text-primary",
+                  "content": "选择活动设置",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 24,
+                  "fontWeight": "780"
+                },
+                {
+                  "type": "text",
+                  "id": "HyYDb",
+                  "name": "Elicitation Mobile Prompt Detail",
+                  "fill": "$text-secondary",
+                  "content": "提交后将从同一个等待点继续。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fDDFJ",
+              "name": "Elicitation Mobile Title Field",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dnYeI",
+                  "name": "Elicitation Mobile Title Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f1w4K",
+                      "name": "Elicitation Mobile Title Label",
+                      "fill": "$text-primary",
+                      "content": "事件标题",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "yVfYA",
+                      "name": "Elicitation Mobile Title Required",
+                      "fill": "$text-muted",
+                      "content": "必填 · 120",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "j45PeA",
+                  "name": "Elicitation Mobile Title Input",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface-panel",
+                  "cornerRadius": 9,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    11,
+                    13
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Lf9mp",
+                      "name": "Elicitation Mobile Title Value",
+                      "fill": "$text-primary",
+                      "content": "Dipole 迭代复盘",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QOXEv",
+              "name": "Elicitation Mobile Visibility Field",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "so6Rz",
+                  "name": "Elicitation Mobile Visibility Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K7wLng",
+                      "name": "Elicitation Mobile Visibility Label",
+                      "fill": "$text-primary",
+                      "content": "可见范围",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ebugk",
+                      "name": "Elicitation Mobile Visibility Required",
+                      "fill": "$text-muted",
+                      "content": "必填 · 单选",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "a0tuF",
+                  "name": "Elicitation Mobile Visibility Select",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$surface-panel",
+                  "cornerRadius": 9,
+                  "stroke": "$border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    11,
+                    13
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xAdCb",
+                      "name": "Elicitation Mobile Visibility Value",
+                      "fill": "$text-primary",
+                      "content": "团队可见",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "wlnc6",
+                      "name": "Elicitation Mobile Visibility Chevron",
+                      "fill": "$text-secondary",
+                      "content": "v",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "oQCGH",
+              "name": "Elicitation Mobile Sensitive Warning",
+              "width": "fill_container",
+              "fill": "$danger-soft",
+              "cornerRadius": 10,
+              "gap": 10,
+              "padding": 13,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "P8nZi",
+                  "name": "Elicitation Mobile Warning Glyph",
+                  "fill": "$danger",
+                  "content": "!",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "rhCHq",
+                  "name": "Elicitation Mobile Warning Text",
+                  "fill": "$danger",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "不会索取密码、Token、支付或 URL 授权",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "650"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "cXSy0",
+          "name": "Elicitation Mobile Actions",
+          "width": "fill_container",
+          "height": 116,
+          "fill": "$surface-panel",
+          "stroke": "$border",
+          "strokeWidth": 1,
+          "gap": 10,
+          "padding": [
+            18,
+            18,
+            24,
+            18
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ImE0G",
+              "name": "Elicitation Mobile Cancel",
+              "width": "fill_container",
+              "height": 52,
+              "cornerRadius": 11,
+              "stroke": "$danger",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Gjziq",
+                  "name": "Elicitation Mobile Cancel Label",
+                  "fill": "$danger",
+                  "content": "取消",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u5iMli",
+              "name": "Elicitation Mobile Submit",
+              "width": "fill_container",
+              "height": 52,
+              "fill": "$brand",
+              "cornerRadius": 11,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xLvGB",
+                  "name": "Elicitation Mobile Submit Label",
+                  "fill": "$text-inverse",
+                  "content": "提交并继续",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "750"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
