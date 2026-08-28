@@ -7,10 +7,12 @@ import { executionContextSchema, type ExecutionContext } from "../runtime/execut
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
+import type { ExternalMcpReadinessEvidence } from "../mcp/external-mcp-readiness-evidence.js";
 
 const callerService = "dipole-agent";
 const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
 const mcpToolRoundResultLimit = 128 * 1024;
+const readinessEvidenceRecordSchemaVersion = "dipole.agent.external-mcp-readiness-evidence-record.v1";
 
 export interface AgentRunIdentity {
   readonly taskId: string;
@@ -154,6 +156,16 @@ export interface AgentArtifactRecord {
   readonly contentSha256: string;
   readonly sizeBytes: number;
   readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface AgentMCPReadinessEvidenceReceipt {
+  readonly evidenceId: string;
+  readonly profileBindingSha256: string;
+  readonly runtimeBindingSha256: string;
+  readonly contentSha256: string;
+  readonly collectedAt: string;
+  readonly expiresAt: string;
+  readonly created: boolean;
 }
 
 export interface AgentArtifactCreateInput {
@@ -883,6 +895,56 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async publishMcpReadinessEvidence(
+    tenantId: string,
+    evidence: ExternalMcpReadinessEvidence,
+    expiresAt: string,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMCPReadinessEvidenceReceipt> {
+    if (!validBoundedIdentifier(tenantId, 64)) throw new Error("Agent MCP readiness evidence tenant is invalid");
+    const content = canonicalReadinessEvidenceJSON(evidence);
+    const completedAt = canonicalISOString(evidence.completedAt);
+    const expiry = canonicalISOString(expiresAt);
+    const completedAtMs = Date.parse(completedAt);
+    const expiresAtMs = Date.parse(expiry);
+    if (expiresAtMs <= completedAtMs || expiresAtMs - completedAtMs > 60 * 60 * 1_000) {
+      throw new Error("Agent MCP readiness evidence expiry is invalid");
+    }
+    const contentSha256 = createHash("sha256").update(content, "utf8").digest("hex");
+    const requestId = context.requestId ?? "";
+    const traceId = context.traceId ?? "";
+    const evidenceId = createHash("sha256").update([
+      readinessEvidenceRecordSchemaVersion, tenantId, evidence.profileBindingSha256,
+      evidence.bindingSha256, contentSha256, callerService, requestId, traceId, expiry
+    ].join("\n"), "utf8").digest("hex");
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.publishMcpReadinessEvidence({
+        context: this.requestContext(context.requestId, context.traceId), tenantId,
+        profileBindingSha256: evidence.profileBindingSha256, evidenceJson: Buffer.from(content, "utf8"),
+        expiresAtUnixMs: BigInt(expiresAtMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent MCP readiness evidence publication returned no receipt"));
+          return;
+        }
+        try {
+          const collectedAt = new Date(safeUnixMilliseconds(response.collectedAtUnixMs)).toISOString();
+          const returnedExpiry = new Date(safeUnixMilliseconds(response.expiresAtUnixMs)).toISOString();
+          if (response.evidenceId !== evidenceId || response.schemaVersion !== readinessEvidenceRecordSchemaVersion ||
+              response.profileBindingSha256 !== evidence.profileBindingSha256 || response.runtimeBindingSha256 !== evidence.bindingSha256 ||
+              response.contentSha256 !== contentSha256 || response.status !== "recorded" || collectedAt !== completedAt || returnedExpiry !== expiry) {
+            throw new Error();
+          }
+          resolve({ evidenceId, profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+            contentSha256, collectedAt, expiresAt: expiry, created: response.created });
+        } catch {
+          reject(new Error("Agent MCP readiness evidence publication returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
   private metadata(requestId?: string, traceId?: string): grpc.Metadata {
     const metadata = new grpc.Metadata();
     metadata.set("x-dipole-caller-service", callerService);
@@ -909,6 +971,47 @@ function canonicalJSON(value: unknown): string {
     return `{${Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`).join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
+}
+
+function canonicalReadinessEvidenceJSON(evidence: ExternalMcpReadinessEvidence): string {
+  if (evidence.schemaVersion !== "dipole.agent.external-mcp-readiness-evidence.v2" ||
+      !/^[a-f0-9]{64}$/.test(evidence.bindingSha256) || !/^[a-f0-9]{64}$/.test(evidence.profileBindingSha256)) {
+    throw new Error("Agent MCP readiness evidence is invalid");
+  }
+  const startedAt = canonicalISOString(evidence.startedAt);
+  const completedAt = canonicalISOString(evidence.completedAt);
+  const preflightCheckedAt = canonicalISOString(evidence.preflightCheckedAt);
+  const connectivityCheckedAt = canonicalISOString(evidence.connectivityCheckedAt);
+  const startedAtMs = Date.parse(startedAt);
+  const completedAtMs = Date.parse(completedAt);
+  const preflightAtMs = Date.parse(preflightCheckedAt);
+  const connectivityAtMs = Date.parse(connectivityCheckedAt);
+  if (completedAtMs < startedAtMs || completedAtMs - startedAtMs > 10 * 60 * 1_000 ||
+      preflightAtMs < startedAtMs || preflightAtMs > completedAtMs ||
+      connectivityAtMs < preflightAtMs || connectivityAtMs > completedAtMs ||
+      !validReadinessCount(evidence.profileCount, 64) || !validReadinessCount(evidence.credentialCount, 64) ||
+      evidence.credentialCount > evidence.profileCount || !validReadinessCount(evidence.caBundleCount, 64) ||
+      evidence.caBundleCount > evidence.profileCount || !validReadinessCount(evidence.toolCount, 256)) {
+    throw new Error("Agent MCP readiness evidence is invalid");
+  }
+  return JSON.stringify({
+    schemaVersion: evidence.schemaVersion, bindingSha256: evidence.bindingSha256,
+    profileBindingSha256: evidence.profileBindingSha256, startedAt, completedAt,
+    preflightCheckedAt, connectivityCheckedAt, profileCount: evidence.profileCount,
+    credentialCount: evidence.credentialCount, caBundleCount: evidence.caBundleCount, toolCount: evidence.toolCount
+  });
+}
+
+function canonicalISOString(value: string): string {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+    throw new Error("Agent MCP readiness evidence time is invalid");
+  }
+  return value;
+}
+
+function validReadinessCount(value: number, maximum: number): boolean {
+  return Number.isSafeInteger(value) && value >= 1 && value <= maximum;
 }
 
 function safeRevision(value: bigint): number {
