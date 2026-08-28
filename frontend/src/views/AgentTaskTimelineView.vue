@@ -12,5 +12,14 @@ const route = useRoute()
 </template>
 
 <style scoped>
-.timeline-page { width: min(100% - 2rem, 46rem); margin: 0 auto; padding: 2rem 0; }
+.timeline-page {
+  box-sizing: border-box;
+  width: min(100%, 46rem);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: var(--dp-space-lg) var(--dp-space-md);
+  background: var(--dp-canvas);
+  color: var(--dp-ink);
+  font-family: var(--dp-font-body);
+}
 </style>
