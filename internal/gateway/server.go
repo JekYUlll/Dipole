@@ -93,6 +93,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	if dependencies.AgentTasks != nil {
 		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
+		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
@@ -482,6 +483,34 @@ func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
 			return
 		}
 		result, err := tasks.GetTask(c.Request.Context(), user.UUID, c.Param("task_id"))
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskTimelineHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		after := c.Query("after")
+		if after != "" {
+			if _, err := strconv.ParseUint(after, 10, 64); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Task Timeline cursor is invalid"})
+				return
+			}
+		}
+		limit := 50
+		if raw := c.Query("limit"); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Task Timeline limit is invalid"})
+				return
+			}
+			limit = parsed
+		}
+		result, err := tasks.GetTimeline(c.Request.Context(), user.UUID, c.Param("task_id"), after, limit)
 		writeAgentTaskControlResult(c, result, err)
 	}
 }
