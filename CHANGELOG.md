@@ -32,6 +32,7 @@
 ### 验证
 
 - 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。
+- Pencil CLI `0.3.5` 认证和版本检查通过；Agent Task Timeline 增量任务在画布调用阶段超时终止，未产生 `.pen` 或导出图，canonical 设计文件保持不变，记录为 `AD-044`。
 - Agent Runtime 追加 `npm run typecheck` 与生产 `npm run build` 验证通过；`ModelRouter` 继续通过 `StructuredModelClient` 隔离具体 AI SDK，保持后续 Eino/provider 替换的适配边界。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
