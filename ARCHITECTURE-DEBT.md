@@ -411,6 +411,7 @@
 - **本轮进展：** Agent Approval 与 Elicitation 已增加 Chromium canonical 截图回归，固定主要桌面布局并保留三浏览器功能验收；真实 Pencil 增量编辑和其他页面视觉基线仍待完成。
 - **本轮进展：** Agent Subscription 与 Memory 管理页已增加 Chromium canonical 截图回归，覆盖治理控制面共享 token；其余页面和真实 Pencil 增量编辑仍待完成。
 - **本轮进展：** Search Workspace 已清理残留主题硬编码并统一使用共享 `--dp-*` token，设计契约测试覆盖搜索、错误和骨架状态；截图级 Search 视觉回归仍待完成。
+- **本轮进展：** Search Workspace 已建立仅供 E2E 的五态 visual harness 和 Chromium canonical 截图基线，覆盖 Idle、Loading、Results、Empty、Error；真实 Pencil 增量编辑和跨平台截图差异仍待完成。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 
