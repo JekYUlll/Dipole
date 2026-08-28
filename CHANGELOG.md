@@ -32,6 +32,7 @@
 - 加固 hydration snapshot 完整性：拒绝重复 route outcome、重复 metric family、错误 metric 类型、额外标签、未知 outcome 和非单调 histogram 桶，避免错误或篡改的 Prometheus 文本被聚合成有效证据。
 
 - 前端新增默认关闭的 Agent Task 审批页 `/agent/tasks/:taskId/approval`，通过认证 Task Query 展示 `waiting_approval` 请求，并调用审批决策接口；严格保留过期、不可用和终态的 fail-closed 行为。完整 Run/Step 时间线仍待后端只读契约。
+- 新增 `contracts/agent-task-timeline/v1/`：定义 Agent Task 增量时间线的低敏事件、稳定游标、principal 复核和 fail-closed 边界；当前只建立契约，Core/Gateway 聚合 adapter 与前端完整时间线仍关闭并由 `AD-045` 跟踪。
 
 ### 验证
 
