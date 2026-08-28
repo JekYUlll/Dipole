@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildServer } from "./server.js";
+import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
 
 describe("agent runtime health", () => {
   it("separates liveness from readiness", async () => {
@@ -12,6 +13,21 @@ describe("agent runtime health", () => {
     ready = true;
     expect((await server.inject({ method: "GET", url: "/readyz" })).statusCode).toBe(200);
     await server.close();
+  });
+
+  it("mounts low-cardinality subscription Shadow metrics only when explicitly supplied", async () => {
+    const disabled = buildServer({ isReady: () => true });
+    expect((await disabled.inject({ method: "GET", url: "/metrics" })).statusCode).toBe(404);
+    await disabled.close();
+
+    const metrics = new SubscriptionShadowMetrics();
+    metrics.observe({ directTargetAccepted: true, subscriptionOutcome: "match", candidateCount: 1 });
+    const enabled = buildServer({ isReady: () => true }, undefined, undefined, metrics);
+    const response = await enabled.inject({ method: "GET", url: "/metrics" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/plain");
+    expect(response.body).toContain("dipole_agent_subscription_shadow_comparisons_total");
+    await enabled.close();
   });
 });
 

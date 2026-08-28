@@ -30,10 +30,15 @@ export interface AgentMcpHTTPOptions {
   handler: AgentMcpHttpHandler;
 }
 
+export interface AgentMetrics {
+  render(): string;
+}
+
 export function buildServer(
   readiness: RuntimeReadiness,
   control?: AgentTaskControlHTTPOptions,
-  mcp?: AgentMcpHTTPOptions
+  mcp?: AgentMcpHTTPOptions,
+  metrics?: AgentMetrics
 ): FastifyInstance {
   const server = Fastify({ logger: false });
 
@@ -44,6 +49,9 @@ export function buildServer(
     }
     return { status: "ready", service: "dipole-agent" };
   });
+  if (metrics !== undefined) {
+    server.get("/metrics", async (_request, reply) => reply.type("text/plain; version=0.0.4; charset=utf-8").send(metrics.render()));
+  }
 
   if (control !== undefined) {
     if (control.secret.trim().length === 0) {

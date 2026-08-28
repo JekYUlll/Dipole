@@ -243,6 +243,7 @@ function runtimeConfig(database: string, topicPrefix: string, groupId: string): 
     enabled: true, brokers: requiredEnv("DIPOLE_TEST_AGENT_KAFKA_BROKERS").split(","), clientId: `dipole-agent-drill-${randomUUID()}`,
     groupId, topic: "message.direct.created", topicPrefix, failureMaxAttempts: 2, topicPartitions: 1,
     topicReplicationFactor: 1, tenantId: "dipole", agentUuid: "UAI-DRILL", triggerMode: "subscription",
+    subscriptionShadowEnabled: false,
     ledgerMode: "mysql", leaseMs: 5_000, modelMode: "metadata", modelRoutes: [], contextCompilerVersion: "v1",
     memoryEnabled: false, modelContextProfiles: [], modelBudget: { maxCalls: 1, totalTimeoutMs: 1_000, maxOutputTokensPerCall: 128 },
     capabilityRpc: { enabled: true, target: requiredEnv("DIPOLE_TEST_AGENT_RPC_TARGET"),
