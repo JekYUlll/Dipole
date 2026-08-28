@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Core 为外部 MCP Tool Invocation 增加精确 begin/finish 重放与终态 receipt 恢复：重复 begin 仅在全部权威身份、Capability、Profile/Server、canonical 参数、请求关联和审批绑定一致时返回原记录；重复 finish 逐项核对状态、结果摘要/大小/延迟、错误码与 action reference。`ResolveMcpToolCommand` additive 返回 Invocation 状态，terminal Invocation 的 round claim 只能读取并重放已存在 receipt，缺失或漂移时 fail closed，禁止创建新 round 或重新发网。
 - Agent Runtime 增加默认关闭的 MCP Worker Runtime 组合器：将认证 Core command resolver/round receipt、tenant Profile Transport Registry、allowlisted modern Client、Activity-safe continuation 与三 ID dispatcher 组装为单一依赖注入边界。已取消请求会在 Core resolve/receipt claim 前停止；本地完成后替换 Runtime 只回放 canonical receipt，`ambiguous` 不创建 Client/Transport。Temporal 自动调度仍等待受信 Agent Step 创建持久 Invocation，不从 goal、模型输出或事件正文选取命令。
 - Agent Runtime 增加外部 MCP Streamable HTTP Transport Factory：精确复核 Profile 与 Catalog 的 tenant/ref/version 绑定，为每次连接创建独立 AuthProvider、Network Guard 和官方 SDK Transport；每个请求重新读取 Bearer、重新解析全部公共 DNS 地址并核对 pinned peer，同时关闭 401 自动刷新、403 扩权和 SSE 自动重连。生产 Secret Provider、DNS Resolver、TLS pinned Dispatcher 与专用 Worker 仍未装配，外部连接开关继续 fail closed。
 - Agent Runtime 增加默认关闭的 MCP Worker command dispatcher：初始输入严格只接受 Task/Run/Invocation ID，Profile、Server、Tool、Capability、参数和开始时间每次从 Core 持久 Tool Invocation 解析；稳定 request ID 与输入截止时间由 Invocation 派生，恢复前重新核对完整命令和 Activity checkpoint。连接 Session Factory 仅接收 tenant/profile/server/tool 四字段，不再可见 Task、Run、Invocation 或参数。生产 Worker 与外部网络开关继续关闭。
@@ -372,6 +373,8 @@
 - 移除 `data.mysql_adapter`、`mysql.auto_migrate` 和无依赖 Repository/Server/Kafka 便捷构造入口。
 
 ### 迁移说明
+
+- `ResolveMcpToolCommandResponse.status` 是 additive 字段，无数据库迁移。先滚动 Core，再滚动 Agent Runtime；旧 Runtime 忽略未知字段。回滚 Runtime 后可继续由新 Core 服务旧调用方；回滚 Core 前须确保新 Runtime 不再执行 terminal receipt recovery，否则空状态会 fail closed。生产 Worker 与外部网络开关仍保持关闭。
 
 - migration v34 为 `agent_event_subscriptions` 增加 owner/revocation 审计列和一致性约束。先迁移 Core，再滚动发布 additive Go/TS Proto；迁移会从固定 Definition version 回填 creator，历史 revoked 行使用 `legacy_v28_migration` 标明来源。回滚前停止新的管理 RPC 写入；v34 Down 只删除新增审计列，保留 v28 订阅与 Task 绑定。生产 `subscription` 模式仍需完成 AD-034 的前端管理与语义基线门禁。
 - 数据库新增 migration v33：创建 `agent_runtime_promotion_operator_grants`、`agent_runtime_promotion_proposals`、`agent_runtime_promotion_reviews` 和 `agent_runtime_promotion_revocations`。升级不会自动创建 operator Grant；部署者需通过受控运维流程预置 tenant-scoped proposer/reviewer/revoker，且应保持职责分离。回滚 v33 会删除控制面提案、复核和撤销审计表，不影响 v32 durable Grant 表，但应先停用控制 API 并归档审计证据。

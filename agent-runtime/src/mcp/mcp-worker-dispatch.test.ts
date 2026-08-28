@@ -60,7 +60,7 @@ describe("MCP Worker command dispatch", () => {
 
     const wait = await dispatcher.begin({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" });
     if (wait.kind !== "wait_input") throw new Error("expected wait_input");
-    command = { ...command, arguments: { calendarId: "FORGED" } };
+    command = { ...command, status: "completed" };
     await expect(dispatcher.resume(wait.checkpoint, {
       action: "cancel", requestId: "INPUT-1"
     })).rejects.toThrow(/command binding/i);
@@ -128,7 +128,7 @@ function externalCommand(): AgentMcpToolCommand {
     invocationId: "INV-1", tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
     taskId: "TASK-1", runId: "RUN-1", profileId: "calendar-prod", serverId: "calendar.example",
     toolName: "calendar.create", capabilityId: "conversation.list", arguments: argumentsValue,
-    argumentsSha256: createHash("sha256").update(argumentsJSON).digest("hex"), startedAtUnixMs: 1_000
+    argumentsSha256: createHash("sha256").update(argumentsJSON).digest("hex"), startedAtUnixMs: 1_000, status: "running"
   };
 }
 
