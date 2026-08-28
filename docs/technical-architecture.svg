@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1780" viewBox="0 0 2400 1780" role="img" aria-labelledby="title desc">
   <title id="title">Dipole Technical Architecture</title>
-  <desc id="desc">Detailed technical architecture diagram for Dipole IM system, including transport, services, repositories, middleware, MySQL, Redis, Kafka, MinIO, AI assistant, retry and delivery mechanisms.</desc>
+  <desc id="desc">Current Dipole IM architecture with Gateway, Core, Message and Sync service boundaries, sqlc data access, MySQL and Kafka, Cassandra Timeline and Elasticsearch Search projections, Redis realtime state, MinIO and the default-off Agent Runtime.</desc>
   <defs>
     <style>
       .bg { fill: #f5f7fb; }
@@ -69,7 +69,7 @@
 
     <rect class="box-gray" x="405" y="178" width="630" height="70" />
     <text x="425" y="205" class="title">cmd/server + bootstrap.Initialize + bootstrap.RunServer</text>
-    <text x="425" y="226" class="text">配置加载、日志初始化、MySQL/Redis/Kafka/MinIO 初始化、AutoMigrate、AI 助手用户确保、Bloom 过滤器预热</text>
+    <text x="425" y="226" class="text">配置与日志初始化、依赖 readiness、migration 版本校验、sqlc/Redis/Kafka/MinIO 连接、Composition Root 与 Bloom 过滤器预热</text>
 
     <rect class="box-blue" x="405" y="275" width="300" height="170" />
     <text x="425" y="302" class="title">Gin HTTP Server</text>
@@ -203,7 +203,7 @@
     <text x="1835" y="231" class="text">UserRepository / ContactRepository / GroupRepository</text>
     <text x="1835" y="251" class="text">ConversationRepository / MessageRepository / FileRepository</text>
     <text x="1835" y="271" class="text">AdminRepository / AICallLogRepository</text>
-    <text x="1835" y="291" class="tiny">负责 MySQL 查询、Redis cache-aside、部分存在性过滤与持久化幂等支撑</text>
+    <text x="1835" y="291" class="tiny">database/sql + sqlc 查询；服务按 ownership 使用 MySQL、Redis、Timeline、Search 与对象存储适配器</text>
 
     <rect class="box-green" x="1815" y="342" width="525" height="150" />
     <text x="1835" y="369" class="title">Redis 共享缓存 / 状态</text>
@@ -244,9 +244,9 @@
     <text x="1835" y="1039" class="title">MySQL</text>
     <text x="1835" y="1061" class="text">核心表：</text>
     <text x="1920" y="1061" class="tiny">users / contacts / contact_applications / groups / group_members</text>
-    <text x="1920" y="1081" class="tiny">conversations / messages / uploaded_files / ai_call_logs</text>
+    <text x="1920" y="1081" class="tiny">conversations / messages / user_sync_inbox / message_metadata</text>
     <text x="1835" y="1103" class="text">当前策略：</text>
-    <text x="1920" y="1103" class="tiny">单库单体；未来已标注读写分离 / 消息分表 TODO</text>
+    <text x="1920" y="1103" class="tiny">Core/Message/Sync 共享 MySQL 集群；写入按事务与专用账号隔离</text>
 
     <rect class="box-red" x="1815" y="1156" width="525" height="164" />
     <text x="1835" y="1183" class="title">进程内机制</text>
@@ -258,8 +258,8 @@
     <text x="1945" y="1245" class="tiny">WS 注册 / 心跳 / 断开时写 Redis</text>
     <text x="1835" y="1265" class="text">• RateLimiter：</text>
     <text x="1945" y="1265" class="tiny">Redis INCR + EXPIRE 固定窗口限流</text>
-    <text x="1835" y="1285" class="text">• TODO：</text>
-    <text x="1945" y="1285" class="tiny">ants 协程池、MySQL 读写分离、消息分表</text>
+    <text x="1835" y="1285" class="text">• 分层角色：</text>
+    <text x="1945" y="1285" class="tiny">Redis 实时状态；Kafka 事件；Cassandra/ES 默认影子投影；MinIO 文件与归档</text>
   </g>
 
   <g>
@@ -357,12 +357,12 @@
     <text x="1080" y="1450" class="legend">• 紫色：AI 与 WebSocket / Tool 相关模块</text>
     <text x="1490" y="1450" class="legend">• 红色：中间件、外部系统、异步总线</text>
 
-    <text x="60" y="1490" class="text">1. 当前是模块化单体部署：所有 HTTP、WS、Kafka consumer、AI agent、缓存、仓储都在同一进程内装配，但边界已经按域拆开，后续可继续演进。</text>
-    <text x="60" y="1518" class="text">2. 在线消息主链路采用 push + pull 混合：在线通过 WebSocket push，离线通过 /messages/offline 增量补拉；目前没有独立 inbox/outbox 表。</text>
-    <text x="60" y="1546" class="text">3. Kafka 负责消息落库后的异步扩散、会话更新、群事件广播、已读回执、设备踢下线与 AI 触发；连接态与 ACK 这类强实时反馈仍保留本地同步处理。</text>
-    <text x="60" y="1574" class="text">4. Redis 当前承担缓存、限流、在线状态、多端会话、JWT 撤销黑名单；Bloom Filter 在进程内前置过滤无效用户 / 群 UUID，请求命中过滤器后仍会回到 Redis / MySQL 做最终确认。</text>
+    <text x="60" y="1490" class="text">1. 当前按 Core、Message、Gateway、Sync、Search 和 Agent Runtime 形成可独立部署的边界；本地 Compose 仍支持合并启动，关闭远程 transport 即可回切 Local。</text>
+    <text x="60" y="1518" class="text">2. 消息历史使用 Message Timeline；user_sync_inbox 提供用户级 Sync Timeline；设备 Cursor 与群 pulled_message_seq 只在客户端 ACK 后单调推进。</text>
+    <text x="60" y="1546" class="text">3. Kafka 负责 versioned event、Outbox 扩散和 Projector；Conversation、Sync、Cassandra Timeline、Search 与 Agent trigger 通过独立 consumer ownership 解耦。</text>
+    <text x="60" y="1574" class="text">4. Redis 承担 Presence、节点路由、限流、会话状态与热群控制；MySQL 保存权威元数据和事务事实，Cassandra/Elasticsearch 保持可回放投影。</text>
     <text x="60" y="1602" class="text">5. MinIO 采用私有 bucket，文件上传同步完成；下载统一走服务端鉴权并返回短时签名 URL，文件消息当前具备 7 天接收有效期控制。</text>
-    <text x="60" y="1630" class="text">6. AI 当前以“特殊用户”形式接入 IM 主链路，使用 Eino ChatModelAgent 与 tools 处理与 AI 助手的单聊，不具备读取用户与其他人的私聊历史的权限。</text>
-    <text x="60" y="1658" class="text">7. 已标注的后续工程化方向：消息分表、MySQL 读写分离、WS 批量投递协程池（ants）。</text>
+    <text x="60" y="1630" class="text">6. Agent Runtime 以独立 TypeScript 进程承接 Event/Task/Memory/Tool 边界；旧 Eino 调用作为迁移基线，生产自动写入和外部 MCP 默认关闭。</text>
+    <text x="60" y="1658" class="text">7. 影子投影、C++ Realtime Delivery 与 Agent 外部 I/O 采用证据门禁逐步切换，任何切换保留 fallback、checkpoint 和回滚路径。</text>
   </g>
 </svg>
