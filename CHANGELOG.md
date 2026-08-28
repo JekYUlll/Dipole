@@ -23,6 +23,7 @@
 - 修正会话 evidence 中 protobuf Timestamp 的 `bigint` 序列化：`seconds` 统一转为字符串，避免真实消息在 Context 编译时触发 JSON 序列化异常。
 - 会话 evidence 增加防御性边界：Planner 最多编译 20 条远程消息，单条正文最多 8 KiB，并通过 `contentTruncated` 标记截断，避免异常响应放大内存和上下文预算。
 - TypeScript Agent Capability RPC 客户端新增 `conversation.read` 跨语言契约测试：固定 group/direct canonical key 的 target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed 行为。
+- `conversation.read` RPC 客户端在边界处拒绝超过请求 `limit` 的消息响应，并对 `found=true/false` 统一校验 target，避免异常响应绕过 Planner 上限或造成资源范围漂移。
 - 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
 - Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
 
