@@ -5,7 +5,7 @@
 ## 结果
 
 - Go/C++ 结果计数均为 100,000，计数一致。
-- C++/Go projection ops ratio 为 `0.0980914929`，低于默认 `1.0` 晋级门槛，判定为 `blocked`。
+- 当前候选 revision `c063594` 的 C++/Go projection ops ratio 为 `0.0976283897`，低于默认 `1.0` 晋级门槛，判定为 `blocked`。
 - 继续保留 Go projection；C++ 故障隔离、Primary authority 和连接/批处理数据面评估保持独立。
 
 ## 复现
