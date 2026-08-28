@@ -25,6 +25,12 @@ func TestValidateSyncHydrationConfig(t *testing.T) {
 	if err := validateSyncHydrationConfig(config.Sync{CassandraShadowHydration: true}, config.Cassandra{Enabled: true}); err != nil {
 		t.Fatalf("enabled shadow: %v", err)
 	}
+	if err := validateSyncHydrationConfig(config.Sync{CassandraPrimaryHydration: true}, config.Cassandra{Enabled: true}); err != nil {
+		t.Fatalf("enabled primary: %v", err)
+	}
+	if err := validateSyncHydrationConfig(config.Sync{CassandraShadowHydration: true, CassandraPrimaryHydration: true}, config.Cassandra{Enabled: true}); err == nil {
+		t.Fatal("expected shadow and primary hydration conflict")
+	}
 }
 
 func TestValidateSyncProjectorConfig(t *testing.T) {
