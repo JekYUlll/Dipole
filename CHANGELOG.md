@@ -25,6 +25,7 @@
 - Timeline Repair 增加 `agent-timeline-repair-rollout` v1 只读灰度门禁：绑定 worker readiness、operator、部署 revision、告警状态、回滚演练和 outcome 比例，输出低敏 `eligible|blocked` 报告；门禁不会自动启停 worker 或打开生产开关。
 - Timeline Repair rollout 契约补充 eligible/blocked 脱敏示例，明确示例仅用于 CLI 回归，不能替代共享环境灰度证据。
 - Event Subscription 增加可复用的 `off/shadow/enforced` 预筛运行时门禁：强制模式精确绑定 rollout decision、候选配置、语料、评审与 evidence 哈希，证据缺失或漂移时 fail closed；默认不接入 Kafka、模型或生产 Task 创建。
+- Kafka Shadow Runtime 增加可选 Subscription gate 注入点；enforced blocked 会在订阅匹配和 EventLedger claim 前停止，默认未注入以保持现有路径兼容。
 
 - Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
 - `conversation.read` 输入统一采用 canonical `conversationId`（`direct:<user>:<user>` 或 `group:<group>`）；Runtime 先执行精确 scope 检查并解析目标，Core 继续以 principal 的会话关系作为最终授权依据。

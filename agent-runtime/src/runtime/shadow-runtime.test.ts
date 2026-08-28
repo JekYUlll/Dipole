@@ -162,6 +162,26 @@ describe("shadow runtime composition", () => {
     expect(fixture.audit.append).not.toHaveBeenCalled();
   });
 
+  it("stops before the ledger when the enforced subscription rollout is blocked", async () => {
+    const fixture = runtimeFixture();
+    const subscriptions = subscriptionAdmission([subscription("SUB-1", "all", {})]);
+    const gate = { evaluate: vi.fn(() => ({
+      mode: "enforced" as const, outcome: "blocked" as const, taskCreationAllowed: false,
+      reason: "subscription_rollout_blocked"
+    })) };
+    const runtime = buildKafkaShadowRuntime(
+      subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
+      undefined, subscriptions, undefined, undefined, undefined, undefined, undefined, gate
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U200")));
+
+    expect(gate.evaluate).toHaveBeenCalledOnce();
+    expect(subscriptions.matchEventSubscriptions).not.toHaveBeenCalled();
+    expect(fixture.ledger.claim).not.toHaveBeenCalled();
+  });
+
   it("pins the stable matching subscription before task admission", async () => {
     const fixture = runtimeFixture();
     const subscriptions = subscriptionAdmission([
