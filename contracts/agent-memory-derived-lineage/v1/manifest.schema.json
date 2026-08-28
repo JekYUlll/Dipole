@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-derived-lineage/v1/manifest.schema.json",
+  "title": "Dipole Agent Memory Derived Lineage Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tenantId", "principalId", "memoryId"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-derived-lineage-manifest.v1" },
+    "tenantId": { "$ref": "#/$defs/id" },
+    "principalId": { "$ref": "#/$defs/id" },
+    "memoryId": { "$ref": "#/$defs/id" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+    }
+  }
+}
