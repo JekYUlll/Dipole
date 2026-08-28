@@ -72,6 +72,17 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 `/agent/tasks/:taskId/input`，由 `VITE_AGENT_ELICITATION_ENABLED=true` 显式启用。页面只使用 authenticated Gateway Task query/input/cancel API；查询失败时清空缓存 Form，提交后重新查询权威 Workflow 状态。MCP continuation、敏感输入和 URL mode 仍未接入。
 
+### Agent Event Subscription v1
+
+- `Agent Subscription/Desktop/Manage`：展示 owner 的订阅历史、精确 Definition version、conversation scope、确定性过滤器、当前状态和撤销/审计入口。
+- `Agent Subscription/State Matrix`：覆盖 `loading`、`empty`、`unavailable`、`definition_stale`、`revoking` 和 `revoked` 六态。
+- `Agent Subscription/Mobile/Revoke`：以单列订阅摘要和底部确认层展示精确撤销原因与审计边界。
+- `Component/Subscription Status`、`Component/Subscription Filter`、`Component/Subscription Row`：供后续 Agent Definition、Task timeline 和 Trigger 管理页面复用。
+
+批准的 2x 预览位于 `exports/agent-subscription-v1/`。当前稿固定展示 `OWNER CONTROL / DIRECT_TARGET` 边界：订阅控制状态可以持久化，Runtime 仍保持默认关闭，页面不得暗示已经启动共享事件触发或语义模型预筛。创建订阅必须选择经过 Gateway 鉴权的 active Definition version 与可读 conversation scope；在公开 Definition 目录交付前，创建入口保持关闭，用户无需也不能手填内部 Definition ID。撤销要求精确原因并保留审计信息，撤销动作不改变模型 Runtime 生命周期。
+
+公开 Gateway HTTP adapter 与 Vue 管理页尚未接入。本次 Pencil 设计作为后续默认关闭实现的产品契约，不能用于声明 `subscription` 模式已经可用。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。
