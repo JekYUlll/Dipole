@@ -200,6 +200,13 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { invocationId: input.invocationId, status: input.status });
       return {};
     });
+    const finishMcpToolInvocationFromRound = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId: "d".repeat(64) });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { invocationId: input.invocationId, status: "completed" });
+      return {};
+    });
     const executeMcpMessageCommand = vi.fn((input, metadata, _options, callback) => {
       const commandId = "tool:" + "c".repeat(64);
       const clientMessageId = createHash("sha256").update(`dipole.agent.command.v1\n${input.commandKind}\n${commandId}`).digest("hex");
@@ -209,7 +216,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { actionReference: { resourceType: "message", resourceId: "MSG-1", commandKind: input.commandKind, commandId }, clientMessageId });
       return {};
     });
-    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, resolveMcpToolCommand, claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocation, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
+    const client = new AgentCapabilityRPCClient({ admitRun, matchEventSubscriptions, listContextMemories, completeRun, finishRun, requestApproval, resolveApproval, consumeApproval, resolveApprovalGrant, listConversations, authorizeTaskControl, resolveMcpContext, beginMcpToolInvocation, resolveMcpToolCommand, claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocation, finishMcpToolInvocationFromRound, executeMcpMessageCommand, projectTaskWorkflowState, listTaskWorkflowProjectionSnapshots, createArtifact } as unknown as IAgentCapabilityServiceClient, "secret");
     const identity = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1" };
     const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
@@ -301,6 +308,9 @@ describe("AgentCapabilityRPCClient", () => {
       roundId, ownerTokenSha256, status: "completed", resultJSON: roundResultJSON,
       resultSha256: createHash("sha256").update(roundResultJSON).digest("hex")
     })).resolves.toBeUndefined();
+    await expect(client.finishMcpToolInvocationFromRound({
+      taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-EXT-1", roundId
+    })).resolves.toEqual({ invocationId: "INV-EXT-1", status: "completed" });
     await expect(client.finishToolInvocation({
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", status: "completed",
       resultSha256: "b".repeat(64), resultBytes: 128, latencyMs: 12

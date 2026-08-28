@@ -116,7 +116,9 @@ Invocation begin/finish 现支持精确重放。Begin 的稳定 ID 已存在时�
 
 Invocation ID 由 tenant/principal/Agent/Task/Run/Workflow step/ordinal 的 canonical v1 绑定计算为 SHA-256。参数、Profile、Server、Tool、Approval 和 trace 不参与 ID 分叉；这些字段发生漂移时，相同 ID 会进入 Core exact begin 比较并 fail closed。这样 Activity retry 保持同一命令意图，显式增加 ordinal 才代表同一步内新的 Tool 调用。producer 可接收 Core 返回的 running/completed/failed 状态，为后续 receipt-only 恢复保留依据。
 
-当前启动链未注册外部 Capability route，也未把 producer 接入 Temporal Activity。Worker 完成结果尚未由专用 server-owned finish API 收敛到 Invocation terminal；在该终态所有者完成前，生产 Worker 和外部网络开关继续关闭。
+`FinishMcpToolInvocationFromRound` 提供专用 server-owned terminal API。Runtime 只提交 Task、Run、Invocation 和 Round ID；Core 重新加载两份持久记录，要求 exact binding、规范 terminal receipt 和已知 read-risk Capability，拒绝 `executing`、`input_required` 中间结果、write Capability 与任何漂移。首次完成由 Core 从 Invocation 开始时间和 Round 结果派生 latency、结果字节数、摘要或错误码，再调用既有审计 Finish；重试读取并核对已存 terminal Invocation，因此不会因重新计算 latency 产生冲突。默认关闭的 `createMcpTerminalWorkerRuntime` 在 complete 或稳定 failed Round 后调用该 API，ambiguous 和 waiting_input 不会提前收口。旧 Finish RPC 会先解析持久命令并拒绝任何带 Profile 的外部 Invocation，避免 Runtime 绕过 receipt 形成第二个终态所有者。
+
+当前启动链未注册外部 Capability route，也未把 producer 或 terminal Worker composition 接入 Temporal Activity。第一方 Message write 继续使用带 action reference 的现有 Finish 路径；外部 write Capability 还没有通用可验证 action receipt。在真实路由注册、受控调度和生产 I/O 完成前，生产 Worker 和外部网络开关继续关闭。
 
 ## 后续实现门槛
 
