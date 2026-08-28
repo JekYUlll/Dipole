@@ -13,6 +13,7 @@ type Querier interface {
 	AbandonAgentModelCalls(ctx context.Context, arg AbandonAgentModelCallsParams) (int64, error)
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (sql.Result, error)
 	AdjustGroupMemberCount(ctx context.Context, arg AdjustGroupMemberCountParams) (sql.Result, error)
+	AdvanceAgentMemoryLineageBackfillJob(ctx context.Context, arg AdvanceAgentMemoryLineageBackfillJobParams) (sql.Result, error)
 	AdvanceCassandraBackfillJob(ctx context.Context, arg AdvanceCassandraBackfillJobParams) (sql.Result, error)
 	AdvanceConversationSequence(ctx context.Context, arg AdvanceConversationSequenceParams) error
 	AdvanceDeviceGroupSyncCheckpoint(ctx context.Context, arg AdvanceDeviceGroupSyncCheckpointParams) error
@@ -24,11 +25,13 @@ type Querier interface {
 	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
 	ApproveAgentRuntimePromotionProposal(ctx context.Context, arg ApproveAgentRuntimePromotionProposalParams) (int64, error)
 	ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
+	ClaimAgentMemoryLineageBackfillJob(ctx context.Context, arg ClaimAgentMemoryLineageBackfillJobParams) error
 	ClaimAgentShadowStep(ctx context.Context, arg ClaimAgentShadowStepParams) (int64, error)
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
 	CompleteAgentEvent(ctx context.Context, arg CompleteAgentEventParams) (int64, error)
+	CompleteAgentMemoryLineageBackfillJob(ctx context.Context, arg CompleteAgentMemoryLineageBackfillJobParams) (sql.Result, error)
 	CompleteAgentModelCall(ctx context.Context, arg CompleteAgentModelCallParams) (int64, error)
 	CompleteAgentModelRun(ctx context.Context, runUuid string) (int64, error)
 	CompleteAgentShadowStep(ctx context.Context, arg CompleteAgentShadowStepParams) (int64, error)
@@ -56,6 +59,7 @@ type Querier interface {
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
 	DeletePublishedSearchOutboxBatch(ctx context.Context, arg DeletePublishedSearchOutboxBatchParams) (sql.Result, error)
 	DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error)
+	EnsureAgentMemoryLineageBackfillJob(ctx context.Context, arg EnsureAgentMemoryLineageBackfillJobParams) error
 	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
 	EnsureSearchBackfillJob(ctx context.Context, arg EnsureSearchBackfillJobParams) error
@@ -63,6 +67,7 @@ type Querier interface {
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	EraseOwnedAgentMemoryRoot(ctx context.Context, arg EraseOwnedAgentMemoryRootParams) (int64, error)
 	ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
+	FailAgentMemoryLineageBackfillJob(ctx context.Context, arg FailAgentMemoryLineageBackfillJobParams) (sql.Result, error)
 	FailAgentModelCall(ctx context.Context, arg FailAgentModelCallParams) (int64, error)
 	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)
 	FailAgentModelRunByTask(ctx context.Context, arg FailAgentModelRunByTaskParams) (int64, error)
@@ -83,8 +88,11 @@ type Querier interface {
 	GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error)
 	GetAgentMCPReadinessEvidence(ctx context.Context, arg GetAgentMCPReadinessEvidenceParams) (AgentMcpReadinessEvidence, error)
 	GetAgentMCPToolRound(ctx context.Context, roundUuid string) (AgentMcpToolRound, error)
+	GetAgentMemoryBackfillReference(ctx context.Context, arg GetAgentMemoryBackfillReferenceParams) (string, error)
 	GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMemoryBySupersedesParams) (AgentMemory, error)
 	GetAgentMemoryDerivedImpact(ctx context.Context, arg GetAgentMemoryDerivedImpactParams) (GetAgentMemoryDerivedImpactRow, error)
+	GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (interface{}, error)
+	GetAgentMemoryLineageBackfillJob(ctx context.Context, jobName string) (AgentMemoryLineageBackfillJob, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
@@ -164,6 +172,7 @@ type Querier interface {
 	ListAgentEvalObservationModelCalls(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationModelCallsRow, error)
 	ListAgentEvalObservationSteps(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationStepsRow, error)
 	ListAgentEvalObservationToolCalls(ctx context.Context, arg ListAgentEvalObservationToolCallsParams) ([]ListAgentEvalObservationToolCallsRow, error)
+	ListAgentMemoryLineageBackfill(ctx context.Context, arg ListAgentMemoryLineageBackfillParams) ([]ListAgentMemoryLineageBackfillRow, error)
 	ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error)
 	ListApprovedAgentApprovalGrants(ctx context.Context, arg ListApprovedAgentApprovalGrantsParams) ([]AgentApproval, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
@@ -196,6 +205,7 @@ type Querier interface {
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)
 	ListUsersByUUIDs(ctx context.Context, uuids []string) ([]User, error)
 	LockAgentEventClaim(ctx context.Context, arg LockAgentEventClaimParams) ([]LockAgentEventClaimRow, error)
+	LockAgentMemoryLineageBackfillJob(ctx context.Context, jobName string) (LockAgentMemoryLineageBackfillJobRow, error)
 	LockAgentModelRun(ctx context.Context, taskUuid string) (LockAgentModelRunRow, error)
 	LockCassandraBackfillJob(ctx context.Context, jobName string) (LockCassandraBackfillJobRow, error)
 	LockConversationSequence(ctx context.Context, conversationKey string) (uint64, error)
@@ -234,6 +244,7 @@ type Querier interface {
 	UpdateConversationRemark(ctx context.Context, arg UpdateConversationRemarkParams) (sql.Result, error)
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) (sql.Result, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error)
+	UpsertAgentMemoryLineageBackfill(ctx context.Context, arg UpsertAgentMemoryLineageBackfillParams) (sql.Result, error)
 	UpsertAssistantUser(ctx context.Context, arg UpsertAssistantUserParams) (sql.Result, error)
 	UpsertConversationMessage(ctx context.Context, arg UpsertConversationMessageParams) (sql.Result, error)
 	UpsertGroupSyncState(ctx context.Context, arg UpsertGroupSyncStateParams) error
