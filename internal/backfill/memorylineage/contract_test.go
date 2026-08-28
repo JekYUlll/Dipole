@@ -82,7 +82,7 @@ func TestApprovalBindsManifestAndOperator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approval, err := NewApproval(manifest, "memory-lineage-v1", "ops-a")
+	approval, err := NewApproval(manifest, "memory-lineage-v1", "ops-a", "review-a")
 	if err != nil {
 		t.Fatal(err)
 	}
