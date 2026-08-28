@@ -9,6 +9,7 @@ import type { InputSchema } from "../capabilities/registry.js";
 import type { CapabilityDescriptor, ResourceRequest } from "../policy/policy-engine.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { TemporalMcpDispatchRoute } from "../temporal/mcp-dispatch-activity.js";
+import type { TemporalMcpSubscriptionRouteDefinition } from "../temporal/mcp-subscription-route-selector.js";
 import type { ExternalMcpConfig } from "./external-mcp-profile.js";
 import { canonicalMcpJSON } from "./canonical-json.js";
 import {
@@ -25,6 +26,7 @@ export const externalMcpDeploymentRouteManifestSchemaVersion =
 const identitySchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 const bindingSchema = z.string().regex(/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/);
 const argumentNameSchema = z.string().min(1).max(128);
+const staticArgumentsSchema = z.record(argumentNameSchema, z.unknown());
 const absolutePathSchema = z.string().min(1).max(4096).refine(path => isAbsolute(path) && normalize(path) === path);
 const rawManifestSchema = z.object({
   schema_version: z.literal(externalMcpDeploymentRouteManifestSchemaVersion),
@@ -40,7 +42,12 @@ const rawManifestSchema = z.object({
     egress_policy: z.object({
       allowed_argument_names: z.array(argumentNameSchema).max(256),
       maximum_bytes: z.number().int().min(2).max(64 * 1024)
-    }).strict()
+    }).strict(),
+    subscription_trigger: z.object({
+      definition_id: z.string().trim().min(1).max(64),
+      definition_version: z.number().int().min(1).max(1_000_000),
+      arguments: staticArgumentsSchema
+    }).strict().optional()
   }).strict()).min(1).max(256)
 }).strict().superRefine((manifest, refinement) => {
   requireUnique(manifest.routes.map(route => route.route_id), ["routes", "route_id"], refinement);
@@ -48,6 +55,13 @@ const rawManifestSchema = z.object({
   requireUnique(
     manifest.routes.map(route => `${route.workflow_step}:${route.ordinal}`),
     ["routes", "workflow_coordinate"],
+    refinement
+  );
+  requireUnique(
+    manifest.routes.flatMap(route => route.subscription_trigger === undefined ? [] : [
+      `${route.subscription_trigger.definition_id}:${route.subscription_trigger.definition_version}`
+    ]),
+    ["routes", "subscription_trigger"],
     refinement
   );
 });
@@ -113,6 +127,7 @@ export interface ExternalMcpDeploymentRouteManifestLoaderOptions {
 export interface LoadedExternalMcpDeploymentRoutes {
   readonly registry: ExternalMcpCapabilityRouteRegistry;
   readonly routes: readonly TemporalMcpDispatchRoute[];
+  readonly subscriptionRoutes: readonly TemporalMcpSubscriptionRouteDefinition[];
 }
 
 export async function loadExternalMcpDeploymentRouteManifest(
@@ -139,6 +154,7 @@ export async function loadExternalMcpDeploymentRouteManifest(
     signal.throwIfAborted();
     const manifest = rawManifestSchema.parse(raw);
     const registry = new ExternalMcpCapabilityRouteRegistry();
+    const subscriptionRoutes: TemporalMcpSubscriptionRouteDefinition[] = [];
     const routes = manifest.routes.map(route => {
       const definition = definitions.resolve(route.capability_id);
       if (definition === undefined) throw new Error("unknown definition");
@@ -155,6 +171,25 @@ export async function loadExternalMcpDeploymentRouteManifest(
           egressPolicy.allowedArgumentNames.some(name => !ceilingNames.has(name))) {
         throw new Error("egress ceiling exceeded");
       }
+      let subscriptionArguments: Readonly<Record<string, unknown>> | undefined;
+      if (route.subscription_trigger !== undefined) {
+        const parsedArguments = staticArgumentsSchema.parse(
+          definition.inputSchema.parse(route.subscription_trigger.arguments)
+        );
+        const argumentsJson = canonicalMcpJSON(parsedArguments);
+        const allowedNames = new Set(egressPolicy.allowedArgumentNames);
+        if (Object.keys(parsedArguments).some(name => !allowedNames.has(name)) ||
+            Buffer.byteLength(argumentsJson, "utf8") > egressPolicy.maximumBytes) {
+          throw new Error("subscription arguments exceed route policy");
+        }
+        subscriptionArguments = freezeJsonObject(JSON.parse(argumentsJson) as Record<string, unknown>);
+        subscriptionRoutes.push(Object.freeze({
+          definitionId: route.subscription_trigger.definition_id,
+          definitionVersion: route.subscription_trigger.definition_version,
+          routeId: route.route_id,
+          resolveArguments: () => subscriptionArguments!
+        }));
+      }
       registry.register({
         descriptor: definition.descriptor,
         inputSchema: definition.inputSchema,
@@ -170,10 +205,14 @@ export async function loadExternalMcpDeploymentRouteManifest(
         capabilityId: route.capability_id,
         workflowStep: route.workflow_step,
         ordinal: route.ordinal,
-        deploymentBindingSha256: deploymentBindingSha256(route, definition)
+        deploymentBindingSha256: deploymentBindingSha256(route, definition, subscriptionArguments)
       };
     });
-    return { registry, routes };
+    return {
+      registry,
+      routes: Object.freeze(routes),
+      subscriptionRoutes: Object.freeze(subscriptionRoutes)
+    };
   } catch {
     if (signal.aborted) signal.throwIfAborted();
     throw new Error("External MCP deployment route manifest is unavailable");
@@ -182,7 +221,8 @@ export async function loadExternalMcpDeploymentRouteManifest(
 
 function deploymentBindingSha256(
   route: z.infer<typeof rawManifestSchema>["routes"][number],
-  definition: ExternalMcpResolvedCapabilityDefinition
+  definition: ExternalMcpResolvedCapabilityDefinition,
+  subscriptionArguments: Readonly<Record<string, unknown>> | undefined
 ): string {
   const binding = {
     schemaVersion: "dipole.agent.external-mcp-deployment-route-binding.v1",
@@ -202,9 +242,23 @@ function deploymentBindingSha256(
     egressPolicy: {
       allowedArgumentNames: [...route.egress_policy.allowed_argument_names].sort(),
       maximumBytes: route.egress_policy.maximum_bytes
+    },
+    subscriptionTrigger: route.subscription_trigger === undefined ? null : {
+      definitionId: route.subscription_trigger.definition_id,
+      definitionVersion: route.subscription_trigger.definition_version,
+      arguments: subscriptionArguments
     }
   };
   return createHash("sha256").update(canonicalMcpJSON(binding), "utf8").digest("hex");
+}
+
+function freezeJsonObject(value: Record<string, unknown>): Readonly<Record<string, unknown>> {
+  for (const item of Object.values(value)) {
+    if (item !== null && typeof item === "object") {
+      freezeJsonObject(item as Record<string, unknown>);
+    }
+  }
+  return Object.freeze(value);
 }
 
 function requireUnique(values: readonly string[], path: PropertyKey[], refinement: z.RefinementCtx): void {

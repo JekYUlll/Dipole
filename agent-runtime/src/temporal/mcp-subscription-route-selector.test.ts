@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
-import { TemporalMcpSubscriptionRouteSelector } from "./mcp-subscription-route-selector.js";
+import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
+import {
+  createExternalMcpSubscriptionRouteSelector,
+  TemporalMcpSubscriptionRouteSelector
+} from "./mcp-subscription-route-selector.js";
 
 const event: AgentEvent = {
   eventId: "EVENT-1",
@@ -88,5 +92,29 @@ describe("TemporalMcpSubscriptionRouteSelector", () => {
     }]);
 
     await expect(selector.select(event, identity)).rejects.toThrow(/arguments are invalid/i);
+  });
+
+  it("constructs only from subscription routes present in the exact Worker catalog", async () => {
+    const route = {
+      definitionId: "DEF-GUARDIAN", definitionVersion: 3, routeId: "github-issue-read",
+      resolveArguments: () => ({ owner: "dipole", repo: "server", issue_number: 42 })
+    };
+    const worker = {
+      subscriptionRoutes: [route],
+      routeBindings: [{
+        routeId: route.routeId, routeVersion: 1, routeManifestSha256: "a".repeat(64)
+      }]
+    } as unknown as ExternalMcpTemporalWorkerComposition;
+    await expect(createExternalMcpSubscriptionRouteSelector(worker).select(event, identity))
+      .resolves.toMatchObject({ routeId: route.routeId });
+
+    expect(() => createExternalMcpSubscriptionRouteSelector({
+      ...worker, subscriptionRoutes: []
+    })).toThrow(/routes are unavailable/i);
+    expect(() => createExternalMcpSubscriptionRouteSelector({
+      ...worker, routeBindings: [{
+        routeId: "another-route", routeVersion: 1, routeManifestSha256: "a".repeat(64)
+      }]
+    })).toThrow(/conflict with the Worker catalog/i);
   });
 });

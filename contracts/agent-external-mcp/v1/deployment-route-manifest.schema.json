@@ -39,6 +39,19 @@
               "maximum_bytes": {"type": "integer", "minimum": 2, "maximum": 65536}
             },
             "additionalProperties": false
+          },
+          "subscription_trigger": {
+            "type": "object",
+            "required": ["definition_id", "definition_version", "arguments"],
+            "properties": {
+              "definition_id": {"type": "string", "minLength": 1, "maxLength": 64},
+              "definition_version": {"type": "integer", "minimum": 1, "maximum": 1000000},
+              "arguments": {
+                "type": "object",
+                "propertyNames": {"minLength": 1, "maxLength": 128}
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

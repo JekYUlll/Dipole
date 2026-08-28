@@ -46,12 +46,14 @@ describe("external MCP deployment composition", () => {
     if (plan === undefined) throw new Error("expected enabled plan");
 
     expect(Object.keys(plan).sort()).toEqual([
-      "config", "productionIo", "routeRegistry", "routes", "runtimeBindingSha256", "workerExternalMcp"
+      "config", "productionIo", "routeRegistry", "routes", "runtimeBindingSha256", "subscriptionRoutes",
+      "workerExternalMcp"
     ]);
     expect(plan.routes).toEqual([{
       routeId: "calendar-event-read", routeVersion: 1, capabilityId: "calendar.event.read",
       workflowStep: 4, ordinal: 1, deploymentBindingSha256: expect.stringMatching(/^[a-f0-9]{64}$/)
     }]);
+    expect(plan.subscriptionRoutes).toHaveLength(1);
     expect(plan.productionIo.registry.describe("calendar-prod", "dipole")).toMatchObject({
       serverId: "calendar.example", allowedTools: ["calendar.read_event"]
     });
@@ -189,7 +191,11 @@ function routeManifest(toolName = "calendar.read_event") {
       route_id: "calendar-event-read", route_version: 1, capability_id: "calendar.event.read",
       workflow_step: 4, ordinal: 1, profile_id: "calendar-prod", server_id: "calendar.example",
       tool_name: toolName,
-      egress_policy: { allowed_argument_names: ["calendarId", "eventId"], maximum_bytes: 1024 }
+      egress_policy: { allowed_argument_names: ["calendarId", "eventId"], maximum_bytes: 1024 },
+      subscription_trigger: {
+        definition_id: "DEF-CALENDAR-GUARDIAN", definition_version: 2,
+        arguments: { calendarId: "CAL-1", eventId: "EV-1" }
+      }
     }]
   };
 }

@@ -5,6 +5,7 @@ import type {
   TemporalMcpShadowRouteSelection,
   TemporalMcpShadowRouteSelector
 } from "./mcp-shadow-task-dispatcher.js";
+import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 
 const routeDefinitionSchema = z.object({
   definitionId: z.string().trim().min(1).max(64),
@@ -74,6 +75,19 @@ export class TemporalMcpSubscriptionRouteSelector implements TemporalMcpShadowRo
     }
     return Object.freeze({ routeId: route.routeId, arguments: Object.freeze(parsedArguments.data) });
   }
+}
+
+export function createExternalMcpSubscriptionRouteSelector(
+  worker: ExternalMcpTemporalWorkerComposition
+): TemporalMcpSubscriptionRouteSelector {
+  if (worker.subscriptionRoutes.length === 0) {
+    throw new Error("External MCP subscription routes are unavailable");
+  }
+  const registeredRoutes = new Set(worker.routeBindings.map(binding => binding.routeId));
+  if (worker.subscriptionRoutes.some(route => !registeredRoutes.has(route.routeId))) {
+    throw new Error("External MCP subscription routes conflict with the Worker catalog");
+  }
+  return new TemporalMcpSubscriptionRouteSelector(worker.subscriptionRoutes);
 }
 
 function definitionKey(definitionId: string, definitionVersion: number): string {
