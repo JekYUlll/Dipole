@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ExternalMcpActivityRoundSessionFactory,
   McpInputRequiredActivity,
+  McpToolRoundTerminalError,
   type McpActivityModernClient,
   type McpActivityRoundSession,
   type McpActivityRoundSessionFactory,
@@ -43,7 +44,10 @@ describe("MCP input-required Activity boundary", () => {
         kind: "input", requestId: "INPUT-1", value: { title: "Review", visibility: "team" }
       }
     });
-    expect(completed).toEqual({ kind: "complete", result: { content: [{ type: "text", text: "created" }] } });
+    expect(completed).toMatchObject({
+      kind: "complete", result: { content: [{ type: "text", text: "created" }] }, receipt: { roundNumber: 1 }
+    });
+    expect(completed.receipt.roundId).toMatch(/^[a-f0-9]{64}$/);
     expect(factory.open).toHaveBeenCalledTimes(2);
     expect(close).toHaveBeenCalledTimes(2);
     expect(receiptClient.finishMcpToolRound).toHaveBeenCalledTimes(2);
@@ -71,7 +75,7 @@ describe("MCP input-required Activity boundary", () => {
     };
 
     await expect(new McpInputRequiredActivity(factory, receipts()).begin(command(), controller.signal))
-      .rejects.toThrow(/aborted/);
+      .rejects.toBeInstanceOf(McpToolRoundTerminalError);
     expect(close).toHaveBeenCalledOnce();
   });
 
@@ -102,8 +106,8 @@ describe("MCP input-required Activity boundary", () => {
       outcome: "replay_completed", result: { content: [{ type: "text", text: "replayed" }] },
       resultJSON: `{"content":[{"text":"replayed","type":"text"}]}`, resultSha256: "a".repeat(64)
     });
-    await expect(new McpInputRequiredActivity(factory, completed).begin(command())).resolves.toEqual({
-      kind: "complete", result: { content: [{ type: "text", text: "replayed" }] }
+    await expect(new McpInputRequiredActivity(factory, completed).begin(command())).resolves.toMatchObject({
+      kind: "complete", result: { content: [{ type: "text", text: "replayed" }] }, receipt: { roundNumber: 0 }
     });
     expect(factory.open).not.toHaveBeenCalled();
     expect(completed.finishMcpToolRound).not.toHaveBeenCalled();

@@ -42,6 +42,11 @@ export interface AgentMcpToolCommandBeginResult {
   readonly status: "running" | "completed" | "failed";
 }
 
+export interface AgentMcpToolCommandTerminalResult {
+  readonly invocationId: string;
+  readonly status: "completed" | "failed";
+}
+
 export interface AgentMcpToolRoundClaim {
   readonly taskId: string;
   readonly runId: string;
@@ -686,6 +691,30 @@ export class AgentCapabilityRPCClient {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool round finish returned no response"));
         if (response.roundId !== input.roundId || response.status !== input.status) return reject(new Error("Agent MCP Tool round finish returned conflicting evidence"));
         resolve();
+      });
+    });
+  }
+
+  async finishMcpToolInvocationFromRound(input: {
+    readonly taskId: string;
+    readonly runId: string;
+    readonly invocationId: string;
+    readonly roundId: string;
+  }): Promise<AgentMcpToolCommandTerminalResult> {
+    assertSha256(input.roundId, "round ID");
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.finishMcpToolInvocationFromRound({
+        context: this.requestContext(), taskId: input.taskId, runId: input.runId,
+        invocationId: input.invocationId, roundId: input.roundId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          return reject(error ?? new Error("Agent MCP Tool invocation terminal returned no response"));
+        }
+        if (response.invocationId !== input.invocationId || (response.status !== "completed" && response.status !== "failed")) {
+          return reject(new Error("Agent MCP Tool invocation terminal returned conflicting evidence"));
+        }
+        resolve({ invocationId: response.invocationId, status: response.status });
       });
     });
   }

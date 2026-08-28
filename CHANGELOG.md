@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Core 增加 receipt-derived MCP Invocation 终态所有者：additive RPC 只接收 Task/Run/Invocation/Round 四个持久 ID，Core 重新加载并核对 read-risk Invocation 与 terminal Round，服务端派生结果摘要、字节数、错误码和首次延迟；完成后的重试直接核对已存终态，不由 Runtime 重传易漂移证据。旧 Finish RPC 拒绝带 Profile 的外部 Invocation，避免出现第二终态权威。默认关闭的 terminal Worker composition 在成功或稳定失败 Round 后调用新 RPC，`input_required`、`executing`、绑定漂移和 write Capability 均 fail closed；现有启动入口、Temporal 调度与外部网络仍未接线。
 - Agent Runtime 增加默认关闭的受信外部 MCP Invocation producer：strict 输入仅接受 Workflow step/ordinal、注册 Capability ID、业务参数和可选 Approval；tenant/principal/Agent/Task/Run 来自 ExecutionContext，Profile/Server/Tool 来自注入式 Capability 路由。稳定 64-hex Invocation ID 只绑定 host-owned Workflow 坐标，参数或路由漂移复用同一 ID并由 Core exact begin 拒绝，避免配置变化生成第二个执行意图。producer 复用 PolicyEngine、schema 与 MCP egress guard，在 Core begin 前阻断越权资源、未声明参数和敏感字段。
 - Agent Core 为外部 MCP Tool Invocation 增加精确 begin/finish 重放与终态 receipt 恢复：重复 begin 仅在全部权威身份、Capability、Profile/Server、canonical 参数、请求关联和审批绑定一致时返回原记录；重复 finish 逐项核对状态、结果摘要/大小/延迟、错误码与 action reference。`ResolveMcpToolCommand` additive 返回 Invocation 状态，terminal Invocation 的 round claim 只能读取并重放已存在 receipt，缺失或漂移时 fail closed，禁止创建新 round 或重新发网。
 - Agent Runtime 增加默认关闭的 MCP Worker Runtime 组合器：将认证 Core command resolver/round receipt、tenant Profile Transport Registry、allowlisted modern Client、Activity-safe continuation 与三 ID dispatcher 组装为单一依赖注入边界。已取消请求会在 Core resolve/receipt claim 前停止；本地完成后替换 Runtime 只回放 canonical receipt，`ambiguous` 不创建 Client/Transport。Temporal 自动调度仍等待受信 Agent Step 创建持久 Invocation，不从 goal、模型输出或事件正文选取命令。

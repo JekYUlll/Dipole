@@ -34,6 +34,7 @@ type Server struct {
 	memories             application.AgentMemoryContextResolverV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
 	toolRounds           application.AgentMCPToolRoundServiceV1
+	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands      application.AgentMessageCommandExecutionV1
 }
 
@@ -82,6 +83,14 @@ func (s *Server) WithMCPToolRounds(rounds application.AgentMCPToolRoundServiceV1
 		return nil, errors.New("Agent MCP Tool round service is required")
 	}
 	s.toolRounds = rounds
+	return s, nil
+}
+
+func (s *Server) WithMCPToolTerminals(terminals application.AgentMCPToolInvocationTerminalServiceV1) (*Server, error) {
+	if s == nil || terminals == nil {
+		return nil, errors.New("Agent MCP Tool terminal service is required")
+	}
+	s.toolTerminals = terminals
 	return s, nil
 }
 
@@ -779,6 +788,13 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 	if s.toolAudits == nil {
 		return nil, status.Error(codes.Unavailable, "Agent Tool invocation audit is unavailable")
 	}
+	command, err := s.toolAudits.ResolveCommand(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId(), request.GetInvocationId())
+	if err != nil {
+		return nil, mapAgentToolInvocationErrorV1(err)
+	}
+	if command.ProfileID != "" {
+		return nil, status.Error(codes.PermissionDenied, "external MCP Tool invocation must finish from its durable round")
+	}
 	finish := application.AgentToolInvocationFinishV1{
 		InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Status: application.AgentToolInvocationStatusV1(request.GetStatus()), ResultSHA256: request.GetResultSha256(),
@@ -794,6 +810,22 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
+}
+
+func (s *Server) FinishMcpToolInvocationFromRound(ctx context.Context, request *agentv1.FinishMcpToolInvocationFromRoundRequest) (*agentv1.FinishMcpToolInvocationFromRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolTerminals == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool terminal service is unavailable")
+	}
+	invocation, err := s.toolTerminals.FinishFromRound(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMCPToolInvocationTerminalRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), InvocationUUID: request.GetInvocationId(), RoundUUID: request.GetRoundId(),
+	})
+	if err != nil {
+		return nil, mapAgentMCPToolTerminalErrorV1(err)
+	}
+	return &agentv1.FinishMcpToolInvocationFromRoundResponse{InvocationId: invocation.InvocationUUID, Status: string(invocation.Status)}, nil
 }
 
 func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.ExecuteMcpMessageCommandRequest) (*agentv1.ExecuteMcpMessageCommandResponse, error) {
@@ -861,6 +893,13 @@ func mapAgentMCPToolRoundErrorV1(err error) error {
 	default:
 		return status.Error(codes.Internal, "Agent MCP Tool round receipt failed")
 	}
+}
+
+func mapAgentMCPToolTerminalErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentToolInvocationInvalid) || errors.Is(err, application.ErrAgentToolInvocationDenied) || errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		return mapAgentToolInvocationErrorV1(err)
+	}
+	return mapAgentMCPToolRoundErrorV1(err)
 }
 
 func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.ProjectTaskWorkflowStateRequest) (*agentv1.ProjectTaskWorkflowStateResponse, error) {

@@ -59,6 +59,22 @@ export interface McpToolRoundReceiptClient {
   )): Promise<void>;
 }
 
+export interface McpToolRoundReceiptLocator {
+  readonly roundId: string;
+  readonly roundNumber: 0 | 1;
+}
+
+export class McpToolRoundTerminalError extends Error {
+  constructor(
+    readonly receipt: McpToolRoundReceiptLocator,
+    readonly errorCode: string,
+    options?: ErrorOptions
+  ) {
+    super(`MCP Tool round failed: ${errorCode}`, options);
+    this.name = "McpToolRoundTerminalError";
+  }
+}
+
 export interface McpActivityRoundSession {
   callToolRound(params: McpToolRoundParams, signal?: AbortSignal): Promise<McpToolRoundResult>;
   close(): Promise<void>;
@@ -154,7 +170,11 @@ export class ExternalMcpActivityRoundSessionFactory implements McpActivityRoundS
 }
 
 export type McpInputRequiredActivityResult =
-  | { readonly kind: "complete"; readonly result: Exclude<McpToolRoundResult, { resultType: "input_required" }> }
+  | {
+    readonly kind: "complete";
+    readonly result: Exclude<McpToolRoundResult, { resultType: "input_required" }>;
+    readonly receipt: McpToolRoundReceiptLocator;
+  }
   | {
     readonly kind: "wait_input";
     readonly directive: ReturnType<McpInputRequiredContinuation["begin"]>["directive"];
@@ -181,14 +201,14 @@ export class McpInputRequiredActivity {
 
   async begin(command: McpInputRequiredActivityCommand, signal?: AbortSignal): Promise<McpInputRequiredActivityResult> {
     validateCommand(command);
-    const result = await this.#executeRound(command, {
+    const execution = await this.#executeRound(command, {
       name: command.toolName,
       arguments: command.arguments
     }, 0, signal);
-    if (!isInputRequiredResult(result)) return { kind: "complete", result };
+    if (!isInputRequiredResult(execution.result)) return { kind: "complete", result: execution.result, receipt: execution.receipt };
 
     const wait = this.#continuation.begin({
-      result,
+      result: execution.result,
       requestId: command.requestId,
       serverId: command.serverId,
       toolName: command.toolName,
@@ -223,7 +243,7 @@ export class McpInputRequiredActivity {
   ): Promise<Extract<McpInputRequiredActivityResult, { kind: "complete" }>> {
     validateCheckpoint(checkpoint);
     const retry = this.#continuation.retry(checkpoint.continuation, input);
-    const result = await this.#executeRound({
+    const execution = await this.#executeRound({
       taskId: checkpoint.taskId,
       runId: checkpoint.runId,
       invocationId: checkpoint.continuation.invocationId,
@@ -232,10 +252,10 @@ export class McpInputRequiredActivity {
       serverId: checkpoint.serverId,
       toolName: checkpoint.continuation.toolName
     }, retry, 1, signal);
-    if (isInputRequiredResult(result)) {
+    if (isInputRequiredResult(execution.result)) {
       throw new Error("MCP Activity does not support an additional input_required round");
     }
-    return { kind: "complete", result };
+    return { kind: "complete", result: execution.result, receipt: execution.receipt };
   }
 
   async #executeRound(
@@ -246,10 +266,11 @@ export class McpInputRequiredActivity {
     params: McpToolRoundParams,
     roundNumber: 0 | 1,
     signal?: AbortSignal
-  ): Promise<McpToolRoundResult> {
+  ): Promise<{ readonly result: McpToolRoundResult; readonly receipt: McpToolRoundReceiptLocator }> {
     const requestJSON = canonicalMcpJSON(params);
     const requestSha256 = sha256(requestJSON);
     const roundId = sha256(["dipole.mcp.tool-round.v1", binding.invocationId, roundNumber.toString(), requestSha256].join("\n"));
+    const receipt = { roundId, roundNumber } as const;
     const ownerTokenSha256 = this.#ownerTokenSha256();
     const claim = await this.#receipts.claimMcpToolRound({
       taskId: binding.taskId, runId: binding.runId, invocationId: binding.invocationId, roundId, roundNumber,
@@ -257,9 +278,9 @@ export class McpInputRequiredActivity {
     });
     switch (claim.outcome) {
       case "replay_completed":
-        return claim.result as McpToolRoundResult;
+        return { result: claim.result as McpToolRoundResult, receipt };
       case "replay_failed":
-        throw new Error(`MCP Tool round previously failed: ${claim.errorCode}`);
+        throw new McpToolRoundTerminalError(receipt, claim.errorCode);
       case "ambiguous":
         throw new Error("MCP Tool round outcome is ambiguous; automatic retry is disabled");
       case "claimed":
@@ -272,13 +293,13 @@ export class McpInputRequiredActivity {
       await this.#receipts.finishMcpToolRound({
         roundId, ownerTokenSha256, status: "failed", errorCode: "remote_outcome_unknown"
       });
-      throw error;
+      throw new McpToolRoundTerminalError(receipt, "remote_outcome_unknown", { cause: error });
     }
     const resultJSON = canonicalMcpJSON(result);
     await this.#receipts.finishMcpToolRound({
       roundId, ownerTokenSha256, status: "completed", resultJSON, resultSha256: sha256(resultJSON)
     });
-    return result;
+    return { result, receipt };
   }
 
   async #withSession(
