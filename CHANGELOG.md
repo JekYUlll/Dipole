@@ -46,6 +46,7 @@
 - Agent Task Timeline 增加显式 repairer：批量领取 repair intent 后按原事件重放，成功标记完成，失败按退避重新调度；worker 保持显式构造和关闭默认，便于先进行故障注入与灰度。
 - 新增独立运维进程 `cmd/agent-task-timeline-repair`：通过 MySQL transaction store 运行 Timeline repairer，支持批量、租约、退避和轮询参数；主服务默认不自动启动该进程。
 - Timeline repair runtime 增加可选 Prometheus collector：暴露有限 outcome 的 repair 计数与耗时，独立进程通过 `--metrics-address` 显式开启，默认不监听指标端口。
+- 新增 MySQL repair recovery contract：在真实 MySQL 上创建 Task/Run，注入 Timeline 投影失败，验证 repair intent 进入 retry，随后真实重放收敛为 `completed` 且 Timeline 事件保持单份；测试独立于客户端时区。
 
 ### 验证
 
@@ -72,6 +73,7 @@
 - Timeline repairer 单元验证通过：覆盖成功重放完成、投影失败 retry_count 递增和非法配置拒绝；当前仍缺少进程装配、真实 MySQL 故障注入与运行时指标。
 - Timeline repair 进程编译验证通过；当前仍需真实数据库故障注入、运行时指标和 operator 灰度记录。
 - Timeline repair collector 与运行时专项验证通过：覆盖 outcome 白名单、指标注册、成功重放和失败 retry；真实数据库故障注入与 operator 灰度记录仍未完成。
+- MySQL repair recovery contract 通过（`DIPOLE_TEST_MYSQL_ADMIN_DSN`）；完整 repository contract 因既有外部依赖等待未完成，不作为本轮通过证据。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
