@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/cassandra-read-rollout/v1/policy.schema.json",
+  "title": "Dipole Cassandra Read Rollout Policy v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["minimumTotalRequests", "minimumCassandraRequests", "minimumObservedShareBps", "maximumFallbackBps", "maximumVerificationMismatchBps", "maximumVerificationErrorBps", "maximumCassandraP95LatencyMicros"],
+  "properties": {"minimumTotalRequests": {"type": "integer", "minimum": 0}, "minimumCassandraRequests": {"type": "integer", "minimum": 0}, "minimumObservedShareBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumFallbackBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumVerificationMismatchBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumVerificationErrorBps": {"type": "integer", "minimum": 0, "maximum": 10000}, "maximumCassandraP95LatencyMicros": {"type": "integer", "exclusiveMinimum": 0}}
+}
