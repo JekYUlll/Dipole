@@ -87,6 +87,18 @@ func TestCutoverAttemptWorkspaceRejectsTamperedInputs(t *testing.T) {
 	}
 }
 
+func TestCutoverAttemptWorkspaceRejectsExpiredInitialLease(t *testing.T) {
+	f := newProductionExecutorFixture(t)
+	inputs := productionWorkspaceInputs(f.config)
+	inputs.InitialTransition.LeaseUntilUnixMS = f.now.Add(-time.Second).UnixMilli()
+	if _, err := CreateCutoverAttemptWorkspace(
+		filepath.Join(t.TempDir(), "attempt"), "workspace-expired-a", AuthorityGo, AuthorityCPP,
+		time.Minute, inputs, f.now,
+	); err == nil {
+		t.Fatal("expired initial lease must fail")
+	}
+}
+
 func productionWorkspaceInputs(config ProductionCutoverExecutorConfig) CutoverAttemptInputs {
 	return CutoverAttemptInputs{
 		SchemaVersion:     CutoverAttemptInputsSchemaV1,

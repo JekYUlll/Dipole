@@ -26,6 +26,43 @@ The production executor validates all four manifest hashes and the initial lease
 
 `attempt-inputs.schema.json` makes an attempt directory self-contained. Creation canonicalizes and immutably stores the initial transition, source/frozen/target node manifests and checkpoint manifest in `inputs.json`, then derives `attempt.json` from their hashes. Repeated creation succeeds only for the same canonical inputs and attempt metadata. Loading strictly decodes both files and recomputes every binding before opening `artifacts/`; operators do not resupply mutable external manifests during recovery.
 
+## Durable cutover command
+
+Create an inputs document matching `attempt-inputs.schema.json`, then create a new workspace while the initial source lease is still live:
+
+```bash
+go run ./cmd/realtime-cutover \
+  -operation create \
+  -attempt-dir /secure/cutovers/cutover-20260828-a \
+  -inputs /secure/preflight/inputs.json \
+  -attempt-id cutover-20260828-a \
+  -source go \
+  -target cpp \
+  -max-interruption 60s \
+  -confirm
+```
+
+Inspect without Redis or Kafka access:
+
+```bash
+go run ./cmd/realtime-cutover \
+  -operation status \
+  -attempt-dir /secure/cutovers/cutover-20260828-a
+```
+
+Advance exactly one external action and fsynced journal event:
+
+```bash
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+  -operation advance \
+  -attempt-dir /secure/cutovers/cutover-20260828-a \
+  -operator operator-a \
+  -lease-duration 10m \
+  -confirm
+```
+
+Run `status` after every step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform the required direct source activation or second freeze, frozen-node confirmation, source activation and rollback checkpoint. Each mutation requires `-confirm`. The command has a 30-second per-action timeout and never loops across multiple side effects in one process invocation.
+
 ## Operator transition state machine
 
 `dipole-realtime-authority` is a local operations CLI backed by a Redis Lua compare-and-set. Every non-bootstrap request binds the SHA-256 of the exact current raw lease. The allowed transitions are:

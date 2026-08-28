@@ -136,6 +136,10 @@ func buildCutoverAttemptManifest(
 	if inputs.InitialTransition.Authority != manifest.SourceAuthority || inputs.InitialTransition.Phase != FencePhaseActive {
 		return inputs, CutoverAttemptManifest{}, fmt.Errorf("cutover attempt workspace initial transition is not active source authority")
 	}
+	if !time.UnixMilli(inputs.InitialTransition.LeaseUntilUnixMS).After(createdAt.UTC()) ||
+		time.UnixMilli(inputs.InitialTransition.AppliedAtUnixMS).After(createdAt.UTC().Add(2*time.Second)) {
+		return inputs, CutoverAttemptManifest{}, fmt.Errorf("cutover attempt workspace initial transition is expired or from the future")
+	}
 	return inputs, manifest, nil
 }
 

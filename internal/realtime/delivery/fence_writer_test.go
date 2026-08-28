@@ -13,6 +13,7 @@ import (
 func TestRedisAuthorityFenceWriterTransitionLifecycle(t *testing.T) {
 	now := time.Date(2026, 8, 28, 2, 0, 0, 0, time.UTC)
 	server := miniredis.RunT(t)
+	server.SetTime(now)
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	writer, err := NewRedisAuthorityFenceWriter(

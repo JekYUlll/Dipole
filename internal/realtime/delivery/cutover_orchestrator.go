@@ -32,11 +32,11 @@ type CutoverAttemptActionExecutor interface {
 }
 
 type CutoverAttemptAdvance struct {
-	State             CutoverAttemptState
-	Sequence          uint64
-	EventType         CutoverAttemptEventType
-	Terminal          bool
-	RollbackTriggered bool
+	State             CutoverAttemptState     `json:"state"`
+	Sequence          uint64                  `json:"sequence"`
+	EventType         CutoverAttemptEventType `json:"event_type,omitempty"`
+	Terminal          bool                    `json:"terminal"`
+	RollbackTriggered bool                    `json:"rollback_triggered"`
 }
 
 type CutoverAttemptOrchestrator struct {
