@@ -123,6 +123,7 @@
 - **本轮进展：** 新增默认 shadow-only 的 Observation/Reflection worker 与 `memory-candidate.v1` 严格契约。Observation 以事件 ID 幂等提取决定、任务和风险片段，Reflection 仅聚合同租户/主体/Agent/资源范围内的唯一 evidence window；两者都不访问模型、数据库、Kafka 或 Memory sink。超限、凭据模式、跨范围和重复窗口均 fail closed，后续仍需 candidate ledger、人工评审、Temporal durable 编排和真实 reviewed corpus。
 - **本轮进展：** migration v45 与 TS MySQL ledger 持久化候选摘要、来源/证据 ID、策略版本、规范哈希和 `pending|accepted|rejected` 状态；重复候选必须通过 exact hash，冲突 fail closed，完整 candidate content 不进入 SQL 参数。ledger 仍不授予 `agent_memories` 写权限，人工评审、accepted 投影、Temporal receipt 和真实 corpus 继续待完成。
 - **本轮进展：** migration v46 增加 append-only review ledger；`accepted|rejected` 记录绑定 candidate hash、reviewer、有限理由、时间和 review hash，并与候选状态在同一事务内更新。精确重复审查可重放，candidate/hash/status 漂移回滚；v46 回滚保留 v45 候选且不删除 Memory。accepted 到 `agent_memories` 的 Core 投影、Temporal receipt、双人/owner 策略和真实 reviewed corpus 仍未接线。
+- **本轮进展：** migration v47 增加 promotion receipt，Core-owned service 与 sqlc Repository 在同一事务中锁定 accepted candidate/review、写入摘要型 observational Memory 并记录 `promoted_memory_uuid`；稳定重试返回既有 Memory，候选/审核/状态漂移回滚。公开 RPC、Temporal receipt、双人审批策略、真实 corpus 与自动写入开关仍未接线。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 

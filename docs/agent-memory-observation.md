@@ -23,6 +23,8 @@ Ledger 的写入不会改变 `agent_memories`。只有后续经过 reviewer、sc
 
 v46 增加 append-only review ledger。`accepted|rejected` 决策绑定候选哈希、reviewer、有限理由、审核时间和 review hash；候选状态更新与审核记录在同一 MySQL 事务中完成。重复决策只有在完整 review hash 一致时才返回 duplicate，候选缺失、已审核或哈希漂移均回滚并 fail closed。回滚 v46 会删除审核表，保留 v45 候选记录，不会删除 Memory。
 
+v47 增加 promotion receipt 字段。Core 在事务内锁定 accepted candidate 和 accepted owner review，创建仅由摘要组成的 observational Memory，再写入 `promoted_memory_uuid/promoted_at`；唯一 receipt 使重试返回同一 Memory。任何候选或审核绑定漂移都会回滚。回滚 v47 需要先停止 promotion 调用，再删除 promotion receipt 字段，v45/v46 审计记录继续保留。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。

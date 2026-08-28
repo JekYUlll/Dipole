@@ -34,6 +34,7 @@ type Repositories struct {
 	AgentArtifacts         application.AgentArtifactStoreV1
 	AgentMemories          application.AgentMemoryStoreV1
 	AgentMemoryOwners      application.AgentMemoryOwnerStoreV1
+	AgentMemoryPromotions  application.AgentMemoryCandidatePromotionStoreV1
 	AgentToolAudits        application.AgentToolInvocationStoreV1
 	AgentToolRounds        application.AgentMCPToolRoundStoreV1
 	Outbox                 application.OutboxRelayStore
@@ -141,6 +142,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	}
 	repos.AgentMemories = agentMemories
 	repos.AgentMemoryOwners = agentMemories
+	repos.AgentMemoryPromotions = agentMemories
 	agentToolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
