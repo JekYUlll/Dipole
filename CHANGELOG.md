@@ -482,6 +482,8 @@
 
 ### 修复
 
+- 修复 Agent Task Timeline 内部自动事件 ID 由长 Task/Run UUID 拼接导致超过 `VARCHAR(64)` 的问题；现在使用固定 64 位 SHA-256 十六进制 ID，兼容最大长度身份并保持事件校验边界。
+
 - 前端 Agent Task 响应解析器现在严格解析 `waiting_approval` 的 request/approval/summary/expiry，并提供绑定 Task/approval ID 的 approved/denied API；审批状态不会再被静默丢弃，`waiting_input` 和旧状态行为保持兼容。
 - 修复 `realtime-cpp` 镜像构建阶段遗漏 authority fence 测试契约目录的问题，确保 CMake/CTest 在独立 builder 中读取完整 golden vectors。
 - 修复 Agent TypeScript Proto 生成物滞后：重新生成 `CorrectOwnedMemory` RPC、Memory root/version/correction 字段及后续方法索引，使 TS 客户端与已发布的 additive Go Proto 定义恢复一致；未改变 Proto schema 或 Runtime 开关。
@@ -593,6 +595,8 @@
 - Gateway 独立部署要求 `gateway.mode=remote`、`message.transport=grpc`、Kafka 和内部 RPC 同时启用；Core 改为私网 HTTP 目标，公开流量只进入 Gateway。
 
 ### 验证
+
+- 真实 MySQL 验证通过：`AgentPolicy`、Runtime Promotion 和 Timeline repair recovery contract 均通过，覆盖最大长度身份、故障 retry、恢复 completed 与单事件收敛。
 
 - Agent Workflow repair v44 repository 合同测试在隔离 MySQL 8.4.8 中验证 `prepared` execution 创建、精确重放和同 plan 目标哈希漂移拒绝；当前测试不推进状态，也不修改 Workflow projection。
 - MySQL migration integration baseline 更新至 v44，并覆盖 v44 execution ledger、v43 lineage backfill、v42 pre-model lineage 的连续回滚与表数量断言；避免新迁移已发布但集成测试仍停留在 v42 的验证盲区。
