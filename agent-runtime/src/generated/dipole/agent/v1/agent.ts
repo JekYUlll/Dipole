@@ -2158,6 +2158,26 @@ export interface AgentOwnedMemory {
      * @generated from protobuf field: int64 created_at_unix_ms = 16
      */
     createdAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string memory_root_id = 17
+     */
+    memoryRootId: string;
+    /**
+     * @generated from protobuf field: uint32 memory_version = 18
+     */
+    memoryVersion: number;
+    /**
+     * @generated from protobuf field: string supersedes_memory_id = 19
+     */
+    supersedesMemoryId: string;
+    /**
+     * @generated from protobuf field: string corrected_by_id = 20
+     */
+    correctedById: string;
+    /**
+     * @generated from protobuf field: string correction_reason = 21
+     */
+    correctionReason: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ListOwnedMemoriesResponse
@@ -2196,6 +2216,52 @@ export interface RevokeOwnedMemoryRequest {
      * @generated from protobuf field: string reason = 4
      */
     reason: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CorrectOwnedMemoryRequest
+ */
+export interface CorrectOwnedMemoryRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: string memory_id = 3
+     */
+    memoryId: string;
+    /**
+     * @generated from protobuf field: uint32 expected_version = 4
+     */
+    expectedVersion: number;
+    /**
+     * @generated from protobuf field: string content = 5
+     */
+    content: string;
+    /**
+     * @generated from protobuf field: string compact_content = 6
+     */
+    compactContent: string;
+    /**
+     * @generated from protobuf field: string reason = 7
+     */
+    reason: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CorrectOwnedMemoryResponse
+ */
+export interface CorrectOwnedMemoryResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentOwnedMemory previous = 1
+     */
+    previous?: AgentOwnedMemory;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentOwnedMemory corrected = 2
+     */
+    corrected?: AgentOwnedMemory;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.PublishMcpReadinessEvidenceRequest
@@ -8680,7 +8746,12 @@ class AgentOwnedMemory$Type extends MessageType<AgentOwnedMemory> {
             { no: 13, name: "revoked_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
             { no: 14, name: "revoked_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 15, name: "revoke_reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 16, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 16, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 17, name: "memory_root_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 18, name: "memory_version", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 19, name: "supersedes_memory_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 20, name: "corrected_by_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 21, name: "correction_reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AgentOwnedMemory>): AgentOwnedMemory {
@@ -8700,6 +8771,11 @@ class AgentOwnedMemory$Type extends MessageType<AgentOwnedMemory> {
         message.revokedById = "";
         message.revokeReason = "";
         message.createdAtUnixMs = 0n;
+        message.memoryRootId = "";
+        message.memoryVersion = 0;
+        message.supersedesMemoryId = "";
+        message.correctedById = "";
+        message.correctionReason = "";
         if (value !== undefined)
             reflectionMergePartial<AgentOwnedMemory>(this, message, value);
         return message;
@@ -8756,6 +8832,21 @@ class AgentOwnedMemory$Type extends MessageType<AgentOwnedMemory> {
                     break;
                 case /* int64 created_at_unix_ms */ 16:
                     message.createdAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string memory_root_id */ 17:
+                    message.memoryRootId = reader.string();
+                    break;
+                case /* uint32 memory_version */ 18:
+                    message.memoryVersion = reader.uint32();
+                    break;
+                case /* string supersedes_memory_id */ 19:
+                    message.supersedesMemoryId = reader.string();
+                    break;
+                case /* string corrected_by_id */ 20:
+                    message.correctedById = reader.string();
+                    break;
+                case /* string correction_reason */ 21:
+                    message.correctionReason = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -8817,6 +8908,21 @@ class AgentOwnedMemory$Type extends MessageType<AgentOwnedMemory> {
         /* int64 created_at_unix_ms = 16; */
         if (message.createdAtUnixMs !== 0n)
             writer.tag(16, WireType.Varint).int64(message.createdAtUnixMs);
+        /* string memory_root_id = 17; */
+        if (message.memoryRootId !== "")
+            writer.tag(17, WireType.LengthDelimited).string(message.memoryRootId);
+        /* uint32 memory_version = 18; */
+        if (message.memoryVersion !== 0)
+            writer.tag(18, WireType.Varint).uint32(message.memoryVersion);
+        /* string supersedes_memory_id = 19; */
+        if (message.supersedesMemoryId !== "")
+            writer.tag(19, WireType.LengthDelimited).string(message.supersedesMemoryId);
+        /* string corrected_by_id = 20; */
+        if (message.correctedById !== "")
+            writer.tag(20, WireType.LengthDelimited).string(message.correctedById);
+        /* string correction_reason = 21; */
+        if (message.correctionReason !== "")
+            writer.tag(21, WireType.LengthDelimited).string(message.correctionReason);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -8960,6 +9066,153 @@ class RevokeOwnedMemoryRequest$Type extends MessageType<RevokeOwnedMemoryRequest
  * @generated MessageType for protobuf message dipole.agent.v1.RevokeOwnedMemoryRequest
  */
 export const RevokeOwnedMemoryRequest = new RevokeOwnedMemoryRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CorrectOwnedMemoryRequest$Type extends MessageType<CorrectOwnedMemoryRequest> {
+    constructor() {
+        super("dipole.agent.v1.CorrectOwnedMemoryRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "memory_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "expected_version", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 5, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "compact_content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CorrectOwnedMemoryRequest>): CorrectOwnedMemoryRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.memoryId = "";
+        message.expectedVersion = 0;
+        message.content = "";
+        message.compactContent = "";
+        message.reason = "";
+        if (value !== undefined)
+            reflectionMergePartial<CorrectOwnedMemoryRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CorrectOwnedMemoryRequest): CorrectOwnedMemoryRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* string memory_id */ 3:
+                    message.memoryId = reader.string();
+                    break;
+                case /* uint32 expected_version */ 4:
+                    message.expectedVersion = reader.uint32();
+                    break;
+                case /* string content */ 5:
+                    message.content = reader.string();
+                    break;
+                case /* string compact_content */ 6:
+                    message.compactContent = reader.string();
+                    break;
+                case /* string reason */ 7:
+                    message.reason = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CorrectOwnedMemoryRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string memory_id = 3; */
+        if (message.memoryId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.memoryId);
+        /* uint32 expected_version = 4; */
+        if (message.expectedVersion !== 0)
+            writer.tag(4, WireType.Varint).uint32(message.expectedVersion);
+        /* string content = 5; */
+        if (message.content !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.content);
+        /* string compact_content = 6; */
+        if (message.compactContent !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.compactContent);
+        /* string reason = 7; */
+        if (message.reason !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.reason);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CorrectOwnedMemoryRequest
+ */
+export const CorrectOwnedMemoryRequest = new CorrectOwnedMemoryRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CorrectOwnedMemoryResponse$Type extends MessageType<CorrectOwnedMemoryResponse> {
+    constructor() {
+        super("dipole.agent.v1.CorrectOwnedMemoryResponse", [
+            { no: 1, name: "previous", kind: "message", T: () => AgentOwnedMemory },
+            { no: 2, name: "corrected", kind: "message", T: () => AgentOwnedMemory }
+        ]);
+    }
+    create(value?: PartialMessage<CorrectOwnedMemoryResponse>): CorrectOwnedMemoryResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<CorrectOwnedMemoryResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CorrectOwnedMemoryResponse): CorrectOwnedMemoryResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.AgentOwnedMemory previous */ 1:
+                    message.previous = AgentOwnedMemory.internalBinaryRead(reader, reader.uint32(), options, message.previous);
+                    break;
+                case /* dipole.agent.v1.AgentOwnedMemory corrected */ 2:
+                    message.corrected = AgentOwnedMemory.internalBinaryRead(reader, reader.uint32(), options, message.corrected);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CorrectOwnedMemoryResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.AgentOwnedMemory previous = 1; */
+        if (message.previous)
+            AgentOwnedMemory.internalBinaryWrite(message.previous, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* dipole.agent.v1.AgentOwnedMemory corrected = 2; */
+        if (message.corrected)
+            AgentOwnedMemory.internalBinaryWrite(message.corrected, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CorrectOwnedMemoryResponse
+ */
+export const CorrectOwnedMemoryResponse = new CorrectOwnedMemoryResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class PublishMcpReadinessEvidenceRequest$Type extends MessageType<PublishMcpReadinessEvidenceRequest> {
     constructor() {
@@ -9343,6 +9596,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListContextMemories", options: {}, I: ListContextMemoriesRequest, O: ListContextMemoriesResponse },
     { name: "ListOwnedMemories", options: {}, I: ListOwnedMemoriesRequest, O: ListOwnedMemoriesResponse },
     { name: "RevokeOwnedMemory", options: {}, I: RevokeOwnedMemoryRequest, O: AgentOwnedMemory },
+    { name: "CorrectOwnedMemory", options: {}, I: CorrectOwnedMemoryRequest, O: CorrectOwnedMemoryResponse },
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },

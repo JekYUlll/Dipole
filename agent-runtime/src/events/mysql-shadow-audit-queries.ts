@@ -6,6 +6,8 @@ export const GET_AGENT_SHADOW_PLAN = "SELECT task_uuid, event_id, event_type, pl
 
 export const INSERT_AGENT_SHADOW_STEP = "INSERT INTO agent_shadow_steps (\n    task_uuid, step_no, capability_id, status, input_json\n) VALUES (?, ?, ?, 'planned', ?)";
 
+export const INSERT_AGENT_MEMORY_TASK_LINEAGE = "INSERT INTO agent_memory_task_lineage (\n    memory_uuid, task_uuid, representation, source\n) VALUES (?, ?, ?, 'runtime_write')\nON DUPLICATE KEY UPDATE\n    representation = IF(representation = VALUES(representation), representation, NULL)";
+
 export const CLAIM_AGENT_SHADOW_STEP = "UPDATE agent_shadow_steps\nSET status = 'running', claim_token = ?, attempt_count = attempt_count + 1,\n    started_at = UTC_TIMESTAMP(), lease_expires_at = TIMESTAMPADD(MICROSECOND, ?, UTC_TIMESTAMP()),\n    finished_at = NULL, last_error = NULL\nWHERE task_uuid = ? AND step_no = ? AND (\n    status IN ('planned', 'failed') OR\n    (status = 'running' AND lease_expires_at < UTC_TIMESTAMP())\n)";
 
 export const GET_AGENT_SHADOW_STEP = "SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1";
