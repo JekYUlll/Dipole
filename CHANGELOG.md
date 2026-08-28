@@ -26,6 +26,7 @@
 - Sync Service 增加 Cassandra hydration evidence v1 与 `sync-cassandra-hydration-evidence` CLI：分别记录 `shadow|primary` 窗口的 Cassandra 命中、MySQL fallback、缺失/冲突/错误和 p95，按统一策略输出低敏 `eligible|blocked`；该证据不改变 `sync.cassandra_primary_hydration` 默认关闭状态。
 - Sync Service 为 Cassandra primary/fallback hydration 增加运行时 Prometheus 证据：按低基数 `hit|fallback|error|cancelled` 记录请求计数和耗时，保留原有日志观测接口；指标只在显式构造 Cassandra primary 路径时注册，不改变默认关闭和即时回退行为。
 - 新增 `sync-cassandra-hydration-snapshot`：严格解析 Sync Service Prometheus 文本快照，绑定显式服务、revision、模式与时间窗口，聚合路由计数并以有限 histogram 桶保守计算 hit p95，输出既有 hydration evidence v1；缺失命中 histogram、未知 outcome、重复 histogram 或无请求均 fail closed。
+- 修正 hydration snapshot 的窗口语义：CLI 现在要求起止 Prometheus 快照，对生命周期累计 counter/histogram 做单调差分；counter reset、histogram 缺失或桶漂移均拒绝生成 evidence，避免把进程累计值误归因到 rollout 窗口。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
