@@ -443,7 +443,7 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 }
 
 func timelineNotifyData(envelope *platformKafka.Envelope, payload service.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
-	if mode != wsTransport.TimelineNotifyShadow || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
+	if (mode != wsTransport.TimelineNotifyShadow && mode != wsTransport.TimelineNotifyPrimary) || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
 		return wsTransport.SyncItemNotifyData{}, false
 	}
 	eventID := payload.MessageID

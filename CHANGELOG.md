@@ -17,6 +17,7 @@
 
 ### 新增
 
+- Gateway/WS 新增 `message.timeline_notify_mode=primary`：与客户端 `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐，继续发送无正文 `sync.item.notify.v1` locator，支持客户端按会话序号向 Cassandra 主读路径补拉；`off|shadow` 行为保持兼容，回切只需恢复原模式。
 - Sync Web 客户端支持 `VITE_TIMELINE_NOTIFY_MODE=primary`：收到经过严格校验的 `sync.item.notify.v1` 后，按会话 `message_seq` 串行补拉缺口，只有目标序号和 `message_uuid` 完整匹配才合并消息；事件去重、失败隔离和 shadow/off 兼容行为保持不变。服务端 Cassandra 主读仍需独立灰度证据才能启用。
 - Agent Memory 增加 reviewed corpus v1 语言中立 Schema、双 reviewer/第三方 adjudicator 评测器和 `eval:memory-corpus-review` 离线 CLI。语料只保存候选类型、资源范围、证据数量与内容哈希；CLI 仅输出低敏哈希/计数报告，退出码 `0/2/1` 分别表示通过、门禁失败和输入错误，当前仍需真实脱敏语料与人工签署后才可用于灰度。
 - Agent Memory reviewed corpus 增加 owner-only source manifest loader：加载前校验绝对规范路径、不可跟随符号链接、regular/single-link 文件、owner 权限、2 MiB 大小、审批有效期及 corpus/review SHA-256；失败不会进入评测或晋级。该 loader 仍只服务离线证据，生产自动写入保持关闭。
@@ -32,6 +33,11 @@
 
 ### 验证
 
+- C++ Realtime Delivery C3 真实隔离故障演练通过：14/14 C++ build/CTest、5/5 对比测试，以及 Controller 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 C++ primary 停止恢复均通过；报告绑定当前 Git revision、Redis/Kafka 镜像、C++ 二进制、observation 与 journal 哈希。C++ primary、双 group checkpoint 与自动回切证据已具备，生产灰度和性能收益门槛仍保持关闭。
+- Redis Sentinel 三节点真实隔离 smoke 通过：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、Hot Group 和限流语义保持可用，旧 master 重新加入为 replica；切主窗口的 Pub/Sub at-most-once 边界仍由 AD-017 跟踪。
+- Elasticsearch Search Service 真实隔离契约通过，验证 Core-derived scope、内部 RPC 和 Elasticsearch 9.5.2 查询路径；三节点 Kafka + Elasticsearch Search Indexer smoke 通过，created、recalled tombstone 与迟到 edited 事件最终收敛为 revision 3 且 `searchable=false`。
+- Cassandra Message Store 真实隔离读路由 smoke 通过：migration v47、Cassandra Timeline 主读、payload 损坏回退和缺行回退均完成验证；Sync hydration smoke 同时通过 Metadata 回填、重复消息恢复和 Legacy ID 恢复。
+- 修正 MySQL migration 集成测试版本基线：迁移已扩展至 v47，测试此前仍按 v44 计算回滚步数，导致 Metadata v12 未被重新执行、回填断言读不到记录；当前按实际最高迁移版本验证回滚和重放。
 - 新增 `scripts/pencil-safe-edit.test.mjs`，用 fake Pencil CLI 覆盖有效 `.pen` 与导出原子提交、超时清理临时文件并保持 canonical 不变两条回归路径；测试 `2/2` 通过。
 - 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。
 - Pencil CLI `0.3.5` 认证和版本检查通过；Agent Task Timeline 增量任务在画布调用阶段超时终止，未产生 `.pen` 或导出图，canonical 设计文件保持不变，记录为 `AD-044`。

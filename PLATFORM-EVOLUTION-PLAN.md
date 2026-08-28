@@ -288,6 +288,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Web Sync Engine 将热群补拉消息与群 `message_seq` 原子写入 IndexedDB，落库后再 ACK 设备群 checkpoint；`off` 模式保持不 ACK 的内存兼容路径。
 - [x] 补齐 Direct Timeline `after_seq` 的 HTTP、Message v1 gRPC、Local/Remote/Shadow 与 Cassandra cohort/fallback 契约，使单聊和群聊共享会话 Seq 增量语义。
 - [x] 增加默认关闭的 `sync.item.notify.v1` shadow 协议；通知只携带版本化 locator，现有完整 WS 正文继续投递，热群保留单一聚合 notify + pull 路径。
+- [x] 打通 Gateway/WS `message.timeline_notify_mode=primary` 与 Web `VITE_TIMELINE_NOTIFY_MODE=primary` 配置契约；primary 仍只投递无正文 locator，客户端完成连续序列和 UUID 校验后补拉，服务端 Cassandra 观测门禁独立控制。
 - [x] 增加 Web Timeline shadow verifier、会话级补洞/去重和有界遥测；固化完整 24 小时、至少 100 次 match、零 missing/mismatch/error/invalid 的晋级门禁。
 - [x] 增加 Web Timeline notify primary 客户端路径：按通知的 `conversation_seq` 串行补拉，完成 UUID/序列连续性校验后才交付消息；`off|shadow` 保持兼容，服务端 Cassandra 主读灰度证据仍未晋级。
 - [ ] 在线 Sync Item 通知直接驱动客户端按 `conversation_seq` 拉取 Cassandra 主 Timeline，并完成主读灰度门禁。
@@ -302,6 +303,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
 - [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
 - [x] 为 Sync Cassandra primary/fallback hydration 接入低基数运行时计数与耗时 collector，保留原有日志观测和 MySQL 即时回退；真实客户端窗口、共享环境采集、责任人批准与可执行回切仍待完成。
+- [x] 修正 migration 集成测试的最高版本基线至 v47，并通过真实 MySQL/Cassandra smoke 验证 Metadata 回填、hydration 和重复消息恢复。
 - [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
 - [ ] 完成灰度后停止旧接口新增能力，经过一个兼容周期再讨论移除。
 
@@ -459,7 +461,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
     - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
-- [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
+- [x] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练；C3 真实隔离演练覆盖 Controller/C++ 进程替换、Redis outage、Kafka member loss/rejoin、过期 freeze 自动回切和 primary 停止恢复，证据归档于 `/tmp/dipole-c3-cutover-fault-report.json` 与 `/tmp/dipole-c3-cutover-fault-report-controller.json`，报告绑定当前 revision 和依赖/二进制哈希。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
 
 **阶段四验收：** C++ 实现通过同一 contract test，在目标负载下取得可复现收益，故障不会影响 Go 业务控制面，并完成自动回切演练。
