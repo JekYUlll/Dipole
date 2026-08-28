@@ -20,7 +20,8 @@ describe("ModelShadowPlanner", () => {
       messages: [{
         id: 42n, serverMessageId: "M42", clientMessageId: "C42", conversationKey: "group:G1", sequence: 42n,
         senderId: "U200", targetType: 2, targetId: "G1", messageType: 1, content: "延期风险待确认",
-        fileId: "", fileName: "", fileSize: 0n, fileUrl: "", fileContentType: ""
+        fileId: "", fileName: "", fileSize: 0n, fileUrl: "", fileContentType: "",
+        sentAt: { seconds: 1n, nanos: 0 }
       }]
     };
     const readConversation = vi.fn(async (_context, conversationId: string, limit: number) => {
@@ -39,6 +40,7 @@ describe("ModelShadowPlanner", () => {
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
     expect(prompt).toContain('"sourceType":"conversation_message"');
     expect(prompt).toContain("延期风险待确认");
+    expect(prompt).toContain('\\"seconds\\":\\"1\\"');
     expect(prompt).toContain('"trust":"untrusted"');
   });
 
