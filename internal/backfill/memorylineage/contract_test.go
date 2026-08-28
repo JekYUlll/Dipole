@@ -2,6 +2,7 @@ package memorylineage
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -73,5 +74,43 @@ func TestContractsRejectTrailingJSON(t *testing.T) {
 	}
 	if _, err := ParseManifest(append(mustJSON(manifest), []byte(`{}`)...)); err == nil {
 		t.Fatal("expected trailing JSON rejection")
+	}
+}
+
+func TestApprovalBindsManifestAndOperator(t *testing.T) {
+	manifest, err := NewManifest(42, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval, err := NewApproval(manifest, "memory-lineage-v1", "ops-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseApproval(mustJSON(approval), manifest, "memory-lineage-v1"); err != nil {
+		t.Fatalf("ParseApproval() error = %v", err)
+	}
+	approval.JobName = "other-job"
+	if _, err := ParseApproval(mustJSON(approval), manifest, "memory-lineage-v1"); err == nil {
+		t.Fatal("expected job binding rejection")
+	}
+}
+
+func TestContractFilesAreBounded(t *testing.T) {
+	manifest, err := NewManifest(42, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := t.TempDir() + "/manifest.json"
+	if err := os.WriteFile(path, mustJSON(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseManifestFile(path); err != nil {
+		t.Fatalf("ParseManifestFile() error = %v", err)
+	}
+	if err := os.WriteFile(path, make([]byte, 64*1024+1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseManifestFile(path); err == nil {
+		t.Fatal("expected oversized contract rejection")
 	}
 }
