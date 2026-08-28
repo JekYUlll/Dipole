@@ -486,6 +486,10 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	if _, err = server.WithToolAudits(audit); err != nil {
 		t.Fatalf("configure Tool audit: %v", err)
 	}
+	timeline := &taskTimelineStub{}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
 	requestContext := grpccommon.RequestContext("", "dipole-agent")
 	requestContext.RequestId, requestContext.TraceId = "REQ-1", "TRACE-1"
 	response, err := server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
@@ -495,6 +499,9 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	})
 	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP || audit.begin.ApprovalUUID != "APR-1" {
 		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
+	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventToolInvocation || timeline.events[0].Status != "running" {
+		t.Fatalf("unexpected Tool timeline begin: %+v", timeline.events)
 	}
 	command, err := server.ResolveMcpToolCommand(context.Background(), &agentv1.ResolveMcpToolCommandRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
@@ -518,6 +525,9 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	})
 	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 || audit.finish.ActionReference == nil || audit.finish.ActionReference.ResourceUUID != "MSG-1" {
 		t.Fatalf("unexpected Tool finish: response=%+v audit=%+v err=%v", finishResponse, audit.finish, err)
+	}
+	if len(timeline.events) != 2 || timeline.events[1].Status != "completed" {
+		t.Fatalf("unexpected Tool timeline finish: %+v", timeline.events)
 	}
 	_, err = server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"),
