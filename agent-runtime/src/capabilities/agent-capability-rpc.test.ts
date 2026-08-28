@@ -2,9 +2,57 @@ import { describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
+import type { ExecutionContext } from "../runtime/execution-context.js";
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
+const conversationReadContext = (overrides: Partial<ExecutionContext> = {}): ExecutionContext => ({
+  tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1",
+  mode: "shadow", permissions: ["conversation.read"],
+  resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
+  approvedCapabilities: [], ...overrides
+});
+
 describe("AgentCapabilityRPCClient", () => {
+  it("maps canonical group conversation ids to trusted RPC targets", async () => {
+    const readConversation = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", targetId: "G123", limit: 20 });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { found: true, reason: "", targetId: "G123", targetType: 2, messages: [] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ readConversation } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.readConversation(conversationReadContext({ requestId: "REQ-1", traceId: "TRACE-1" }), "group:G123", 20))
+      .resolves.toMatchObject({ found: true, targetId: "G123", targetType: 2, messages: [] });
+  });
+
+  it("maps direct conversations relative to the authenticated principal", async () => {
+    const readConversation = vi.fn((input, _metadata, _options, callback) => {
+      expect(input.targetId).toBe("U200");
+      callback(null, { found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: [] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ readConversation } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.readConversation(conversationReadContext(), "direct:U200:U100", 1))
+      .resolves.toEqual({ found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: [] });
+  });
+
+  it("rejects invalid scopes and conflicting RPC responses", async () => {
+    const readConversation = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, { found: true, reason: "", targetId: "U999", targetType: 1, messages: [] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ readConversation } as unknown as IAgentCapabilityServiceClient, "secret");
+    const context = conversationReadContext();
+
+    await expect(client.readConversation(context, "direct:U200:U300", 20)).rejects.toThrow("request is invalid");
+    await expect(client.readConversation(context, "group:G123", 101)).rejects.toThrow("request is invalid");
+    await expect(client.readConversation(context, "direct:U100:U200", 20)).rejects.toThrow("conflicting target");
+    expect(readConversation).toHaveBeenCalledTimes(1);
+  });
+
   it("resolves only an exact low-sensitive fresh readiness receipt", async () => {
     const profile = "b".repeat(64);
     const runtime = "a".repeat(64);
