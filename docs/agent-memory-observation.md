@@ -21,6 +21,8 @@ v45 的 `agent_memory_candidates` 只保存 `compactContent` 摘要、候选来�
 
 Ledger 的写入不会改变 `agent_memories`。只有后续经过 reviewer、scope/TTL/correction 校验和 Temporal durable receipt 的显式投影，才可以创建长期 Memory。
 
+v46 增加 append-only review ledger。`accepted|rejected` 决策绑定候选哈希、reviewer、有限理由、审核时间和 review hash；候选状态更新与审核记录在同一 MySQL 事务中完成。重复决策只有在完整 review hash 一致时才返回 duplicate，候选缺失、已审核或哈希漂移均回滚并 fail closed。回滚 v46 会删除审核表，保留 v45 候选记录，不会删除 Memory。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。

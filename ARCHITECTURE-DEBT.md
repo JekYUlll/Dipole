@@ -122,6 +122,7 @@
 - **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回、开放 owner 擦除 API或根据 Memory 自动执行动作前，完成派生域删除语义、历史索引完整性、Temporal/对象存储治理、真实 owner correction/retrieval 验收及安全评审；当前仅允许受控 seed、Shadow 读取、只读影响审计及默认关闭的 owner 查看、撤销和追加纠正，内部擦除方法没有外部调用路径。
 - **本轮进展：** 新增默认 shadow-only 的 Observation/Reflection worker 与 `memory-candidate.v1` 严格契约。Observation 以事件 ID 幂等提取决定、任务和风险片段，Reflection 仅聚合同租户/主体/Agent/资源范围内的唯一 evidence window；两者都不访问模型、数据库、Kafka 或 Memory sink。超限、凭据模式、跨范围和重复窗口均 fail closed，后续仍需 candidate ledger、人工评审、Temporal durable 编排和真实 reviewed corpus。
 - **本轮进展：** migration v45 与 TS MySQL ledger 持久化候选摘要、来源/证据 ID、策略版本、规范哈希和 `pending|accepted|rejected` 状态；重复候选必须通过 exact hash，冲突 fail closed，完整 candidate content 不进入 SQL 参数。ledger 仍不授予 `agent_memories` 写权限，人工评审、accepted 投影、Temporal receipt 和真实 corpus 继续待完成。
+- **本轮进展：** migration v46 增加 append-only review ledger；`accepted|rejected` 记录绑定 candidate hash、reviewer、有限理由、时间和 review hash，并与候选状态在同一事务内更新。精确重复审查可重放，candidate/hash/status 漂移回滚；v46 回滚保留 v45 候选且不删除 Memory。accepted 到 `agent_memories` 的 Core 投影、Temporal receipt、双人/owner 策略和真实 reviewed corpus 仍未接线。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 
