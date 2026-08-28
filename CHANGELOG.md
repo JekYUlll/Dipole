@@ -356,6 +356,8 @@
 
 ### 变更
 
+- 更新正式技术架构图以匹配当前实现：补充 Core/Message/Gateway/Sync/Search/Agent Runtime 边界、`user_sync_inbox` Sync Timeline、sqlc 数据访问及 Cassandra/Elasticsearch 影子投影；移除 `AutoMigrate`、单体无 Inbox 和旧 Eino 主链路等过时描述。该图仅记录当前已实现或明确默认关闭的能力，不改变运行配置。
+
 - Core RPC Agent 方法 allowlist 补齐 readiness evidence publish/resolve；此前真实 RPC 部署会在 MCP egress freshness 查询时返回 `PermissionDenied`。全栈演练中的 subscription、Run、Workflow projection、MCP Invocation/Round、readiness 和 Artifact 均改由正式 TS `AgentCapabilityRPCClient` 访问隔离 Go mTLS fixture。
 - 外部 MCP 全栈演练脚本不再内嵌两字段 JSON 判断，统一调用 Runtime 契约校验 CLI；证据创建和离线复核共享相同 canonical hash、时间与成功不变量。
 - 外部 MCP fresh-readiness egress gate 现在除双 binding、hash 和时间结构外，还要求 `expiresAt` 严格晚于 Worker 当前时钟；Worker 复用已有可注入时钟完成每次连接前校验，过期证据在 raw Registry、Catalog 和网络访问前拒绝。

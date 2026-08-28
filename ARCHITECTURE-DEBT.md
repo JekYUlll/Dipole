@@ -10,6 +10,17 @@
 - 开始处理时补充负责人或关联 Issue/PR；解决后记录提交、验证方式和完成日期。
 - 本台账描述风险和演进方向，不代表当前迭代立即修改对应实现。
 
+### AD-042：正式技术架构图与已发布分层拓扑发生漂移
+
+- **优先级：** P2
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **完成日期：** 2026-08-28
+- **影响范围：** `docs/technical-architecture.svg`、微服务边界、Timeline/Projection 说明、Agent Runtime 迁移叙事
+- **解决方式：** 将架构图更新为当前 Core/Message/Gateway/Sync/Search/Agent Runtime 分层，补充 sqlc、`user_sync_inbox`、Cassandra/Elasticsearch 影子投影和回滚门禁，并移除 `AutoMigrate`、无 Inbox 单体及旧 Eino 主链路的过时表述。图中仍明确标注本地合并启动、影子能力和默认关闭边界。
+- **验证：** `scripts/check-architecture-docs.sh`、SVG XML 解析和 `git diff --check` 通过；本次只修改文档，不改变运行配置或服务权限。
+- **长期约束：** 服务拓扑、数据 ownership、默认开关或语言职责变化时，必须同步更新架构图、对应正式文档、更新日志和台账；架构图不得把 shadow、fallback 或离线契约描述成生产主路径。
+
 ## 待处理
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
