@@ -5,6 +5,8 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { ResolveFreshMcpReadinessEvidenceResponse } from "./agent.js";
+import type { ResolveFreshMcpReadinessEvidenceRequest } from "./agent.js";
 import type { PublishMcpReadinessEvidenceResponse } from "./agent.js";
 import type { PublishMcpReadinessEvidenceRequest } from "./agent.js";
 import type { GetArtifactResponse } from "./agent.js";
@@ -319,6 +321,13 @@ export interface IAgentCapabilityServiceClient {
     publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
     publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
     publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: ResolveFreshMcpReadinessEvidence
+     */
+    resolveFreshMcpReadinessEvidence(input: ResolveFreshMcpReadinessEvidenceRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    resolveFreshMcpReadinessEvidence(input: ResolveFreshMcpReadinessEvidenceRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    resolveFreshMcpReadinessEvidence(input: ResolveFreshMcpReadinessEvidenceRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    resolveFreshMcpReadinessEvidence(input: ResolveFreshMcpReadinessEvidenceRequest, callback: (err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -573,5 +582,12 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[34];
         return this.makeUnaryRequest<PublishMcpReadinessEvidenceRequest, PublishMcpReadinessEvidenceResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: PublishMcpReadinessEvidenceRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): PublishMcpReadinessEvidenceResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: ResolveFreshMcpReadinessEvidence
+     */
+    resolveFreshMcpReadinessEvidence(input: ResolveFreshMcpReadinessEvidenceRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ResolveFreshMcpReadinessEvidenceResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[35];
+        return this.makeUnaryRequest<ResolveFreshMcpReadinessEvidenceRequest, ResolveFreshMcpReadinessEvidenceResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: ResolveFreshMcpReadinessEvidenceRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ResolveFreshMcpReadinessEvidenceResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

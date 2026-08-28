@@ -5,6 +5,44 @@ import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
 describe("AgentCapabilityRPCClient", () => {
+  it("resolves only an exact low-sensitive fresh readiness receipt", async () => {
+    const profile = "b".repeat(64);
+    const runtime = "a".repeat(64);
+    const resolveFreshMcpReadinessEvidence = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ tenantId: "dipole", profileBindingSha256: profile, runtimeBindingSha256: runtime });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, {
+        found: true, evidenceId: "e".repeat(64), schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: profile, runtimeBindingSha256: runtime, contentSha256: "c".repeat(64), status: "recorded",
+        collectedAtUnixMs: 1_000n, expiresAtUnixMs: 2_000n
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ resolveFreshMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", profile, runtime)).resolves.toMatchObject({
+      evidenceId: "e".repeat(64), contentSha256: "c".repeat(64)
+    });
+  });
+
+  it("accepts an empty readiness result and rejects contradictory empty evidence", async () => {
+    const resolveFreshMcpReadinessEvidence = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        found: false, evidenceId: "", schemaVersion: "", profileBindingSha256: "", runtimeBindingSha256: "",
+        contentSha256: "", status: "", collectedAtUnixMs: 0n, expiresAtUnixMs: 0n
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ resolveFreshMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", "b".repeat(64), "a".repeat(64))).resolves.toBeUndefined();
+    resolveFreshMcpReadinessEvidence.mockImplementationOnce((_input, _metadata, _options, callback) => {
+      callback(null, { found: false, evidenceId: "e".repeat(64) });
+      return {};
+    });
+    await expect(client.resolveFreshMcpReadinessEvidence("dipole", "b".repeat(64), "a".repeat(64)))
+      .rejects.toThrow("conflicting evidence");
+  });
+
   it("publishes v2 readiness evidence with service-owned provenance and verifies the deterministic receipt", async () => {
     const evidence = {
       schemaVersion: "dipole.agent.external-mcp-readiness-evidence.v2" as const,
