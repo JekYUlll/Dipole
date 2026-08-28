@@ -17,6 +17,8 @@
 
 ### 新增
 
+- Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
+
 - Agent Memory 增加受认证的 `PromoteMemoryCandidate` Core gRPC 与 Gateway HTTP 控制入口：仅允许已认证 Gateway 绑定 owner principal，服务端重新校验候选/审核哈希并返回幂等的 observational Memory；该入口不启动 Temporal、不消费 Runtime 旁路，也不打开自动写入。
 
 ### 安全
