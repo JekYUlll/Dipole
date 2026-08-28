@@ -611,6 +611,26 @@ message ListContextMemoriesResponse {
   repeated AgentContextMemory memories = 1;
 }
 
+message PublishMcpReadinessEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string profile_binding_sha256 = 3;
+  bytes evidence_json = 4;
+  int64 expires_at_unix_ms = 5;
+}
+
+message PublishMcpReadinessEvidenceResponse {
+  string evidence_id = 1;
+  string schema_version = 2;
+  string profile_binding_sha256 = 3;
+  string runtime_binding_sha256 = 4;
+  string content_sha256 = 5;
+  string status = 6;
+  int64 collected_at_unix_ms = 7;
+  int64 expires_at_unix_ms = 8;
+  bool created = 9;
+}
+
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
   rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
@@ -646,4 +666,5 @@ service AgentCapabilityService {
   rpc RevokeRuntimePromotion(RevokeRuntimePromotionRequest) returns (RuntimePromotionGrantResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
+  rpc PublishMcpReadinessEvidence(PublishMcpReadinessEvidenceRequest) returns (PublishMcpReadinessEvidenceResponse);
 }

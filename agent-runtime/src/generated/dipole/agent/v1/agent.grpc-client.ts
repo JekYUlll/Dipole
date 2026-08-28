@@ -5,6 +5,8 @@
 import { AgentCapabilityService } from "./agent.js";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
+import type { PublishMcpReadinessEvidenceResponse } from "./agent.js";
+import type { PublishMcpReadinessEvidenceRequest } from "./agent.js";
 import type { GetArtifactResponse } from "./agent.js";
 import type { GetArtifactRequest } from "./agent.js";
 import type { CreateArtifactResponse } from "./agent.js";
@@ -310,6 +312,13 @@ export interface IAgentCapabilityServiceClient {
     getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
     getArtifact(input: GetArtifactRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
     getArtifact(input: GetArtifactRequest, callback: (err: grpc.ServiceError | null, value?: GetArtifactResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: PublishMcpReadinessEvidence
+     */
+    publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
+    publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, callback: (err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void): grpc.ClientUnaryCall;
 }
 /**
  * @generated from protobuf service dipole.agent.v1.AgentCapabilityService
@@ -557,5 +566,12 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     getArtifact(input: GetArtifactRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetArtifactResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[33];
         return this.makeUnaryRequest<GetArtifactRequest, GetArtifactResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: GetArtifactRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetArtifactResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
+     * @generated from protobuf rpc: PublishMcpReadinessEvidence
+     */
+    publishMcpReadinessEvidence(input: PublishMcpReadinessEvidenceRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: PublishMcpReadinessEvidenceResponse) => void)): grpc.ClientUnaryCall {
+        const method = AgentCapabilityService.methods[34];
+        return this.makeUnaryRequest<PublishMcpReadinessEvidenceRequest, PublishMcpReadinessEvidenceResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: PublishMcpReadinessEvidenceRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): PublishMcpReadinessEvidenceResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

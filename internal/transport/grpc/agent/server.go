@@ -28,6 +28,7 @@ type Server struct {
 	repairs              application.AgentWorkflowRepairAuditServiceV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
 	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
+	readinessEvidence    application.AgentMCPReadinessEvidencePublisherV1
 	artifacts            application.AgentArtifactServiceV1
 	subscriptions        application.AgentEventSubscriptionResolverV1
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
@@ -36,6 +37,14 @@ type Server struct {
 	toolRounds           application.AgentMCPToolRoundServiceV1
 	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands      application.AgentMessageCommandExecutionV1
+}
+
+func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
+	if s == nil || publisher == nil {
+		return nil, errors.New("Agent MCP readiness evidence Publisher is required")
+	}
+	s.readinessEvidence = publisher
+	return s, nil
 }
 
 func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSubscriptionControlServiceV1) (*Server, error) {
@@ -549,6 +558,59 @@ func (s *Server) RevokeRuntimePromotion(ctx context.Context, request *agentv1.Re
 		response.RevokedAtUnixMs = grant.RevokedAt.UnixMilli()
 	}
 	return response, nil
+}
+
+func (s *Server) PublishMcpReadinessEvidence(ctx context.Context, request *agentv1.PublishMcpReadinessEvidenceRequest) (*agentv1.PublishMcpReadinessEvidenceResponse, error) {
+	caller, err := authenticatedAgentArtifactCallerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may publish MCP readiness evidence")
+	}
+	if s.readinessEvidence == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP readiness evidence Publisher is unavailable")
+	}
+	if len(request.GetEvidenceJson()) == 0 || len(request.GetEvidenceJson()) > 16*1024 {
+		return nil, status.Error(codes.InvalidArgument, "Agent MCP readiness evidence is invalid")
+	}
+	evidence, err := application.ParseAgentMCPReadinessEvidenceV1(request.GetEvidenceJson())
+	if err != nil {
+		return nil, readinessEvidenceErrorV1(err)
+	}
+	requestContext := request.GetContext()
+	record, created, err := s.readinessEvidence.PublishAgentMCPReadinessEvidence(
+		grpccommon.Correlation(ctx, requestContext),
+		caller,
+		application.AgentMCPReadinessEvidenceRequestV1{
+			TenantID: request.GetTenantId(), ProfileBindingSHA256: request.GetProfileBindingSha256(),
+			RequestID: requestContext.GetRequestId(), TraceID: requestContext.GetTraceId(),
+			ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()), Evidence: evidence,
+		},
+	)
+	if err != nil {
+		return nil, readinessEvidenceErrorV1(err)
+	}
+	if record == nil {
+		return nil, status.Error(codes.Internal, "Agent MCP readiness evidence publication failed")
+	}
+	return &agentv1.PublishMcpReadinessEvidenceResponse{
+		EvidenceId: record.EvidenceUUID, SchemaVersion: record.SchemaVersion,
+		ProfileBindingSha256: record.ProfileBindingSHA256, RuntimeBindingSha256: record.RuntimeBindingSHA256,
+		ContentSha256: record.ContentSHA256, Status: record.Status,
+		CollectedAtUnixMs: record.CollectedAt.UnixMilli(), ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), Created: created,
+	}, nil
+}
+
+func readinessEvidenceErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid):
+		return status.Error(codes.InvalidArgument, "Agent MCP readiness evidence is invalid")
+	case errors.Is(err, application.ErrAgentMCPReadinessEvidenceConflict):
+		return status.Error(codes.FailedPrecondition, "Agent MCP readiness evidence conflicts with immutable history")
+	default:
+		return status.Error(codes.Internal, "Agent MCP readiness evidence publication failed")
+	}
 }
 
 func runtimePromotionOperatorV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

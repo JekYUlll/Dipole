@@ -86,7 +86,9 @@ preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatch
 
 MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表。Go Publisher 会严格解析低敏 schema、限制采集窗口最长 10 分钟、规范化毫秒时间、复算 content SHA-256，并把 tenant、Profile/Runtime binding、operator、request/trace、采集时间和最长一小时有效期一起派生为确定性 Evidence ID。表只支持追加：exact content/provenance 重放返回已有记录，binding、收据、窗口或 provenance 漂移生成新记录；历史过期行保留审计，但 fresh 查询必须同时命中 tenant、Profile binding、Runtime binding、`collected_at <= now` 与 `expires_at > now`。该表不依赖 Agent Task/Run，也不写 activation 状态。
 
-该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计导出，不能单独视为远程 attestation。当前 `index.ts`、采集到 Publisher 的认证 RPC、自动 admission 与真实公网 Shadow 归档均未接线；后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。回滚 v37 前应先停止未来的 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
+Agent Capability 的 additive `PublishMcpReadinessEvidence` RPC 已连接上述 MySQL Publisher。它只允许 transport 认证的 `dipole-agent` 且 RequestContext principal 必须为空；operator 固定取认证 service identity，request/trace 从已验证上下文派生。请求不提供 Evidence ID、Runtime binding、content hash、status 或 activation 字段。Core 限制 evidence JSON 为 16 KiB 并严格解析 v2；TS adapter 会在发送前规范化字段与时间、复算 content SHA-256，并对响应的确定性 Evidence ID、双 binding、状态和时间逐项复核。exact replay 只改变 `created` 为 false。
+
+该 bundle 是可复算的运维完整性证据，尚无 KMS 签名、可信时间戳或独立审计导出，不能单独视为远程 attestation。当前 `index.ts` 自动采集/发布调度、admission consumer 与真实公网 Shadow 归档均未接线；RPC 可用不会自动建立外部连接或激活 Profile。后续只接受由受控 production runtime 在隔离 Shadow tenant 生成并与 trace/audit 联查的 fresh evidence。回滚 v37 前应先停止 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
 
 ## Network Guard 边界
 

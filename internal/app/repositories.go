@@ -27,6 +27,7 @@ type Repositories struct {
 	AgentApprovalGrants    application.AgentApprovalGrantStoreV1
 	AgentPromotions        application.AgentRuntimePromotionGrantStoreV1
 	AgentPromotionControls application.AgentRuntimePromotionControlStoreV1
+	AgentReadinessEvidence application.AgentMCPReadinessEvidenceStoreV1
 	AgentSubscriptions     application.AgentEventSubscriptionStoreV1
 	AgentRepairs           application.AgentWorkflowRepairAuditStoreV1
 	AgentArtifacts         application.AgentArtifactStoreV1
@@ -171,6 +172,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
 	}
 	repos.AgentPromotionControls = promotionControls
+	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
+	}
+	repos.AgentReadinessEvidence = readinessEvidence
 	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc message repository: %w", err)
