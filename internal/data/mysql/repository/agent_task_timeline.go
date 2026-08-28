@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -134,9 +136,12 @@ func (r *AgentPolicyRepository) withTransaction(ctx context.Context, fn func(gen
 }
 
 func timelineEvent(taskUUID, runUUID string, kind application.AgentTaskTimelineEventKindV1, status string) application.AgentTaskTimelineEventV1 {
+	occurredAt := time.Now().UTC()
+	identity := fmt.Sprintf("%s\x00%s\x00%s\x00%s\x00%d", taskUUID, runUUID, kind, status, occurredAt.UnixNano())
+	digest := sha256.Sum256([]byte(identity))
 	return application.AgentTaskTimelineEventV1{
-		EventUUID: fmt.Sprintf("timeline-%s-%d", taskUUID, time.Now().UTC().UnixNano()),
-		TaskUUID:  taskUUID, RunUUID: runUUID, Kind: kind, Status: status, OccurredAt: time.Now().UTC(),
+		EventUUID: hex.EncodeToString(digest[:]),
+		TaskUUID:  taskUUID, RunUUID: runUUID, Kind: kind, Status: status, OccurredAt: occurredAt,
 	}
 }
 
