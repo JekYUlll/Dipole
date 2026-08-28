@@ -53,6 +53,7 @@
 - **本轮进展：** 会话 evidence 的 protobuf Timestamp 已采用显式 `seconds` 字符串和 `nanos` 表示，消除 TypeScript bigint JSON 序列化风险；跨语言消息字段完整性仍需继续扩展测试。
 - **本轮进展：** Planner 对远程会话 evidence 增加 20 条消息与单条 8 KiB 正文上限，并用 `contentTruncated` 保留低敏截断事实；Core 仍负责最终读取授权，后续继续完善分页/检索语义。
 - **本轮进展：** TypeScript `AgentCapabilityRPCClient` 增加 direct/group `conversation.read` 跨语言契约测试，覆盖 canonical target 解析、完整 `ExecutionContext` 类型约束、非法 scope 和响应冲突拒绝；后续仍需完善分页/检索语义与生产灰度。
+- **本轮进展：** RPC 客户端在 transport 边界拒绝超过请求上限的消息响应，并对未找到结果同样执行 target 一致性校验；Planner 的 20 条/8 KiB context 防线继续作为第二层预算保护。
 - **建议方向：** 以已验证的 repair contract 为基础补齐 operator 灰度、运行时告警和全套件稳定运行证据，再以共享环境证据开启前端 flag；继续只返回低敏元数据，随后按证据逐步加入 Artifact 引用与 Pencil/视觉回归。
 - **处理门槛：** Core/Gateway 契约测试覆盖 foreign Task、游标重复/漂移、跨 Run 事件、事件缺失和字段脱敏；前端默认关闭，未收到 v1 response 时保持当前 Task Query 页面。
 
