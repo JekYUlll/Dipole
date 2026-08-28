@@ -21,6 +21,7 @@
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
     "promotion:publish": "tsx src/promotion/promotion-evidence-publish-cli.ts",
+    "mcp:readiness:publish": "tsx src/mcp/external-mcp-readiness-publish-cli.ts",
     "repair:propose": "tsx src/promotion/workflow-repair-proposal-cli.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
