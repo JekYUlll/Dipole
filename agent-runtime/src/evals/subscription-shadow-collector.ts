@@ -6,6 +6,7 @@ import {
 } from "./subscription-shadow-evidence.js";
 
 export const subscriptionShadowCollectionSchemaVersion = "dipole.agent.subscription-shadow-collection.v1" as const;
+const maxPrometheusResponseBytes = 256 * 1024;
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const requestSchema = z.object({
   schema_version: z.literal(subscriptionShadowCollectionSchemaVersion),
@@ -41,7 +42,10 @@ export class HTTPPrometheusQueryClient implements PrometheusQueryClient {
       throw new Error("Subscription Shadow Prometheus query failed");
     }
     if (!response.ok) throw new Error("Subscription Shadow Prometheus query failed");
-    try { return await response.json(); }
+    try {
+      const body = await readBoundedBody(response, maxPrometheusResponseBytes);
+      return JSON.parse(body) as unknown;
+    }
     catch { throw new Error("Subscription Shadow Prometheus response is invalid"); }
   }
 }
@@ -143,3 +147,36 @@ function canonicalDate(raw: string): Date {
   return value;
 }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+
+async function readBoundedBody(response: Response, maximumBytes: number): Promise<string> {
+  const declaredLength = response.headers.get("content-length");
+  if (declaredLength !== null && (!/^\d+$/u.test(declaredLength) || Number(declaredLength) > maximumBytes)) {
+    throw new Error("response body is too large");
+  }
+  if (response.body === null) {
+    const body = await response.text();
+    if (new TextEncoder().encode(body).byteLength > maximumBytes) throw new Error("response body is too large");
+    return body;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > maximumBytes) throw new Error("response body is too large");
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder().decode(bytes);
+}
