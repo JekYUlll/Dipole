@@ -27,6 +27,7 @@
 - **工作区记录：** attempt 创建现将 initial transition、三阶段节点清单和 checkpoint 清单 canonicalize 后不可覆盖保存在同目录，manifest 由代码生成并在每次加载时重算；恢复流程不再依赖操作员重新提供外部清单。lease renewer 与真实故障演练仍待完成。
 - **命令记录：** `dipole-realtime-cutover` 已提供 create/status/单步 advance/renew/rollback，并在每次调用间保留 fsynced 恢复边界。`renew` 进入同一哈希链且不重置冻结中断预算，绑定旧 lease 的 checkpoint/observation 会回退并要求重新采集。持续续期调度、真实 expired-freeze 自动回切和 C++ primary authority 演练仍待完成，CLI 当前不能作为生产切流完成证明。
 - **故障记录：** 隔离 race 演练已使用真实 Kafka/Redis、两个 consumer group 和 TCP fault proxy 证明 controller artifact/journal 崩溃恢复、Redis outage fail-closed、primary member 丢失阻断及恢复后 forward completion；sequence 7 和最终 journal head 已归档于 `benchmarks/c3-cutover-faults-2026-08-28/`。该演练没有启用 C++ primary，也没有执行真实 expired-freeze 自动回切或持续 lease controller，因此 AD-041 继续处理中。
+- **回切修复：** 真实 expired-freeze 演练前审计发现首次 freeze 的直接回切可能缺少 source-node proof。状态机现强制在当前 frozen lease 上追加 source manifest 的 `rollback_frozen_confirmed`，之后才允许 source activation；真实拓扑复验仍待归档。
 - **处理门槛：** 用隔离 topology 证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame；完成进程崩溃、Kafka rebalance、Redis 故障和切换中断演练，并保存可执行回切 receipt 后才能开始 C3 用户/节点灰度。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志

@@ -18,6 +18,7 @@
 ### 安全
 
 - 修复内部开发证书生成脚本的权限覆盖顺序：公开证书保持 `0644`，CA 与服务私钥最终固定为 `0600`；新增临时目录回归测试，防止后续演练或本地部署生成可被其他用户读取的私钥。
+- 修复 C3 首次冻结直接回切的节点证据缺口：`rollback_requested` 现在必须先对当前 frozen lease 使用 source-node manifest 生成独立 `rollback_frozen_confirmed` artifact，再允许 source activation；覆盖 freeze 后尚未完成 target-node confirmation 即超时的路径，避免复用缺失或面向候选节点的旧 proof。
 
 ### 新增
 

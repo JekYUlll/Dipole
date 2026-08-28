@@ -29,6 +29,9 @@ type cutoverFaultDrillReport struct {
 	ControllerCrashRecovered bool                `json:"controller_crash_recovered"`
 	RedisOutageBlocked       bool                `json:"redis_outage_blocked"`
 	KafkaRebalanceBlocked    bool                `json:"kafka_rebalance_blocked"`
+	ExpiredFreezeRolledBack  bool                `json:"expired_freeze_rolled_back"`
+	RollbackFinalSequence    uint64              `json:"rollback_final_sequence"`
+	RollbackJournalHead      string              `json:"rollback_journal_head_sha256"`
 	FinalState               CutoverAttemptState `json:"final_state"`
 	FinalSequence            uint64              `json:"final_sequence"`
 	FinalJournalHeadSHA256   string              `json:"final_journal_head_sha256"`
@@ -348,13 +351,16 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	rollbackJournal := runExpiredFreezeRollbackDrill(t, ctx, client, source, topics, groups, suffix+"-rollback")
 	report := cutoverFaultDrillReport{
 		SchemaVersion: "dipole.realtime.cutover-fault-drill.v1",
 		GitRevision:   os.Getenv("DIPOLE_CUTOVER_DRILL_REVISION"), RedisImage: os.Getenv("DIPOLE_CUTOVER_DRILL_REDIS_IMAGE"),
 		KafkaImage: os.Getenv("DIPOLE_CUTOVER_DRILL_KAFKA_IMAGE"), KafkaClusterID: stableSnapshot.ClusterID,
 		AttemptID: manifest.AttemptID, ControllerCrashArtifact: crashResult.ArtifactSHA256,
 		ControllerCrashRecovered: true, RedisOutageBlocked: true, KafkaRebalanceBlocked: true,
-		FinalState: current.Projection.State, FinalSequence: current.Projection.LastSequence,
+		ExpiredFreezeRolledBack: true, RollbackFinalSequence: rollbackJournal.Projection.LastSequence,
+		RollbackJournalHead: rollbackJournal.HeadSHA256,
+		FinalState:          current.Projection.State, FinalSequence: current.Projection.LastSequence,
 		FinalJournalHeadSHA256: current.HeadSHA256, CompletedAtUnixMS: now().UnixMilli(),
 	}
 	payload, err := json.MarshalIndent(report, "", "  ")
@@ -364,6 +370,116 @@ func TestRealtimeCutoverFaultDrill(t *testing.T) {
 	if err := os.WriteFile(reportPath, append(payload, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func runExpiredFreezeRollbackDrill(
+	t *testing.T,
+	ctx context.Context,
+	client *redis.Client,
+	source *KafkaGoCheckpointSource,
+	topics, groups []string,
+	suffix string,
+) *CutoverAttemptJournal {
+	t.Helper()
+	now := time.Now
+	key := "dipole:c3:fault:" + suffix
+	writer, err := NewRedisAuthorityFenceWriter(client, key, key+":receipt:", time.Hour, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := writer.Apply(ctx, FenceTransitionRequest{
+		TransitionID: "initial-" + suffix, Action: FenceTransitionBootstrap, OperatorID: "fault-drill",
+		Reason: "expired freeze rollback drill", TargetAuthority: AuthorityGo, LeaseUntil: now().Add(5 * time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceNodes := cutoverDrillNodes("source-"+suffix, AuthorityGo)
+	frozenNodes := cutoverDrillNodes("frozen-"+suffix, AuthorityCPP)
+	targetNodes := cutoverDrillNodes("target-"+suffix, AuthorityCPP)
+	checkpointManifest := DualGroupCheckpointManifest{
+		SchemaVersion: DualGroupCheckpointManifestSchemaV1, ManifestID: "checkpoint-" + suffix,
+		Topics: topics,
+		Groups: []KafkaCheckpointGroupSpec{
+			{Role: KafkaCheckpointRoleCompatibility, GroupID: groups[0]},
+			{Role: KafkaCheckpointRolePrimary, GroupID: groups[1]},
+		},
+	}
+	_, sourceSHA, _ := validateExpectedNodeManifest(sourceNodes)
+	_, frozenSHA, _ := validateExpectedNodeManifest(frozenNodes)
+	_, targetSHA, _ := validateExpectedNodeManifest(targetNodes)
+	_, checkpointSHA, _ := validateDualGroupCheckpointManifest(checkpointManifest)
+	manifest := CutoverAttemptManifest{
+		SchemaVersion: CutoverAttemptManifestSchemaV1, AttemptID: "fault-" + suffix,
+		SourceAuthority: AuthorityGo, TargetAuthority: AuthorityCPP, InitialEpoch: 1,
+		InitialLeaseSHA256: initial.NextSHA256, MaxInterruptionMS: 500, CreatedAtUnixMS: now().UnixMilli(),
+		SourceNodesManifestSHA256: sourceSHA, FrozenNodesManifestSHA256: frozenSHA,
+		TargetNodesManifestSHA256: targetSHA, CheckpointManifestSHA256: checkpointSHA,
+	}
+	journal, err := CreateCutoverAttemptJournal(filepath.Join(t.TempDir(), "rollback-attempt"), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := NewCutoverActionArtifactStore(filepath.Join(journal.Directory, "artifacts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inner, err := NewRedisFenceObservationAggregator(client, key+":observation:", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aggregator := cutoverDrillAggregator{client: client, key: key, now: now, inner: inner}
+	collector, err := NewDualGroupCheckpointCollector(source, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor, err := NewProductionCutoverAttemptExecutor(ProductionCutoverExecutorConfig{
+		Manifest: manifest, InitialTransition: initial, SourceNodes: sourceNodes, FrozenNodes: frozenNodes,
+		TargetNodes: targetNodes, CheckpointManifest: checkpointManifest, OperatorID: "fault-drill",
+		LeaseDuration: 2 * time.Minute, Now: now,
+	}, writer, aggregator, collector, artifacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orchestrator, err := NewCutoverAttemptOrchestrator(journal, executor, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := orchestrator.Advance(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := orchestrator.Advance(ctx); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(750 * time.Millisecond)
+	rollback, err := orchestrator.Advance(ctx)
+	if err != nil || !rollback.RollbackTriggered || rollback.EventType != CutoverEventRollbackRequested {
+		t.Fatalf("expired freeze rollback decision=%+v err=%v", rollback, err)
+	}
+	for !terminalCutoverAttemptState(journal.Projection.State) {
+		if _, err := orchestrator.Advance(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	loaded, err := LoadCutoverAttemptJournal(journal.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Projection.State != CutoverAttemptRolledBack || loaded.Projection.LastSequence != 7 {
+		t.Fatalf("expired freeze rollback projection=%+v", loaded.Projection)
+	}
+	payload, err := client.Get(ctx, key).Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := decodeFenceRecord(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Authority != AuthorityGo || record.Phase != FencePhaseActive || record.Epoch != 2 {
+		t.Fatalf("expired freeze rollback fence=%+v", record)
+	}
+	return loaded
 }
 
 func createCutoverDrillTopics(t *testing.T, broker string, topics []string) {

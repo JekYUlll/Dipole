@@ -122,7 +122,7 @@ func (o *CutoverAttemptOrchestrator) nextEvent() (CutoverAttemptEventType, bool,
 		if o.journal.Projection.RollbackNeedsFreeze {
 			return CutoverEventRollbackFreezeApplied, false, nil
 		}
-		return CutoverEventSourceReactivated, false, nil
+		return CutoverEventRollbackFrozenConfirmed, false, nil
 	case CutoverAttemptRollbackFreezeApplied:
 		return CutoverEventRollbackFrozenConfirmed, false, nil
 	case CutoverAttemptRollbackFrozenConfirmed:

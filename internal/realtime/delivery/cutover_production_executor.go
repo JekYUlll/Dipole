@@ -152,11 +152,7 @@ func (e *ProductionCutoverAttemptExecutor) Execute(ctx context.Context, action C
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
-		proofEvent := CutoverEventRollbackFrozenConfirmed
-		if action.ExpectedEpoch == e.config.Manifest.InitialEpoch+1 {
-			proofEvent = CutoverEventFrozenConfirmed
-		}
-		proof, err := latestCutoverPayload[FenceObservationAggregateReceipt](e, action, proofEvent)
+		proof, err := latestCutoverPayload[FenceObservationAggregateReceipt](e, action, CutoverEventRollbackFrozenConfirmed)
 		if err != nil {
 			return CutoverAttemptActionResult{}, err
 		}
@@ -218,7 +214,7 @@ func validProductionCutoverStateEvent(state CutoverAttemptState, eventType Cutov
 	case CutoverAttemptCompleted:
 		return eventType == CutoverEventRollbackRequested
 	case CutoverAttemptRollbackRequested:
-		return eventType == CutoverEventRollbackFreezeApplied || eventType == CutoverEventSourceReactivated
+		return eventType == CutoverEventRollbackFreezeApplied || eventType == CutoverEventRollbackFrozenConfirmed
 	case CutoverAttemptRollbackFreezeApplied:
 		return eventType == CutoverEventRollbackFrozenConfirmed
 	case CutoverAttemptRollbackFrozenConfirmed:

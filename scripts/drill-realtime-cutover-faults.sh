@@ -57,6 +57,9 @@ jq -e '
   .controller_crash_recovered == true and
   .redis_outage_blocked == true and
   .kafka_rebalance_blocked == true and
+  .expired_freeze_rolled_back == true and
+  .rollback_final_sequence == 7 and
+  (.rollback_journal_head_sha256 | test("^[a-f0-9]{64}$")) and
   .final_state == "completed"
 ' "${REPORT_FILE}" >/dev/null
 

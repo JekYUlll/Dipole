@@ -134,8 +134,12 @@ func TestCutoverAttemptOrchestratorAutomaticallyRollsBackExpiredFreeze(t *testin
 		t.Fatalf("expired freeze actions = %+v", executor.actions)
 	}
 	result, err = orchestrator.Advance(context.Background())
-	if err != nil || result.EventType != CutoverEventSourceReactivated {
+	if err != nil || result.EventType != CutoverEventRollbackFrozenConfirmed {
 		t.Fatalf("rollback continuation = %+v, err=%v", result, err)
+	}
+	result, err = orchestrator.Advance(context.Background())
+	if err != nil || result.EventType != CutoverEventSourceReactivated {
+		t.Fatalf("source reactivation = %+v, err=%v", result, err)
 	}
 }
 

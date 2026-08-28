@@ -35,6 +35,7 @@ func TestCutoverAttemptReducerRollsBackFromFrozenWithoutSecondFreeze(t *testing.
 		CutoverEventFreezeApplied,
 		CutoverEventFrozenConfirmed,
 		CutoverEventRollbackRequested,
+		CutoverEventRollbackFrozenConfirmed,
 		CutoverEventSourceReactivated,
 		CutoverEventRollbackCheckpointed,
 		CutoverEventRolledBack,

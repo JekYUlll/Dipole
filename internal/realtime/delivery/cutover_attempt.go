@@ -170,8 +170,8 @@ func (p CutoverAttemptProjection) transition(eventType CutoverAttemptEventType) 
 		if p.RollbackNeedsFreeze && eventType == CutoverEventRollbackFreezeApplied {
 			return CutoverAttemptRollbackFreezeApplied, true, nil
 		}
-		if !p.RollbackNeedsFreeze && eventType == CutoverEventSourceReactivated {
-			return CutoverAttemptSourceReactivated, false, nil
+		if !p.RollbackNeedsFreeze && eventType == CutoverEventRollbackFrozenConfirmed {
+			return CutoverAttemptRollbackFrozenConfirmed, false, nil
 		}
 	case CutoverAttemptRollbackFreezeApplied:
 		if eventType == CutoverEventRollbackFrozenConfirmed {

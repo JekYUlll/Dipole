@@ -12,8 +12,9 @@ import (
 )
 
 type productionObservationAggregatorStub struct {
-	now   *time.Time
-	calls []FenceTransitionReceipt
+	now       *time.Time
+	calls     []FenceTransitionReceipt
+	manifests []FenceExpectedNodeManifest
 }
 
 func (s *productionObservationAggregatorStub) Aggregate(
@@ -22,6 +23,7 @@ func (s *productionObservationAggregatorStub) Aggregate(
 	transition FenceTransitionReceipt,
 ) (FenceObservationAggregateReceipt, error) {
 	s.calls = append(s.calls, transition)
+	s.manifests = append(s.manifests, manifest)
 	nodes, manifestSHA, err := validateExpectedNodeManifest(manifest)
 	if err != nil {
 		return FenceObservationAggregateReceipt{}, err
@@ -352,6 +354,15 @@ func TestProductionCutoverExecutorReactivatesSourceFromInitialFreeze(t *testing.
 	}
 	if journal.Projection.State != CutoverAttemptRolledBack || record.Authority != AuthorityGo || record.Epoch != 2 {
 		t.Fatalf("direct rollback projection=%+v fence=%+v", journal.Projection, record)
+	}
+	foundSourceFrozenProof := false
+	for index, transition := range f.aggregator.calls {
+		if transition.Phase == FencePhaseFrozen && f.aggregator.manifests[index].ManifestID == f.config.SourceNodes.ManifestID {
+			foundSourceFrozenProof = true
+		}
+	}
+	if !foundSourceFrozenProof {
+		t.Fatal("direct rollback must confirm source nodes against the frozen lease")
 	}
 }
 
