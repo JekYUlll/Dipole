@@ -356,6 +356,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] G2 基线实现框架中立 Context Compiler v1：全局/section 预算、full/compact/omit、trust boundary、provenance manifest 和 v22 持久审计；会话检索、Memory 与 route-specific tokenizer 在 G3 继续扩展。
   - [x] 增加受认证 `conversation.read` Core RPC 与 TS Capability，统一 canonical `conversationId`，完成 direct/group target 解析、Task/Run 身份解析、Core 资源复核、消息映射和 Runtime exact scope 门禁；ModelShadowPlanner/Temporal read activity 已接入最多 20 条 `untrusted` 会话 evidence 的 full/compact 编译；完整检索编排、route-specific tokenizer 和生产上下文灰度仍待完成。
   - [x] 增加 TS Capability RPC 客户端跨语言契约测试，固定 direct/group target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed；分页/检索语义与生产上下文灰度继续按证据推进。
+  - [x] 在 RPC 边界拒绝超过请求 `limit` 的消息响应，并对 `found=false` 统一执行 target 一致性校验；Planner 保留独立的 20 条/8 KiB context 预算上限。
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
   - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
   - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
