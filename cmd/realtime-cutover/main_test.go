@@ -17,6 +17,20 @@ type commandExecutor struct {
 	now       time.Time
 }
 
+type commandOwnership struct{}
+
+func (commandOwnership) Acquire(context.Context, string, time.Duration) (bool, error) {
+	return true, nil
+}
+
+func (commandOwnership) Renew(context.Context, string, time.Duration) (bool, error) {
+	return true, nil
+}
+
+func (commandOwnership) Release(context.Context, string) error {
+	return nil
+}
+
 func (e commandExecutor) Execute(_ context.Context, action realtimeDelivery.CutoverAttemptAction) (realtimeDelivery.CutoverAttemptActionResult, error) {
 	payload := struct {
 		Status string `json:"status"`
@@ -87,8 +101,8 @@ func TestRunAdvancesOneDurableStep(t *testing.T) {
 	}, &bytes.Buffer{}, func() time.Time { return now }, nil); err != nil {
 		t.Fatal(err)
 	}
-	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (realtimeDelivery.CutoverAttemptActionExecutor, func(), error) {
-		return commandExecutor{workspace: workspace, now: now.Add(time.Second)}, func() {}, nil
+	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (cutoverRuntime, error) {
+		return cutoverRuntime{executor: commandExecutor{workspace: workspace, now: now.Add(time.Second)}, cleanup: func() {}}, nil
 	}
 	var output bytes.Buffer
 	if err := run(context.Background(), []string{
@@ -115,8 +129,8 @@ func TestRunAdvancesOneDurableStep(t *testing.T) {
 func TestRunRenewsOneDurableLeaseStep(t *testing.T) {
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
 	directory := createCommandWorkspace(t, now, "cli-renew-a")
-	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (realtimeDelivery.CutoverAttemptActionExecutor, func(), error) {
-		return commandExecutor{workspace: workspace, now: now.Add(time.Second)}, func() {}, nil
+	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (cutoverRuntime, error) {
+		return cutoverRuntime{executor: commandExecutor{workspace: workspace, now: now.Add(time.Second)}, cleanup: func() {}}, nil
 	}
 	var output bytes.Buffer
 	if err := run(context.Background(), []string{
@@ -130,6 +144,31 @@ func TestRunRenewsOneDurableLeaseStep(t *testing.T) {
 	}
 	if result.State != realtimeDelivery.CutoverAttemptCreated || result.EventType != realtimeDelivery.CutoverEventLeaseRenewed || result.Sequence != 1 {
 		t.Fatalf("renew result=%+v", result)
+	}
+}
+
+func TestRunControllerOwnsAndCompletesAttempt(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	directory := createCommandWorkspace(t, now, "cli-controller-a")
+	factory := func(workspace *realtimeDelivery.CutoverAttemptWorkspace, _ string, _ time.Duration) (cutoverRuntime, error) {
+		return cutoverRuntime{
+			executor:  commandExecutor{workspace: workspace, now: now.Add(time.Second)},
+			ownership: commandOwnership{}, cleanup: func() {},
+		}, nil
+	}
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{
+		"-operation", "run", "-attempt-dir", directory, "-operator", "operator-a",
+		"-controller-id", "controller-a", "-confirm",
+	}, &output, func() time.Time { return now.Add(time.Second) }, factory); err != nil {
+		t.Fatal(err)
+	}
+	var result realtimeDelivery.CutoverAttemptAdvance
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.Terminal || result.State != realtimeDelivery.CutoverAttemptCompleted || result.Sequence != 6 {
+		t.Fatalf("result=%+v", result)
 	}
 }
 

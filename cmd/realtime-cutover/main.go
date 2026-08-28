@@ -21,7 +21,13 @@ type executorFactory func(
 	workspace *realtimeDelivery.CutoverAttemptWorkspace,
 	operator string,
 	leaseDuration time.Duration,
-) (realtimeDelivery.CutoverAttemptActionExecutor, func(), error)
+) (cutoverRuntime, error)
+
+type cutoverRuntime struct {
+	executor  realtimeDelivery.CutoverAttemptActionExecutor
+	ownership realtimeDelivery.CutoverControllerOwnership
+	cleanup   func()
+}
 
 type statusOutput struct {
 	AttemptID    string                               `json:"attempt_id"`
@@ -43,7 +49,7 @@ func main() {
 func run(ctx context.Context, args []string, output io.Writer, now func() time.Time, factory executorFactory) error {
 	flags := flag.NewFlagSet("dipole-realtime-cutover", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	operation := flags.String("operation", "status", "create, status, advance, renew, or rollback")
+	operation := flags.String("operation", "status", "create, status, advance, renew, rollback, or run")
 	directory := flags.String("attempt-dir", "", "durable cutover attempt workspace directory")
 	inputsPath := flags.String("inputs", "", "strict attempt inputs JSON for create")
 	attemptID := flags.String("attempt-id", "", "bounded attempt identity for create")
@@ -52,6 +58,11 @@ func run(ctx context.Context, args []string, output io.Writer, now func() time.T
 	maxInterruption := flags.Duration("max-interruption", time.Minute, "maximum no-authority window")
 	operator := flags.String("operator", "", "audited operator label for advance/rollback")
 	leaseDuration := flags.Duration("lease-duration", 10*time.Minute, "authority lease duration for transitions")
+	controllerID := flags.String("controller-id", "", "stable controller process identity for run")
+	controlLease := flags.Duration("control-lease", 2*time.Minute, "exclusive controller ownership lease for run")
+	actionTimeout := flags.Duration("action-timeout", 30*time.Second, "single external action timeout for run")
+	renewBefore := flags.Duration("renew-before", time.Minute, "authority lease renewal margin after a blocked action")
+	retryInterval := flags.Duration("retry-interval", time.Second, "blocked action retry interval for run")
 	confirm := flags.Bool("confirm", false, "confirm create/advance/rollback mutation")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -77,7 +88,7 @@ func run(ctx context.Context, args []string, output io.Writer, now func() time.T
 			HeadSHA: workspace.Journal.HeadSHA256,
 		})
 	}
-	if *operation != "advance" && *operation != "renew" && *operation != "rollback" {
+	if *operation != "advance" && *operation != "renew" && *operation != "rollback" && *operation != "run" {
 		return fmt.Errorf("unsupported cutover operation %q", *operation)
 	}
 	if !*confirm {
@@ -89,14 +100,42 @@ func run(ctx context.Context, args []string, output io.Writer, now func() time.T
 	if factory == nil {
 		return fmt.Errorf("cutover executor factory is unavailable")
 	}
-	executor, cleanup, err := factory(workspace, *operator, *leaseDuration)
+	runtime, err := factory(workspace, *operator, *leaseDuration)
 	if err != nil {
 		return err
 	}
-	defer cleanup()
-	orchestrator, err := realtimeDelivery.NewCutoverAttemptOrchestrator(workspace.Journal, executor, now)
+	if runtime.executor == nil || runtime.cleanup == nil {
+		return fmt.Errorf("cutover executor runtime is invalid")
+	}
+	defer runtime.cleanup()
+	orchestrator, err := realtimeDelivery.NewCutoverAttemptOrchestrator(workspace.Journal, runtime.executor, now)
 	if err != nil {
 		return err
+	}
+	if *operation == "run" {
+		if strings.TrimSpace(*controllerID) == "" {
+			return fmt.Errorf("-controller-id is required for run")
+		}
+		if runtime.ownership == nil {
+			return fmt.Errorf("cutover controller ownership is unavailable")
+		}
+		authorityLease, err := realtimeDelivery.NewCutoverWorkspaceAuthorityLease(workspace)
+		if err != nil {
+			return err
+		}
+		controller, err := realtimeDelivery.NewCutoverAttemptController(realtimeDelivery.CutoverAttemptControllerConfig{
+			Orchestrator: orchestrator, Ownership: runtime.ownership, AuthorityLease: authorityLease,
+			OwnerID: *controllerID, OwnershipTTL: *controlLease, ActionTimeout: *actionTimeout,
+			RenewBefore: *renewBefore, RetryInterval: *retryInterval, Now: now,
+		})
+		if err != nil {
+			return err
+		}
+		result, err := controller.Run(ctx)
+		if err != nil {
+			return err
+		}
+		return encodeOutput(output, result)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -155,12 +194,12 @@ func realExecutorFactory(
 	workspace *realtimeDelivery.CutoverAttemptWorkspace,
 	operator string,
 	leaseDuration time.Duration,
-) (realtimeDelivery.CutoverAttemptActionExecutor, func(), error) {
+) (cutoverRuntime, error) {
 	if err := config.Load(); err != nil {
-		return nil, nil, fmt.Errorf("load config: %w", err)
+		return cutoverRuntime{}, fmt.Errorf("load config: %w", err)
 	}
 	if err := store.InitRedis(); err != nil {
-		return nil, nil, fmt.Errorf("initialize Redis: %w", err)
+		return cutoverRuntime{}, fmt.Errorf("initialize Redis: %w", err)
 	}
 	cleanup := func() { _ = store.RDB.Close() }
 	realtimeConfig := config.RealtimeConfig()
@@ -169,19 +208,19 @@ func realExecutorFactory(
 	)
 	if err != nil {
 		cleanup()
-		return nil, nil, err
+		return cutoverRuntime{}, err
 	}
 	aggregator, err := realtimeDelivery.NewRedisFenceObservationAggregator(
 		store.RDB, realtimeConfig.FencingKey+":observation:", time.Now,
 	)
 	if err != nil {
 		cleanup()
-		return nil, nil, err
+		return cutoverRuntime{}, err
 	}
 	kafkaConfig := config.KafkaConfig()
 	if !kafkaConfig.Enabled {
 		cleanup()
-		return nil, nil, fmt.Errorf("Kafka must be enabled for cutover execution")
+		return cutoverRuntime{}, fmt.Errorf("Kafka must be enabled for cutover execution")
 	}
 	dialTimeout := time.Duration(kafkaConfig.DialTimeoutSeconds) * time.Second
 	if dialTimeout <= 0 {
@@ -194,12 +233,12 @@ func realExecutorFactory(
 	source, err := realtimeDelivery.NewKafkaGoCheckpointSource(kafkaConfig.Brokers, clientID+"-cutover", dialTimeout)
 	if err != nil {
 		cleanup()
-		return nil, nil, err
+		return cutoverRuntime{}, err
 	}
 	collector, err := realtimeDelivery.NewDualGroupCheckpointCollector(source, time.Now)
 	if err != nil {
 		cleanup()
-		return nil, nil, err
+		return cutoverRuntime{}, err
 	}
 	inputs := workspace.Inputs
 	executor, err := realtimeDelivery.NewProductionCutoverAttemptExecutor(
@@ -213,9 +252,16 @@ func realExecutorFactory(
 	)
 	if err != nil {
 		cleanup()
-		return nil, nil, err
+		return cutoverRuntime{}, err
 	}
-	return executor, cleanup, nil
+	ownership, err := realtimeDelivery.NewRedisCutoverControllerOwnership(
+		store.RDB, realtimeConfig.FencingKey+":controller:"+workspace.Journal.Manifest.AttemptID,
+	)
+	if err != nil {
+		cleanup()
+		return cutoverRuntime{}, err
+	}
+	return cutoverRuntime{executor: executor, ownership: ownership, cleanup: cleanup}, nil
 }
 
 func encodeOutput(output io.Writer, value any) error {

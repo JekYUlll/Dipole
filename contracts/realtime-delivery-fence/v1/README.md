@@ -10,7 +10,7 @@ The Redis value at the configured fencing key is one strict JSON object matching
 
 The Go Gateway and C++ Delivery readers are opt-in and consume the shared vectors in `testdata/authority.v1.json`, including exact bounded reason codes. Both runtimes write `observation.schema.json` records at startup and on idle heartbeats. Each 15-second Redis record is keyed by component and stable instance ID, binds the expected mode/epoch to the exact observed lease SHA-256, and reports a bounded authorization reason. Observation persistence is fail-closed. Go message handlers keep the read-only lease reader, while the C++ observed reader throttles publication to five seconds; neither path adds per-message observation writes.
 
-`expected-nodes.schema.json` freezes the exact deployment membership used for one proof. Each node may declare its local `expected_authority`; omission retains compatibility by using the transition authority. The aggregator reads each named Redis key directly, requires a live Redis TTL and an internally valid observation lifetime, and binds every record to the transition receipt's observed authority, epoch, phase, lease deadline and `next_sha256`. An active transition requires every local authority to equal the target and accepts only `authorized/authorized`. A frozen transition permits manifest-declared Go/shadow/C++ preparation states but accepts only `denied/frozen` against the same observed lease. The output follows `observation-aggregate.schema.json` and is eligible-only, with canonical node ordering and manifest SHA-256. Redis key discovery cannot replace the manifest because it cannot prove a missing intended node. The operator CLI below writes guarded transitions, while tracked automation and automatic rollback remain absent; this contract alone does not close `AD-041`.
+`expected-nodes.schema.json` freezes the exact deployment membership used for one proof. Each node may declare its local `expected_authority`; omission retains compatibility by using the transition authority. The aggregator reads each named Redis key directly, requires a live Redis TTL and an internally valid observation lifetime, and binds every record to the transition receipt's observed authority, epoch, phase, lease deadline and `next_sha256`. An active transition requires every local authority to equal the target and accepts only `authorized/authorized`. A frozen transition permits manifest-declared Go/shadow/C++ preparation states but accepts only `denied/frozen` against the same observed lease. The output follows `observation-aggregate.schema.json` and is eligible-only, with canonical node ordering and manifest SHA-256. Redis key discovery cannot replace the manifest because it cannot prove a missing intended node. The controller below writes guarded transitions and selects automatic rollback after the interruption deadline; a real controller-process replacement drill remains required to close `AD-041`.
 
 `checkpoint-manifest.schema.json` names the compatibility and primary Kafka groups plus the exact message topics. A checkpoint collector requires both groups to be `Stable`, assigned to every named partition, committed at the read-committed log end, and in agreement on every log end. ConsumerProtocol assignment versions 0 through 3 retain a canonical topic/partition prefix; the collector parses that bounded prefix from the raw DescribeGroups response and ignores only the remaining client-owned opaque extension bytes. This supports kafka-go and librdkafka members without weakening topic/partition validation. `checkpoint-receipt.schema.json` binds this partition-level zero-lag snapshot to the observation aggregate SHA-256 and lease identity. `checkpoint-bundle.schema.json` stores both records together so the short-lived Redis proof remains independently reviewable.
 
@@ -61,7 +61,7 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
   -confirm
 ```
 
-Run `status` after every step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform source-node frozen confirmation on the current freeze, or a required second freeze followed by that confirmation, before source activation and rollback checkpoint. `renew` performs one durable CAS renewal using the latest transition artifact. Evidence bound to the previous lease is invalidated: source checkpoint, frozen confirmation, target checkpoint and rollback frozen confirmation states move back to their preceding collection state and require a fresh `advance`. Renewal never resets the original freeze interruption deadline and is rejected while a rollback decision or terminal state is active. Each mutation requires `-confirm`. The command has a 30-second per-action timeout and never loops across multiple side effects in one process invocation.
+Run `status` after every one-shot step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform source-node frozen confirmation on the current freeze, or a required second freeze followed by that confirmation, before source activation and rollback checkpoint. `renew` performs one durable CAS renewal using the latest journaled transition artifact. Evidence bound to the previous lease is invalidated: source checkpoint, frozen confirmation, target checkpoint and rollback frozen confirmation states move back to their preceding collection state and require a fresh `advance`. Renewal never resets the original freeze interruption deadline. During `rollback_requested`, renewal preserves the rollback intent and any second-freeze requirement so a slow source proof cannot exhaust the authority lease; terminal states still reject renewal. Each mutation requires `-confirm`. The `advance`, `renew`, and `rollback` operations retain a 30-second single-action boundary.
 
 ```bash
 DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
@@ -71,6 +71,24 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
   -lease-duration 10m \
   -confirm
 ```
+
+For continuous execution, `run` uses one synchronous control loop for state advance, conditional authority renewal and retry. A Redis ownership key scoped to the fencing key and attempt ID admits one `controller-id`; compare-and-renew and compare-and-release scripts prevent a stale process from extending or deleting a replacement owner's lease. `control-lease` must cover at least twice `action-timeout`, so ownership cannot expire during one bounded external action. After a blocked action, the loop renews authority only inside `renew-before`; it always attempts `advance` first, allowing the journaled freeze deadline to select rollback before any renewal. The current authority deadline comes only from the initial input or the latest journal-bound transition artifact.
+
+```bash
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+  -operation run \
+  -attempt-dir /secure/cutovers/cutover-20260828-a \
+  -operator operator-a \
+  -controller-id controller-node-a \
+  -lease-duration 10m \
+  -control-lease 2m \
+  -action-timeout 30s \
+  -renew-before 1m \
+  -retry-interval 1s \
+  -confirm
+```
+
+Graceful shutdown releases ownership. After an abrupt process loss, a replacement with a different controller ID must wait for the previous control lease to expire, then replays the same workspace and deterministic action IDs. Unit coverage proves pre-expiry rejection and post-expiry journal continuation; isolated real-process replacement evidence remains an explicit C3 gate.
 
 ## Operator transition state machine
 

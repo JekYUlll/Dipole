@@ -193,6 +193,27 @@ func TestCutoverAttemptLeaseRenewalInvalidatesLeaseBoundEvidence(t *testing.T) {
 	}
 }
 
+func TestCutoverAttemptLeaseRenewalPreservesRollbackIntent(t *testing.T) {
+	projection := newCutoverAttemptProjection("attempt-a")
+	for index, eventType := range []CutoverAttemptEventType{
+		CutoverEventSourceCheckpointed, CutoverEventFreezeApplied, CutoverEventFrozenConfirmed,
+		CutoverEventTargetActivated, CutoverEventRollbackRequested,
+	} {
+		if err := projection.Apply(validCutoverAttemptEvent("attempt-a", uint64(index+1), eventType)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !projection.RollbackNeedsFreeze {
+		t.Fatal("target-active rollback must retain the second-freeze requirement")
+	}
+	if err := projection.Apply(validCutoverAttemptEvent("attempt-a", 6, CutoverEventLeaseRenewed)); err != nil {
+		t.Fatal(err)
+	}
+	if projection.State != CutoverAttemptRollbackRequested || !projection.RollbackNeedsFreeze {
+		t.Fatalf("projection=%+v", projection)
+	}
+}
+
 func TestCutoverAttemptJournalRejectsStrictJSONAndBackwardsTime(t *testing.T) {
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	directory := t.TempDir()

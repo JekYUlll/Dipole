@@ -120,7 +120,7 @@ func (p CutoverAttemptProjection) transition(eventType CutoverAttemptEventType) 
 	if eventType == CutoverEventLeaseRenewed {
 		switch p.State {
 		case CutoverAttemptCreated, CutoverAttemptFreezeApplied, CutoverAttemptTargetActivated,
-			CutoverAttemptRollbackFreezeApplied, CutoverAttemptSourceReactivated:
+			CutoverAttemptRollbackRequested, CutoverAttemptRollbackFreezeApplied, CutoverAttemptSourceReactivated:
 			return p.State, p.RollbackNeedsFreeze, nil
 		case CutoverAttemptSourceCheckpointed:
 			return CutoverAttemptCreated, p.RollbackNeedsFreeze, nil

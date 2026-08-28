@@ -29,6 +29,7 @@
 - **故障记录：** 隔离 race 演练已使用真实 Kafka/Redis、两个 consumer group 和 TCP fault proxy 证明 controller artifact/journal 崩溃恢复、Redis outage fail-closed、primary member 丢失阻断及恢复后 forward completion；sequence 7 和最终 journal head 已归档于 `benchmarks/c3-cutover-faults-2026-08-28/`。后续同一演练将目标组恢复成员替换为当前源树构建的真实 C++ Primary：C++ 校验 CPP active lease、自写 `realtime-delivery/cpp-a` observation、加入 canonical librdkafka primary group 并通过 readiness 后，目标 checkpoint 与 completion 才能推进。夹具只代写 Gateway observation，C++ observation payload 与二进制摘要均进入报告。持续 lease/controller 调度尚未完成，因此 AD-041 继续处理中。
 - **回切修复：** 真实 expired-freeze 演练前审计发现首次 freeze 的直接回切可能缺少 source-node proof。状态机现强制在当前 frozen lease 上追加 source manifest 的 `rollback_frozen_confirmed`，之后才允许 source activation；隔离真实拓扑已以 500 ms 中断预算复验 `rolled_back` sequence 7、Go active epoch 2。
 - **处理门槛：** 隔离 topology 已证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame，并完成 controller 崩溃、Kafka rebalance、Redis 故障、真实 C++ Primary 接管与 expired-freeze 回切。开始 C3 用户/节点灰度前仍需建立单一持续 controller 的租约续期、超时回切和 leader ownership，并保存其进程替换证据。
+- **Controller 记录：** `dipole-realtime-cutover run` 已将 advance、条件续租、重试和超时回切收敛到一个同步事件循环。attempt-scoped Redis owner token 使用 compare-renew/release，control lease 至少为 action timeout 的两倍；authority lease 只读取 journal-bound transition artifact。真实 Redis 测试证明旧 owner TTL 前拒绝新 controller、TTL 后新 owner 从同一持久 journal 继续到 terminal。仍需隔离真实 OS 进程替换证据，完成前不进入用户/节点灰度。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
