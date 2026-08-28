@@ -70,7 +70,8 @@
 
 ### 新增
 
-- canonical Pencil 增加 Agent Event Subscription v1：desktop owner 管理页、`loading|empty|unavailable|definition_stale|revoking|revoked` 六态矩阵、mobile 精确撤销确认层及三类可复用组件；设计固定披露 Definition version、conversation scope、确定性 filter、审计原因与 `direct_target` Shadow 边界，2x 评审图归档于 `design/exports/agent-subscription-v1/`。公开 Definition 目录、Gateway HTTP/Vue 管理与 Runtime `subscription` 模式仍未启用。
+- 增加默认关闭的 Agent Event Subscription owner list/revoke Web 闭环：Gateway 复用现有 Core Agent gRPC 连接，从认证会话派生 principal 并固定 tenant；Vue 以严格响应解析展示 Definition version、conversation scope、确定性 filter 与撤销审计，查询失败清空旧状态，撤销要求精确原因并以权威响应收敛。desktop/mobile 路由已通过 Chromium、Firefox 与 WebKit 验收。公开 Definition 目录、create 与 Runtime `subscription` 继续关闭。
+- canonical Pencil 增加 Agent Event Subscription v1：desktop owner 管理页、`loading|empty|unavailable|definition_stale|revoking|revoked` 六态矩阵、mobile 精确撤销确认层及三类可复用组件；设计固定披露 Definition version、conversation scope、确定性 filter、审计原因与 `direct_target` Shadow 边界，2x 评审图归档于 `design/exports/agent-subscription-v1/`。owner list/revoke 已由默认关闭的 Gateway HTTP/Vue 管理页实现；公开 Definition 目录、create 与 Runtime `subscription` 模式仍未启用。
 - Agent G4 全栈 Shadow 演练增加测试专用 Go Core RPC fixture：复用生产 TLS 1.3、双向证书验证、shared-secret metadata、caller allowlist 和证书 CN 绑定；脚本生成临时 `dipole-core`/`dipole-agent` 身份并验证错误 secret、错误 CN 与无客户端证书均失败关闭。
 - 外部 MCP Shadow 演练证据升级为 v2，新增 `core_rpc_type=go_internal_grpc_mtls`、认证成功和身份拒绝验证门禁；v1 Schema 保留用于解释历史文件，当前 CLI 只接受带完整 Core RPC 证据的 v2。
 - Agent G4 隔离全栈 Shadow 证据增加语言中立 JSON Schema、严格 Zod 解析器和 `mcp:shadow-drill:check` CLI；契约固定成功计数/布尔门禁、canonical `content_sha256` 与最多 24 小时有效期，并拒绝额外字段、未同步 hash 的内容漂移、未来或过期文件。
@@ -125,7 +126,7 @@
 - Agent G4 增加 Event Subscription rollout evidence gate：CLI 同时读取 corpus、双评审 review 和 candidate evidence，重新执行 review/prefilter evaluator 后才产出低敏 `eligible|blocked` 决策，避免信任调用方预聚合报告。决策绑定 corpus、review、final-label、candidate evidence/configuration 哈希与 agreement、precision/recall、p95、成本指标；任一门槛失败返回 2，哈希/结构/逐 case 绑定无效返回 1。该门禁不修改 Trigger/Runtime mode 或 Capability authority。
 - Agent G4 增加 Event Subscription corpus review v1：语言中立 review/report schema 将两个独立 reviewer 的完整逐 case 标签绑定到 prefilter corpus SHA-256；有分歧时要求第三个独立 adjudicator 精确裁决全部分歧 case。纯离线 evaluator 对身份复用、case 覆盖、裁决集合和最终 corpus 标签执行 fail-closed 校验，CLI 以 `0/2/1` 区分达标、未达标和无效输入。低敏报告只含 review/final-label 哈希、agreement bps、计数和异常 case ID，不回显消息正文或 reviewer 身份。
 - Agent G4 增加 provider-neutral Event Subscription prefilter Eval v1：语言中立 corpus/evidence/report schema 将受控事件标签与 `rule|embedding|small_model` 候选决策分离，绑定 corpus、strategy revision 和 configuration SHA-256。纯 TypeScript evaluator 不访问模型、数据库或网络，输出低敏混淆矩阵、保守整数 precision/recall bps、nearest-rank p95、微美元平均/总成本及误判 case ID；缺失/重复 case、hash 漂移、分数/阈值决策漂移和单类 corpus fail closed。首个 rule adapter 直接复用生产 matcher，CLI 使用 `0/2/1` 区分达标、未达标和无效证据；生产仍固定 `direct_target`。
-- Agent G4 增加 Gateway-only Event Subscription 管理控制面：migration v34 为 v28 订阅补充 creator/revoker、撤销原因与更新时间，并从绑定的不可变 Definition owner 回填历史审计。认证 `dipole-gateway` 从 RequestContext 派生 owner，可创建、分页查看和撤销精确 Definition version 订阅；Core 重新校验 tenant、Agent、有效期、`conversation.read` 与 resource scope。`message_contains_any` 以 trim/lowercase/去重/排序生成规范 JSON 和稳定 SHA-256 Subscription ID，等价创建及同原因撤销可安全重放，漂移返回冲突。未增加公开 HTTP/Pencil 页面、语义预筛或生产触发切换。
+- Agent G4 增加 Gateway-only Event Subscription 管理控制面：migration v34 为 v28 订阅补充 creator/revoker、撤销原因与更新时间，并从绑定的不可变 Definition owner 回填历史审计。认证 `dipole-gateway` 从 RequestContext 派生 owner，可创建、分页查看和撤销精确 Definition version 订阅；Core 重新校验 tenant、Agent、有效期、`conversation.read` 与 resource scope。`message_contains_any` 以 trim/lowercase/去重/排序生成规范 JSON 和稳定 SHA-256 Subscription ID，等价创建及同原因撤销可安全重放，漂移返回冲突。owner list/revoke 已进入默认关闭的公开 HTTP/Pencil/Vue 页面；公开 create、语义预筛和生产触发切换仍未启用。
 - Agent G4 增加 Gateway-only 晋升证据 review projection：已获 tenant-scoped promotion operator 权限的 reviewer 可按 Proposal ID 读取其精确绑定的 `promotion_evaluation` Artifact 元数据和正文；应用层先复用控制面 `Get` 授权，再校验 Artifact ID/type/version/media/content SHA-256 并从专用对象存储复算正文证据。未授权调用不会触达 Artifact reader，普通 Task-principal 下载权限不变，专用存储未装配时 RPC unavailable；当前未暴露公共 HTTP、active authority 或 write Tool。
 - Agent G4 补齐真实 Shadow 晋升证据发布链：`promotion:publish` 只接受语言中立 v1 publication 输入，重新解析完整 promotion v2 证据并要求决策为 `eligible`，随后以 canonical JSON 创建 completed Shadow Run 绑定的不可变 `promotion_evaluation` Artifact。Core 对该终态例外严格校验固定类型/版本/媒体类型、pinned Definition、candidate、Suite SHA-256、正文 envelope 与 metadata 一致性；普通 Artifact 继续仅允许 running Shadow Run。CLI 只输出 Artifact/content/Suite hash 绑定的低敏收据，不自动创建 Proposal、Grant、active Run 或 write Tool。
 - Agent G4 增加默认关闭的 approved Capability projection：Core 只在 durable promotion authorizer 已通过的 active admission/context resolve 后，从 pinned Definition 的 `message.write` 与 conversation/write scope 投影显式 allowlist 中唯一的 `message.system.send`；shadow、未知 ID、重复项及 Registry 后增 Tool 均无法扩权。Go RPC 出口与 TS ExecutionContext 双重校验，TS write Policy 仍要求同一 Capability，后续还需精确 Approval consumption、Tool audit 和 Message Command。生产 Bootstrap 未注入 authorizer，Runtime 入口未注册 write projection/executor。
@@ -422,6 +423,7 @@
 
 ### 迁移说明
 
+- Agent Subscription owner 页面没有新增数据库迁移或 Proto。Gateway 新增 `gateway.agent_subscription_enabled=false` 与 `gateway.agent_subscription_tenant_id=dipole`，前端新增 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false`；两端必须同时显式启用才出现 `/agent/subscriptions`。先确认 Core 已应用 migration v34 且 Agent Capability gRPC 可用，再滚动 Gateway 和 Web。回滚先关闭前端入口，再关闭 Gateway adapter；该流程不修改 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。
 - `PublishMcpReadinessEvidence` 是 additive Agent Capability RPC，依赖 migration v37。先迁移并滚动 Core，再发布 TS Runtime；旧 Runtime 不调用该方法。回滚时先确保没有证据 Publisher 调用，再回退 Runtime/Core；当前没有 startup scheduler 或 admission consumer，部署后不会自动建立外部连接或激活 Profile。
 - migration v37 新增 `agent_mcp_readiness_evidence` 追加式控制面表及 tenant/Profile/Runtime binding freshness 索引。先迁移 Core，再发布 additive Publisher RPC client；当前没有自动采集或 admission 启动接线。回滚前停止证据写入并完成审计留存，v37 Down 会删除全部 readiness evidence 历史，不影响 Agent Task、Run、Artifact 或 Runtime promotion 表。
 - `ResolveMcpToolCommandResponse.status` 是 additive 字段，无数据库迁移。先滚动 Core，再滚动 Agent Runtime；旧 Runtime 忽略未知字段。回滚 Runtime 后可继续由新 Core 服务旧调用方；回滚 Core 前须确保新 Runtime 不再执行 terminal receipt recovery，否则空状态会 fail closed。生产 Worker 与外部网络开关仍保持关闭。
@@ -488,6 +490,7 @@
 
 ### 验证
 
+- Agent Subscription owner list/revoke 通过 Gateway/config/bootstrap 聚焦 Go 测试、5 项 Vue API/组件测试和 Chromium/Firefox/WebKit 共 6 项路由 E2E；WebKit 在本机通过临时用户态兼容库运行，未修改系统包或仓库配置。服务端覆盖认证派生、游标/limit、撤销原因、nil/错误映射与默认关闭，浏览器覆盖 Bearer、精确撤销、不可用状态清理和 390x844 mobile sheet。
 - Go Core mTLS fixture 认证测试通过：正确 Agent 身份可调用，错误 shared secret 返回 unauthenticated，证书 CN 与 caller 不一致返回 permission denied，无客户端证书无法建立可用 RPC；联合演练随后通过真实 mTLS 完成全部 12 类 Core RPC，并输出 v2 低敏证据。
 - 外部 MCP 证据契约聚焦测试通过 7 项，并由真实隔离演练生成包含 `collected_at`、`expires_at` 与 `content_sha256` 的文件后经独立 CLI 验证；篡改计数/布尔值/hash、附加字段、未来时间和过期时间均失败关闭。
 - 外部 MCP 全栈演练通过：2 个 subscription 事件经 Kafka、MySQL EventLedger 与 Temporal 收敛；首个事件完成 1 次 allowlisted read Tool 和 1 个 Artifact，同事件在 Runtime 重启后由持久 ledger 抑制，第二个事件使用过期 readiness 后 Workflow failed 且 Tool 调用仍为 1。证据固定 `production_authority=false`，共享 Docker 服务未触达。
@@ -592,7 +595,7 @@
 ### 已知问题
 
 - Memory v1 仅提供受控 Store 和运行时读取链，尚无自动写入/纠正/删除 API、压缩反思 Worker、置信度与版本冲突策略、混合/向量召回和用户 UI；共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
-- Event Subscription 已具备 Gateway-only 内部 owner 管理、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同，尚无公开 HTTP/Pencil 页面，也未归档真实 Project Guardian corpus/review report 或 embedding/小模型 candidate evidence；共享环境继续固定 `direct_target`，详见 `AD-034`。
+- Event Subscription 已具备内部 owner 管理、默认关闭的公开 list/revoke HTTP/Pencil/Vue 页面、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；公开 Definition 目录与 create 尚未交付，也未归档真实 Project Guardian corpus/review report 或 embedding/小模型 candidate evidence。共享环境继续固定 `direct_target`，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
 - `/messages/offline` 真实对照观察窗口仍待执行；Web 本地 Sync Engine 默认关闭，旧客户端继续使用数据库 ID cursor。
 - Web IndexedDB 已统一会话清理和容量淘汰实现；真实浏览器配额、共享设备和进程强退验收仍是默认启用门禁，记录为 `AD-025`。
