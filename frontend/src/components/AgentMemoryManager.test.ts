@@ -1,7 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import AgentMemoryManager from './AgentMemoryManager.vue'
 import type { AgentMemory, AgentMemoryClient } from '@/api/agentMemories'
+
+const source = readFileSync(resolve(import.meta.dirname, 'AgentMemoryManager.vue'), 'utf8')
 
 const active: AgentMemory = {
   memoryId: 'MEM-1', agentId: 'UAI', memoryType: 'semantic', status: 'active',
@@ -29,6 +33,12 @@ function service(): AgentMemoryClient {
 }
 
 describe('AgentMemoryManager', () => {
+  it('overrides the legacy theme with shared Pencil tokens', () => {
+    expect(source).toContain('--ink: var(--dp-ink)')
+    expect(source).toContain('--panel: var(--dp-surface)')
+    expect(source).toContain('font-family: var(--dp-font-body)')
+  })
+
   it('renders owner-visible provenance and trust boundaries', async () => {
     const client = service()
     const wrapper = mount(AgentMemoryManager, { props: { client } })
