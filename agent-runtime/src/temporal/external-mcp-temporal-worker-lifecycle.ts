@@ -17,6 +17,7 @@ export type ExternalMcpTemporalWorkerRuntimeFactory = (
 export interface ExternalMcpTemporalWorkerLifecycle {
   readonly deployment: ExternalMcpDeploymentPlan;
   readonly worker: ExternalMcpTemporalWorkerComposition;
+  readonly temporal: Readonly<TemporalRuntimeConfig>;
   stop(): Promise<void>;
 }
 
@@ -49,6 +50,7 @@ export async function startExternalMcpTemporalWorkerLifecycle(
   return {
     deployment: startup.deployment,
     worker: startup.worker,
+    temporal: Object.freeze({ ...config }),
     stop: stopOnce(runtime, startup)
   };
 }

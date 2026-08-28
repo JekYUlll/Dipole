@@ -151,7 +151,7 @@ function bootstrapHarness(options: { readonly closeError?: Error } = {}) {
     if (options.closeError !== undefined) throw options.closeError;
   });
   const startup = { deployment, worker, close: closeStartup } satisfies ExternalMcpTemporalWorkerStartupPlan;
-  const lifecycle = { deployment, worker, stop: vi.fn() } satisfies ExternalMcpTemporalWorkerLifecycle;
+  const lifecycle = { deployment, worker, temporal: temporalConfig(), stop: vi.fn() } satisfies ExternalMcpTemporalWorkerLifecycle;
   const resource = {
     dependencies: { core: {}, artifacts: {} }, close: vi.fn()
   } as unknown as ExternalMcpTemporalWorkerResource;
