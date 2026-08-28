@@ -81,13 +81,14 @@ func (s *persistentAgentToolInvocationAuditServiceV1) ResolveCommand(ctx context
 		return nil, fmt.Errorf("load Agent Tool command: %w", err)
 	}
 	if record == nil || record.TaskUUID != taskUUID || record.RunUUID != runUUID || record.Status != application.AgentToolInvocationStatusRunning ||
-		application.ValidateAgentMCPToolCommandV1(record.ProfileID, record.ServerID, record.ArgumentsJSON, record.ArgumentsSHA256) != nil {
+		record.StartedAt.IsZero() || application.ValidateAgentMCPToolCommandV1(record.ProfileID, record.ServerID, record.ArgumentsJSON, record.ArgumentsSHA256) != nil {
 		return nil, application.ErrAgentToolInvocationDenied
 	}
 	return &application.AgentMCPToolCommandV1{
 		InvocationUUID: record.InvocationUUID, TenantID: record.TenantID, PrincipalUUID: record.PrincipalUUID, AgentUUID: record.AgentUUID,
 		TaskUUID: record.TaskUUID, RunUUID: record.RunUUID, ProfileID: record.ProfileID, ServerID: record.ServerID,
 		ToolName: record.ToolName, CapabilityID: record.CapabilityID, ArgumentsJSON: record.ArgumentsJSON, ArgumentsSHA256: record.ArgumentsSHA256,
+		StartedAt: record.StartedAt,
 	}, nil
 }
 
