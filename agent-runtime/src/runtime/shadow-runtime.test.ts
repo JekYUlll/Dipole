@@ -164,7 +164,17 @@ describe("shadow runtime composition", () => {
     await fixture.eachMessage()(payload(messageEnvelope("U200")));
 
     expect(subscriptions.admit).toHaveBeenCalledWith(
-      expect.objectContaining({ eventId: "E1", subscriptionId: "SUB-A" }),
+      expect.objectContaining({
+        eventId: "E1",
+        subscriptionId: "SUB-A",
+        subscriptionBinding: {
+          subscriptionId: "SUB-A",
+          definitionId: "DEF-1",
+          definitionVersion: 1,
+          tenantId: "dipole",
+          agentId: "UAI"
+        }
+      }),
       expect.objectContaining({ agentUuid: "UAI" })
     );
     expect(fixture.planner.plan).toHaveBeenCalledOnce();
