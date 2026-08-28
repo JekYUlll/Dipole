@@ -1,0 +1,3 @@
+
+GROUP                     COORDINATOR (ID)          ASSIGNMENT-STRATEGY  STATE           #MEMBERS
+dipole-gateway-consumer   kafka:9092  (1)           roundrobin           Stable          20

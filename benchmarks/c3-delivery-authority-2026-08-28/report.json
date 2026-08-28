@@ -1,0 +1,27 @@
+{
+  "archive_revision": "bbea83f13ca8a6f010c787baf22e70f4e92989c0",
+  "binary_source_revision": "7d079f659e2113197b7f07ae0427af77e6597277",
+  "boundaries": [
+    "the drill used isolated per-mode Compose projects",
+    "the Docker health failure came from a temporary /bin/sh probe while application readiness succeeded",
+    "no shared dynamic cutover or crash/rebalance/Redis-failure drill is claimed"
+  ],
+  "checks": {
+    "authority_metrics_match_modes": true,
+    "binary_provenance_bound": true,
+    "compose_health_false_positive_preserved": true,
+    "cpp_application_ready": true,
+    "cpp_checkpoint_reached_log_end": true,
+    "cpp_exactly_one_stable_frame": true,
+    "cpp_primary_reached_log_end": true,
+    "cpp_terminal_delivery_committed": true,
+    "go_authority_reached_log_end": true,
+    "go_exactly_one_legacy_frame": true,
+    "isolated_resources_removed": true,
+    "shared_nodes_remained_running": true
+  },
+  "local_authority_decision": "eligible",
+  "schema_version": "c3-delivery-authority-evidence-v1",
+  "shared_cutover_blocker": "AD-041: shared fencing, coordinated checkpoint receipt and automatic rollback remain open",
+  "shared_cutover_decision": "blocked"
+}

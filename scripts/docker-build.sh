@@ -38,6 +38,18 @@ usage() {
   echo "  COMPOSE_FILE Compose file (default: docker-compose.dist.yml)"
   echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
   echo "  GO_BUILD_FLAGS Additional flags passed to go build"
+  echo "  DIPOLE_BUILD_CREATED Override the embedded RFC3339 build time"
+}
+
+freeze_source_metadata() {
+  DIPOLE_VCS_REVISION="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+  DIPOLE_BUILD_CREATED="${DIPOLE_BUILD_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain)" ]]; then
+    DIPOLE_VCS_DIRTY=true
+  else
+    DIPOLE_VCS_DIRTY=false
+  fi
+  export DIPOLE_VCS_REVISION DIPOLE_BUILD_CREATED DIPOLE_VCS_DIRTY
 }
 
 node_services() {
@@ -96,10 +108,14 @@ cmd_backend() {
 }
 
 cmd_build() {
+  freeze_source_metadata
   cmd_frontend
   cmd_backend
-  echo "==> Building Docker image ${IMAGE_NAME}:${IMAGE_TAG}..."
+  echo "==> Building Docker image ${IMAGE_NAME}:${IMAGE_TAG} (${DIPOLE_VCS_REVISION}, dirty=${DIPOLE_VCS_DIRTY})..."
   docker build \
+    --build-arg DIPOLE_VCS_REVISION="${DIPOLE_VCS_REVISION}" \
+    --build-arg DIPOLE_BUILD_CREATED="${DIPOLE_BUILD_CREATED}" \
+    --build-arg DIPOLE_VCS_DIRTY="${DIPOLE_VCS_DIRTY}" \
     -t "${IMAGE_NAME}:${IMAGE_TAG}" \
     "${ROOT_DIR}"
   echo "==> Done: ${IMAGE_NAME}:${IMAGE_TAG}"

@@ -25,6 +25,14 @@ gateway:
   agent_mcp_enabled: false
   agent_mcp_target: http://127.0.0.1:8091
 
+realtime:
+  # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.
+  delivery: go
+  # C3 shared fencing remains opt-in until cross-language node observations and cutover receipts are complete.
+  fencing_enabled: false
+  fencing_key: dipole:realtime:delivery:authority:v1
+  fencing_epoch: 0
+
 tls:
   enabled: false
 
@@ -175,6 +183,14 @@ internal_rpc:
   search_target: 127.0.0.1:9093
   sync_listen_address: 127.0.0.1:9094
   sync_target: 127.0.0.1:9094
+  # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
+  delivery_observation_enabled: false
+  delivery_observation_listen_address: 127.0.0.1:9095
+  delivery_observation_capacity: 1024
+  delivery_observation_retry_after_ms: 25
+  # C2 primary edge remains disabled until replay and client-dedup evidence pass.
+  delivery_primary_enabled: false
+  delivery_primary_replay_capacity: 8192
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
   # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.

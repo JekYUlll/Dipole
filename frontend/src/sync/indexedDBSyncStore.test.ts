@@ -44,10 +44,56 @@ describe('IndexedDBSyncStore', () => {
     second.close()
   })
 
+  it('persists delivery replay claims across store instances', async () => {
+    const factory = new IDBFactory()
+    const first = new IndexedDBSyncStore(factory, IDBKeyRange, 'delivery-replay-reopen')
+
+    await expect(first.claimDelivery('U1', 'D1')).resolves.toBe(true)
+    first.close()
+
+    const second = new IndexedDBSyncStore(factory, IDBKeyRange, 'delivery-replay-reopen')
+    await expect(second.claimDelivery('U1', 'D1')).resolves.toBe(false)
+    await expect(second.claimDelivery('U2', 'D1')).resolves.toBe(true)
+    second.close()
+  })
+
+  it('allows only one concurrent claimant for the same delivery', async () => {
+    const factory = new IDBFactory()
+    const first = new IndexedDBSyncStore(factory, IDBKeyRange, 'delivery-replay-race')
+    const second = new IndexedDBSyncStore(factory, IDBKeyRange, 'delivery-replay-race')
+
+    const outcomes = await Promise.all([
+      first.claimDelivery('U1', 'D1'),
+      second.claimDelivery('U1', 'D1'),
+    ])
+
+    expect(outcomes.sort()).toEqual([false, true])
+    first.close()
+    second.close()
+  })
+
+  it('bounds delivery replay claims independently per account', async () => {
+    const store = new IndexedDBSyncStore(new IDBFactory(), IDBKeyRange, 'delivery-replay-capacity', {
+      deliveryReplayCapacity: 2,
+    })
+
+    await expect(store.claimDelivery('U1', 'D1')).resolves.toBe(true)
+    await expect(store.claimDelivery('U1', 'D2')).resolves.toBe(true)
+    await expect(store.claimDelivery('U2', 'D1')).resolves.toBe(true)
+    await expect(store.claimDelivery('U1', 'D3')).resolves.toBe(true)
+
+    await expect(store.claimDelivery('U1', 'D2')).resolves.toBe(false)
+    await expect(store.claimDelivery('U1', 'D1')).resolves.toBe(true)
+    await expect(store.claimDelivery('U2', 'D1')).resolves.toBe(false)
+    store.close()
+  })
+
   it('isolates accounts and clears only the requested user', async () => {
     const store = new IndexedDBSyncStore(new IDBFactory(), IDBKeyRange, 'sync-isolation')
     await store.commitPage('U1', syncPage(1, 'M1'))
     await store.commitPage('U2', syncPage(3, 'M3'))
+    await store.claimDelivery('U1', 'D1')
+    await store.claimDelivery('U2', 'D1')
 
     await store.clearUser('U1')
 
@@ -56,6 +102,8 @@ describe('IndexedDBSyncStore', () => {
       syncSeq: 3,
       messages: [expect.objectContaining({ message_id: 'M3' })],
     })
+    await expect(store.claimDelivery('U1', 'D1')).resolves.toBe(true)
+    await expect(store.claimDelivery('U2', 'D1')).resolves.toBe(false)
     store.close()
   })
 
@@ -232,9 +280,10 @@ describe('IndexedDBSyncStore', () => {
     store.close()
     await Promise.resolve()
     const upgraded = await openDatabase(factory, 'sync-upgrade')
-    expect(upgraded.version).toBe(3)
+    expect(upgraded.version).toBe(4)
     expect(upgraded.transaction('messages').objectStore('messages').indexNames.contains('by_user_sync_seq')).toBe(true)
     expect(upgraded.objectStoreNames.contains('group_state')).toBe(true)
+    expect(upgraded.objectStoreNames.contains('delivery_replay')).toBe(true)
     upgraded.close()
   })
 

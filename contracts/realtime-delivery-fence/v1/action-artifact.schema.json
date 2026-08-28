@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/action-artifact.schema.json",
+  "title": "Dipole Realtime Delivery Cutover Action Artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "action_id", "action_sha256", "action", "attempt_id",
+    "sequence", "event_type", "payload_sha256", "payload", "recorded_at_unix_ms"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.cutover-action-artifact.v1" },
+    "action_id": { "$ref": "#/$defs/id" },
+    "action_sha256": { "$ref": "#/$defs/sha256" },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id", "attempt_id", "sequence", "event_type", "current_state",
+        "source_authority", "target_authority", "expected_epoch",
+        "lease_transition_action_id", "max_interruption_ms", "interruption_deadline_unix_ms"
+      ],
+      "properties": {
+        "action_id": { "$ref": "#/$defs/id" },
+        "attempt_id": { "$ref": "#/$defs/id" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "event_type": { "$ref": "#/$defs/event_type" },
+        "current_state": { "$ref": "#/$defs/state" },
+        "source_authority": { "enum": ["go", "shadow", "cpp"] },
+        "target_authority": { "enum": ["go", "shadow", "cpp"] },
+        "expected_epoch": { "type": "integer", "minimum": 1 },
+        "lease_transition_action_id": {
+          "oneOf": [{ "const": "" }, { "$ref": "#/$defs/id" }]
+        },
+        "max_interruption_ms": { "type": "integer", "minimum": 1, "maximum": 600000 },
+        "interruption_deadline_unix_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "attempt_id": { "$ref": "#/$defs/id" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "event_type": { "$ref": "#/$defs/event_type" },
+    "payload_sha256": { "$ref": "#/$defs/sha256" },
+    "payload": { "type": "object" },
+    "recorded_at_unix_ms": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "event_type": {
+      "enum": [
+        "source_checkpointed", "freeze_applied", "frozen_confirmed",
+        "target_activated", "target_checkpointed", "completed",
+        "rollback_requested", "rollback_freeze_applied",
+        "rollback_frozen_confirmed", "source_reactivated",
+        "rollback_checkpointed", "rolled_back", "lease_renewed"
+      ]
+    },
+    "state": {
+      "enum": [
+        "created", "source_checkpointed", "freeze_applied", "frozen_confirmed",
+        "target_activated", "target_checkpointed", "completed", "rollback_requested",
+        "rollback_freeze_applied", "rollback_frozen_confirmed", "source_reactivated",
+        "rollback_checkpointed", "rolled_back"
+      ]
+    }
+  }
+}

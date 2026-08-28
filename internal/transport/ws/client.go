@@ -78,15 +78,21 @@ func (c *Client) EnqueueJSON(v any) error {
 }
 
 func (c *Client) Enqueue(payload []byte) error {
+	_, _, err := c.enqueueWithPressure(payload)
+	return err
+}
+
+func (c *Client) enqueueWithPressure(payload []byte) (int, int, error) {
+	capacity := cap(c.send)
 	if c.closed.Load() {
-		return ErrClientClosed
+		return len(c.send), capacity, ErrClientClosed
 	}
 
 	select {
 	case c.send <- payload:
-		return nil
+		return len(c.send), capacity, nil
 	default:
-		return ErrSendQueueFull
+		return len(c.send), capacity, ErrSendQueueFull
 	}
 }
 

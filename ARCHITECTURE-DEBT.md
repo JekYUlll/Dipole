@@ -12,6 +12,17 @@
 
 ## 待处理
 
+### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-28
+- **影响范围：** Gateway HTTP 访问日志、日志聚合与保留、WebSocket session JWT
+- **现状：** WebSocket 使用 `?token=` 建立连接，Gin 完成日志记录原始 request path。C2 primary seam 演练在未提交日志中检出完整 JWT，归档前已替换为 `token=REDACTED` 并重新执行低敏扫描和校验和。
+- **风险：** 具备日志读取权限的主体可能在令牌有效期内重放 session；集中日志、备份和工单会扩大凭据暴露面。
+- **建议方向：** 在结构化访问日志入口统一清除敏感 query 参数，WebSocket 后续评审短期 ticket、Cookie 或 `Sec-WebSocket-Protocol` 认证方案；增加日志 capture 测试，拒绝 JWT、共享密钥和授权 Header 进入日志正文。
+- **处理门槛：** 任何 Gateway 日志进入共享日志系统前完成脱敏；认证传输方案变化需保留旧客户端兼容窗口和重放威胁测试。
+
 ### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
 
 - **优先级：** P1
@@ -163,7 +174,8 @@
 - **现状：** go-redis 会在 Sentinel 选出新 master 后重连命令与 Pub/Sub 连接；连接中断期间已经发布的 Pub/Sub 消息无法补读。Gateway 的 Kafka handler 当前将跨节点 Pub/Sub 视为实时通知通道。
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
-- **后续方向：** C++ Realtime Delivery 阶段评估节点级有界队列、投递 ACK 和 Kafka offset 提交边界；保留 Sync Timeline 作为最终补偿路径。
+- **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零。`AD-039` 已关闭。默认关闭的 primary seam 提供 connection 定向入队、逐项 ACK、部分成功 connection 重试、有界 Gateway replay state 与 additive WebSocket delivery ID；Web 通过账户隔离的 IndexedDB v4 原子 claim 跨页面重载去重。C++ one-shot probe 经 mTLS 实际验证 `ENQUEUED(1)`、稳定重放去重与 stale Presence `OFFLINE`。显式 primary CLI 现使用独立 `dipole-realtime-primary-*` authority，要求 enable/Presence/transport 三重配置，并将 terminal ACK、低敏 primary evidence 与 Kafka commit 串联；partial/rejected/failed、身份漂移和故障保留同一 pending record。当前 Go Redis Pub/Sub 流量语义未切换，primary 未进入 Compose。
+- **后续方向：** `benchmarks/c2-primary-runtime-2026-08-28/` 已验证真实 queue saturation、terminal ACK 后 commit、故障 retain、`SIGKILL` 后同坐标重放和 lag 归零；窄 terminal-evidence-to-commit 崩溃窗口仍未作确定性声明。C3 由 `AD-041` 继续跟踪互斥 authority 与自动回切。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 
 ### AD-015：Message Service 数据库账号尚未收敛表级权限
@@ -235,6 +247,27 @@
 - **解决方案：** 建立单一 canonical `design/dipole-ui.pen`、统一设计 token、可复用组件、Login/Chat desktop/mobile、Search 四态、Sync 恢复状态、关键异常状态、设计日志和评审导出图。
 - **验证：** pen.dev CLI 识别 23 个顶层 frame 和 10 个可复用组件；结构检查无 placeholder、未命名节点、裁剪或布局告警；Login、Chat、Search、Sync 代表画板均完成渲染复核。
 - **后续范围：** Vue token 映射和自动视觉回归继续由 F4 跟踪，不再阻塞 F1 设计基线关闭。
+
+### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
+
+- **优先级：** P0
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **完成日期：** 2026-08-28
+- **解决方式：** 建立默认 Go 的 `go|shadow|cpp` 本地 authority、跨语言 Redis epoch lease 与 fail-closed reader、短 TTL 节点 observation、双 Kafka group 零 lag checkpoint、不可变 attempt workspace、哈希链 journal、幂等 action artifact 与 production executor。`dipole-realtime-cutover run` 在单一同步循环中统一 advance、条件续租、冻结超时回切和阻塞重试，并以 attempt-scoped Redis owner token 排除并发 controller；回切必须先确认 source nodes，且 `rollback_requested` 续租保留回切意图。
+- **验证：** 隔离证据覆盖 Go/C++ 各一条客户端 frame、跨客户端 checkpoint、controller artifact 崩溃恢复、Redis outage、Kafka member loss、500 ms expired-freeze 回切、真实 C++ Primary lease/observation/assignment/readiness，以及 Controller A 无 release 进程退出后 B 在 5 秒 TTL 前被拒、到期后从同一 journal 完成。证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`、`benchmarks/c3-cutover-checkpoint-2026-08-28/`、`benchmarks/c3-cutover-faults-2026-08-28/`、`benchmarks/c3-cutover-cpp-primary-2026-08-28/` 与 `benchmarks/c3-cutover-controller-2026-08-28/`。
+- **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
+
+### AD-039：Gateway Kafka assignment 未纳入 readiness
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **解决日期：** 2026-08-28
+- **影响范围：** Go Gateway 实时投递、空 Kafka 冷启动、基准门禁、后续 C++ Realtime Delivery 切流
+- **解决方式：** Kafka Consumer 通过 coordinator `DescribeGroups` 聚合整个消费组的 assignment；Gateway 新增要求首次成功的 `kafka-assignment` 探针，只有 group 为 `Stable` 且每个已注册 base/retry topic 至少拥有一个分区时才通过。通用 readiness 状态机新增 opt-in 初始失败语义，其他探针继续沿用兼容默认值。微服务 smoke 同时要求 `/readyz` 和 assignment 指标通过，并使用可覆盖的临时证书目录保持演练隔离。
+- **验证：** clean revision `958d40c7910ca8a85c0dad6bf57698ae32f9d42f` 镜像来源为 dirty=false；独立栈停止 Gateway 后消费组为 `Empty 0`，重启首样本为 `/readyz=not-ready`、`service_ready=0`、assignment=0，32 个样本约 10.2 秒后达到 `Stable 20`、`/readyz=ready`、assignment=1。完整依赖 readiness smoke、聚焦测试和 canonical Go gate 通过，证据归档于 `benchmarks/c2-gateway-assignment-readiness-2026-08-28/`。
+- **保留边界：** 当前探针验证 group 级稳定状态和注册 topic 覆盖；运行期短暂 rebalance 继续由既有失败阈值吸收，长期 reader 无进展仍需结合 fetch/commit/lag 指标独立告警。
 
 ### AD-022：前端开发工具链仍停留在 Vite 5
 

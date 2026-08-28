@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/transition.schema.json",
+  "title": "Dipole Realtime Delivery Fence Transition v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "transition_id", "action", "operator_id", "reason",
+    "expected_sha256", "target_authority", "lease_until_unix_ms"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-fence-transition.v1" },
+    "transition_id": { "$ref": "#/$defs/id" },
+    "action": { "enum": ["bootstrap", "freeze", "activate", "renew"] },
+    "operator_id": { "$ref": "#/$defs/id" },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "expected_sha256": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/sha256" }] },
+    "target_authority": { "enum": ["", "go", "shadow", "cpp"] },
+    "lease_until_unix_ms": { "type": "integer", "minimum": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "bootstrap" } } },
+      "then": {
+        "properties": {
+          "expected_sha256": { "const": "" },
+          "target_authority": { "const": "go" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "action": { "enum": ["freeze", "renew"] } } },
+      "then": {
+        "properties": {
+          "expected_sha256": { "$ref": "#/$defs/sha256" },
+          "target_authority": { "const": "" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "action": { "const": "activate" } } },
+      "then": {
+        "properties": {
+          "expected_sha256": { "$ref": "#/$defs/sha256" },
+          "target_authority": { "enum": ["go", "shadow", "cpp"] }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

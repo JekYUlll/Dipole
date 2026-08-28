@@ -1,0 +1,11 @@
+7df28e13a975b7896d8a759665906809e3fd83199e4d1464201d00ad7091e389  benchmarks/c2-primary-runtime-2026-08-28/raw/crash-worker.json
+822a66734d7465f488ec658fd463359789a40a0835bad76285bb00a6c04d2210  benchmarks/c2-primary-runtime-2026-08-28/raw/group-after-recovery.txt
+a23200e7e3ecb838653dd39d8711ed9237ebf08aea874b93970fcbf451049c4c  benchmarks/c2-primary-runtime-2026-08-28/raw/group-before-crash.txt
+33e8ffef79a8c70326446cd5305810e5980429bb78f0cfd39e68876d432e52ff  benchmarks/c2-primary-runtime-2026-08-28/raw/primary-evidence.ndjson
+c5ace361b32ee36dd41db7f227f384ccec74cbcf95931ec4d73e699fe016536e  benchmarks/c2-primary-runtime-2026-08-28/raw/runtime-images.json
+b63ab8ba4bf399ba53a81a5e8f23f80dda7460ef0c16525a469d6016e4455317  benchmarks/c2-primary-runtime-2026-08-28/raw/saturation-acks.ndjson
+d17096173161b5305df1d75c93f5a76f71e67296f6943fdb1d8b89cec1f2b5ab  benchmarks/c2-primary-runtime-2026-08-28/raw/shared-nodes-after.txt
+c97db853d4f18f40d22ad87e338d88b2263d71ba379218d3c0a8a8d5e278fdc0  benchmarks/c2-primary-runtime-2026-08-28/raw/ws-frames.ndjson
+6c8867e1ec27710e5f25e8e26c34707b7a6b0e727a200a1068dfdb2a895e5ac6  benchmarks/c2-primary-runtime-2026-08-28/README.md
+5997d8a825f6a899bd9633c442ed3daefdf04061dac996549e108cd276ea889c  benchmarks/c2-primary-runtime-2026-08-28/report.json
+33068cf06565db73e49cd4b199bd175e443faf8eb25372dbcdd782c15e0b950b  benchmarks/c2-primary-runtime-2026-08-28/verify.py

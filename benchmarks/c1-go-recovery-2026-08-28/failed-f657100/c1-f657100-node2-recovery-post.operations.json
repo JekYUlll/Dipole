@@ -1,0 +1,144 @@
+{
+  "schema_version": "dipole.performance.operations.v4",
+  "run_id": "c1-f657100-node2-recovery-post",
+  "scenario": "concurrent",
+  "captured_at": "20260827T194243Z",
+  "environment": {
+    "git_commit": "f6571004563b628cadf452abd6cf12582fcaa590",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "topology": "docker-compose.dist.yml",
+    "api_base_url": "http://127.0.0.1:18081",
+    "node1_ws": "ws://127.0.0.1:18081",
+    "node2_ws": "ws://127.0.0.1:18082"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench.js",
+    "user_count": 20,
+    "group_size": 50,
+    "phone_prefix": "136",
+    "sender_count": 20,
+    "messages_per_sender": 2,
+    "receiver_conn_ms": 15000,
+    "sender_conn_ms": 15000,
+    "hot_group_warmup_messages": 0,
+    "hot_group_member_count_threshold": null,
+    "hot_group_message_threshold": null
+  },
+  "storage": {
+    "direct": {
+      "messages": 0,
+      "inbox_rows": 0
+    },
+    "group": {
+      "messages": 0,
+      "inbox_rows": 0
+    },
+    "conversation_state": {
+      "write_operations": 0,
+      "projection_writes": {
+        "direct_message": 0,
+        "group_init": 0,
+        "group_message": 0
+      },
+      "counter_source": "dipole_conversation_projection_writes_total",
+      "duration_source": "dipole_conversation_projection_write_duration_seconds",
+      "timing": {
+        "direct_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_init": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        }
+      },
+      "rows_touched": 0,
+      "messages_observed": 0
+    }
+  },
+  "kafka_lag_samples": [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "process_resources": {
+    "duration_seconds": 15.918567,
+    "sample_count": 6,
+    "schema_version": "dipole.performance.process-resources.v1",
+    "services": {
+      "dipole-node1": {
+        "cpu_core_percent": 14.008799,
+        "involuntary_context_switches": 939,
+        "pid": 846572,
+        "rss_end_bytes": 68710400,
+        "rss_peak_bytes": 68710400,
+        "rss_start_bytes": 56147968,
+        "thread_peak": 8,
+        "voluntary_context_switches": 61144
+      },
+      "dipole-node2": {
+        "cpu_core_percent": 7.726826,
+        "involuntary_context_switches": 818,
+        "pid": 849762,
+        "rss_end_bytes": 67756032,
+        "rss_peak_bytes": 67756032,
+        "rss_start_bytes": 55443456,
+        "thread_peak": 9,
+        "voluntary_context_switches": 58709
+      },
+      "dipole-node3": {
+        "cpu_core_percent": 7.852466,
+        "involuntary_context_switches": 797,
+        "pid": 846547,
+        "rss_end_bytes": 65118208,
+        "rss_peak_bytes": 65118208,
+        "rss_start_bytes": 55754752,
+        "thread_peak": 8,
+        "voluntary_context_switches": 57906
+      }
+    }
+  },
+  "runtime_provenance": {
+    "schema_version": "dipole.performance.runtime-provenance.v1",
+    "expected_revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+    "source_aligned": true,
+    "services": {
+      "dipole-node1": {
+        "container_id": "5272b21a67d5727b724e0066baa9b2ed456c1bf22423b5fb934cf2e6a07ff032",
+        "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+        "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+        "created": "2026-08-27T19:41:35Z",
+        "source_dirty": false
+      },
+      "dipole-node2": {
+        "container_id": "5ef92c5e88411103ee78b6a3d4e09680d9f0489414d593c700b23020e449a355",
+        "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+        "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+        "created": "2026-08-27T19:41:35Z",
+        "source_dirty": false
+      },
+      "dipole-node3": {
+        "container_id": "428940da5abdfd2bc2b1d49a4964f09ccd0a18a38d1acb281754e6dff48c8766",
+        "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+        "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+        "created": "2026-08-27T19:41:35Z",
+        "source_dirty": false
+      }
+    }
+  }
+}

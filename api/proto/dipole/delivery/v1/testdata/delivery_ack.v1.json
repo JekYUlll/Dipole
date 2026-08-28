@@ -1,0 +1,19 @@
+{
+  "contractVersion": "v1",
+  "batchId": "NODE-BATCH-0001",
+  "status": "DELIVERY_ACK_STATUS_PARTIAL",
+  "results": [
+    {
+      "deliveryId": "EVENT-0001:U100",
+      "status": "DELIVERY_RESULT_STATUS_BACKPRESSURED",
+      "retryAfterMs": 25,
+      "errorCode": "DELIVERY_ERROR_CODE_QUEUE_FULL"
+    }
+  ],
+  "pressure": {
+    "depth": 1024,
+    "capacity": 1024,
+    "retryAfterMs": 25
+  },
+  "acknowledgedAt": "2026-08-28T08:00:00.025Z"
+}

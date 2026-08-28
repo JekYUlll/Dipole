@@ -1,0 +1,9 @@
+# HELP dipole_kafka_consumer_committed_total Kafka offsets committed by this process.
+# TYPE dipole_kafka_consumer_committed_total counter
+dipole_kafka_consumer_committed_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 3
+# HELP dipole_kafka_consumer_fetched_total Kafka messages fetched by this process.
+# TYPE dipole_kafka_consumer_fetched_total counter
+dipole_kafka_consumer_fetched_total{client_id="dipole-gateway",group_id="dipole-gateway-consumer"} 3
+# HELP dipole_realtime_delivery_authority Current Gateway realtime message delivery authority.
+# TYPE dipole_realtime_delivery_authority gauge
+dipole_realtime_delivery_authority{authority="cpp"} 1

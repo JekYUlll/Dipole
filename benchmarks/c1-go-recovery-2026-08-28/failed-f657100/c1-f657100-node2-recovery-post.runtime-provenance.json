@@ -1,0 +1,28 @@
+{
+  "schema_version": "dipole.performance.runtime-provenance.v1",
+  "expected_revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+  "source_aligned": true,
+  "services": {
+    "dipole-node1": {
+      "container_id": "5272b21a67d5727b724e0066baa9b2ed456c1bf22423b5fb934cf2e6a07ff032",
+      "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+      "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+      "created": "2026-08-27T19:41:35Z",
+      "source_dirty": false
+    },
+    "dipole-node2": {
+      "container_id": "5ef92c5e88411103ee78b6a3d4e09680d9f0489414d593c700b23020e449a355",
+      "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+      "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+      "created": "2026-08-27T19:41:35Z",
+      "source_dirty": false
+    },
+    "dipole-node3": {
+      "container_id": "428940da5abdfd2bc2b1d49a4964f09ccd0a18a38d1acb281754e6dff48c8766",
+      "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+      "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+      "created": "2026-08-27T19:41:35Z",
+      "source_dirty": false
+    }
+  }
+}

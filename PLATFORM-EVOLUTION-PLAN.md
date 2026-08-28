@@ -398,18 +398,44 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### C1：建立 Go 数据面基准
 
-- [ ] 固化连接数、消息吞吐、P50/P95/P99、CPU、RSS、context switch 和故障恢复基线。
-- [ ] 将连接管理、投递路由、背压、重试和热群聚合定义为版本化协议与 contract test。
-- [ ] 明确 Gateway 与 Delivery 的进程边界，禁止 C++ 数据面访问业务数据库。
+- [x] 建立 operations/baseline v4 资源采集器，按服务记录 CPU core%、采样 RSS 峰值、线程峰值和 context switch，并保留 v1-v3 兼容读取。
+- [x] 在固定 20/50/100 连接梯度中归档吞吐、P50/P95/P99、CPU、RSS、context switch，并完成 node2 stop/start 故障恢复基线。
+- [x] 将投递 envelope、节点批次、ACK/error、背压和热群 mode 定义为版本化 Protobuf 与跨语言 golden vectors；连接级队列、持久重试和去重在 C2 shadow 中实现。
+- [x] 明确 Gateway 与 Delivery 的进程及数据所有权边界，禁止 C++ 数据面访问业务数据库。
 
 ### C2：C++ Realtime Delivery Shadow
 
-- [ ] 实现 Kafka 消费、Redis Presence 查询、节点级批处理、有界队列、背压和 QoS。
-- [ ] 与 Go Delivery 并行消费 shadow 流量，比较目标节点、收件人、顺序和延迟，不重复投递客户端。
+- [x] 建立独立 C++20 contract-only foundation，在 build 目录生成 canonical Protobuf 类型，共用 golden vectors，并提供 fail-closed 配置与健康端点；暂不接入运行拓扑。
+- [x] 建立无网络状态的 Kafka record 到 Delivery v1 纯投影，固定 direct/group/hot/timeline/file 与 legacy-created 语义，并以稳定 ID 支持确定性重放。
+- [x] 建立独立 librdkafka shadow runtime、evidence-before-commit、assignment readiness 和低敏 NDJSON 证据；运行入口不写 Redis、Gateway 或客户端。
+- [x] 完成 Kafka 消费、Redis Presence、节点级批处理、有界 observation/primary ACK、稳定 delivery ID 和背压分类；shadow 对照及 one-shot primary seam 已归档。
+- [x] 增加独立 `dipole-realtime-primary-*` authority 和默认关闭的显式 primary CLI；terminal ACK/evidence 后提交，partial/error 保留 pending record，shadow 命令与证据保持兼容。
+- [x] 归档真实 primary queue saturation、consume-to-ACK offset 提交、故障 retain 与进程 `SIGKILL` 重放；报告 8/8，窄 terminal evidence/commit 崩溃窗口保持未声明。
+- [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
 - [ ] 通过压测与故障注入证明收益；收益不足时保留 Go 实现并停止替换。
 
 ### C3：灰度切换与 Gateway 评估
 
+- [x] 关闭 `AD-041`：建立互斥 Go/C++ 客户端投递 authority、双 group checkpoint 和可执行自动回切，禁止两个写 authority 并行 active。
+  - [x] 增加默认 `go` 的本地 `go|shadow|cpp` 配置、Gateway checkpoint-only Handler 与 C++ 启动错配门禁；保留共享 fencing 和回切证据作为后续切片。
+  - [x] 在隔离 Go/C++ topology 中证明目标事件各只有一个客户端 frame，并确认 Go checkpoint group 与 C++ primary group 均达到 log end/lag 0；证据包保留应用 readiness 与临时 Compose health 探针误报诊断。
+  - [x] 冻结 `epoch + authority + phase + lease expiry` 共享 fence v1，并让 Go Gateway 在启动及每条消息副作用前 fail closed 核验；默认保持关闭。
+  - [x] 让 C++ shadow/primary 消费同一 fence golden vectors，在创建 Kafka consumer 及每个 pending record 投影前核验，并在拒绝时保留坐标和撤销 readiness。
+  - [x] 增加 operator-driven Redis Lua CAS writer，强制 freeze 中间态、单调 epoch、精确 previous hash、幂等 transition ID 和低敏有 TTL receipt；保留身份认证与持久 receipt 加固。
+  - [x] 增加 Go Gateway 稳定节点 observation：启动、空闲心跳与 readiness 写入短 TTL、lease-hash-bound 证据，写失败 fail closed，消息热路径不增加 observation 写放大。
+  - [x] 增加 C++ 显式实例身份、`SET PX` observation、空 Kafka heartbeat 与独立 fence readiness；跨语言 reason vectors 和真实 Redis 刷新通过。
+  - [x] 实现预期节点聚合和双 group checkpoint receipt；收据绑定短 TTL proof、transition lease hash、完整 assignment、逐分区 committed/log end 与两组一致高水位，并以不可覆盖文件持久化。
+  - [x] 建立共享、租约化 authority fencing 和双 group checkpoint receipt，完成中断后确定性续切或回切。
+    - [x] 增加不可变 cutover attempt manifest 与哈希链事件日志，确定性归约正常续切、冻结期直接回退和目标激活后二次冻结回退。
+    - [x] 增加单步恢复 orchestrator、确定性幂等 action ID 与首次冻结超预算自动回退决策，动作失败时保持 journal 原位。
+    - [x] 增加不可覆盖 action artifact envelope，独立绑定 canonical action 与外部 receipt/checkpoint payload，为模糊故障重试提供持久幂等边界。
+    - [x] 接入 production transition/checkpoint executor，验证 initial lease 和全部 manifest 绑定，并覆盖 forward、两条 rollback 与 Redis receipt 恢复。
+    - [x] 建立自包含 immutable attempt workspace，持久化 canonical 输入并在恢复时重算全部 manifest/lease 绑定。
+    - [x] 增加 create/status/单步 advance/rollback 恢复命令，所有变更要求确认并在每个副作用后形成持久边界。
+    - [x] 增加证据链内的单步 lease renew；续期不重置冻结预算，并强制重采绑定旧 lease 的节点/checkpoint 证据。
+    - [x] 用隔离真实 Kafka/Redis 与 race harness 完成 controller crash、Kafka member loss/rejoin、Redis outage/recovery 的 forward cutover 演练并归档证据。
+    - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
+    - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。

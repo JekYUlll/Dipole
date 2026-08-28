@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package dipole.delivery.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1";
+
+import "google/protobuf/timestamp.proto";
+
+// DeliveryMode records the client synchronization behavior of one item.
+enum DeliveryMode {
+  DELIVERY_MODE_UNSPECIFIED = 0;
+  DELIVERY_MODE_FULL_EVENT = 1;
+  DELIVERY_MODE_TIMELINE_NOTIFY = 2;
+  DELIVERY_MODE_HOT_GROUP_NOTIFY = 3;
+}
+
+// DeliveryResultStatus is the durable dispatch outcome at the realtime edge.
+enum DeliveryResultStatus {
+  DELIVERY_RESULT_STATUS_UNSPECIFIED = 0;
+  DELIVERY_RESULT_STATUS_ENQUEUED = 1;
+  DELIVERY_RESULT_STATUS_OFFLINE = 2;
+  DELIVERY_RESULT_STATUS_BACKPRESSURED = 3;
+  DELIVERY_RESULT_STATUS_REJECTED = 4;
+  DELIVERY_RESULT_STATUS_FAILED = 5;
+}
+
+enum DeliveryAckStatus {
+  DELIVERY_ACK_STATUS_UNSPECIFIED = 0;
+  DELIVERY_ACK_STATUS_ACCEPTED = 1;
+  DELIVERY_ACK_STATUS_PARTIAL = 2;
+  DELIVERY_ACK_STATUS_REJECTED = 3;
+}
+
+// NodeObservationStatus is used only by the no-client-write shadow ingress.
+enum NodeObservationStatus {
+  NODE_OBSERVATION_STATUS_UNSPECIFIED = 0;
+  NODE_OBSERVATION_STATUS_OBSERVED = 1;
+  NODE_OBSERVATION_STATUS_REJECTED = 2;
+  NODE_OBSERVATION_STATUS_BACKPRESSURED = 3;
+}
+
+enum DeliveryErrorCode {
+  DELIVERY_ERROR_CODE_UNSPECIFIED = 0;
+  DELIVERY_ERROR_CODE_QUEUE_FULL = 1;
+  DELIVERY_ERROR_CODE_INVALID_ITEM = 2;
+  DELIVERY_ERROR_CODE_NODE_UNAVAILABLE = 3;
+  DELIVERY_ERROR_CODE_INTERNAL = 4;
+}
+
+// DeliveryEnvelope is the language-neutral handoff from event projection to
+// the realtime dispatcher. It is replayable and every item is independently
+// identifiable so retries can preserve idempotency.
+message DeliveryEnvelope {
+  string contract_version = 1;
+  string batch_id = 2;
+  string source_event_id = 3;
+  string source_topic = 4;
+  int32 source_partition = 5;
+  int64 source_offset = 6;
+  string request_id = 7;
+  string trace_id = 8;
+  google.protobuf.Timestamp created_at = 9;
+  repeated DeliveryItem items = 10;
+}
+
+message DeliveryItem {
+  string delivery_id = 1;
+  string recipient_user_id = 2;
+  string event_type = 3;
+  bytes payload_json = 4;
+  string ordering_key = 5;
+  DeliveryMode mode = 6;
+}
+
+// NodeDeliveryBatch is produced after Presence resolution. A recipient with
+// connections on two nodes appears in two node batches with the same stable
+// delivery_id and the connections owned by each target node.
+message NodeDeliveryBatch {
+  string contract_version = 1;
+  string batch_id = 2;
+  string target_node_id = 3;
+  string source_event_id = 4;
+  string request_id = 5;
+  string trace_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+  repeated NodeDeliveryItem items = 8;
+}
+
+message NodeDeliveryItem {
+  string delivery_id = 1;
+  string recipient_user_id = 2;
+  repeated string connection_ids = 3;
+  string event_type = 4;
+  bytes payload_json = 5;
+  string ordering_key = 6;
+  DeliveryMode mode = 7;
+}
+
+message DeliveryAck {
+  string contract_version = 1;
+  string batch_id = 2;
+  DeliveryAckStatus status = 3;
+  repeated DeliveryResult results = 4;
+  QueuePressure pressure = 5;
+  google.protobuf.Timestamp acknowledged_at = 6;
+}
+
+// NodeDeliveryObservation confirms validation/admission into the bounded
+// shadow observation path. It never claims that a client queue was written.
+message NodeDeliveryObservation {
+  string contract_version = 1;
+  string batch_id = 2;
+  string target_node_id = 3;
+  NodeObservationStatus status = 4;
+  uint32 observed_items = 5;
+  uint32 observed_connections = 6;
+  QueuePressure pressure = 7;
+  DeliveryErrorCode error_code = 8;
+  google.protobuf.Timestamp observed_at = 9;
+  bool duplicate = 10;
+}
+
+message DeliveryResult {
+  string delivery_id = 1;
+  DeliveryResultStatus status = 2;
+  uint32 accepted_connections = 3;
+  uint32 retry_after_ms = 4;
+  DeliveryErrorCode error_code = 5;
+}
+
+// QueuePressure gives the producer a bounded backpressure signal without
+// exposing implementation-specific queue internals.
+message QueuePressure {
+  uint32 depth = 1;
+  uint32 capacity = 2;
+  uint32 retry_after_ms = 3;
+}
+
+service NodeDeliveryService {
+  rpc ObserveNodeBatch(NodeDeliveryBatch) returns (NodeDeliveryObservation);
+  rpc DeliverNodeBatch(NodeDeliveryBatch) returns (DeliveryAck);
+}
