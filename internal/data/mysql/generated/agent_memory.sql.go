@@ -11,8 +11,58 @@ import (
 	"time"
 )
 
+const eraseOwnedAgentMemoryRoot = `-- name: EraseOwnedAgentMemoryRoot :execrows
+UPDATE agent_memories
+SET status = 'revoked',
+    revoked_at = COALESCE(revoked_at, ?),
+    revoked_by_uuid = ?,
+    revoke_reason = 'privacy erasure',
+    content = '[erased]',
+    compact_content = NULL,
+    source_uri = NULL,
+    resource_type = 'erased',
+    resource_id = '[erased]',
+    source_type = CASE WHEN memory_version = 1 THEN 'erased' ELSE source_type END,
+    source_id = CASE WHEN memory_version = 1 THEN '[erased]' ELSE source_id END,
+    source_sequence = CASE WHEN memory_version = 1 THEN NULL ELSE source_sequence END,
+    correction_reason = CASE WHEN memory_version = 1 THEN '' ELSE 'privacy erasure' END,
+    content_erased_at = ?,
+    content_erased_by_uuid = ?,
+    content_erasure_reason_code = ?
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_root_uuid = ?
+  AND content_erased_at IS NULL
+`
+
+type EraseOwnedAgentMemoryRootParams struct {
+	ContentErasedAt          sql.NullTime
+	ContentErasedByUuid      string
+	ContentErasureReasonCode string
+	TenantID                 string
+	PrincipalUuid            string
+	MemoryRootUuid           string
+}
+
+func (q *Queries) EraseOwnedAgentMemoryRoot(ctx context.Context, arg EraseOwnedAgentMemoryRootParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, eraseOwnedAgentMemoryRoot,
+		arg.ContentErasedAt,
+		arg.ContentErasedByUuid,
+		arg.ContentErasedAt,
+		arg.ContentErasedByUuid,
+		arg.ContentErasureReasonCode,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.MemoryRootUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAgentMemoryBySupersedes = `-- name: GetAgentMemoryBySupersedes :one
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -57,12 +107,15 @@ func (q *Queries) GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMe
 		&i.SupersedesMemoryUuid,
 		&i.CorrectedByUuid,
 		&i.CorrectionReason,
+		&i.ContentErasedAt,
+		&i.ContentErasedByUuid,
+		&i.ContentErasureReasonCode,
 	)
 	return i, err
 }
 
 const getOwnedAgentMemory = `-- name: GetOwnedAgentMemory :one
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -107,12 +160,15 @@ func (q *Queries) GetOwnedAgentMemory(ctx context.Context, arg GetOwnedAgentMemo
 		&i.SupersedesMemoryUuid,
 		&i.CorrectedByUuid,
 		&i.CorrectionReason,
+		&i.ContentErasedAt,
+		&i.ContentErasedByUuid,
+		&i.ContentErasureReasonCode,
 	)
 	return i, err
 }
 
 const getOwnedAgentMemoryForUpdate = `-- name: GetOwnedAgentMemoryForUpdate :one
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -158,6 +214,9 @@ func (q *Queries) GetOwnedAgentMemoryForUpdate(ctx context.Context, arg GetOwned
 		&i.SupersedesMemoryUuid,
 		&i.CorrectedByUuid,
 		&i.CorrectionReason,
+		&i.ContentErasedAt,
+		&i.ContentErasedByUuid,
+		&i.ContentErasureReasonCode,
 	)
 	return i, err
 }
@@ -228,7 +287,7 @@ func (q *Queries) InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryPa
 }
 
 const listAgentContextMemories = `-- name: ListAgentContextMemories :many
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -303,6 +362,9 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 			&i.SupersedesMemoryUuid,
 			&i.CorrectedByUuid,
 			&i.CorrectionReason,
+			&i.ContentErasedAt,
+			&i.ContentErasedByUuid,
+			&i.ContentErasureReasonCode,
 		); err != nil {
 			return nil, err
 		}
@@ -318,7 +380,7 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 }
 
 const listOwnedAgentMemories = `-- name: ListOwnedAgentMemories :many
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -382,6 +444,79 @@ func (q *Queries) ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgent
 			&i.SupersedesMemoryUuid,
 			&i.CorrectedByUuid,
 			&i.CorrectionReason,
+			&i.ContentErasedAt,
+			&i.ContentErasedByUuid,
+			&i.ContentErasureReasonCode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnedAgentMemoryRootForUpdate = `-- name: ListOwnedAgentMemoryRootForUpdate :many
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason, memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason, content_erased_at, content_erased_by_uuid, content_erasure_reason_code
+FROM agent_memories
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_root_uuid = ?
+ORDER BY memory_version ASC
+FOR UPDATE
+`
+
+type ListOwnedAgentMemoryRootForUpdateParams struct {
+	TenantID       string
+	PrincipalUuid  string
+	MemoryRootUuid string
+}
+
+func (q *Queries) ListOwnedAgentMemoryRootForUpdate(ctx context.Context, arg ListOwnedAgentMemoryRootForUpdateParams) ([]AgentMemory, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentMemoryRootForUpdate, arg.TenantID, arg.PrincipalUuid, arg.MemoryRootUuid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentMemory{}
+	for rows.Next() {
+		var i AgentMemory
+		if err := rows.Scan(
+			&i.ID,
+			&i.MemoryUuid,
+			&i.TenantID,
+			&i.PrincipalUuid,
+			&i.AgentUuid,
+			&i.MemoryType,
+			&i.Status,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Content,
+			&i.CompactContent,
+			&i.Priority,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceUri,
+			&i.SourceSequence,
+			&i.ValidFrom,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+			&i.MemoryRootUuid,
+			&i.MemoryVersion,
+			&i.SupersedesMemoryUuid,
+			&i.CorrectedByUuid,
+			&i.CorrectionReason,
+			&i.ContentErasedAt,
+			&i.ContentErasedByUuid,
+			&i.ContentErasureReasonCode,
 		); err != nil {
 			return nil, err
 		}
