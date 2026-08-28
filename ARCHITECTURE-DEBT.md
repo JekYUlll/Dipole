@@ -70,6 +70,7 @@
 - **风险：** 没有稳定的增量执行与导出结果时，无法把 Agent Task Timeline 设计资产纳入评审，也不能宣称 F3/F4 视觉基线已完成。
 - **建议方向：** 将 Pencil CLI 调用拆成小批次、设置任务超时并在每次调用后校验输出文件、节点命名和导出图；失败时保留原文件并记录 CLI/skill 版本，必要时使用已批准 frame 作为回滚点。
 - **处理门槛：** 新设计必须同时提交 canonical `.pen`、导出预览、`DESIGN-CHANGELOG.md` 条目和结构/视觉检查结果；未满足前不修改现有设计基线。
+- **本轮进展：** 已保留 `design/agent-task-timeline-v1-brief.md` 作为下一次小批次输入；使用 Pencil `0.3.5` 和受限模型重复尝试仍在超时窗口内未完成，未生成 Timeline frame 或导出图，safe-edit wrapper 验证 canonical 未被覆盖。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
