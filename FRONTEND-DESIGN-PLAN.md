@@ -81,6 +81,7 @@ design/
 
 ### F4：持续维护
 
+- [x] 将 canonical `.pen` Foundations token 映射到 Vue 全局 `--dp-*` CSS token，并以 Vitest 契约测试锁定颜色、字体、间距和圆角值；App 壳层与 Search 工作区已接入。
 - API 或状态机变化先更新设计稿和设计日志，再实现页面。
 - 每个发布检查 `.pen`、Vue token、Story/fixture 和截图基线是否同步。
 - 每季度清理失效 frame 与重复组件，保留已发布版本标签。
