@@ -87,6 +87,20 @@ describe("trusted MCP Invocation producer", () => {
     }, context)).resolves.toMatchObject({ status: "completed" });
   });
 
+  it("derives the Worker egress policy from the registered Capability route", () => {
+    const routes = registry();
+    const policies = routes.workerEgressPolicies("calendar.event.read");
+
+    expect(policies).toEqual({
+      "calendar-prod": {
+        "calendar.read_event": {
+          allowedArgumentNames: ["calendarId", "eventId", "details"], maximumBytes: 1024
+        }
+      }
+    });
+    expect(() => routes.workerEgressPolicies("calendar.event.write")).toThrow(/unavailable/i);
+  });
+
   it("rejects caller-supplied authority before route or Core access", async () => {
     const beginMcpToolCommand = vi.fn();
     const producer = new TrustedMcpInvocationProducer(registry(), { beginMcpToolCommand });
