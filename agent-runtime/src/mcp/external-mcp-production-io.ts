@@ -18,6 +18,10 @@ import {
   type ExternalMcpProductionIoPreflight
 } from "./external-mcp-production-io-preflight.js";
 import {
+  createExternalMcpShadowConnectivityDrill,
+  type ExternalMcpShadowConnectivityDrill
+} from "./external-mcp-shadow-connectivity.js";
+import {
   createEncryptedFileExternalMcpSecretProvider,
   type EncryptedFileExternalMcpSecretProviderConfig
 } from "./node-external-mcp-encrypted-secret-provider.js";
@@ -44,6 +48,7 @@ export interface ExternalMcpProductionIoOptions {
 export interface ExternalMcpProductionIoRuntime {
   readonly registry: ExternalMcpTransportRegistry;
   readonly preflight: ExternalMcpProductionIoPreflight;
+  readonly shadowConnectivityDrill: ExternalMcpShadowConnectivityDrill;
 }
 
 export function createExternalMcpProductionIoRegistry(
@@ -60,9 +65,13 @@ export function createExternalMcpProductionIoRuntime(
   options: ExternalMcpProductionIoOptions = {}
 ): ExternalMcpProductionIoRuntime {
   if (!config.enabled) {
+    const registry = new ExternalMcpTransportRegistry(config, disabledCatalog, disabledFactory, options.now);
     return {
-      registry: new ExternalMcpTransportRegistry(config, disabledCatalog, disabledFactory, options.now),
-      preflight: createExternalMcpProductionIoPreflight(config, undefined, options.now)
+      registry,
+      preflight: createExternalMcpProductionIoPreflight(config, undefined, options.now),
+      shadowConnectivityDrill: createExternalMcpShadowConnectivityDrill(registry, {
+        ...(options.now === undefined ? {} : { now: options.now })
+      })
     };
   }
   if (io === undefined) throw new Error("Enabled external MCP requires production I/O configuration");
@@ -92,14 +101,18 @@ export function createExternalMcpProductionIoRuntime(
     authProviderOptions: { maximumBytes: maximumSecretBytes },
     ...(options.transportBuilder === undefined ? {} : { transportBuilder: options.transportBuilder })
   });
+  const registry = new ExternalMcpTransportRegistry(config, catalog, factory, options.now);
   return {
-    registry: new ExternalMcpTransportRegistry(config, catalog, factory, options.now),
+    registry,
     preflight: createExternalMcpProductionIoPreflight(config, {
       catalog,
       secretProvider,
       caBundles,
       maximumSecretBytes
-    }, options.now)
+    }, options.now),
+    shadowConnectivityDrill: createExternalMcpShadowConnectivityDrill(registry, {
+      ...(options.now === undefined ? {} : { now: options.now })
+    })
   };
 }
 

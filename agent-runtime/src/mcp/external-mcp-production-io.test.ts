@@ -71,6 +71,18 @@ describe("external MCP production I/O composition", () => {
     expect(() => registry.describe("github-prod", "dipole")).toThrow(/disabled/i);
   });
 
+  it("keeps the disabled Shadow connectivity drill fail-closed without touching residual I/O", async () => {
+    const residual = {} as ExternalMcpProductionIoConfig;
+    Object.defineProperty(residual, "credentialCatalogPath", {
+      get: () => { throw new Error("disabled Shadow drill touched residual I/O configuration"); }
+    });
+    const runtime = createExternalMcpProductionIoRuntime(loadExternalMcpConfig({}), residual, {
+      now: () => new Date("2026-08-28T13:00:00Z")
+    });
+    await expect(runtime.shadowConnectivityDrill({ profileId: "github-prod", tenantId: "dipole" }))
+      .rejects.toThrow("External MCP Shadow connectivity drill failed");
+  });
+
   it("validates enabled construction without reading configured files", () => {
     expect(() => createExternalMcpProductionIoRegistry(enabledProfiles())).toThrow(/I\/O configuration/i);
     const missingRoot = join(directory, "files-that-do-not-exist");
