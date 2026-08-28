@@ -98,10 +98,12 @@ type agentMemoryResolverStub struct {
 }
 
 type agentMemoryOwnerControlStub struct {
-	listRequest   application.AgentMemoryOwnerListRequestV1
-	revokeRequest application.AgentMemoryOwnerRevokeRequestV1
-	page          application.AgentMemoryOwnerPageV1
-	item          application.AgentMemoryV1
+	listRequest       application.AgentMemoryOwnerListRequestV1
+	revokeRequest     application.AgentMemoryOwnerRevokeRequestV1
+	correctionRequest application.AgentMemoryOwnerCorrectionRequestV1
+	page              application.AgentMemoryOwnerPageV1
+	item              application.AgentMemoryV1
+	correction        application.AgentMemoryOwnerCorrectionResultV1
 }
 
 func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) (*application.AgentMemoryOwnerPageV1, error) {
@@ -113,6 +115,12 @@ func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, reque
 func (s *agentMemoryOwnerControlStub) RevokeOwnedMemory(_ context.Context, request application.AgentMemoryOwnerRevokeRequestV1) (*application.AgentMemoryV1, error) {
 	s.revokeRequest = request
 	copy := s.item
+	return &copy, nil
+}
+
+func (s *agentMemoryOwnerControlStub) CorrectOwnedMemory(_ context.Context, request application.AgentMemoryOwnerCorrectionRequestV1) (*application.AgentMemoryOwnerCorrectionResultV1, error) {
+	s.correctionRequest = request
+	copy := s.correction
 	return &copy, nil
 }
 
@@ -763,6 +771,7 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	now := time.UnixMilli(1_700_000_000_000).UTC()
 	item := application.AgentMemoryV1{
 		MemoryUUID: "MEM-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryRootUUID: "MEM-1", MemoryVersion: 1,
 		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
 		ResourceType: "conversation", ResourceID: "group:G1", Content: "Owner is Alice", CompactContent: "Owner: Alice", Priority: 80,
 		Provenance: application.AgentMemoryProvenanceV1{SourceType: "message", SourceID: "M1", URI: "mysql://internal/secret", Sequence: "42"},
@@ -775,6 +784,17 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	revokedAt := now
 	control.item.Status, control.item.RevokedAt = application.AgentMemoryStatusRevoked, &revokedAt
 	control.item.RevokedByUUID, control.item.RevokeReason = "U100", "outdated"
+	control.correction = application.AgentMemoryOwnerCorrectionResultV1{
+		Previous: control.item,
+		Corrected: application.AgentMemoryV1{
+			MemoryUUID: "MEM-2", MemoryRootUUID: "MEM-1", MemoryVersion: 2, SupersedesMemoryUUID: "MEM-1",
+			TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", CorrectedByUUID: "U100", CorrectionReason: "fix owner",
+			MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+			ResourceType: "conversation", ResourceID: "group:G1", Content: "Owner is Bob", CompactContent: "Owner: Bob", Priority: 80,
+			Provenance: application.AgentMemoryProvenanceV1{SourceType: application.AgentMemorySourceOwnerCorrectionV1, SourceID: "MEM-1", Sequence: "2", URI: "mysql://internal/corrected"},
+			ValidFrom:  now, CreatedAt: now,
+		},
+	}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	server, _ = server.WithMemoryOwnerControls(control)
 
@@ -798,6 +818,18 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	})
 	if err != nil || control.revokeRequest.PrincipalUUID != "U100" || control.revokeRequest.Reason != "outdated" {
 		t.Fatalf("revoke owned Memory request=%+v err=%v", control.revokeRequest, err)
+	}
+	response, err = invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.CorrectOwnedMemory(ctx, &agentv1.CorrectOwnedMemoryRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", MemoryId: "MEM-1",
+			ExpectedVersion: 1, Content: "Owner is Bob", CompactContent: "Owner: Bob", Reason: "fix owner",
+		})
+	})
+	corrected := response.(*agentv1.CorrectOwnedMemoryResponse)
+	if err != nil || control.correctionRequest.PrincipalUUID != "U100" || control.correctionRequest.ExpectedVersion != 1 ||
+		corrected.GetPrevious().GetStatus() != "revoked" || corrected.GetCorrected().GetMemoryVersion() != 2 ||
+		corrected.GetCorrected().GetMemoryRootId() != "MEM-1" || corrected.GetCorrected().GetProvenance().GetUri() != "" {
+		t.Fatalf("correct owned Memory request=%+v response=%+v err=%v", control.correctionRequest, corrected, err)
 	}
 	if _, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
 		return server.ListOwnedMemories(ctx, &agentv1.ListOwnedMemoriesRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
