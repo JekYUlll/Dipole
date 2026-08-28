@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "dipole.agent.memory-derived-retention-decision.v1",
+  "policyVersion": "memory-derived-retention-v1",
+  "memoryRootSha256": "07137db02a1204b9ef19912692de4925e800a8bd4d91aa762c9c002b97e1de8f",
+  "lineageReportSha256": "a1bc71222db8ba09b2aaf2098c7c5e25646a305daa6eb1f8b9d2b9c0380b52ef",
+  "policySha256": "3c16e69088028df4487a5e2fd33126c3d5a3119ddb60e177d2342be14b24a201",
+  "lineageComplete": true,
+  "policyComplete": true,
+  "blockedReasons": [],
+  "domains": {
+    "modelCalls": { "count": 1, "action": "retain_minimal_audit" },
+    "shadowPlans": { "count": 1, "action": "erase_derived_content" },
+    "shadowSteps": { "count": 2, "action": "erase_derived_content" },
+    "artifacts": { "count": 1, "action": "erase_derived_content" },
+    "toolInvocations": { "count": 1, "action": "retain_minimal_audit" },
+    "messageActions": { "count": 1, "action": "retain_minimal_audit" },
+    "temporalHistoryPotentialTasks": { "count": 1, "action": "expire_after_days", "retentionDays": 30 }
+  },
+  "contentRead": false,
+  "deletionExecuted": false,
+  "deletionAuthority": false,
+  "runtimeAuthority": false,
+  "decisionSha256": "570811883a1367fc6a346eff94f0703aed09b1172d716b1df82497a516a99b0d"
+}
