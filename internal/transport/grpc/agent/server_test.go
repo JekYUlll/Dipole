@@ -50,6 +50,7 @@ type eventSubscriptionControlStub struct {
 	listed    application.AgentEventSubscriptionListRequestV1
 	revoked   application.AgentEventSubscriptionRevokeRequestV1
 	item      application.AgentEventSubscriptionV1
+	options   application.AgentSubscriptionConversationOptionsRequestV1
 }
 
 type agentDefinitionCatalogStub struct {
@@ -68,6 +69,11 @@ func (s *eventSubscriptionControlStub) Create(_ context.Context, principal strin
 	s.principal, s.created = principal, request
 	copy := s.item
 	return &copy, nil
+}
+
+func (s *eventSubscriptionControlStub) ListEligibleConversations(_ context.Context, principal string, request application.AgentSubscriptionConversationOptionsRequestV1) ([]application.AgentSubscriptionConversationOptionV1, error) {
+	s.principal, s.options = principal, request
+	return []application.AgentSubscriptionConversationOptionV1{{ConversationKey: "group:G1", EventType: "message.group.created"}}, nil
 }
 
 func (s *eventSubscriptionControlStub) List(_ context.Context, principal string, request application.AgentEventSubscriptionListRequestV1) (*application.AgentEventSubscriptionPageV1, error) {
@@ -644,6 +650,15 @@ func TestEventSubscriptionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing
 	})
 	if err != nil || created.(*agentv1.AgentEventSubscription).GetCreatedById() != "U100" || control.principal != "U100" || control.created.DefinitionVersion != 2 {
 		t.Fatalf("create response=%+v control=%+v err=%v", created, control, err)
+	}
+	options, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListEligibleSubscriptionConversations(ctx, &agentv1.ListEligibleSubscriptionConversationsRequest{
+			Context: requestContext, TenantId: "dipole", DefinitionId: "DEF-1", DefinitionVersion: 2,
+		})
+	})
+	listedOptions := options.(*agentv1.ListEligibleSubscriptionConversationsResponse)
+	if err != nil || control.options.DefinitionUUID != "DEF-1" || len(listedOptions.GetConversations()) != 1 || listedOptions.GetConversations()[0].GetConversationKey() != "group:G1" {
+		t.Fatalf("options response=%+v control=%+v err=%v", options, control, err)
 	}
 	listed, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
 		return server.ListEventSubscriptions(ctx, &agentv1.ListEventSubscriptionsRequest{Context: requestContext, TenantId: "dipole", Limit: 20})

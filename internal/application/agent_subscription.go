@@ -77,8 +77,20 @@ type AgentEventSubscriptionPageV1 struct {
 	NextCursor    string
 }
 
+type AgentSubscriptionConversationOptionV1 struct {
+	ConversationKey string
+	EventType       string
+}
+
+type AgentSubscriptionConversationOptionsRequestV1 struct {
+	TenantID          string
+	DefinitionUUID    string
+	DefinitionVersion uint64
+}
+
 type AgentEventSubscriptionControlServiceV1 interface {
 	Create(ctx context.Context, principalUUID string, request AgentEventSubscriptionCreateRequestV1) (*AgentEventSubscriptionV1, error)
+	ListEligibleConversations(ctx context.Context, principalUUID string, request AgentSubscriptionConversationOptionsRequestV1) ([]AgentSubscriptionConversationOptionV1, error)
 	List(ctx context.Context, principalUUID string, request AgentEventSubscriptionListRequestV1) (*AgentEventSubscriptionPageV1, error)
 	Revoke(ctx context.Context, principalUUID string, request AgentEventSubscriptionRevokeRequestV1) (*AgentEventSubscriptionV1, error)
 }

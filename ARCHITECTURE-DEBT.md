@@ -116,9 +116,9 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Trigger Engine、Definition 授权、模型成本、Gateway/前端配置与 Project Guardian 演示
-- **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。TS Runtime 可在 EventLedger、Temporal 和模型前确定性过滤。canonical Pencil 已增加 desktop owner 管理、六态契约矩阵、mobile 精确撤销确认层及三类可复用组件；默认关闭的 Gateway HTTP 与 Vue 页面已交付 owner list/revoke，服务端派生 principal/tenant，前端以严格响应解析和权威 revoke 结果维护状态，并完成三浏览器验收。语言中立 prefilter Eval 已支持有界标签 corpus、三类 candidate evidence、分类/延迟/成本指标和生产规则基线；corpus review v1 要求双 reviewer 完整标签与第三方分歧裁决。rollout gate 从三份源证据重算 review/prefilter 结果，并以同一 corpus 哈希输出低敏 `eligible|blocked` 决策。Compose 与默认配置继续使用 `direct_target`。
-- **风险：** 默认关闭的公开 Definition 目录已提供 owner 的有效版本和可读 conversation scope 投影，但尚无 authenticated conversation chooser 与 create 表单；用户仍不能安全完成创建流程。确定性关键词无法覆盖语义等价表达。直接启用共享环境订阅模式仍会造成难以运维的策略或相关事件漏触发。
-- **建议方向：** 将 Definition 目录与 authenticated 可读 conversation chooser 共同驱动 Pencil create 流程，禁止手填内部 Definition ID/version；创建时继续由 Core 复核精确版本与 scope。随后使用同一 reviewed corpus 采集 embedding 与小模型 candidate evidence，并与规则基线比较。高成本 Agent 只接收预筛后的事件。
+- **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。TS Runtime 可在 EventLedger、Temporal 和模型前确定性过滤。canonical Pencil 和默认关闭的 Gateway/Vue 页面已交付 owner list/create/revoke：创建候选由 Core 对 authenticated readable conversation 与 Definition scope 求交集，Gateway 从会话派生 principal/tenant 并从 conversation key 派生 event/resource，Core 在写入前再次复核；前端严格解析候选和权威结果，拒绝静默截断关键词。desktop/mobile 创建、撤销和依赖故障已完成三浏览器验收。语言中立 prefilter Eval 已支持有界标签 corpus、三类 candidate evidence、分类/延迟/成本指标和生产规则基线；corpus review v1 要求双 reviewer 完整标签与第三方分歧裁决。rollout gate 从三份源证据重算 review/prefilter 结果，并以同一 corpus 哈希输出低敏 `eligible|blocked` 决策。Compose 与默认配置继续使用 `direct_target`。
+- **风险：** 控制面已可安全创建确定性订阅，但 Runtime 仍未消费共享 subscription 流量。确定性关键词无法覆盖语义等价表达；公开候选接口当前返回有界 Definition scope 的完整交集，尚无超大 scope 分页协议。直接启用共享环境订阅模式仍会造成难以运维的策略或相关事件漏触发。
+- **建议方向：** 使用真实 Project Guardian reviewed corpus 采集 embedding 与小模型 candidate evidence，并与规则基线比较；随后设计 subscription Runtime 的分批灰度、漏触发/成本告警和回切证据。若单 Definition scope 扩展到当前上限之外，再增加稳定 cursor 的候选分页。高成本 Agent 只接收预筛后的事件。
 - **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成用户管理界面，归档真实事件 corpus、reviewer agreement 和至少一个候选 evidence/report；synthetic 规则示例只证明 Harness。语义预筛需先离线达标，不能直接对每条消息调用大模型。
 
 ### AD-032：Artifact 对象写入后缺少孤儿清扫证据
