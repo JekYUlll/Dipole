@@ -97,6 +97,25 @@ type agentMemoryResolverStub struct {
 	err                                         error
 }
 
+type agentMemoryOwnerControlStub struct {
+	listRequest   application.AgentMemoryOwnerListRequestV1
+	revokeRequest application.AgentMemoryOwnerRevokeRequestV1
+	page          application.AgentMemoryOwnerPageV1
+	item          application.AgentMemoryV1
+}
+
+func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) (*application.AgentMemoryOwnerPageV1, error) {
+	s.listRequest = request
+	copy := s.page
+	return &copy, nil
+}
+
+func (s *agentMemoryOwnerControlStub) RevokeOwnedMemory(_ context.Context, request application.AgentMemoryOwnerRevokeRequestV1) (*application.AgentMemoryV1, error) {
+	s.revokeRequest = request
+	copy := s.item
+	return &copy, nil
+}
+
 type agentToolAuditStub struct {
 	begin   application.AgentToolInvocationBeginV1
 	finish  application.AgentToolInvocationFinishV1
@@ -737,6 +756,53 @@ func TestListContextMemoriesUsesTaskIdentityWithoutClientPrincipal(t *testing.T)
 	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.ListContextMemories(ctx, request) })
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged principal code = %s", status.Code(err))
+	}
+}
+
+func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	item := application.AgentMemoryV1{
+		MemoryUUID: "MEM-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+		ResourceType: "conversation", ResourceID: "group:G1", Content: "Owner is Alice", CompactContent: "Owner: Alice", Priority: 80,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "message", SourceID: "M1", URI: "mysql://internal/secret", Sequence: "42"},
+		ValidFrom:  now.Add(-time.Hour), CreatedAt: now.Add(-time.Minute),
+	}
+	control := &agentMemoryOwnerControlStub{page: application.AgentMemoryOwnerPageV1{
+		Memories: []application.AgentMemoryV1{item}, NextCreatedAt: item.CreatedAt, NextMemoryUUID: item.MemoryUUID,
+	}}
+	control.item = item
+	revokedAt := now
+	control.item.Status, control.item.RevokedAt = application.AgentMemoryStatusRevoked, &revokedAt
+	control.item.RevokedByUUID, control.item.RevokeReason = "U100", "outdated"
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemoryOwnerControls(control)
+
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListOwnedMemories(ctx, &agentv1.ListOwnedMemoriesRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", Limit: 20,
+		})
+	})
+	if err != nil {
+		t.Fatalf("list owned Memories: %v", err)
+	}
+	listed := response.(*agentv1.ListOwnedMemoriesResponse)
+	if control.listRequest.PrincipalUUID != "U100" || control.listRequest.TenantID != "dipole" || control.listRequest.Limit != 20 ||
+		len(listed.GetMemories()) != 1 || listed.GetMemories()[0].GetProvenance().GetUri() != "" || listed.GetNextMemoryId() != "MEM-1" {
+		t.Fatalf("unexpected Memory request=%+v response=%+v", control.listRequest, listed)
+	}
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.RevokeOwnedMemory(ctx, &agentv1.RevokeOwnedMemoryRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", MemoryId: "MEM-1", Reason: "outdated",
+		})
+	})
+	if err != nil || control.revokeRequest.PrincipalUUID != "U100" || control.revokeRequest.Reason != "outdated" {
+		t.Fatalf("revoke owned Memory request=%+v err=%v", control.revokeRequest, err)
+	}
+	if _, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListOwnedMemories(ctx, &agentv1.ListOwnedMemoriesRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent data-plane owner Memory code = %s", status.Code(err))
 	}
 }
 

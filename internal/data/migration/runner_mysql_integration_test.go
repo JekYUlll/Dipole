@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 34
+const currentMigrationVersion = 38
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,7 +39,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 45)
+		assertTableCount(t, db, 47)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
@@ -55,6 +55,30 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory owner governance migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 37)
+		assertTableCount(t, db, 47)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent MCP readiness evidence migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 36)
+		assertTableCount(t, db, 46)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent MCP Tool round migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 35)
+		assertTableCount(t, db, 45)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent MCP Tool command migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 34)
+		assertTableCount(t, db, 45)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Event Subscription control migration: %v", err)
 		}
@@ -427,6 +451,12 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	) VALUES ('MEM-1', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
 		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3))`); err != nil {
 		t.Fatalf("insert valid Agent Memory: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE agent_memories SET status = 'revoked', revoked_at = UTC_TIMESTAMP(3) WHERE memory_uuid = 'MEM-1'`); err == nil {
+		t.Fatal("expected revoked Agent Memory without owner audit to fail")
+	}
+	if _, err := db.Exec(`UPDATE agent_memories SET status = 'revoked', revoked_at = UTC_TIMESTAMP(3), revoked_by_uuid = 'U100', revoke_reason = 'outdated' WHERE memory_uuid = 'MEM-1'`); err != nil {
+		t.Fatalf("write audited Agent Memory revocation: %v", err)
 	}
 	for _, invalid := range []struct {
 		uuid, memoryType, status string

@@ -11,6 +11,51 @@ import (
 	"time"
 )
 
+const getOwnedAgentMemory = `-- name: GetOwnedAgentMemory :one
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
+FROM agent_memories
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_uuid = ?
+LIMIT 1
+`
+
+type GetOwnedAgentMemoryParams struct {
+	TenantID      string
+	PrincipalUuid string
+	MemoryUuid    string
+}
+
+func (q *Queries) GetOwnedAgentMemory(ctx context.Context, arg GetOwnedAgentMemoryParams) (AgentMemory, error) {
+	row := q.db.QueryRowContext(ctx, getOwnedAgentMemory, arg.TenantID, arg.PrincipalUuid, arg.MemoryUuid)
+	var i AgentMemory
+	err := row.Scan(
+		&i.ID,
+		&i.MemoryUuid,
+		&i.TenantID,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
+		&i.MemoryType,
+		&i.Status,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.Content,
+		&i.CompactContent,
+		&i.Priority,
+		&i.SourceType,
+		&i.SourceID,
+		&i.SourceUri,
+		&i.SourceSequence,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.RevokedByUuid,
+		&i.RevokeReason,
+	)
+	return i, err
+}
+
 const insertAgentMemory = `-- name: InsertAgentMemory :exec
 INSERT INTO agent_memories (
     memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
@@ -66,7 +111,7 @@ func (q *Queries) InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryPa
 }
 
 const listAgentContextMemories = `-- name: ListAgentContextMemories :many
-SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
 FROM agent_memories
 WHERE tenant_id = ?
   AND principal_uuid = ?
@@ -134,6 +179,82 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 			&i.ExpiresAt,
 			&i.RevokedAt,
 			&i.CreatedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnedAgentMemories = `-- name: ListOwnedAgentMemories :many
+SELECT id, memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, compact_content, priority, source_type, source_id, source_uri, source_sequence, valid_from, expires_at, revoked_at, created_at, revoked_by_uuid, revoke_reason
+FROM agent_memories
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND (
+    created_at < ?
+    OR (created_at = ? AND memory_uuid > ?)
+  )
+ORDER BY created_at DESC, memory_uuid ASC
+LIMIT ?
+`
+
+type ListOwnedAgentMemoriesParams struct {
+	TenantID        string
+	PrincipalUuid   string
+	AfterCreatedAt  time.Time
+	AfterMemoryUuid string
+	Limit           int32
+}
+
+func (q *Queries) ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgentMemoriesParams) ([]AgentMemory, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentMemories,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.AfterCreatedAt,
+		arg.AfterCreatedAt,
+		arg.AfterMemoryUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentMemory{}
+	for rows.Next() {
+		var i AgentMemory
+		if err := rows.Scan(
+			&i.ID,
+			&i.MemoryUuid,
+			&i.TenantID,
+			&i.PrincipalUuid,
+			&i.AgentUuid,
+			&i.MemoryType,
+			&i.Status,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Content,
+			&i.CompactContent,
+			&i.Priority,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceUri,
+			&i.SourceSequence,
+			&i.ValidFrom,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
 		); err != nil {
 			return nil, err
 		}
@@ -150,7 +271,10 @@ func (q *Queries) ListAgentContextMemories(ctx context.Context, arg ListAgentCon
 
 const revokeAgentMemory = `-- name: RevokeAgentMemory :execrows
 UPDATE agent_memories
-SET status = 'revoked', revoked_at = ?
+SET status = 'revoked',
+    revoked_at = ?,
+    revoked_by_uuid = principal_uuid,
+    revoke_reason = 'legacy internal revocation'
 WHERE memory_uuid = ? AND status = 'active' AND revoked_at IS NULL
 `
 
@@ -161,6 +285,43 @@ type RevokeAgentMemoryParams struct {
 
 func (q *Queries) RevokeAgentMemory(ctx context.Context, arg RevokeAgentMemoryParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentMemory, arg.RevokedAt, arg.MemoryUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeOwnedAgentMemory = `-- name: RevokeOwnedAgentMemory :execrows
+UPDATE agent_memories
+SET status = 'revoked',
+    revoked_at = ?,
+    revoked_by_uuid = ?,
+    revoke_reason = ?
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND memory_uuid = ?
+  AND status = 'active'
+  AND revoked_at IS NULL
+`
+
+type RevokeOwnedAgentMemoryParams struct {
+	RevokedAt     sql.NullTime
+	RevokedByUuid string
+	RevokeReason  string
+	TenantID      string
+	PrincipalUuid string
+	MemoryUuid    string
+}
+
+func (q *Queries) RevokeOwnedAgentMemory(ctx context.Context, arg RevokeOwnedAgentMemoryParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeOwnedAgentMemory,
+		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.MemoryUuid,
+	)
 	if err != nil {
 		return 0, err
 	}

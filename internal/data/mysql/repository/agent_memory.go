@@ -15,6 +15,7 @@ import (
 type AgentMemoryRepository struct{ queries generated.Querier }
 
 var _ application.AgentMemoryStoreV1 = (*AgentMemoryRepository)(nil)
+var _ application.AgentMemoryOwnerStoreV1 = (*AgentMemoryRepository)(nil)
 
 func NewAgentMemoryRepository(queries generated.Querier) (*AgentMemoryRepository, error) {
 	if queries == nil {
@@ -74,6 +75,58 @@ func (r *AgentMemoryRepository) RevokeMemory(ctx context.Context, memoryUUID str
 	return nil
 }
 
+func (r *AgentMemoryRepository) ListOwnedMemories(ctx context.Context, request application.AgentMemoryOwnerListRequestV1) ([]application.AgentMemoryV1, error) {
+	if strings.TrimSpace(request.TenantID) == "" || strings.TrimSpace(request.PrincipalUUID) == "" || request.AfterCreatedAt.IsZero() ||
+		request.Limit < 1 || request.Limit > 101 || (request.AfterUUID != "" && len([]rune(request.AfterUUID)) > 64) {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	rows, err := r.queries.ListOwnedAgentMemories(ctx, generated.ListOwnedAgentMemoriesParams{
+		TenantID: request.TenantID, PrincipalUuid: request.PrincipalUUID, AfterCreatedAt: request.AfterCreatedAt,
+		AfterMemoryUuid: request.AfterUUID, Limit: int32(request.Limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list owned Agent Memories: %w", err)
+	}
+	items := make([]application.AgentMemoryV1, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, mapAgentMemory(row))
+	}
+	return items, nil
+}
+
+func (r *AgentMemoryRepository) GetOwnedMemory(ctx context.Context, tenantID, principalUUID, memoryUUID string) (*application.AgentMemoryV1, error) {
+	if strings.TrimSpace(tenantID) == "" || strings.TrimSpace(principalUUID) == "" || strings.TrimSpace(memoryUUID) == "" {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	row, err := r.queries.GetOwnedAgentMemory(ctx, generated.GetOwnedAgentMemoryParams{TenantID: tenantID, PrincipalUuid: principalUUID, MemoryUuid: memoryUUID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get owned Agent Memory: %w", err)
+	}
+	item := mapAgentMemory(row)
+	return &item, nil
+}
+
+func (r *AgentMemoryRepository) RevokeOwnedMemory(ctx context.Context, tenantID, principalUUID, memoryUUID, revokedByUUID, reason string, revokedAt time.Time) error {
+	if strings.TrimSpace(tenantID) == "" || strings.TrimSpace(principalUUID) == "" || strings.TrimSpace(memoryUUID) == "" ||
+		strings.TrimSpace(revokedByUUID) == "" || strings.TrimSpace(reason) == "" || revokedAt.IsZero() {
+		return application.ErrAgentMemoryInvalid
+	}
+	rows, err := r.queries.RevokeOwnedAgentMemory(ctx, generated.RevokeOwnedAgentMemoryParams{
+		RevokedAt: sql.NullTime{Time: revokedAt, Valid: true}, RevokedByUuid: revokedByUUID, RevokeReason: reason,
+		TenantID: tenantID, PrincipalUuid: principalUUID, MemoryUuid: memoryUUID,
+	})
+	if err != nil {
+		return fmt.Errorf("revoke owned Agent Memory: %w", err)
+	}
+	if rows == 0 {
+		return application.ErrAgentMemoryConflict
+	}
+	return nil
+}
+
 func mapAgentMemory(row generated.AgentMemory) application.AgentMemoryV1 {
 	return application.AgentMemoryV1{
 		MemoryUUID: row.MemoryUuid, TenantID: row.TenantID, PrincipalUUID: row.PrincipalUuid, AgentUUID: row.AgentUuid,
@@ -81,6 +134,7 @@ func mapAgentMemory(row generated.AgentMemory) application.AgentMemoryV1 {
 		ResourceType: row.ResourceType, ResourceID: row.ResourceID, Content: row.Content, CompactContent: row.CompactContent.String,
 		Priority: row.Priority, Provenance: application.AgentMemoryProvenanceV1{
 			SourceType: row.SourceType, SourceID: row.SourceID, URI: row.SourceUri.String, Sequence: row.SourceSequence.String,
-		}, ValidFrom: row.ValidFrom, ExpiresAt: timePointer(row.ExpiresAt), RevokedAt: timePointer(row.RevokedAt), CreatedAt: row.CreatedAt,
+		}, ValidFrom: row.ValidFrom, ExpiresAt: timePointer(row.ExpiresAt), RevokedAt: timePointer(row.RevokedAt),
+		RevokedByUUID: row.RevokedByUuid, RevokeReason: row.RevokeReason, CreatedAt: row.CreatedAt,
 	}
 }

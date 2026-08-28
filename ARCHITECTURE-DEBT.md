@@ -99,16 +99,16 @@
 - **建议方向：** 保持普通 Form 的字段白名单和默认关闭灰度，后续补充 Pencil 视觉回归与产品入口编排。Activity-safe runner 已能跨实例重开现代 Client、校验 tenant-owned Profile 并关闭失败资源；下一步将其接入独立默认关闭的 Worker mode，并固定持久 Tool invocation、progress/cancel 和审计映射。第三方授权继续采用独立 URL mode、短期 challenge 与回调绑定。
 - **处理门槛：** Project Guardian 的普通 Form UI 已完成并保持默认关闭；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成独立敏感输入隔离、continuation 和威胁建模。
 
-### AD-035：Memory foundation 缺少受控写入、压缩与删除治理
+### AD-035：Memory foundation 缺少受控写入、版本纠正与压缩治理
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Memory、Context Compiler、隐私删除、长期事实质量、Project Guardian 演示
-- **现状：** migration v29 与 sqlc Store 已保存五类不可变 scoped Memory、full/compact content、priority、有效期和 provenance；Core 根据运行中的 Task/Run 固定 principal、tenant、Agent 与 conversation read scope，并使用 Task 创建时间阻止后续新增记录进入重放，撤销/过期立即 fail closed。TS 仅在显式启用且实际命中时使用独立预算和 `untrusted` trust level，默认与 Compose 均关闭。当前仅有内部 Store 写入与撤销能力，生产读取在没有受控记录时返回空集。
-- **风险：** 自动从消息写入会引入错误事实、Prompt Injection 固化、跨用户泄漏、无限增长和删除不完整；缺少用户纠正与删除入口时，长期启用会造成无法治理的个性化状态。仅按 priority 的精确 scope 检索也无法衡量 recall、precision 和 context 成本。
-- **建议方向：** 先建立 Gateway principal 派生的查看/纠正/撤销 API、append-only 版本和删除审计，再增加离线 Observation/Reflection Worker；写入策略要求来源证据、置信度、TTL、幂等键和冲突合并。基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker，模型生成记录始终保持不可信数据边界。
-- **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回或向用户展示个性化结论前，完成管理/删除链和 permission/retrieval Eval；当前 foundation 只允许受控 seed 与 Shadow 读取。
+- **现状：** migration v29 与 sqlc Store 已保存五类不可变 scoped Memory、full/compact content、priority、有效期和 provenance；Core 根据运行中的 Task/Run 固定 principal、tenant、Agent 与 conversation read scope，并使用 Task 创建时间阻止后续新增记录进入重放，撤销/过期立即 fail closed。migration v38、additive gRPC、Gateway 和默认关闭的 Pencil/Vue 页面已交付 owner list/revoke：主体由认证链派生，稳定 cursor 只返回 owner 记录，公开结果省略内部 URI，撤销保存 revoker、原因和时间，同原因重放幂等且原因漂移冲突。TS 运行时读取与 owner 页面仍需分别显式启用，自动写入保持关闭。
+- **风险：** 自动从消息写入会引入错误事实、Prompt Injection 固化、跨用户泄漏和无限增长；当前撤销能够阻止后续召回并保留审计，尚未提供 append-only 纠正版本，错误事实无法在保留 lineage 的同时发布替代记录。仅按 priority 的精确 scope 检索也无法衡量 recall、precision 和 context 成本。
+- **建议方向：** 下一步建立 append-only correction/supersession 模型、版本冲突和纠正审计，再增加离线 Observation/Reflection Worker；写入策略要求来源证据、置信度、TTL、幂等键和冲突合并。基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker，模型生成记录始终保持不可信数据边界。
+- **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回或根据 Memory 自动执行动作前，完成 append-only 纠正链、permission/retrieval Eval 和真实 owner 治理验收；当前仅允许受控 seed、Shadow 读取及默认关闭的 owner 查看/撤销。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 

@@ -20043,6 +20043,1869 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "kPSJ9",
+      "x": 7248,
+      "y": 12220,
+      "name": "Component/Memory Status",
+      "reusable": true,
+      "width": 190,
+      "height": 36,
+      "fill": "$warning-soft",
+      "cornerRadius": 18,
+      "gap": 8,
+      "padding": [
+        9,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "AAV9M",
+          "name": "Memory Status Dot",
+          "fill": "$warning",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "abDDi",
+          "name": "Memory Status Label",
+          "fill": "$warning",
+          "content": "ACTIVE / UNTRUSTED",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.4
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "sIka4",
+      "x": 7476,
+      "y": 12220,
+      "name": "Component/Memory Record",
+      "reusable": true,
+      "width": 780,
+      "height": 184,
+      "fill": "$surface",
+      "cornerRadius": 14,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 18,
+      "children": [
+        {
+          "type": "frame",
+          "id": "N9JMlX",
+          "name": "Memory Record Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "hVCbd",
+              "name": "Memory Record Heading",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LTcu3",
+                  "name": "Memory Record Title",
+                  "fill": "$ink",
+                  "content": "项目 A 的数据库迁移负责人是 Alice",
+                  "fontFamily": "$font-display",
+                  "fontSize": 16,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "HrjIi",
+                  "name": "Memory Record Meta",
+                  "fill": "$ink-faint",
+                  "content": "SEMANTIC  ·  AGENT PROJECT GUARDIAN  ·  PRIORITY 80",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "id": "T9kzj",
+              "type": "ref",
+              "ref": "kPSJ9",
+              "name": "Memory Record Status"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "xEiGw",
+          "name": "Memory Record Preview",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "来源于 Dipole 开发群中已确认的任务分工。模型上下文会将此记录标记为未受信输入。",
+          "lineHeight": 1.5,
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "d2z8b0",
+          "name": "Memory Record Footer",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "iihUs",
+              "name": "Memory Record Provenance",
+              "fill": "$ink-faint",
+              "content": "SOURCE message:MSG-9012  ·  VALID FROM 2026-08-24",
+              "fontFamily": "$font-data",
+              "fontSize": 9,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "IBv1l",
+              "name": "Memory Record Action",
+              "fill": "$accent-strong",
+              "content": "查看来源与控制  →",
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "700"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "yXAhE",
+      "x": 5688,
+      "y": 12540,
+      "name": "Agent Memory/Desktop/Manage",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$surface-app",
+      "children": [
+        {
+          "type": "frame",
+          "id": "qPclg",
+          "name": "Memory Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            32,
+            26
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "v4Ij5C",
+              "name": "Memory Rail Brand",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "EKzIi",
+                  "name": "Memory Brand Mark",
+                  "fill": "$accent",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "text",
+                  "id": "H9dzj9",
+                  "name": "Memory Brand Name",
+                  "fill": "$text-inverse",
+                  "content": "DIPOLE",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "800",
+                  "letterSpacing": 1.2
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "waqrT",
+              "name": "Memory Rail Section",
+              "fill": "$text-muted",
+              "content": "AGENT CONTROL",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "ZbouE",
+              "name": "Memory Active Navigation",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": 10,
+              "gap": 10,
+              "padding": [
+                12,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "NGH0R",
+                  "name": "Memory Navigation Icon",
+                  "width": 17,
+                  "height": 17,
+                  "icon": "brain",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "dI98K",
+                  "name": "Memory Navigation Label",
+                  "fill": "$text-inverse",
+                  "content": "长期记忆",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "C1YLI",
+              "name": "Memory Rail Agent 定义",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "VbcyU",
+                  "name": "Agent 定义 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "bot",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "X0CgG4",
+                  "name": "Agent 定义 Label",
+                  "fill": "$text-muted",
+                  "content": "Agent 定义",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tzh2d",
+              "name": "Memory Rail 事件订阅",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "UX4uI",
+                  "name": "事件订阅 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "radio-tower",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "lLLyW",
+                  "name": "事件订阅 Label",
+                  "fill": "$text-muted",
+                  "content": "事件订阅",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ykq5A",
+              "name": "Memory Rail 任务运行",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "H0YqwC",
+                  "name": "任务运行 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "list-checks",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "nfPVI",
+                  "name": "任务运行 Label",
+                  "fill": "$text-muted",
+                  "content": "任务运行",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "q6nWo",
+              "name": "Memory Rail 审批记录",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                9,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "NXXed",
+                  "name": "审批记录 Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "uKeAX",
+                  "name": "审批记录 Label",
+                  "fill": "$text-muted",
+                  "content": "审批记录",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Q7jpTD",
+              "name": "Memory Rail Boundary",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "OWNER GOVERNANCE\nAUTO OBSERVATION: OFF\nRETRIEVAL: CONTEXT ONLY",
+              "lineHeight": 1.8,
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Vq76V",
+          "name": "Memory Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            34,
+            40
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "FeDfZ",
+              "name": "Memory Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WC7PS",
+                  "name": "Memory Desktop Heading",
+                  "layout": "vertical",
+                  "gap": 7,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K9Uccx",
+                      "name": "Memory Desktop Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "OWNER VIEW / MEMORY AUTHORITY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "szSlk",
+                      "name": "Memory Desktop Title",
+                      "fill": "$ink",
+                      "content": "长期记忆",
+                      "fontFamily": "$font-display",
+                      "fontSize": 32,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "e4hSvA",
+                      "name": "Memory Desktop Subtitle",
+                      "fill": "$ink-soft",
+                      "content": "检查 Agent 保存的内容、来源与作用域；撤销后立即退出上下文召回。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "IKy5R",
+                  "name": "Memory Auto Write Status",
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "gap": 9,
+                  "padding": [
+                    11,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "v1SWJq",
+                      "name": "Memory Auto Write Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "lock-keyhole",
+                      "library": "lucide",
+                      "fill": "$ink-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "T06Dw9",
+                      "name": "Memory Auto Write Label",
+                      "fill": "$ink-soft",
+                      "content": "AUTO WRITE  OFF",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jdBA8",
+              "name": "Memory Trust Notice",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 10,
+              "gap": 12,
+              "padding": [
+                13,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "c3UwOJ",
+                  "name": "Memory Trust Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "shield-alert",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "lQtW0",
+                  "name": "Memory Trust Notice Text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "记忆会作为 UNTRUSTED MEMORY 注入模型上下文。系统身份、权限和工具策略不会从记忆内容派生。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SI8NT",
+              "name": "Memory Desktop Columns",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dqgFy",
+                  "name": "Memory List Region",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "W6WpB",
+                      "name": "Memory List Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "KoBRQ",
+                          "name": "Memory List Count",
+                          "fill": "$ink-faint",
+                          "content": "MEMORY RECORDS  03",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "l3JWf",
+                          "name": "Memory List Filter",
+                          "fill": "$ink-soft",
+                          "content": "全部状态  ·  最新优先",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "Dwsqd",
+                      "type": "ref",
+                      "ref": "sIka4",
+                      "name": "Active Semantic Memory",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "GI6DL",
+                      "type": "ref",
+                      "ref": "sIka4",
+                      "name": "Expiring Episodic Memory",
+                      "width": "fill_container",
+                      "descendants": {
+                        "LTcu3": {
+                          "content": "上周发布复盘需要补充 P99 延迟数据"
+                        },
+                        "HrjIi": {
+                          "content": "EPISODIC  ·  AGENT RELEASE WATCH  ·  PRIORITY 60"
+                        },
+                        "T9kzj/abDDi": {
+                          "content": "ACTIVE / EXPIRES SOON"
+                        },
+                        "xEiGw": {
+                          "content": "来源于一次已完成的 Agent Task；将在 2026-09-01 自动过期。"
+                        },
+                        "iihUs": {
+                          "content": "SOURCE task:T-3149  ·  EXPIRES 2026-09-01"
+                        }
+                      }
+                    },
+                    {
+                      "id": "uNGNK",
+                      "type": "ref",
+                      "ref": "sIka4",
+                      "name": "Revoked Procedural Memory",
+                      "width": "fill_container",
+                      "opacity": 0.68,
+                      "descendants": {
+                        "LTcu3": {
+                          "content": "周报发送前直接通知全体成员"
+                        },
+                        "HrjIi": {
+                          "content": "PROCEDURAL  ·  AGENT DAILY DIGEST  ·  PRIORITY 20"
+                        },
+                        "T9kzj/abDDi": {
+                          "content": "REVOKED"
+                        },
+                        "xEiGw": {
+                          "content": "所有者已撤销；该记录不会参与后续上下文编译。"
+                        },
+                        "iihUs": {
+                          "content": "REVOKED BY OWNER  ·  2026-08-27 18:42"
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "eYnYR",
+                      "name": "Memory Pagination Hint",
+                      "fill": "$ink-faint",
+                      "content": "按 created_at + memory ID 稳定分页  ·  下一页 →",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "G4bPgh",
+                  "name": "Memory Authority Detail",
+                  "width": 348,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 14,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 22,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OGtcj",
+                      "name": "Memory Detail Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "OWNER AUTHORITY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "ekOeG",
+                      "name": "Memory Detail Title",
+                      "fill": "$ink",
+                      "content": "Semantic Memory",
+                      "fontFamily": "$font-display",
+                      "fontSize": 21,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "pIhxt",
+                      "name": "Memory Detail ID",
+                      "fill": "$ink-soft",
+                      "content": "MEM-7E21\nowner U100  ·  agent Project Guardian",
+                      "lineHeight": 1.6,
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "YWQsP",
+                      "name": "Memory Detail Divider",
+                      "fill": "$line",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "gMbC6",
+                      "name": "Memory Content Label",
+                      "fill": "$ink-faint",
+                      "content": "SAVED CLAIM",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ywBAE",
+                      "name": "Memory Saved Claim",
+                      "width": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 7,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A3ICe",
+                          "name": "Memory Saved Claim Text",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "项目 A 的数据库迁移负责人是 Alice",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "z6JtV",
+                          "name": "Memory Scope Text",
+                          "fill": "$ink-faint",
+                          "content": "scope  conversation:DIPOLE\nsource  message:MSG-9012\nvalid   2026-08-24 → no expiry",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fwAm9",
+                      "name": "Memory Correction Boundary",
+                      "width": "fill_container",
+                      "fill": "$warning-soft",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 13,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "EGeFZ",
+                          "name": "Memory Correction Boundary Title",
+                          "fill": "$warning",
+                          "content": "纠正将在版本化写入后开放",
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "uCCS4",
+                          "name": "Memory Correction Boundary Text",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "当前不允许原地覆盖记录，防止来源链与审计历史丢失。",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 10,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dn9G3",
+                      "name": "Memory Revoke Button",
+                      "width": "fill_container",
+                      "fill": "$danger-soft",
+                      "cornerRadius": 10,
+                      "gap": 9,
+                      "padding": [
+                        12,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "WoCPl",
+                          "name": "Memory Revoke Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "archive-x",
+                          "library": "lucide",
+                          "fill": "$danger"
+                        },
+                        {
+                          "type": "text",
+                          "id": "EcVd3",
+                          "name": "Memory Revoke Label",
+                          "fill": "$danger",
+                          "content": "撤销这条记忆",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "cpAcz",
+                      "name": "Memory Revoke Audit Hint",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "需要确认原因 · 操作写入审计 · 不删除历史记录",
+                      "lineHeight": 1.5,
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "C919dV",
+      "x": 8350,
+      "y": 12540,
+      "name": "Agent Memory/Desktop/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "X11C6",
+          "name": "Memory State Matrix Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 7,
+          "children": [
+            {
+              "type": "text",
+              "id": "FpdyK",
+              "name": "Memory State Matrix Eyebrow",
+              "fill": "$accent-strong",
+              "content": "SYSTEM STATUS / OWNER FEEDBACK",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "text",
+              "id": "Y1jWf",
+              "name": "Memory State Matrix Title",
+              "fill": "$ink",
+              "content": "长期记忆 · 状态矩阵",
+              "fontFamily": "$font-display",
+              "fontSize": 30,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "AKuNl",
+              "name": "Memory State Matrix Subtitle",
+              "fill": "$ink-soft",
+              "content": "所有数据驱动状态都保留明确反馈；撤销过程不使用乐观成功。",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n5Iu0m",
+          "name": "Memory State Matrix Row One",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "type": "frame",
+              "id": "vvtB1",
+              "name": "Memory State 正在读取",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KecIc",
+                  "name": "正在读取 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SoUPY",
+                      "name": "正在读取 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "sDruG",
+                          "name": "正在读取 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "loader-circle",
+                          "library": "lucide",
+                          "fill": "$accent"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "sikTW",
+                      "name": "正在读取 State Code",
+                      "fill": "$ink-faint",
+                      "content": "LOADING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "K5pGzo",
+                  "name": "正在读取 State Title",
+                  "fill": "$ink",
+                  "content": "正在读取",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "VXpOv",
+                  "name": "正在读取 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "正在验证所有者身份并读取可见记录。列表区域保持骨架反馈。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "eXSFP",
+                  "name": "正在读取 State Action",
+                  "fill": "$accent",
+                  "content": "保持当前筛选",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UQavS",
+              "name": "Memory State 尚无记录",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "EKGXL",
+                  "name": "尚无记录 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "xbd0N",
+                      "name": "尚无记录 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "W3r4y",
+                          "name": "尚无记录 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "archive",
+                          "library": "lucide",
+                          "fill": "$ink-faint"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "u60DLr",
+                      "name": "尚无记录 State Code",
+                      "fill": "$ink-faint",
+                      "content": "EMPTY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "MLEzT",
+                  "name": "尚无记录 State Title",
+                  "fill": "$ink",
+                  "content": "尚无记录",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "v21Uj",
+                  "name": "尚无记录 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前所有者没有长期记忆。自动 Observation 写入仍然关闭。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "S6qCt",
+                  "name": "尚无记录 State Action",
+                  "fill": "$ink-faint",
+                  "content": "了解记忆边界",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "E0pfV",
+              "name": "Memory State 服务暂不可用",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HomzZ",
+                  "name": "服务暂不可用 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "GEw8d",
+                      "name": "服务暂不可用 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$danger-soft",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "HvUm1",
+                          "name": "服务暂不可用 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "cloud-off",
+                          "library": "lucide",
+                          "fill": "$danger"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "XZPrl",
+                      "name": "服务暂不可用 State Code",
+                      "fill": "$ink-faint",
+                      "content": "UNAVAILABLE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "QlljQ",
+                  "name": "服务暂不可用 State Title",
+                  "fill": "$ink",
+                  "content": "服务暂不可用",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "rlRy2",
+                  "name": "服务暂不可用 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "控制面未返回权威结果；页面不会展示缓存数据或推断状态。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "YNnPY",
+                  "name": "服务暂不可用 State Action",
+                  "fill": "$danger",
+                  "content": "重新加载",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Mlvy4",
+          "name": "Memory State Matrix Row Two",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "type": "frame",
+              "id": "f3cWRf",
+              "name": "Memory State 可见且有效",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "UMRew",
+                  "name": "可见且有效 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "urkBA",
+                      "name": "可见且有效 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "aCvDq",
+                          "name": "可见且有效 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "shield-check",
+                          "library": "lucide",
+                          "fill": "$accent"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "CmqdC",
+                      "name": "可见且有效 State Code",
+                      "fill": "$ink-faint",
+                      "content": "ACTIVE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "rPY7H",
+                  "name": "可见且有效 State Title",
+                  "fill": "$ink",
+                  "content": "可见且有效",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "L2FClJ",
+                  "name": "可见且有效 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "记录携带来源、作用域和有效期，并以 UNTRUSTED MEMORY 参与上下文。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "bJ71t",
+                  "name": "可见且有效 State Action",
+                  "fill": "$accent",
+                  "content": "查看控制",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fyGrB",
+              "name": "Memory State 正在撤销",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Agrk0",
+                  "name": "正在撤销 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gxhu2",
+                      "name": "正在撤销 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$warning-soft",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "j0Zoa",
+                          "name": "正在撤销 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "clock-3",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "WiZFB",
+                      "name": "正在撤销 State Code",
+                      "fill": "$ink-faint",
+                      "content": "REVOKING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "cm1uy",
+                  "name": "正在撤销 State Title",
+                  "fill": "$ink",
+                  "content": "正在撤销",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "b8IxoJ",
+                  "name": "正在撤销 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "请求已提交，等待服务端确认。操作按钮锁定，记录仍显示原状态。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "v4MOc",
+                  "name": "正在撤销 State Action",
+                  "fill": "$warning",
+                  "content": "等待权威确认",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fYf0p",
+              "name": "Memory State 已撤销或过期",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 13,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "sGwTn",
+                  "name": "已撤销或过期 State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HJ6l3",
+                      "name": "已撤销或过期 State Icon Frame",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$danger-soft",
+                      "cornerRadius": 17,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "N30rQ",
+                          "name": "已撤销或过期 State Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "archive-x",
+                          "library": "lucide",
+                          "fill": "$danger"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "hlu1F",
+                      "name": "已撤销或过期 State Code",
+                      "fill": "$ink-faint",
+                      "content": "INACTIVE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Tc151",
+                  "name": "已撤销或过期 State Title",
+                  "fill": "$ink",
+                  "content": "已撤销或过期",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "CEXsR",
+                  "name": "已撤销或过期 State Body",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "记录保留审计可见性，后续上下文编译会排除该内容。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "YW1Wo",
+                  "name": "已撤销或过期 State Action",
+                  "fill": "$danger",
+                  "content": "查看审计",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "zOszQ",
+      "x": 7248,
+      "y": 13700,
+      "name": "Agent Memory/Mobile/Revoke",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "NuR8g",
+          "name": "Memory Mobile Top Bar",
+          "width": "fill_container",
+          "height": 78,
+          "fill": "$surface",
+          "padding": [
+            22,
+            20,
+            14,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Fllep",
+              "name": "Memory Mobile Heading",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LOPJX",
+                  "name": "Memory Mobile Eyebrow",
+                  "fill": "$accent-strong",
+                  "content": "OWNER CONTROL",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.8
+                },
+                {
+                  "type": "text",
+                  "id": "uQT4F",
+                  "name": "Memory Mobile Title",
+                  "fill": "$ink",
+                  "content": "长期记忆",
+                  "fontFamily": "$font-display",
+                  "fontSize": 23,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JMufj",
+              "name": "Memory Mobile Auto Status",
+              "fill": "$surface-muted",
+              "cornerRadius": 9,
+              "padding": [
+                8,
+                10
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SHYjV",
+                  "name": "Memory Mobile Auto Status Label",
+                  "fill": "$ink-faint",
+                  "content": "AUTO  OFF",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hOPtM",
+          "name": "Memory Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            16,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "PFpoe",
+              "name": "Memory Mobile Trust Notice",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": 10,
+              "gap": 9,
+              "padding": [
+                11,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "TYZH3",
+                  "name": "Memory Mobile Notice Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-alert",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "qFK7n",
+                  "name": "Memory Mobile Notice Text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "UNTRUSTED MEMORY · 不影响身份与权限",
+                  "fontFamily": "$font-body",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U1V6C9",
+              "name": "Memory Mobile Selected Record",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 13,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "myAYx",
+                  "name": "Memory Mobile Record Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RJhJA",
+                      "name": "Memory Mobile Record Type",
+                      "fill": "$ink-faint",
+                      "content": "SEMANTIC  ·  PRIORITY 80",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "JID13",
+                      "name": "Memory Mobile Active Dot",
+                      "fill": "$warning",
+                      "width": 9,
+                      "height": 9
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "N1g7k8",
+                  "name": "Memory Mobile Record Title",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "项目 A 的数据库迁移负责人是 Alice",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-display",
+                  "fontSize": 17,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "uiFWA",
+                  "name": "Memory Mobile Record Source",
+                  "fill": "$ink-faint",
+                  "content": "source  message:MSG-9012\nscope   conversation:DIPOLE\nvalid    2026-08-24 → no expiry",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ERtaC",
+              "name": "Memory Mobile Source Link",
+              "fill": "$accent-strong",
+              "content": "查看原始消息与来源链  →",
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "e1En6Q",
+              "name": "Memory Mobile Flexible Space",
+              "width": "fill_container",
+              "height": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "o97TH",
+          "name": "Memory Revoke Confirmation Sheet",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": [
+            20,
+            20,
+            0,
+            0
+          ],
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 13,
+          "padding": [
+            18,
+            20,
+            24,
+            20
+          ],
+          "children": [
+            {
+              "type": "rectangle",
+              "cornerRadius": 2,
+              "id": "TSCbl",
+              "name": "Memory Revoke Sheet Handle",
+              "fill": "#000000",
+              "width": 42,
+              "height": 4
+            },
+            {
+              "type": "text",
+              "id": "i87uwp",
+              "name": "Memory Revoke Sheet Eyebrow",
+              "fill": "$danger",
+              "content": "DESTRUCTIVE OWNER ACTION",
+              "fontFamily": "$font-data",
+              "fontSize": 9,
+              "fontWeight": "700",
+              "letterSpacing": 0.7
+            },
+            {
+              "type": "text",
+              "id": "aK6JX",
+              "name": "Memory Revoke Sheet Title",
+              "fill": "$ink",
+              "content": "撤销这条记忆？",
+              "fontFamily": "$font-display",
+              "fontSize": 21,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "X7wgi",
+              "name": "Memory Revoke Sheet Body",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "撤销后立即退出上下文召回。历史内容与来源链继续保留，便于审计。",
+              "lineHeight": 1.5,
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "A5hB8v",
+              "name": "Memory Revoke Reason Field",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "gap": 5,
+              "padding": [
+                10,
+                12
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QRdaM",
+                  "name": "Memory Revoke Reason Label",
+                  "fill": "$ink-faint",
+                  "content": "撤销原因（必填）",
+                  "fontFamily": "$font-data",
+                  "fontSize": 9,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "NWuIc",
+                  "name": "Memory Revoke Reason Value",
+                  "fill": "$ink",
+                  "content": "信息已经过时",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kh3R6",
+              "name": "Memory Revoke Sheet Actions",
+              "width": "fill_container",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lGoAr",
+                  "name": "Memory Revoke Cancel Button",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s2eF1Z",
+                      "name": "Memory Revoke Cancel Label",
+                      "fill": "$ink",
+                      "content": "取消",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n3Yd9",
+                  "name": "Memory Revoke Confirm Button",
+                  "width": "fill_container",
+                  "fill": "$danger",
+                  "cornerRadius": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C4vzj",
+                      "name": "Memory Revoke Confirm Label",
+                      "fill": "$surface",
+                      "content": "确认撤销",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
