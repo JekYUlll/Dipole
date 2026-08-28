@@ -10,6 +10,7 @@ export interface RuntimeReadiness {
 
 export interface AgentTaskControlAPI {
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
+  getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<unknown>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
   resolveApproval(input: AgentTaskControlIdentity & { approvalId: string; decision: "approved" | "denied" }): Promise<void>;
   provideInput(input: AgentTaskControlIdentity & { requestId: string; value: unknown }): Promise<void>;
@@ -62,6 +63,25 @@ export function buildServer(
       if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Task control authentication failed" });
       try {
         return await control.service.getTask(identity);
+      } catch (error) {
+        return sendControlError(reply, error);
+      }
+    });
+    server.get<{ Params: { taskId: string }; Querystring: { after?: string; limit?: string } }>("/internal/v1/agent/tasks/:taskId/timeline", async (request, reply) => {
+      const identity = trustedControlIdentity(request.headers, request.params.taskId, control.secret);
+      if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Task control authentication failed" });
+      let afterSeq: bigint;
+      try { afterSeq = request.query.after === undefined ? 0n : BigInt(request.query.after); }
+      catch { return reply.code(400).send({ code: 400, message: "Agent Task Timeline cursor is invalid" }); }
+      const limit = request.query.limit === undefined ? 50 : Number(request.query.limit);
+      if (afterSeq < 0n || !Number.isSafeInteger(Number(afterSeq)) || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+        return reply.code(400).send({ code: 400, message: "Agent Task Timeline pagination is invalid" });
+      }
+      if (control.service.getTimeline === undefined) {
+        return reply.code(503).send({ code: 503, message: "Agent Task Timeline is unavailable" });
+      }
+      try {
+        return await control.service.getTimeline({ ...identity, afterSeq, limit });
       } catch (error) {
         return sendControlError(reply, error);
       }

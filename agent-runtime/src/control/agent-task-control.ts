@@ -13,6 +13,24 @@ export class AgentTaskControlError extends Error {
 
 export interface AgentTaskControlAuthorizationPort {
   authorizeTaskControl(taskId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskControlAuthorization>;
+  listAgentTaskTimeline?(taskId: string, principalUserId: string, afterSeq: bigint, limit: number, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskTimeline>;
+}
+
+export interface AgentTaskTimeline {
+  readonly schemaVersion: string;
+  readonly taskId: string;
+  readonly revision: bigint;
+  readonly events: readonly {
+    readonly eventSeq: bigint;
+    readonly eventId: string;
+    readonly runId: string;
+    readonly kind: string;
+    readonly status: string;
+    readonly capabilityId: string;
+    readonly approvalId: string;
+    readonly occurredAtUnixMs: bigint;
+  }[];
+  readonly nextCursor: string;
 }
 
 export interface AgentTaskWorkflowControlPort {
@@ -54,6 +72,19 @@ export class AgentTaskControlService {
       persistentStatus: authorization.taskStatus,
       workflowProjection: reconcileWorkflowProjection(authorization, state)
     };
+  }
+
+  async getTimeline(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<AgentTaskTimeline> {
+    if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100 || input.afterSeq < 0n) {
+      throw new AgentTaskControlError("invalid_argument", "Agent Task Timeline pagination is invalid");
+    }
+    if (this.authorization.listAgentTaskTimeline === undefined) {
+      throw new AgentTaskControlError("conflict", "Agent Task Timeline is unavailable");
+    }
+    return this.authorization.listAgentTaskTimeline(input.taskId, input.principalUserId, input.afterSeq, input.limit, {
+      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+      ...(input.traceId === undefined ? {} : { traceId: input.traceId })
+    });
   }
 
   async cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void> {
