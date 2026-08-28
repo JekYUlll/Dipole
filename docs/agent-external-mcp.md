@@ -118,7 +118,13 @@ Invocation ID 由 tenant/principal/Agent/Task/Run/Workflow step/ordinal 的 cano
 
 `FinishMcpToolInvocationFromRound` 提供专用 server-owned terminal API。Runtime 只提交 Task、Run、Invocation 和 Round ID；Core 重新加载两份持久记录，要求 exact binding、规范 terminal receipt 和已知 read-risk Capability，拒绝 `executing`、`input_required` 中间结果、write Capability 与任何漂移。首次完成由 Core 从 Invocation 开始时间和 Round 结果派生 latency、结果字节数、摘要或错误码，再调用既有审计 Finish；重试读取并核对已存 terminal Invocation，因此不会因重新计算 latency 产生冲突。默认关闭的 `createMcpTerminalWorkerRuntime` 在 complete 或稳定 failed Round 后调用该 API，ambiguous 和 waiting_input 不会提前收口。旧 Finish RPC 会先解析持久命令并拒绝任何带 Profile 的外部 Invocation，避免 Runtime 绕过 receipt 形成第二个终态所有者。
 
-当前启动链未注册外部 Capability route，也未把 producer 或 terminal Worker composition 接入 Temporal Activity。第一方 Message write 继续使用带 action reference 的现有 Finish 路径；外部 write Capability 还没有通用可验证 action receipt。在真实路由注册、受控调度和生产 I/O 完成前，生产 Worker 和外部网络开关继续关闭。
+`TemporalMcpDispatchActivity` 提供独立、默认关闭的持久编排边界。begin 输入只含 host-owned route ID/version、Task/Run/principal、业务参数和低敏关联 ID；工厂配置固定 Capability、Workflow step 与 ordinal。route ID/version 会进入 Temporal Activity history，替换 Worker 的路由版本不匹配时在 Core 访问前拒绝，防止部署漂移生成第二个 Invocation 意图。
+
+每次 begin、Activity retry 和 durable resume 都重新调用 Core context resolver，精确核对 Task/Run/principal，再以保存的 canonical 参数重放 `TrustedMcpInvocationProducer`。producer 返回同一 Invocation 后，Activity 仅向 terminal Worker 传递 Task、Run 和 Invocation ID。`wait_input` checkpoint 以 SHA-256 绑定路由版本、Step 坐标、Invocation、参数、关联 ID 和内部 Worker checkpoint；恢复时任何漂移都会在 Worker 调用前失败。
+
+terminal Worker 完成后，Activity 将不可信结果连同 Invocation/Round lineage 交给注入式 projector。projector 必须依据持久命令补齐 Profile/Server/Tool provenance，并使用 content-addressed Artifact 的确定性重放规则；Workflow 输出只保存 Invocation ID、Round ID、Artifact ID/version，不保存外部正文。取消信号在 Core resolve、producer、Worker 和 projector 边界间重复检查，已取消 Activity 不提交新的 directive。
+
+该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、生产 Artifact projector 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
 
