@@ -35,6 +35,17 @@ type conversationUpsertCall struct {
 	unreadIncrement int
 }
 
+type batchConversationRepository struct {
+	*stubConversationRepository
+	batchCalls []*model.Message
+	batchErr   error
+}
+
+func (r *batchConversationRepository) UpsertGroupMessageBatch(_ string, message *model.Message) error {
+	r.batchCalls = append(r.batchCalls, message)
+	return r.batchErr
+}
+
 func (r *stubConversationRepository) UpsertDirectMessage(userUUID, targetUUID string, message *model.Message, unreadIncrement int) error {
 	if r.upsertErr != nil {
 		return r.upsertErr
@@ -202,6 +213,28 @@ func TestConversationServiceUpdateDirectConversationsSuccess(t *testing.T) {
 	}
 	if repo.upsertCalls[1].userUUID != "U200" || repo.upsertCalls[1].targetUUID != "U100" || repo.upsertCalls[1].unreadIncrement != 1 {
 		t.Fatalf("unexpected target upsert call: %+v", repo.upsertCalls[1])
+	}
+}
+
+func TestConversationServiceUpdateGroupConversationsUsesBatchRepository(t *testing.T) {
+	t.Parallel()
+
+	repo := &batchConversationRepository{stubConversationRepository: &stubConversationRepository{}}
+	groupRepo := &stubConversationGroupRepository{members: []*model.GroupMember{{UserUUID: "U100"}, {UserUUID: "U200"}}}
+	service := NewConversationService(repo, &stubConversationUserFinder{}, groupRepo, nil, nil)
+	message := &model.Message{
+		UUID: "M-batch", ConversationKey: "group:G100", SenderUUID: "U100", TargetType: model.MessageTargetGroup,
+		TargetUUID: "G100", MessageType: model.MessageTypeText, Content: "hello", Seq: 7, SentAt: time.Now().UTC(),
+	}
+
+	if err := service.UpdateGroupConversations(message); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(repo.batchCalls) != 1 || repo.batchCalls[0] != message {
+		t.Fatalf("expected one batch message, got %+v", repo.batchCalls)
+	}
+	if len(repo.upsertCalls) != 0 {
+		t.Fatalf("expected no per-member upserts, got %d", len(repo.upsertCalls))
 	}
 }
 

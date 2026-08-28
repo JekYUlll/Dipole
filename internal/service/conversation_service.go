@@ -27,6 +27,10 @@ type conversationRepository interface {
 	UpdateRemarkByConversationKey(userUUID, conversationKey, remark string) error
 }
 
+type conversationBatchRepository interface {
+	UpsertGroupMessageBatch(groupUUID string, message *model.Message) error
+}
+
 type conversationUserFinder interface {
 	GetByUUID(uuid string) (*model.User, error)
 	ListByUUIDs(uuids []string) ([]*model.User, error)
@@ -138,6 +142,17 @@ func (s *ConversationService) UpdateGroupConversations(message *model.Message) e
 	members, err := s.groupRepo.ListMembers(message.TargetUUID)
 	if err != nil {
 		return fmt.Errorf("list group members for conversation update: %w", err)
+	}
+	if len(members) > 0 {
+		if batchRepo, ok := s.repo.(conversationBatchRepository); ok {
+			startedAt := time.Now()
+			err := batchRepo.UpsertGroupMessageBatch(message.TargetUUID, message)
+			s.observeProjectionWrite("group_message_batch", time.Since(startedAt), err)
+			if err != nil {
+				return fmt.Errorf("upsert group conversation batch: %w", err)
+			}
+			return nil
+		}
 	}
 	for _, member := range members {
 		if member == nil {
