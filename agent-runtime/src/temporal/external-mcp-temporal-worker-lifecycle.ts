@@ -1,4 +1,5 @@
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import type { ExternalMcpTemporalWorkerStartupPlan } from "./external-mcp-temporal-worker-startup-plan.js";
 import {
@@ -18,6 +19,7 @@ export interface ExternalMcpTemporalWorkerLifecycle {
   readonly deployment: ExternalMcpDeploymentPlan;
   readonly worker: ExternalMcpTemporalWorkerComposition;
   readonly temporal: Readonly<TemporalRuntimeConfig>;
+  readonly subscriptionMatcher?: ShadowSubscriptionMatcher;
   stop(): Promise<void>;
 }
 
@@ -51,6 +53,7 @@ export async function startExternalMcpTemporalWorkerLifecycle(
     deployment: startup.deployment,
     worker: startup.worker,
     temporal: Object.freeze({ ...config }),
+    ...(startup.subscriptionMatcher === undefined ? {} : { subscriptionMatcher: startup.subscriptionMatcher }),
     stop: stopOnce(runtime, startup)
   };
 }

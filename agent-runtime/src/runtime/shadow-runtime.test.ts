@@ -179,6 +179,32 @@ describe("shadow runtime composition", () => {
     );
     expect(fixture.planner.plan).toHaveBeenCalledOnce();
   });
+
+  it("uses a borrowed subscription matcher with an independent dispatcher", async () => {
+    const fixture = runtimeFixture();
+    const matcher = {
+      matchEventSubscriptions: vi.fn(async () => [subscription("SUB-A", "all", {})])
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const runtime = buildKafkaShadowRuntime(
+      subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
+      undefined, undefined, undefined, undefined, dispatcher, matcher
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U200")));
+
+    expect(matcher.matchEventSubscriptions).toHaveBeenCalledOnce();
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionId: "SUB-A",
+        subscriptionBinding: expect.objectContaining({ subscriptionId: "SUB-A" })
+      }),
+      expect.objectContaining({ agentUuid: "UAI" }),
+      expect.any(String)
+    );
+    expect(fixture.planner.plan).not.toHaveBeenCalled();
+  });
 });
 
 function subscriptionConfig() {
