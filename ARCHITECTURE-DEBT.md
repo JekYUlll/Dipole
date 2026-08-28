@@ -349,7 +349,7 @@
 - **基线证据：** 候选提交 `2202f1f` 的 baseline v2 证明 Conversation 写放大在 20/100 人普通与热群中均为 20x/100x，见 `benchmarks/ad005-2026-08-27/`。提交 `4343684` 的 baseline v3 进一步记录逐节点 Repository timing：group-message 单次平均为 12.43-23.07 ms，P95 桶上界为 25-50 ms，四组零错误；普通与热群的调用分布接近，而 100 人端到端 P95 分别为 8189 ms 与 1346 ms，支持 Inbox/投递路径是模式差异的重要来源。完整原始快照见 `benchmarks/ad005-projection-timing-2026-08-27/`。
 - **建议方向：** 保留现有 Counter/Histogram 作为回归门禁；在 1000 人固定 workload 或候选实现中比较逐成员串行写、批量 upsert、异步分层投影与热群摘要读扩散，单独记录数据库累计时间、锁等待和投影恢复语义。
 - **处理门槛：** 候选优化需在固定 workload 下减少 Conversation 累计写成本或端到端 P95，保持 Seq/read state、投影重放和回滚正确性，并通过普通/热群完整投递对照后才能关闭；当前 v3 证据已完成归因基线，尚未完成行为优化。
-- **本轮进展：** 新增 sqlc `INSERT ... SELECT` 批量 upsert seam，服务层仅在 Repository 声明支持时启用，旧实现继续逐成员写入；单元测试和 sqlc 生成通过，真实 MySQL contract、锁等待与 1000 人 workload 对照仍待完成。
+- **本轮进展：** 新增 sqlc `INSERT ... SELECT` 批量 upsert seam，服务层仅在 Repository 声明支持时启用，旧实现继续逐成员写入；真实 MySQL 8.4 contract 已验证 sender/recipient Seq、未读计算和重复写入幂等，锁等待与 1000 人 workload 对照仍待完成。
 
 ### AD-007：架构 Markdown 当前未纳入版本控制
 

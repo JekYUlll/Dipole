@@ -82,6 +82,7 @@ func TestConversationRepositoryBatchGroupMessageContract(t *testing.T) {
 		}
 	}
 	message := contractConversationMessage("M-batch-conversation", model.GroupConversationKey(groupUUID), groupUUID, 5, model.MessageTargetGroup, model.MessageTypeText, "batch", time.Now().UTC())
+	message.SenderUUID = senderUUID
 	if err := repo.UpsertGroupMessageBatch(groupUUID, message); err != nil {
 		t.Fatalf("batch upsert: %v", err)
 	}
