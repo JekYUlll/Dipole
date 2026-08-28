@@ -134,6 +134,10 @@ func (s *gatewayAgentMemoryStub) Correct(_ context.Context, principalUUID, memor
 	}, nil
 }
 
+func (s *gatewayAgentMemoryStub) PromoteCandidate(_ context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error) {
+	return &AgentMemory{MemoryID: "MEM-CAND-1", AgentID: "UAI", MemoryType: "observational", Status: "active", ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60, Provenance: AgentMemoryProvenance{SourceType: "memory_candidate", SourceID: candidateID, Sequence: reviewID}, ValidFromUnixMS: 1700000000000, CreatedAtUnixMS: 1700000000000, MemoryRootID: "MEM-CAND-1", MemoryVersion: 1}, nil
+}
+
 func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
 	s.principal, s.after, s.limit = principalUUID, after, limit
 	return &AgentDefinitionCatalogPage{Definitions: []AgentDefinitionCatalogItem{{
