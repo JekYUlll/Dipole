@@ -477,6 +477,97 @@ export interface AuthorizeTaskControlResponse {
     workflowRevision: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ListAgentTaskTimelineRequest
+ */
+export interface ListAgentTaskTimelineRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string principal_user_id = 3
+     */
+    principalUserId: string;
+    /**
+     * @generated from protobuf field: uint64 after_seq = 4
+     */
+    afterSeq: bigint;
+    /**
+     * @generated from protobuf field: uint32 limit = 5
+     */
+    limit: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentTaskTimelineEvent
+ */
+export interface AgentTaskTimelineEvent {
+    /**
+     * @generated from protobuf field: uint64 event_seq = 1
+     */
+    eventSeq: bigint;
+    /**
+     * @generated from protobuf field: string event_id = 2
+     */
+    eventId: string;
+    /**
+     * @generated from protobuf field: string task_id = 3
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 4
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string kind = 5
+     */
+    kind: string;
+    /**
+     * @generated from protobuf field: string status = 6
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: string capability_id = 7
+     */
+    capabilityId: string;
+    /**
+     * @generated from protobuf field: string approval_id = 8
+     */
+    approvalId: string;
+    /**
+     * @generated from protobuf field: int64 occurred_at_unix_ms = 9
+     */
+    occurredAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListAgentTaskTimelineResponse
+ */
+export interface ListAgentTaskTimelineResponse {
+    /**
+     * @generated from protobuf field: string schema_version = 1
+     */
+    schemaVersion: string;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: uint64 revision = 3
+     */
+    revision: bigint;
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentTaskTimelineEvent events = 4
+     */
+    events: AgentTaskTimelineEvent[];
+    /**
+     * @generated from protobuf field: string next_cursor = 5
+     */
+    nextCursor: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ResolveMcpContextRequest
  */
 export interface ResolveMcpContextRequest {
@@ -3881,6 +3972,274 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
  * @generated MessageType for protobuf message dipole.agent.v1.AuthorizeTaskControlResponse
  */
 export const AuthorizeTaskControlResponse = new AuthorizeTaskControlResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListAgentTaskTimelineRequest$Type extends MessageType<ListAgentTaskTimelineRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListAgentTaskTimelineRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "principal_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "after_seq", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 5, name: "limit", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListAgentTaskTimelineRequest>): ListAgentTaskTimelineRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.principalUserId = "";
+        message.afterSeq = 0n;
+        message.limit = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListAgentTaskTimelineRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListAgentTaskTimelineRequest): ListAgentTaskTimelineRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string principal_user_id */ 3:
+                    message.principalUserId = reader.string();
+                    break;
+                case /* uint64 after_seq */ 4:
+                    message.afterSeq = reader.uint64().toBigInt();
+                    break;
+                case /* uint32 limit */ 5:
+                    message.limit = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListAgentTaskTimelineRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string principal_user_id = 3; */
+        if (message.principalUserId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.principalUserId);
+        /* uint64 after_seq = 4; */
+        if (message.afterSeq !== 0n)
+            writer.tag(4, WireType.Varint).uint64(message.afterSeq);
+        /* uint32 limit = 5; */
+        if (message.limit !== 0)
+            writer.tag(5, WireType.Varint).uint32(message.limit);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListAgentTaskTimelineRequest
+ */
+export const ListAgentTaskTimelineRequest = new ListAgentTaskTimelineRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentTaskTimelineEvent$Type extends MessageType<AgentTaskTimelineEvent> {
+    constructor() {
+        super("dipole.agent.v1.AgentTaskTimelineEvent", [
+            { no: 1, name: "event_seq", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 2, name: "event_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "occurred_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentTaskTimelineEvent>): AgentTaskTimelineEvent {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.eventSeq = 0n;
+        message.eventId = "";
+        message.taskId = "";
+        message.runId = "";
+        message.kind = "";
+        message.status = "";
+        message.capabilityId = "";
+        message.approvalId = "";
+        message.occurredAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<AgentTaskTimelineEvent>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentTaskTimelineEvent): AgentTaskTimelineEvent {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint64 event_seq */ 1:
+                    message.eventSeq = reader.uint64().toBigInt();
+                    break;
+                case /* string event_id */ 2:
+                    message.eventId = reader.string();
+                    break;
+                case /* string task_id */ 3:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 4:
+                    message.runId = reader.string();
+                    break;
+                case /* string kind */ 5:
+                    message.kind = reader.string();
+                    break;
+                case /* string status */ 6:
+                    message.status = reader.string();
+                    break;
+                case /* string capability_id */ 7:
+                    message.capabilityId = reader.string();
+                    break;
+                case /* string approval_id */ 8:
+                    message.approvalId = reader.string();
+                    break;
+                case /* int64 occurred_at_unix_ms */ 9:
+                    message.occurredAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentTaskTimelineEvent, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint64 event_seq = 1; */
+        if (message.eventSeq !== 0n)
+            writer.tag(1, WireType.Varint).uint64(message.eventSeq);
+        /* string event_id = 2; */
+        if (message.eventId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.eventId);
+        /* string task_id = 3; */
+        if (message.taskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 4; */
+        if (message.runId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runId);
+        /* string kind = 5; */
+        if (message.kind !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.kind);
+        /* string status = 6; */
+        if (message.status !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.status);
+        /* string capability_id = 7; */
+        if (message.capabilityId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.capabilityId);
+        /* string approval_id = 8; */
+        if (message.approvalId !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.approvalId);
+        /* int64 occurred_at_unix_ms = 9; */
+        if (message.occurredAtUnixMs !== 0n)
+            writer.tag(9, WireType.Varint).int64(message.occurredAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentTaskTimelineEvent
+ */
+export const AgentTaskTimelineEvent = new AgentTaskTimelineEvent$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListAgentTaskTimelineResponse$Type extends MessageType<ListAgentTaskTimelineResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListAgentTaskTimelineResponse", [
+            { no: 1, name: "schema_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 4, name: "events", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentTaskTimelineEvent },
+            { no: 5, name: "next_cursor", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListAgentTaskTimelineResponse>): ListAgentTaskTimelineResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.schemaVersion = "";
+        message.taskId = "";
+        message.revision = 0n;
+        message.events = [];
+        message.nextCursor = "";
+        if (value !== undefined)
+            reflectionMergePartial<ListAgentTaskTimelineResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListAgentTaskTimelineResponse): ListAgentTaskTimelineResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string schema_version */ 1:
+                    message.schemaVersion = reader.string();
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* uint64 revision */ 3:
+                    message.revision = reader.uint64().toBigInt();
+                    break;
+                case /* repeated dipole.agent.v1.AgentTaskTimelineEvent events */ 4:
+                    message.events.push(AgentTaskTimelineEvent.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* string next_cursor */ 5:
+                    message.nextCursor = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListAgentTaskTimelineResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string schema_version = 1; */
+        if (message.schemaVersion !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.schemaVersion);
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* uint64 revision = 3; */
+        if (message.revision !== 0n)
+            writer.tag(3, WireType.Varint).uint64(message.revision);
+        /* repeated dipole.agent.v1.AgentTaskTimelineEvent events = 4; */
+        for (let i = 0; i < message.events.length; i++)
+            AgentTaskTimelineEvent.internalBinaryWrite(message.events[i], writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* string next_cursor = 5; */
+        if (message.nextCursor !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.nextCursor);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListAgentTaskTimelineResponse
+ */
+export const ListAgentTaskTimelineResponse = new ListAgentTaskTimelineResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ResolveMcpContextRequest$Type extends MessageType<ResolveMcpContextRequest> {
     constructor() {
@@ -9710,6 +10069,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveApprovalGrant", options: {}, I: ResolveApprovalGrantRequest, O: ResolveApprovalGrantResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
+    { name: "ListAgentTaskTimeline", options: {}, I: ListAgentTaskTimelineRequest, O: ListAgentTaskTimelineResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
