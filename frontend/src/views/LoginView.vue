@@ -76,25 +76,29 @@ const handleRegister = async () => {
   align-items: center;
   width: 100vw;
   height: 100vh;
-  background: #ededed;
+  background: var(--dp-canvas);
 }
 .login-card {
-  background: #fff;
-  border-radius: 8px;
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius-md);
   padding: 40px 36px;
   width: 320px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  color: var(--dp-ink);
+  font-family: var(--dp-font-body);
 }
 .brand {
   text-align: center;
   font-size: 28px;
   font-weight: 700;
-  color: #07c160;
+  color: var(--dp-accent-strong);
+  font-family: var(--dp-font-display);
   margin: 0 0 24px;
 }
 .tabs {
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--dp-line);
   margin-bottom: 20px;
 }
 .tab {
@@ -104,13 +108,13 @@ const handleRegister = async () => {
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: #888;
+  color: var(--dp-ink-soft);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 .tab.active {
-  color: #07c160;
-  border-bottom-color: #07c160;
+  color: var(--dp-accent-strong);
+  border-bottom-color: var(--dp-accent);
   font-weight: 600;
 }
 .form {
@@ -120,19 +124,22 @@ const handleRegister = async () => {
 }
 .form input {
   padding: 10px 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid var(--dp-line);
+  border-radius: var(--dp-radius-sm);
   font-size: 14px;
+  color: var(--dp-ink);
+  background: var(--dp-surface);
+  font-family: inherit;
   outline: none;
   transition: border-color 0.2s;
 }
-.form input:focus { border-color: #07c160; }
+.form input:focus { border-color: var(--dp-accent); }
 .form button {
   padding: 10px;
-  background: #07c160;
-  color: #fff;
+  background: var(--dp-accent);
+  color: var(--dp-text-inverse);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-sm);
   font-size: 15px;
   cursor: pointer;
   margin-top: 4px;
@@ -140,7 +147,7 @@ const handleRegister = async () => {
 .form button:disabled { opacity: 0.6; cursor: not-allowed; }
 .error {
   margin-top: 12px;
-  color: #e74c3c;
+  color: var(--dp-danger);
   font-size: 13px;
   text-align: center;
 }
