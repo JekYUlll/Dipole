@@ -44,6 +44,30 @@ describe("ModelShadowPlanner", () => {
     expect(prompt).toContain('"trust":"untrusted"');
   });
 
+  it("bounds remote conversation evidence before compiling the prompt", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const messages = Array.from({ length: 25 }, (_, index) => ({
+      id: BigInt(index + 1), serverMessageId: `M${index + 1}`, clientMessageId: `C${index + 1}`,
+      conversationKey: "group:G1", sequence: BigInt(index + 1), senderId: "U200", targetType: 2, targetId: "G1",
+      messageType: 1, content: index === 0 ? "x".repeat(9000) : `message-${index + 1}`, fileId: "", fileName: "", fileSize: 0n,
+      fileUrl: "", fileContentType: ""
+    }));
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.read"], new DeterministicContextCompiler(),
+      undefined, undefined, undefined, { readConversation: async () => ({ found: true, reason: "", targetId: "G1", targetType: 2, messages }) }
+    );
+
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
+
+    const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
+    expect(prompt).toContain('\\"contentTruncated\\":true');
+    expect(prompt).toContain('"id":"message:M20:19"');
+    expect(prompt).not.toContain('"id":"message:M21:20"');
+  });
+
   it("retrieves scoped Memories and compiles them as untrusted provenance records", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
