@@ -70,6 +70,7 @@
 
 ### 新增
 
+- canonical Pencil 增加 Agent Event Subscription v1：desktop owner 管理页、`loading|empty|unavailable|definition_stale|revoking|revoked` 六态矩阵、mobile 精确撤销确认层及三类可复用组件；设计固定披露 Definition version、conversation scope、确定性 filter、审计原因与 `direct_target` Shadow 边界，2x 评审图归档于 `design/exports/agent-subscription-v1/`。公开 Definition 目录、Gateway HTTP/Vue 管理与 Runtime `subscription` 模式仍未启用。
 - Agent G4 全栈 Shadow 演练增加测试专用 Go Core RPC fixture：复用生产 TLS 1.3、双向证书验证、shared-secret metadata、caller allowlist 和证书 CN 绑定；脚本生成临时 `dipole-core`/`dipole-agent` 身份并验证错误 secret、错误 CN 与无客户端证书均失败关闭。
 - 外部 MCP Shadow 演练证据升级为 v2，新增 `core_rpc_type=go_internal_grpc_mtls`、认证成功和身份拒绝验证门禁；v1 Schema 保留用于解释历史文件，当前 CLI 只接受带完整 Core RPC 证据的 v2。
 - Agent G4 隔离全栈 Shadow 证据增加语言中立 JSON Schema、严格 Zod 解析器和 `mcp:shadow-drill:check` CLI；契约固定成功计数/布尔门禁、canonical `content_sha256` 与最多 24 小时有效期，并拒绝额外字段、未同步 hash 的内容漂移、未来或过期文件。
