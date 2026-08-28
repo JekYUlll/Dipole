@@ -113,6 +113,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
@@ -229,6 +230,38 @@ func agentMemoryCorrectHandler(memories AgentMemoryControlApplication) gin.Handl
 		}
 		result, err := memories.Correct(c.Request.Context(), user.UUID, memoryID, body.ExpectedVersion, body.Content, body.CompactContent, body.Reason)
 		writeAgentMemoryResult(c, result, err)
+	}
+}
+
+func agentMemoryCandidatePromoteHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		CandidateSHA256 string `json:"candidateSha256"`
+		ReviewID        string `json:"reviewId"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		candidateID := strings.TrimSpace(c.Param("candidate_id"))
+		if !validAgentSubscriptionPublicID(candidateID, 72) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate promotion request"})
+			return
+		}
+		body.CandidateSHA256, body.ReviewID = strings.TrimSpace(body.CandidateSHA256), strings.TrimSpace(body.ReviewID)
+		if len(body.CandidateSHA256) != 64 || !isLowerHex(body.CandidateSHA256) || !validAgentSubscriptionPublicID(body.ReviewID, 72) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory candidate promotion request is invalid"})
+			return
+		}
+		item, err := memories.PromoteCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.ReviewID)
+		writeAgentMemoryResult(c, item, err)
 	}
 }
 
