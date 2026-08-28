@@ -58,6 +58,50 @@ func TestConversationRepositoryContract(t *testing.T) {
 	})
 }
 
+func TestConversationRepositoryBatchGroupMessageContract(t *testing.T) {
+	db, _ := openContractDatabase(t)
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	if err := runner.Up(context.Background()); err != nil {
+		t.Fatalf("migrate contract database: %v", err)
+	}
+	repo, err := sqlcRepository.NewConversationRepository(generated.New(db))
+	if err != nil {
+		t.Fatalf("create sqlc conversation repository: %v", err)
+	}
+	groupUUID := "G-batch-conversation"
+	senderUUID, recipientUUID := "U-batch-sender", "U-batch-recipient"
+	if _, err := db.Exec("INSERT INTO `groups` (uuid, name, owner_uuid, member_count, status) VALUES (?, 'batch', ?, 2, ?)", groupUUID, senderUUID, model.GroupStatusNormal); err != nil {
+		t.Fatalf("insert batch group: %v", err)
+	}
+	for _, userUUID := range []string{senderUUID, recipientUUID} {
+		if _, err := db.Exec("INSERT INTO group_members (group_uuid, user_uuid, role, joined_at) VALUES (?, ?, 0, NOW(3))", groupUUID, userUUID); err != nil {
+			t.Fatalf("insert batch member %s: %v", userUUID, err)
+		}
+	}
+	message := contractConversationMessage("M-batch-conversation", model.GroupConversationKey(groupUUID), groupUUID, 5, model.MessageTargetGroup, model.MessageTypeText, "batch", time.Now().UTC())
+	if err := repo.UpsertGroupMessageBatch(groupUUID, message); err != nil {
+		t.Fatalf("batch upsert: %v", err)
+	}
+	sender, err := repo.GetByUserAndConversationKey(senderUUID, message.ConversationKey)
+	if err != nil || sender == nil || sender.ReadSeq != 5 || sender.UnreadCount != 0 {
+		t.Fatalf("sender projection: conversation=%+v err=%v", sender, err)
+	}
+	recipient, err := repo.GetByUserAndConversationKey(recipientUUID, message.ConversationKey)
+	if err != nil || recipient == nil || recipient.ReadSeq != 4 || recipient.UnreadCount != 1 {
+		t.Fatalf("recipient projection: conversation=%+v err=%v", recipient, err)
+	}
+	if err := repo.UpsertGroupMessageBatch(groupUUID, message); err != nil {
+		t.Fatalf("repeat batch upsert: %v", err)
+	}
+	recipient, err = repo.GetByUserAndConversationKey(recipientUUID, message.ConversationKey)
+	if err != nil || recipient == nil || recipient.UnreadCount != 1 {
+		t.Fatalf("repeat batch changed unread count: conversation=%+v err=%v", recipient, err)
+	}
+}
+
 func runConversationContract(t *testing.T, store application.ConversationStore, prefix string) {
 	t.Helper()
 	if err := store.UpsertDirectMessage("U-any", "U-target", nil, 1); err == nil {

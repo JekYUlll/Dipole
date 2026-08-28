@@ -34,6 +34,27 @@ func (r *ConversationRepository) UpsertGroupMessage(userUUID, groupUUID string, 
 	return r.upsertMessage(userUUID, model.MessageTargetGroup, groupUUID, message, unreadIncrement, "group")
 }
 
+func (r *ConversationRepository) UpsertGroupMessageBatch(groupUUID string, message *model.Message) error {
+	if message == nil {
+		return errors.New("upsert group conversation batch with sqlc: message is required")
+	}
+	initialReadSeq := uint64(0)
+	if message.Seq > 0 {
+		initialReadSeq = message.Seq - 1
+	}
+	_, err := r.queries.UpsertGroupConversationMessageBatch(context.Background(), generated.UpsertGroupConversationMessageBatchParams{
+		TargetType: model.MessageTargetGroup, GroupUuid: groupUUID, ConversationKey: message.ConversationKey,
+		LastMessageUuid: message.UUID, LastMessageSeq: message.Seq, SenderUuid: message.SenderUUID,
+		InitialReadSeq: initialReadSeq, LastMessageType: message.MessageType,
+		LastMessagePreview: model.BuildMessagePreview(message), LastMessageAt: message.SentAt,
+		LastMessageSenderUuid: message.SenderUUID,
+	})
+	if err != nil {
+		return fmt.Errorf("upsert group conversation batch with sqlc: %w", err)
+	}
+	return nil
+}
+
 func (r *ConversationRepository) upsertMessage(userUUID string, targetType int8, targetUUID string, message *model.Message, unreadIncrement int, kind string) error {
 	if message == nil {
 		return fmt.Errorf("upsert %s conversation with sqlc: message is required", kind)
