@@ -85,6 +85,34 @@ type gatewayAgentMCPStub struct {
 	calls     int
 }
 
+type gatewayAgentSubscriptionStub struct {
+	principal      string
+	after          string
+	limit          int
+	subscriptionID string
+	reason         string
+	listCalls      int
+	revokeCalls    int
+}
+
+func (s *gatewayAgentSubscriptionStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentSubscriptionPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentSubscriptionPage{Subscriptions: []AgentSubscription{{
+		SubscriptionID: "SUB-1", DefinitionID: "DEF-1", DefinitionVersion: 7, AgentID: "UAI",
+		EventType: "message.created", ResourceType: "conversation", ResourceID: "group:G123",
+		FilterKind: "all", Filter: AgentSubscriptionFilter{}, Status: "active", CreatedByID: principalUUID,
+	}}, NextCursor: "SUB-1"}, nil
+}
+
+func (s *gatewayAgentSubscriptionStub) Revoke(_ context.Context, principalUUID, subscriptionID, reason string) (*AgentSubscription, error) {
+	s.principal, s.subscriptionID, s.reason = principalUUID, subscriptionID, reason
+	s.revokeCalls++
+	return &AgentSubscription{SubscriptionID: subscriptionID, DefinitionID: "DEF-1", DefinitionVersion: 7, AgentID: "UAI",
+		EventType: "message.created", ResourceType: "conversation", ResourceID: "group:G123", FilterKind: "all",
+		Filter: AgentSubscriptionFilter{}, Status: "revoked", CreatedByID: principalUUID, RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
 func (s *gatewayAgentMCPStub) ServeMCP(writer http.ResponseWriter, _ *http.Request, principalUUID, taskUUID, runUUID string) {
 	s.principal, s.taskID, s.runID = principalUUID, taskUUID, runUUID
 	s.calls++
@@ -256,6 +284,101 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), `"message_id":"M1"`) {
 		t.Fatalf("unexpected Search response: %s", response.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
+	t.Chdir("../..")
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("start miniredis: %v", err)
+	}
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = store.RDB.Close()
+		store.RDB = previousRedis
+	})
+	proxied := 0
+	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		proxied++
+		writer.WriteHeader(http.StatusTeapot)
+	}))
+	defer core.Close()
+	subscriptions := &gatewayAgentSubscriptionStub{}
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions", nil))
+	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 || subscriptions.listCalls != 0 {
+		t.Fatalf("unauthorized list: code=%d proxied=%d calls=%d", unauthorized.Code, proxied, subscriptions.listCalls)
+	}
+	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	if err != nil {
+		t.Fatalf("issue token: %v", err)
+	}
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/subscriptions?after=SUB-0&limit=20", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK || proxied != 0 || subscriptions.principal != "U100" || subscriptions.after != "SUB-0" || subscriptions.limit != 20 {
+		t.Fatalf("list: code=%d proxied=%d stub=%+v body=%s", listResponse.Code, proxied, subscriptions, listResponse.Body.String())
+	}
+	if !strings.Contains(listResponse.Body.String(), `"subscriptionId":"SUB-1"`) || !strings.Contains(listResponse.Body.String(), `"nextCursor":"SUB-1"`) {
+		t.Fatalf("unexpected list response: %s", listResponse.Body.String())
+	}
+
+	revokeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions/SUB-1/revoke", strings.NewReader(`{"reason":"project archived"}`))
+	revokeRequest.Header.Set("Authorization", "Bearer "+token)
+	revokeRequest.Header.Set("Content-Type", "application/json")
+	revokeResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(revokeResponse, revokeRequest)
+	if revokeResponse.Code != http.StatusOK || subscriptions.subscriptionID != "SUB-1" || subscriptions.reason != "project archived" || subscriptions.revokeCalls != 1 {
+		t.Fatalf("revoke: code=%d stub=%+v body=%s", revokeResponse.Code, subscriptions, revokeResponse.Body.String())
+	}
+}
+
+func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
+	t.Chdir("../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := store.RDB
+	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() {
+		_ = store.RDB.Close()
+		store.RDB = previousRedis
+	})
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	subscriptions := &gatewayAgentSubscriptionStub{}
+	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{}})
+	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+
+	for _, target := range []string{
+		"/api/v1/agent/subscriptions?limit=101",
+		"/api/v1/agent/subscriptions?after=%20",
+	} {
+		request := httptest.NewRequest(http.MethodGet, target, nil)
+		request.Header.Set("Authorization", "Bearer "+token)
+		response := httptest.NewRecorder()
+		gateway.Engine().ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("expected bad request for %s, got %d: %s", target, response.Code, response.Body.String())
+		}
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/subscriptions/SUB-1/revoke", strings.NewReader(`{"reason":" "}`))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest || subscriptions.listCalls != 0 || subscriptions.revokeCalls != 0 {
+		t.Fatalf("invalid input reached application: code=%d stub=%+v", response.Code, subscriptions)
 	}
 }
 

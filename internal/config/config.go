@@ -30,12 +30,14 @@ type Server struct {
 }
 
 type Gateway struct {
-	Mode                string `mapstructure:"mode"`
-	CoreHTTPTarget      string `mapstructure:"core_http_target"`
-	AgentControlEnabled bool   `mapstructure:"agent_control_enabled"`
-	AgentControlTarget  string `mapstructure:"agent_control_target"`
-	AgentMCPEnabled     bool   `mapstructure:"agent_mcp_enabled"`
-	AgentMCPTarget      string `mapstructure:"agent_mcp_target"`
+	Mode                      string `mapstructure:"mode"`
+	CoreHTTPTarget            string `mapstructure:"core_http_target"`
+	AgentControlEnabled       bool   `mapstructure:"agent_control_enabled"`
+	AgentControlTarget        string `mapstructure:"agent_control_target"`
+	AgentSubscriptionEnabled  bool   `mapstructure:"agent_subscription_enabled"`
+	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
+	AgentMCPEnabled           bool   `mapstructure:"agent_mcp_enabled"`
+	AgentMCPTarget            string `mapstructure:"agent_mcp_target"`
 }
 
 type Realtime struct {
@@ -351,6 +353,8 @@ func Load() error {
 		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
 		v.SetDefault("gateway.agent_control_enabled", false)
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
+		v.SetDefault("gateway.agent_subscription_enabled", false)
+		v.SetDefault("gateway.agent_subscription_tenant_id", "dipole")
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
 		v.SetDefault("realtime.delivery", "go")
@@ -523,6 +527,8 @@ func Load() error {
 			"gateway.core_http_target",
 			"gateway.agent_control_enabled",
 			"gateway.agent_control_target",
+			"gateway.agent_subscription_enabled",
+			"gateway.agent_subscription_tenant_id",
 			"gateway.agent_mcp_enabled",
 			"gateway.agent_mcp_target",
 			"realtime.delivery",
@@ -747,12 +753,14 @@ func ServerConfig() Server {
 func GatewayConfig() Gateway {
 	MustLoad()
 	return Gateway{
-		Mode:                strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
-		CoreHTTPTarget:      strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
-		AgentControlEnabled: cfg.GetBool("gateway.agent_control_enabled"),
-		AgentControlTarget:  strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
-		AgentMCPEnabled:     cfg.GetBool("gateway.agent_mcp_enabled"),
-		AgentMCPTarget:      strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
+		Mode:                      strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget:            strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		AgentControlEnabled:       cfg.GetBool("gateway.agent_control_enabled"),
+		AgentControlTarget:        strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
+		AgentSubscriptionEnabled:  cfg.GetBool("gateway.agent_subscription_enabled"),
+		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
+		AgentMCPEnabled:           cfg.GetBool("gateway.agent_mcp_enabled"),
+		AgentMCPTarget:            strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
 	}
 }
 
