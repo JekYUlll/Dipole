@@ -153,6 +153,8 @@ Subscription rollout gate 不信任调用方预先聚合的报告，而是从 co
 
 在线对照的 `dipole.agent.subscription-shadow-evidence.v1` 只接受 24 小时以上的 Prometheus 起止快照，绑定 Runtime/config SHA-256、query revision、抓取覆盖率和 `resets()` 结果；至少 100 个事件、95% 抓取、零 reset、零 matcher error 才能形成最多有效 24 小时的 passing evidence。Schema 与 CLI 固定双 authority 为 false，Runtime 启动链不读取该证据。
 
+只读 `dipole.agent.subscription-shadow-collection.v1` Collector 固定历史查询集合并生成上述 input：单 Agent series、全窗口 Shadow enabled、Prometheus envelope 与安全整数均 fail closed，URL 不得携带凭据。Collector 不写远端状态，也无法从现有指标证明部署 artifact revision；Runtime/config SHA-256 继续由受控发布记录提供。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact
