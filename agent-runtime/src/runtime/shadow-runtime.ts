@@ -275,15 +275,18 @@ export function buildKafkaShadowRuntime(
       if (subscriptionMatcher === undefined || subscriptionShadowObserver === undefined) {
         throw new Error("Subscription Shadow observation dependencies are unavailable");
       }
+      let candidateCount = 0;
       try {
-        const matches = matchEventSubscriptions(event, await subscriptionMatcher.matchEventSubscriptions(event, identity));
+        const candidates = await subscriptionMatcher.matchEventSubscriptions(event, identity);
+        candidateCount = candidates.length;
+        const matches = matchEventSubscriptions(event, candidates);
         subscriptionShadowObserver.observe({
           directTargetAccepted,
           subscriptionOutcome: matches.length === 0 ? "miss" : "match",
-          candidateCount: matches.length
+          candidateCount
         });
       } catch {
-        subscriptionShadowObserver.observe({ directTargetAccepted, subscriptionOutcome: "error", candidateCount: 0 });
+        subscriptionShadowObserver.observe({ directTargetAccepted, subscriptionOutcome: "error", candidateCount });
       }
     }
     if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
