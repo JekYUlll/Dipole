@@ -200,6 +200,7 @@
 
 ### 新增
 
+- Context Compiler v2 增加可选 `maxInputTokens` 窗口门禁；route-aware runtime 按最小候选模型窗口扣除最大输出预算，超出时在编译前 fail closed，v1/旧构造保持兼容。
 - Agent Memory Observation/Reflection worker 将幂等键扩展为 tenant、principal、Agent、资源与事件/窗口的完整 scope，避免多租户或多资源复用 ID 时错误丢弃候选；新增跨 scope 回归测试。
 - Agent Memory 增加 v47 Core-owned accepted candidate promotion seam：服务端重新加载并校验候选、owner review、exact hash、范围与 30 天证据窗口，在同一 sqlc/MySQL 事务中创建摘要型 observational Memory 并记录 promotion receipt；重复 promote 可恢复同一 Memory，漂移与缺失均回滚。当前没有公开 Runtime 旁路或自动写入开关。
 - Agent Memory 增加 v46 append-only candidate review ledger：`accepted|rejected` 审核绑定候选哈希、reviewer、有限理由、时间和 review hash，候选状态与审核记录在同一事务中更新；精确重放返回 duplicate，哈希漂移、候选缺失和重复决策冲突均回滚。该阶段仍不将候选投影到 `agent_memories`。

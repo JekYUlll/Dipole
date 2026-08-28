@@ -34,6 +34,17 @@ describe("DeterministicContextCompiler", () => {
     });
   });
 
+  it("fails closed when the requested input budget exceeds the model window", () => {
+    const compiler = new DeterministicContextCompiler(estimate, {
+      compilerVersion: "v2", estimatorId: "route-calibrated-v1:test", maxInputTokens: 8
+    });
+
+    expect(() => compiler.compile({
+      budget: { totalTokens: 9, allocations: { policy: 4, identity: 2, task: 2, evidence: 1, memory: 0, capability: 0 } },
+      fragments: [policy()]
+    })).toThrow(ContextBudgetExceededError);
+  });
+
   it("uses compact content before omitting lower-priority optional evidence", () => {
     const compiler = new DeterministicContextCompiler(estimate);
     const result = compiler.compile({

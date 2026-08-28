@@ -73,6 +73,12 @@ export interface ContextCompiler {
   compile(request: ContextCompileRequest): CompiledContext;
 }
 
+export interface ContextCompilerMetadata {
+  readonly compilerVersion: "v1" | "v2";
+  readonly estimatorId: string;
+  readonly maxInputTokens?: number;
+}
+
 export class ContextBudgetExceededError extends Error {
   constructor(readonly fragmentId: string) {
     super(`required Context fragment ${fragmentId} exceeds its budget`);
@@ -87,14 +93,14 @@ function header(version: "v1" | "v2"): string {
 export class DeterministicContextCompiler implements ContextCompiler {
   constructor(
     private readonly estimateTokens: (text: string) => number = defaultTokenEstimate,
-    private readonly metadata: {
-      readonly compilerVersion: "v1" | "v2";
-      readonly estimatorId: string;
-    } = { compilerVersion: "v1", estimatorId: "utf8-byte-v1" }
+    private readonly metadata: ContextCompilerMetadata = { compilerVersion: "v1", estimatorId: "utf8-byte-v1" }
   ) {}
 
   compile(rawRequest: ContextCompileRequest): CompiledContext {
     const request = requestSchema.parse(rawRequest);
+    if (this.metadata.maxInputTokens !== undefined && request.budget.totalTokens > this.metadata.maxInputTokens) {
+      throw new ContextBudgetExceededError("context-window");
+    }
     const contextHeader = header(this.metadata.compilerVersion);
     const headerTokens = validEstimate(this.estimateTokens(contextHeader));
     if (headerTokens > request.budget.totalTokens) {
