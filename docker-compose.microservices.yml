@@ -293,13 +293,15 @@ services:
       - ./configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
       - ./configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
       - ./configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
+      - ./configs/mysql/agent-timeline-repair-grants.dist.sql:/grants/agent-timeline-repair.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
         mysql -h mysql -uroot -proot123 < /grants/message-atomic.sql &&
         mysql -h mysql -uroot -proot123 < /grants/message-projector.sql &&
         mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
-        mysql -h mysql -uroot -proot123 < /grants/agent.sql
+        mysql -h mysql -uroot -proot123 < /grants/agent.sql &&
+        mysql -h mysql -uroot -proot123 < /grants/agent-timeline-repair.sql
 
   core:
     <<: *dipole-service
@@ -417,6 +419,29 @@ services:
       DIPOLE_KAFKA_CLIENT_ID: dipole-sync
       DIPOLE_METRICS_ENABLED: "true"
       DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  agent-timeline-repair:
+    profiles: ["agent-timeline-repair"]
+    <<: *dipole-service
+    restart: unless-stopped
+    entrypoint: ["/app/dipole-agent-task-timeline-repair"]
+    depends_on:
+      mysql-permissions:
+        condition: service_completed_successfully
+    environment:
+      DIPOLE_MYSQL_HOST: mysql
+      DIPOLE_MYSQL_PORT: "3306"
+      DIPOLE_MYSQL_USER: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_USER:-dipole_agent_timeline_repair}
+      DIPOLE_MYSQL_PASSWORD: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:-change-me}
+      DIPOLE_MYSQL_DBNAME: dipole
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    command: ["-batch-size", "${DIPOLE_AGENT_TIMELINE_REPAIR_BATCH_SIZE:-100}", "-metrics-address", "0.0.0.0:9100"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
