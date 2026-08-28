@@ -40,6 +40,26 @@ export function createExternalMcpTemporalWorkerComposition(
   createRuntime: TemporalMcpMultiRouteRuntimeFactory = createTemporalMcpMultiRouteRuntime
 ): ExternalMcpTemporalWorkerComposition | undefined {
   if (plan === undefined) return undefined;
+  validateExternalMcpTemporalWorkerCompositionPlan(plan, baseActivities);
+
+  const expectedBindings = plan.routes.map(temporalMcpDispatchRouteBinding);
+  const workflowExecutions = new TemporalMcpWorkflowExecutionCatalog(expectedBindings);
+  const dependencies = resolveDependencies();
+  const runtime = createRuntime(plan, dependencies);
+  assertExactBindings(expectedBindings, runtime.routeBindings);
+
+  return {
+    activities: Object.freeze({ ...baseActivities, ...runtime.activities }),
+    routeBindings: Object.freeze([...runtime.routeBindings]),
+    workflowExecutions,
+    runtimeBindingSha256: plan.runtimeBindingSha256
+  };
+}
+
+export function validateExternalMcpTemporalWorkerCompositionPlan(
+  plan: ExternalMcpTemporalWorkerCompositionPlan,
+  baseActivities: AgentTaskWorkerActivities
+): void {
   if (!sha256Pattern.test(plan.runtimeBindingSha256)) {
     throw new Error("External MCP Temporal Worker Runtime binding is invalid");
   }
@@ -56,17 +76,7 @@ export function createExternalMcpTemporalWorkerComposition(
 
   const expectedBindings = plan.routes.map(temporalMcpDispatchRouteBinding);
   for (const route of plan.routes) plan.routeRegistry.workerEgressPolicies(route.capabilityId);
-  const workflowExecutions = new TemporalMcpWorkflowExecutionCatalog(expectedBindings);
-  const dependencies = resolveDependencies();
-  const runtime = createRuntime(plan, dependencies);
-  assertExactBindings(expectedBindings, runtime.routeBindings);
-
-  return {
-    activities: Object.freeze({ ...baseActivities, ...runtime.activities }),
-    routeBindings: Object.freeze([...runtime.routeBindings]),
-    workflowExecutions,
-    runtimeBindingSha256: plan.runtimeBindingSha256
-  };
+  new TemporalMcpWorkflowExecutionCatalog(expectedBindings);
 }
 
 function assertExactBindings(
