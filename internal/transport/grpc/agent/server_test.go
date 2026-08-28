@@ -431,6 +431,31 @@ func TestListAgentTaskTimelineFailsClosedWhenUnconfigured(t *testing.T) {
 	}
 }
 
+func TestAppendAgentTaskTimelineEventRequiresRuntimeAndValidRunBinding(t *testing.T) {
+	timeline := &taskTimelineStub{}
+	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	response, err := server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), EventId: "MODEL-1", TaskId: "TASK-1", RunId: "RUN-1",
+		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+	})
+	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventModelCall {
+		t.Fatalf("unexpected append response=%+v events=%+v err=%v", response, timeline.events, err)
+	}
+	_, err = server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), EventId: "MODEL-2", TaskId: "TASK-1", RunId: "RUN-1",
+		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
 func TestResolveMcpContextUsesPinnedInvocationAndAuthenticatedPrincipal(t *testing.T) {
 	invocation := application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",

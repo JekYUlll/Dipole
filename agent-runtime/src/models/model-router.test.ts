@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SpanStatusCode, type Span, type Tracer } from "@opentelemetry/api";
 import { z } from "zod";
 
-import { ModelRouter, ModelRoutingError, type ModelAuditStore, type StructuredModelClient } from "./model-router.js";
+import { ModelRouter, ModelRoutingError, type ModelAuditStore, type ModelTimelineSink, type StructuredModelClient } from "./model-router.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const outputSchema = z.object({ summary: z.string() });
@@ -127,6 +127,26 @@ describe("ModelRouter", () => {
     });
     expect(audit.reserve).not.toHaveBeenCalled();
     expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
+  });
+
+  it("projects model call lifecycle without exposing model output", async () => {
+    const timeline: ModelTimelineSink = { appendAgentTaskTimelineEvent: vi.fn(async () => undefined) };
+    const audit = auditStore();
+    vi.mocked(audit.reserve).mockResolvedValue({ runId: "RUN-1", callId: "CALL-1", callNo: 1, route: "primary" });
+    const router = new ModelRouter({ generate: vi.fn(async () => ({ output: { summary: "ok" }, usage: { inputTokens: 1, outputTokens: 2 } })) }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, undefined, audit, undefined, timeline);
+    await router.generate({ prompt: "plan", schema: outputSchema, taskId: "TASK-1" });
+    expect(timeline.appendAgentTaskTimelineEvent).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      eventId: "model:CALL-1:begin", taskId: "TASK-1", runId: "RUN-1", kind: "model_call", status: "running"
+    }));
+    expect(timeline.appendAgentTaskTimelineEvent).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      eventId: "model:CALL-1:finish", status: "completed"
+    }));
+    for (const [event] of vi.mocked(timeline.appendAgentTaskTimelineEvent).mock.calls) {
+      expect(event).not.toHaveProperty("output");
+      expect(event).not.toHaveProperty("prompt");
+    }
   });
 
   it("records provider failure before reserving the fallback", async () => {
