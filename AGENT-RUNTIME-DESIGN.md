@@ -149,6 +149,8 @@ Corpus review v1 将同一 corpus SHA-256 绑定到两个独立 reviewer 的完�
 
 Subscription rollout gate 不信任调用方预先聚合的报告，而是从 corpus、review 与 candidate evidence 重新执行两个 evaluator。只有同一 corpus 的 review 和 candidate 均通过才输出 `eligible`，决策绑定 corpus/review/final-label/candidate evidence/configuration 哈希及 agreement、precision、recall、p95、成本指标。`eligible` 只进入 operator review，不修改 Runtime mode、Trigger mode 或 Capability authority。
 
+默认关闭的 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED` 为 `direct_target` 增加在线确定性对照：同一 Kafka 事件在 EventLedger 前调用 Core matcher，只累计固定 `accepted|ignored × match|miss|error` 指标和候选总数，随后仍按 direct-target 结果执行。matcher 失败只记录 error，不能阻断主路径，也不能创建第二个 Task、Workflow 或模型调用。运维与回滚见 `docs/agent-subscription-shadow.md`；该观察证据不能替代 reviewed corpus 与离线 precision/recall 门槛。
+
 Message v1 Envelope 可选携带 `lineage`：`origin.type/id` 标记自动化根来源，`causation_event_id` 指向直接父事件，`agent_task_id` 固定根 Agent Task。Kafka consumer 在进入业务 handler 时将 causation 滚动为当前 `event_id`；Agent 动作保留已有 Agent 根来源，Transactional Outbox 因此可将同一因果链写入 confirmed Message fact。TypeScript Trigger Engine 在领取 EventLedger、创建 Temporal Workflow 或调用模型前抑制 `origin.type=agent` 且 `origin.id` 等于当前 Agent 的事件。旧 v1 事件缺少 `lineage` 时继续按原路径处理；Agent origin 缺少 Task、未知 origin type 或非法标识符时 fail closed。
 
 ## 6. Human-in-the-loop 与 Artifact
