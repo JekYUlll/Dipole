@@ -221,7 +221,7 @@ describe("shadow runtime composition", () => {
   it("observes subscription match, miss, and errors before the ledger without changing direct-target admission", async () => {
     const fixture = runtimeFixture();
     const matcher = { matchEventSubscriptions: vi.fn()
-      .mockResolvedValueOnce([subscription("SUB-A", "all", {})])
+      .mockResolvedValueOnce([subscription("SUB-A", "all", {}), { ...subscription("SUB-X", "all", {}), resourceId: "group:OTHER" }])
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error("Core unavailable")) };
     const metrics = new SubscriptionShadowMetrics();
@@ -246,6 +246,7 @@ describe("shadow runtime composition", () => {
     expect(metrics.render()).toContain('direct_target="ignored",subscription="match"} 1');
     expect(metrics.render()).toContain('direct_target="ignored",subscription="miss"} 1');
     expect(metrics.render()).toContain('direct_target="accepted",subscription="error"} 1');
+    expect(metrics.render()).toContain("dipole_agent_subscription_shadow_candidates_total 2");
   });
 });
 
