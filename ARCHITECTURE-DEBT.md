@@ -37,6 +37,7 @@
 - **本轮进展：** Compose repair 权限初始化已收敛为同一密码变量，覆盖值会在授权 SQL 后显式更新，危险 SQL 字符 fail closed；仍需共享环境轮换和回滚演练。
 - **本轮进展：** 新增 Compose profile 级隔离 smoke，先断言 v49 migration/Timeline 表，再验证专用权限、worker `readyz`、持续 replay 和 event UUID 幂等；演练发现 MySQL `Asia/Shanghai` 与 Go UTC 的 DATETIME 比较偏移，已将 Compose MySQL 固定为 UTC，并改用同步 `compose run --rm` 执行一次性 migration。共享环境 operator 灰度、指标抓取和轮换/回滚演练仍待完成。
 - **本轮进展：** Compose smoke 进一步在 worker 启动前写入 pending intent，确认 repair profile 启用后能恢复积压并保持单事件收敛；同时将全局和会话时区 `+00:00/+00:00` 纳入部署前置断言，防止 lease/retry 时间基准回归。共享环境 operator 灰度、指标抓取和轮换/回滚演练仍待完成。
+- **本轮进展：** 新增 `agent-timeline-repair-rollout` v1 evidence/policy/report 契约与只读 CLI，按窗口、样本、错误比例、readiness、operator、告警和回滚演练输出低敏 `eligible|blocked`；CLI 不改变 worker 状态，真实共享环境采集与 operator 决策仍待完成。
 
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 

@@ -47,6 +47,16 @@ curl -fsS http://127.0.0.1:9090/api/v1/query \
 
 验收至少记录：`repaired`、`projection_error`、`complete_error`、`claim_error`、`invalid`、`empty` 六类 outcome，以及 worker readiness、镜像 revision、观察窗口和 operator。短窗口失败告警属于 warning，连续 projection retry 告警属于 critical。
 
+可在人工评审前使用只读 rollout gate 汇总窗口证据：
+
+```bash
+go run ./cmd/agent-timeline-repair-rollout-evidence \
+  -evidence=/path/to/repair-rollout-evidence.json \
+  -policy=/path/to/repair-rollout-policy.json
+```
+
+退出码 `0` 表示满足策略，`2` 表示证据有效但仍 blocked，`1` 表示输入无效。该命令只生成报告，不启动、停止或切换 worker；`eligible` 仍需要 operator 审批后才可进入下一阶段。
+
 ## 暂停与回切
 
 发现错误或告警持续时，先暂停 worker，保留 ledger 供后续重放：
