@@ -20,6 +20,9 @@ export class SubscriptionShadowMetrics implements SubscriptionShadowObserver {
   constructor(readonly enabled = true) {}
 
   observe(observation: SubscriptionShadowObservation): void {
+    if (!subscriptionStates.includes(observation.subscriptionOutcome)) {
+      throw new Error("Subscription Shadow outcome is invalid");
+    }
     if (!Number.isSafeInteger(observation.candidateCount) || observation.candidateCount < 0) {
       throw new Error("Subscription Shadow candidate count must be a non-negative integer");
     }

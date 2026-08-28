@@ -382,6 +382,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
     - [x] Runtime matcher 在 Schema 解析前限制最多 256 条订阅候选，超限 fail-closed 并通过回归测试固定有界匹配成本。
     - [x] Subscription Shadow 记录 Core 原始候选数并覆盖 matcher error 保留计数，修正 miss 场景成本证据；共享环境窗口仍待完成。
+    - [x] Subscription Shadow metrics 对 outcome 执行运行时闭集校验，防止未知低基数标签污染 evidence；共享环境窗口仍待完成。
 - [x] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact；产品 UI 与敏感输入隔离仍按独立门槛推进。
   - [x] `dipole.agent.elicitation.v1`、Gateway JWT API、Core Task owner 复核与 Temporal Signal 已实现持久 `WAITING_INPUT`；无效/旧 request fail closed，Worker 替换后可恢复。Pencil UI、敏感输入和 MCP adapter 由 `AD-036` 跟踪。
   - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。
