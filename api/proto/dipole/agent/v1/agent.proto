@@ -183,6 +183,23 @@ message ListAgentTaskTimelineResponse {
   string next_cursor = 5;
 }
 
+message AppendAgentTaskTimelineEventRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string event_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string kind = 5;
+  string status = 6;
+  string capability_id = 7;
+  string approval_id = 8;
+  int64 occurred_at_unix_ms = 9;
+}
+
+message AppendAgentTaskTimelineEventResponse {
+  uint64 event_seq = 1;
+  string event_id = 2;
+}
+
 message ResolveMcpContextRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -809,6 +826,7 @@ service AgentCapabilityService {
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
+  rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
