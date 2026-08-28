@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Workflow repair 增加受控 `prepared` 准备服务：仅接受已批准、未过期且满足审批门槛的提案，复核 proposal/task/executor 绑定后幂等写入执行意图；当前不推进状态、不修改 projection，也未开放公开执行入口。`executor_grant_version` 仍只作为账本绑定值，待 operator grant 版本化后接入运行时授权复核。
 - Agent Workflow repair 增加 migration v44 prepared execution ledger 与 sqlc 访问边界：以唯一 plan 记录执行意图、提案/任务/执行人绑定、CAS 摘要和回滚摘要；当前仅允许 `prepared` 创建/读取，未提供状态推进、apply、execute 或 rollback RPC，现有运行流量不受影响。
 - Agent Workflow repair 增加默认无副作用的 `repair:preflight`：在未来执行器前重新核对 plan 摘要、批准提案证据、executor grant 版本和当前投影 CAS，仅输出低敏 `ready|blocked` 收据；过期、漂移和绑定不一致统一阻断，继续不提供 projection 写入。
 - 收紧 Agent Workflow repair dry-run 计划绑定：当前投影与目标投影必须属于同一 Workflow/Run，跨任务证据在生成 plan 前 fail closed；不改变 v1 仅 dry-run、无 projection 写入的边界。
