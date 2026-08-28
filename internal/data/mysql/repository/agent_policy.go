@@ -27,6 +27,7 @@ var _ application.AgentApprovalGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentRuntimePromotionGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentEventSubscriptionStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentWorkflowRepairAuditStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentWorkflowRepairExecutionStoreV1 = (*AgentPolicyRepository)(nil)
 
 func NewAgentPolicyRepository(queries generated.Querier) (*AgentPolicyRepository, error) {
 	if queries == nil {
