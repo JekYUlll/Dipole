@@ -344,7 +344,7 @@ export function createKafkaShadowRuntime(
   }
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
-      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!)
+      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
     ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!)
     : new MetadataShadowPlanner();
   let registry: CapabilityRegistry | undefined;
@@ -409,7 +409,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   const registry = new CapabilityRegistry();
   registry.register(new ConversationListCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
-    new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool)
+    new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
   ), ["conversation.list"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {

@@ -40,6 +40,7 @@
 - 前端新增默认关闭的 Agent Task Timeline 页面 `/agent/tasks/:taskId/timeline`，支持 v1 低敏事件展示、稳定 cursor 分页、空态、失败清空和重试；开关为 `VITE_AGENT_TIMELINE_ENABLED=true`，未开启时继续回到聊天页。
 - Agent Tool Invocation 成功开始/结束后追加 Timeline v1 低敏事件，事件 ID 按 invocation 和阶段确定性生成；Timeline 插入支持幂等重放，认证失败与外部 round 未完成不会生成伪事件。
 - Agent Approval 请求与决策成功后追加 Timeline v1 事件，按 approval 和阶段生成幂等事件 ID；越权、绑定冲突和失败决策不会追加事件。
+- Core 新增受认证的 Agent Timeline append RPC；TypeScript Runtime 的持久化 Model Router 现在为模型调用写入 `model_call` begin/finish 低敏事件，模型输出和 prompt 不进入 Timeline，投影失败不会阻断模型主流程。
 
 ### 验证
 
@@ -60,6 +61,7 @@
 - 前端 Timeline 验证通过：`24` 个测试文件、`96` 个测试通过，`vue-tsc` 与 Vite 生产构建通过；构建产物已同步到嵌入式 Web 服务目录。
 - Agent Tool Timeline 写入专项验证通过：`internal/transport/grpc/agent` 测试通过，`scripts/check-sqlc.sh` 通过，覆盖 begin/finish 事件和重复调用边界。
 - Agent Approval Timeline 专项测试通过：覆盖 pending/approved 生命周期事件，继续保留此前 `internal/transport/grpc/agent` 与 sqlc 门禁结果。
+- Model Router Timeline sink、Core append RPC 的 Proto/Go 生成、Core Agent 测试和 Runtime 类型检查通过；Model Router 回归测试 `12/12` 通过。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
