@@ -22,9 +22,9 @@ const AgentWorkflowRepairExecutionStatusPrepared AgentWorkflowRepairExecutionSta
 
 type AgentWorkflowRepairExecutionV1 struct {
 	ExecutionUUID, PlanID, ProposalUUID, TaskUUID, ExecutorUUID string
-	ExecutorGrantVersion                                         uint64
-	ExpectedCurrentSHA256, TargetSHA256, RollbackSHA256           string
-	Status                                                       AgentWorkflowRepairExecutionStatusV1
+	ExecutorGrantVersion                                        uint64
+	ExpectedCurrentSHA256, TargetSHA256, RollbackSHA256         string
+	Status                                                      AgentWorkflowRepairExecutionStatusV1
 }
 
 func (e AgentWorkflowRepairExecutionV1) Validate() error {
@@ -51,4 +51,12 @@ func (e AgentWorkflowRepairExecutionV1) Validate() error {
 type AgentWorkflowRepairExecutionStoreV1 interface {
 	CreateWorkflowRepairExecution(context.Context, AgentWorkflowRepairExecutionV1) (bool, error)
 	GetWorkflowRepairExecution(context.Context, string) (*AgentWorkflowRepairExecutionV1, error)
+}
+
+type AgentWorkflowRepairPrepareRequestV1 struct {
+	Execution AgentWorkflowRepairExecutionV1
+}
+
+type AgentWorkflowRepairPrepareServiceV1 interface {
+	Prepare(context.Context, AgentWorkflowRepairPrepareRequestV1) (*AgentWorkflowRepairExecutionV1, error)
 }
