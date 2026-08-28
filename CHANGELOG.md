@@ -15,6 +15,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- Agent Memory 增加受认证的 `PromoteMemoryCandidate` Core gRPC 与 Gateway HTTP 控制入口：仅允许已认证 Gateway 绑定 owner principal，服务端重新校验候选/审核哈希并返回幂等的 observational Memory；该入口不启动 Temporal、不消费 Runtime 旁路，也不打开自动写入。
+
 ### 安全
 
 - Agent Workflow repair 增加受控 `prepared` 准备服务：仅接受已批准、未过期且满足审批门槛的提案，复核 proposal/task/executor 绑定后幂等写入执行意图；当前不推进状态、不修改 projection，也未开放公开执行入口。`executor_grant_version` 仍只作为账本绑定值，待 operator grant 版本化后接入运行时授权复核。
