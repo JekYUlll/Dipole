@@ -24,6 +24,9 @@ const memoryContextBudget = {
   allocations: { policy: 600, identity: 400, task: 400, evidence: 1400, memory: 500, capability: 500 }
 } as const;
 
+const maxConversationEvidenceMessages = 20;
+const maxConversationEvidenceContentCharacters = 8 * 1024;
+
 export interface ContextMemoryReader {
   listContextMemories(context: Parameters<ShadowPlanner["plan"]>[1], resourceType: string, resourceId: string, limit?: number): Promise<AgentContextMemory[]>;
 }
@@ -124,16 +127,20 @@ function contextFragments(
   conversation: ConversationReadResult | undefined
 ): ContextFragment[] {
   return [
-    ...(conversation?.found === true ? conversation.messages.map((message, index): ContextFragment => {
+    ...(conversation?.found === true ? conversation.messages.slice(0, maxConversationEvidenceMessages).map((message, index): ContextFragment => {
       const sourceId = message.serverMessageId.trim() || `db:${message.id.toString()}`;
+      const boundedContent = message.content.slice(0, maxConversationEvidenceContentCharacters);
+      const contentTruncated = boundedContent.length < message.content.length;
       const content = JSON.stringify({
         conversationId: message.conversationKey, sequence: message.sequence.toString(), senderId: message.senderId,
-        targetId: message.targetId, messageType: message.messageType, content: message.content,
+        targetId: message.targetId, messageType: message.messageType, content: boundedContent,
+        ...(contentTruncated ? { contentTruncated: true } : {}),
         ...(message.sentAt === undefined ? {} : { sentAt: { seconds: message.sentAt.seconds.toString(), nanos: message.sentAt.nanos } })
       });
       const compactContent = JSON.stringify({
         conversationId: message.conversationKey, sequence: message.sequence.toString(), senderId: message.senderId,
-        messageType: message.messageType, content: message.content.slice(0, 256)
+        messageType: message.messageType, content: boundedContent.slice(0, 256),
+        ...(contentTruncated ? { contentTruncated: true } : {})
       });
       return {
         id: `message:${sourceId}:${index}`, section: "evidence", trust: "untrusted", priority: 70 - index, required: false,
