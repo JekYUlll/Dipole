@@ -12,7 +12,7 @@
     "approvalSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "expectedMigration": {"const": 43},
     "observedMigration": {"const": 43},
-    "runtimeRevision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtimeRevision": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
     "configurationSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "maintenanceWindowStart": {"type": "string", "format": "date-time"},
     "maintenanceWindowEnd": {"type": "string", "format": "date-time"},
