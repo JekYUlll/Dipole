@@ -6,7 +6,38 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+func TestFallbackSyncMessageHydratorRecordsRouteMetrics(t *testing.T) {
+	metrics := NewSyncHydrationMetrics()
+	primary := &fallbackHydratorStub{messages: map[string]*model.Message{"M1": {UUID: "M1"}}}
+	fallback := &fallbackHydratorStub{messages: map[string]*model.Message{"M1": {UUID: "M1"}}}
+	hydrator, err := NewFallbackSyncMessageHydratorWithMetrics(primary, fallback, nil, metrics)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := hydrator.Hydrate(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	primary.err = errors.New("primary unavailable")
+	if _, err := hydrator.Hydrate(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	fallback.err = errors.New("fallback unavailable")
+	if _, err := hydrator.Hydrate(context.Background(), nil); err == nil {
+		t.Fatal("expected hydration failure")
+	}
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(metrics)
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(families) != 2 {
+		t.Fatalf("metric families = %d, want 2", len(families))
+	}
+}
 
 type fallbackHydratorStub struct {
 	messages map[string]*model.Message
