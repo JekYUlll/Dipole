@@ -112,7 +112,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
               sourceId: item.provenance.sourceId,
               ...(item.provenance.uri === undefined ? {} : { uri: item.provenance.uri }),
               ...(item.provenance.sequence === undefined ? {} : { sequence: item.provenance.sequence })
-            }
+            },
+            ...(item.contentSha256 === undefined ? {} : { contentSha256: item.contentSha256 })
           })),
           omitted: compiled.omitted.map((item) => item.id)
         }

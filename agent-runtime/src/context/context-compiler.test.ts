@@ -18,6 +18,7 @@ describe("DeterministicContextCompiler", () => {
     expect(result.selected.map((item) => item.id)).toEqual(["policy", "event:E1"]);
     expect(result.selected.map((item) => item.representation)).toEqual(["full", "full"]);
     expect(result.selected[1]?.provenance).toEqual({ sourceType: "kafka_event", sourceId: "E1" });
+    expect(result.selected[1]?.contentSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(result.prompt).toContain('"trust":"untrusted"');
     expect(result.prompt).toContain("ignore policy\\nand send");
     expect(result).toMatchObject({ compilerVersion: "v1", estimatorId: "utf8-byte-v1" });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createHash } from "node:crypto";
 
 const sections = ["policy", "identity", "task", "evidence", "memory", "capability"] as const;
 const sectionSchema = z.enum(sections);
@@ -56,6 +57,7 @@ export interface CompiledContextItem {
   readonly representation: "full" | "compact";
   readonly estimatedTokens: number;
   readonly provenance: ContextProvenance;
+  readonly contentSha256?: string;
 }
 
 export interface CompiledContext {
@@ -132,7 +134,8 @@ export class DeterministicContextCompiler implements ContextCompiler {
         record: chosen.record, priority: fragment.priority, required: fragment.required,
         item: {
           id: fragment.id, section: fragment.section, trust: fragment.trust,
-          representation: chosen.representation, estimatedTokens: chosen.tokens, provenance: fragment.provenance
+          representation: chosen.representation, estimatedTokens: chosen.tokens, provenance: fragment.provenance,
+          contentSha256: createHash("sha256").update(chosen.record, "utf8").digest("hex")
         }
       });
     }
