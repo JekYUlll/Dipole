@@ -31,7 +31,7 @@ Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 
 
 ## Subscription prefilter rollout gate
 
-`src/evals/subscription-runtime-gate.ts` 提供可复用的 `off/shadow/enforced` 运行时门禁。`off` 保持现有确定性规则路径，`shadow` 允许任务创建并记录观察结果，`enforced` 仅接受与候选、配置、语料、评审及 evidence 精确绑定且状态为 `eligible` 的 rollout decision。非 `off` 模式遇到哈希漂移或证据不完整会 fail closed。该 gate 当前只作为运行时接线边界，默认不连接 Kafka、模型或生产 Task 创建；真实 reviewed corpus 和共享环境灰度完成后再启用。
+`src/evals/subscription-runtime-gate.ts` 提供可复用的 `off/shadow/enforced` 运行时门禁。`off` 保持现有确定性规则路径，`shadow` 允许任务创建并记录观察结果，`enforced` 仅接受与候选、配置、语料、评审及 evidence 精确绑定且状态为 `eligible` 的 rollout decision。非 `off` 模式遇到哈希漂移或证据不完整会 fail closed。`buildKafkaShadowRuntime` 可注入该 gate，blocked 结果会在订阅匹配和 EventLedger claim 前停止；默认未注入，真实 reviewed corpus 和共享环境灰度完成后再启用。
 
 ## MCP G4 authenticated mount
 
