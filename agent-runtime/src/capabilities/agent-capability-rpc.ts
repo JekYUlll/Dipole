@@ -37,6 +37,11 @@ export interface AgentMcpToolCommand {
   readonly status: "running" | "completed" | "failed";
 }
 
+export interface AgentMcpToolCommandBeginResult {
+  readonly invocationId: string;
+  readonly status: "running" | "completed" | "failed";
+}
+
 export interface AgentMcpToolRoundClaim {
   readonly taskId: string;
   readonly runId: string;
@@ -562,6 +567,11 @@ export class AgentCapabilityRPCClient {
   }
 
   async begin(input: AgentToolInvocationBegin): Promise<void> {
+    const result = await this.beginMcpToolCommand(input);
+    if (result.status !== "running") throw new Error("Agent Tool invocation begin returned conflicting evidence");
+  }
+
+  async beginMcpToolCommand(input: AgentToolInvocationBegin): Promise<AgentMcpToolCommandBeginResult> {
     const metadata = this.metadata(input.requestId, input.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.beginMcpToolInvocation({
@@ -571,8 +581,10 @@ export class AgentCapabilityRPCClient {
         profileId: input.profileId ?? "", serverId: input.serverId ?? "", argumentsJson: Buffer.from(input.argumentsJson ?? "", "utf8")
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation begin returned no response"));
-        if (response.invocationId !== input.invocationId || response.status !== "running") return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
-        resolve();
+        if (response.invocationId !== input.invocationId || (response.status !== "running" && response.status !== "completed" && response.status !== "failed")) {
+          return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
+        }
+        resolve({ invocationId: response.invocationId, status: response.status });
       });
     });
   }

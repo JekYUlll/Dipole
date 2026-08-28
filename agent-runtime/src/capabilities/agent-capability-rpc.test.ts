@@ -167,11 +167,12 @@ describe("AgentCapabilityRPCClient", () => {
       } });
       return {};
     });
+    let beginMcpToolInvocationStatus = "running";
     const beginMcpToolInvocation = vi.fn((input, metadata, _options, callback) => {
       expect(input.context?.principalUserId).toBe("");
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
-      callback(null, { invocationId: input.invocationId, status: "running" });
+      callback(null, { invocationId: input.invocationId, status: beginMcpToolInvocationStatus });
       return {};
     });
     const claimMcpToolRound = vi.fn((input, metadata, _options, callback) => {
@@ -279,6 +280,13 @@ describe("AgentCapabilityRPCClient", () => {
       invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "dipole_conversation_list",
       capabilityId: "conversation.list", argumentsSha256: "a".repeat(64), requestId: "R1", traceId: "T1"
     })).resolves.toBeUndefined();
+    beginMcpToolInvocationStatus = "completed";
+    await expect(client.beginMcpToolCommand({
+      invocationId: "INV-1", taskId: "TASK-1", runId: "RUN-1", toolName: "calendar.read_event",
+      capabilityId: "calendar.event.read", argumentsSha256: "a".repeat(64),
+      profileId: "calendar-prod", serverId: "calendar.example", argumentsJson: `{"calendarId":"CAL-1"}`
+    })).resolves.toEqual({ invocationId: "INV-1", status: "completed" });
+    beginMcpToolInvocationStatus = "running";
     await expect(client.resolveMcpToolCommand("TASK-1", "RUN-1", "INV-EXT-1")).resolves.toMatchObject({
       profileId: "calendar-prod", serverId: "calendar.example", arguments: { calendarId: "CAL-1" }, startedAtUnixMs: 1_000, status: "running"
     });
