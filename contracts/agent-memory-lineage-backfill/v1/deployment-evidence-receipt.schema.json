@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dipole Agent Memory Lineage Deployment Evidence Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "reviewReceiptSha256", "deploymentIdSha256", "runtimeRevision", "configurationSha256", "observedMigration", "healthCheckPassed", "rollbackDrillPassed", "sharedEnvironment", "outcome", "executionAuthority", "contentRead", "deletionAuthority", "runtimeAuthority", "receiptSha256"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-lineage-backfill-deployment-evidence.v1"},
+    "reviewReceiptSha256": {"$ref": "#/$defs/sha256"},
+    "deploymentIdSha256": {"$ref": "#/$defs/sha256"},
+    "runtimeRevision": {"type": "string", "pattern": "^[a-f0-9]{40}$|^[a-f0-9]{64}$"},
+    "configurationSha256": {"$ref": "#/$defs/sha256"},
+    "observedMigration": {"const": 43},
+    "healthCheckPassed": {"const": true},
+    "rollbackDrillPassed": {"const": true},
+    "sharedEnvironment": {"const": true},
+    "outcome": {"const": "recorded"},
+    "executionAuthority": {"const": false},
+    "contentRead": {"const": false},
+    "deletionAuthority": {"const": false},
+    "runtimeAuthority": {"const": false},
+    "receiptSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
