@@ -66,6 +66,8 @@ func parsePrometheusSnapshot(data []byte, requireRequests bool) (prometheusSnaps
 	}
 	var routeCounts Counts
 	var hitHistogram *dto.Histogram
+	routeFamilySeen := false
+	durationFamilySeen := false
 	decoder := expfmt.NewDecoder(bytes.NewReader(data), expfmt.NewFormat(expfmt.TypeTextPlain))
 	for {
 		var family dto.MetricFamily
@@ -77,18 +79,33 @@ func parsePrometheusSnapshot(data []byte, requireRequests bool) (prometheusSnaps
 		}
 		switch family.GetName() {
 		case routeMetricName:
+			if routeFamilySeen || family.GetType() != dto.MetricType_COUNTER {
+				return prometheusSnapshot{}, fmt.Errorf("Prometheus route metric family is duplicated or has the wrong type")
+			}
+			routeFamilySeen = true
 			if err := collectRouteCounts(&routeCounts, family.GetMetric()); err != nil {
 				return prometheusSnapshot{}, err
 			}
 		case durationMetricName:
+			if durationFamilySeen || family.GetType() != dto.MetricType_HISTOGRAM {
+				return prometheusSnapshot{}, fmt.Errorf("Prometheus duration metric family is duplicated or has the wrong type")
+			}
+			durationFamilySeen = true
 			for _, metric := range family.GetMetric() {
-				if labelValue(metric.GetLabel(), "outcome") != "hit" {
-					continue
+				outcome, err := exactOutcome(metric.GetLabel())
+				if err != nil {
+					return prometheusSnapshot{}, err
+				}
+				if metric.Histogram == nil || outcome != "hit" {
+					return prometheusSnapshot{}, fmt.Errorf("Prometheus duration metric has an unsupported outcome")
 				}
 				if hitHistogram != nil {
 					return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot contains duplicate hit histograms")
 				}
 				hitHistogram = metric.GetHistogram()
+				if err := validateHistogram(hitHistogram); err != nil {
+					return prometheusSnapshot{}, err
+				}
 			}
 		}
 	}
@@ -143,9 +160,17 @@ func uint64Ptr(value uint64) *uint64 { return &value }
 func float64Ptr(value float64) *float64 { return &value }
 
 func collectRouteCounts(counts *Counts, metrics []*dto.Metric) error {
+	seen := make(map[string]struct{}, len(metrics))
 	for _, metric := range metrics {
 		value := metric.GetCounter().GetValue()
-		outcome := labelValue(metric.GetLabel(), "outcome")
+		outcome, err := exactOutcome(metric.GetLabel())
+		if err != nil {
+			return err
+		}
+		if _, exists := seen[outcome]; exists {
+			return fmt.Errorf("Prometheus route outcome is duplicated")
+		}
+		seen[outcome] = struct{}{}
 		if outcome == "" || metric.Counter == nil || value < 0 || math.Trunc(value) != value {
 			return fmt.Errorf("Prometheus route metric is invalid")
 		}
@@ -183,11 +208,24 @@ func histogramP95Micros(histogram *dto.Histogram) (uint64, error) {
 	return 0, fmt.Errorf("Prometheus hit latency histogram has no finite p95 bucket")
 }
 
-func labelValue(labels []*dto.LabelPair, name string) string {
-	for _, label := range labels {
-		if label.GetName() == name {
-			return label.GetValue()
-		}
+func exactOutcome(labels []*dto.LabelPair) (string, error) {
+	if len(labels) != 1 || labels[0].GetName() != "outcome" || labels[0].GetValue() == "" {
+		return "", fmt.Errorf("Prometheus hydration metric labels are invalid")
 	}
-	return ""
+	return labels[0].GetValue(), nil
+}
+
+func validateHistogram(histogram *dto.Histogram) error {
+	if histogram.GetSampleCount() == 0 || len(histogram.GetBucket()) == 0 {
+		return fmt.Errorf("Prometheus hit latency histogram is empty")
+	}
+	var previous float64
+	for index, bucket := range histogram.GetBucket() {
+		upper := bucket.GetUpperBound()
+		if math.IsNaN(upper) || (index > 0 && upper <= previous) || (index > 0 && bucket.GetCumulativeCount() < histogram.GetBucket()[index-1].GetCumulativeCount()) {
+			return fmt.Errorf("Prometheus hit latency histogram is not monotonic")
+		}
+		previous = upper
+	}
+	return nil
 }
