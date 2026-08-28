@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "dipole.agent.memory-erasure-receipt.v1",
+  "policyVersion": "memory-retention-v1",
+  "memoryRootSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "versions": 2,
+  "erasedAt": "2026-08-28T13:00:00Z",
+  "reasonCode": "owner_request",
+  "automaticExecutionAuthority": false,
+  "publicApiAuthority": false
+}

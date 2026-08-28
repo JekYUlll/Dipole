@@ -19,6 +19,57 @@ type agentMemoryOwnerStoreStub struct {
 	correctionResult   *application.AgentMemoryOwnerCorrectionResultV1
 }
 
+func (s *agentMemoryOwnerStoreStub) EraseOwnedMemoryRoot(_ context.Context, tenantID, principalUUID, memoryUUID, erasedByUUID string, reason application.AgentMemoryErasureReasonV1, erasedAt time.Time) (*application.AgentMemoryOwnerErasureReceiptV1, error) {
+	item, _ := s.GetOwnedMemory(context.Background(), tenantID, principalUUID, memoryUUID)
+	if item == nil {
+		return nil, application.ErrAgentMemoryDenied
+	}
+	versions := uint32(0)
+	for index := range s.items {
+		memory := &s.items[index]
+		if memory.MemoryRootUUID != item.MemoryRootUUID {
+			continue
+		}
+		versions++
+		memory.Status, memory.Content, memory.CompactContent, memory.Provenance.URI = application.AgentMemoryStatusRevoked, application.AgentMemoryErasedContentV1, "", ""
+		memory.ResourceType, memory.ResourceID = application.AgentMemorySourceErasedV1, application.AgentMemoryErasedReferenceV1
+		if memory.MemoryVersion == 1 {
+			memory.Provenance = application.AgentMemoryProvenanceV1{SourceType: application.AgentMemorySourceErasedV1, SourceID: application.AgentMemoryErasedReferenceV1}
+		}
+		memory.RevokedAt, memory.RevokedByUUID, memory.RevokeReason = &erasedAt, erasedByUUID, application.AgentMemoryPrivacyErasureAuditV1
+		memory.ContentErasedAt, memory.ContentErasedByUUID, memory.ContentErasureReason = &erasedAt, erasedByUUID, reason
+		if memory.MemoryVersion > 1 {
+			memory.CorrectionReason = application.AgentMemoryPrivacyErasureAuditV1
+		}
+	}
+	return &application.AgentMemoryOwnerErasureReceiptV1{MemoryRootUUID: item.MemoryRootUUID, Versions: versions, ErasedAt: erasedAt, ErasedByUUID: erasedByUUID, Reason: reason}, nil
+}
+
+func TestPersistentAgentMemoryOwnerControlErasesWholeRootWithoutPublicReason(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 28, 13, 0, 0, 0, time.UTC)
+	root := agentMemoryOwnerFixture("MEM-1", "U100", now.Add(-time.Hour))
+	root.MemoryRootUUID, root.MemoryVersion = "MEM-1", 1
+	successor := root
+	successor.MemoryUUID, successor.MemoryVersion, successor.SupersedesMemoryUUID = "MEM-2", 2, "MEM-1"
+	successor.Status = application.AgentMemoryStatusActive
+	successor.Provenance = application.AgentMemoryProvenanceV1{SourceType: application.AgentMemorySourceOwnerCorrectionV1, SourceID: "MEM-1", Sequence: "2"}
+	successor.CorrectedByUUID, successor.CorrectionReason = "U100", "private correction reason"
+	revokedAt := now.Add(-time.Minute)
+	root.Status, root.RevokedAt, root.RevokedByUUID, root.RevokeReason = application.AgentMemoryStatusRevoked, &revokedAt, "U100", "superseded by MEM-2"
+	store := &agentMemoryOwnerStoreStub{items: []application.AgentMemoryV1{root, successor}}
+	service, _ := NewPersistentAgentMemoryOwnerControlV1(store, func() time.Time { return now })
+	receipt, err := service.EraseOwnedMemory(context.Background(), application.AgentMemoryOwnerErasureRequestV1{TenantID: "dipole", PrincipalUUID: "U100", MemoryUUID: "MEM-2"})
+	if err != nil || receipt.Versions != 2 || receipt.MemoryRootUUID != "MEM-1" || receipt.Reason != application.AgentMemoryErasureReasonOwnerRequest {
+		t.Fatalf("receipt=%+v err=%v", receipt, err)
+	}
+	for _, item := range store.items {
+		if item.Content != application.AgentMemoryErasedContentV1 || item.CompactContent != "" || item.CorrectionReason == "private correction reason" || item.Validate() != nil {
+			t.Fatalf("non-erased item: %+v", item)
+		}
+	}
+}
+
 func (s *agentMemoryOwnerStoreStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) ([]application.AgentMemoryV1, error) {
 	s.listRequest = request
 	return append([]application.AgentMemoryV1(nil), s.items...), nil
