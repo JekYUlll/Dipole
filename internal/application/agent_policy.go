@@ -23,6 +23,13 @@ const (
 	AgentPermissionConversationList = "conversation.list"
 	AgentPermissionConversationRead = "conversation.read"
 	AgentPermissionMessageWrite     = "message.write"
+
+	AgentResourceTypeUser         = "user"
+	AgentResourceTypeConversation = "conversation"
+	AgentResourceWildcard         = "*"
+	AgentResourceActionRead       = "read"
+	AgentResourceActionList       = "list"
+	AgentResourceActionWrite      = "write"
 )
 
 type AgentCapabilityDescriptorV1 struct {
@@ -33,15 +40,55 @@ type AgentCapabilityDescriptorV1 struct {
 }
 
 type AgentInvocationV1 struct {
-	TenantID             string   `json:"tenant_id"`
-	PrincipalUUID        string   `json:"principal_uuid"`
-	AgentUUID            string   `json:"agent_uuid"`
-	DelegatedByUUID      string   `json:"delegated_by_uuid,omitempty"`
-	Permissions          []string `json:"permissions"`
-	ApprovedCapabilities []string `json:"approved_capabilities,omitempty"`
-	RequestID            string   `json:"request_id,omitempty"`
-	TraceID              string   `json:"trace_id,omitempty"`
-	EventID              string   `json:"event_id,omitempty"`
+	TenantID             string                 `json:"tenant_id"`
+	PrincipalUUID        string                 `json:"principal_uuid"`
+	AgentUUID            string                 `json:"agent_uuid"`
+	DelegatedByUUID      string                 `json:"delegated_by_uuid,omitempty"`
+	RuntimeID            string                 `json:"runtime_id,omitempty"`
+	Mode                 string                 `json:"mode,omitempty"`
+	Permissions          []string               `json:"permissions"`
+	ResourceScopes       []AgentResourceScopeV1 `json:"resource_scopes"`
+	ApprovedCapabilities []string               `json:"approved_capabilities,omitempty"`
+	RequestID            string                 `json:"request_id,omitempty"`
+	TraceID              string                 `json:"trace_id,omitempty"`
+	EventID              string                 `json:"event_id,omitempty"`
+}
+
+func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
+	return []string{
+		AgentPermissionUserProfileRead,
+		AgentPermissionConversationList,
+		AgentPermissionConversationRead,
+		AgentPermissionMessageWrite,
+	}, []AgentResourceScopeV1{
+		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
+		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionWrite}},
+	}
+}
+
+func AuthorizeAgentCapabilityForResourceV1(invocation AgentInvocationV1, descriptor AgentCapabilityDescriptorV1, resourceType, resourceID, action string) error {
+	if err := AuthorizeAgentCapabilityV1(invocation, descriptor); err != nil {
+		return err
+	}
+	resourceType = strings.TrimSpace(resourceType)
+	resourceID = strings.TrimSpace(resourceID)
+	action = strings.TrimSpace(action)
+	if resourceType == "" || resourceID == "" || action == "" {
+		return fmt.Errorf("%w: resource type, id, and action are required", ErrAgentCapabilityDenied)
+	}
+	for _, scope := range invocation.ResourceScopes {
+		if strings.TrimSpace(scope.ResourceType) != resourceType {
+			continue
+		}
+		scopeID := strings.TrimSpace(scope.ResourceID)
+		if scopeID != AgentResourceWildcard && scopeID != resourceID {
+			continue
+		}
+		if containsAgentPolicyValue(scope.Actions, AgentResourceWildcard) || containsAgentPolicyValue(scope.Actions, action) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: resource scope %s/%s does not allow %s", ErrAgentCapabilityDenied, resourceType, resourceID, action)
 }
 
 var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
@@ -63,6 +110,65 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	AgentCapabilitySystemMessageSend: {
 		ID: AgentCapabilitySystemMessageSend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
 	},
+}
+
+// This allowlist is intentionally explicit so adding a descriptor cannot expand active Runtime authority.
+var agentActiveApprovedCapabilityProjectionV1 = []struct {
+	CapabilityID, Permission, ResourceType, Action string
+}{
+	{AgentCapabilitySystemMessageSend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+}
+
+func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {
+	if err := definition.Validate(); err != nil || definition.Status != AgentDefinitionStatusActive || definition.RevokedAt != nil {
+		return nil, fmt.Errorf("%w: pinned Agent Definition is invalid", ErrAgentCapabilityDenied)
+	}
+	approved := make([]string, 0, len(agentActiveApprovedCapabilityProjectionV1))
+	for _, rule := range agentActiveApprovedCapabilityProjectionV1 {
+		if !containsAgentPolicyValue(definition.Permissions, rule.Permission) || !definitionAllowsAgentResourceActionV1(definition, rule.ResourceType, rule.Action) {
+			continue
+		}
+		approved = append(approved, rule.CapabilityID)
+	}
+	return approved, nil
+}
+
+func ValidateAgentApprovedCapabilitiesV1(mode string, capabilities []string) error {
+	mode = strings.TrimSpace(mode)
+	if mode != "shadow" && mode != "active" {
+		return fmt.Errorf("%w: approved Capability mode is invalid", ErrAgentCapabilityDenied)
+	}
+	if mode == "shadow" && len(capabilities) != 0 {
+		return fmt.Errorf("%w: shadow mode cannot carry approved Capabilities", ErrAgentCapabilityDenied)
+	}
+	seen := make(map[string]struct{}, len(capabilities))
+	for _, capabilityID := range capabilities {
+		capabilityID = strings.TrimSpace(capabilityID)
+		if _, duplicate := seen[capabilityID]; duplicate || !agentActiveApprovedCapabilityV1(capabilityID) {
+			return fmt.Errorf("%w: approved Capability projection is invalid", ErrAgentCapabilityDenied)
+		}
+		seen[capabilityID] = struct{}{}
+	}
+	return nil
+}
+
+func agentActiveApprovedCapabilityV1(capabilityID string) bool {
+	for _, rule := range agentActiveApprovedCapabilityProjectionV1 {
+		if capabilityID == rule.CapabilityID {
+			return true
+		}
+	}
+	return false
+}
+
+func definitionAllowsAgentResourceActionV1(definition AgentDefinitionVersionV1, resourceType, action string) bool {
+	for _, scope := range definition.Scopes {
+		if strings.TrimSpace(scope.ResourceType) == resourceType &&
+			(containsAgentPolicyValue(scope.Actions, action) || containsAgentPolicyValue(scope.Actions, AgentResourceWildcard)) {
+			return true
+		}
+	}
+	return false
 }
 
 func AgentCapabilityDescriptorByIDV1(id string) (AgentCapabilityDescriptorV1, bool) {

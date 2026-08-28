@@ -1,0 +1,32 @@
+WARNING: sonic/ast only supports (go1.17~1.26 and amd64 CPU) or (go1.20~1.26 and arm64 CPU), but your environment is not suitable and will fallback to encoding/json
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /health                   --> github.com/JekYUlll/Dipole/internal/gateway.NewServer.func1 (5 handlers)
+[GIN-debug] GET    /api/v1/ws                --> github.com/JekYUlll/Dipole/internal/transport/ws.(*Handler).Handle-fm (5 handlers)
+[GIN-debug] GET    /api/v1/messages/search   --> github.com/JekYUlll/Dipole/internal/handler/http.(*SearchHandler).Search-fm (6 handlers)
+2026-08-27T22:27:27.720Z	INFO	dipole	logger/logger.go:70	service runtime ready	{"service": "dipole-gateway", "health_address": "[::]:9100"}
+2026-08-27T22:27:27.720Z	INFO	dipole	logger/logger.go:70	gateway runtime initialized	{"core_http_target": "http://core:8081", "kafka_enabled": true, "kafka_consumer": "dipole-gateway"}
+2026-08-27T22:28:56.700Z	INFO	dipole	logger/logger.go:70	service runtime draining	{"service": "dipole-gateway"}
+WARNING: sonic/ast only supports (go1.17~1.26 and amd64 CPU) or (go1.20~1.26 and arm64 CPU), but your environment is not suitable and will fallback to encoding/json
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /health                   --> github.com/JekYUlll/Dipole/internal/gateway.NewServer.func1 (5 handlers)
+[GIN-debug] GET    /api/v1/ws                --> github.com/JekYUlll/Dipole/internal/transport/ws.(*Handler).Handle-fm (5 handlers)
+[GIN-debug] GET    /api/v1/messages/search   --> github.com/JekYUlll/Dipole/internal/handler/http.(*SearchHandler).Search-fm (6 handlers)
+2026-08-27T22:28:58.926Z	INFO	dipole	logger/logger.go:70	service runtime ready	{"service": "dipole-gateway", "health_address": "[::]:9100"}
+2026-08-27T22:28:58.926Z	INFO	dipole	logger/logger.go:70	gateway runtime initialized	{"core_http_target": "http://core:8081", "kafka_enabled": true, "kafka_consumer": "dipole-gateway"}
+2026-08-27T22:29:18.292Z	INFO	dipole	logger/logger.go:70	service runtime draining	{"service": "dipole-gateway"}
+WARNING: sonic/ast only supports (go1.17~1.26 and amd64 CPU) or (go1.20~1.26 and arm64 CPU), but your environment is not suitable and will fallback to encoding/json
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /health                   --> github.com/JekYUlll/Dipole/internal/gateway.NewServer.func1 (5 handlers)
+[GIN-debug] GET    /api/v1/ws                --> github.com/JekYUlll/Dipole/internal/transport/ws.(*Handler).Handle-fm (5 handlers)
+[GIN-debug] GET    /api/v1/messages/search   --> github.com/JekYUlll/Dipole/internal/handler/http.(*SearchHandler).Search-fm (6 handlers)
+2026-08-27T22:29:20.395Z	INFO	dipole	logger/logger.go:70	service runtime ready	{"service": "dipole-gateway", "health_address": "[::]:9100"}
+2026-08-27T22:29:20.396Z	INFO	dipole	logger/logger.go:70	gateway runtime initialized	{"core_http_target": "http://core:8081", "kafka_enabled": true, "kafka_consumer": "dipole-gateway"}

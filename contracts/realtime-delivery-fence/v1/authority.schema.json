@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/authority.schema.json",
+  "title": "Dipole Realtime Delivery Authority Fence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "epoch",
+    "authority",
+    "phase",
+    "lease_until_unix_ms"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-fence.v1" },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "authority": { "enum": ["go", "shadow", "cpp"] },
+    "phase": { "enum": ["active", "frozen"] },
+    "lease_until_unix_ms": { "type": "integer", "minimum": 1 }
+  }
+}

@@ -6,17 +6,179 @@ package generated
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 )
+
+type AgentMcpReadinessEvidenceStatus string
+
+const (
+	AgentMcpReadinessEvidenceStatusRecorded AgentMcpReadinessEvidenceStatus = "recorded"
+)
+
+func (e *AgentMcpReadinessEvidenceStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentMcpReadinessEvidenceStatus(s)
+	case string:
+		*e = AgentMcpReadinessEvidenceStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentMcpReadinessEvidenceStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAgentMcpReadinessEvidenceStatus struct {
+	AgentMcpReadinessEvidenceStatus AgentMcpReadinessEvidenceStatus
+	Valid                           bool // Valid is true if AgentMcpReadinessEvidenceStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentMcpReadinessEvidenceStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentMcpReadinessEvidenceStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentMcpReadinessEvidenceStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentMcpReadinessEvidenceStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentMcpReadinessEvidenceStatus), nil
+}
+
+type AgentRuntimePromotionProposalsStatus string
+
+const (
+	AgentRuntimePromotionProposalsStatusProposed AgentRuntimePromotionProposalsStatus = "proposed"
+	AgentRuntimePromotionProposalsStatusApproved AgentRuntimePromotionProposalsStatus = "approved"
+	AgentRuntimePromotionProposalsStatusRejected AgentRuntimePromotionProposalsStatus = "rejected"
+)
+
+func (e *AgentRuntimePromotionProposalsStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentRuntimePromotionProposalsStatus(s)
+	case string:
+		*e = AgentRuntimePromotionProposalsStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentRuntimePromotionProposalsStatus: %T", src)
+	}
+	return nil
+}
+
+type NullAgentRuntimePromotionProposalsStatus struct {
+	AgentRuntimePromotionProposalsStatus AgentRuntimePromotionProposalsStatus
+	Valid                                bool // Valid is true if AgentRuntimePromotionProposalsStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentRuntimePromotionProposalsStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentRuntimePromotionProposalsStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentRuntimePromotionProposalsStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentRuntimePromotionProposalsStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentRuntimePromotionProposalsStatus), nil
+}
+
+type AgentRuntimePromotionReviewsDecision string
+
+const (
+	AgentRuntimePromotionReviewsDecisionApproved AgentRuntimePromotionReviewsDecision = "approved"
+	AgentRuntimePromotionReviewsDecisionRejected AgentRuntimePromotionReviewsDecision = "rejected"
+)
+
+func (e *AgentRuntimePromotionReviewsDecision) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AgentRuntimePromotionReviewsDecision(s)
+	case string:
+		*e = AgentRuntimePromotionReviewsDecision(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AgentRuntimePromotionReviewsDecision: %T", src)
+	}
+	return nil
+}
+
+type NullAgentRuntimePromotionReviewsDecision struct {
+	AgentRuntimePromotionReviewsDecision AgentRuntimePromotionReviewsDecision
+	Valid                                bool // Valid is true if AgentRuntimePromotionReviewsDecision is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAgentRuntimePromotionReviewsDecision) Scan(value interface{}) error {
+	if value == nil {
+		ns.AgentRuntimePromotionReviewsDecision, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AgentRuntimePromotionReviewsDecision.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAgentRuntimePromotionReviewsDecision) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AgentRuntimePromotionReviewsDecision), nil
+}
+
+type AgentApproval struct {
+	ID                uint64
+	ApprovalUuid      string
+	TaskUuid          string
+	CapabilityID      string
+	ResourceScopeJson json.RawMessage
+	ScopeSha256       string
+	ArgumentsSha256   string
+	NonceSha256       string
+	Status            string
+	ExpiresAt         time.Time
+	ConsumedAt        sql.NullTime
+	RevokedAt         sql.NullTime
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ApprovedByUuid    string
+}
+
+type AgentArtifact struct {
+	ID            uint64
+	ArtifactUuid  string
+	SchemaVersion string
+	TaskUuid      string
+	RunUuid       string
+	ArtifactType  string
+	Version       uint32
+	Title         string
+	MediaType     string
+	ObjectBucket  string
+	ObjectKey     string
+	ContentSha256 string
+	SizeBytes     uint64
+	MetadataJson  json.RawMessage
+	CreatedAt     time.Time
+}
 
 type AgentDefinitionVersion struct {
 	ID              uint64
 	DefinitionUuid  string
 	Version         uint64
 	TenantID        string
-	OwnerUuid       string
-	AgentUuid       string
 	Status          string
 	PermissionsJson json.RawMessage
 	ScopesJson      json.RawMessage
@@ -25,20 +187,271 @@ type AgentDefinitionVersion struct {
 	RevokedAt       sql.NullTime
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	OwnerUuid       string
+	AgentUuid       string
 }
 
-type AgentTask struct {
+type AgentEventSubscription struct {
 	ID                uint64
-	TaskUuid          string
+	SubscriptionUuid  string
 	DefinitionUuid    string
 	DefinitionVersion uint64
 	TenantID          string
-	PrincipalUuid     string
 	AgentUuid         string
 	Status            string
-	TriggerType       string
-	TriggerRef        string
-	Goal              string
+	EventType         string
+	ResourceType      string
+	ResourceID        string
+	FilterKind        string
+	FilterJson        json.RawMessage
+	CreatedAt         time.Time
+	RevokedAt         sql.NullTime
+	RevokedByUuid     sql.NullString
+	RevokeReason      sql.NullString
+	UpdatedAt         time.Time
+	CreatedByUuid     string
+}
+
+type AgentMcpReadinessEvidence struct {
+	ID                   uint64
+	EvidenceUuid         string
+	SchemaVersion        string
+	TenantID             string
+	ProfileBindingSha256 string
+	RuntimeBindingSha256 string
+	ContentJson          string
+	ContentSha256        string
+	OperatorUuid         string
+	RequestID            sql.NullString
+	TraceID              sql.NullString
+	Status               AgentMcpReadinessEvidenceStatus
+	CollectedAt          time.Time
+	ExpiresAt            time.Time
+	CreatedAt            time.Time
+}
+
+type AgentMcpToolRound struct {
+	ID               uint64
+	RoundUuid        string
+	InvocationUuid   string
+	TaskUuid         string
+	RunUuid          string
+	RoundNumber      uint8
+	RequestSha256    string
+	OwnerTokenSha256 string
+	Status           string
+	ResultJson       json.RawMessage
+	ResultSha256     sql.NullString
+	ResultBytes      sql.NullInt64
+	ErrorCode        sql.NullString
+	ClaimedAt        time.Time
+	FinishedAt       sql.NullTime
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type AgentMemory struct {
+	ID             uint64
+	MemoryUuid     string
+	TenantID       string
+	PrincipalUuid  string
+	AgentUuid      string
+	MemoryType     string
+	Status         string
+	ResourceType   string
+	ResourceID     string
+	Content        string
+	CompactContent sql.NullString
+	Priority       int32
+	SourceType     string
+	SourceID       string
+	SourceUri      sql.NullString
+	SourceSequence sql.NullString
+	ValidFrom      time.Time
+	ExpiresAt      sql.NullTime
+	RevokedAt      sql.NullTime
+	CreatedAt      time.Time
+}
+
+type AgentRun struct {
+	ID               uint64
+	RunUuid          string
+	TaskUuid         string
+	RuntimeID        string
+	Mode             string
+	Status           string
+	StartedAt        time.Time
+	CompletedAt      sql.NullTime
+	LastError        sql.NullString
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	CandidateVersion sql.NullString
+}
+
+type AgentRuntimePromotionGrant struct {
+	GrantUuid         string
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	PolicyVersion     string
+	EvidenceSha256    string
+	EvalSuiteSha256   string
+	GrantedByUuid     string
+	ReviewedByUuid    string
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+	RevokedAt         sql.NullTime
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type AgentRuntimePromotionOperatorGrant struct {
+	TenantID      string
+	UserUuid      string
+	CanPropose    bool
+	CanReview     bool
+	CanRevoke     bool
+	GrantedByUuid string
+	ValidFrom     time.Time
+	ExpiresAt     sql.NullTime
+	RevokedAt     sql.NullTime
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type AgentRuntimePromotionProposal struct {
+	ProposalUuid         string
+	TenantID             string
+	RuntimeID            string
+	CandidateVersion     string
+	DefinitionUuid       string
+	DefinitionVersion    uint64
+	EvidenceArtifactUuid string
+	EvidenceSha256       string
+	EvalSuiteSha256      string
+	ProposerUuid         string
+	TicketRef            string
+	Reason               string
+	Status               AgentRuntimePromotionProposalsStatus
+	GrantUuid            sql.NullString
+	ProposedAt           time.Time
+	ExpiresAt            time.Time
+	GrantValidFrom       time.Time
+	GrantExpiresAt       time.Time
+	DecidedAt            sql.NullTime
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type AgentRuntimePromotionReview struct {
+	ProposalUuid string
+	ReviewerUuid string
+	Decision     AgentRuntimePromotionReviewsDecision
+	DecidedAt    time.Time
+}
+
+type AgentRuntimePromotionRevocation struct {
+	GrantUuid     string
+	TenantID      string
+	RevokedByUuid string
+	TicketRef     string
+	Reason        string
+	RevokedAt     time.Time
+}
+
+type AgentTask struct {
+	ID                      uint64
+	TaskUuid                string
+	DefinitionUuid          string
+	DefinitionVersion       uint64
+	TenantID                string
+	Status                  string
+	TriggerType             string
+	TriggerRef              string
+	Goal                    string
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	PrincipalUuid           string
+	AgentUuid               string
+	WorkflowID              sql.NullString
+	WorkflowRunID           sql.NullString
+	WorkflowStatus          sql.NullString
+	WorkflowRevision        sql.NullInt64
+	WorkflowUpdatedAt       sql.NullTime
+	TriggerSubscriptionUuid sql.NullString
+}
+
+type AgentToolInvocation struct {
+	ID                 uint64
+	InvocationUuid     string
+	TenantID           string
+	PrincipalUuid      string
+	AgentUuid          string
+	TaskUuid           string
+	RunUuid            string
+	Transport          string
+	ToolName           string
+	CapabilityID       string
+	ArgumentsSha256    string
+	Status             string
+	ResultSha256       sql.NullString
+	ResultBytes        sql.NullInt64
+	LatencyMs          sql.NullInt64
+	ErrorCode          sql.NullString
+	RequestID          sql.NullString
+	TraceID            sql.NullString
+	StartedAt          time.Time
+	FinishedAt         sql.NullTime
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	ApprovalUuid       sql.NullString
+	ActionResourceType sql.NullString
+	ActionResourceUuid sql.NullString
+	ActionCommandKind  sql.NullString
+	ActionCommandID    sql.NullString
+	ProfileID          sql.NullString
+	ServerID           sql.NullString
+	ArgumentsJson      json.RawMessage
+}
+
+type AgentWorkflowRepairDecision struct {
+	ProposalUuid string
+	ApproverUuid string
+	Decision     string
+	DecidedAt    time.Time
+	CreatedAt    time.Time
+}
+
+type AgentWorkflowRepairOperatorGrant struct {
+	UserUuid      string
+	CanPropose    bool
+	CanApprove    bool
+	GrantedByUuid string
+	ValidFrom     time.Time
+	ExpiresAt     sql.NullTime
+	RevokedAt     sql.NullTime
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type AgentWorkflowRepairProposal struct {
+	ProposalUuid      string
+	TaskUuid          string
+	Outcome           string
+	Action            string
+	ProposerUuid      string
+	TicketRef         string
+	Reason            string
+	ProjectedJson     json.RawMessage
+	TemporalJson      json.RawMessage
+	EvidenceSha256    string
+	Status            string
+	RequiredApprovals uint8
+	ProposedAt        time.Time
+	ExpiresAt         time.Time
+	DecidedAt         sql.NullTime
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }

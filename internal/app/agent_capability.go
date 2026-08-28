@@ -48,12 +48,12 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCa
 }
 
 func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
-	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityUserProfileRead); err != nil {
+	subjectUUID = strings.TrimSpace(subjectUUID)
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilityUserProfileRead, application.AgentResourceTypeUser, subjectUUID, application.AgentResourceActionRead); err != nil {
 		return nil, err
 	}
 	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
 	agentUUID := strings.TrimSpace(invocation.AgentUUID)
-	subjectUUID = strings.TrimSpace(subjectUUID)
 	if principalUUID == "" || agentUUID == "" || subjectUUID == "" || (subjectUUID != principalUUID && subjectUUID != agentUUID) {
 		return nil, application.ErrAgentCapabilityDenied
 	}
@@ -65,7 +65,8 @@ func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation ap
 }
 
 func (c *LocalAgentCapabilityV1) ListDirectMessages(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Message, error) {
-	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityDirectMessagesRead); err != nil {
+	conversationKey := model.DirectConversationKey(invocation.PrincipalUUID, invocation.AgentUUID)
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilityDirectMessagesRead, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionRead); err != nil {
 		return nil, err
 	}
 	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
@@ -78,7 +79,7 @@ func (c *LocalAgentCapabilityV1) ListDirectMessages(_ context.Context, invocatio
 }
 
 func (c *LocalAgentCapabilityV1) ListConversations(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Conversation, error) {
-	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilityConversationsList); err != nil {
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilityConversationsList, application.AgentResourceTypeConversation, application.AgentResourceWildcard, application.AgentResourceActionList); err != nil {
 		return nil, err
 	}
 	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
@@ -107,6 +108,17 @@ func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, invocation 
 			Found: false, Reason: "conversation_not_found_or_not_accessible", TargetUUID: targetUUID,
 		}, nil
 	}
+	conversationKey := strings.TrimSpace(conversation.ConversationKey)
+	if conversationKey == "" {
+		if conversation.TargetType == model.MessageTargetGroup {
+			conversationKey = model.GroupConversationKey(targetUUID)
+		} else {
+			conversationKey = model.DirectConversationKey(principalUUID, targetUUID)
+		}
+	}
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilityConversationRead, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionRead); err != nil {
+		return nil, err
+	}
 
 	var messages []*model.Message
 	if conversation.TargetType == model.MessageTargetGroup {
@@ -123,7 +135,8 @@ func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, invocation 
 }
 
 func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {
-	if err := authorizeLocalAgentCapabilityV1(invocation, application.AgentCapabilitySystemMessageSend); err != nil {
+	conversationKey := model.DirectConversationKey(invocation.PrincipalUUID, invocation.AgentUUID)
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilitySystemMessageSend, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionWrite); err != nil {
 		return nil, err
 	}
 	commandID := agentCapabilitySystemCommandIDV1(invocation, content)
@@ -135,6 +148,14 @@ func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, invocati
 		return nil, fmt.Errorf("send Agent system message: %w", err)
 	}
 	return message, nil
+}
+
+func authorizeLocalAgentCapabilityForResourceV1(invocation application.AgentInvocationV1, capabilityID, resourceType, resourceID, action string) error {
+	descriptor, ok := application.AgentCapabilityDescriptorByIDV1(capabilityID)
+	if !ok {
+		return application.ErrAgentCapabilityDenied
+	}
+	return application.AuthorizeAgentCapabilityForResourceV1(invocation, descriptor, resourceType, resourceID, action)
 }
 
 func agentCapabilitySystemCommandIDV1(invocation application.AgentInvocationV1, content string) string {

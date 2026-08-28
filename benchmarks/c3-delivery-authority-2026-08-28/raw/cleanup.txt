@@ -1,0 +1,3 @@
+isolated_containers=0
+isolated_volumes=0
+isolated_networks=0

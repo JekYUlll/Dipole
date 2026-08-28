@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -12,9 +13,11 @@ import (
 
 const AgentPolicyPersistenceVersionV1 = "dipole.agent.policy.persistence.v1"
 const AgentResourceScopeHashVersionV1 = "dipole.agent.scope.v1"
+const AgentRunIDVersionV1 = "dipole.agent.run.v1"
 
 var ErrAgentApprovalDenied = errors.New("agent approval denied")
 var ErrAgentPolicyInvalid = errors.New("agent policy record is invalid")
+var ErrAgentWorkflowProjectionConflict = errors.New("agent workflow projection conflict")
 
 type AgentDefinitionStatusV1 string
 
@@ -24,6 +27,27 @@ const (
 )
 
 type AgentTaskStatusV1 string
+
+type AgentTaskWorkflowStatusV1 string
+
+type AgentRunStatusV1 string
+
+const (
+	AgentRunStatusRunning   AgentRunStatusV1 = "running"
+	AgentRunStatusCompleted AgentRunStatusV1 = "completed"
+	AgentRunStatusFailed    AgentRunStatusV1 = "failed"
+	AgentRunStatusCancelled AgentRunStatusV1 = "cancelled"
+)
+
+const (
+	AgentTaskWorkflowStatusCreated         AgentTaskWorkflowStatusV1 = "created"
+	AgentTaskWorkflowStatusRunning         AgentTaskWorkflowStatusV1 = "running"
+	AgentTaskWorkflowStatusWaitingInput    AgentTaskWorkflowStatusV1 = "waiting_input"
+	AgentTaskWorkflowStatusWaitingApproval AgentTaskWorkflowStatusV1 = "waiting_approval"
+	AgentTaskWorkflowStatusCompleted       AgentTaskWorkflowStatusV1 = "completed"
+	AgentTaskWorkflowStatusFailed          AgentTaskWorkflowStatusV1 = "failed"
+	AgentTaskWorkflowStatusCancelled       AgentTaskWorkflowStatusV1 = "cancelled"
+)
 
 const (
 	AgentTaskStatusCreated         AgentTaskStatusV1 = "created"
@@ -66,18 +90,67 @@ type AgentDefinitionVersionV1 struct {
 }
 
 type AgentTaskV1 struct {
-	TaskUUID          string            `json:"task_uuid"`
-	DefinitionUUID    string            `json:"definition_uuid"`
-	DefinitionVersion uint64            `json:"definition_version"`
-	TenantID          string            `json:"tenant_id"`
-	PrincipalUUID     string            `json:"principal_uuid"`
-	AgentUUID         string            `json:"agent_uuid"`
-	Status            AgentTaskStatusV1 `json:"status"`
-	TriggerType       string            `json:"trigger_type"`
-	TriggerRef        string            `json:"trigger_ref"`
-	Goal              string            `json:"goal"`
-	CreatedAt         time.Time         `json:"created_at,omitempty"`
-	UpdatedAt         time.Time         `json:"updated_at,omitempty"`
+	TaskUUID                string                         `json:"task_uuid"`
+	DefinitionUUID          string                         `json:"definition_uuid"`
+	DefinitionVersion       uint64                         `json:"definition_version"`
+	TenantID                string                         `json:"tenant_id"`
+	PrincipalUUID           string                         `json:"principal_uuid"`
+	AgentUUID               string                         `json:"agent_uuid"`
+	Status                  AgentTaskStatusV1              `json:"status"`
+	TriggerType             string                         `json:"trigger_type"`
+	TriggerRef              string                         `json:"trigger_ref"`
+	TriggerSubscriptionUUID string                         `json:"trigger_subscription_uuid,omitempty"`
+	Goal                    string                         `json:"goal"`
+	Workflow                *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
+	CreatedAt               time.Time                      `json:"created_at,omitempty"`
+	UpdatedAt               time.Time                      `json:"updated_at,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionV1 struct {
+	TaskUUID   string                    `json:"task_uuid"`
+	WorkflowID string                    `json:"workflow_id"`
+	RunID      string                    `json:"run_id"`
+	Status     AgentTaskWorkflowStatusV1 `json:"status"`
+	Revision   uint64                    `json:"revision"`
+	UpdatedAt  time.Time                 `json:"updated_at,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionRequestV1 struct {
+	Projection AgentTaskWorkflowProjectionV1
+	RunUUID    string
+	RuntimeID  string
+	Mode       string
+}
+
+type AgentTaskWorkflowProjectionServiceV1 interface {
+	Project(ctx context.Context, request AgentTaskWorkflowProjectionRequestV1) (*AgentTaskWorkflowProjectionV1, error)
+	ListProjectionSnapshots(ctx context.Context, afterTaskUUID string, limit int) (*AgentTaskWorkflowProjectionPageV1, error)
+}
+
+type AgentTaskWorkflowProjectionSnapshotV1 struct {
+	TaskUUID string                         `json:"task_uuid"`
+	Workflow *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`
+}
+
+type AgentTaskWorkflowProjectionReaderV1 interface {
+	ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]AgentTaskWorkflowProjectionSnapshotV1, error)
+}
+
+type AgentTaskWorkflowProjectionPageV1 struct {
+	Tasks      []AgentTaskWorkflowProjectionSnapshotV1 `json:"tasks"`
+	NextCursor string                                  `json:"next_cursor,omitempty"`
+}
+
+type AgentRunV1 struct {
+	RunUUID          string           `json:"run_uuid"`
+	TaskUUID         string           `json:"task_uuid"`
+	RuntimeID        string           `json:"runtime_id"`
+	CandidateVersion string           `json:"candidate_version,omitempty"`
+	Mode             string           `json:"mode"`
+	Status           AgentRunStatusV1 `json:"status"`
+	StartedAt        time.Time        `json:"started_at,omitempty"`
+	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
+	LastError        string           `json:"last_error,omitempty"`
 }
 
 type AgentApprovalV1 struct {
@@ -103,6 +176,36 @@ type AgentApprovalClaimV1 struct {
 	ScopeSHA256     string `json:"scope_sha256"`
 	ArgumentsSHA256 string `json:"arguments_sha256"`
 	NonceSHA256     string `json:"nonce_sha256"`
+}
+
+type AgentApprovalDecisionV1 string
+
+const (
+	AgentApprovalDecisionApproved AgentApprovalDecisionV1 = "approved"
+	AgentApprovalDecisionDenied   AgentApprovalDecisionV1 = "denied"
+)
+
+type AgentApprovalRequestV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	Approval                           AgentApprovalV1
+}
+
+type AgentApprovalResolutionV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	ApprovalUUID, ActorUUID            string
+	Decision                           AgentApprovalDecisionV1
+}
+
+type AgentApprovalConsumptionV1 struct {
+	TaskUUID, RunUUID, RuntimeID, Mode string
+	ApprovalUUID                       string
+	Claim                              AgentApprovalClaimV1
+}
+
+type AgentApprovalServiceV1 interface {
+	Request(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
+	Resolve(ctx context.Context, resolution AgentApprovalResolutionV1) (*AgentApprovalV1, error)
+	Consume(ctx context.Context, consumption AgentApprovalConsumptionV1) error
 }
 
 func (d AgentDefinitionVersionV1) Validate() error {
@@ -141,6 +244,47 @@ func (t AgentTaskV1) Validate() error {
 	}
 }
 
+func (p AgentTaskWorkflowProjectionV1) Validate() error {
+	if anyBlank(p.TaskUUID, p.WorkflowID, p.RunID) || len(strings.TrimSpace(p.WorkflowID)) > 255 || len(strings.TrimSpace(p.RunID)) > 64 || p.Revision > math.MaxInt64 {
+		return ErrAgentPolicyInvalid
+	}
+	switch p.Status {
+	case AgentTaskWorkflowStatusCreated, AgentTaskWorkflowStatusRunning, AgentTaskWorkflowStatusWaitingInput,
+		AgentTaskWorkflowStatusWaitingApproval, AgentTaskWorkflowStatusCompleted, AgentTaskWorkflowStatusFailed,
+		AgentTaskWorkflowStatusCancelled:
+		return nil
+	default:
+		return ErrAgentPolicyInvalid
+	}
+}
+
+func (r AgentRunV1) Validate() error {
+	if anyBlank(r.RunUUID, r.TaskUUID, r.RuntimeID, r.Mode) {
+		return ErrAgentPolicyInvalid
+	}
+	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
+		return ErrAgentPolicyInvalid
+	}
+	if (r.Mode == "active") != (strings.TrimSpace(r.CandidateVersion) != "") || len(r.CandidateVersion) > 128 {
+		return ErrAgentPolicyInvalid
+	}
+	switch r.Status {
+	case AgentRunStatusRunning, AgentRunStatusCompleted, AgentRunStatusFailed, AgentRunStatusCancelled:
+		return nil
+	default:
+		return ErrAgentPolicyInvalid
+	}
+}
+
+func AgentRunUUIDV1(taskUUID, runtimeID, mode string) (string, error) {
+	taskUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
+	if taskUUID == "" || runtimeID == "" || (mode != "embedded" && mode != "shadow" && mode != "active") {
+		return "", ErrAgentPolicyInvalid
+	}
+	digest := sha256.Sum256([]byte(AgentRunIDVersionV1 + "\n" + taskUUID + "\n" + runtimeID + "\n" + mode))
+	return "run:" + hex.EncodeToString(digest[:])[:60], nil
+}
+
 func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
 	allowed := false
 	switch from {
@@ -152,6 +296,27 @@ func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
 		allowed = to == AgentTaskStatusRunning || to == AgentTaskStatusFailed || to == AgentTaskStatusCancelled
 	}
 	if !allowed {
+		return ErrAgentPolicyInvalid
+	}
+	return nil
+}
+
+func ValidateAgentRunTerminalV1(status AgentRunStatusV1, lastError string) error {
+	lastError = strings.TrimSpace(lastError)
+	if len(lastError) > 1024 {
+		return ErrAgentPolicyInvalid
+	}
+	switch status {
+	case AgentRunStatusCompleted:
+		if lastError != "" {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentRunStatusFailed:
+		if lastError == "" {
+			return ErrAgentPolicyInvalid
+		}
+	case AgentRunStatusCancelled:
+	default:
 		return ErrAgentPolicyInvalid
 	}
 	return nil
@@ -233,10 +398,16 @@ func validAgentResourceScopeV1(scope AgentResourceScopeV1) bool {
 	if anyBlank(scope.ResourceType, scope.ResourceID) || len(scope.Actions) == 0 {
 		return false
 	}
+	seen := make(map[string]struct{}, len(scope.Actions))
 	for _, action := range scope.Actions {
-		if strings.TrimSpace(action) == "" {
+		action = strings.TrimSpace(action)
+		if action == "" {
 			return false
 		}
+		if _, exists := seen[action]; exists {
+			return false
+		}
+		seen[action] = struct{}{}
 	}
 	return true
 }
@@ -281,8 +452,15 @@ type AgentPolicyStoreV1 interface {
 	CreateTask(ctx context.Context, task AgentTaskV1) (bool, error)
 	GetTask(ctx context.Context, taskUUID string) (*AgentTaskV1, error)
 	TransitionTaskStatus(ctx context.Context, taskUUID string, from, to AgentTaskStatusV1) (bool, error)
+	ProjectTaskWorkflowState(ctx context.Context, projection AgentTaskWorkflowProjectionV1) (bool, error)
+	ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]AgentTaskWorkflowProjectionSnapshotV1, error)
+	CreateRun(ctx context.Context, run AgentRunV1) (bool, error)
+	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
+	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)
 	CreateApproval(ctx context.Context, approval AgentApprovalV1) error
+	GetApproval(ctx context.Context, approvalUUID string) (*AgentApprovalV1, error)
 	ApproveApproval(ctx context.Context, approvalUUID, approvedByUUID string, approvedAt time.Time) (bool, error)
 	ConsumeApproval(ctx context.Context, approvalUUID string, claim AgentApprovalClaimV1, consumedAt time.Time) (bool, error)
 	RevokeApproval(ctx context.Context, approvalUUID string, revokedAt time.Time) error
+	DenyApproval(ctx context.Context, approvalUUID string, deniedAt time.Time) (bool, error)
 }

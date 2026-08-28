@@ -20,7 +20,7 @@ openssl ecparam -name prime256v1 -genkey -noout -out "${CA_KEY}"
 openssl req -x509 -new -sha256 -key "${CA_KEY}" -out "${CA_CERT}" \
   -days "${VALID_DAYS}" -subj "/CN=Dipole Internal Development CA"
 
-for service in gateway core message search sync; do
+for service in gateway core message search sync agent realtime; do
   identity="dipole-${service}"
   key="${OUTPUT_DIR}/${service}-key.pem"
   csr="${OUTPUT_DIR}/${service}.csr"
@@ -40,6 +40,6 @@ EOF
   rm "${csr}" "${extension}"
 done
 
-chmod 600 "${OUTPUT_DIR}"/*-key.pem
 chmod 644 "${OUTPUT_DIR}"/*.pem
+chmod 600 "${OUTPUT_DIR}"/*-key.pem
 echo "Internal development certificates written to ${OUTPUT_DIR}"

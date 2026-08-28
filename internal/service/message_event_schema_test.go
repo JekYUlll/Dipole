@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
 
@@ -19,6 +21,31 @@ type messageEventSchema struct {
 	Required   []string                      `json:"required"`
 	Properties map[string]json.RawMessage    `json:"properties"`
 	Defs       map[string]messageEventSchema `json:"$defs"`
+}
+
+func TestMessageCreatedOutboxPreservesAgentLineage(t *testing.T) {
+	t.Parallel()
+
+	ctx := eventlineage.WithContext(context.Background(), eventlineage.Lineage{
+		Origin:           eventlineage.Origin{Type: eventlineage.OriginAgent, ID: "UAI"},
+		CausationEventID: "E-REQUEST",
+		AgentTaskID:      "TASK-1",
+	})
+	message := &model.Message{
+		UUID: "M1", ConversationKey: "direct:U1:UAI", Seq: 1, SenderUUID: "UAI", TargetUUID: "U1",
+		TargetType: model.MessageTargetDirect, MessageType: 1, Content: "reply", SentAt: time.Now().UTC(),
+	}
+	outbox, err := buildMessageCreatedOutboxEventContext(ctx, message, []string{"U1"}, true)
+	if err != nil {
+		t.Fatalf("build Message event: %v", err)
+	}
+	var envelope platformKafka.Envelope
+	if err := json.Unmarshal(outbox.Value, &envelope); err != nil {
+		t.Fatalf("decode produced envelope: %v", err)
+	}
+	if envelope.Lineage == nil || envelope.Lineage.Origin.ID != "UAI" || envelope.Lineage.CausationEventID != "E-REQUEST" || envelope.Lineage.AgentTaskID != "TASK-1" {
+		t.Fatalf("unexpected Outbox lineage: %+v", envelope.Lineage)
+	}
 }
 
 func TestMessageEventSchemaMatchesProducerContract(t *testing.T) {

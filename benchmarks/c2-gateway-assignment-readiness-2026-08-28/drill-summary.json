@@ -1,0 +1,17 @@
+{
+  "schema_version": "dipole.gateway-assignment-drill.v1",
+  "revision": "958d40c7910ca8a85c0dad6bf57698ae32f9d42f",
+  "before_start": {
+    "state_and_members": "Empty 0"
+  },
+  "timeline": {
+    "samples": 32,
+    "first_sample": "2026-08-27T22:29:20.390Z\trunning\tnot-ready\t0\t0",
+    "final_sample": "2026-08-27T22:29:30.615Z\trunning\tready\t1\t1"
+  },
+  "after_start": {
+    "state": "Stable",
+    "members": 20
+  },
+  "runtime_dependency_smoke_passed": true
+}

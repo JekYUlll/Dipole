@@ -16,3 +16,11 @@ groups:
           severity: warning
         annotations:
           summary: Required Dipole service remains not ready
+
+      - alert: DipoleCriticalDependencyNotReady
+        expr: dipole_dependency_ready == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole service critical dependency remains unavailable

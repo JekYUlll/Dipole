@@ -16,6 +16,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 var Subscriber *Consumer
@@ -377,7 +378,11 @@ func correlationContext(ctx context.Context, event Event) context.Context {
 		}
 	}
 	ctx, _ = correlation.Ensure(ctx, requestID, traceID)
-	return correlation.WithEventID(ctx, eventID)
+	ctx = correlation.WithEventID(ctx, eventID)
+	if event.Envelope != nil && event.Envelope.Lineage != nil {
+		ctx = eventlineage.WithContext(ctx, eventlineage.Advance(*event.Envelope.Lineage, eventID))
+	}
+	return ctx
 }
 
 func (c *Consumer) readerForTopic(topic string) *kafkago.Reader {

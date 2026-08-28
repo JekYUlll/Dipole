@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "dipole.agent.workflow-repair-execution-plan.v1",
+  "mode": "dry_run",
+  "planId": "repair-plan:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "proposalId": "repair:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "proposalStatus": "approved",
+  "proposalEvidenceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "proposerId": "U-PROPOSER-1",
+  "executorId": "U-EXEC-1",
+  "executorGrantVersion": 1,
+  "changeTicketRef": "INC-2048",
+  "approverIds": ["U-APPROVER-1", "U-APPROVER-2"],
+  "expectedCurrentProjection": {
+    "workflowId": "dipole-agent-task/TASK-1",
+    "workflowRunId": "WR-1",
+    "status": "running",
+    "revision": 2
+  },
+  "targetProjection": {
+    "workflowId": "dipole-agent-task/TASK-1",
+    "workflowRunId": "WR-1",
+    "status": "completed",
+    "revision": 3
+  },
+  "rollbackProjection": {
+    "workflowId": "dipole-agent-task/TASK-1",
+    "workflowRunId": "WR-1",
+    "status": "running",
+    "revision": 2
+  },
+  "expectedCurrentSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "targetSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "rollbackSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "capturedAt": "2026-08-28T00:00:00.000Z",
+  "expiresAt": "2026-08-28T00:15:00.000Z"
+}

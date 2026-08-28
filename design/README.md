@@ -2,6 +2,18 @@
 
 `dipole-ui.pen` 是 Dipole 前端的 canonical 可编辑设计文件。产品交互、响应式状态或视觉 token 变化时，应增量修改同一文件，并同步更新 `DESIGN-CHANGELOG.md`。
 
+## F1 Frame 与评审导出
+
+| Frame | 评审导出 |
+| --- | --- |
+| Dipole Foundations + Components | `exports/foundations.png` |
+| Login Desktop | `exports/login-desktop.png` |
+| Login Mobile | `exports/login-mobile.png` |
+| Chat Desktop | `exports/chat-desktop.png` |
+| Chat Mobile | `exports/chat-mobile.png` |
+| Design Review Checklist | `exports/review-checklist.png` |
+| 完整画布总览 | `exports/dipole-ui-overview.png` |
+
 ## 当前 Frame
 
 ### Foundations 与组件
@@ -39,6 +51,26 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 `shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述状态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
 
 显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
+
+### Agent Workflow Repair v1
+
+- `Agent Repair/Desktop/Proposed`：对照 MySQL Task projection 与 Temporal Workflow 历史，展示 canonical evidence SHA-256、提案依据和双人审批链。
+- `Agent Repair/State Matrix`：覆盖 `proposed 0/2`、`proposed 1/2`、`approved`、`rejected`、`expired` 和 `unavailable` 六类持久审计状态。
+- `Agent Repair/Mobile/Approval`：在窄屏中以底部审批层保留证据摘要、首位审批记录和安全边界。
+- `Component/Repair Status`、`Component/Repair Evidence Diff`、`Component/Repair Approval Step`：供后续 Task timeline 和运维审计页面复用。
+
+批准的 2x 预览位于 `exports/agent-repair-v1/`。当前设计只允许在一小时证据窗口内由两位独立审批人批准或任一审批人拒绝；提案人不能审批。`approved` 仅表示审计门槛满足，界面不得暗示 projection 已修改，也不提供 apply/execute 操作。Worker 或 Temporal 不可用时禁止创建和批准提案，并引导恢复依赖后重新采证。
+
+### Agent Elicitation v1
+
+- `Agent Elicitation/Desktop/Form`：展示外部 MCP Server/Tool/Invocation 来源、当前 Task/revision、deadline、四类受限字段与提交/取消操作。
+- `Agent Elicitation/State Matrix`：覆盖 `waiting_input`、`validation_error`、`submitting`、`running`、`cancelled`、`expired` 和 `unavailable` 七态。
+- `Agent Elicitation/Mobile/Form`：在窄屏保留来源披露、核心字段、安全提示和固定底部操作区。
+- `Component/Elicitation Source`、`Component/Elicitation Field`、`Component/Elicitation Status`：供后续 Task timeline、MCP Form 和本地 Agent 输入请求复用。
+
+批准的 2x 预览位于 `exports/agent-elicitation-v1/`。普通 Form 只允许 `text`、`select`、`multiselect` 和 `boolean`，提交必须绑定当前 Task、principal 与 `request_id`；旧请求、跨用户请求和终态 Task 均拒绝。界面明确将外部内容标记为不可信，并禁止密码、Token、API Key、支付、Cookie、文件上传和 URL 授权。当前设计不代表 MCP continuation、敏感输入或 URL mode 已接入。
+
+Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 `/agent/tasks/:taskId/input`，由 `VITE_AGENT_ELICITATION_ENABLED=true` 显式启用。页面只使用 authenticated Gateway Task query/input/cancel API；查询失败时清空缓存 Form，提交后重新查询权威 Workflow 状态。MCP continuation、敏感输入和 URL mode 仍未接入。
 
 ## Sync 交互契约
 

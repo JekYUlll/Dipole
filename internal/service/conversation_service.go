@@ -38,11 +38,12 @@ type ConversationView struct {
 }
 
 type ConversationService struct {
-	repo       conversationRepository
-	userFinder conversationUserFinder
-	groupRepo  conversationGroupRepository
-	notifier   conversationNotifier
-	events     eventPublisher
+	repo         conversationRepository
+	userFinder   conversationUserFinder
+	groupRepo    conversationGroupRepository
+	notifier     conversationNotifier
+	events       eventPublisher
+	observeWrite func(string, time.Duration, error)
 }
 
 type conversationGroupRepository interface {
@@ -75,6 +76,16 @@ func NewConversationService(repo conversationRepository, userFinder conversation
 	}
 }
 
+func (s *ConversationService) SetProjectionWriteObserver(observer func(string, time.Duration, error)) {
+	s.observeWrite = observer
+}
+
+func (s *ConversationService) observeProjectionWrite(projection string, duration time.Duration, err error) {
+	if s.observeWrite != nil {
+		s.observeWrite(projection, duration, err)
+	}
+}
+
 func (s *ConversationService) WithNotifier(notifier conversationNotifier) *ConversationService {
 	if s != nil {
 		s.notifier = notifier
@@ -87,10 +98,16 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 		return nil
 	}
 
-	if err := s.repo.UpsertDirectMessage(message.SenderUUID, message.TargetUUID, message, 0); err != nil {
+	startedAt := time.Now()
+	err := s.repo.UpsertDirectMessage(message.SenderUUID, message.TargetUUID, message, 0)
+	s.observeProjectionWrite("direct_message", time.Since(startedAt), err)
+	if err != nil {
 		return fmt.Errorf("upsert sender direct conversation: %w", err)
 	}
-	if err := s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1); err != nil {
+	startedAt = time.Now()
+	err = s.repo.UpsertDirectMessage(message.TargetUUID, message.SenderUUID, message, 1)
+	s.observeProjectionWrite("direct_message", time.Since(startedAt), err)
+	if err != nil {
 		return fmt.Errorf("upsert target direct conversation: %w", err)
 	}
 
@@ -103,7 +120,10 @@ func (s *ConversationService) UpdateDirectConversations(message *model.Message) 
 func (s *ConversationService) InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error {
 	conversationKey := "group:" + groupUUID
 	for _, userUUID := range memberUUIDs {
-		if err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt); err != nil {
+		startedAt := time.Now()
+		err := s.repo.InitGroupConversation(userUUID, groupUUID, conversationKey, createdAt)
+		s.observeProjectionWrite("group_init", time.Since(startedAt), err)
+		if err != nil {
 			return fmt.Errorf("init group conversation for user %s: %w", userUUID, err)
 		}
 	}
@@ -127,7 +147,10 @@ func (s *ConversationService) UpdateGroupConversations(message *model.Message) e
 		if member.UserUUID == message.SenderUUID {
 			unreadIncrement = 0
 		}
-		if err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement); err != nil {
+		startedAt := time.Now()
+		err := s.repo.UpsertGroupMessage(member.UserUUID, message.TargetUUID, message, unreadIncrement)
+		s.observeProjectionWrite("group_message", time.Since(startedAt), err)
+		if err != nil {
 			return fmt.Errorf("upsert group conversation for user %s: %w", member.UserUUID, err)
 		}
 	}

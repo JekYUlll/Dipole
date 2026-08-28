@@ -87,6 +87,8 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 解决 `AD-003`：幂等冲突校验消息身份，禁止错误收件人修复 Inbox。
 - [x] 为全部 Kafka managed topics 建立语言中立 v1 JSON Schema、统一领域 decoder、producer drift 与新旧版本兼容测试；新增受管主题必须先通过契约覆盖门禁。
 - [x] 建立基线压测：发送吞吐、端到端延迟、Kafka lag、Inbox 写放大、热群 fanout；标准化报告归档于 `benchmarks/g0-2026-08-27/`。
+- [x] 补齐 Conversation State 成功 upsert 的三节点计数与 baseline v2，以 20/100 人普通/热群矩阵量化 AD-005，并保留未归因的后续优化门槛。
+- [x] 增加 Conversation projection Repository Histogram、逐节点快照差分与 baseline v3，在 20/100 人普通/热群矩阵中完成 AD-005 的 SQL 边界归因，保留 1000 人和候选行为优化门槛。
 - [x] 增加统一 `request_id`、`trace_id`、`event_id`，贯通 HTTP、WS、gRPC、Kafka 和 Outbox。
 - [x] 建立服务级健康检查、指标、结构化日志和最小告警规则。
 - [x] 将需要长期维护的架构 Markdown 纳入版本控制，以 manifest 和检查脚本持续约束并关闭 `AD-007`。
@@ -305,10 +307,13 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 引入由认证触发链生成的 `ExecutionContext`，模型不能设置 principal、Agent 身份和关联审计 ID，所有 Embedded Tool 缺失上下文时 fail closed。
 - [x] 删除 Agent ContextBuilder/Tool 对数据库 repository-shaped port 的直接依赖，读取和动作统一进入 `dipole.agent.capability.v1`；本地 adapter 复用 Core、Conversation 与 Message application 边界。
 - [x] 在 Capability API 中补充 `AgentPolicyV1`：tenant、委托身份、细粒度 permission、`read|write|destructive` 风险和 approval 语义，并在 Tool/adapter 双层授权。
-- [ ] 将 permission grant 与 approval 持久化到版本化 Agent Definition 和 AgentTask，支持 scope、过期、撤销及 arguments hash 重校验（`AD-027`）。
+- [x] 将 permission grant 与 approval 持久化到版本化 Agent Definition 和 AgentTask，支持 scope、过期、撤销及 arguments hash 重校验（`AD-027`）。
   - [x] migration v16 与 `AgentPolicyStoreV1` 已持久化不可变 Definition grant、固定版本 Task、scope/arguments/nonce 绑定 Approval，并以条件更新保证一次性消费。
-  - [ ] Embedded trigger 从持久 Task policy snapshot 解析 Invocation；保留显式 static rollback，完成切流后关闭 `AD-027`。
+  - [x] Embedded trigger 从持久 Task policy snapshot 解析 Invocation；`ai.policy_mode=persistent` 默认启用，`static` 保留显式回滚，Tool/Capability/Command 按 resource scope fail closed。
+  - [x] migration v17 将 Agent policy 身份列 expand-only 扩至 24 字符，覆盖默认 21 字符 Assistant UUID；真实 MySQL 8.4 验证 Definition 初始化、Task 固定版本和完成迁移。
 - [x] Agent 回复通过版本化 `dipole.agent.command.v1` 进入 Message Service：可信 Invocation 固定 sender/target，稳定 Command ID 映射到 Message 幂等键并保留 correlation；普通回复和系统 Tool 均不直接写消息库。
+  - [x] 增加 sender-scoped Message Command receipt：复用 sqlc sender/client key 返回 `absent|committed`，Agent 在独立有界恢复窗口内核对完整消息绑定，收敛远程超时的不确定结果。
+  - [x] 增加绑定 running Tool Invocation 的认证 MCP Command RPC：Core 派生 Command ID 与身份、复算 canonical Tool 参数摘要并返回 Message action reference；生产 write Tool 继续关闭。
 - [x] 增加 `ai.runtime_mode=off|embedded|shadow|remote`，兼容旧 `ai.enabled`；shadow 保留 Go 权威写入，remote 停止注册 Embedded consumer，为 Eino 回滚和 TS 切流建立开关。
 
 **验收：** Capability contract test 通过；Embedded 基线可重复评测；Agent 停机不影响传统 IM。
@@ -316,26 +321,74 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G2：建立 TypeScript Agent Runtime
 
 - [ ] 新增 `dipole-agent`：TypeScript、Node.js、Fastify、Vercel AI SDK、Zod 和 Kafka。
-- [ ] 实现 `ExecutionContext`、Capability Registry、Policy Engine、模型路由与调用预算。
-- [ ] 使用独立 consumer group 消费版本化事件，通过事件 ID 和 Task ID 幂等。
+  - [x] 建立 `agent-runtime/` Node 22+ foundation：Fastify 健康面、Zod trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine 与只读 shadow processor。
+  - [x] 增加 KafkaJS adapter、兼容 v1 Message decoder、独立 `dipole-agent-shadow-*` group、冷启动有界重连与 Compose 服务。
+- [x] 实现 `ExecutionContext`、Capability Registry、Policy Engine、provider-neutral 模型路由与每 Run 调用预算；AI SDK adapter 关闭内部 retry，模型模式默认关闭。
+- [x] 使用独立 consumer group 消费版本化事件，通过 Event ID/Task ID 双唯一、事务 claim、lease 和精确 token 实现跨进程幂等。
+- [x] 使用显式 main/retry/dead topic 实现永久错误直达死信和瞬时错误有界重试，失败发布阻止 handler 完成；真实 Kafka 验证 poison、retry→dead 与 rebalance（`AD-028`）。
+- [x] migration v19 与 MySQL ModelAuditStore 持久化 Task 唯一 Run、预算快照、原子 call slot 和模型调用终态；ModelRouter 每次 provider 调用均先占 slot，跨 Kafka 重投共享 Task 上限（`AD-029` 已关闭）。
+- [x] migration v20 持久化不可变 Shadow Plan 与有序结构化 Step；同一 Task 并发重放幂等收敛，plan/event 绑定漂移 fail closed。
+- [x] migration v21 将 Task 与 Runtime Run 分离，并为 Step 增加 lease/token claim 和终态 CAS；同一事件的 Go Embedded 与 TS Shadow Run 可独立审计。
 - [ ] 首先运行 shadow consumer，只记录计划、Tool 轨迹和结果，不执行写操作。
+  - [x] metadata-only shadow plan 已通过真实 Kafka 3.9 事件与重复投递验证；模型结构化 Plan/Step 已持久化。
+  - [x] 通过受认证 Agent Capability RPC 执行首个 `conversation.list` 只读 Step，并持久化 claim/result/error；公开 HTTP 旁路保持禁止（`AD-030` 已关闭）。
 - [ ] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter。
 
 ### G3：Durable Task、Context 与 Memory
 
-- [ ] 使用 Temporal TypeScript SDK 实现 AgentTask 状态机、Signal、Timer、Retry、取消和恢复。
+- [x] 使用 Temporal TypeScript SDK 实现 AgentTask 状态机、Signal、Timer、Retry、取消和恢复；input/approval deadline 到期后确定性取消并完成持久 Run。
 - [ ] 实现 Context Compiler，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
+  - [x] G2 基线实现框架中立 Context Compiler v1：全局/section 预算、full/compact/omit、trust boundary、provenance manifest 和 v22 持久审计；会话检索、Memory 与 route-specific tokenizer 在 G3 继续扩展。
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
+  - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
+  - [ ] 增加认证查看/纠正/撤销 API、版本与删除审计、Observation/Reflection Worker 和 retrieval Eval；证据成立后再评估 Elasticsearch hybrid/vector（`AD-035`）。
 - [ ] 实现 Event Subscription 与低成本预筛选，相关事件才创建高成本 Agent Task。
-- [ ] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact。
-- [ ] 事件携带 origin、causation 和 task 标识，阻断同一因果链的循环触发。
+  - [x] migration v28、sqlc Store 与受认证 Core RPC 固定 Definition version/resource read scope；TS `subscription` 模式在 EventLedger、Temporal 和模型前执行 `all|message_contains_any` 确定性过滤，零匹配零 Task，多匹配稳定固定 Subscription ID，默认保持 `direct_target`。
+  - [ ] 增加认证管理 API、版本化变更/撤销审计和 Agent 配置 UI；根据 Eval 与成本证据再引入小模型、embedding 或向量预筛选（`AD-034`）。
+- [x] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact；产品 UI 与敏感输入隔离仍按独立门槛推进。
+  - [x] `dipole.agent.elicitation.v1`、Gateway JWT API、Core Task owner 复核与 Temporal Signal 已实现持久 `WAITING_INPUT`；无效/旧 request fail closed，Worker 替换后可恢复。Pencil UI、敏感输入和 MCP adapter 由 `AD-036` 跟踪。
+  - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。
+- [x] Message v1 Envelope 以可选 `lineage.origin/causation_event_id/agent_task_id` 传播 Agent 因果链；Kafka consumer 滚动 causation，Embedded Agent/Outbox 保留根 Agent Task，TS Runtime 在 EventLedger、Temporal 和模型调用前抑制同源 Agent 事件，legacy v1 事件继续兼容。
 
 ### G4：MCP、评估、观测与安全门禁
 
 - [ ] Runtime 作为 MCP Client 接入外部工具，并以 MCP Server 暴露受控 Dipole Capability。
-- [ ] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
-- [ ] 通过 OpenTelemetry 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
+  - [x] 使用官方 MCP TS SDK v2 建立 Client/Server foundation：只读 Capability 投影复用 Registry/Policy，宿主注入 trusted Context；Client 校验 Server identity 与双 allowlist，InMemory/Streamable HTTP 契约通过。
+  - [x] 增加默认关闭的 Runtime/Gateway Streamable HTTP 挂载：Gateway JWT 固定 principal，Core 按 Task/Run 解析可信 ExecutionContext，当前只开放显式只读 Capability。
+  - [x] migration v30、sqlc Store 与 additive Core RPC 建立 MCP ToolCall 持久审计；TS 执行器在 durable begin 后执行，并创建不含正文的原生 OTel span，失败与超限结果 fail closed。
+  - [x] Gateway 增加独立于旧总开关的 Redis principal 限流：GET/POST 跨 Task/Run/实例共享额度，Redis 故障 fail closed，DELETE 保留 Session 清理能力。
+  - [x] 增加默认关闭的 Node trace SDK + OTLP/HTTP protobuf exporter，使用标准 OTel endpoint/protocol/sampler 参数、ParentBased 比例采样、低敏 span limit 和 graceful flush。
+  - [x] 增加默认关闭的 Collector + Tempo 运维 profile、24 小时 local retention、低基数告警、trace/audit runbook 和真实 trace 查询 smoke。
+  - [x] 增加第一方 consent exchange 和 15 分钟 MCP 专用 JWT，以 canonical `aud`、只读 `scope`、`token_use` 及 Gateway/Runtime 双重验证阻止令牌混用；部署 URI 可统一覆盖且入口继续默认关闭。
+  - [x] 增加有界 Tool timeout、cooperative AbortSignal、稳定 `tool_timeout` 审计和外部 Client request/total timeout；Gateway 断连向 Runtime 传播且 DELETE 清理保持可用。
+  - [x] 增加默认关闭的外部 MCP Profile v1 与租户 Registry：配置只保存版本化 credential/CA opaque ref，严格绑定 HTTPS、Server/Tool/Host/Port/TLS identity，并把逐次公网 DNS 校验收敛到尚未注入的 Transport Factory；误开开关会 fail closed。
+  - [x] 增加外部 MCP Credential Catalog v1：每次建连前按 tenant/ref/version 重新加载并校验生效窗口和 revoked 状态，只向 Factory 传递 opaque provider secret ref；原始 secret、生产 Catalog source 与 Provider 仍未启用。
+  - [x] 增加受约束 Catalog file source：每次 resolve 以 `O_NOFOLLOW` 打开绝对路径，校验 regular/single-link、root/Runtime owner、group/other 不可写和有界大小，并通过原子替换传播轮换/吊销；Runtime 尚未装配该 source。
+  - [x] 增加 provider-neutral MCP `AuthProvider` adapter：每次请求按 exact binding 获取 fresh secret bytes，使用独立 timeout/AbortSignal、Bearer 字符/大小校验、固定脱敏错误和 buffer wipe；不缓存 token、不提供自动 401 refresh，生产 Secret backend 仍关闭。
+  - [x] 增加默认关闭的外部 MCP Network Guard：每个请求重新解析并要求全部地址为公网，把批准地址交给 pinned Dispatcher 后核对实际 peer，拒绝重定向与 rebinding；生产 Resolver/Dispatcher/Factory 仍缺席。
+  - [x] 增加外部 MCP Result-to-Context adapter：成功结果以有界不可变 JSON 快照进入 `untrusted` evidence，并绑定 Profile/Server/Tool/Invocation provenance；compact 内容不复制外部正文，生产调用链仍未启用。
+  - [x] 增加默认关闭的 MCP write Approval gate：Core active-only RPC 原子消费 Task/Run/Capability/Scope/Arguments/Nonce 精确绑定，TS 在 Policy/Resource 校验后消费成功才执行；生产 MCP Server 仍保持 read-only。
+  - [x] migration v31 将写 ToolCall 的已消费 Approval 与完成后的 Message Command/UUID 连接为有界 action reference；Core 通过 sender-scoped receipt 复核权威 Message，审计表不保存消息正文，生产 write Tool 投影继续关闭。
+  - [x] 增加 MCP Message Command Core/TS transport，并统一 Tool runner 与 Approval gate 的排序 canonical JSON；RPC 只接受已审批 running ToolCall，不能作为裸消息发送入口。
+  - [x] 增加默认关闭的第一方 Message write projection：显式 active executor 串联 Approval consumption、同一 Tool Invocation、Command RPC 与 action finish；该切片未装配生产 Registry、grant resolver 和 active context。
+  - [x] 增加 active-only Approval grant resolution：Core/sqlc 唯一 exact 查询返回持久摘要，TS 独立复核后连接 write gate；生产 Registry、write executor 和 active context 继续缺席。
+  - [x] 增加 active ExecutionContext fail-closed seam：active Run admission 必须经过注入式 promotion authorizer，MCP context 使用 Core 持久 Run 的权威 mode；生产未注入 authorizer且公开 admission 固定 shadow。
+  - [x] migration v32 增加 durable Runtime promotion grant：双人签署并绑定 candidate/Definition/promotion v2/evidence/Eval Suite；active Run 持久 candidate，每次 context resolve 重查撤销状态，生产签发与装配继续关闭。
+  - [x] 增加默认关闭的 durable MCP Elicitation adapter 与单轮 MRTR continuation：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline、原 Tool 参数与 opaque `requestState`；现代 Client 显式锁定 `2026-07-28` 并可在新连接中生成精确续接请求。生产 Activity/Transport Factory 装配、多轮与敏感授权仍关闭。
+  - [x] 增加默认关闭的 Activity-safe round runner 与 External Profile adapter：每轮使用全新现代 Client/Transport，tenant/profile/server/tool 漂移、取消、握手失败和第二轮 input request 均 fail closed；生产 Worker mode 与外部 Provider 装配仍关闭。
+  - [x] migration v35 与 Resolve RPC 持久化外部 MCP Tool command，绑定 running Task/Run/Invocation、canonical 参数摘要和无凭据 Profile/Server；Worker mode 仍需 round receipt/idempotency 处理远端成功后 Activity completion 丢失窗口。
+  - [x] migration v36 与 Core/TS RPC 增加 durable MCP round receipt：确定性请求绑定、原子 Claim、owner-only terminal write、completed/failed replay 和无 reclaim 的 ambiguous fail-closed 语义已接入 Activity；生产 Worker、外部 Provider 与网络开关继续关闭。
+  - [x] 增加默认关闭的 MCP Worker command dispatcher：Workflow 侧只携带 Task/Run/Invocation ID，Core 返回持久开始时间和完整权威命令；固定 request/expiry 与重启前命令复核已覆盖，生产 Worker 仍等待真实 Transport Factory。
+  - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
+- [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
+  - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。
+  - [x] 使用 sqlc/TS 共享只读查询将真实 Shadow Task 转换为五类 observation；Task/Run 摘要绑定 Suite，缺失终态、指标、价格或逐 attempt 耗时证据时 fail closed。
+  - [ ] 扩充人工标注 corpus、retrieval relevance、reviewer agreement 与候选成本阈值后归档生产证据（`AD-038`）。
+- [x] 通过 OpenTelemetry API 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。
+  - [x] Foundation 与 Durable Activity 使用统一低敏 `AgentTelemetry`；每个 provider attempt 和 native/MCP Tool 调用独立成 span，Temporal Workflow 保持无副作用。SDK/exporter、采样和告警由 `AD-037` 继续跟踪。
 - [ ] 对 Prompt Injection、越权 Tool、敏感数据外发、重复事件和循环调用进行专项测试。
+  - [x] 增加 deterministic security suite，以真实 Context、Policy/Capability、EventLedger/lineage 和 MCP Client/Server 验证 provenance、执行前拒绝、去重、循环抑制和有界 egress。
+  - [ ] 使用真实候选模型和人工标注 adversarial corpus 评测语义抗注入、间接注入与值级敏感信息外发（`AD-037`、`AD-038`）。
 - [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
 - [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。
 
@@ -349,18 +402,44 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ### C1：建立 Go 数据面基准
 
-- [ ] 固化连接数、消息吞吐、P50/P95/P99、CPU、RSS、context switch 和故障恢复基线。
-- [ ] 将连接管理、投递路由、背压、重试和热群聚合定义为版本化协议与 contract test。
-- [ ] 明确 Gateway 与 Delivery 的进程边界，禁止 C++ 数据面访问业务数据库。
+- [x] 建立 operations/baseline v4 资源采集器，按服务记录 CPU core%、采样 RSS 峰值、线程峰值和 context switch，并保留 v1-v3 兼容读取。
+- [x] 在固定 20/50/100 连接梯度中归档吞吐、P50/P95/P99、CPU、RSS、context switch，并完成 node2 stop/start 故障恢复基线。
+- [x] 将投递 envelope、节点批次、ACK/error、背压和热群 mode 定义为版本化 Protobuf 与跨语言 golden vectors；连接级队列、持久重试和去重在 C2 shadow 中实现。
+- [x] 明确 Gateway 与 Delivery 的进程及数据所有权边界，禁止 C++ 数据面访问业务数据库。
 
 ### C2：C++ Realtime Delivery Shadow
 
-- [ ] 实现 Kafka 消费、Redis Presence 查询、节点级批处理、有界队列、背压和 QoS。
-- [ ] 与 Go Delivery 并行消费 shadow 流量，比较目标节点、收件人、顺序和延迟，不重复投递客户端。
+- [x] 建立独立 C++20 contract-only foundation，在 build 目录生成 canonical Protobuf 类型，共用 golden vectors，并提供 fail-closed 配置与健康端点；暂不接入运行拓扑。
+- [x] 建立无网络状态的 Kafka record 到 Delivery v1 纯投影，固定 direct/group/hot/timeline/file 与 legacy-created 语义，并以稳定 ID 支持确定性重放。
+- [x] 建立独立 librdkafka shadow runtime、evidence-before-commit、assignment readiness 和低敏 NDJSON 证据；运行入口不写 Redis、Gateway 或客户端。
+- [x] 完成 Kafka 消费、Redis Presence、节点级批处理、有界 observation/primary ACK、稳定 delivery ID 和背压分类；shadow 对照及 one-shot primary seam 已归档。
+- [x] 增加独立 `dipole-realtime-primary-*` authority 和默认关闭的显式 primary CLI；terminal ACK/evidence 后提交，partial/error 保留 pending record，shadow 命令与证据保持兼容。
+- [x] 归档真实 primary queue saturation、consume-to-ACK offset 提交、故障 retain 与进程 `SIGKILL` 重放；报告 8/8，窄 terminal evidence/commit 崩溃窗口保持未声明。
+- [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
 - [ ] 通过压测与故障注入证明收益；收益不足时保留 Go 实现并停止替换。
 
 ### C3：灰度切换与 Gateway 评估
 
+- [x] 关闭 `AD-041`：建立互斥 Go/C++ 客户端投递 authority、双 group checkpoint 和可执行自动回切，禁止两个写 authority 并行 active。
+  - [x] 增加默认 `go` 的本地 `go|shadow|cpp` 配置、Gateway checkpoint-only Handler 与 C++ 启动错配门禁；保留共享 fencing 和回切证据作为后续切片。
+  - [x] 在隔离 Go/C++ topology 中证明目标事件各只有一个客户端 frame，并确认 Go checkpoint group 与 C++ primary group 均达到 log end/lag 0；证据包保留应用 readiness 与临时 Compose health 探针误报诊断。
+  - [x] 冻结 `epoch + authority + phase + lease expiry` 共享 fence v1，并让 Go Gateway 在启动及每条消息副作用前 fail closed 核验；默认保持关闭。
+  - [x] 让 C++ shadow/primary 消费同一 fence golden vectors，在创建 Kafka consumer 及每个 pending record 投影前核验，并在拒绝时保留坐标和撤销 readiness。
+  - [x] 增加 operator-driven Redis Lua CAS writer，强制 freeze 中间态、单调 epoch、精确 previous hash、幂等 transition ID 和低敏有 TTL receipt；保留身份认证与持久 receipt 加固。
+  - [x] 增加 Go Gateway 稳定节点 observation：启动、空闲心跳与 readiness 写入短 TTL、lease-hash-bound 证据，写失败 fail closed，消息热路径不增加 observation 写放大。
+  - [x] 增加 C++ 显式实例身份、`SET PX` observation、空 Kafka heartbeat 与独立 fence readiness；跨语言 reason vectors 和真实 Redis 刷新通过。
+  - [x] 实现预期节点聚合和双 group checkpoint receipt；收据绑定短 TTL proof、transition lease hash、完整 assignment、逐分区 committed/log end 与两组一致高水位，并以不可覆盖文件持久化。
+  - [x] 建立共享、租约化 authority fencing 和双 group checkpoint receipt，完成中断后确定性续切或回切。
+    - [x] 增加不可变 cutover attempt manifest 与哈希链事件日志，确定性归约正常续切、冻结期直接回退和目标激活后二次冻结回退。
+    - [x] 增加单步恢复 orchestrator、确定性幂等 action ID 与首次冻结超预算自动回退决策，动作失败时保持 journal 原位。
+    - [x] 增加不可覆盖 action artifact envelope，独立绑定 canonical action 与外部 receipt/checkpoint payload，为模糊故障重试提供持久幂等边界。
+    - [x] 接入 production transition/checkpoint executor，验证 initial lease 和全部 manifest 绑定，并覆盖 forward、两条 rollback 与 Redis receipt 恢复。
+    - [x] 建立自包含 immutable attempt workspace，持久化 canonical 输入并在恢复时重算全部 manifest/lease 绑定。
+    - [x] 增加 create/status/单步 advance/rollback 恢复命令，所有变更要求确认并在每个副作用后形成持久边界。
+    - [x] 增加证据链内的单步 lease renew；续期不重置冻结预算，并强制重采绑定旧 lease 的节点/checkpoint 证据。
+    - [x] 用隔离真实 Kafka/Redis 与 race harness 完成 controller crash、Kafka member loss/rejoin、Redis outage/recovery 的 forward cutover 演练并归档证据。
+    - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
+    - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
@@ -369,10 +448,10 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 ## 10. 持续轨道：Pencil 前端设计
 
-- [ ] F1：已建立 `design/dipole-ui.pen`、首组 design tokens 与 Search 核心组件；Login/Chat desktop/mobile 待完成。
-- [ ] F2：Search 四态及 Vue 工作区已完成；Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成，Contact、Group、File、Device 与 Settings 待完成。
-- [ ] F3：覆盖 Agent Definition、Subscription、Task、Approval、Elicitation、Memory 与 Artifact。
-- [ ] F4：已建立 Pencil 增量更新、设计日志、Vitest 组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
+- [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
+- [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成；Contact、Group、File、Device 与 Settings 待完成。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval 和普通 Elicitation Form 七态的 desktop/mobile 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Agent Definition、Subscription、完整 Task timeline、Memory、Artifact、多轮与敏感授权仍由 AD-036 跟踪。
+- [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、组件测试和 Playwright IndexedDB E2E 基线；Vue token 映射、页面流程与视觉回归待完成。
 
 设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
 
@@ -405,6 +484,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `agent.mode` | `off / embedded / shadow / remote` | Agent 抽离与灰度 |
+| `VITE_AGENT_ELICITATION_ENABLED` | `false / true` | Agent 普通输入 Form 路由；默认 `false` |
 | `realtime.delivery` | `go / shadow / cpp` | C++ Delivery 影子验证与回切 |
 
 开关只控制路由，不能替代数据回滚方案。每次切换前必须记录数据 checkpoint、兼容窗口和恢复步骤。

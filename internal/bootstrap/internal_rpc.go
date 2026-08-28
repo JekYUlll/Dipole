@@ -14,9 +14,13 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
+	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
+	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
+	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
 	syncv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1"
@@ -33,27 +37,150 @@ import (
 )
 
 const (
-	gatewayServiceName = "dipole-gateway"
-	coreServiceName    = "dipole-core"
-	messageServiceName = "dipole-message"
-	searchServiceName  = "dipole-search"
-	syncServiceName    = "dipole-sync"
+	gatewayServiceName  = "dipole-gateway"
+	coreServiceName     = "dipole-core"
+	messageServiceName  = "dipole-message"
+	searchServiceName   = "dipole-search"
+	syncServiceName     = "dipole-sync"
+	agentServiceName    = "dipole-agent"
+	realtimeServiceName = "dipole-realtime"
 )
 
 type InternalRPCServer struct {
 	listener net.Listener
 	server   *grpc.Server
+	health   *health.Server
 	done     chan struct{}
 	stopOnce sync.Once
 }
 
+func NewDeliveryObservationRPCServer(cfg config.InternalRPC, adapter *deliverygrpc.ShadowServer) (*InternalRPCServer, error) {
+	if adapter == nil {
+		return nil, errors.New("delivery observation rpc adapter is required")
+	}
+	return newInternalRPCServer(cfg, cfg.DeliveryObservationListenAddress, []string{realtimeServiceName}, func(server *grpc.Server) {
+		deliveryv1.RegisterNodeDeliveryServiceServer(server, adapter)
+	})
+}
+
 func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*InternalRPCServer, error) {
+	return newCoreRPCServer(cfg, capability, nil)
+}
+
+func NewCoreRPCServerWithAgent(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServer(agentCapability, resolver, admission, approvals...)
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
+	}
+	return newCoreRPCServer(cfg, capability, agentAdapter)
+}
+
+func NewCoreRPCServerWithAgentControl(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServerWithControl(agentCapability, resolver, admission, approvals, controls)
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
+	}
+	return newCoreRPCServer(cfg, capability, agentAdapter)
+}
+
+func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs ...application.AgentWorkflowRepairAuditServiceV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs...)
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
+	}
+	return newCoreRPCServer(cfg, capability, agentAdapter)
+}
+
+func NewCoreRPCServerWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, subscriptionControls application.AgentEventSubscriptionControlServiceV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, toolRounds application.AgentMCPToolRoundServiceV1, toolTerminals application.AgentMCPToolInvocationTerminalServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, promotionControls application.AgentRuntimePromotionControlServiceV1, promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1, readinessPublisher application.AgentMCPReadinessEvidencePublisherV1, readinessResolver application.AgentMCPReadinessEvidenceResolverV1, memories ...application.AgentMemoryContextResolverV1) (*InternalRPCServer, error) {
+	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs)
+	if err != nil {
+		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
+	}
+	if artifacts != nil {
+		if _, err := agentAdapter.WithArtifacts(artifacts); err != nil {
+			return nil, fmt.Errorf("configure Agent Artifact rpc adapter: %w", err)
+		}
+	}
+	if toolAudits != nil {
+		if _, err := agentAdapter.WithToolAudits(toolAudits); err != nil {
+			return nil, fmt.Errorf("configure Agent Tool invocation audit rpc adapter: %w", err)
+		}
+	}
+	if toolRounds != nil {
+		if _, err := agentAdapter.WithMCPToolRounds(toolRounds); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP Tool round rpc adapter: %w", err)
+		}
+	}
+	if toolTerminals != nil {
+		if _, err := agentAdapter.WithMCPToolTerminals(toolTerminals); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP Tool terminal rpc adapter: %w", err)
+		}
+	}
+	if messageCommands != nil {
+		if _, err := agentAdapter.WithMessageCommands(messageCommands); err != nil {
+			return nil, fmt.Errorf("configure Agent Message Command rpc adapter: %w", err)
+		}
+	}
+	if approvalGrants != nil {
+		if _, err := agentAdapter.WithApprovalGrants(approvalGrants); err != nil {
+			return nil, fmt.Errorf("configure Agent Approval grant rpc adapter: %w", err)
+		}
+	}
+	if promotionControls != nil {
+		if _, err := agentAdapter.WithPromotionControls(promotionControls); err != nil {
+			return nil, fmt.Errorf("configure Agent Runtime promotion control rpc adapter: %w", err)
+		}
+	}
+	if promotionEvidence != nil {
+		if _, err := agentAdapter.WithPromotionEvidence(promotionEvidence); err != nil {
+			return nil, fmt.Errorf("configure Agent Runtime promotion evidence review rpc adapter: %w", err)
+		}
+	}
+	if readinessPublisher != nil {
+		if _, err := agentAdapter.WithMCPReadinessEvidencePublisher(readinessPublisher); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP readiness evidence Publisher rpc adapter: %w", err)
+		}
+	}
+	if readinessResolver != nil {
+		if _, err := agentAdapter.WithMCPReadinessEvidenceResolver(readinessResolver); err != nil {
+			return nil, fmt.Errorf("configure Agent MCP readiness evidence Resolver rpc adapter: %w", err)
+		}
+	}
+	if subscriptions != nil {
+		if _, err := agentAdapter.WithEventSubscriptions(subscriptions); err != nil {
+			return nil, fmt.Errorf("configure Agent Event Subscription rpc adapter: %w", err)
+		}
+	}
+	if subscriptionControls != nil {
+		if _, err := agentAdapter.WithEventSubscriptionControls(subscriptionControls); err != nil {
+			return nil, fmt.Errorf("configure Agent Event Subscription control rpc adapter: %w", err)
+		}
+	}
+	if len(memories) > 1 {
+		return nil, errors.New("at most one Agent Memory resolver may be configured")
+	}
+	if len(memories) == 1 && memories[0] != nil {
+		if _, err := agentAdapter.WithMemories(memories[0]); err != nil {
+			return nil, fmt.Errorf("configure Agent Memory rpc adapter: %w", err)
+		}
+	}
+	return newCoreRPCServer(cfg, capability, agentAdapter)
+}
+
+func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability, agentAdapter *agentgrpc.Server) (*InternalRPCServer, error) {
 	adapter, err := coregrpc.NewServer(capability)
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{messageServiceName, gatewayServiceName, searchServiceName, syncServiceName}, func(server *grpc.Server) {
+	allowed := []string{messageServiceName, gatewayServiceName, searchServiceName, syncServiceName}
+	if agentAdapter != nil {
+		allowed = append(allowed, agentServiceName)
+	}
+	return newInternalRPCServer(cfg, cfg.CoreListenAddress, allowed, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
+		if agentAdapter != nil {
+			agentv1.RegisterAgentCapabilityServiceServer(server, agentAdapter)
+		}
 	}, restrictCoreServiceMethods)
 }
 
@@ -71,6 +198,14 @@ func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.
 
 func DialGatewayCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
 	return dialCoreCapabilityAs(ctx, cfg, gatewayServiceName)
+}
+
+func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (agentv1.AgentCapabilityServiceClient, *grpc.ClientConn, error) {
+	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: gatewayServiceName, Secret: cfg.SharedSecret})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Gateway Agent capability: %w", err)
+	}
+	return agentv1.NewAgentCapabilityServiceClient(connection), connection, nil
 }
 
 func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*coregrpc.Client, *grpc.ClientConn, error) {
@@ -185,6 +320,31 @@ func dialSyncApplicationAs(ctx context.Context, cfg config.InternalRPC, callerSe
 
 func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	caller, _ := grpcauth.CallerService(ctx)
+	if caller == agentServiceName &&
+		info.FullMethod != agentv1.AgentCapabilityService_AdmitRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_CompleteRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishRun_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_RequestApproval_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveApproval_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpToolCommand_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ClaimMcpToolRound_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ListContextMemories_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName &&
+		info.FullMethod != healthv1.Health_Check_FullMethodName {
+		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")
+	}
 	if caller == searchServiceName &&
 		info.FullMethod != corev1.CoreCapabilityService_ListSearchConversationKeys_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {
@@ -223,8 +383,9 @@ func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers
 	}
 	server := grpc.NewServer(options...)
 	register(server)
-	healthv1.RegisterHealthServer(server, newServingHealthServer())
-	runtime := &InternalRPCServer{listener: listener, server: server, done: make(chan struct{})}
+	healthServer := newServingHealthServer()
+	healthv1.RegisterHealthServer(server, healthServer)
+	runtime := &InternalRPCServer{listener: listener, server: server, health: healthServer, done: make(chan struct{})}
 	go func() {
 		defer close(runtime.done)
 		_ = server.Serve(listener)
@@ -344,6 +505,17 @@ func (s *InternalRPCServer) Address() string {
 		return ""
 	}
 	return s.listener.Addr().String()
+}
+
+func (s *InternalRPCServer) SetServing(serving bool) {
+	if s == nil || s.health == nil {
+		return
+	}
+	status := healthv1.HealthCheckResponse_NOT_SERVING
+	if serving {
+		status = healthv1.HealthCheckResponse_SERVING
+	}
+	s.health.SetServingStatus("", status)
 }
 
 func (s *InternalRPCServer) Close(ctx context.Context) {

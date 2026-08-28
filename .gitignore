@@ -3,7 +3,7 @@
 #
 
 acc/
-agent/
+/agent/
 certs/
 logs/
 dist/
@@ -33,7 +33,8 @@ __pycache__/
 
 tmp/
 frontend/chat-server
-frontend/node_modules/
+node_modules/
+agent-runtime/.artifacts/
 frontend/playwright-report/
 frontend/test-results/
 

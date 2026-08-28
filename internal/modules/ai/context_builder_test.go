@@ -120,7 +120,7 @@ func TestContextBuilderStopsBeforeMessagesWithoutReadPermission(t *testing.T) {
 	builder := NewContextBuilder(capability, 12)
 	execution := newExecutionContext(ExecutionContext{
 		TenantID: defaultAgentTenantID, PrincipalUserUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
-	}, []string{application.AgentPermissionUserProfileRead}, nil)
+	}, []string{application.AgentPermissionUserProfileRead}, nil, embeddedAgentResourceScopesV1())
 	ctx := withExecutionContext(context.Background(), execution)
 
 	if _, err := builder.BuildDirectContext(ctx, "U100", "UAI"); !errors.Is(err, application.ErrAgentCapabilityDenied) {

@@ -17,6 +17,21 @@ gateway:
   # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/gateway.
   mode: embedded
   core_http_target: http://127.0.0.1:8081
+  # Exposes JWT-authenticated durable Task query/cancel/approval routes through the Gateway.
+  # Keep disabled until the Agent Runtime and Temporal control plane are ready.
+  agent_control_enabled: false
+  agent_control_target: http://127.0.0.1:8091
+  # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
+  agent_mcp_enabled: false
+  agent_mcp_target: http://127.0.0.1:8091
+
+realtime:
+  # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.
+  delivery: go
+  # C3 shared fencing remains opt-in until cross-language node observations and cutover receipts are complete.
+  fencing_enabled: false
+  fencing_key: dipole:realtime:delivery:authority:v1
+  fencing_epoch: 0
 
 tls:
   enabled: false
@@ -25,11 +40,18 @@ metrics:
   # Bind to loopback by default. Container deployments may bind the private service network.
   enabled: false
   address: 127.0.0.1:9100
+  dependency_probes_enabled: false
+  dependency_probe_interval_seconds: 5
+  dependency_probe_timeout_ms: 1000
+  dependency_failure_threshold: 3
+  dependency_success_threshold: 2
 
 auth:
   token_ttl_hours: 168
   jwt_secret: dipole-dev-jwt-secret-change-me
   jwt_issuer: dipole
+  # Canonical public MCP resource URI. Override together with the Agent Runtime in shared environments.
+  agent_mcp_resource: https://dipole.local/api/v1/agent/mcp
 
 mysql:
   host: mysql
@@ -161,6 +183,14 @@ internal_rpc:
   search_target: 127.0.0.1:9093
   sync_listen_address: 127.0.0.1:9094
   sync_target: 127.0.0.1:9094
+  # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
+  delivery_observation_enabled: false
+  delivery_observation_listen_address: 127.0.0.1:9095
+  delivery_observation_capacity: 1024
+  delivery_observation_retry_after_ms: 25
+  # C2 primary edge remains disabled until replay and client-dedup evidence pass.
+  delivery_primary_enabled: false
+  delivery_primary_replay_capacity: 8192
   dial_timeout_seconds: 5
   shutdown_timeout_seconds: 15
   # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.
@@ -175,14 +205,27 @@ storage:
   provider: minio
   endpoint: minio:9000
   presign_endpoint: 192.168.1.8:9000
-  access_key: dipoleminio
-  secret_key: dipoleminiopass
+  access_key: dipoleplatform
+  secret_key: dipoleplatformpass
   use_ssl: false
   bucket: dipole-files
   search_archive_bucket: dipole-search-archives
   search_archive_retention_days: 30
   message_archive_bucket: dipole-message-archives
   message_archive_retention_days: 30
+  # Artifact storage is opt-in and uses a dedicated identity; do not reuse file credentials.
+  artifact_enabled: false
+  artifact_endpoint: 127.0.0.1:9000
+  artifact_access_key: ""
+  artifact_secret_key: ""
+  artifact_use_ssl: false
+  artifact_bucket: dipole-agent-artifacts
+  # Supplied only to the offline reconcile command; never inject into Core or Agent Runtime.
+  artifact_audit_access_key: ""
+  artifact_audit_secret_key: ""
+  # Supplied only to the offline maintenance evaluator; this identity has Stat/Get evidence access and no Delete.
+  artifact_maintenance_access_key: ""
+  artifact_maintenance_secret_key: ""
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
   multipart_chunk_size_mb: 5
@@ -198,6 +241,9 @@ rate_limit:
   message_window_seconds: 60
   file_upload_limit: 10
   file_upload_window_seconds: 300
+  # Applied independently from the legacy enabled switch whenever the MCP route is mounted.
+  agent_mcp_limit: 60
+  agent_mcp_window_seconds: 60
 
 presence:
   enabled: true
@@ -214,6 +260,7 @@ hot_group:
 ai:
   enabled: true
   runtime_mode: embedded
+  policy_mode: persistent  # set static for an explicit rollback to code-defined grants
   provider: openai
   model: deepseek-chat
   api_key: ""  # set via DIPOLE_AI_API_KEY in .env or environment

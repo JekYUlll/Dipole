@@ -38,6 +38,18 @@ usage() {
   echo "  COMPOSE_FILE Compose file (default: docker-compose.dist.yml)"
   echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
   echo "  GO_BUILD_FLAGS Additional flags passed to go build"
+  echo "  DIPOLE_BUILD_CREATED Override the embedded RFC3339 build time"
+}
+
+freeze_source_metadata() {
+  DIPOLE_VCS_REVISION="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+  DIPOLE_BUILD_CREATED="${DIPOLE_BUILD_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain)" ]]; then
+    DIPOLE_VCS_DIRTY=true
+  else
+    DIPOLE_VCS_DIRTY=false
+  fi
+  export DIPOLE_VCS_REVISION DIPOLE_BUILD_CREATED DIPOLE_VCS_DIRTY
 }
 
 node_services() {
@@ -89,15 +101,21 @@ cmd_backend() {
 	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-backfill" ./cmd/cassandra-backfill
 	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-reconcile" ./cmd/cassandra-reconcile
 	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-cassandra-archive" ./cmd/cassandra-archive
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-agent-artifact-reconcile" ./cmd/agent-artifact-reconcile
+	GOFLAGS=-mod=mod CGO_ENABLED=0 "${GO_BIN}" build ${GO_BUILD_FLAGS:-} -o "${ROOT_DIR}/dist/dipole-agent-artifact-maintenance" ./cmd/agent-artifact-maintenance
   )
-  echo "==> Backend built → dist/dipole-{server,gateway,message,search,sync,sync-replay,sync-reconcile,sync-baseline,migrate,cassandra-projector,search-indexer,search-backfill,search-reconcile,search-alias,search-archive,search-outbox-cleanup,cassandra-backfill,cassandra-reconcile,cassandra-archive}"
+  echo "==> Backend built → dist/dipole-{server,gateway,message,search,sync,sync-replay,sync-reconcile,sync-baseline,migrate,cassandra-projector,search-indexer,search-backfill,search-reconcile,search-alias,search-archive,search-outbox-cleanup,cassandra-backfill,cassandra-reconcile,cassandra-archive,agent-artifact-reconcile,agent-artifact-maintenance}"
 }
 
 cmd_build() {
+  freeze_source_metadata
   cmd_frontend
   cmd_backend
-  echo "==> Building Docker image ${IMAGE_NAME}:${IMAGE_TAG}..."
+  echo "==> Building Docker image ${IMAGE_NAME}:${IMAGE_TAG} (${DIPOLE_VCS_REVISION}, dirty=${DIPOLE_VCS_DIRTY})..."
   docker build \
+    --build-arg DIPOLE_VCS_REVISION="${DIPOLE_VCS_REVISION}" \
+    --build-arg DIPOLE_BUILD_CREATED="${DIPOLE_BUILD_CREATED}" \
+    --build-arg DIPOLE_VCS_DIRTY="${DIPOLE_VCS_DIRTY}" \
     -t "${IMAGE_NAME}:${IMAGE_TAG}" \
     "${ROOT_DIR}"
   echo "==> Done: ${IMAGE_NAME}:${IMAGE_TAG}"

@@ -36,7 +36,7 @@ func NewContextBuilder(capability application.AgentCapabilityV1, maxContextMessa
 func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error) {
 	userUUID = strings.TrimSpace(userUUID)
 	assistantUUID = strings.TrimSpace(assistantUUID)
-	execution, err := requireAuthorizedExecution(ctx, application.AgentCapabilityUserProfileRead)
+	execution, err := requireAuthorizedExecutionForResource(ctx, application.AgentCapabilityUserProfileRead, application.AgentResourceTypeUser, userUUID, application.AgentResourceActionRead)
 	if err != nil {
 		return nil, fmt.Errorf("authorize ai context profile: %w", err)
 	}
@@ -59,7 +59,7 @@ func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assis
 	if assistant == nil || !assistant.IsAssistant() {
 		return nil, ErrAIAssistantNotFound
 	}
-	if err := authorizeExecutionCapability(execution, application.AgentCapabilityDirectMessagesRead); err != nil {
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityDirectMessagesRead, application.AgentResourceTypeConversation, model.DirectConversationKey(userUUID, assistantUUID), application.AgentResourceActionRead); err != nil {
 		return nil, fmt.Errorf("authorize ai context messages: %w", err)
 	}
 

@@ -47,3 +47,21 @@ tests:
       - eval_time: 3m
         alertname: DipoleServiceInstanceDown
         exp_alerts: []
+
+  - name: prolonged critical dependency failure identifies the dependency
+    interval: 1m
+    input_series:
+      - series: 'dipole_dependency_ready{job="dipole-optional",service="dipole-search",dependency="elasticsearch",instance="search:9100"}'
+        values: '0x4'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: DipoleCriticalDependencyNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: dipole-optional
+              service: dipole-search
+              dependency: elasticsearch
+              instance: search:9100
+            exp_annotations:
+              summary: Dipole service critical dependency remains unavailable

@@ -1,0 +1,8 @@
+{
+  "schema_version": "dipole.runtime-image-provenance.v1",
+  "image_id": "sha256:cda2988849d1706154728d4f771ebd52d0ff5d8f95e37201b3f814c9c13e0818",
+  "created": "2026-08-28T06:25:16.981107201+08:00",
+  "revision": "958d40c7910ca8a85c0dad6bf57698ae32f9d42f",
+  "build_created": "2026-08-27T22:24:19Z",
+  "source_dirty": false
+}

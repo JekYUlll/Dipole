@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 var (
@@ -34,21 +35,23 @@ type Service struct {
 	contextBuilder directContextBuilder
 	logs           callLogRepository
 	commands       application.AgentCommandV1
+	policy         application.AgentExecutionPolicyV1
 	agent          Agent
 }
 
-func NewService(builder directContextBuilder, logs callLogRepository, commands application.AgentCommandV1, agent Agent) *Service {
+func NewService(builder directContextBuilder, logs callLogRepository, commands application.AgentCommandV1, policy application.AgentExecutionPolicyV1, agent Agent) *Service {
 	return &Service{
 		config:         config.AIConfig(),
 		contextBuilder: builder,
 		logs:           logs,
 		commands:       commands,
+		policy:         policy,
 		agent:          agent,
 	}
 }
 
 func (s *Service) Enabled() bool {
-	return s != nil && s.config.Enabled && s.agent != nil && s.commands != nil && s.contextBuilder != nil && s.logs != nil
+	return s != nil && s.config.Enabled && s.agent != nil && s.commands != nil && s.policy != nil && s.contextBuilder != nil && s.logs != nil
 }
 
 func (s *Service) AssistantUUID() string {
@@ -96,13 +99,26 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return nil
 	}
 
+	var policyExecution *application.AgentPolicyExecutionV1
 	markFailed := func(err error) error {
+		if policyExecution != nil {
+			_ = s.policy.Fail(ctx, *policyExecution)
+		}
 		latencyMS := time.Since(startedAt).Milliseconds()
 		_ = s.logs.MarkFailed(message.UUID, trimError(err), latencyMS)
 		return err
 	}
 
 	ids := correlation.FromContext(ctx)
+	policyExecution, err = s.policy.Start(ctx, application.AgentExecutionPolicyStartV1{
+		TenantID: defaultAgentTenantID, PrincipalUUID: message.SenderUUID, AgentUUID: assistantUUID,
+		DelegatedByUUID: message.SenderUUID, TriggerType: "message.direct.created", TriggerRef: message.UUID,
+		RequestID: ids.RequestID, TraceID: ids.TraceID, EventID: ids.EventID,
+	})
+	if err != nil {
+		return markFailed(err)
+	}
+	invocation := policyExecution.Invocation
 	execution := newExecutionContext(ExecutionContext{
 		TenantID:           defaultAgentTenantID,
 		PrincipalUserUUID:  message.SenderUUID,
@@ -113,8 +129,9 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		RequestID:          ids.RequestID,
 		TraceID:            ids.TraceID,
 		EventID:            ids.EventID,
-	}, embeddedAgentPermissionsV1(), nil)
+	}, invocation.Permissions, invocation.ApprovedCapabilities, invocation.ResourceScopes)
 	runCtx := withExecutionContext(ctx, execution)
+	runCtx = eventlineage.AgentAction(runCtx, assistantUUID, policyExecution.TaskUUID, ids.EventID)
 
 	conversationContext, err := s.contextBuilder.BuildDirectContext(runCtx, message.SenderUUID, assistantUUID)
 	if err != nil {
@@ -147,6 +164,10 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 
 	usage := extractUsage(reply)
 	latencyMS := time.Since(startedAt).Milliseconds()
+	if err := s.policy.Complete(ctx, *policyExecution); err != nil {
+		return markFailed(err)
+	}
+	policyExecution = nil
 	if err := s.logs.MarkSucceeded(
 		message.UUID,
 		responseMessage.UUID,

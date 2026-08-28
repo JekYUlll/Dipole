@@ -1,0 +1,78 @@
+{
+  "schema_version": "dipole.performance.operations.v3",
+  "run_id": "ad005-4343684-timing-hot-20",
+  "scenario": "group_hot",
+  "captured_at": "20260827T091824Z",
+  "environment": {
+    "git_commit": "4343684011a02112eb3e9233e7c4279bf64a4ee9",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "topology": "docker-compose.dist.yml"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench_group.js",
+    "user_count": 20,
+    "group_size": 20,
+    "phone_prefix": "193",
+    "sender_count": 1,
+    "messages_per_sender": 20,
+    "receiver_conn_ms": 15000,
+    "sender_conn_ms": 15000,
+    "hot_group_warmup_messages": 1,
+    "hot_group_member_count_threshold": 20,
+    "hot_group_message_threshold": 1
+  },
+  "storage": {
+    "direct": {
+      "messages": 0,
+      "inbox_rows": 0
+    },
+    "group": {
+      "messages": 20,
+      "inbox_rows": 0
+    },
+    "conversation_state": {
+      "write_operations": 420,
+      "projection_writes": {
+        "direct_message": 0,
+        "group_init": 20,
+        "group_message": 420
+      },
+      "counter_source": "dipole_conversation_projection_writes_total",
+      "duration_source": "dipole_conversation_projection_write_duration_seconds",
+      "timing": {
+        "direct_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_init": {
+          "success_count": 20,
+          "error_count": 0,
+          "success_sum_seconds": 0.196251996,
+          "average_success_ms": 9.8126,
+          "p95_success_upper_bound_ms": 25.0
+        },
+        "group_message": {
+          "success_count": 420,
+          "error_count": 0,
+          "success_sum_seconds": 5.219101761,
+          "average_success_ms": 12.426433,
+          "p95_success_upper_bound_ms": 25.0
+        }
+      },
+      "rows_touched": 20,
+      "messages_observed": 21
+    }
+  },
+  "kafka_lag_samples": [
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0
+  ]
+}

@@ -76,6 +76,23 @@ func TestAgentCommandV1HasLanguageNeutralContract(t *testing.T) {
 	if len(wantDescriptors) != 0 {
 		t.Fatalf("schema is missing Agent Command descriptors: %#v", wantDescriptors)
 	}
+	properties, ok := schema["properties"].(map[string]any)
+	invocationProperty, ok := properties["invocation"].(map[string]any)
+	invocationProperties, ok := invocationProperty["properties"].(map[string]any)
+	if !ok || invocationProperties["resource_scopes"] == nil {
+		t.Fatalf("Agent Command contract must declare trusted resource_scopes: %#v", invocationProperty)
+	}
+}
+
+func TestAgentMessageCommandToolArgumentsMatchLanguageNeutralGoldenVector(t *testing.T) {
+	digest, err := application.AgentMessageCommandToolArgumentsSHA256V1("U100", "UAI", "notice")
+	if err != nil {
+		t.Fatalf("derive Tool arguments digest: %v", err)
+	}
+	const want = "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9"
+	if digest != want {
+		t.Fatalf("Tool arguments digest = %q, want %q", digest, want)
+	}
 }
 
 func TestAgentMessageCommandV1SerializesWithContractFieldNames(t *testing.T) {
@@ -86,7 +103,8 @@ func TestAgentMessageCommandV1SerializesWithContractFieldNames(t *testing.T) {
 		Kind:      application.AgentMessageCommandAssistantReplyV1,
 		Invocation: application.AgentInvocationV1{
 			TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
-			Permissions: []string{application.AgentPermissionMessageWrite},
+			Permissions:    []string{application.AgentPermissionMessageWrite},
+			ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: "direct:U100:UAI", Actions: []string{application.AgentResourceActionWrite}}},
 		},
 		Content: "hello",
 	})
@@ -101,7 +119,7 @@ func TestAgentMessageCommandV1SerializesWithContractFieldNames(t *testing.T) {
 		t.Fatalf("unexpected command field names: %s", payload)
 	}
 	invocation, ok := envelope["invocation"].(map[string]any)
-	if !ok || invocation["tenant_id"] != "dipole" || invocation["principal_uuid"] != "U100" || invocation["agent_uuid"] != "UAI" {
+	if !ok || invocation["tenant_id"] != "dipole" || invocation["principal_uuid"] != "U100" || invocation["agent_uuid"] != "UAI" || invocation["resource_scopes"] == nil {
 		t.Fatalf("unexpected invocation field names: %s", payload)
 	}
 }

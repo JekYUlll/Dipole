@@ -48,6 +48,38 @@ func TestAIResolvedRuntimeMode(t *testing.T) {
 	}
 }
 
+func TestAIResolvedPolicyMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		config  AI
+		want    string
+		wantErr bool
+	}{
+		{name: "default persistent", config: AI{}, want: AIPolicyPersistent},
+		{name: "explicit persistent", config: AI{PolicyMode: " PERSISTENT "}, want: AIPolicyPersistent},
+		{name: "explicit static rollback", config: AI{PolicyMode: "static"}, want: AIPolicyStatic},
+		{name: "invalid", config: AI{PolicyMode: "dual"}, wantErr: true},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := test.config.ResolvedPolicyMode()
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("expected invalid policy mode rejection, got %q", got)
+				}
+				return
+			}
+			if err != nil || got != test.want {
+				t.Fatalf("resolved policy mode = %q, want %q, err=%v", got, test.want, err)
+			}
+		})
+	}
+}
+
 func TestConfigDistDeclaresAIRuntimeMode(t *testing.T) {
 	t.Parallel()
 
@@ -58,5 +90,8 @@ func TestConfigDistDeclaresAIRuntimeMode(t *testing.T) {
 	}
 	if got := v.GetString("ai.runtime_mode"); got != AIRuntimeEmbedded {
 		t.Fatalf("ai.runtime_mode = %q, want %q", got, AIRuntimeEmbedded)
+	}
+	if got := v.GetString("ai.policy_mode"); got != AIPolicyPersistent {
+		t.Fatalf("ai.policy_mode = %q, want %q", got, AIPolicyPersistent)
 	}
 }

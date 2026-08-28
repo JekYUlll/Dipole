@@ -1,0 +1,37 @@
+{
+  "duration_seconds": 18.653833,
+  "sample_count": 7,
+  "schema_version": "dipole.performance.process-resources.v1",
+  "services": {
+    "dipole-node1": {
+      "cpu_core_percent": 27.233008,
+      "involuntary_context_switches": 932,
+      "pid": 888084,
+      "rss_end_bytes": 73621504,
+      "rss_peak_bytes": 73621504,
+      "rss_start_bytes": 69611520,
+      "thread_peak": 8,
+      "voluntary_context_switches": 173903
+    },
+    "dipole-node2": {
+      "cpu_core_percent": 17.851559,
+      "involuntary_context_switches": 811,
+      "pid": 898410,
+      "rss_end_bytes": 68345856,
+      "rss_peak_bytes": 68345856,
+      "rss_start_bytes": 65785856,
+      "thread_peak": 8,
+      "voluntary_context_switches": 192091
+    },
+    "dipole-node3": {
+      "cpu_core_percent": 17.79795,
+      "involuntary_context_switches": 765,
+      "pid": 887858,
+      "rss_end_bytes": 67137536,
+      "rss_peak_bytes": 67137536,
+      "rss_start_bytes": 66297856,
+      "thread_peak": 8,
+      "voluntary_context_switches": 191745
+    }
+  }
+}

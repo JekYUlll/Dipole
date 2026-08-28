@@ -16,6 +16,7 @@ import (
 	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -106,7 +107,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return fmt.Errorf("compose Agent Capability v1: %w", err)
 		}
-		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability); err != nil {
+		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability, repos.AgentPolicy); err != nil {
 			return err
 		} else if aiService != nil {
 			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))
@@ -118,7 +119,13 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
 	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
 	if hub != nil {
-		registerGatewayKafkaHandlers(hub)
+		authority, err := realtimeDelivery.ParseAuthority(config.RealtimeConfig().Delivery)
+		if err != nil {
+			return err
+		}
+		if err := registerGatewayKafkaHandlers(hub, authority, nil); err != nil {
+			return err
+		}
 	}
 	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout"} {
 		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
@@ -128,18 +135,17 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	return nil
 }
 
-func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender) error {
+func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
 	if hub == nil {
 		return fmt.Errorf("gateway kafka event sender is required")
 	}
-	registerGatewayKafkaHandlers(hub)
-	return nil
+	return registerGatewayKafkaHandlers(hub, authority, fence)
 }
 
-func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
+func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	hotGroups := platformHotGroup.NewRedisDetector()
 	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
@@ -149,8 +155,14 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
 		}
 	}))
 	timelineNotifyMode := config.MessageConfig().TimelineNotifyMode
-	platformKafka.Subscriber.Register("message.direct.created", deliverDirectMessageHandler(hub, timelineNotifyMode))
-	platformKafka.Subscriber.Register("message.group.created", deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode))
+	directHandler, groupHandler, err := gatewayMessageDeliveryHandlers(authority, hub, hotGroups, notifier, timelineNotifyMode)
+	if err != nil {
+		return err
+	}
+	directHandler = fenceMessageDeliveryHandler(authority, fence, directHandler)
+	groupHandler = fenceMessageDeliveryHandler(authority, fence, groupHandler)
+	platformKafka.Subscriber.Register("message.direct.created", directHandler)
+	platformKafka.Subscriber.Register("message.group.created", groupHandler)
 	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
 	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{
@@ -175,6 +187,56 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender) {
 	}))
 	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
+	return nil
+}
+
+func fenceMessageDeliveryHandler(authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence, next platformKafka.Handler) platformKafka.Handler {
+	if fence == nil {
+		return next
+	}
+	return func(ctx context.Context, event platformKafka.Event) error {
+		for {
+			if err := fence.Assert(ctx, authority); err == nil {
+				return next(ctx, event)
+			}
+			timer := time.NewTimer(250 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return fmt.Errorf("wait for realtime delivery authority fence: %w", ctx.Err())
+			case <-timer.C:
+			}
+		}
+	}
+}
+
+func gatewayMessageDeliveryHandlers(
+	authority realtimeDelivery.Authority,
+	hub kafkaWSEventSender,
+	hotGroups groupHeatReader,
+	notifier *hotGroupNotifyAggregator,
+	timelineNotifyMode string,
+) (platformKafka.Handler, platformKafka.Handler, error) {
+	switch authority {
+	case realtimeDelivery.AuthorityGo, realtimeDelivery.AuthorityShadow:
+		return deliverDirectMessageHandler(hub, timelineNotifyMode), deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
+	case realtimeDelivery.AuthorityCPP:
+		return checkpointMessageDeliveryHandler("direct"), checkpointMessageDeliveryHandler("group"), nil
+	default:
+		return nil, nil, fmt.Errorf("unsupported Gateway realtime delivery authority %q", authority)
+	}
+}
+
+func checkpointMessageDeliveryHandler(label string) platformKafka.Handler {
+	return func(_ context.Context, event platformKafka.Event) error {
+		if _, err := decodeMessageEventPayload(event); err != nil {
+			logger.Warn("decode "+label+" message for delivery checkpoint failed", zap.Error(err))
+			return err
+		}
+		return nil
+	}
 }
 
 func RegisterMessageKafkaHandlers(persister kafkaMessagePersister) {
@@ -435,7 +497,7 @@ func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
 	}
 }
 
-func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1) (*aiModule.Service, error) {
+func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1, policyStore applicationPort.AgentPolicyStoreV1) (*aiModule.Service, error) {
 	runsEmbeddedAgent, err := aiConfig.RunsEmbeddedAgent()
 	if err != nil {
 		return nil, fmt.Errorf("resolve AI runtime mode: %w", err)
@@ -452,6 +514,26 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, comma
 	if commands == nil {
 		return nil, fmt.Errorf("Agent Command v1 is required when AI is enabled")
 	}
+	policyMode, err := aiConfig.ResolvedPolicyMode()
+	if err != nil {
+		return nil, fmt.Errorf("resolve AI policy mode: %w", err)
+	}
+	permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+	var executionPolicy applicationPort.AgentExecutionPolicyV1
+	switch policyMode {
+	case config.AIPolicyStatic:
+		executionPolicy, err = appComposition.NewStaticAgentExecutionPolicyV1(permissions, scopes)
+	case config.AIPolicyPersistent:
+		if policyStore == nil {
+			return nil, fmt.Errorf("Agent Policy Store v1 is required in persistent policy mode")
+		}
+		if err = appComposition.EnsureEmbeddedAgentDefinitionV1(context.Background(), policyStore, "dipole", aiConfig.AssistantUUID, permissions, scopes); err == nil {
+			executionPolicy, err = appComposition.NewPersistentAgentExecutionPolicyV1(policyStore)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("compose Agent execution policy: %w", err)
+	}
 
 	contextBuilder := aiModule.NewContextBuilder(capability, aiConfig.MaxContextMessages)
 	agent, err := aiModule.NewConfiguredAgent(
@@ -466,6 +548,7 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, comma
 		contextBuilder,
 		logs,
 		commands,
+		executionPolicy,
 		agent,
 	), nil
 }

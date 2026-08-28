@@ -1,0 +1,42 @@
+rule_files:
+  - agent-otel-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="dipole-otel-collector",instance="otel-collector:8888"}'
+        values: '0 0 0 0 0 0'
+      - series: 'otelcol_exporter_send_failed_spans_total{job="dipole-otel-collector",exporter="otlp_http/tempo"}'
+        values: '0 0 1 1 1 1'
+      - series: 'otelcol_processor_refused_spans_total{job="dipole-otel-collector",processor="memory_limiter"}'
+        values: '0 0 0 1 1 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: DipoleAgentOTelCollectorDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              instance: otel-collector:8888
+              job: dipole-otel-collector
+            exp_annotations:
+              summary: Dipole Agent OpenTelemetry Collector is unreachable
+      - eval_time: 5m
+        alertname: DipoleAgentOTelExportFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              exporter: otlp_http/tempo
+              job: dipole-otel-collector
+            exp_annotations:
+              summary: Dipole Agent trace export is failing
+      - eval_time: 5m
+        alertname: DipoleAgentOTelRefusedSpans
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              processor: memory_limiter
+              job: dipole-otel-collector
+            exp_annotations:
+              summary: Dipole Agent spans are being refused

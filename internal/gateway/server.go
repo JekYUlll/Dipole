@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -24,15 +25,22 @@ import (
 )
 
 type Dependencies struct {
-	Messages application.MessageApplication
-	Core     application.CoreCapability
-	Search   application.SearchApplication
-	Presence wsTransport.PresenceTracker
-	Limiter  MessageRateLimiter
+	Messages        application.MessageApplication
+	Core            application.CoreCapability
+	Search          application.SearchApplication
+	AgentTasks      AgentTaskControlApplication
+	AgentMCP        AgentMCPApplication
+	Presence        wsTransport.PresenceTracker
+	Limiter         MessageRateLimiter
+	AgentMCPLimiter AgentMCPRateLimiter
 }
 
 type MessageRateLimiter interface {
 	AllowMessageSend(userUUID string) (bool, time.Duration)
+}
+
+type AgentMCPRateLimiter interface {
+	AllowAgentMCP(principalUUID string) (bool, time.Duration)
 }
 
 type Server struct {
@@ -75,6 +83,24 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
 		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
 	}
+	if dependencies.AgentTasks != nil {
+		auth := middleware.Auth(tokenService, userFinder)
+		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
+		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
+	}
+	if dependencies.AgentMCP != nil {
+		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
+			return nil, errors.New("gateway Agent MCP resource is invalid")
+		}
+		auth := middleware.AgentMCPAuth(tokenService, userFinder)
+		agentMCPLimiter := dependencies.AgentMCPLimiter
+		if agentMCPLimiter == nil {
+			agentMCPLimiter = platformRateLimit.NewLimiter()
+		}
+		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP, agentMCPLimiter))
+	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
 		logger.Warn("gateway core proxy failed", zap.Error(proxyErr))
@@ -85,6 +111,118 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func agentMCPHandler(proxy AgentMCPApplication, limiter AgentMCPRateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodPost && c.Request.Method != http.MethodDelete {
+			c.Status(http.StatusMethodNotAllowed)
+			return
+		}
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		if c.Request.Method != http.MethodDelete {
+			allowed, retryAfter := limiter.AllowAgentMCP(user.UUID)
+			if !allowed {
+				seconds := int((retryAfter + time.Second - 1) / time.Second)
+				if seconds < 1 {
+					seconds = 1
+				}
+				c.Header("Retry-After", fmt.Sprintf("%d", seconds))
+				c.JSON(http.StatusTooManyRequests, gin.H{"code": http.StatusTooManyRequests, "message": "Agent MCP rate limit exceeded"})
+				return
+			}
+		}
+		proxy.ServeMCP(c.Writer, c.Request, user.UUID, c.Param("task_id"), c.Param("run_id"))
+	}
+}
+
+func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		result, err := tasks.GetTask(c.Request.Context(), user.UUID, c.Param("task_id"))
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskCancelHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Reason string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		var body requestBody
+		if c.Request.ContentLength > 0 && c.ShouldBindJSON(&body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid cancellation request"})
+			return
+		}
+		result, err := tasks.CancelTask(c.Request.Context(), user.UUID, c.Param("task_id"), body.Reason)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskApprovalHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Decision string `json:"decision"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil || (body.Decision != "approved" && body.Decision != "denied") {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "approval decision must be approved or denied"})
+			return
+		}
+		result, err := tasks.ResolveApproval(c.Request.Context(), user.UUID, c.Param("task_id"), c.Param("approval_id"), body.Decision)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskInputHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Value any `json:"value" binding:"required"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32*1024)
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Task input"})
+			return
+		}
+		result, err := tasks.ProvideInput(c.Request.Context(), user.UUID, c.Param("task_id"), c.Param("request_id"), body.Value)
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func writeAgentTaskControlResult(c *gin.Context, result *AgentTaskControlResult, err error) {
+	if err != nil || result == nil {
+		c.JSON(http.StatusBadGateway, gin.H{"code": http.StatusBadGateway, "message": "Agent Task control runtime unavailable"})
+		return
+	}
+	contentType := result.ContentType
+	if contentType == "" {
+		contentType = "application/json; charset=utf-8"
+	}
+	c.Data(result.StatusCode, contentType, result.Body)
 }
 
 func (s *Server) Run(address string) error {

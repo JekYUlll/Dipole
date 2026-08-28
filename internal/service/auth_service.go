@@ -38,6 +38,21 @@ type AuthResult struct {
 	User  *model.User `json:"user"`
 }
 
+type AgentMCPGrantInput struct {
+	UserUUID string
+	Resource string
+	Scopes   []string
+	Consent  bool
+}
+
+type AgentMCPGrantResult struct {
+	AccessToken string
+	TokenType   string
+	ExpiresIn   int
+	Resource    string
+	Scope       string
+}
+
 type authRepository interface {
 	Create(user *model.User) error
 	GetByTelephone(telephone string) (*model.User, error)
@@ -45,6 +60,7 @@ type authRepository interface {
 
 type tokenIssuer interface {
 	Issue(user *model.User) (string, error)
+	IssueAgentMCPAccessToken(userUUID, resource string, scopes []string, consent bool) (string, error)
 	Revoke(token string) error
 }
 
@@ -137,6 +153,20 @@ func (s *AuthService) Logout(token string) error {
 	}
 
 	return nil
+}
+
+func (s *AuthService) IssueAgentMCPGrant(input AgentMCPGrantInput) (*AgentMCPGrantResult, error) {
+	token, err := s.tokenService.IssueAgentMCPAccessToken(input.UserUUID, input.Resource, input.Scopes, input.Consent)
+	if err != nil {
+		return nil, err
+	}
+	return &AgentMCPGrantResult{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   int(agentMCPTokenTTL.Seconds()),
+		Resource:    AgentMCPResourceIdentifier(),
+		Scope:       AgentMCPReadScope,
+	}, nil
 }
 
 func generateUserUUID() string {

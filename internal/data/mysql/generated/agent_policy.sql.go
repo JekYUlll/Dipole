@@ -36,6 +36,22 @@ func (q *Queries) ApproveAgentApproval(ctx context.Context, arg ApproveAgentAppr
 	return result.RowsAffected()
 }
 
+const approveAgentWorkflowRepairProposal = `-- name: ApproveAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'approved', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP()
+  AND (SELECT COUNT(*) FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'approved') >= p.required_approvals
+  AND NOT EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected')
+`
+
+func (q *Queries) ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, approveAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const consumeAgentApproval = `-- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)
@@ -79,8 +95,138 @@ func (q *Queries) ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentAppr
 	return result.RowsAffected()
 }
 
+const countAgentWorkflowRepairDecisions = `-- name: CountAgentWorkflowRepairDecisions :one
+SELECT
+    CAST(SUM(decision = 'approved') AS UNSIGNED) AS approved_count,
+    CAST(SUM(decision = 'rejected') AS UNSIGNED) AS rejected_count
+FROM agent_workflow_repair_decisions
+WHERE proposal_uuid = ?
+`
+
+type CountAgentWorkflowRepairDecisionsRow struct {
+	ApprovedCount int64
+	RejectedCount int64
+}
+
+func (q *Queries) CountAgentWorkflowRepairDecisions(ctx context.Context, proposalUuid string) (CountAgentWorkflowRepairDecisionsRow, error) {
+	row := q.db.QueryRowContext(ctx, countAgentWorkflowRepairDecisions, proposalUuid)
+	var i CountAgentWorkflowRepairDecisionsRow
+	err := row.Scan(&i.ApprovedCount, &i.RejectedCount)
+	return i, err
+}
+
+const denyAgentApproval = `-- name: DenyAgentApproval :execrows
+UPDATE agent_approvals
+SET status = 'revoked', revoked_at = ?, updated_at = NOW(3)
+WHERE approval_uuid = ? AND status = 'pending' AND consumed_at IS NULL AND revoked_at IS NULL
+`
+
+type DenyAgentApprovalParams struct {
+	RevokedAt    sql.NullTime
+	ApprovalUuid string
+}
+
+func (q *Queries) DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, denyAgentApproval, arg.RevokedAt, arg.ApprovalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const expireAgentWorkflowRepairProposal = `-- name: ExpireAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals
+SET status = 'expired', decided_at = UTC_TIMESTAMP()
+WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP()
+`
+
+func (q *Queries) ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, expireAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getActiveAgentRuntimePromotionGrant = `-- name: GetActiveAgentRuntimePromotionGrant :one
+SELECT grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_runtime_promotion_grants
+WHERE tenant_id = ? AND runtime_id = ? AND candidate_version = ?
+  AND definition_uuid = ? AND definition_version = ?
+  AND valid_from <= ? AND expires_at > ? AND revoked_at IS NULL
+LIMIT 1
+`
+
+type GetActiveAgentRuntimePromotionGrantParams struct {
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+}
+
+func (q *Queries) GetActiveAgentRuntimePromotionGrant(ctx context.Context, arg GetActiveAgentRuntimePromotionGrantParams) (AgentRuntimePromotionGrant, error) {
+	row := q.db.QueryRowContext(ctx, getActiveAgentRuntimePromotionGrant,
+		arg.TenantID,
+		arg.RuntimeID,
+		arg.CandidateVersion,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.ValidFrom,
+		arg.ExpiresAt,
+	)
+	var i AgentRuntimePromotionGrant
+	err := row.Scan(
+		&i.GrantUuid,
+		&i.TenantID,
+		&i.RuntimeID,
+		&i.CandidateVersion,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.PolicyVersion,
+		&i.EvidenceSha256,
+		&i.EvalSuiteSha256,
+		&i.GrantedByUuid,
+		&i.ReviewedByUuid,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getAgentApproval = `-- name: GetAgentApproval :one
+SELECT id, approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256, arguments_sha256, nonce_sha256, status, expires_at, consumed_at, revoked_at, created_at, updated_at, approved_by_uuid FROM agent_approvals WHERE approval_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentApproval(ctx context.Context, approvalUuid string) (AgentApproval, error) {
+	row := q.db.QueryRowContext(ctx, getAgentApproval, approvalUuid)
+	var i AgentApproval
+	err := row.Scan(
+		&i.ID,
+		&i.ApprovalUuid,
+		&i.TaskUuid,
+		&i.CapabilityID,
+		&i.ResourceScopeJson,
+		&i.ScopeSha256,
+		&i.ArgumentsSha256,
+		&i.NonceSha256,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ApprovedByUuid,
+	)
+	return i, err
+}
+
 const getAgentDefinitionVersion = `-- name: GetAgentDefinitionVersion :one
-SELECT id, definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_definition_versions
+SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
 WHERE definition_uuid = ? AND version = ?
 LIMIT 1
 `
@@ -98,11 +244,97 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 		&i.DefinitionUuid,
 		&i.Version,
 		&i.TenantID,
-		&i.OwnerUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.PermissionsJson,
 		&i.ScopesJson,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OwnerUuid,
+		&i.AgentUuid,
+	)
+	return i, err
+}
+
+const getAgentEventSubscription = `-- name: GetAgentEventSubscription :one
+SELECT id, subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid, status, event_type, resource_type, resource_id, filter_kind, filter_json, created_at, revoked_at, revoked_by_uuid, revoke_reason, updated_at, created_by_uuid FROM agent_event_subscriptions
+WHERE subscription_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUuid string) (AgentEventSubscription, error) {
+	row := q.db.QueryRowContext(ctx, getAgentEventSubscription, subscriptionUuid)
+	var i AgentEventSubscription
+	err := row.Scan(
+		&i.ID,
+		&i.SubscriptionUuid,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.TenantID,
+		&i.AgentUuid,
+		&i.Status,
+		&i.EventType,
+		&i.ResourceType,
+		&i.ResourceID,
+		&i.FilterKind,
+		&i.FilterJson,
+		&i.CreatedAt,
+		&i.RevokedAt,
+		&i.RevokedByUuid,
+		&i.RevokeReason,
+		&i.UpdatedAt,
+		&i.CreatedByUuid,
+	)
+	return i, err
+}
+
+const getAgentRun = `-- name: GetAgentRun :one
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version FROM agent_runs WHERE run_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error) {
+	row := q.db.QueryRowContext(ctx, getAgentRun, runUuid)
+	var i AgentRun
+	err := row.Scan(
+		&i.ID,
+		&i.RunUuid,
+		&i.TaskUuid,
+		&i.RuntimeID,
+		&i.Mode,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CandidateVersion,
+	)
+	return i, err
+}
+
+const getAgentRuntimePromotionGrant = `-- name: GetAgentRuntimePromotionGrant :one
+SELECT grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_runtime_promotion_grants
+WHERE grant_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error) {
+	row := q.db.QueryRowContext(ctx, getAgentRuntimePromotionGrant, grantUuid)
+	var i AgentRuntimePromotionGrant
+	err := row.Scan(
+		&i.GrantUuid,
+		&i.TenantID,
+		&i.RuntimeID,
+		&i.CandidateVersion,
+		&i.DefinitionUuid,
+		&i.DefinitionVersion,
+		&i.PolicyVersion,
+		&i.EvidenceSha256,
+		&i.EvalSuiteSha256,
+		&i.GrantedByUuid,
+		&i.ReviewedByUuid,
 		&i.ValidFrom,
 		&i.ExpiresAt,
 		&i.RevokedAt,
@@ -113,7 +345,7 @@ func (q *Queries) GetAgentDefinitionVersion(ctx context.Context, arg GetAgentDef
 }
 
 const getAgentTask = `-- name: GetAgentTask :one
-SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal, created_at, updated_at FROM agent_tasks WHERE task_uuid = ? LIMIT 1
+SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at, trigger_subscription_uuid FROM agent_tasks WHERE task_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error) {
@@ -125,12 +357,90 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 		&i.DefinitionUuid,
 		&i.DefinitionVersion,
 		&i.TenantID,
-		&i.PrincipalUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.TriggerType,
 		&i.TriggerRef,
 		&i.Goal,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PrincipalUuid,
+		&i.AgentUuid,
+		&i.WorkflowID,
+		&i.WorkflowRunID,
+		&i.WorkflowStatus,
+		&i.WorkflowRevision,
+		&i.WorkflowUpdatedAt,
+		&i.TriggerSubscriptionUuid,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairDecision = `-- name: GetAgentWorkflowRepairDecision :one
+SELECT proposal_uuid, approver_uuid, decision, decided_at, created_at FROM agent_workflow_repair_decisions WHERE proposal_uuid = ? AND approver_uuid = ? LIMIT 1
+`
+
+type GetAgentWorkflowRepairDecisionParams struct {
+	ProposalUuid string
+	ApproverUuid string
+}
+
+func (q *Queries) GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAgentWorkflowRepairDecisionParams) (AgentWorkflowRepairDecision, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairDecision, arg.ProposalUuid, arg.ApproverUuid)
+	var i AgentWorkflowRepairDecision
+	err := row.Scan(
+		&i.ProposalUuid,
+		&i.ApproverUuid,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairOperatorGrant = `-- name: GetAgentWorkflowRepairOperatorGrant :one
+SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userUuid string) (AgentWorkflowRepairOperatorGrant, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairOperatorGrant, userUuid)
+	var i AgentWorkflowRepairOperatorGrant
+	err := row.Scan(
+		&i.UserUuid,
+		&i.CanPropose,
+		&i.CanApprove,
+		&i.GrantedByUuid,
+		&i.ValidFrom,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getAgentWorkflowRepairProposal = `-- name: GetAgentWorkflowRepairProposal :one
+SELECT proposal_uuid, task_uuid, outcome, action, proposer_uuid, ticket_ref, reason, projected_json, temporal_json, evidence_sha256, status, required_approvals, proposed_at, expires_at, decided_at, created_at, updated_at FROM agent_workflow_repair_proposals WHERE proposal_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (AgentWorkflowRepairProposal, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairProposal, proposalUuid)
+	var i AgentWorkflowRepairProposal
+	err := row.Scan(
+		&i.ProposalUuid,
+		&i.TaskUuid,
+		&i.Outcome,
+		&i.Action,
+		&i.ProposerUuid,
+		&i.TicketRef,
+		&i.Reason,
+		&i.ProjectedJson,
+		&i.TemporalJson,
+		&i.EvidenceSha256,
+		&i.Status,
+		&i.RequiredApprovals,
+		&i.ProposedAt,
+		&i.ExpiresAt,
+		&i.DecidedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -138,7 +448,7 @@ func (q *Queries) GetAgentTask(ctx context.Context, taskUuid string) (AgentTask,
 }
 
 const getLatestAgentDefinition = `-- name: GetLatestAgentDefinition :one
-SELECT id, definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_definition_versions
+SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
 WHERE tenant_id = ? AND agent_uuid = ?
 ORDER BY version DESC
 LIMIT 1
@@ -157,8 +467,6 @@ func (q *Queries) GetLatestAgentDefinition(ctx context.Context, arg GetLatestAge
 		&i.DefinitionUuid,
 		&i.Version,
 		&i.TenantID,
-		&i.OwnerUuid,
-		&i.AgentUuid,
 		&i.Status,
 		&i.PermissionsJson,
 		&i.ScopesJson,
@@ -167,6 +475,8 @@ func (q *Queries) GetLatestAgentDefinition(ctx context.Context, arg GetLatestAge
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OwnerUuid,
+		&i.AgentUuid,
 	)
 	return i, err
 }
@@ -251,24 +561,152 @@ func (q *Queries) InsertAgentDefinitionVersion(ctx context.Context, arg InsertAg
 	return err
 }
 
-const insertAgentTask = `-- name: InsertAgentTask :execrows
-INSERT IGNORE INTO agent_tasks (
-    task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid,
-    agent_uuid, status, trigger_type, trigger_ref, goal, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+const insertAgentEventSubscription = `-- name: InsertAgentEventSubscription :execrows
+INSERT IGNORE INTO agent_event_subscriptions (
+    subscription_uuid, definition_uuid, definition_version, tenant_id, agent_uuid,
+    status, event_type, resource_type, resource_id, filter_kind, filter_json, created_by_uuid,
+    created_at, updated_at, revoked_at, revoked_by_uuid, revoke_reason
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3), ?, ?, ?)
 `
 
-type InsertAgentTaskParams struct {
-	TaskUuid          string
+type InsertAgentEventSubscriptionParams struct {
+	SubscriptionUuid  string
 	DefinitionUuid    string
 	DefinitionVersion uint64
 	TenantID          string
-	PrincipalUuid     string
 	AgentUuid         string
 	Status            string
-	TriggerType       string
-	TriggerRef        string
-	Goal              string
+	EventType         string
+	ResourceType      string
+	ResourceID        string
+	FilterKind        string
+	FilterJson        json.RawMessage
+	CreatedByUuid     string
+	RevokedAt         sql.NullTime
+	RevokedByUuid     sql.NullString
+	RevokeReason      sql.NullString
+}
+
+func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentEventSubscription,
+		arg.SubscriptionUuid,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.TenantID,
+		arg.AgentUuid,
+		arg.Status,
+		arg.EventType,
+		arg.ResourceType,
+		arg.ResourceID,
+		arg.FilterKind,
+		arg.FilterJson,
+		arg.CreatedByUuid,
+		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentRun = `-- name: InsertAgentRun :execrows
+INSERT INTO agent_runs (
+    run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at
+) VALUES (?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
+`
+
+type InsertAgentRunParams struct {
+	RunUuid          string
+	TaskUuid         string
+	RuntimeID        string
+	CandidateVersion sql.NullString
+	Mode             string
+}
+
+func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentRun,
+		arg.RunUuid,
+		arg.TaskUuid,
+		arg.RuntimeID,
+		arg.CandidateVersion,
+		arg.Mode,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentRuntimePromotionGrant = `-- name: InsertAgentRuntimePromotionGrant :execrows
+INSERT IGNORE INTO agent_runtime_promotion_grants (
+    grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid,
+    definition_version, policy_version, evidence_sha256, eval_suite_sha256,
+    granted_by_uuid, reviewed_by_uuid, valid_from, expires_at, revoked_at,
+    created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+`
+
+type InsertAgentRuntimePromotionGrantParams struct {
+	GrantUuid         string
+	TenantID          string
+	RuntimeID         string
+	CandidateVersion  string
+	DefinitionUuid    string
+	DefinitionVersion uint64
+	PolicyVersion     string
+	EvidenceSha256    string
+	EvalSuiteSha256   string
+	GrantedByUuid     string
+	ReviewedByUuid    string
+	ValidFrom         time.Time
+	ExpiresAt         time.Time
+	RevokedAt         sql.NullTime
+}
+
+func (q *Queries) InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentRuntimePromotionGrant,
+		arg.GrantUuid,
+		arg.TenantID,
+		arg.RuntimeID,
+		arg.CandidateVersion,
+		arg.DefinitionUuid,
+		arg.DefinitionVersion,
+		arg.PolicyVersion,
+		arg.EvidenceSha256,
+		arg.EvalSuiteSha256,
+		arg.GrantedByUuid,
+		arg.ReviewedByUuid,
+		arg.ValidFrom,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentTask = `-- name: InsertAgentTask :execrows
+INSERT IGNORE INTO agent_tasks (
+    task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid,
+    agent_uuid, status, trigger_type, trigger_ref, trigger_subscription_uuid, goal, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3))
+`
+
+type InsertAgentTaskParams struct {
+	TaskUuid                string
+	DefinitionUuid          string
+	DefinitionVersion       uint64
+	TenantID                string
+	PrincipalUuid           string
+	AgentUuid               string
+	Status                  string
+	TriggerType             string
+	TriggerRef              string
+	TriggerSubscriptionUuid sql.NullString
+	Goal                    string
 }
 
 func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error) {
@@ -282,8 +720,399 @@ func (q *Queries) InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams
 		arg.Status,
 		arg.TriggerType,
 		arg.TriggerRef,
+		arg.TriggerSubscriptionUuid,
 		arg.Goal,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentWorkflowRepairDecision = `-- name: InsertAgentWorkflowRepairDecision :execrows
+INSERT IGNORE INTO agent_workflow_repair_decisions (
+    proposal_uuid, approver_uuid, decision, decided_at
+)
+SELECT ?, ?, ?, UTC_TIMESTAMP()
+FROM agent_workflow_repair_proposals AS p
+WHERE p.proposal_uuid = ? AND p.proposer_uuid <> ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMESTAMP()
+`
+
+type InsertAgentWorkflowRepairDecisionParams struct {
+	ProposalUuid   string
+	ApproverUuid   string
+	Decision       string
+	ProposalUuid_2 string
+	ProposerUuid   string
+}
+
+func (q *Queries) InsertAgentWorkflowRepairDecision(ctx context.Context, arg InsertAgentWorkflowRepairDecisionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairDecision,
+		arg.ProposalUuid,
+		arg.ApproverUuid,
+		arg.Decision,
+		arg.ProposalUuid_2,
+		arg.ProposerUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentWorkflowRepairProposal = `-- name: InsertAgentWorkflowRepairProposal :execrows
+INSERT IGNORE INTO agent_workflow_repair_proposals (
+    proposal_uuid, task_uuid, outcome, action, proposer_uuid, ticket_ref, reason,
+    projected_json, temporal_json, evidence_sha256, status, required_approvals, proposed_at, expires_at
+) VALUES (?, ?, ?, 'reproject_from_temporal', ?, ?, ?, ?, ?, ?, 'proposed', 2, ?, ?)
+`
+
+type InsertAgentWorkflowRepairProposalParams struct {
+	ProposalUuid   string
+	TaskUuid       string
+	Outcome        string
+	ProposerUuid   string
+	TicketRef      string
+	Reason         string
+	ProjectedJson  json.RawMessage
+	TemporalJson   json.RawMessage
+	EvidenceSha256 string
+	ProposedAt     time.Time
+	ExpiresAt      time.Time
+}
+
+func (q *Queries) InsertAgentWorkflowRepairProposal(ctx context.Context, arg InsertAgentWorkflowRepairProposalParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairProposal,
+		arg.ProposalUuid,
+		arg.TaskUuid,
+		arg.Outcome,
+		arg.ProposerUuid,
+		arg.TicketRef,
+		arg.Reason,
+		arg.ProjectedJson,
+		arg.TemporalJson,
+		arg.EvidenceSha256,
+		arg.ProposedAt,
+		arg.ExpiresAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const listAgentTaskWorkflowProjectionSnapshots = `-- name: ListAgentTaskWorkflowProjectionSnapshots :many
+SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
+       t.workflow_revision, t.workflow_updated_at
+FROM agent_tasks AS t
+JOIN agent_runs AS r ON r.task_uuid = t.task_uuid
+WHERE r.runtime_id = ? AND r.mode = ? AND t.task_uuid > ?
+ORDER BY t.task_uuid ASC
+LIMIT ?
+`
+
+type ListAgentTaskWorkflowProjectionSnapshotsParams struct {
+	RuntimeID string
+	Mode      string
+	TaskUuid  string
+	Limit     int32
+}
+
+type ListAgentTaskWorkflowProjectionSnapshotsRow struct {
+	TaskUuid          string
+	WorkflowID        sql.NullString
+	WorkflowRunID     sql.NullString
+	WorkflowStatus    sql.NullString
+	WorkflowRevision  sql.NullInt64
+	WorkflowUpdatedAt sql.NullTime
+}
+
+func (q *Queries) ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAgentTaskWorkflowProjectionSnapshots,
+		arg.RuntimeID,
+		arg.Mode,
+		arg.TaskUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAgentTaskWorkflowProjectionSnapshotsRow{}
+	for rows.Next() {
+		var i ListAgentTaskWorkflowProjectionSnapshotsRow
+		if err := rows.Scan(
+			&i.TaskUuid,
+			&i.WorkflowID,
+			&i.WorkflowRunID,
+			&i.WorkflowStatus,
+			&i.WorkflowRevision,
+			&i.WorkflowUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listApprovedAgentApprovalGrants = `-- name: ListApprovedAgentApprovalGrants :many
+SELECT id, approval_uuid, task_uuid, capability_id, resource_scope_json, scope_sha256, arguments_sha256, nonce_sha256, status, expires_at, consumed_at, revoked_at, created_at, updated_at, approved_by_uuid
+FROM agent_approvals
+WHERE task_uuid = ?
+  AND capability_id = ?
+  AND scope_sha256 = ?
+  AND arguments_sha256 = ?
+  AND status = 'approved'
+  AND consumed_at IS NULL
+  AND revoked_at IS NULL
+  AND expires_at > ?
+ORDER BY id
+LIMIT ?
+`
+
+type ListApprovedAgentApprovalGrantsParams struct {
+	TaskUuid        string
+	CapabilityID    string
+	ScopeSha256     string
+	ArgumentsSha256 string
+	ExpiresAt       time.Time
+	Limit           int32
+}
+
+func (q *Queries) ListApprovedAgentApprovalGrants(ctx context.Context, arg ListApprovedAgentApprovalGrantsParams) ([]AgentApproval, error) {
+	rows, err := q.db.QueryContext(ctx, listApprovedAgentApprovalGrants,
+		arg.TaskUuid,
+		arg.CapabilityID,
+		arg.ScopeSha256,
+		arg.ArgumentsSha256,
+		arg.ExpiresAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentApproval{}
+	for rows.Next() {
+		var i AgentApproval
+		if err := rows.Scan(
+			&i.ID,
+			&i.ApprovalUuid,
+			&i.TaskUuid,
+			&i.CapabilityID,
+			&i.ResourceScopeJson,
+			&i.ScopeSha256,
+			&i.ArgumentsSha256,
+			&i.NonceSha256,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.ConsumedAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ApprovedByUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchingAgentEventSubscriptions = `-- name: ListMatchingAgentEventSubscriptions :many
+SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at, s.revoked_by_uuid, s.revoke_reason, s.updated_at, s.created_by_uuid
+FROM agent_event_subscriptions AS s
+JOIN agent_definition_versions AS d
+  ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
+WHERE s.tenant_id = ? AND s.agent_uuid = ? AND s.event_type = ?
+  AND s.resource_type = ? AND (s.resource_id = ? OR s.resource_id = '*')
+  AND s.status = 'active' AND s.revoked_at IS NULL
+  AND d.status = 'active' AND d.revoked_at IS NULL
+ORDER BY s.subscription_uuid ASC
+`
+
+type ListMatchingAgentEventSubscriptionsParams struct {
+	TenantID     string
+	AgentUuid    string
+	EventType    string
+	ResourceType string
+	ResourceID   string
+}
+
+func (q *Queries) ListMatchingAgentEventSubscriptions(ctx context.Context, arg ListMatchingAgentEventSubscriptionsParams) ([]AgentEventSubscription, error) {
+	rows, err := q.db.QueryContext(ctx, listMatchingAgentEventSubscriptions,
+		arg.TenantID,
+		arg.AgentUuid,
+		arg.EventType,
+		arg.ResourceType,
+		arg.ResourceID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentEventSubscription{}
+	for rows.Next() {
+		var i AgentEventSubscription
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionUuid,
+			&i.DefinitionUuid,
+			&i.DefinitionVersion,
+			&i.TenantID,
+			&i.AgentUuid,
+			&i.Status,
+			&i.EventType,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.FilterKind,
+			&i.FilterJson,
+			&i.CreatedAt,
+			&i.RevokedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+			&i.UpdatedAt,
+			&i.CreatedByUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOwnedAgentEventSubscriptions = `-- name: ListOwnedAgentEventSubscriptions :many
+SELECT s.id, s.subscription_uuid, s.definition_uuid, s.definition_version, s.tenant_id, s.agent_uuid, s.status, s.event_type, s.resource_type, s.resource_id, s.filter_kind, s.filter_json, s.created_at, s.revoked_at, s.revoked_by_uuid, s.revoke_reason, s.updated_at, s.created_by_uuid
+FROM agent_event_subscriptions AS s
+JOIN agent_definition_versions AS d
+  ON d.definition_uuid = s.definition_uuid AND d.version = s.definition_version
+WHERE s.tenant_id = ? AND s.created_by_uuid = ? AND d.owner_uuid = ?
+  AND s.subscription_uuid > ?
+ORDER BY s.subscription_uuid ASC
+LIMIT ?
+`
+
+type ListOwnedAgentEventSubscriptionsParams struct {
+	TenantID         string
+	CreatedByUuid    string
+	OwnerUuid        string
+	SubscriptionUuid string
+	Limit            int32
+}
+
+func (q *Queries) ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentEventSubscriptions,
+		arg.TenantID,
+		arg.CreatedByUuid,
+		arg.OwnerUuid,
+		arg.SubscriptionUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentEventSubscription{}
+	for rows.Next() {
+		var i AgentEventSubscription
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubscriptionUuid,
+			&i.DefinitionUuid,
+			&i.DefinitionVersion,
+			&i.TenantID,
+			&i.AgentUuid,
+			&i.Status,
+			&i.EventType,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.FilterKind,
+			&i.FilterJson,
+			&i.CreatedAt,
+			&i.RevokedAt,
+			&i.RevokedByUuid,
+			&i.RevokeReason,
+			&i.UpdatedAt,
+			&i.CreatedByUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
+    workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND (workflow_id IS NULL OR (workflow_id = ? AND workflow_run_id = ?))
+  AND (workflow_revision IS NULL OR workflow_revision < ?)
+`
+
+type ProjectAgentTaskWorkflowStateParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) ProjectAgentTaskWorkflowState(ctx context.Context, arg ProjectAgentTaskWorkflowStateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, projectAgentTaskWorkflowState,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowRevision_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const rejectAgentWorkflowRepairProposal = `-- name: RejectAgentWorkflowRepairProposal :execrows
+UPDATE agent_workflow_repair_proposals AS p
+SET p.status = 'rejected', p.decided_at = UTC_TIMESTAMP()
+WHERE p.proposal_uuid = ? AND p.status = 'proposed'
+  AND EXISTS (SELECT 1 FROM agent_workflow_repair_decisions AS d WHERE d.proposal_uuid = p.proposal_uuid AND d.decision = 'rejected')
+`
+
+func (q *Queries) RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, rejectAgentWorkflowRepairProposal, proposalUuid)
 	if err != nil {
 		return 0, err
 	}
@@ -323,6 +1152,79 @@ type RevokeAgentDefinitionVersionParams struct {
 
 func (q *Queries) RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentDefinitionVersion, arg.RevokedAt, arg.DefinitionUuid, arg.Version)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAgentEventSubscription = `-- name: RevokeAgentEventSubscription :execrows
+UPDATE agent_event_subscriptions
+SET status = 'revoked', revoked_at = ?, revoked_by_uuid = ?, revoke_reason = ?, updated_at = ?
+WHERE subscription_uuid = ? AND status = 'active' AND revoked_at IS NULL
+`
+
+type RevokeAgentEventSubscriptionParams struct {
+	RevokedAt        sql.NullTime
+	RevokedByUuid    sql.NullString
+	RevokeReason     sql.NullString
+	UpdatedAt        time.Time
+	SubscriptionUuid string
+}
+
+func (q *Queries) RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeAgentEventSubscription,
+		arg.RevokedAt,
+		arg.RevokedByUuid,
+		arg.RevokeReason,
+		arg.UpdatedAt,
+		arg.SubscriptionUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const revokeAgentRuntimePromotionGrant = `-- name: RevokeAgentRuntimePromotionGrant :execrows
+UPDATE agent_runtime_promotion_grants
+SET revoked_at = ?, updated_at = NOW(3)
+WHERE grant_uuid = ? AND revoked_at IS NULL
+`
+
+type RevokeAgentRuntimePromotionGrantParams struct {
+	RevokedAt sql.NullTime
+	GrantUuid string
+}
+
+func (q *Queries) RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, revokeAgentRuntimePromotionGrant, arg.RevokedAt, arg.GrantUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const transitionAgentRunStatus = `-- name: TransitionAgentRunStatus :execrows
+UPDATE agent_runs
+SET status = ?, completed_at = UTC_TIMESTAMP(), last_error = ?
+WHERE run_uuid = ? AND status = ?
+`
+
+type TransitionAgentRunStatusParams struct {
+	Status    string
+	LastError sql.NullString
+	RunUuid   string
+	Status_2  string
+}
+
+func (q *Queries) TransitionAgentRunStatus(ctx context.Context, arg TransitionAgentRunStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, transitionAgentRunStatus,
+		arg.Status,
+		arg.LastError,
+		arg.RunUuid,
+		arg.Status_2,
+	)
 	if err != nil {
 		return 0, err
 	}

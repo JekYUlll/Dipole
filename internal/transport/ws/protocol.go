@@ -49,11 +49,12 @@ type InboundEnvelope struct {
 }
 
 type OutboundEvent struct {
-	Type      string `json:"type"`
-	RequestID string `json:"request_id,omitempty"`
-	TraceID   string `json:"trace_id,omitempty"`
-	EventID   string `json:"event_id,omitempty"`
-	Data      any    `json:"data,omitempty"`
+	Type       string `json:"type"`
+	RequestID  string `json:"request_id,omitempty"`
+	TraceID    string `json:"trace_id,omitempty"`
+	EventID    string `json:"event_id,omitempty"`
+	DeliveryID string `json:"delivery_id,omitempty"`
+	Data       any    `json:"data,omitempty"`
 }
 
 type ConnectedEventData struct {

@@ -84,4 +84,8 @@ func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
 	if len(wantDescriptors) != 0 {
 		t.Fatalf("schema is missing Agent Capability descriptors: %#v", wantDescriptors)
 	}
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok || properties["resource_scopes"] == nil {
+		t.Fatalf("Agent Capability contract must declare trusted resource_scopes: %#v", properties)
+	}
 }

@@ -156,12 +156,19 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
 	}
+	if err := configureRuntimeDependencyReadiness(runtime.metrics, metricsCfg,
+		mysqlReadinessProbe("mysql", runtime.db), grpcReadinessProbe("core-rpc", runtime.coreConn),
+	); err != nil {
+		runtime.Close()
+		return nil, fmt.Errorf("configure Sync dependency readiness: %w", err)
+	}
 	runtime.rpc, err = NewSyncRPCServer(rpcCfg, syncApplication)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
+		bindRPCReadiness(runtime.metrics, runtime.rpc)
 		markRuntimeReady(runtime.metrics)
 	}
 	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration))
@@ -202,6 +209,10 @@ func (r *SyncRuntime) Close() {
 	if r == nil {
 		return
 	}
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("Sync Service metrics close failed", zap.Error(err))
+	}
+	r.metrics = nil
 	shutdownSec := r.shutdownSec
 	if shutdownSec <= 0 {
 		shutdownSec = 15
@@ -220,10 +231,6 @@ func (r *SyncRuntime) Close() {
 		r.shadowHydrator.Wait()
 		r.shadowHydrator = nil
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
-		logger.Warn("Sync Service metrics close failed", zap.Error(err))
-	}
-	r.metrics = nil
 	if r.projector {
 		if err := platformkafka.CloseConsumer(); err != nil {
 			logger.Warn("Sync projector Kafka consumer close failed", zap.Error(err))

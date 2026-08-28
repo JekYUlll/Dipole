@@ -30,6 +30,12 @@ Core 监听私网地址或 loopback，公开负载均衡器只连接 Gateway。`
 
 Gateway 不需要 MySQL 环境变量或数据库网络权限。它需要 Redis、Kafka、Core HTTP、Core RPC 和 Message RPC 的网络访问。
 
+## 访问日志安全
+
+Gateway 与 embedded Core 共用 Gin 结构化访问日志。日志中的 `path` 会保留普通 query 诊断信息，并对 token、access/refresh/id token、Authorization、API key、client secret、密码和签名类参数进行大小写无关脱敏；同一键的多个值分别替换为 `REDACTED`。无法安全解析的 query 只记录固定脱敏值，不回退原始 URI。
+
+WebSocket 当前继续兼容 `token`、`access_token` query 和 Bearer Header。新增短期 ticket、签名参数或其他 query credential 时，必须先扩展 `internal/logger` 的敏感键集合和真实 WebSocket 日志 capture 测试。公开 Nginx、Ingress、CDN 和日志 Agent 位于应用脱敏边界之外，需要分别关闭原始 URI、Authorization 与 Cookie 记录，验收日志正文不得出现可重放凭据。
+
 ## 切换顺序
 
 1. 按 [Message Service 手册](MESSAGE-SERVICE-DEPLOYMENT.md) 完成 owner 模式和受限数据库账号验收。
@@ -47,6 +53,7 @@ Gateway 不需要 MySQL 环境变量或数据库网络权限。它需要 Redis�
 - 每条 `message.created` 由 Gateway delivery group 消费并路由到目标 Presence 节点。
 - Core 继续更新 Conversation，Message 继续持久化消息和 Outbox，三类 consumer group 互不竞争。
 - Gateway、Core 和 Message 的 mTLS caller 与证书 CN 一致，伪造 caller 被拒绝。
+- 使用 query token 和 Bearer Header 分别建立 WebSocket，采集应用及前置代理访问日志，确认只出现 `REDACTED` 且无 JWT、共享密钥或 Cookie 正文。
 - SIGTERM 先停止公开 HTTP/WS，再关闭 Kafka、Pub/Sub、RPC 和 Redis 连接。
 
 ## 回滚

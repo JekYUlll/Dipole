@@ -45,6 +45,7 @@ type stubMessageRepository struct {
 	lastUserUUID          string
 	listAfterCallCount    int
 	getByUUIDCalls        int
+	getBySenderErr        error
 	listAfterDelay        time.Duration
 }
 
@@ -88,22 +89,6 @@ func (c *stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, err
 	return nil, nil
 }
 
-func (r *stubMessageRepository) Create(message *model.Message) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.createErr != nil {
-		return r.createErr
-	}
-
-	r.createdMessages = append(r.createdMessages, message)
-	if r.messagesByUUID == nil {
-		r.messagesByUUID = make(map[string]*model.Message)
-	}
-	r.messagesByUUID[message.UUID] = message
-	return nil
-}
-
 func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -119,6 +104,9 @@ func (r *stubMessageRepository) GetByUUID(uuid string) (*model.Message, error) {
 func (r *stubMessageRepository) GetBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.getBySenderErr != nil {
+		return nil, r.getBySenderErr
+	}
 
 	if r.messagesByUUID == nil {
 		return nil, nil
@@ -131,6 +119,33 @@ func (r *stubMessageRepository) GetBySenderAndClientMessageID(senderUUID, client
 	}
 
 	return nil, nil
+}
+
+func TestMessageServiceGetsSenderScopedCommandReceipt(t *testing.T) {
+	t.Parallel()
+
+	existing := &model.Message{UUID: "M100", SenderUUID: "U100", ClientMessageID: "C100", Content: "hello"}
+	repo := &stubMessageRepository{messagesByUUID: map[string]*model.Message{"M100": existing}}
+	messageService := NewMessageService(repo, nil, nil, nil, nil, nil, nil)
+
+	receipt, err := messageService.GetMessageCommandReceipt(" U100 ", " C100 ")
+	if err != nil || receipt.Status != applicationPort.MessageCommandReceiptStatusCommitted || receipt.Message != existing {
+		t.Fatalf("committed receipt=%+v err=%v", receipt, err)
+	}
+	receipt, err = messageService.GetMessageCommandReceipt("U100", "C404")
+	if err != nil || receipt.Status != applicationPort.MessageCommandReceiptStatusAbsent || receipt.Message != nil {
+		t.Fatalf("absent receipt=%+v err=%v", receipt, err)
+	}
+	if _, err := messageService.GetMessageCommandReceipt("U100", " "); !errors.Is(err, applicationPort.ErrMessageClientMessageIDInvalid) {
+		t.Fatalf("blank client message ID error=%v", err)
+	}
+	if _, err := messageService.GetMessageCommandReceipt("U100", strings.Repeat("x", 65)); !errors.Is(err, applicationPort.ErrMessageClientMessageIDInvalid) {
+		t.Fatalf("oversized client message ID error=%v", err)
+	}
+	repo.getBySenderErr = errors.New("metadata unavailable")
+	if _, err := messageService.GetMessageCommandReceipt("U100", "C100"); err == nil || !strings.Contains(err.Error(), "metadata unavailable") {
+		t.Fatalf("repository error=%v", err)
+	}
 }
 
 func (r *stubMessageRepository) GetMetadataByUUID(uuid string) (*model.MessageMetadata, error) {
@@ -156,10 +171,6 @@ func (r *stubMessageRepository) HasConversationMessages(conversationKey string) 
 		return false, r.listErr
 	}
 	return r.hasConversation, nil
-}
-
-func (r *stubMessageRepository) StoreWithOutbox(message *model.Message, event *model.OutboxEvent) error {
-	return r.StoreWithOutboxAndSync(message, func(*model.Message) (*model.OutboxEvent, error) { return event, nil }, nil)
 }
 
 func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error {
@@ -188,12 +199,17 @@ func (r *stubMessageRepository) StoreWithOutboxAndSync(message *model.Message, b
 }
 
 func (r *stubMessageRepository) CreateWithSync(message *model.Message, recipientUUIDs []string) error {
-	if err := r.Create(message); err != nil {
-		return err
-	}
 	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.createErr != nil {
+		return r.createErr
+	}
+	r.createdMessages = append(r.createdMessages, message)
+	if r.messagesByUUID == nil {
+		r.messagesByUUID = make(map[string]*model.Message)
+	}
+	r.messagesByUUID[message.UUID] = message
 	r.syncRecipients = append([]string(nil), recipientUUIDs...)
-	r.mu.Unlock()
 	return nil
 }
 

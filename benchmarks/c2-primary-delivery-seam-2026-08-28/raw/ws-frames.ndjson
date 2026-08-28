@@ -1,0 +1,2 @@
+{"type":"connected","data":{"user_uuid":"U20E2EAB0AA35B218CE5C","connection_count":3,"online_user_count":1}}
+{"type":"primary.probe","request_id":"R-C2-EVIDENCE-ONLINE","trace_id":"T-C2-EVIDENCE-ONLINE","event_id":"E-C2-EVIDENCE-ONLINE","delivery_id":"D-C2-EVIDENCE-ONLINE","data":{"message_id":"M1","content":"primary-once"}}

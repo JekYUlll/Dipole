@@ -29,6 +29,7 @@ type authService interface {
 	Register(input service.RegisterInput) (*service.AuthResult, error)
 	Login(input service.LoginInput) (*service.AuthResult, error)
 	Logout(token string) error
+	IssueAgentMCPGrant(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error)
 }
 
 func NewAuthHandler(service authService) *AuthHandler {
@@ -169,6 +170,45 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	Success(c, gin.H{
 		"message": "logout success",
 	})
+}
+
+// IssueAgentMCPGrant godoc
+// @Summary 签发第一方 Agent MCP 短期访问令牌
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.AgentMCPGrantRequest true "MCP resource、scope 与显式授权"
+// @Success 200 {object} SuccessEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /auth/agent-mcp/token [post]
+func (h *AuthHandler) IssueAgentMCPGrant(c *gin.Context) {
+	user, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authenticated principal is required")
+		return
+	}
+	var request httpdto.AgentMCPGrantRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
+		return
+	}
+	result, err := h.service.IssueAgentMCPGrant(service.AgentMCPGrantInput{
+		UserUUID: user.UUID, Resource: request.Resource, Scopes: request.Scopes, Consent: request.Consent,
+	})
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidAgentMCPGrant) {
+			ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "Agent MCP resource, scope, and consent must match the supported grant")
+			return
+		}
+		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
+	Success(c, httpdto.NewAgentMCPGrantResponse(result))
 }
 
 func formatRetryAfterMessage(message string, retryAfter time.Duration) string {

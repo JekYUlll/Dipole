@@ -67,6 +67,43 @@ func TestLimiterAllowMessageSendUsesUserScopedCounter(t *testing.T) {
 	}
 }
 
+func TestLimiterAllowAgentMCPUsesPrincipalScopedFailClosedCounter(t *testing.T) {
+	cleanup := setupLimiterTest(t)
+	defer cleanup()
+
+	limiter := &Limiter{config: config.RateLimit{AgentMCPLimit: 2, AgentMCPWindowSeconds: 60}}
+	for i := 0; i < 2; i++ {
+		if allowed, retryAfter := limiter.AllowAgentMCP("U100"); !allowed || retryAfter != 0 {
+			t.Fatalf("MCP attempt %d: allowed=%v retryAfter=%s", i+1, allowed, retryAfter)
+		}
+	}
+	if allowed, retryAfter := limiter.AllowAgentMCP("U100"); allowed || retryAfter <= 0 {
+		t.Fatalf("third MCP attempt: allowed=%v retryAfter=%s", allowed, retryAfter)
+	}
+	if allowed, _ := limiter.AllowAgentMCP("U200"); !allowed {
+		t.Fatal("another principal must have an independent MCP budget")
+	}
+	if allowed, retryAfter := (&Limiter{}).AllowAgentMCP("U300"); allowed || retryAfter != time.Minute {
+		t.Fatalf("invalid MCP limit must fail closed: allowed=%v retryAfter=%s", allowed, retryAfter)
+	}
+}
+
+func TestLimiterAllowAgentMCPFailsClosedWithoutRedisAndPreservesMessageFailOpen(t *testing.T) {
+	oldRDB := store.RDB
+	store.RDB = nil
+	t.Cleanup(func() { store.RDB = oldRDB })
+	limiter := &Limiter{config: config.RateLimit{
+		Enabled: true, MessageLimit: 1, MessageWindowSeconds: 60,
+		AgentMCPLimit: 2, AgentMCPWindowSeconds: 60,
+	}}
+	if allowed, retryAfter := limiter.AllowAgentMCP("U100"); allowed || retryAfter != time.Minute {
+		t.Fatalf("MCP dependency failure: allowed=%v retryAfter=%s", allowed, retryAfter)
+	}
+	if allowed, retryAfter := limiter.AllowMessageSend("U100"); !allowed || retryAfter != 0 {
+		t.Fatalf("message compatibility changed: allowed=%v retryAfter=%s", allowed, retryAfter)
+	}
+}
+
 func setupLimiterTest(t *testing.T) func() {
 	t.Helper()
 

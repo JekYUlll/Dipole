@@ -13,18 +13,28 @@ import (
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
-	Users         application.UserStore
-	Messages      application.MessageStore
-	Files         application.FileMetadataStore
-	Conversations application.ConversationStore
-	Contacts      application.ContactStore
-	Groups        application.GroupStore
-	Admin         application.AdminOverviewStore
-	Sync          application.SyncStore
-	Search        application.SearchIndex
-	AICallLogs    application.AICallLogStore
-	AgentPolicy   application.AgentPolicyStoreV1
-	Outbox        application.OutboxRelayStore
+	Users                  application.UserStore
+	Messages               application.MessageStore
+	Files                  application.FileMetadataStore
+	Conversations          application.ConversationStore
+	Contacts               application.ContactStore
+	Groups                 application.GroupStore
+	Admin                  application.AdminOverviewStore
+	Sync                   application.SyncStore
+	Search                 application.SearchIndex
+	AICallLogs             application.AICallLogStore
+	AgentPolicy            application.AgentPolicyStoreV1
+	AgentApprovalGrants    application.AgentApprovalGrantStoreV1
+	AgentPromotions        application.AgentRuntimePromotionGrantStoreV1
+	AgentPromotionControls application.AgentRuntimePromotionControlStoreV1
+	AgentReadinessEvidence application.AgentMCPReadinessEvidenceStoreV1
+	AgentSubscriptions     application.AgentEventSubscriptionStoreV1
+	AgentRepairs           application.AgentWorkflowRepairAuditStoreV1
+	AgentArtifacts         application.AgentArtifactStoreV1
+	AgentMemories          application.AgentMemoryStoreV1
+	AgentToolAudits        application.AgentToolInvocationStoreV1
+	AgentToolRounds        application.AgentMCPToolRoundStoreV1
+	Outbox                 application.OutboxRelayStore
 }
 
 type MessageProcessRepositories struct {
@@ -109,6 +119,30 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
 	}
 	repos.AgentPolicy = agentPolicy
+	repos.AgentApprovalGrants = agentPolicy
+	repos.AgentPromotions = agentPolicy
+	repos.AgentSubscriptions = agentPolicy
+	repos.AgentRepairs = agentPolicy
+	agentArtifacts, err := sqlcRepository.NewAgentArtifactRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
+	}
+	repos.AgentArtifacts = agentArtifacts
+	agentMemories, err := sqlcRepository.NewAgentMemoryRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
+	}
+	repos.AgentMemories = agentMemories
+	agentToolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
+	}
+	repos.AgentToolAudits = agentToolAudits
+	agentToolRounds, err := sqlcRepository.NewAgentMCPToolRoundRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
+	}
+	repos.AgentToolRounds = agentToolRounds
 	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
@@ -133,6 +167,16 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
 	}
+	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
+	}
+	repos.AgentPromotionControls = promotionControls
+	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(generated.New(db))
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
+	}
+	repos.AgentReadinessEvidence = readinessEvidence
 	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc message repository: %w", err)

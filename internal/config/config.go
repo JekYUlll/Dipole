@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -29,8 +30,19 @@ type Server struct {
 }
 
 type Gateway struct {
-	Mode           string `mapstructure:"mode"`
-	CoreHTTPTarget string `mapstructure:"core_http_target"`
+	Mode                string `mapstructure:"mode"`
+	CoreHTTPTarget      string `mapstructure:"core_http_target"`
+	AgentControlEnabled bool   `mapstructure:"agent_control_enabled"`
+	AgentControlTarget  string `mapstructure:"agent_control_target"`
+	AgentMCPEnabled     bool   `mapstructure:"agent_mcp_enabled"`
+	AgentMCPTarget      string `mapstructure:"agent_mcp_target"`
+}
+
+type Realtime struct {
+	Delivery       string `mapstructure:"delivery"`
+	FencingEnabled bool   `mapstructure:"fencing_enabled"`
+	FencingKey     string `mapstructure:"fencing_key"`
+	FencingEpoch   uint64 `mapstructure:"fencing_epoch"`
 }
 
 type TLS struct {
@@ -40,8 +52,13 @@ type TLS struct {
 }
 
 type Metrics struct {
-	Enabled bool   `mapstructure:"enabled"`
-	Address string `mapstructure:"address"`
+	Enabled                        bool   `mapstructure:"enabled"`
+	Address                        string `mapstructure:"address"`
+	DependencyProbesEnabled        bool   `mapstructure:"dependency_probes_enabled"`
+	DependencyProbeIntervalSeconds int    `mapstructure:"dependency_probe_interval_seconds"`
+	DependencyProbeTimeoutMS       int    `mapstructure:"dependency_probe_timeout_ms"`
+	DependencyFailureThreshold     int    `mapstructure:"dependency_failure_threshold"`
+	DependencySuccessThreshold     int    `mapstructure:"dependency_success_threshold"`
 }
 
 type MySQL struct {
@@ -85,9 +102,10 @@ type Elasticsearch struct {
 }
 
 type Auth struct {
-	TokenTTLHours int    `mapstructure:"token_ttl_hours"`
-	JWTSecret     string `mapstructure:"jwt_secret"`
-	JWTIssuer     string `mapstructure:"jwt_issuer"`
+	TokenTTLHours    int    `mapstructure:"token_ttl_hours"`
+	JWTSecret        string `mapstructure:"jwt_secret"`
+	JWTIssuer        string `mapstructure:"jwt_issuer"`
+	AgentMCPResource string `mapstructure:"agent_mcp_resource"`
 }
 
 type Kafka struct {
@@ -136,43 +154,59 @@ type Sync struct {
 }
 
 type InternalRPC struct {
-	Enabled                bool   `mapstructure:"enabled"`
-	SharedSecret           string `mapstructure:"shared_secret"`
-	CoreListenAddress      string `mapstructure:"core_listen_address"`
-	CoreTarget             string `mapstructure:"core_target"`
-	MessageListenAddress   string `mapstructure:"message_listen_address"`
-	MessageTarget          string `mapstructure:"message_target"`
-	SearchListenAddress    string `mapstructure:"search_listen_address"`
-	SearchTarget           string `mapstructure:"search_target"`
-	SyncListenAddress      string `mapstructure:"sync_listen_address"`
-	SyncTarget             string `mapstructure:"sync_target"`
-	DialTimeoutSeconds     int    `mapstructure:"dial_timeout_seconds"`
-	ShutdownTimeoutSeconds int    `mapstructure:"shutdown_timeout_seconds"`
-	TLSEnabled             bool   `mapstructure:"tls_enabled"`
-	TLSCertFile            string `mapstructure:"tls_cert_file"`
-	TLSKeyFile             string `mapstructure:"tls_key_file"`
-	TLSCAFile              string `mapstructure:"tls_ca_file"`
-	TLSServerName          string `mapstructure:"tls_server_name"`
+	Enabled                          bool   `mapstructure:"enabled"`
+	SharedSecret                     string `mapstructure:"shared_secret"`
+	CoreListenAddress                string `mapstructure:"core_listen_address"`
+	CoreTarget                       string `mapstructure:"core_target"`
+	MessageListenAddress             string `mapstructure:"message_listen_address"`
+	MessageTarget                    string `mapstructure:"message_target"`
+	SearchListenAddress              string `mapstructure:"search_listen_address"`
+	SearchTarget                     string `mapstructure:"search_target"`
+	SyncListenAddress                string `mapstructure:"sync_listen_address"`
+	SyncTarget                       string `mapstructure:"sync_target"`
+	DeliveryObservationEnabled       bool   `mapstructure:"delivery_observation_enabled"`
+	DeliveryObservationListenAddress string `mapstructure:"delivery_observation_listen_address"`
+	DeliveryObservationCapacity      int    `mapstructure:"delivery_observation_capacity"`
+	DeliveryObservationRetryAfterMS  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DeliveryPrimaryEnabled           bool   `mapstructure:"delivery_primary_enabled"`
+	DeliveryPrimaryReplayCapacity    int    `mapstructure:"delivery_primary_replay_capacity"`
+	DialTimeoutSeconds               int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds           int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled                       bool   `mapstructure:"tls_enabled"`
+	TLSCertFile                      string `mapstructure:"tls_cert_file"`
+	TLSKeyFile                       string `mapstructure:"tls_key_file"`
+	TLSCAFile                        string `mapstructure:"tls_ca_file"`
+	TLSServerName                    string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
-	Enabled                     bool   `mapstructure:"enabled"`
-	Provider                    string `mapstructure:"provider"`
-	Endpoint                    string `mapstructure:"endpoint"`
-	PresignEndpoint             string `mapstructure:"presign_endpoint"`
-	AccessKey                   string `mapstructure:"access_key"`
-	SecretKey                   string `mapstructure:"secret_key"`
-	UseSSL                      bool   `mapstructure:"use_ssl"`
-	Bucket                      string `mapstructure:"bucket"`
-	SearchArchiveBucket         string `mapstructure:"search_archive_bucket"`
-	SearchArchiveRetentionDays  int    `mapstructure:"search_archive_retention_days"`
-	MessageArchiveBucket        string `mapstructure:"message_archive_bucket"`
-	MessageArchiveRetentionDays int    `mapstructure:"message_archive_retention_days"`
-	PublicBaseURL               string `mapstructure:"public_base_url"`
-	FileMaxSizeMB               int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB        int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin      int    `mapstructure:"multipart_session_ttl_minutes"`
-	DownloadURLTTLMinutes       int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                      bool   `mapstructure:"enabled"`
+	Provider                     string `mapstructure:"provider"`
+	Endpoint                     string `mapstructure:"endpoint"`
+	PresignEndpoint              string `mapstructure:"presign_endpoint"`
+	AccessKey                    string `mapstructure:"access_key"`
+	SecretKey                    string `mapstructure:"secret_key"`
+	UseSSL                       bool   `mapstructure:"use_ssl"`
+	Bucket                       string `mapstructure:"bucket"`
+	SearchArchiveBucket          string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays   int    `mapstructure:"search_archive_retention_days"`
+	MessageArchiveBucket         string `mapstructure:"message_archive_bucket"`
+	MessageArchiveRetentionDays  int    `mapstructure:"message_archive_retention_days"`
+	ArtifactEnabled              bool   `mapstructure:"artifact_enabled"`
+	ArtifactEndpoint             string `mapstructure:"artifact_endpoint"`
+	ArtifactAccessKey            string `mapstructure:"artifact_access_key"`
+	ArtifactSecretKey            string `mapstructure:"artifact_secret_key"`
+	ArtifactUseSSL               bool   `mapstructure:"artifact_use_ssl"`
+	ArtifactBucket               string `mapstructure:"artifact_bucket"`
+	ArtifactAuditAccessKey       string `mapstructure:"artifact_audit_access_key"`
+	ArtifactAuditSecretKey       string `mapstructure:"artifact_audit_secret_key"`
+	ArtifactMaintenanceAccessKey string `mapstructure:"artifact_maintenance_access_key"`
+	ArtifactMaintenanceSecretKey string `mapstructure:"artifact_maintenance_secret_key"`
+	PublicBaseURL                string `mapstructure:"public_base_url"`
+	FileMaxSizeMB                int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB         int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin       int    `mapstructure:"multipart_session_ttl_minutes"`
+	DownloadURLTTLMinutes        int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -185,6 +219,8 @@ type RateLimit struct {
 	MessageWindowSeconds    int  `mapstructure:"message_window_seconds"`
 	FileUploadLimit         int  `mapstructure:"file_upload_limit"`
 	FileUploadWindowSeconds int  `mapstructure:"file_upload_window_seconds"`
+	AgentMCPLimit           int  `mapstructure:"agent_mcp_limit"`
+	AgentMCPWindowSeconds   int  `mapstructure:"agent_mcp_window_seconds"`
 }
 
 type Presence struct {
@@ -204,6 +240,7 @@ type HotGroup struct {
 type AI struct {
 	Enabled            bool   `mapstructure:"enabled"`
 	RuntimeMode        string `mapstructure:"runtime_mode"`
+	PolicyMode         string `mapstructure:"policy_mode"`
 	Provider           string `mapstructure:"provider"`
 	Model              string `mapstructure:"model"`
 	APIKey             string `mapstructure:"api_key"`
@@ -219,10 +256,12 @@ type AI struct {
 }
 
 const (
-	AIRuntimeOff      = "off"
-	AIRuntimeEmbedded = "embedded"
-	AIRuntimeShadow   = "shadow"
-	AIRuntimeRemote   = "remote"
+	AIRuntimeOff       = "off"
+	AIRuntimeEmbedded  = "embedded"
+	AIRuntimeShadow    = "shadow"
+	AIRuntimeRemote    = "remote"
+	AIPolicyStatic     = "static"
+	AIPolicyPersistent = "persistent"
 )
 
 func (a AI) ResolvedRuntimeMode() (string, error) {
@@ -238,6 +277,19 @@ func (a AI) ResolvedRuntimeMode() (string, error) {
 		return mode, nil
 	default:
 		return "", fmt.Errorf("invalid AI runtime mode %q: expected off, embedded, shadow, or remote", a.RuntimeMode)
+	}
+}
+
+func (a AI) ResolvedPolicyMode() (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(a.PolicyMode))
+	if mode == "" {
+		return AIPolicyPersistent, nil
+	}
+	switch mode {
+	case AIPolicyStatic, AIPolicyPersistent:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("invalid AI policy mode %q: expected static or persistent", a.PolicyMode)
 	}
 }
 
@@ -263,13 +315,21 @@ var (
 	once    sync.Once
 )
 
+func configureConfigSource(v *viper.Viper) {
+	if configFile := strings.TrimSpace(os.Getenv("DIPOLE_CONFIG_FILE")); configFile != "" {
+		v.SetConfigFile(configFile)
+		return
+	}
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath("configs")
+	v.AddConfigPath(".")
+}
+
 func Load() error {
 	once.Do(func() {
 		v := viper.New()
-		v.SetConfigName("config")
-		v.SetConfigType("yaml")
-		v.AddConfigPath("configs")
-		v.AddConfigPath(".")
+		configureConfigSource(v)
 
 		v.SetEnvPrefix("DIPOLE")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -289,14 +349,28 @@ func Load() error {
 		v.SetDefault("server.port", 8080)
 		v.SetDefault("gateway.mode", "embedded")
 		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
+		v.SetDefault("gateway.agent_control_enabled", false)
+		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
+		v.SetDefault("gateway.agent_mcp_enabled", false)
+		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
+		v.SetDefault("realtime.delivery", "go")
+		v.SetDefault("realtime.fencing_enabled", false)
+		v.SetDefault("realtime.fencing_key", "dipole:realtime:delivery:authority:v1")
+		v.SetDefault("realtime.fencing_epoch", 0)
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
 		v.SetDefault("metrics.enabled", false)
 		v.SetDefault("metrics.address", "127.0.0.1:9100")
+		v.SetDefault("metrics.dependency_probes_enabled", false)
+		v.SetDefault("metrics.dependency_probe_interval_seconds", 5)
+		v.SetDefault("metrics.dependency_probe_timeout_ms", 1000)
+		v.SetDefault("metrics.dependency_failure_threshold", 3)
+		v.SetDefault("metrics.dependency_success_threshold", 2)
 		v.SetDefault("auth.token_ttl_hours", 168)
 		v.SetDefault("auth.jwt_secret", "dipole-dev-jwt-secret-change-me")
 		v.SetDefault("auth.jwt_issuer", "dipole")
+		v.SetDefault("auth.agent_mcp_resource", "https://dipole.local/api/v1/agent/mcp")
 		v.SetDefault("redis.mode", "single")
 		v.SetDefault("cassandra.enabled", false)
 		v.SetDefault("cassandra.hosts", []string{"127.0.0.1:19042"})
@@ -361,6 +435,12 @@ func Load() error {
 		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.delivery_observation_enabled", false)
+		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
+		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
+		v.SetDefault("internal_rpc.delivery_observation_retry_after_ms", 25)
+		v.SetDefault("internal_rpc.delivery_primary_enabled", false)
+		v.SetDefault("internal_rpc.delivery_primary_replay_capacity", 8192)
 		v.SetDefault("internal_rpc.dial_timeout_seconds", 5)
 		v.SetDefault("internal_rpc.shutdown_timeout_seconds", 15)
 		v.SetDefault("internal_rpc.tls_enabled", false)
@@ -372,14 +452,24 @@ func Load() error {
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
-		v.SetDefault("storage.access_key", "dipoleminio")
-		v.SetDefault("storage.secret_key", "dipoleminiopass")
+		v.SetDefault("storage.access_key", "dipoleplatform")
+		v.SetDefault("storage.secret_key", "dipoleplatformpass")
 		v.SetDefault("storage.use_ssl", false)
 		v.SetDefault("storage.bucket", "dipole-files")
 		v.SetDefault("storage.search_archive_bucket", "dipole-search-archives")
 		v.SetDefault("storage.search_archive_retention_days", 30)
 		v.SetDefault("storage.message_archive_bucket", "dipole-message-archives")
 		v.SetDefault("storage.message_archive_retention_days", 30)
+		v.SetDefault("storage.artifact_enabled", false)
+		v.SetDefault("storage.artifact_endpoint", "127.0.0.1:9000")
+		v.SetDefault("storage.artifact_access_key", "")
+		v.SetDefault("storage.artifact_secret_key", "")
+		v.SetDefault("storage.artifact_use_ssl", false)
+		v.SetDefault("storage.artifact_bucket", "dipole-agent-artifacts")
+		v.SetDefault("storage.artifact_audit_access_key", "")
+		v.SetDefault("storage.artifact_audit_secret_key", "")
+		v.SetDefault("storage.artifact_maintenance_access_key", "")
+		v.SetDefault("storage.artifact_maintenance_secret_key", "")
 		v.SetDefault("storage.public_base_url", "http://127.0.0.1:9000/dipole-files")
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
@@ -394,6 +484,8 @@ func Load() error {
 		v.SetDefault("rate_limit.message_window_seconds", 60)
 		v.SetDefault("rate_limit.file_upload_limit", 10)
 		v.SetDefault("rate_limit.file_upload_window_seconds", 300)
+		v.SetDefault("rate_limit.agent_mcp_limit", 60)
+		v.SetDefault("rate_limit.agent_mcp_window_seconds", 60)
 		v.SetDefault("presence.enabled", true)
 		v.SetDefault("presence.node_id", "")
 		v.SetDefault("presence.ttl_seconds", 120)
@@ -404,6 +496,7 @@ func Load() error {
 		v.SetDefault("hot_group.cooling_seconds", 180)
 		v.SetDefault("ai.enabled", false)
 		v.SetDefault("ai.runtime_mode", "")
+		v.SetDefault("ai.policy_mode", AIPolicyPersistent)
 		v.SetDefault("ai.provider", "openai")
 		v.SetDefault("ai.model", "gpt-4o-mini")
 		v.SetDefault("ai.api_key", "")
@@ -428,6 +521,11 @@ func Load() error {
 			"server.host",
 			"server.port",
 			"gateway.core_http_target",
+			"gateway.agent_control_enabled",
+			"gateway.agent_control_target",
+			"gateway.agent_mcp_enabled",
+			"gateway.agent_mcp_target",
+			"realtime.delivery",
 			"tls.enabled",
 			"tls.cert_file",
 			"tls.key_file",
@@ -515,6 +613,12 @@ func Load() error {
 			"internal_rpc.search_target",
 			"internal_rpc.sync_listen_address",
 			"internal_rpc.sync_target",
+			"internal_rpc.delivery_observation_enabled",
+			"internal_rpc.delivery_observation_listen_address",
+			"internal_rpc.delivery_observation_capacity",
+			"internal_rpc.delivery_observation_retry_after_ms",
+			"internal_rpc.delivery_primary_enabled",
+			"internal_rpc.delivery_primary_replay_capacity",
 			"internal_rpc.dial_timeout_seconds",
 			"internal_rpc.shutdown_timeout_seconds",
 			"internal_rpc.tls_enabled",
@@ -534,6 +638,16 @@ func Load() error {
 			"storage.search_archive_retention_days",
 			"storage.message_archive_bucket",
 			"storage.message_archive_retention_days",
+			"storage.artifact_enabled",
+			"storage.artifact_endpoint",
+			"storage.artifact_access_key",
+			"storage.artifact_secret_key",
+			"storage.artifact_use_ssl",
+			"storage.artifact_bucket",
+			"storage.artifact_audit_access_key",
+			"storage.artifact_audit_secret_key",
+			"storage.artifact_maintenance_access_key",
+			"storage.artifact_maintenance_secret_key",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
 			"storage.download_url_ttl_minutes",
@@ -546,6 +660,8 @@ func Load() error {
 			"rate_limit.message_window_seconds",
 			"rate_limit.file_upload_limit",
 			"rate_limit.file_upload_window_seconds",
+			"rate_limit.agent_mcp_limit",
+			"rate_limit.agent_mcp_window_seconds",
 			"presence.enabled",
 			"presence.node_id",
 			"presence.ttl_seconds",
@@ -556,6 +672,7 @@ func Load() error {
 			"hot_group.cooling_seconds",
 			"ai.enabled",
 			"ai.runtime_mode",
+			"ai.policy_mode",
 			"ai.provider",
 			"ai.model",
 			"ai.api_key",
@@ -630,8 +747,22 @@ func ServerConfig() Server {
 func GatewayConfig() Gateway {
 	MustLoad()
 	return Gateway{
-		Mode:           strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
-		CoreHTTPTarget: strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		Mode:                strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget:      strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		AgentControlEnabled: cfg.GetBool("gateway.agent_control_enabled"),
+		AgentControlTarget:  strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
+		AgentMCPEnabled:     cfg.GetBool("gateway.agent_mcp_enabled"),
+		AgentMCPTarget:      strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
+	}
+}
+
+func RealtimeConfig() Realtime {
+	MustLoad()
+	return Realtime{
+		Delivery:       strings.ToLower(strings.TrimSpace(cfg.GetString("realtime.delivery"))),
+		FencingEnabled: cfg.GetBool("realtime.fencing_enabled"),
+		FencingKey:     strings.TrimSpace(cfg.GetString("realtime.fencing_key")),
+		FencingEpoch:   cfg.GetUint64("realtime.fencing_epoch"),
 	}
 }
 
@@ -660,8 +791,13 @@ func TLSConfig() TLS {
 func MetricsConfig() Metrics {
 	MustLoad()
 	return Metrics{
-		Enabled: cfg.GetBool("metrics.enabled"),
-		Address: strings.TrimSpace(cfg.GetString("metrics.address")),
+		Enabled:                        cfg.GetBool("metrics.enabled"),
+		Address:                        strings.TrimSpace(cfg.GetString("metrics.address")),
+		DependencyProbesEnabled:        cfg.GetBool("metrics.dependency_probes_enabled"),
+		DependencyProbeIntervalSeconds: cfg.GetInt("metrics.dependency_probe_interval_seconds"),
+		DependencyProbeTimeoutMS:       cfg.GetInt("metrics.dependency_probe_timeout_ms"),
+		DependencyFailureThreshold:     cfg.GetInt("metrics.dependency_failure_threshold"),
+		DependencySuccessThreshold:     cfg.GetInt("metrics.dependency_success_threshold"),
 	}
 }
 
@@ -689,10 +825,23 @@ func CassandraConfig() Cassandra {
 
 func ElasticsearchConfig() Elasticsearch {
 	MustLoad()
+	return elasticsearchConfig(cfg)
+}
+
+func elasticsearchConfig(source *viper.Viper) Elasticsearch {
 	var elasticsearch Elasticsearch
-	if err := cfg.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
+	if err := source.UnmarshalKey("elasticsearch", &elasticsearch); err != nil {
 		panic(fmt.Errorf("unmarshal Elasticsearch config: %w", err))
 	}
+	elasticsearch.Enabled = source.GetBool("elasticsearch.enabled")
+	elasticsearch.Address = source.GetString("elasticsearch.address")
+	elasticsearch.IndexPrefix = source.GetString("elasticsearch.index_prefix")
+	elasticsearch.Shards = source.GetInt("elasticsearch.shards")
+	elasticsearch.Replicas = source.GetInt("elasticsearch.replicas")
+	elasticsearch.RequestTimeoutSeconds = source.GetInt("elasticsearch.request_timeout_seconds")
+	elasticsearch.Username = source.GetString("elasticsearch.username")
+	elasticsearch.Password = source.GetString("elasticsearch.password")
+	elasticsearch.APIKey = source.GetString("elasticsearch.api_key")
 	return elasticsearch
 }
 
@@ -706,6 +855,7 @@ func AuthConfig() Auth {
 	auth.TokenTTLHours = cfg.GetInt("auth.token_ttl_hours")
 	auth.JWTSecret = cfg.GetString("auth.jwt_secret")
 	auth.JWTIssuer = cfg.GetString("auth.jwt_issuer")
+	auth.AgentMCPResource = cfg.GetString("auth.agent_mcp_resource")
 
 	return auth
 }
@@ -832,6 +982,14 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.MessageTarget = strings.TrimSpace(cfg.GetString("internal_rpc.message_target"))
 	internalRPC.SearchListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.search_listen_address"))
 	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
+	internalRPC.SyncListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.sync_listen_address"))
+	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
+	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
+	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
+	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")
+	internalRPC.DeliveryObservationRetryAfterMS = cfg.GetInt("internal_rpc.delivery_observation_retry_after_ms")
+	internalRPC.DeliveryPrimaryEnabled = cfg.GetBool("internal_rpc.delivery_primary_enabled")
+	internalRPC.DeliveryPrimaryReplayCapacity = cfg.GetInt("internal_rpc.delivery_primary_replay_capacity")
 	internalRPC.DialTimeoutSeconds = cfg.GetInt("internal_rpc.dial_timeout_seconds")
 	internalRPC.ShutdownTimeoutSeconds = cfg.GetInt("internal_rpc.shutdown_timeout_seconds")
 	internalRPC.TLSEnabled = cfg.GetBool("internal_rpc.tls_enabled")
@@ -862,6 +1020,16 @@ func StorageConfig() Storage {
 	storageConfig.SearchArchiveRetentionDays = cfg.GetInt("storage.search_archive_retention_days")
 	storageConfig.MessageArchiveBucket = cfg.GetString("storage.message_archive_bucket")
 	storageConfig.MessageArchiveRetentionDays = cfg.GetInt("storage.message_archive_retention_days")
+	storageConfig.ArtifactEnabled = cfg.GetBool("storage.artifact_enabled")
+	storageConfig.ArtifactEndpoint = cfg.GetString("storage.artifact_endpoint")
+	storageConfig.ArtifactAccessKey = cfg.GetString("storage.artifact_access_key")
+	storageConfig.ArtifactSecretKey = cfg.GetString("storage.artifact_secret_key")
+	storageConfig.ArtifactUseSSL = cfg.GetBool("storage.artifact_use_ssl")
+	storageConfig.ArtifactBucket = cfg.GetString("storage.artifact_bucket")
+	storageConfig.ArtifactAuditAccessKey = cfg.GetString("storage.artifact_audit_access_key")
+	storageConfig.ArtifactAuditSecretKey = cfg.GetString("storage.artifact_audit_secret_key")
+	storageConfig.ArtifactMaintenanceAccessKey = cfg.GetString("storage.artifact_maintenance_access_key")
+	storageConfig.ArtifactMaintenanceSecretKey = cfg.GetString("storage.artifact_maintenance_secret_key")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")
@@ -885,6 +1053,8 @@ func RateLimitConfig() RateLimit {
 	rateLimitConfig.MessageWindowSeconds = cfg.GetInt("rate_limit.message_window_seconds")
 	rateLimitConfig.FileUploadLimit = cfg.GetInt("rate_limit.file_upload_limit")
 	rateLimitConfig.FileUploadWindowSeconds = cfg.GetInt("rate_limit.file_upload_window_seconds")
+	rateLimitConfig.AgentMCPLimit = cfg.GetInt("rate_limit.agent_mcp_limit")
+	rateLimitConfig.AgentMCPWindowSeconds = cfg.GetInt("rate_limit.agent_mcp_window_seconds")
 
 	return rateLimitConfig
 }
@@ -928,6 +1098,7 @@ func AIConfig() AI {
 	}
 	aiConfig.Enabled = cfg.GetBool("ai.enabled")
 	aiConfig.RuntimeMode = cfg.GetString("ai.runtime_mode")
+	aiConfig.PolicyMode = cfg.GetString("ai.policy_mode")
 	aiConfig.Provider = cfg.GetString("ai.provider")
 	aiConfig.Model = cfg.GetString("ai.model")
 	aiConfig.APIKey = cfg.GetString("ai.api_key")
@@ -943,6 +1114,9 @@ func AIConfig() AI {
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode
 		aiConfig.Enabled = mode != AIRuntimeOff
+	}
+	if mode, err := aiConfig.ResolvedPolicyMode(); err == nil {
+		aiConfig.PolicyMode = mode
 	}
 
 	return aiConfig

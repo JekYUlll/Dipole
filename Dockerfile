@@ -1,5 +1,13 @@
 FROM alpine:3.22
 
+ARG DIPOLE_VCS_REVISION=unknown
+ARG DIPOLE_BUILD_CREATED=unknown
+ARG DIPOLE_VCS_DIRTY=unknown
+
+LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}" \
+      org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}" \
+      io.dipole.source.dirty="${DIPOLE_VCS_DIRTY}"
+
 WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
@@ -23,6 +31,8 @@ COPY dist/dipole-search-outbox-cleanup /app/dipole-search-outbox-cleanup
 COPY dist/dipole-cassandra-backfill /app/dipole-cassandra-backfill
 COPY dist/dipole-cassandra-reconcile /app/dipole-cassandra-reconcile
 COPY dist/dipole-cassandra-archive /app/dipole-cassandra-archive
+COPY dist/dipole-agent-artifact-reconcile /app/dipole-agent-artifact-reconcile
+COPY dist/dipole-agent-artifact-maintenance /app/dipole-agent-artifact-maintenance
 
 EXPOSE 8080
 

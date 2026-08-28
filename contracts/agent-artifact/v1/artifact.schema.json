@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-artifact/v1/artifact.schema.json",
+  "title": "dipole.agent.artifact.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "artifact_id", "task_id", "run_id", "artifact_type",
+    "version", "title", "media_type", "content_sha256", "size_bytes", "metadata"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.agent.artifact.v1" },
+    "artifact_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "task_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "run_id": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "artifact_type": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]{0,63}$" },
+    "version": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "media_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "content_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "size_bytes": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+    "metadata": { "type": "object" }
+  }
+}
