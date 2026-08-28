@@ -36,7 +36,7 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误，因为生产 Secret Provider、DNS Resolver 与 TLS pinned Dispatcher 尚未配置。这一行为用于避免配置人员把策略完整的 Factory 误认为已具备生产 I/O backend。
+关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误，因为已实现的 Secret、DNS、CA 与 TLS I/O adapters 尚未组合进受控 startup。这一行为用于避免配置人员把独立适配器误认为已具备生产链路。
 
 ## 轮换与吊销
 
@@ -52,7 +52,13 @@ Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路
 
 Adapter 没有 `onUnauthorized`，401 不会触发未经治理的自动刷新；轮换继续由 Catalog 与 Provider 控制。Adapter 也不缓存 token。MCP SDK 需要把 token 转换成 JavaScript string 并构造 Header，这些副本由 GC 管理，无法提供强零化保证；生产凭据必须短期、最小权限，并支持 Server 端快速吊销。
 
-`createExternalMcpStreamableHttpTransportFactory` 已把 adapter 装配进官方 Streamable HTTP Transport，并且每次连接创建新的 AuthProvider。当前没有 Vault/KMS/Secret Manager backend；测试 Provider 只能证明读取、timeout、redaction、validation 和 buffer wipe 语义，不能作为生产秘密管理能力。
+`createExternalMcpStreamableHttpTransportFactory` 已把 adapter 装配进官方 Streamable HTTP Transport，并且每次连接创建新的 AuthProvider。`createEncryptedFileExternalMcpSecretProvider` 提供本地 AES-256-GCM 静态加密实现：配置把 exact `provider_secret_ref` 映射到密文路径和 `key_ref`，再把 key ref 映射到独立 32 字节 key 文件。Provider 配置在构造时复制，未知 ref、重复路径、错 provider 和非规范路径直接拒绝。
+
+envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte tag`。AAD 以 NUL 分隔绑定 schema、tenant、credential ref/version、provider ID、provider secret ref 和 key ref，因此复制密文到另一租户、版本、引用或 key 配置无法解密。每次 `token()` 都重新打开 key/envelope，成功返回独占可写 plaintext；key 总会擦除，失败或取消路径也擦除已产生的 plaintext。Node/OpenSSL 内部副本及最终 JavaScript token string 仍无法提供强零化保证。
+
+key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
+
+凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或主动吊销连接，encrypted-file Provider 也尚未装配到启动链。
 
 ## Network Guard 边界
 
@@ -140,6 +146,6 @@ Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 
 
 文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
 
-生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、低敏审计及真实公网故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 DNS Resolver、CA provider 和 pinned Dispatcher 均未注册到 `index.ts` 或 Worker startup，单独存在不会发起查询或建立连接。
+生产接入仍至少需要：每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。当前 encrypted-file Secret Provider、DNS Resolver、CA provider 和 pinned Dispatcher 均未注册到 `index.ts` 或 Worker startup，单独存在不会读取凭据、发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
