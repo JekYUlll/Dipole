@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "dipole.agent.subscription-prefilter-evidence.v1",
+  "corpusSha256": "e3a0eb42bb6f40c6a81ff233fb468bb996452287d05b9b52b2908941605d3ab2",
+  "candidate": {
+    "id": "rule:820a35eb8d9d94a6fbdf05babe4df138158b65c37d63586f798a4b0f8477188e",
+    "kind": "rule",
+    "revision": "subscription:820a35eb8d9d94a6fbdf05babe4df138158b65c37d63586f798a4b0f8477188e",
+    "configurationSha256": "820a35eb8d9d94a6fbdf05babe4df138158b65c37d63586f798a4b0f8477188e"
+  },
+  "decisions": [
+    {"caseId": "incident-positive", "selected": true, "latencyMicros": 100, "costMicrousd": 0},
+    {"caseId": "weekly-negative", "selected": false, "latencyMicros": 100, "costMicrousd": 0}
+  ]
+}

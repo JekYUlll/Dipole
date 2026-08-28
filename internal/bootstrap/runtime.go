@@ -16,6 +16,7 @@ import (
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
@@ -30,7 +31,9 @@ type Runtime struct {
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *outboxRelay
 	messageFlow *messageApplicationTransport
+	syncFlow    *syncApplicationTransport
 	coreRPC     *InternalRPCServer
+	metrics     *platformObservability.MetricsServer
 }
 
 func Initialize(ctx context.Context) (*Runtime, error) {
@@ -39,6 +42,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	kafkaCfg := config.KafkaConfig()
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
+	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+		return nil, err
+	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
 		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
 	}
@@ -142,10 +148,117 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		HotGroups: platformHotGroup.NewRedisDetector(),
 		Storage:   platformStorage.Client,
 	})
+	conversationProjectionMetrics := platformObservability.NewConversationProjectionCollector()
+	localMessaging.Conversations.SetProjectionWriteObserver(conversationProjectionMetrics.Observe)
 	rpcCfg := config.InternalRPCConfig()
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
-		coreRPC, err = NewCoreRPCServer(rpcCfg, appComposition.NewLocalCoreCapability(repos))
+		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
+		}
+		agentCommands, composeErr := appComposition.NewLocalAgentCommandV1(localMessaging.Messages)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose remote Agent Command: %w", composeErr)
+		}
+		agentCapability, composeErr := appComposition.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
+		}
+		resolver, composeErr := appComposition.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
+		}
+		admission, composeErr := appComposition.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
+		}
+		approvalService, composeErr := appComposition.NewPersistentAgentApprovalServiceV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Approval service: %w", composeErr)
+		}
+		approvalGrants, composeErr := appComposition.NewPersistentAgentApprovalGrantResolverV1(repos.AgentApprovalGrants)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Approval grant resolver: %w", composeErr)
+		}
+		controlAuthorizer, composeErr := appComposition.NewPersistentAgentTaskControlAuthorizerV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Task control authorizer: %w", composeErr)
+		}
+		workflowProjection, composeErr := appComposition.NewPersistentAgentTaskWorkflowProjectionServiceV1(repos.AgentPolicy)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Task Workflow projection: %w", composeErr)
+		}
+		workflowRepairAudit, composeErr := appComposition.NewPersistentAgentWorkflowRepairAuditServiceV1(repos.AgentPolicy, repos.AgentRepairs)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
+		}
+		promotionControls, composeErr := appComposition.NewPersistentAgentRuntimePromotionControlServiceV1(repos.AgentPolicy, repos.AgentArtifacts, repos.AgentPromotionControls)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
+		}
+		readinessEvidence, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP readiness evidence Publisher: %w", composeErr)
+		}
+		readinessResolver, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidenceResolverV1(repos.AgentReadinessEvidence, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP readiness evidence Resolver: %w", composeErr)
+		}
+		subscriptionResolver, composeErr := appComposition.NewPersistentAgentEventSubscriptionResolverV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
+		}
+		subscriptionControls, composeErr := appComposition.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
+		}
+		memoryResolver, composeErr := appComposition.NewPersistentAgentMemoryResolverV1(repos.AgentMemories, resolver, repos.AgentPolicy, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
+		}
+		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
+		}
+		toolRounds, composeErr := appComposition.NewPersistentAgentMCPToolRoundServiceV1(repos.AgentToolRounds, repos.AgentToolAudits)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP Tool round receipts: %w", composeErr)
+		}
+		toolTerminals, composeErr := appComposition.NewPersistentAgentMCPToolInvocationTerminalServiceV1(repos.AgentToolRounds, repos.AgentToolAudits, toolAudits)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP Tool invocation terminal: %w", composeErr)
+		}
+		messageCommands, composeErr := appComposition.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
+		}
+		var artifactService applicationPort.AgentArtifactServiceV1
+		var promotionEvidence applicationPort.AgentRuntimePromotionEvidenceReviewServiceV1
+		if storageCfg.ArtifactEnabled {
+			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
+				Enabled: storageCfg.ArtifactEnabled, Endpoint: storageCfg.ArtifactEndpoint,
+				AccessKey: storageCfg.ArtifactAccessKey, SecretKey: storageCfg.ArtifactSecretKey,
+				UseSSL: storageCfg.ArtifactUseSSL, Bucket: storageCfg.ArtifactBucket,
+				GeneralAccessKey: storageCfg.AccessKey, GeneralBucket: storageCfg.Bucket,
+			})
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
+			}
+			persistentArtifacts, serviceErr := appComposition.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			artifactErr = serviceErr
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
+			}
+			artifactService = persistentArtifacts
+			promotionEvidence, artifactErr = appComposition.NewAgentRuntimePromotionEvidenceReviewServiceV1(promotionControls, persistentArtifacts)
+			if artifactErr != nil {
+				return nil, fmt.Errorf("compose Agent Runtime promotion evidence review: %w", artifactErr)
+			}
+		}
+		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryResolver,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)
 		}
@@ -160,11 +273,27 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	srv := server.NewWithDependencies(repos, server.Dependencies{Messages: messageFlow.Application, Messaging: localMessaging})
+	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	if err != nil {
+		messageFlow.Close()
+		if coreRPC != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			coreRPC.Close(shutdownCtx)
+			cancel()
+		}
+		return nil, fmt.Errorf("initialize Sync transport: %w", err)
+	}
+	syncComparisonMetrics := platformObservability.NewClientSyncComparisonCollector()
+	srv := server.NewWithDependencies(repos, server.Dependencies{
+		Messages:       messageFlow.Application,
+		Sync:           syncFlow.Application,
+		SyncComparison: syncComparisonMetrics,
+		Messaging:      localMessaging,
+	})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
-	rt := &Runtime{server: srv, messageFlow: messageFlow, coreRPC: coreRPC}
+	rt := &Runtime{server: srv, messageFlow: messageFlow, syncFlow: syncFlow, coreRPC: coreRPC}
 	var wsEventSender kafkaWSEventSender
 	if gatewayCfg.Mode == "embedded" {
 		wsEventSender = srv.WSHub()
@@ -213,8 +342,34 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
+	rt.metrics, err = startRuntimeMetrics(
+		config.MetricsConfig(),
+		coreServiceName,
+		platformKafka.Subscriber,
+		syncComparisonMetrics,
+		conversationProjectionMetrics,
+	)
+	if err != nil {
+		rt.Close()
+		return nil, fmt.Errorf("start runtime metrics: %w", err)
+	}
+	if rt.metrics != nil {
+		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", store.SQLDB)); err != nil {
+			rt.Close()
+			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
+		}
+		bindRPCReadiness(rt.metrics, rt.coreRPC)
+		markRuntimeReady(rt.metrics)
+	}
 
 	return rt, nil
+}
+
+func validateTimelineNotifyMode(messageCfg config.Message) error {
+	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow {
+		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
+	}
+	return nil
 }
 
 func (r *Runtime) Server() *server.Server {
@@ -243,6 +398,9 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
+	if err := closeRuntimeMetrics(r.metrics); err != nil {
+		logger.Warn("metrics server close failed", zap.Error(err))
+	}
 	if r.coreRPC != nil {
 		shutdownSeconds := config.InternalRPCConfig().ShutdownTimeoutSeconds
 		if shutdownSeconds <= 0 {
@@ -254,6 +412,9 @@ func (r *Runtime) Close() {
 	}
 	if r.messageFlow != nil {
 		r.messageFlow.Close()
+	}
+	if r.syncFlow != nil {
+		r.syncFlow.Close()
 	}
 	if r.outboxFlow != nil {
 		r.outboxFlow.Stop()

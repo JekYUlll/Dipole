@@ -10,9 +10,11 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"time"
 )
 
 const ledgerTable = "schema_migrations"
+const migrationLockTimeoutSeconds = 30
 
 var migrationFilePattern = regexp.MustCompile(`^(\d{6})_([a-z0-9_]+)\.(up|down)\.sql$`)
 
@@ -28,6 +30,12 @@ type Runner struct {
 	migrations []Migration
 }
 
+type migrationExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
 func NewRunner(db *sql.DB, files fs.FS) (*Runner, error) {
 	if db == nil {
 		return nil, errors.New("migration database is required")
@@ -41,11 +49,17 @@ func NewRunner(db *sql.DB, files fs.FS) (*Runner, error) {
 }
 
 func (r *Runner) Up(ctx context.Context) error {
-	if err := r.ensureLedger(ctx); err != nil {
+	return r.withMigrationLock(ctx, func(connection migrationExecutor) error {
+		return r.up(ctx, connection)
+	})
+}
+
+func (r *Runner) up(ctx context.Context, connection migrationExecutor) error {
+	if err := r.ensureLedger(ctx, connection); err != nil {
 		return err
 	}
 
-	applied, err := r.appliedVersions(ctx)
+	applied, err := r.appliedVersions(ctx, connection)
 	if err != nil {
 		return err
 	}
@@ -53,10 +67,10 @@ func (r *Runner) Up(ctx context.Context) error {
 		if _, ok := applied[migration.Version]; ok {
 			continue
 		}
-		if _, err := r.db.ExecContext(ctx, migration.UpSQL); err != nil {
+		if _, err := connection.ExecContext(ctx, migration.UpSQL); err != nil {
 			return fmt.Errorf("apply migration %06d_%s: %w", migration.Version, migration.Name, err)
 		}
-		if _, err := r.db.ExecContext(ctx,
+		if _, err := connection.ExecContext(ctx,
 			"INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
 			migration.Version,
 			migration.Name,
@@ -71,11 +85,17 @@ func (r *Runner) Down(ctx context.Context, steps int) error {
 	if steps < 1 {
 		return errors.New("migration rollback steps must be positive")
 	}
-	if err := r.ensureLedger(ctx); err != nil {
+	return r.withMigrationLock(ctx, func(connection migrationExecutor) error {
+		return r.down(ctx, connection, steps)
+	})
+}
+
+func (r *Runner) down(ctx context.Context, connection migrationExecutor, steps int) error {
+	if err := r.ensureLedger(ctx, connection); err != nil {
 		return err
 	}
 
-	applied, err := r.appliedVersionsDescending(ctx)
+	applied, err := r.appliedVersionsDescending(ctx, connection)
 	if err != nil {
 		return err
 	}
@@ -91,18 +111,45 @@ func (r *Runner) Down(ctx context.Context, steps int) error {
 		if !ok {
 			return fmt.Errorf("rollback migration %06d: migration file is missing", version)
 		}
-		if _, err := r.db.ExecContext(ctx, migration.DownSQL); err != nil {
+		if _, err := connection.ExecContext(ctx, migration.DownSQL); err != nil {
 			return fmt.Errorf("rollback migration %06d_%s: %w", migration.Version, migration.Name, err)
 		}
-		if _, err := r.db.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version = ?", version); err != nil {
+		if _, err := connection.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version = ?", version); err != nil {
 			return fmt.Errorf("remove migration ledger entry %06d: %w", version, err)
 		}
 	}
 	return nil
 }
 
+func (r *Runner) withMigrationLock(ctx context.Context, run func(migrationExecutor) error) error {
+	connection, err := r.db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire migration lock connection: %w", err)
+	}
+	defer connection.Close()
+
+	var acquired sql.NullInt64
+	if err := connection.QueryRowContext(ctx,
+		"SELECT GET_LOCK(CONCAT('dipole:migrate:', LEFT(SHA2(DATABASE(), 256), 48)), ?)",
+		migrationLockTimeoutSeconds,
+	).Scan(&acquired); err != nil {
+		return fmt.Errorf("acquire migration lock: %w", err)
+	}
+	if !acquired.Valid || acquired.Int64 != 1 {
+		return errors.New("acquire migration lock: timed out")
+	}
+	defer func() {
+		releaseCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = connection.ExecContext(releaseCtx,
+			"SELECT RELEASE_LOCK(CONCAT('dipole:migrate:', LEFT(SHA2(DATABASE(), 256), 48)))",
+		)
+	}()
+	return run(connection)
+}
+
 func (r *Runner) CurrentVersion(ctx context.Context) (int64, error) {
-	if err := r.ensureLedger(ctx); err != nil {
+	if err := r.ensureLedger(ctx, r.db); err != nil {
 		return 0, err
 	}
 	var version sql.NullInt64
@@ -113,7 +160,7 @@ func (r *Runner) CurrentVersion(ctx context.Context) (int64, error) {
 }
 
 func (r *Runner) ValidateCurrent(ctx context.Context) error {
-	applied, err := r.appliedVersions(ctx)
+	applied, err := r.appliedVersions(ctx, r.db)
 	if err != nil {
 		return err
 	}
@@ -125,8 +172,8 @@ func (r *Runner) ValidateCurrent(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) ensureLedger(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+func (r *Runner) ensureLedger(ctx context.Context, connection migrationExecutor) error {
+	_, err := connection.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
     version BIGINT NOT NULL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     applied_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
@@ -137,8 +184,8 @@ func (r *Runner) ensureLedger(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) appliedVersions(ctx context.Context) (map[int64]struct{}, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT version FROM schema_migrations")
+func (r *Runner) appliedVersions(ctx context.Context, connection migrationExecutor) (map[int64]struct{}, error) {
+	rows, err := connection.QueryContext(ctx, "SELECT version FROM schema_migrations")
 	if err != nil {
 		return nil, fmt.Errorf("list applied migrations: %w", err)
 	}
@@ -158,8 +205,8 @@ func (r *Runner) appliedVersions(ctx context.Context) (map[int64]struct{}, error
 	return versions, nil
 }
 
-func (r *Runner) appliedVersionsDescending(ctx context.Context) ([]int64, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT version FROM schema_migrations ORDER BY version DESC")
+func (r *Runner) appliedVersionsDescending(ctx context.Context, connection migrationExecutor) ([]int64, error) {
+	rows, err := connection.QueryContext(ctx, "SELECT version FROM schema_migrations ORDER BY version DESC")
 	if err != nil {
 		return nil, fmt.Errorf("list applied migrations: %w", err)
 	}

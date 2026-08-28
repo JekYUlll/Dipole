@@ -1,0 +1,690 @@
+syntax = "proto3";
+
+package dipole.agent.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1";
+
+import "dipole/common/v1/context.proto";
+
+message AdmitRunRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string principal_user_id = 3;
+  string agent_id = 4;
+  string trigger_type = 5;
+  string trigger_ref = 6;
+  string event_id = 7;
+  string runtime_id = 8;
+  string mode = 9;
+  string subscription_id = 10;
+}
+
+message AdmitRunResponse {
+  string task_id = 1;
+  string run_id = 2;
+  string run_status = 3;
+}
+
+message CompleteRunRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+}
+
+message CompleteRunResponse {
+  string run_status = 1;
+}
+
+message FinishRunRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string run_status = 4;
+  string last_error = 5;
+}
+
+message FinishRunResponse {
+  string run_status = 1;
+}
+
+message AgentResourceScope {
+  string resource_type = 1;
+  string resource_id = 2;
+  repeated string actions = 3;
+}
+
+message RequestApprovalRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string approval_id = 4;
+  string capability_id = 5;
+  AgentResourceScope resource_scope = 6;
+  string scope_sha256 = 7;
+  string arguments_sha256 = 8;
+  string nonce_sha256 = 9;
+  int64 expires_at_unix_ms = 10;
+}
+
+message ResolveApprovalRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string approval_id = 4;
+  string actor_user_id = 5;
+  string decision = 6;
+}
+
+message ApprovalResponse {
+  string approval_id = 1;
+  string status = 2;
+  string approved_by_user_id = 3;
+}
+
+message ConsumeApprovalRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string approval_id = 4;
+  string capability_id = 5;
+  string scope_sha256 = 6;
+  string arguments_sha256 = 7;
+  string nonce_sha256 = 8;
+  string mode = 9;
+}
+
+message ConsumeApprovalResponse {
+  string approval_id = 1;
+  string status = 2;
+}
+
+message ResolveApprovalGrantRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string capability_id = 4;
+  AgentResourceScope resource_scope = 5;
+  string arguments_sha256 = 6;
+}
+
+message ResolveApprovalGrantResponse {
+  string approval_id = 1;
+  string capability_id = 2;
+  AgentResourceScope resource_scope = 3;
+  string scope_sha256 = 4;
+  string arguments_sha256 = 5;
+  string nonce_sha256 = 6;
+  int64 expires_at_unix_ms = 7;
+}
+
+message ListConversationsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  int32 limit = 3;
+  string run_id = 4;
+}
+
+message ConversationSnapshot {
+  string conversation_key = 1;
+  string target_id = 2;
+  int32 target_type = 3;
+  string last_message_id = 4;
+  uint64 last_message_seq = 5;
+  string last_message_preview = 6;
+  int64 last_message_at_unix_ms = 7;
+  uint64 read_seq = 8;
+  int32 unread_count = 9;
+}
+
+message ListConversationsResponse {
+  repeated ConversationSnapshot conversations = 1;
+}
+
+message AuthorizeTaskControlRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string principal_user_id = 3;
+}
+
+message AuthorizeTaskControlResponse {
+  string task_id = 1;
+  string task_status = 2;
+  string workflow_id = 3;
+  string workflow_run_id = 4;
+  string workflow_status = 5;
+  uint64 workflow_revision = 6;
+}
+
+message ResolveMcpContextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string principal_user_id = 4;
+}
+
+message ResolveMcpContextResponse {
+  string tenant_id = 1;
+  string principal_user_id = 2;
+  string agent_id = 3;
+  string delegated_by_user_id = 4;
+  repeated string permissions = 5;
+  repeated AgentResourceScope resource_scopes = 6;
+  repeated string approved_capabilities = 7;
+  string runtime_id = 8;
+  string mode = 9;
+}
+
+message BeginMcpToolInvocationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string tool_name = 5;
+  string capability_id = 6;
+  string arguments_sha256 = 7;
+  string approval_id = 8;
+  string profile_id = 9;
+  string server_id = 10;
+  bytes arguments_json = 11;
+}
+
+message BeginMcpToolInvocationResponse {
+  string invocation_id = 1;
+  string status = 2;
+}
+
+message ResolveMcpToolCommandRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+}
+
+message ResolveMcpToolCommandResponse {
+  string invocation_id = 1;
+  string tenant_id = 2;
+  string principal_user_id = 3;
+  string agent_id = 4;
+  string task_id = 5;
+  string run_id = 6;
+  string profile_id = 7;
+  string server_id = 8;
+  string tool_name = 9;
+  string capability_id = 10;
+  bytes arguments_json = 11;
+  string arguments_sha256 = 12;
+  int64 started_at_unix_ms = 13;
+  string status = 14;
+}
+
+message ClaimMcpToolRoundRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string round_id = 5;
+  uint32 round_number = 6;
+  string request_sha256 = 7;
+  string owner_token_sha256 = 8;
+}
+
+message ClaimMcpToolRoundResponse {
+  string round_id = 1;
+  string outcome = 2;
+  bytes result_json = 3;
+  string result_sha256 = 4;
+  string error_code = 5;
+}
+
+message FinishMcpToolRoundRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string round_id = 2;
+  string owner_token_sha256 = 3;
+  string status = 4;
+  bytes result_json = 5;
+  string result_sha256 = 6;
+  string error_code = 7;
+}
+
+message FinishMcpToolRoundResponse {
+  string round_id = 1;
+  string status = 2;
+}
+
+message AgentToolActionReference {
+  string resource_type = 1;
+  string resource_id = 2;
+  string command_kind = 3;
+  string command_id = 4;
+}
+
+message FinishMcpToolInvocationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string status = 5;
+  string result_sha256 = 6;
+  uint64 result_bytes = 7;
+  uint64 latency_ms = 8;
+  string error_code = 9;
+  AgentToolActionReference action_reference = 10;
+}
+
+message FinishMcpToolInvocationResponse {
+  string invocation_id = 1;
+  string status = 2;
+}
+
+message FinishMcpToolInvocationFromRoundRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string round_id = 5;
+}
+
+message FinishMcpToolInvocationFromRoundResponse {
+  string invocation_id = 1;
+  string status = 2;
+}
+
+message ExecuteMcpMessageCommandRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string command_kind = 5;
+  string content = 6;
+}
+
+message ExecuteMcpMessageCommandResponse {
+  AgentToolActionReference action_reference = 1;
+  string client_message_id = 2;
+}
+
+message ProjectTaskWorkflowStateRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string workflow_id = 4;
+  string workflow_run_id = 5;
+  string workflow_status = 6;
+  uint64 workflow_revision = 7;
+}
+
+message ProjectTaskWorkflowStateResponse {
+  string task_id = 1;
+  string workflow_id = 2;
+  string workflow_run_id = 3;
+  string workflow_status = 4;
+  uint64 workflow_revision = 5;
+}
+
+message ListTaskWorkflowProjectionSnapshotsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string after_task_id = 2;
+  uint32 page_size = 3;
+}
+
+message TaskWorkflowProjectionSnapshot {
+  string task_id = 1;
+  bool has_workflow = 2;
+  string workflow_id = 3;
+  string workflow_run_id = 4;
+  string workflow_status = 5;
+  uint64 workflow_revision = 6;
+}
+
+message ListTaskWorkflowProjectionSnapshotsResponse {
+  repeated TaskWorkflowProjectionSnapshot tasks = 1;
+  string next_cursor = 2;
+}
+
+message WorkflowRepairEvidence {
+  string workflow_id = 1;
+  string workflow_run_id = 2;
+  string status = 3;
+  uint64 revision = 4;
+}
+
+message ProposeWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string outcome = 3;
+  string ticket_ref = 4;
+  string reason = 5;
+  WorkflowRepairEvidence projected = 6;
+  WorkflowRepairEvidence temporal = 7;
+  int64 proposed_at_unix_ms = 8;
+  int64 expires_at_unix_ms = 9;
+}
+
+message DecideWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+  string decision = 3;
+}
+
+message GetWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+}
+
+message WorkflowRepairProposalResponse {
+  string proposal_id = 1;
+  string task_id = 2;
+  string outcome = 3;
+  string action = 4;
+  string proposer_id = 5;
+  string ticket_ref = 6;
+  string reason = 7;
+  WorkflowRepairEvidence projected = 8;
+  WorkflowRepairEvidence temporal = 9;
+  string evidence_sha256 = 10;
+  string status = 11;
+  uint32 required_approvals = 12;
+  int64 proposed_at_unix_ms = 13;
+  int64 expires_at_unix_ms = 14;
+}
+
+message ProposeRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string evidence_artifact_id = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string ticket_ref = 10;
+  string reason = 11;
+  int64 proposed_at_unix_ms = 12;
+  int64 expires_at_unix_ms = 13;
+  int64 grant_valid_from_unix_ms = 14;
+  int64 grant_expires_at_unix_ms = 15;
+}
+
+message ReviewRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string proposal_id = 2;
+  string decision = 3;
+}
+
+message GetRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string proposal_id = 3;
+}
+
+message RevokeRuntimePromotionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string grant_id = 2;
+  string ticket_ref = 3;
+  string reason = 4;
+}
+
+message RuntimePromotionProposalResponse {
+  string proposal_id = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string evidence_artifact_id = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string proposer_id = 10;
+  string ticket_ref = 11;
+  string reason = 12;
+  string status = 13;
+  string grant_id = 14;
+  int64 proposed_at_unix_ms = 15;
+  int64 expires_at_unix_ms = 16;
+  int64 grant_valid_from_unix_ms = 17;
+  int64 grant_expires_at_unix_ms = 18;
+  int64 decided_at_unix_ms = 19;
+}
+
+message RuntimePromotionGrantResponse {
+  string grant_id = 1;
+  string tenant_id = 2;
+  string runtime_id = 3;
+  string candidate_version = 4;
+  string definition_id = 5;
+  uint64 definition_version = 6;
+  string policy_version = 7;
+  string evidence_sha256 = 8;
+  string eval_suite_sha256 = 9;
+  string granted_by_id = 10;
+  string reviewed_by_id = 11;
+  int64 valid_from_unix_ms = 12;
+  int64 expires_at_unix_ms = 13;
+  int64 revoked_at_unix_ms = 14;
+}
+
+message GetRuntimePromotionEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string proposal_id = 3;
+}
+
+message RuntimePromotionEvidenceResponse {
+  RuntimePromotionProposalResponse proposal = 1;
+  AgentArtifact artifact = 2;
+  bytes content = 3;
+}
+
+message CreateArtifactRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string artifact_type = 5;
+  uint32 version = 6;
+  string title = 7;
+  string media_type = 8;
+  bytes content = 9;
+  bytes metadata_json = 10;
+}
+
+message GetArtifactRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string artifact_id = 2;
+}
+
+message AgentArtifact {
+  string schema_version = 1;
+  string artifact_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string artifact_type = 5;
+  uint32 version = 6;
+  string title = 7;
+  string media_type = 8;
+  string content_sha256 = 9;
+  uint64 size_bytes = 10;
+  bytes metadata_json = 11;
+  int64 created_at_unix_ms = 12;
+}
+
+message CreateArtifactResponse {
+  AgentArtifact artifact = 1;
+}
+
+message GetArtifactResponse {
+  AgentArtifact artifact = 1;
+  bytes content = 2;
+}
+
+message MatchEventSubscriptionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string agent_id = 3;
+  string event_type = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+}
+
+message AgentEventSubscription {
+  string subscription_id = 1;
+  string definition_id = 2;
+  uint64 definition_version = 3;
+  string tenant_id = 4;
+  string agent_id = 5;
+  string event_type = 6;
+  string resource_type = 7;
+  string resource_id = 8;
+  string filter_kind = 9;
+  bytes filter_json = 10;
+  string status = 11;
+  string created_by_id = 12;
+  string revoked_by_id = 13;
+  string revoke_reason = 14;
+  int64 created_at_unix_ms = 15;
+  int64 updated_at_unix_ms = 16;
+  int64 revoked_at_unix_ms = 17;
+}
+
+message MatchEventSubscriptionsResponse {
+  repeated AgentEventSubscription subscriptions = 1;
+}
+
+message CreateEventSubscriptionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string definition_id = 3;
+  uint64 definition_version = 4;
+  string event_type = 5;
+  string resource_type = 6;
+  string resource_id = 7;
+  string filter_kind = 8;
+  bytes filter_json = 9;
+}
+
+message ListEventSubscriptionsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string after_subscription_id = 3;
+  uint32 limit = 4;
+}
+
+message ListEventSubscriptionsResponse {
+  repeated AgentEventSubscription subscriptions = 1;
+  string next_cursor = 2;
+}
+
+message RevokeEventSubscriptionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string subscription_id = 3;
+  string reason = 4;
+}
+
+message ListContextMemoriesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string resource_type = 4;
+  string resource_id = 5;
+  uint32 limit = 6;
+}
+
+message AgentMemoryProvenance {
+  string source_type = 1;
+  string source_id = 2;
+  string uri = 3;
+  string sequence = 4;
+}
+
+message AgentContextMemory {
+  string memory_id = 1;
+  string memory_type = 2;
+  string content = 3;
+  string compact_content = 4;
+  int32 priority = 5;
+  AgentMemoryProvenance provenance = 6;
+}
+
+message ListContextMemoriesResponse {
+  repeated AgentContextMemory memories = 1;
+}
+
+message PublishMcpReadinessEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string profile_binding_sha256 = 3;
+  bytes evidence_json = 4;
+  int64 expires_at_unix_ms = 5;
+}
+
+message PublishMcpReadinessEvidenceResponse {
+  string evidence_id = 1;
+  string schema_version = 2;
+  string profile_binding_sha256 = 3;
+  string runtime_binding_sha256 = 4;
+  string content_sha256 = 5;
+  string status = 6;
+  int64 collected_at_unix_ms = 7;
+  int64 expires_at_unix_ms = 8;
+  bool created = 9;
+}
+
+message ResolveFreshMcpReadinessEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string profile_binding_sha256 = 3;
+  string runtime_binding_sha256 = 4;
+}
+
+message ResolveFreshMcpReadinessEvidenceResponse {
+  bool found = 1;
+  string evidence_id = 2;
+  string schema_version = 3;
+  string profile_binding_sha256 = 4;
+  string runtime_binding_sha256 = 5;
+  string content_sha256 = 6;
+  string status = 7;
+  int64 collected_at_unix_ms = 8;
+  int64 expires_at_unix_ms = 9;
+}
+
+service AgentCapabilityService {
+  rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
+  rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
+  rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
+  rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
+  rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
+  rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
+  rpc RequestApproval(RequestApprovalRequest) returns (ApprovalResponse);
+  rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
+  rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
+  rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
+  rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
+  rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
+  rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
+  rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);
+  rpc FinishMcpToolRound(FinishMcpToolRoundRequest) returns (FinishMcpToolRoundResponse);
+  rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
+  rpc FinishMcpToolInvocationFromRound(FinishMcpToolInvocationFromRoundRequest) returns (FinishMcpToolInvocationFromRoundResponse);
+  rpc ExecuteMcpMessageCommand(ExecuteMcpMessageCommandRequest) returns (ExecuteMcpMessageCommandResponse);
+  rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
+  rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
+  rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc ProposeRuntimePromotion(ProposeRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc ReviewRuntimePromotion(ReviewRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc GetRuntimePromotion(GetRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
+  rpc GetRuntimePromotionEvidence(GetRuntimePromotionEvidenceRequest) returns (RuntimePromotionEvidenceResponse);
+  rpc RevokeRuntimePromotion(RevokeRuntimePromotionRequest) returns (RuntimePromotionGrantResponse);
+  rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
+  rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
+  rpc PublishMcpReadinessEvidence(PublishMcpReadinessEvidenceRequest) returns (PublishMcpReadinessEvidenceResponse);
+  rpc ResolveFreshMcpReadinessEvidence(ResolveFreshMcpReadinessEvidenceRequest) returns (ResolveFreshMcpReadinessEvidenceResponse);
+}

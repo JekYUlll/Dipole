@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
 const (
@@ -76,22 +78,36 @@ func (c *Client) EnqueueJSON(v any) error {
 }
 
 func (c *Client) Enqueue(payload []byte) error {
+	_, _, err := c.enqueueWithPressure(payload)
+	return err
+}
+
+func (c *Client) enqueueWithPressure(payload []byte) (int, int, error) {
+	capacity := cap(c.send)
 	if c.closed.Load() {
-		return ErrClientClosed
+		return len(c.send), capacity, ErrClientClosed
 	}
 
 	select {
 	case c.send <- payload:
-		return nil
+		return len(c.send), capacity, nil
 	default:
-		return ErrSendQueueFull
+		return len(c.send), capacity, ErrSendQueueFull
 	}
 }
 
 func (c *Client) SendEvent(eventType string, data any) error {
+	return c.SendEventContext(context.Background(), eventType, data)
+}
+
+func (c *Client) SendEventContext(ctx context.Context, eventType string, data any) error {
+	ids := correlation.FromContext(ctx)
 	return c.EnqueueJSON(OutboundEvent{
-		Type: eventType,
-		Data: data,
+		Type:      eventType,
+		RequestID: ids.RequestID,
+		TraceID:   ids.TraceID,
+		EventID:   ids.EventID,
+		Data:      data,
 	})
 }
 

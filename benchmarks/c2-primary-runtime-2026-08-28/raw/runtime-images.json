@@ -1,0 +1,20 @@
+[
+  {
+    "id": "sha256:2a063f344649c92d8ae120186818bf332b01fd36b94be398a88b9b582abb5456",
+    "repo_tags": [
+      "dipole-server:c2-primary-runtime-703725b"
+    ],
+    "revision": "703725b0185d32a95b83e9fc4c03c5d2402e826a",
+    "created": "2026-08-27T23:24:57Z",
+    "source_dirty": "false"
+  },
+  {
+    "id": "sha256:c5f626fa357cbc3dfb4d8d8be637f560def3e62efcf16a6df481269faf1478fd",
+    "repo_tags": [
+      "dipole-realtime-delivery:c2-primary-runtime-703725b"
+    ],
+    "revision": "703725b0185d32a95b83e9fc4c03c5d2402e826a",
+    "created": "2026-08-27T23:24:57Z",
+    "source_dirty": "false"
+  }
+]

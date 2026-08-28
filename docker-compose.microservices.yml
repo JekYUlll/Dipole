@@ -2,7 +2,8 @@ x-dipole-service: &dipole-service
   image: ${DIPOLE_IMAGE:-dipole-server:latest}
   restart: unless-stopped
   env_file:
-    - .env
+    - path: .env
+      required: false
   volumes:
     - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
 
@@ -14,6 +15,15 @@ x-internal-rpc: &internal-rpc
   DIPOLE_INTERNAL_RPC_TLS_SERVER_NAME: dipole-internal
   DIPOLE_INTERNAL_RPC_CORE_TARGET: core:9091
   DIPOLE_INTERNAL_RPC_MESSAGE_TARGET: message:9092
+  DIPOLE_INTERNAL_RPC_SEARCH_TARGET: search:9093
+  DIPOLE_INTERNAL_RPC_SYNC_TARGET: sync:9094
+
+x-dependency-readiness: &dependency-readiness
+  DIPOLE_METRICS_DEPENDENCY_PROBES_ENABLED: "true"
+  DIPOLE_METRICS_DEPENDENCY_PROBE_INTERVAL_SECONDS: "5"
+  DIPOLE_METRICS_DEPENDENCY_PROBE_TIMEOUT_MS: "1000"
+  DIPOLE_METRICS_DEPENDENCY_FAILURE_THRESHOLD: "3"
+  DIPOLE_METRICS_DEPENDENCY_SUCCESS_THRESHOLD: "2"
 
 services:
   mysql:
@@ -71,6 +81,74 @@ services:
       timeout: 3s
       retries: 20
 
+  agent:
+    build:
+      context: ./agent-runtime
+      dockerfile: Dockerfile
+    image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
+    restart: unless-stopped
+    volumes:
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mysql-permissions:
+        condition: service_completed_successfully
+    environment:
+      <<: *internal-rpc
+      DIPOLE_AGENT_HOST: 0.0.0.0
+      DIPOLE_AGENT_PORT: "8091"
+      DIPOLE_AGENT_KAFKA_ENABLED: "true"
+      DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092
+      DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent
+      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-v1
+      DIPOLE_AGENT_KAFKA_TOPIC: message.direct.created
+      DIPOLE_AGENT_KAFKA_TOPIC_PREFIX: dipole
+      DIPOLE_AGENT_KAFKA_FAILURE_MAX_ATTEMPTS: "3"
+      DIPOLE_AGENT_KAFKA_TOPIC_PARTITIONS: "6"
+      DIPOLE_AGENT_KAFKA_TOPIC_REPLICATION_FACTOR: "1"
+      DIPOLE_AGENT_TENANT_ID: dipole
+      DIPOLE_AGENT_UUID: UAI000000000000000001
+      DIPOLE_AGENT_TRIGGER_MODE: direct_target
+      DIPOLE_AGENT_LEDGER_MODE: mysql
+      DIPOLE_AGENT_LEDGER_LEASE_MS: "60000"
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true"
+      DIPOLE_AGENT_CAPABILITY_RPC_TARGET: core:9091
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/agent.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
+      DIPOLE_AGENT_MODEL_MODE: metadata
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v1
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_OTEL_ENABLED: ${DIPOLE_AGENT_OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: dipole-agent
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${DIPOLE_AGENT_OTEL_TRACES_ENDPOINT:-http://otel-collector:4318/v1/traces}
+      OTEL_TRACES_SAMPLER: parentbased_traceidratio
+      OTEL_TRACES_SAMPLER_ARG: ${DIPOLE_AGENT_OTEL_SAMPLE_RATIO:-0.1}
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "false"
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "foundation"
+      DIPOLE_AGENT_CONTROL_ENABLED: ${DIPOLE_AGENT_CONTROL_ENABLED:-false}
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: ${DIPOLE_AGENT_MCP_SERVER_ENABLED:-false}
+      DIPOLE_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
+      DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS: ${DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS:-5000}
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+      DIPOLE_AGENT_MYSQL_HOST: mysql
+      DIPOLE_AGENT_MYSQL_PORT: "3306"
+      DIPOLE_AGENT_MYSQL_USER: ${DIPOLE_AGENT_MYSQL_USER:-dipole_agent}
+      DIPOLE_AGENT_MYSQL_PASSWORD: ${DIPOLE_AGENT_MYSQL_PASSWORD:-change-me}
+      DIPOLE_AGENT_MYSQL_DATABASE: dipole
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8091/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
@@ -91,9 +169,59 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      DIPOLE_PLATFORM_MINIO_ACCESS_KEY: ${DIPOLE_PLATFORM_MINIO_ACCESS_KEY:-dipoleplatform}
+      DIPOLE_PLATFORM_MINIO_SECRET_KEY: ${DIPOLE_PLATFORM_MINIO_SECRET_KEY:-dipoleplatformpass}
+      DIPOLE_ARTIFACT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MINIO_ACCESS_KEY:-dipoleartifact}
+      DIPOLE_ARTIFACT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY:-dipoleartifactaudit}
+      DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY:-dipoleartifactauditpass}
+      DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY:-dipoleartifactmaintenance}
+      DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY:-dipoleartifactmaintenancepass}
+    volumes:
+      - ./configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
+      - ./configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
+      - ./configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
+      - ./configs/minio/agent-artifact-maintenance-policy.json:/policies/agent-artifact-maintenance-policy.json:ro
     entrypoint: >
       /bin/sh -c "mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
-      mc mb --ignore-existing local/dipole-files"
+      mc mb --ignore-existing local/dipole-files &&
+      mc mb --ignore-existing --with-lock local/dipole-search-archives &&
+      mc version enable local/dipole-search-archives &&
+      mc retention set --default governance 30d local/dipole-search-archives &&
+      mc mb --ignore-existing --with-lock local/dipole-message-archives &&
+      mc version enable local/dipole-message-archives &&
+      mc retention set --default governance 30d local/dipole-message-archives &&
+      mc admin user add local \"$$DIPOLE_PLATFORM_MINIO_ACCESS_KEY\" \"$$DIPOLE_PLATFORM_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-platform-storage-rw /policies/platform-storage-policy.json &&
+      mc admin policy attach local dipole-platform-storage-rw --user \"$$DIPOLE_PLATFORM_MINIO_ACCESS_KEY\" &&
+      mc mb --ignore-existing local/dipole-agent-artifacts &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-rw /policies/agent-artifact-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-rw --user \"$$DIPOLE_ARTIFACT_MINIO_ACCESS_KEY\" &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-audit /policies/agent-artifact-audit-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-audit --user \"$$DIPOLE_ARTIFACT_AUDIT_MINIO_ACCESS_KEY\" &&
+      mc admin user add local \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY\" \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY\" &&
+      mc admin policy create local dipole-agent-artifact-maintenance-inspect /policies/agent-artifact-maintenance-policy.json &&
+      mc admin policy attach local dipole-agent-artifact-maintenance-inspect --user \"$$DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY\""
+
+  elasticsearch:
+    profiles: ["search"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_microservices_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
 
   migrate:
     <<: *dipole-service
@@ -106,14 +234,33 @@ services:
     environment:
       DIPOLE_MYSQL_HOST: mysql
 
+  mysql-permissions:
+    image: mysql:8.4
+    restart: "no"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
+      - ./configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
+      - ./configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
+      - ./configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        mysql -h mysql -uroot -proot123 < /grants/message-atomic.sql &&
+        mysql -h mysql -uroot -proot123 < /grants/message-projector.sql &&
+        mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
+        mysql -h mysql -uroot -proot123 < /grants/agent.sql
+
   core:
     <<: *dipole-service
     entrypoint: ["/app/dipole-server"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/core.pem:/run/dipole/certs/core.pem:ro
-      - ./certs/internal/core-key.pem:/run/dipole/certs/core-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core.pem:/run/dipole/certs/core.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core-key.pem:/run/dipole/certs/core-key.pem:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -124,9 +271,10 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_SERVER_PORT: "8081"
       DIPOLE_GATEWAY_MODE: remote
+      DIPOLE_AUTH_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
       DIPOLE_MESSAGE_TRANSPORT: grpc
       DIPOLE_INTERNAL_RPC_CORE_LISTEN_ADDRESS: 0.0.0.0:9091
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/core.pem
@@ -134,11 +282,22 @@ services:
       DIPOLE_KAFKA_CLIENT_ID: dipole-core
       DIPOLE_PRESENCE_NODE_ID: core
       DIPOLE_STORAGE_ENDPOINT: minio:9000
+      DIPOLE_STORAGE_ACCESS_KEY: ${DIPOLE_PLATFORM_MINIO_ACCESS_KEY:-dipoleplatform}
+      DIPOLE_STORAGE_SECRET_KEY: ${DIPOLE_PLATFORM_MINIO_SECRET_KEY:-dipoleplatformpass}
+      DIPOLE_STORAGE_ARTIFACT_ENABLED: "true"
+      DIPOLE_STORAGE_ARTIFACT_ENDPOINT: minio:9000
+      DIPOLE_STORAGE_ARTIFACT_ACCESS_KEY: ${DIPOLE_ARTIFACT_MINIO_ACCESS_KEY:-dipoleartifact}
+      DIPOLE_STORAGE_ARTIFACT_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
+      DIPOLE_STORAGE_ARTIFACT_USE_SSL: "false"
+      DIPOLE_STORAGE_ARTIFACT_BUCKET: dipole-agent-artifacts
       DIPOLE_AI_ENABLED: "false"
+      DIPOLE_AI_RUNTIME_MODE: "off"
       DIPOLE_MYSQL_HOST: mysql
       DIPOLE_REDIS_HOST: redis
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8081/health"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -148,39 +307,135 @@ services:
     entrypoint: ["/app/dipole-message"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/message.pem:/run/dipole/certs/message.pem:ro
-      - ./certs/internal/message-key.pem:/run/dipole/certs/message-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message.pem:/run/dipole/certs/message.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message-key.pem:/run/dipole/certs/message-key.pem:ro
     depends_on:
-      migrate:
+      mysql-permissions:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_MESSAGE_RUNTIME_MODE: owner
+      DIPOLE_MESSAGE_INBOX_WRITE_MODE: ${DIPOLE_MESSAGE_INBOX_WRITE_MODE:-atomic}
+      DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS: ${DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS:-true}
       DIPOLE_INTERNAL_RPC_MESSAGE_LISTEN_ADDRESS: 0.0.0.0:9092
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/message.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/message-key.pem
       DIPOLE_KAFKA_CLIENT_ID: dipole-message
       DIPOLE_MYSQL_HOST: mysql
+      DIPOLE_MESSAGE_MYSQL_USER: ${DIPOLE_MESSAGE_MYSQL_USER:-dipole_message}
+      DIPOLE_MESSAGE_MYSQL_PASSWORD: ${DIPOLE_MESSAGE_MYSQL_PASSWORD:-change-me}
+      DIPOLE_MESSAGE_MYSQL_DBNAME: dipole
       DIPOLE_REDIS_HOST: redis
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
       timeout: 3s
       retries: 30
+
+  sync:
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-sync"]
+    volumes:
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync.pem:/run/dipole/certs/sync.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
+    depends_on:
+      core:
+        condition: service_healthy
+      mysql-permissions:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: [*internal-rpc, *dependency-readiness]
+      DIPOLE_SYNC_PROJECTOR_ENABLED: "true"
+      DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION: ${DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION:-false}
+      DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS: ${DIPOLE_SYNC_ENFORCE_DB_PERMISSIONS:-true}
+      DIPOLE_SYNC_MYSQL_HOST: mysql
+      DIPOLE_SYNC_MYSQL_USER: ${DIPOLE_SYNC_MYSQL_USER:-dipole_sync}
+      DIPOLE_SYNC_MYSQL_PASSWORD: ${DIPOLE_SYNC_MYSQL_PASSWORD:-change-me}
+      DIPOLE_SYNC_MYSQL_DBNAME: dipole
+      DIPOLE_INTERNAL_RPC_SYNC_LISTEN_ADDRESS: 0.0.0.0:9094
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/sync.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/sync-key.pem
+      DIPOLE_KAFKA_CLIENT_ID: dipole-sync
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  search-indexer:
+    profiles: ["search"]
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-search-indexer"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: *dependency-readiness
+      DIPOLE_ELASTICSEARCH_ENABLED: "true"
+      DIPOLE_ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
+      DIPOLE_KAFKA_CLIENT_ID: dipole-search-indexer
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  search:
+    profiles: ["search"]
+    <<: *dipole-service
+    entrypoint: ["/app/dipole-search"]
+    volumes:
+      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search.pem:/run/dipole/certs/search.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search-key.pem:/run/dipole/certs/search-key.pem:ro
+    depends_on:
+      core:
+        condition: service_healthy
+      search-indexer:
+        condition: service_healthy
+    environment:
+      <<: [*internal-rpc, *dependency-readiness]
+      DIPOLE_INTERNAL_RPC_SEARCH_LISTEN_ADDRESS: 0.0.0.0:9093
+      DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/search.pem
+      DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/search-key.pem
+      DIPOLE_ELASTICSEARCH_ENABLED: "true"
+      DIPOLE_ELASTICSEARCH_ADDRESS: http://elasticsearch:9200
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
 
   gateway:
     <<: *dipole-service
     entrypoint: ["/app/dipole-gateway"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/gateway.pem:/run/dipole/certs/gateway.pem:ro
-      - ./certs/internal/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway.pem:/run/dipole/certs/gateway.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -191,23 +446,76 @@ services:
       kafka:
         condition: service_healthy
     environment:
-      <<: *internal-rpc
+      <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_GATEWAY_MODE: remote
       DIPOLE_GATEWAY_CORE_HTTP_TARGET: http://core:8081
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: ${DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED:-false}
+      DIPOLE_GATEWAY_AGENT_CONTROL_TARGET: http://agent:8091
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: ${DIPOLE_GATEWAY_AGENT_MCP_ENABLED:-false}
+      DIPOLE_GATEWAY_AGENT_MCP_TARGET: http://agent:8091
+      DIPOLE_AUTH_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
+      DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT: ${DIPOLE_RATE_LIMIT_AGENT_MCP_LIMIT:-60}
+      DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS: ${DIPOLE_RATE_LIMIT_AGENT_MCP_WINDOW_SECONDS:-60}
+      DIPOLE_SEARCH_ENABLED: ${DIPOLE_SEARCH_ENABLED:-false}
+      DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE: ${DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE:-off}
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/gateway.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/gateway-key.pem
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_ENABLED: ${DIPOLE_DELIVERY_OBSERVATION_ENABLED:-false}
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_LISTEN_ADDRESS: 0.0.0.0:9095
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_CAPACITY: ${DIPOLE_DELIVERY_OBSERVATION_CAPACITY:-1024}
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_RETRY_AFTER_MS: ${DIPOLE_DELIVERY_OBSERVATION_RETRY_AFTER_MS:-25}
       DIPOLE_PRESENCE_NODE_ID: gateway-1
       DIPOLE_REDIS_HOST: redis
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
       timeout: 3s
       retries: 20
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus-services.yml"]
+    volumes:
+      - ./deploy/observability:/etc/prometheus:ro
+    ports:
+      - "9090:9090"
+
+  tempo:
+    profiles: ["observability"]
+    image: grafana/tempo:2.10.5
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./deploy/observability/tempo.yml:/etc/tempo/config.yml:ro
+      - tempo_trace_data:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200"
+
+  otel-collector:
+    profiles: ["observability"]
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.159.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    volumes:
+      - ./deploy/observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    ports:
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:13133:13133"
+      - "127.0.0.1:8888:8888"
+    depends_on:
+      tempo:
+        condition: service_started
 
 volumes:
   mysql_microservices_data:
   redis_microservices_data:
   kafka_microservices_data:
   minio_microservices_data:
+  elasticsearch_microservices_data:
+  tempo_trace_data:

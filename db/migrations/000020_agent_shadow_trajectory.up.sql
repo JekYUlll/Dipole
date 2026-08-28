@@ -1,0 +1,40 @@
+CREATE TABLE IF NOT EXISTS agent_shadow_plans (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    task_uuid VARCHAR(64) NOT NULL,
+    event_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    summary TEXT NOT NULL,
+    plan_sha256 CHAR(64) NOT NULL,
+    model_route VARCHAR(255) NULL,
+    model_attempts SMALLINT UNSIGNED NULL,
+    model_input_tokens INT UNSIGNED NULL,
+    model_output_tokens INT UNSIGNED NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_agent_shadow_plans_task (task_uuid),
+    UNIQUE KEY idx_agent_shadow_plans_event (event_id),
+    KEY idx_agent_shadow_plans_type_created (event_type, created_at),
+    CONSTRAINT chk_agent_shadow_plans_model_attempts CHECK (model_attempts IS NULL OR model_attempts > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS agent_shadow_steps (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    task_uuid VARCHAR(64) NOT NULL,
+    step_no SMALLINT UNSIGNED NOT NULL,
+    capability_id VARCHAR(128) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    input_json JSON NOT NULL,
+    output_json JSON NULL,
+    attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
+    started_at DATETIME(3) NULL,
+    finished_at DATETIME(3) NULL,
+    last_error TEXT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_agent_shadow_steps_order (task_uuid, step_no),
+    KEY idx_agent_shadow_steps_status (status, updated_at),
+    CONSTRAINT fk_agent_shadow_steps_plan FOREIGN KEY (task_uuid) REFERENCES agent_shadow_plans(task_uuid) ON DELETE CASCADE,
+    CONSTRAINT chk_agent_shadow_steps_number CHECK (step_no > 0),
+    CONSTRAINT chk_agent_shadow_steps_status CHECK (status IN ('planned', 'running', 'completed', 'failed', 'denied'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

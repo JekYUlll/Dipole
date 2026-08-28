@@ -8,8 +8,11 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
 var (
@@ -24,33 +27,31 @@ type callLogRepository interface {
 }
 
 type directContextBuilder interface {
-	BuildDirectContext(userUUID, assistantUUID string) (*ConversationContext, error)
-}
-
-type messageSender interface {
-	SendAssistantTextMessage(assistantUUID, targetUUID, content string) (*model.Message, error)
+	BuildDirectContext(ctx context.Context, userUUID, assistantUUID string) (*ConversationContext, error)
 }
 
 type Service struct {
 	config         config.AI
 	contextBuilder directContextBuilder
 	logs           callLogRepository
-	sender         messageSender
+	commands       application.AgentCommandV1
+	policy         application.AgentExecutionPolicyV1
 	agent          Agent
 }
 
-func NewService(builder directContextBuilder, logs callLogRepository, sender messageSender, agent Agent) *Service {
+func NewService(builder directContextBuilder, logs callLogRepository, commands application.AgentCommandV1, policy application.AgentExecutionPolicyV1, agent Agent) *Service {
 	return &Service{
 		config:         config.AIConfig(),
 		contextBuilder: builder,
 		logs:           logs,
-		sender:         sender,
+		commands:       commands,
+		policy:         policy,
 		agent:          agent,
 	}
 }
 
 func (s *Service) Enabled() bool {
-	return s != nil && s.config.Enabled && s.agent != nil && s.sender != nil && s.contextBuilder != nil && s.logs != nil
+	return s != nil && s.config.Enabled && s.agent != nil && s.commands != nil && s.policy != nil && s.contextBuilder != nil && s.logs != nil
 }
 
 func (s *Service) AssistantUUID() string {
@@ -98,29 +99,47 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 		return nil
 	}
 
+	var policyExecution *application.AgentPolicyExecutionV1
 	markFailed := func(err error) error {
+		if policyExecution != nil {
+			_ = s.policy.Fail(ctx, *policyExecution)
+		}
 		latencyMS := time.Since(startedAt).Milliseconds()
 		_ = s.logs.MarkFailed(message.UUID, trimError(err), latencyMS)
 		return err
 	}
 
-	conversationContext, err := s.contextBuilder.BuildDirectContext(message.SenderUUID, assistantUUID)
+	ids := correlation.FromContext(ctx)
+	policyExecution, err = s.policy.Start(ctx, application.AgentExecutionPolicyStartV1{
+		TenantID: defaultAgentTenantID, PrincipalUUID: message.SenderUUID, AgentUUID: assistantUUID,
+		DelegatedByUUID: message.SenderUUID, TriggerType: "message.direct.created", TriggerRef: message.UUID,
+		RequestID: ids.RequestID, TraceID: ids.TraceID, EventID: ids.EventID,
+	})
+	if err != nil {
+		return markFailed(err)
+	}
+	invocation := policyExecution.Invocation
+	execution := newExecutionContext(ExecutionContext{
+		TenantID:           defaultAgentTenantID,
+		PrincipalUserUUID:  message.SenderUUID,
+		AgentUUID:          assistantUUID,
+		DelegatedByUUID:    message.SenderUUID,
+		TriggerMessageUUID: message.UUID,
+		ConversationKey:    message.ConversationKey,
+		RequestID:          ids.RequestID,
+		TraceID:            ids.TraceID,
+		EventID:            ids.EventID,
+	}, invocation.Permissions, invocation.ApprovedCapabilities, invocation.ResourceScopes)
+	runCtx := withExecutionContext(ctx, execution)
+	runCtx = eventlineage.AgentAction(runCtx, assistantUUID, policyExecution.TaskUUID, ids.EventID)
+
+	conversationContext, err := s.contextBuilder.BuildDirectContext(runCtx, message.SenderUUID, assistantUUID)
 	if err != nil {
 		return markFailed(err)
 	}
 
-	// Prepend a system message so the agent knows the current user's UUID
-	// when invoking tools that require user_uuid (e.g. list_user_conversations).
-	contextMessages := conversationContext.Messages
-	if conversationContext.EndUser != nil && conversationContext.EndUser.UUID != "" {
-		contextMessages = append(
-			[]*schema.Message{schema.SystemMessage("Current user UUID: " + conversationContext.EndUser.UUID)},
-			conversationContext.Messages...,
-		)
-	}
-
-	runCtx := withToolExecutionState(ctx, &toolExecutionState{})
-	reply, err := s.agent.Reply(runCtx, contextMessages)
+	runCtx = withToolExecutionState(runCtx, &toolExecutionState{})
+	reply, err := s.agent.Reply(runCtx, conversationContext.Messages)
 	if err != nil {
 		return markFailed(err)
 	}
@@ -132,7 +151,12 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 			return markFailed(ErrAIEmptyResponse)
 		}
 
-		responseMessage, err = s.sender.SendAssistantTextMessage(assistantUUID, message.SenderUUID, content)
+		responseMessage, err = s.commands.SendMessage(runCtx, application.AgentMessageCommandV1{
+			CommandID:  "reply:" + strings.TrimSpace(message.UUID),
+			Kind:       application.AgentMessageCommandAssistantReplyV1,
+			Invocation: execution.invocationV1(),
+			Content:    content,
+		})
 		if err != nil {
 			return markFailed(err)
 		}
@@ -140,6 +164,10 @@ func (s *Service) HandleDirectMessage(ctx context.Context, message *model.Messag
 
 	usage := extractUsage(reply)
 	latencyMS := time.Since(startedAt).Milliseconds()
+	if err := s.policy.Complete(ctx, *policyExecution); err != nil {
+		return markFailed(err)
+	}
+	policyExecution = nil
 	if err := s.logs.MarkSucceeded(
 		message.UUID,
 		responseMessage.UUID,

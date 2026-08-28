@@ -3,6 +3,7 @@ package messagegrpc
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -27,11 +28,17 @@ func NewServer(application application.MessageApplication) (*Server, error) {
 }
 
 func (s *Server) SendDirectText(ctx context.Context, request *messagev1.SendDirectTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, err := s.application.SendDirectMessage(principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	var message *model.Message
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, err = contextual.SendDirectMessageContext(ctx, principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	} else {
+		message, err = s.application.SendDirectMessage(principal, request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -39,11 +46,18 @@ func (s *Server) SendDirectText(ctx context.Context, request *messagev1.SendDire
 }
 
 func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroupTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, recipients, err := s.application.SendGroupMessage(principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	var message *model.Message
+	var recipients []string
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupMessageContext(ctx, principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	} else {
+		message, recipients, err = s.application.SendGroupMessage(principal, request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -51,11 +65,17 @@ func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroup
 }
 
 func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDirectFileRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, err := s.application.SendDirectFileMessage(principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	var message *model.Message
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, err = contextual.SendDirectFileMessageContext(ctx, principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	} else {
+		message, err = s.application.SendDirectFileMessage(principal, request.GetTargetUserId(), request.GetFileId(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -63,15 +83,62 @@ func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDire
 }
 
 func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroupFileRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
 	}
-	message, recipients, err := s.application.SendGroupFileMessage(principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	var message *model.Message
+	var recipients []string
+	if contextual, ok := s.application.(application.MessageCommandContext); ok {
+		message, recipients, err = contextual.SendGroupFileMessageContext(ctx, principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	} else {
+		message, recipients, err = s.application.SendGroupFileMessage(principal, request.GetGroupId(), request.GetFileId(), request.GetClientMessageId())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
 	return sendResponse(message, recipients), nil
+}
+
+func (s *Server) GetMessageCommandReceipt(ctx context.Context, request *messagev1.GetMessageCommandReceiptRequest) (*messagev1.GetMessageCommandReceiptResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	principal, err := principalFrom(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	clientMessageID := strings.TrimSpace(request.GetClientMessageId())
+	if clientMessageID == "" {
+		return nil, rpcError(application.ErrMessageClientMessageIDInvalid)
+	}
+	query, ok := s.application.(application.MessageCommandReceiptQuery)
+	if !ok {
+		return nil, status.Error(codes.Internal, "Message Command receipt query is unavailable")
+	}
+	receipt, err := query.GetMessageCommandReceipt(principal, clientMessageID)
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	if receipt == nil {
+		return nil, status.Error(codes.Internal, "Message Command receipt is unavailable")
+	}
+	switch receipt.Status {
+	case application.MessageCommandReceiptStatusAbsent:
+		if receipt.Message != nil {
+			return nil, status.Error(codes.Internal, "Message Command receipt has conflicting state")
+		}
+		return &messagev1.GetMessageCommandReceiptResponse{Status: messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_ABSENT}, nil
+	case application.MessageCommandReceiptStatusCommitted:
+		if receipt.Message == nil || strings.TrimSpace(receipt.Message.SenderUUID) != principal || strings.TrimSpace(receipt.Message.ClientMessageID) != clientMessageID {
+			return nil, status.Error(codes.Internal, "Message Command receipt has conflicting binding")
+		}
+		return &messagev1.GetMessageCommandReceiptResponse{
+			Status:  messagev1.MessageCommandReceiptStatus_MESSAGE_COMMAND_RECEIPT_STATUS_COMMITTED,
+			Message: grpcmapping.MessageToProto(receipt.Message),
+		}, nil
+	default:
+		return nil, status.Error(codes.Internal, "Message Command receipt has unknown state")
+	}
 }
 
 func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListDirectHistoryRequest) (*messagev1.ListMessagesResponse, error) {
@@ -79,15 +146,32 @@ func (s *Server) ListDirectHistory(ctx context.Context, request *messagev1.ListD
 	if err != nil {
 		return nil, err
 	}
-	beforeID, err := uintCursor(request.GetBeforeId())
-	if err != nil {
-		return nil, err
-	}
 	pageSize, err := pageSize(request.GetPageSize())
 	if err != nil {
 		return nil, err
 	}
-	messages, appErr := s.application.ListDirectMessages(principal, request.GetTargetUserId(), beforeID, pageSize)
+	var messages []*model.Message
+	var appErr error
+	if request.BeforeSequence != nil && request.AfterSequence != nil {
+		return nil, status.Error(codes.InvalidArgument, "before_sequence and after_sequence cannot be used together")
+	}
+	if request.AfterSequence != nil {
+		if request.GetBeforeId() != 0 {
+			return nil, status.Error(codes.InvalidArgument, "before_id and after_sequence cannot be used together")
+		}
+		messages, appErr = s.application.ListDirectMessagesAfterSeq(principal, request.GetTargetUserId(), request.GetAfterSequence(), pageSize)
+	} else if request.BeforeSequence != nil {
+		if request.GetBeforeId() != 0 {
+			return nil, status.Error(codes.InvalidArgument, "before_id and before_sequence cannot be used together")
+		}
+		messages, appErr = s.application.ListDirectMessagesBeforeSeq(principal, request.GetTargetUserId(), request.GetBeforeSequence(), pageSize)
+	} else {
+		beforeID, cursorErr := uintCursor(request.GetBeforeId())
+		if cursorErr != nil {
+			return nil, cursorErr
+		}
+		messages, appErr = s.application.ListDirectMessages(principal, request.GetTargetUserId(), beforeID, pageSize)
+	}
 	if appErr != nil {
 		return nil, rpcError(appErr)
 	}
@@ -106,6 +190,10 @@ func (s *Server) ListGroupHistory(ctx context.Context, request *messagev1.ListGr
 
 	var messages []*model.Message
 	switch cursor := request.GetCursor().(type) {
+	case *messagev1.ListGroupHistoryRequest_BeforeSequence:
+		messages, err = s.application.ListGroupMessagesBeforeSeq(principal, request.GetGroupId(), cursor.BeforeSequence, limit)
+	case *messagev1.ListGroupHistoryRequest_AfterSequence:
+		messages, err = s.application.ListGroupMessagesAfterSeq(principal, request.GetGroupId(), cursor.AfterSequence, limit)
 	case *messagev1.ListGroupHistoryRequest_AfterId:
 		afterID, cursorErr := uintCursor(cursor.AfterId)
 		if cursorErr != nil {
@@ -188,6 +276,8 @@ func rpcError(err error) error {
 		return statusWithReason(codes.PermissionDenied, err, messagev1.ErrorReason_ERROR_REASON_GROUP_FORBIDDEN)
 	case errors.Is(err, application.ErrMessageIdempotencyConflict):
 		return statusWithReason(codes.AlreadyExists, err, messagev1.ErrorReason_ERROR_REASON_IDEMPOTENCY_CONFLICT)
+	case errors.Is(err, application.ErrMessageClientMessageIDInvalid):
+		return statusWithReason(codes.InvalidArgument, err, messagev1.ErrorReason_ERROR_REASON_CLIENT_MESSAGE_ID_INVALID)
 	case errors.Is(err, application.ErrMessageTargetUnavailable):
 		return statusWithReason(codes.FailedPrecondition, err, messagev1.ErrorReason_ERROR_REASON_TARGET_UNAVAILABLE)
 	case errors.Is(err, application.ErrMessageFileUnavailable):

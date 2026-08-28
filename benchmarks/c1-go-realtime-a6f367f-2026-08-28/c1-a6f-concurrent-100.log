@@ -1,0 +1,190 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: scripts/bench/bench.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 50s max duration (incl. graceful stop):
+              * concurrent: 1 iterations for each of 100 VUs (maxDuration: 20s, gracefulStop: 30s)
+
+time="2026-08-28T03:30:14+08:00" level=info msg="[setup] registering 100 users..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-28T03:30:26+08:00" level=info msg="[setup] logged in 100/100 users" source=console
+time="2026-08-28T03:30:26+08:00" level=info msg="[setup] creating friend pairs for concurrent..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-28T03:30:43+08:00" level=info msg="[setup] done." source=console
+
+running (30.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  00.8s/20s  000/100 iters, 1 per VU
+
+running (31.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  01.8s/20s  000/100 iters, 1 per VU
+
+running (32.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  02.8s/20s  000/100 iters, 1 per VU
+
+running (33.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  03.8s/20s  000/100 iters, 1 per VU
+
+running (34.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  04.8s/20s  000/100 iters, 1 per VU
+
+running (35.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  05.8s/20s  000/100 iters, 1 per VU
+
+running (36.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  06.8s/20s  000/100 iters, 1 per VU
+
+running (37.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  07.8s/20s  000/100 iters, 1 per VU
+
+running (38.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  08.8s/20s  000/100 iters, 1 per VU
+
+running (39.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  09.8s/20s  000/100 iters, 1 per VU
+
+running (40.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  10.8s/20s  000/100 iters, 1 per VU
+
+running (41.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  11.8s/20s  000/100 iters, 1 per VU
+
+
+  █ THRESHOLDS 
+
+    http_req_failed{name:login}
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    msg_accepted_total.............: 200     4.853615/s
+    msg_attempted_total............: 200     4.853615/s
+    msg_delivery_rate..............: 100.00% 200 out of 200
+    msg_e2e_latency_ms.............: avg=4.95s  min=295ms    med=5.29s   max=8.47s   p(50)=5.29s   p(90)=7.82s   p(95)=8.08s    p(99)=8.38s   
+    msg_expected_receipts_total....: 200     4.853615/s
+    msg_received_total.............: 200     4.853615/s
+    msg_sent_total.................: 200     4.853615/s
+
+    HTTP
+    http_req_duration..............: avg=58.2ms min=573.35µs med=47.32ms max=1.46s   p(50)=47.32ms p(90)=89.19ms p(95)=106.38ms p(99)=252.96ms
+      { expected_response:true }...: avg=58.2ms min=573.35µs med=47.32ms max=1.46s   p(50)=47.32ms p(90)=89.19ms p(95)=106.38ms p(99)=252.96ms
+    http_req_failed................: 0.00%   0 out of 500
+      { name:login }...............: 0.00%   0 out of 100
+    http_reqs......................: 500     12.134037/s
+
+    EXECUTION
+    iteration_duration.............: avg=12s    min=12s      med=12s     max=12.01s  p(50)=12s     p(90)=12.01s  p(95)=12.01s   p(99)=12.01s  
+    iterations.....................: 100     2.426807/s
+    vus............................: 100     min=0          max=100
+    vus_max........................: 100     min=100        max=100
+
+    NETWORK
+    data_received..................: 502 kB  12 kB/s
+    data_sent......................: 275 kB  6.7 kB/s
+
+    WEBSOCKET
+    ws_connecting..................: avg=7.4ms  min=2.38ms   med=6.41ms  max=16.37ms p(50)=6.41ms  p(90)=14.92ms p(95)=15.32ms  p(99)=16.24ms 
+    ws_msgs_received...............: 504     12.231109/s
+    ws_msgs_sent...................: 200     4.853615/s
+    ws_session_duration............: avg=12s    min=12s      med=12s     max=12.01s  p(50)=12s     p(90)=12.01s  p(95)=12.01s   p(99)=12.01s  
+    ws_sessions....................: 100     2.426807/s
+
+
+
+
+running (41.2s), 000/100 VUs, 100 complete and 0 interrupted iterations
+concurrent ✓ [ 100% ] 100 VUs  12.0s/20s  100/100 iters, 1 per VU

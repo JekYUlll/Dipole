@@ -96,6 +96,21 @@ func (s *Server) GetOwnedFile(ctx context.Context, request *corev1.GetOwnedFileR
 	return &corev1.GetOwnedFileResponse{File: fileToProto(file)}, nil
 }
 
+func (s *Server) ListSearchConversationKeys(ctx context.Context, request *corev1.ListSearchConversationKeysRequest) (*corev1.ListSearchConversationKeysResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	principal, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	keys, err := s.capability.ListSearchConversationKeys(principal)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "core Search scope lookup failed")
+	}
+	return &corev1.ListSearchConversationKeysResponse{ConversationKeys: keys}, nil
+}
+
 func userToProto(user *model.User) *corev1.UserSnapshot {
 	if user == nil {
 		return nil

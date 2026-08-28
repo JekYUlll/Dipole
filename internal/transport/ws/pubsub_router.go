@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	presencePkg "github.com/JekYUlll/Dipole/internal/platform/presence"
 )
 
@@ -24,7 +25,7 @@ const (
 // NodeMessage 是发布到 ws:node:{nodeID} channel 的消息体。
 // Payload 存放已序列化的 OutboundEvent，接收端直接调用 hub.sendToUser，避免二次序列化。
 type NodeMessage struct {
-	Kind          string   `json:"kind"`                     // "event" | "disconnect" | "disconnect_all"
+	Kind          string   `json:"kind"` // "event" | "disconnect" | "disconnect_all"
 	UserUUID      string   `json:"user_uuid"`
 	EventType     string   `json:"event_type,omitempty"`
 	Payload       []byte   `json:"payload,omitempty"`        // 已序列化的 OutboundEvent（kind=event 时使用）
@@ -98,7 +99,14 @@ func (r *PubSubRouter) Stop() {
 // 若 presence 查询失败或返回空（用户离线），降级为本地投递。
 // 返回本节点实际投递的连接数（远端投递为 fire-and-forget，不计入返回值）。
 func (r *PubSubRouter) SendEventToUser(userUUID, eventType string, data any) int {
-	payload, err := json.Marshal(OutboundEvent{Type: eventType, Data: data})
+	return r.SendEventToUserContext(context.Background(), userUUID, eventType, data)
+}
+
+func (r *PubSubRouter) SendEventToUserContext(ctx context.Context, userUUID, eventType string, data any) int {
+	ids := correlation.FromContext(ctx)
+	payload, err := json.Marshal(OutboundEvent{
+		Type: eventType, RequestID: ids.RequestID, TraceID: ids.TraceID, EventID: ids.EventID, Data: data,
+	})
 	if err != nil {
 		r.log.Warn("pubsub marshal outbound event failed",
 			zap.String("user_uuid", userUUID),

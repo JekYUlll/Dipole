@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/attempt-inputs.schema.json",
+  "title": "Dipole Realtime Delivery Cutover Attempt Inputs v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "initial_transition", "source_nodes", "frozen_nodes",
+    "target_nodes", "checkpoint_manifest"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.cutover-attempt-inputs.v1" },
+    "initial_transition": { "$ref": "receipt.schema.json" },
+    "source_nodes": { "$ref": "expected-nodes.schema.json" },
+    "frozen_nodes": { "$ref": "expected-nodes.schema.json" },
+    "target_nodes": { "$ref": "expected-nodes.schema.json" },
+    "checkpoint_manifest": { "$ref": "checkpoint-manifest.schema.json" }
+  }
+}

@@ -1,0 +1,293 @@
+{
+    "metrics": {
+        "ws_session_duration": {
+            "p(99)": 12006.91063809,
+            "avg": 12004.81973975,
+            "min": 12003.20276,
+            "med": 12004.706323,
+            "max": 12006.915595,
+            "p(50)": 12004.706323,
+            "p(90)": 12006.6834645,
+            "p(95)": 12006.890810449999
+        },
+        "msg_sent_total": {
+            "count": 40,
+            "rate": 2.408504551054744
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(95)": 86.7086497,
+            "p(99)": 144.5612115,
+            "avg": 45.853573350000005,
+            "min": 0.746146,
+            "med": 46.331663500000005,
+            "max": 145.630857,
+            "p(50)": 46.331663500000005,
+            "p(90)": 84.79065270000001
+        },
+        "msg_e2e_latency_ms": {
+            "p(95)": 1363.3999999999999,
+            "p(99)": 1413.79,
+            "avg": 908.675,
+            "min": 187,
+            "med": 993,
+            "max": 1429,
+            "p(50)": 993,
+            "p(90)": 1301.2
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(50)": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "avg": 0
+        },
+        "http_req_sending": {
+            "med": 0.015104,
+            "max": 0.096293,
+            "p(50)": 0.015104,
+            "p(90)": 0.022218100000000008,
+            "p(95)": 0.024858149999999996,
+            "p(99)": 0.031602440000000336,
+            "avg": 0.016868789999999995,
+            "min": 0.009287
+        },
+        "data_sent": {
+            "count": 55581,
+            "rate": 3346.677286304343
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 100,
+            "value": 0
+        },
+        "http_reqs": {
+            "count": 100,
+            "rate": 6.0212613776368595
+        },
+        "http_req_blocked": {
+            "p(99)": 0.021979870000000772,
+            "avg": 0.00530179,
+            "min": 0.001974,
+            "med": 0.003196,
+            "max": 0.171556,
+            "p(50)": 0.003196,
+            "p(90)": 0.004673000000000001,
+            "p(95)": 0.0057139999999999995
+        },
+        "http_req_waiting": {
+            "p(95)": 86.62990814999999,
+            "p(99)": 144.47699028,
+            "avg": 45.77203560000001,
+            "min": 0.694167,
+            "med": 46.244368,
+            "max": 145.519686,
+            "p(50)": 46.244368,
+            "p(90)": 84.6825251
+        },
+        "ws_sessions": {
+            "count": 20,
+            "rate": 1.204252275527372
+        },
+        "vus_max": {
+            "value": 20,
+            "min": 20,
+            "max": 20
+        },
+        "msg_attempted_total": {
+            "count": 40,
+            "rate": 2.408504551054744
+        },
+        "msg_accepted_total": {
+            "count": 40,
+            "rate": 2.408504551054744
+        },
+        "msg_delivery_rate": {
+            "passes": 40,
+            "fails": 0,
+            "value": 1
+        },
+        "ws_msgs_sent": {
+            "rate": 2.408504551054744,
+            "count": 40
+        },
+        "vus": {
+            "value": 20,
+            "min": 0,
+            "max": 20
+        },
+        "http_req_failed{name:login}": {
+            "passes": 0,
+            "fails": 20,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "iteration_duration": {
+            "avg": 12004.8991794,
+            "min": 12003.259267,
+            "med": 12004.755140500001,
+            "max": 12006.990247,
+            "p(50)": 12004.755140500001,
+            "p(90)": 12006.7257274,
+            "p(95)": 12006.939420100001,
+            "p(99)": 12006.98008162
+        },
+        "http_req_receiving": {
+            "p(95)": 0.09471215,
+            "p(99)": 0.11270141000000006,
+            "avg": 0.06466896,
+            "min": 0.031539,
+            "med": 0.062098,
+            "max": 0.123434,
+            "p(50)": 0.062098,
+            "p(90)": 0.08563580000000004
+        },
+        "ws_msgs_received": {
+            "count": 106,
+            "rate": 6.382537060295071
+        },
+        "msg_expected_receipts_total": {
+            "rate": 2.408504551054744,
+            "count": 40
+        },
+        "iterations": {
+            "count": 20,
+            "rate": 1.204252275527372
+        },
+        "http_req_duration": {
+            "p(50)": 46.331663500000005,
+            "p(90)": 84.79065270000001,
+            "p(95)": 86.7086497,
+            "p(99)": 144.5612115,
+            "avg": 45.853573350000005,
+            "min": 0.746146,
+            "med": 46.331663500000005,
+            "max": 145.630857
+        },
+        "data_received": {
+            "count": 103585,
+            "rate": 6237.123598025141
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 0.115709,
+            "p(50)": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0.001157090000000592,
+            "avg": 0.0011570900000000002,
+            "min": 0
+        },
+        "ws_connecting": {
+            "p(99)": 5.9145704,
+            "avg": 4.09141955,
+            "min": 1.859038,
+            "med": 3.99681,
+            "max": 5.92366,
+            "p(50)": 3.99681,
+            "p(90)": 5.726956400000001,
+            "p(95)": 5.878212
+        },
+        "msg_received_total": {
+            "count": 40,
+            "rate": 2.408504551054744
+        }
+    },
+    "setup_data": {
+        "groupUUID": null,
+        "sessions": [
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVNThERUY1RUUxMjBERTQzOERDRjIiLCJleHAiOjE3ODg0NjQ5NTksIm5iZiI6MTc4Nzg2MDE1OSwiaWF0IjoxNzg3ODYwMTU5LCJqdGkiOiI4NERCMDQ5N0FGQzgzQzRERUZCREY4NEEzQkNGMTA3NyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.4OF4LRWYL3As90yaIvF7XAkyc21CPLXuYg-wpUq43dI",
+                "uuid": "U58DEF5EE120DE438DCF2"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVQUMzOEJDRkIxMkREQjAzREFFNEIiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJCNzk3NjBDMDc5QzI4MzZDNEIwNUIwQ0E2RDZCRTU4MiIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.vnt3xabgzxWKAJjOt3eTWZcAJ4XPtJ10DkylltWIxtI",
+                "uuid": "UAC38BCFB12DDB03DAE4B"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMUU0NjRDOTgwMURCMzEyQzBGNTYiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI4OEI3RDkxRDY0QkE4RjI1RTYwMEE3Q0QzRUJGMjFCQyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.EH8aDLMHh9KIFfOROEePWGEMtmt4ReuTOU5XFr_kC9o",
+                "uuid": "U1E464C9801DB312C0F56"
+            },
+            {
+                "uuid": "UF92E65400FCDE37F5971",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRjkyRTY1NDAwRkNERTM3RjU5NzEiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiIwOUU1Q0RCODZGOTk0RjY5OEQwN0NFQThGMzNFRUY0OSIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.xbdzrr9_7FFBHmXh7nDnU9x4gVHEweEjjEOKb4d6aJ0"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRkU4RjJFRDVFMDQ2NDY0QjQwMEIiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJCODRDNUYyRDJCNkJDRTUwQTk0OEU0OUE3QUVFRkQwOCIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.zqY2E5By1BHA-zT6Syon_WjmzSpwEnkAIRTPLB73rW8",
+                "uuid": "UFE8F2ED5E046464B400B"
+            },
+            {
+                "uuid": "U582DF6FAA696CD397FB0",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVNTgyREY2RkFBNjk2Q0QzOTdGQjAiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI5RDM1NEQzQzdERjdFNEVFMjM2RjExQTNERDA3OTBCQyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.U1RxtQqokwA5BUl-Qb9w5l_zR5hQSffCHDpzTncxlXs"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRjI2Q0FDQzQ3N0Y0QkQyQTE0RjgiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI0RDdDRjQzNDlFOURGMTlBMkFDRTI2RTkwNUJCQThDMyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.OGWgOwMkjW0O6j2l2lm0ZJoCZ45GlDpMgY3MceOBxKE",
+                "uuid": "UF26CACC477F4BD2A14F8"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMDgzQzYwRTUyNUVDNzIyMjA0NDUiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI1RDM5REY3Nzc1OTE5MzE0MURCNkFDNEQxMUEyRkU2OSIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.boEipqIJlAt86HLSNrUH7H-PRQaZ0iLgs2JCDx9wa_U",
+                "uuid": "U083C60E525EC72220445"
+            },
+            {
+                "uuid": "UE29A5D3794BD467C31A6",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRTI5QTVEMzc5NEJENDY3QzMxQTYiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiIxOUM5QTFEQkUzMjZENzM0NEM1ODg2M0VDQkNEQkQzMyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.PgsU7LKZcy5o2qWXFFAevAOp1_c6IHX4mOEpUP4yB2Y"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVNUExMkZCNzg5QzRGMzBGN0I5NDMiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiIyREZENzNFNDEyMEExQ0UzMTU2NzdGREE0MjcyNjIyQiIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.yl8VH966KLdO9wgB_UJSak_HV9RR_zOjP4Af8R8n7eE",
+                "uuid": "U5A12FB789C4F30F7B943"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVODJCNEZBQjQyMDIyMzIwNEE4REMiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI1NTMwMEQyMkNEOTFERDMzNzdCNkE2RjM5M0IzMTdCMiIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.lSwr2yaVpMqINMzxCLqiwA4wQftmvd9FaRASusQygCw",
+                "uuid": "U82B4FAB420223204A8DC"
+            },
+            {
+                "uuid": "U1BFCF04970343FAE6CAA",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMUJGQ0YwNDk3MDM0M0ZBRTZDQUEiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI3QzA0MTY2MjkxQjc2QUQ0RDZGRjRENjRCREYyNzExOSIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.J83XIelC92by1U0TCoZ6nejL5gy5EaD3Z7Qx5crotBA"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRUFBQ0Y1OTFDQUZGNDU1NTMwNTYiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJEMDJGQ0E1MjRFODQ4REI5ODZGRkY3MjM0RTNGNkM5NCIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.BsbNqqym7lk-3Yw5sEw8audMOdA-LODeUgpmJ57TOlE",
+                "uuid": "UEAACF591CAFF45553056"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMThDOUJFMEQ2RjlERjQ5QUI1REYiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJFMjI3RjA1RDQ1RjZFNDI5RTU1MTQwMDlFNjczRDcwMCIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.ZB5ZEsW1Cq3G-v9dE1WysGkGr9uzYHYNyWDgpz7jRZ0",
+                "uuid": "U18C9BE0D6F9DF49AB5DF"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVQkYwNzhCQTBDOEY0NTNBMDFEODkiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiIwODI0N0JBQzg0NDk4RUM3QUY3QkQxQzA5NTIzOTFEMyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.v2iP_gBjx_R-tGb5MBOSvUB6FiDFsReb0p6ACKxwcTw",
+                "uuid": "UBF078BA0C8F453A01D89"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMTJBNjQ5NzRCNDA4QUMyQzcyMEYiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI2NjI5MjJDMEY1NDMyMjhDQzU5RTc4NUM0MTc3NEVGNCIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.9NmA8AhWM83UxAgQpkmGAzaHqE-ZI2cpyYOctAWGJlI",
+                "uuid": "U12A64974B408AC2C720F"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVOEU2OURFRkI2NkJFQUI1QTZDODciLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJGQzVBMkIzQzJDODNDNTI1NzM1RTExQjQzOTk1QTlDNyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.G3CkwDEgj2rpp8x6K3jpyVn0ML0cpyqTrggFyG-6d18",
+                "uuid": "U8E69DEFB66BEAB5A6C87"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVODc0RjMxNEQ1NkRGQjI2OTgyRUMiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI4MDNGMjJEODk0QkI1NjE2NTAyNzY0ODJDRTYyNEM5OCIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.I6xzcr2rRkxAeCpJodx4YiGAOMCyrj4evhmXEepUUyI",
+                "uuid": "U874F314D56DFB26982EC"
+            },
+            {
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVMjI1MDA5RDhCRUNGNjBGRjNCMjAiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiJCOTNDMEQyM0JFQkY5OTZDMDYyMTgxRTU1QjdEMzEwNSIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.hhEMQshsWv2vKOlftakGRC04c__QpsZUTNk7OCiiTMI",
+                "uuid": "U225009D8BECF60FF3B20"
+            },
+            {
+                "uuid": "UE73023CCC3C29DFC0458",
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaXBvbGUiLCJzdWIiOiJVRTczMDIzQ0NDM0MyOURGQzA0NTgiLCJleHAiOjE3ODg0NjQ5NjAsIm5iZiI6MTc4Nzg2MDE2MCwiaWF0IjoxNzg3ODYwMTYwLCJqdGkiOiI2MUVERTNDNkQ1RkIzNkU0NUY1REUxNzkyRkFENTc5MyIsInRva2VuX3VzZSI6InNlc3Npb24ifQ.2LpVJv9UdFxF0JqCvq3a_D9drOyepfRHxIumLs4Mr4U"
+            }
+        ],
+        "groupOffset": 25
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {}
+    }
+}

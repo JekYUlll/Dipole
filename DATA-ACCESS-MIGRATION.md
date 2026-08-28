@@ -70,6 +70,22 @@ Composition Root 现在只接受 `*sql.DB` 并创建 sqlc adapters；迁移期�
 
 Message、Sync Inbox 与 Outbox Producer 已按一个事务边界整体接入 sqlc。收件人 UUID 在加锁前统一去重排序，逐用户创建并锁定 `user_sync_states`，随后写入 Inbox；Outbox 数据错误会回滚 Message、Sync State 和 Inbox。Relay 消费侧复用同一 sqlc transaction Store。
 
+TypeScript Agent Runtime 的 EventLedger、Model Audit 和 Shadow Trajectory 查询分别以 `db/queries/agent_event_ledger.sql`、`db/queries/agent_model_audit.sql` 与 `db/queries/agent_shadow_trajectory.sql` 为唯一来源：sqlc 校验 MySQL schema 与命名查询并生成 Go 契约，对应生成器从相同文件产出 mysql2 使用的 TypeScript 常量。Task/Definition/Run 继续由 Go sqlc `AgentPolicyStoreV1` 独占写入，TS 经受认证 Agent gRPC admission/lifecycle 访问，Task query/cancel/approval 控制也必须先调用 Core `AuthorizeTaskControl` 校验 principal 所有权。TS adapter 不维护第二份手写 SQL；其账号仅访问 Agent 自有 ledger、模型审计和 Shadow 轨迹表，不能直接读取或写入 `agent_tasks`。
+
+`000022_agent_context_manifest` 在现有 Shadow Plan 上追加 nullable compiler version、估算 Token 和 provenance manifest。旧 Runtime 可继续写 NULL；新 Runtime 将 manifest 与 Plan 一起原子插入，sqlc 与 TS mysql2 常量继续由同一命名查询生成。
+
+`000024_agent_task_workflow_projection` 在 Core 所有的 `agent_tasks` 上追加整体 nullable 的 Workflow ID、Run ID、状态、单调 revision 与更新时间。TS Runtime 只能通过受认证 `ProjectTaskWorkflowState` RPC 提交状态；Go 服务验证 Task/Run/runtime/mode 与确定性 Workflow ID 后调用 sqlc CAS。原 `agent_tasks.status` 在 shadow 阶段保持独立，Gateway 查询仅比较 Temporal Query 与投影并返回对账结果，不直接修复数据库。
+
+离线对账同样不授予 TS 直接表权限。Core 使用 sqlc keyset 查询固定的 `dipole-agent/shadow` Run cohort，并通过 additive `ListTaskWorkflowProjectionSnapshots` 私有 RPC 返回 Task 与可空投影；TS 只负责 Temporal Query/Describe 比较和版本化报告。该读取接口不包含写入或修复语义。
+
+`000002_conversation_sequence` 为历史消息按 `conversation_key + id` 回填连续序号，并创建 `conversation_sequences` 高水位表。新消息在 Message、Inbox 与 Outbox 的同一事务内锁定会话行并分配 `seq`；事务回滚会同时回滚高水位，旧 `before_id`/`after_id` 查询在兼容期继续保留。
+
+`000003_read_and_device_checkpoints` 为 Conversation 投影回填 `last_message_seq/read_seq`，继续维护 `unread_count` 兼容字段，并增加独立 `device_sync_checkpoints`。已读操作只推进到调用方当时可见的 Seq；设备 checkpoint 通过显式 ACK 单调推进，超过当前用户 Inbox 最大 Seq 的请求会被拒绝。
+
+`000004_message_search_index` 增加可重建的 MySQL 搜索投影基线。`SearchIndex` 通过幂等 Upsert/Delete 和显式会话范围查询隔离存储实现；当前索引初始为空，A5 将通过版本化消息事件完成回填、持续投影与 Elasticsearch 切换。`MessageStore` 同时提供基于会话 Seq 的前后游标查询，旧 ID cursor 在兼容期继续保留。
+
+`000005_hot_group_checkpoints` 从历史群 Timeline 回填 `group_sync_states`，并创建用户/设备/群级 `device_group_sync_checkpoints`。后续群消息在 Message、Inbox 与 Outbox 事务内 O(1) 推进群高水位；设备只在消息持久化完成后显式 ACK，低位 ACK 不会使 checkpoint 回退。
+
 开发命令：
 
 ```bash

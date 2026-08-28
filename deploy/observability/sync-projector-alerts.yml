@@ -1,0 +1,24 @@
+groups:
+  - name: dipole-sync-projector
+    rules:
+      - alert: DipoleSyncProjectorLag
+        expr: sum(kafka_consumergroup_lag{consumergroup="dipole-sync-consumer"}) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sync Projector consumer lag remains above zero
+
+      - alert: DipoleSyncProjectorRetry
+        expr: sum(increase(kafka_topic_partition_current_offset{topic=~"dipole\\.message\\.(direct|group)\\.created\\.retry"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Sync Projector emitted retry traffic
+
+      - alert: DipoleSyncProjectorDeadLetter
+        expr: sum(increase(kafka_topic_partition_current_offset{topic=~"dipole\\.message\\.(direct|group)\\.created\\.dead"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Sync Projector emitted dead-letter traffic

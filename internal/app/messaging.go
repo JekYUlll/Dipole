@@ -17,14 +17,17 @@ type ConversationNotifier interface {
 }
 
 type MessagingDependencies struct {
-	Events               applicationPort.EventPublisher
-	Core                 applicationPort.CoreCapability
-	HotGroups            HotGroupObserver
-	Storage              platformStorage.ObjectStorage
-	ConversationNotifier ConversationNotifier
+	Events                     applicationPort.EventPublisher
+	Core                       applicationPort.CoreCapability
+	HotGroups                  HotGroupObserver
+	Storage                    platformStorage.ObjectStorage
+	ConversationNotifier       ConversationNotifier
+	DuplicateHydrator          applicationPort.SyncMessageHydrator
+	DuplicateHydrationObserver func(string)
 }
 
 type MessagingServices struct {
+	Core          applicationPort.CoreCapability
 	Files         *service.FileService
 	Messages      *LocalMessageApplication
 	Conversations *service.ConversationService
@@ -46,15 +49,14 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		core = NewLocalCoreCapability(repos)
 	}
 
+	messageService := service.NewMessageServiceWithCore(
+		repos.Messages, core, nil, dependencies.Events, dependencies.HotGroups,
+	)
+	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
 	return &MessagingServices{
-		Files: files,
-		Messages: &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
-			repos.Messages,
-			core,
-			nil,
-			dependencies.Events,
-			dependencies.HotGroups,
-		)},
+		Core:     core,
+		Files:    files,
+		Messages: &LocalMessageApplication{MessageService: messageService},
 		Conversations: service.NewConversationService(
 			repos.Conversations,
 			repos.Users,
@@ -62,16 +64,22 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 			dependencies.ConversationNotifier,
 			dependencies.Events,
 		),
-		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync)},
+		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync, core)},
 	}
 }
 
 func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *LocalMessageApplication {
-	return &LocalMessageApplication{MessageService: service.NewMessageServiceWithCore(
+	messageService := service.NewMessageServiceWithCore(
 		messages,
 		core,
 		nil,
 		dependencies.Events,
 		dependencies.HotGroups,
-	)}
+	)
+	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
+	return &LocalMessageApplication{MessageService: messageService}
+}
+
+func NewSyncApplication(syncStore applicationPort.SyncStore, core applicationPort.CoreCapability) *LocalSyncApplication {
+	return &LocalSyncApplication{SyncService: service.NewSyncService(syncStore, core)}
 }

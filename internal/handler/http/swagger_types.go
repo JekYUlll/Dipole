@@ -68,9 +68,29 @@ type MessageListResponseEnvelope struct {
 	Data []*httpdto.MessageResponse `json:"data"`
 }
 
+type SearchMessageListResponseEnvelope struct {
+	Code int                              `json:"code"`
+	Data []*httpdto.SearchMessageResponse `json:"data"`
+}
+
 type SyncPageResponseEnvelope struct {
 	Code int                       `json:"code"`
 	Data *httpdto.SyncPageResponse `json:"data"`
+}
+
+type DeviceSyncCheckpointResponseEnvelope struct {
+	Code int                                   `json:"code"`
+	Data *httpdto.DeviceSyncCheckpointResponse `json:"data"`
+}
+
+type GroupSyncCheckpointResponseEnvelope struct {
+	Code int                                  `json:"code"`
+	Data *httpdto.GroupSyncCheckpointResponse `json:"data"`
+}
+
+type GroupSyncCheckpointListResponseEnvelope struct {
+	Code int                                    `json:"code"`
+	Data []*httpdto.GroupSyncCheckpointResponse `json:"data"`
 }
 
 type UploadedFileResponseEnvelope struct {

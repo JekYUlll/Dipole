@@ -1,0 +1,11 @@
+{
+  "schema_version": "dipole.realtime.runtime-provenance.v1",
+  "runtime": "cpp-realtime-delivery",
+  "container_id": "713c8ecda632b218b346beb064269d27449ca20ab72dab40e025d789b0870e51",
+  "image_id": "sha256:5c014cf0e34a3073bf03d162b2b564869fbe3228bfef656240cab3a69e872fb3",
+  "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+  "created": "2026-08-27T22:07:00Z",
+  "source_dirty": false,
+  "consumer_group": "dipole-realtime-shadow-comparison-v3",
+  "client_id": "dipole-realtime-shadow"
+}

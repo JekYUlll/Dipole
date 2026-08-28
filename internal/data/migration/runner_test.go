@@ -41,3 +41,17 @@ func TestLoadRejectsUnpairedMigration(t *testing.T) {
 		t.Fatal("expected unpaired migration to fail")
 	}
 }
+
+func TestLoadRejectsDuplicateVersionNames(t *testing.T) {
+	t.Parallel()
+
+	_, err := load(fstest.MapFS{
+		"000027_user_status.up.sql":          {Data: []byte("SELECT 1")},
+		"000027_user_status.down.sql":        {Data: []byte("SELECT -1")},
+		"000027_agent_subscription.up.sql":   {Data: []byte("SELECT 2")},
+		"000027_agent_subscription.down.sql": {Data: []byte("SELECT -2")},
+	})
+	if err == nil {
+		t.Fatal("expected duplicate migration version names to fail")
+	}
+}

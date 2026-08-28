@@ -28,7 +28,6 @@ func (s *stubAdminService) Overview(currentUser *model.User) (*service.AdminOver
 
 func TestAdminHandlerOverviewSuccess(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAdminHandler(&stubAdminService{
 		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {
@@ -70,7 +69,6 @@ func TestAdminHandlerOverviewSuccess(t *testing.T) {
 
 func TestAdminHandlerOverviewRequiresAdmin(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAdminHandler(&stubAdminService{
 		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {
@@ -92,7 +90,6 @@ func TestAdminHandlerOverviewRequiresAdmin(t *testing.T) {
 
 func TestAdminHandlerOverviewHandlesInternalError(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	handler := NewAdminHandler(&stubAdminService{
 		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {

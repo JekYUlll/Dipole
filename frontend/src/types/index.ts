@@ -62,8 +62,9 @@ export interface FileInfo {
 }
 
 export interface Message {
-  id: number
-  message_id: string
+	id: number
+	message_id: string
+	message_seq?: number
   from_uuid: string
   target_uuid: string
   target_type: number   // 0=单聊, 1=群聊
@@ -97,7 +98,9 @@ export interface Conversation {
   target_group?: Group
   remark: string
   last_message: LastMessage
-  unread_count: number
+	unread_count: number
+	last_message_seq: number
+	read_seq: number
 }
 
 export interface Device {
@@ -111,15 +114,48 @@ export interface Device {
 // WS packet
 export interface WsPacket {
   type: string
+  request_id?: string
+  trace_id?: string
+  event_id?: string
+  delivery_id?: string
   data: Record<string, unknown>
 }
 
 export interface GroupMessageNotify {
   group_uuid: string
-  latest_message_id: string
+	latest_message_id: string
+	latest_message_seq: number
   message_type: number
   preview: string
   recent_message_count: number
   sent_at: string
   sender_uuid?: string
+}
+
+export interface SyncItemNotify {
+  schema_version: string
+  event_id: string
+  message_uuid: string
+  conversation_key: string
+  message_seq: number
+  target_type: number
+  target_uuid: string
+}
+
+export interface GroupSyncCheckpoint {
+	group_uuid: string
+	latest_message_seq: number
+	latest_message_id: string
+	pulled_message_seq: number
+}
+
+export interface SearchMessageResult {
+  message_id: string
+  conversation_key: string
+  message_seq: number
+  revision: number
+  from_uuid: string
+  message_type: number
+  content: string
+  sent_at: string
 }

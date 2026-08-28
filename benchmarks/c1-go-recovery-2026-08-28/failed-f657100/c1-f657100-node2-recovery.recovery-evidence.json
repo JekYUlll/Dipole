@@ -1,0 +1,29 @@
+{
+  "schema_version": "dipole.performance.recovery-evidence.v1",
+  "run_id": "c1-f657100-node2-recovery",
+  "target_service": "dipole-node2",
+  "expected_revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+  "fault": {
+    "action": "stop_start"
+  },
+  "timeline": {
+    "fault_started_at": "2026-08-27T19:42:42.215640Z",
+    "unavailable_observed_at": "2026-08-27T19:42:42.816684Z",
+    "start_requested_at": "2026-08-27T19:42:42.817710Z",
+    "ready_observed_at": "2026-08-27T19:42:43.709320Z"
+  },
+  "before": {
+    "container_id": "5ef92c5e88411103ee78b6a3d4e09680d9f0489414d593c700b23020e449a355",
+    "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+    "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+    "source_dirty": false,
+    "pid": 846690
+  },
+  "after": {
+    "container_id": "5ef92c5e88411103ee78b6a3d4e09680d9f0489414d593c700b23020e449a355",
+    "image_id": "sha256:89cdc8e8086fb7fd643dc12cb6f14b28a1d7ec4db7ac6f4f32e79d34c9fb2a0c",
+    "revision": "f6571004563b628cadf452abd6cf12582fcaa590",
+    "source_dirty": false,
+    "pid": 849762
+  }
+}

@@ -6,8 +6,10 @@
 
 - Vue 3 + TypeScript + Pinia + Vue Router + Vite。
 - 当前路由包含 Login 与 Chat，复杂交互主要集中在 `ChatView.vue`。
-- 仓库内尚无 `.pen` 文件、设计 token、组件规范和视觉回归资产。
-- 本机 `pen-design` skill 可用，Pencil CLI 已认证；2026-08-26 本地与 npm 最新版本均为 `0.3.5`。
+- 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
+- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现；Login、完整 Chat 和其他现代 IM 页面仍待补齐。
+- 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归仍待建立。
+- Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
 ## 2. 设计资产
 
@@ -60,19 +62,20 @@ design/
 
 ### F1：设计系统与现有页面复刻
 
-- 建立 canonical `.pen`、foundations 和核心组件。
+- 已建立 canonical `.pen`、首组 foundations 和 Search 核心组件；通用组件库继续随页面切片补齐。
 - 完成 Login、Chat desktop/mobile 及关键状态。
 - 抽取 Vue design tokens，保证现有功能不变。
 
 ### F2：现代 IM 完整流程
 
-- 设计并实现 Contact、Group、File、Search、Sync、Device 和 Settings 流程。
+- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；继续设计并实现 Contact、Group、File、Device 和 Settings 流程。
 - 将大型 ChatView 渐进拆成可测试组件。
 - 建立 Playwright 路由、交互和视觉回归。
+- IndexedDB 的三浏览器持久化、账号清理与页面中断事务契约已进入 Playwright；继续补齐完整页面路由和截图基线。
 
 ### F3：Agent Experience
 
-- 设计 Agent definition、subscription、Task timeline、approval、elicitation、memory 和 artifact。
+- Agent Workflow Repair proposal/evidence/approval 与普通 Elicitation Form 已完成 desktop、mobile 和状态契约设计；Elicitation Vue 已接入 authenticated Task query/input/cancel、来源披露、普通字段校验和 fail-closed 不可用状态，入口默认关闭。继续设计 Agent definition、subscription、完整 Task timeline、memory 和 artifact，并按 AD-036 实现 MCP continuation、路由 E2E 与视觉回归。
 - UI 状态与 Temporal AgentTask 状态机保持一一映射。
 - 写操作展示风险、影响对象、幂等状态和审计信息。
 

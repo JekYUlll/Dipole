@@ -1,0 +1,10 @@
+{
+  "contractVersion": "v1",
+  "batchId": "shadow:E100:2:41:node:gateway-2",
+  "targetNodeId": "gateway-2",
+  "status": "NODE_OBSERVATION_STATUS_OBSERVED",
+  "observedItems": 2,
+  "observedConnections": 3,
+  "errorCode": "DELIVERY_ERROR_CODE_UNSPECIFIED",
+  "observedAt": "2026-08-28T10:30:01Z"
+}

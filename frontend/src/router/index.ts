@@ -15,6 +15,15 @@ const router = createRouter({
       component: () => import('@/views/ChatView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/agent/tasks/:taskId/input',
+      name: 'agent-task-input',
+      component: () => import('@/views/AgentElicitationView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
   ],
 })
 
