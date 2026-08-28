@@ -352,6 +352,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [ ] 根据真实 reviewed corpus、Eval 与成本证据引入小模型、embedding 或向量预筛选，并完成 subscription Runtime 灰度/回切门禁（`AD-034`）。
     - [x] 增加 Memory prefilter provider-neutral evidence v1：embedding/small_model 的逐 case score/threshold、延迟和成本绑定 reviewed corpus SHA-256，并提供低敏离线聚合评测；不接入模型、Kafka 或生产灰度。
     - [x] 增加 Memory prefilter rollout decision v1：重新计算 review 与 evidence 门禁并绑定四类哈希，输出 `eligible|blocked`；仍不改变 Runtime、Kafka 或自动 Memory 写入开关。
+    - [x] 增加 Memory prefilter Runtime binding v1：以 `off/shadow/enforced` 三态和候选/配置/语料/评审哈希建立可复用 gate；仅 `enforced + eligible` 允许后续任务创建，默认未接入生产。
     - [x] 增加默认关闭的 direct-target 在线 Shadow 对照、固定低基数指标、Prometheus error/drift 告警和无数据迁移回滚路径；真实 corpus 与晋级决策仍待完成。
     - [x] 增加 24 小时 Prometheus 快照 evidence Schema/CLI，固定覆盖率、样本量、counter reset、零 error、双 authority=false 与 24 小时有效期；真实共享环境归档仍待完成。
     - [x] 增加只读 Prometheus Collector，固定 19 次历史查询、单 Agent series、全窗口 enabled 与低敏失败语义；部署 revision 仍由发布记录提供，真实共享环境未自动访问。
