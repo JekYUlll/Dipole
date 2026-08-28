@@ -59,6 +59,7 @@ type Querier interface {
 	DeleteGroupMembers(ctx context.Context, arg DeleteGroupMembersParams) (sql.Result, error)
 	DeletePublishedSearchOutboxBatch(ctx context.Context, arg DeletePublishedSearchOutboxBatchParams) (sql.Result, error)
 	DenyAgentApproval(ctx context.Context, arg DenyAgentApprovalParams) (int64, error)
+	EnqueueAgentTaskTimelineRepair(ctx context.Context, arg EnqueueAgentTaskTimelineRepairParams) (sql.Result, error)
 	EnsureAgentMemoryLineageBackfillJob(ctx context.Context, arg EnsureAgentMemoryLineageBackfillJobParams) error
 	EnsureCassandraBackfillJob(ctx context.Context, arg EnsureCassandraBackfillJobParams) error
 	EnsureConversationSequence(ctx context.Context, conversationKey string) (sql.Result, error)
@@ -108,6 +109,7 @@ type Querier interface {
 	GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error)
 	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
 	GetAgentTaskTimelineEvent(ctx context.Context, arg GetAgentTaskTimelineEventParams) (AgentTaskTimelineEvent, error)
+	GetAgentTaskTimelineEventByUUID(ctx context.Context, eventUuid string) (AgentTaskTimelineEvent, error)
 	GetAgentToolInvocation(ctx context.Context, invocationUuid string) (AgentToolInvocation, error)
 	GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAgentWorkflowRepairDecisionParams) (AgentWorkflowRepairDecision, error)
 	GetAgentWorkflowRepairExecution(ctx context.Context, executionUuid string) (AgentWorkflowRepairExecution, error)
@@ -221,6 +223,9 @@ type Querier interface {
 	LockUserSyncState(ctx context.Context, userUuid string) (string, error)
 	MarkAICallLogFailed(ctx context.Context, arg MarkAICallLogFailedParams) error
 	MarkAICallLogSucceeded(ctx context.Context, arg MarkAICallLogSucceededParams) error
+	MarkAgentTaskTimelineRepairCompleted(ctx context.Context, eventUuid string) (sql.Result, error)
+	MarkAgentTaskTimelineRepairRetry(ctx context.Context, arg MarkAgentTaskTimelineRepairRetryParams) (sql.Result, error)
+	MarkAgentTaskTimelineRepairsProcessing(ctx context.Context, arg MarkAgentTaskTimelineRepairsProcessingParams) (sql.Result, error)
 	MarkConversationReadThrough(ctx context.Context, arg MarkConversationReadThroughParams) (sql.Result, error)
 	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
@@ -243,6 +248,7 @@ type Querier interface {
 	RevokeOwnedAgentMemory(ctx context.Context, arg RevokeOwnedAgentMemoryParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
+	SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]AgentTaskTimelineRepair, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
 	SupersedeOwnedAgentMemory(ctx context.Context, arg SupersedeOwnedAgentMemoryParams) (int64, error)
 	TransitionAgentRunStatus(ctx context.Context, arg TransitionAgentRunStatusParams) (int64, error)
