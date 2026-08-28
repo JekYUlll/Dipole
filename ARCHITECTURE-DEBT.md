@@ -12,25 +12,6 @@
 
 ## 待处理
 
-### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
-
-- **优先级：** P0
-- **状态：** 处理中
-- **发现日期：** 2026-08-28
-- **影响范围：** Gateway Kafka consumer、C++ primary consumer、WebSocket 客户端、C3 灰度与自动回切
-- **现状：** 隔离 primary runtime 演练中，Go Gateway 权威 consumer 与 C++ 专用 consumer group 同时处理同一 `message.created`。客户端对每个测试事件收到一条无 `delivery_id` 的 legacy Go frame 和一条带稳定 `delivery_id` 的 C++ frame。C++ ACK、evidence 和 offset 均正确，双 authority 仍会造成可见重复投递。
-- **风险：** 直接把 C++ primary 加入 Compose 会让客户端重复展示消息或重复执行通知副作用；legacy frame 缺少同一 delivery ID，Web 持久 claim 无法将两条跨 authority frame 合并。两个 consumer group 的 offset 独立，未经协议的回切还可能重放不同窗口。
-- **建议方向：** 在 Gateway 投递 handler 前建立版本化 `realtime.delivery=go|shadow|cpp` authority，保持消息事实、Conversation/Inbox projector 不受影响；`cpp` 模式停止 Go 客户端写入但保留可观测性，切换时记录双 group checkpoint、高水位和稳定窗口。回切先冻结 C++ authority，再从明确 checkpoint 恢复 Go，禁止两个客户端写 authority 同时为 active。
-- **阶段记录：** 2026-08-28 已增加默认 `go` 的本地契约与启动组合校验。`cpp` 模式将 Go 的两个 message-created Handler 替换为事件校验后 checkpoint-only，原 Go group 持续追平；其他 Gateway 事件继续投递。C++ shadow/primary 命令也要求匹配的 `shadow/cpp` 值。隔离 `go`/`cpp` 实测进一步证明两种模式各产生且只产生一个目标客户端 frame；`cpp` 下兼容 checkpoint group 与 primary group 均追至 log end/lag 0，证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`。随后冻结语言中立 Redis lease Schema 与 golden vectors，在 Go Gateway、C++ shadow/primary 增加默认关闭的启动及逐消息 fail-closed reader，并加入本地 operator-driven CAS writer 与 Redis transition receipt。Go Gateway 按稳定 Presence 节点身份写短 TTL observation，绑定精确 lease hash，并在启动、空闲心跳与 readiness 持续刷新；消息热路径没有 observation 写放大。C++ 也要求显式稳定实例 ID，在 Kafka 空闲或不可用时以节流 heartbeat 写同一契约，并保持 fence readiness 与其他运行故障独立；真实隔离 Redis 刷新已通过。两端 observation 写入失败均 fail closed。控制面现可按显式 expected-node manifest 聚合 active/frozen 节点 proof，并生成绑定 transition lease hash、双 group 稳定状态、完整 assignment、逐分区 committed/log end 和一致高水位的不可覆盖 checkpoint bundle。隔离 kafka-go/C++ librdkafka 组已生成首个 eligible bundle，并证明缺失节点及空候选组不会产生输出，证据归档于 `benchmarks/c3-cutover-checkpoint-2026-08-28/`。writer 依赖 OS/Redis 权限，operator 仅为审计标签；自动续切/回切和共享拓扑中断演练仍未完成，因此不能用于生产切流。
-- **恢复记录：** cutover attempt 现以不可变 manifest 绑定源/目标 authority、初始 epoch、中断预算、三阶段节点清单与 checkpoint 清单摘要，并用哈希链事件持久化每个 receipt/bundle 摘要。单步 orchestrator 在每次动作前重载 journal，使用确定性幂等 action ID；执行失败保留原状态，首次 freeze 超过预算后自动转入源 authority 回退。不可覆盖 action artifact envelope 保存完整 canonical action 并绑定严格 JSON payload，使模糊故障可返回同一证据；Redis writer 也可按稳定 action ID 恢复已成功但尚未进入 artifact 的 transition receipt。重启后可归约正常续切、冻结期直接回退和目标激活后二次冻结回退；恢复 CLI、单步租约续期与真实中断演练均已补齐。
-- **执行记录：** production executor 已精确绑定 initial lease 和全部输入 manifest，按 artifact-first、receipt-second、side-effect-last 顺序组合现有 Redis CAS writer、节点 observation aggregate 与双组 checkpoint collector。真实 Redis writer 集成已覆盖 forward、两条 rollback、transition/artifact 崩溃窗口、Kafka rebalance、Redis outage 与真实 C++ Primary 接管；运行中持续 controller 仍未完成。
-- **工作区记录：** attempt 创建现将 initial transition、三阶段节点清单和 checkpoint 清单 canonicalize 后不可覆盖保存在同目录，manifest 由代码生成并在每次加载时重算；恢复流程不再依赖操作员重新提供外部清单。单步 renew 已进入同一 journal，持续调度仍待完成。
-- **命令记录：** `dipole-realtime-cutover` 已提供 create/status/单步 advance/renew/rollback，并在每次调用间保留 fsynced 恢复边界。`renew` 进入同一哈希链且不重置冻结中断预算，绑定旧 lease 的 checkpoint/observation 会回退并要求重新采集。真实 expired-freeze 自动回切和 C++ primary authority 演练已完成；持续 controller 所有权仍待完成，CLI 当前不能作为无人值守生产切流证明。
-- **故障记录：** 隔离 race 演练已使用真实 Kafka/Redis、两个 consumer group 和 TCP fault proxy 证明 controller artifact/journal 崩溃恢复、Redis outage fail-closed、primary member 丢失阻断及恢复后 forward completion；sequence 7 和最终 journal head 已归档于 `benchmarks/c3-cutover-faults-2026-08-28/`。后续同一演练将目标组恢复成员替换为当前源树构建的真实 C++ Primary：C++ 校验 CPP active lease、自写 `realtime-delivery/cpp-a` observation、加入 canonical librdkafka primary group 并通过 readiness 后，目标 checkpoint 与 completion 才能推进。夹具只代写 Gateway observation，C++ observation payload 与二进制摘要均进入报告。持续 lease/controller 调度尚未完成，因此 AD-041 继续处理中。
-- **回切修复：** 真实 expired-freeze 演练前审计发现首次 freeze 的直接回切可能缺少 source-node proof。状态机现强制在当前 frozen lease 上追加 source manifest 的 `rollback_frozen_confirmed`，之后才允许 source activation；隔离真实拓扑已以 500 ms 中断预算复验 `rolled_back` sequence 7、Go active epoch 2。
-- **处理门槛：** 隔离 topology 已证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame，并完成 controller 崩溃、Kafka rebalance、Redis 故障、真实 C++ Primary 接管与 expired-freeze 回切。开始 C3 用户/节点灰度前仍需建立单一持续 controller 的租约续期、超时回切和 leader ownership，并保存其进程替换证据。
-- **Controller 记录：** `dipole-realtime-cutover run` 已将 advance、条件续租、重试和超时回切收敛到一个同步事件循环。attempt-scoped Redis owner token 使用 compare-renew/release，control lease 至少为 action timeout 的两倍；authority lease 只读取 journal-bound transition artifact。真实 Redis 测试证明旧 owner TTL 前拒绝新 controller、TTL 后新 owner 从同一持久 journal 继续到 terminal。仍需隔离真实 OS 进程替换证据，完成前不进入用户/节点灰度。
-
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1
@@ -266,6 +247,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
+
+- **优先级：** P0
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **完成日期：** 2026-08-28
+- **解决方式：** 建立默认 Go 的 `go|shadow|cpp` 本地 authority、跨语言 Redis epoch lease 与 fail-closed reader、短 TTL 节点 observation、双 Kafka group 零 lag checkpoint、不可变 attempt workspace、哈希链 journal、幂等 action artifact 与 production executor。`dipole-realtime-cutover run` 在单一同步循环中统一 advance、条件续租、冻结超时回切和阻塞重试，并以 attempt-scoped Redis owner token 排除并发 controller；回切必须先确认 source nodes，且 `rollback_requested` 续租保留回切意图。
+- **验证：** 隔离证据覆盖 Go/C++ 各一条客户端 frame、跨客户端 checkpoint、controller artifact 崩溃恢复、Redis outage、Kafka member loss、500 ms expired-freeze 回切、真实 C++ Primary lease/observation/assignment/readiness，以及 Controller A 无 release 进程退出后 B 在 5 秒 TTL 前被拒、到期后从同一 journal 完成。证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`、`benchmarks/c3-cutover-checkpoint-2026-08-28/`、`benchmarks/c3-cutover-faults-2026-08-28/`、`benchmarks/c3-cutover-cpp-primary-2026-08-28/` 与 `benchmarks/c3-cutover-controller-2026-08-28/`。
+- **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 
 ### AD-039：Gateway Kafka assignment 未纳入 readiness
 
