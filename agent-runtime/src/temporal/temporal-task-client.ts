@@ -47,7 +47,7 @@ interface TemporalWorkflowStartHandle {
   runId?: string;
 }
 
-interface TemporalWorkflowStartPort {
+export interface TemporalWorkflowStartPort {
   start(workflowType: string, options: {
     taskQueue: string;
     workflowId: string;
