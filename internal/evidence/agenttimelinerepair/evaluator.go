@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/bits"
 	"sort"
 	"time"
 )
@@ -173,7 +175,11 @@ func ratioBPS(numerator, denominator uint64) uint64 {
 	if denominator == 0 {
 		return 0
 	}
-	return numerator * 10_000 / denominator
+	// Avoid overflowing numerator*10_000 for long-lived counter snapshots.
+	quotient, remainder := numerator/denominator, numerator%denominator
+	high, low := bits.Mul64(remainder, 10_000)
+	fraction, _ := bits.Div64(high, low, denominator)
+	return quotient*10_000 + fraction
 }
 
 func decision(reasons []string) string {
@@ -193,6 +199,13 @@ func decodeStrict(data []byte, target any) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple JSON values are not allowed")
+		}
 		return err
 	}
 	return nil
