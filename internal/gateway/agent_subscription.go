@@ -52,6 +52,23 @@ type AgentSubscriptionPage struct {
 	NextCursor    string              `json:"nextCursor,omitempty"`
 }
 
+type AgentSubscriptionConversationOption struct {
+	ConversationKey string `json:"conversationKey"`
+	EventType       string `json:"eventType"`
+}
+
+type AgentSubscriptionConversationOptions struct {
+	Conversations []AgentSubscriptionConversationOption `json:"conversations"`
+}
+
+type AgentSubscriptionCreateInput struct {
+	DefinitionID      string                  `json:"definitionId"`
+	DefinitionVersion uint64                  `json:"definitionVersion"`
+	ConversationKey   string                  `json:"conversationKey"`
+	FilterKind        string                  `json:"filterKind"`
+	Filter            AgentSubscriptionFilter `json:"filter"`
+}
+
 type AgentDefinitionCatalogItem struct {
 	DefinitionID       string   `json:"definitionId"`
 	Version            uint64   `json:"version"`
@@ -69,6 +86,8 @@ type AgentDefinitionCatalogPage struct {
 }
 
 type AgentSubscriptionControlApplication interface {
+	Create(ctx context.Context, principalUUID string, input AgentSubscriptionCreateInput) (*AgentSubscription, error)
+	ListEligibleConversations(ctx context.Context, principalUUID, definitionID string, definitionVersion uint64) (*AgentSubscriptionConversationOptions, error)
 	List(ctx context.Context, principalUUID, after string, limit int) (*AgentSubscriptionPage, error)
 	Revoke(ctx context.Context, principalUUID, subscriptionID, reason string) (*AgentSubscription, error)
 }
@@ -78,9 +97,117 @@ type AgentDefinitionCatalogApplication interface {
 }
 
 type agentSubscriptionRPC interface {
+	CreateEventSubscription(context.Context, *agentv1.CreateEventSubscriptionRequest, ...grpc.CallOption) (*agentv1.AgentEventSubscription, error)
+	ListEligibleSubscriptionConversations(context.Context, *agentv1.ListEligibleSubscriptionConversationsRequest, ...grpc.CallOption) (*agentv1.ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(context.Context, *agentv1.ListEventSubscriptionsRequest, ...grpc.CallOption) (*agentv1.ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(context.Context, *agentv1.RevokeEventSubscriptionRequest, ...grpc.CallOption) (*agentv1.AgentEventSubscription, error)
 	ListAgentDefinitions(context.Context, *agentv1.ListAgentDefinitionsRequest, ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error)
+}
+
+func (c *AgentSubscriptionControlClient) ListEligibleConversations(ctx context.Context, principalUUID, definitionID string, definitionVersion uint64) (*AgentSubscriptionConversationOptions, error) {
+	if !validAgentSubscriptionPublicID(definitionID, 64) || definitionVersion == 0 {
+		return nil, ErrAgentSubscriptionInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.ListEligibleSubscriptionConversations(callCtx, &agentv1.ListEligibleSubscriptionConversationsRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		DefinitionId: definitionID, DefinitionVersion: definitionVersion,
+	})
+	if err != nil {
+		return nil, mapAgentSubscriptionRPCError(err)
+	}
+	if response == nil {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
+	result := &AgentSubscriptionConversationOptions{Conversations: make([]AgentSubscriptionConversationOption, 0, len(response.GetConversations()))}
+	seen := make(map[string]struct{}, len(response.GetConversations()))
+	for _, raw := range response.GetConversations() {
+		if raw == nil || !validAgentSubscriptionPublicID(raw.GetConversationKey(), 128) {
+			return nil, ErrAgentSubscriptionUnavailable
+		}
+		expectedEventType, ok := agentSubscriptionConversationEventType(raw.GetConversationKey())
+		if !ok || raw.GetEventType() != expectedEventType {
+			return nil, ErrAgentSubscriptionUnavailable
+		}
+		if _, duplicated := seen[raw.GetConversationKey()]; duplicated {
+			return nil, ErrAgentSubscriptionUnavailable
+		}
+		seen[raw.GetConversationKey()] = struct{}{}
+		result.Conversations = append(result.Conversations, AgentSubscriptionConversationOption{ConversationKey: raw.GetConversationKey(), EventType: raw.GetEventType()})
+	}
+	return result, nil
+}
+
+func (c *AgentSubscriptionControlClient) Create(ctx context.Context, principalUUID string, input AgentSubscriptionCreateInput) (*AgentSubscription, error) {
+	input.DefinitionID, input.ConversationKey, input.FilterKind = strings.TrimSpace(input.DefinitionID), strings.TrimSpace(input.ConversationKey), strings.TrimSpace(input.FilterKind)
+	eventType, ok := agentSubscriptionConversationEventType(input.ConversationKey)
+	if !validAgentSubscriptionPublicID(input.DefinitionID, 64) || input.DefinitionVersion == 0 || !ok {
+		return nil, ErrAgentSubscriptionInvalid
+	}
+	filterJSON, err := canonicalGatewayAgentSubscriptionFilter(input.FilterKind, input.Filter)
+	if err != nil {
+		return nil, err
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.CreateEventSubscription(callCtx, &agentv1.CreateEventSubscriptionRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		DefinitionId: input.DefinitionID, DefinitionVersion: input.DefinitionVersion,
+		EventType: eventType, ResourceType: "conversation", ResourceId: input.ConversationKey,
+		FilterKind: input.FilterKind, FilterJson: filterJSON,
+	})
+	if err != nil {
+		return nil, mapAgentSubscriptionRPCError(err)
+	}
+	item, err := agentSubscriptionFromProto(response, c.tenantID)
+	if err != nil || item.DefinitionID != input.DefinitionID || item.DefinitionVersion != input.DefinitionVersion ||
+		item.ResourceID != input.ConversationKey || item.EventType != eventType {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
+	return item, nil
+}
+
+func canonicalGatewayAgentSubscriptionFilter(kind string, filter AgentSubscriptionFilter) ([]byte, error) {
+	switch kind {
+	case "all":
+		if len(filter.Terms) != 0 {
+			return nil, ErrAgentSubscriptionInvalid
+		}
+		return []byte(`{}`), nil
+	case "message_contains_any":
+		if len(filter.Terms) == 0 || len(filter.Terms) > 32 {
+			return nil, ErrAgentSubscriptionInvalid
+		}
+		terms := make([]string, 0, len(filter.Terms))
+		seen := make(map[string]struct{}, len(filter.Terms))
+		for _, raw := range filter.Terms {
+			term := strings.TrimSpace(raw)
+			if term == "" || len([]rune(term)) > 64 || term != raw {
+				return nil, ErrAgentSubscriptionInvalid
+			}
+			if _, exists := seen[term]; exists {
+				return nil, ErrAgentSubscriptionInvalid
+			}
+			seen[term] = struct{}{}
+			terms = append(terms, term)
+		}
+		return json.Marshal(AgentSubscriptionFilter{Terms: terms})
+	default:
+		return nil, ErrAgentSubscriptionInvalid
+	}
+}
+
+func agentSubscriptionConversationEventType(conversationKey string) (string, bool) {
+	parts := strings.Split(conversationKey, ":")
+	switch {
+	case len(parts) == 3 && parts[0] == "direct" && parts[1] != "" && parts[2] != "":
+		return "message.direct.created", true
+	case len(parts) == 2 && parts[0] == "group" && parts[1] != "":
+		return "message.group.created", true
+	default:
+		return "", false
+	}
 }
 
 func (c *AgentSubscriptionControlClient) ListDefinitions(ctx context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
@@ -286,6 +413,14 @@ func decodeStrictAgentSubscriptionJSON(raw []byte, target any) error {
 		return errors.New("Agent Subscription filter has trailing data")
 	}
 	return nil
+}
+
+func decodeStrictAgentSubscriptionBody(reader io.Reader, target any) error {
+	raw, err := io.ReadAll(io.LimitReader(reader, 64*1024+1))
+	if err != nil || len(raw) > 64*1024 {
+		return ErrAgentSubscriptionInvalid
+	}
+	return decodeStrictAgentSubscriptionJSON(raw, target)
 }
 
 func mapAgentSubscriptionRPCError(err error) error {

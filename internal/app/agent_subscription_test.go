@@ -62,6 +62,19 @@ type subscriptionDefinitionReaderStub struct {
 	definition application.AgentDefinitionVersionV1
 }
 
+type subscriptionConversationReaderStub struct {
+	keys []string
+	err  error
+}
+
+func (s subscriptionConversationReaderStub) ListSearchConversationKeys(string) ([]string, error) {
+	return append([]string(nil), s.keys...), s.err
+}
+
+func readableSubscriptionConversations() subscriptionConversationReaderStub {
+	return subscriptionConversationReaderStub{keys: []string{"group:G1", "group:G9", "direct:U100:U200"}}
+}
+
 func (s subscriptionDefinitionReaderStub) GetDefinitionVersion(context.Context, string, uint64) (*application.AgentDefinitionVersionV1, error) {
 	copy := s.definition
 	return &copy, nil
@@ -78,7 +91,7 @@ func TestPersistentAgentEventSubscriptionResolverAuthorizesDefinitionScope(t *te
 		t.Fatalf("new resolver: %v", err)
 	}
 	items, err := resolver.MatchEventSubscriptions(context.Background(), application.AgentEventSubscriptionMatchRequestV1{
-		TenantID: "dipole", AgentUUID: "UAI", EventType: "message.direct.created",
+		TenantID: "dipole", AgentUUID: "UAI", EventType: "message.group.created",
 		ResourceType: "conversation", ResourceID: "group:G1",
 	})
 	if err != nil {
@@ -116,7 +129,7 @@ func TestPersistentAgentEventSubscriptionResolverFailsClosedForScopeOrDefinition
 			}
 			resolver, _ := NewPersistentAgentEventSubscriptionResolverV1(&subscriptionStoreStub{items: []application.AgentEventSubscriptionV1{item}}, subscriptionDefinitionReaderStub{definition: definition}, func() time.Time { return now })
 			_, err := resolver.MatchEventSubscriptions(context.Background(), application.AgentEventSubscriptionMatchRequestV1{
-				TenantID: "dipole", AgentUUID: "UAI", EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+				TenantID: "dipole", AgentUUID: "UAI", EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
 			})
 			if err == nil {
 				t.Fatal("expected fail-closed resolver error")
@@ -144,13 +157,13 @@ func TestPersistentAgentEventSubscriptionControlCreatesCanonicalReplay(t *testin
 	t.Parallel()
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	store := &subscriptionStoreStub{}
-	service, err := NewPersistentAgentEventSubscriptionControlV1(store, subscriptionDefinitionReaderStub{definition: subscriptionDefinitionFixture(now)}, func() time.Time { return now })
+	service, err := NewPersistentAgentEventSubscriptionControlV1(store, subscriptionDefinitionReaderStub{definition: subscriptionDefinitionFixture(now)}, readableSubscriptionConversations(), func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new control: %v", err)
 	}
 	request := application.AgentEventSubscriptionCreateRequestV1{
 		TenantID: "dipole", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
-		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
 		FilterKind: application.AgentSubscriptionFilterMessageContainsAny,
 		FilterJSON: json.RawMessage(`{"terms":[" Incident ","延期","incident"]}`),
 	}
@@ -179,7 +192,7 @@ func TestPersistentAgentEventSubscriptionControlEnforcesOwnerAndScope(t *testing
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	request := application.AgentEventSubscriptionCreateRequestV1{
 		TenantID: "dipole", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
-		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
 		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`),
 	}
 	for _, test := range []struct {
@@ -200,7 +213,7 @@ func TestPersistentAgentEventSubscriptionControlEnforcesOwnerAndScope(t *testing
 			if test.mutate != nil {
 				test.mutate(&definition)
 			}
-			service, _ := NewPersistentAgentEventSubscriptionControlV1(&subscriptionStoreStub{}, subscriptionDefinitionReaderStub{definition: definition}, func() time.Time { return now })
+			service, _ := NewPersistentAgentEventSubscriptionControlV1(&subscriptionStoreStub{}, subscriptionDefinitionReaderStub{definition: definition}, readableSubscriptionConversations(), func() time.Time { return now })
 			if _, err := service.Create(context.Background(), test.principal, request); !errors.Is(err, application.ErrAgentSubscriptionDenied) {
 				t.Fatalf("expected denied, got %v", err)
 			}
@@ -208,14 +221,61 @@ func TestPersistentAgentEventSubscriptionControlEnforcesOwnerAndScope(t *testing
 	}
 }
 
+func TestPersistentAgentEventSubscriptionControlRequiresReadableConversation(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
+	definition := subscriptionDefinitionFixture(now)
+	definition.Scopes[0].ResourceID = "*"
+	service, err := NewPersistentAgentEventSubscriptionControlV1(
+		&subscriptionStoreStub{}, subscriptionDefinitionReaderStub{definition: definition},
+		subscriptionConversationReaderStub{keys: []string{"group:G2"}}, func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatalf("new control: %v", err)
+	}
+	_, err = service.Create(context.Background(), "U100", application.AgentEventSubscriptionCreateRequestV1{
+		TenantID: "dipole", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
+		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`),
+	})
+	if !errors.Is(err, application.ErrAgentSubscriptionDenied) {
+		t.Fatalf("unreadable conversation error = %v, want denied", err)
+	}
+}
+
+func TestPersistentAgentEventSubscriptionControlListsEligibleConversationIntersection(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
+	definition := subscriptionDefinitionFixture(now)
+	definition.Scopes = append(definition.Scopes, application.AgentResourceScopeV1{
+		ResourceType: "conversation", ResourceID: "direct:U100:U200", Actions: []string{application.AgentResourceActionRead},
+	})
+	service, err := NewPersistentAgentEventSubscriptionControlV1(
+		&subscriptionStoreStub{}, subscriptionDefinitionReaderStub{definition: definition}, readableSubscriptionConversations(), func() time.Time { return now },
+	)
+	if err != nil {
+		t.Fatalf("new control: %v", err)
+	}
+	items, err := service.ListEligibleConversations(context.Background(), "U100", application.AgentSubscriptionConversationOptionsRequestV1{
+		TenantID: "dipole", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
+	})
+	if err != nil {
+		t.Fatalf("list eligible conversations: %v", err)
+	}
+	if len(items) != 2 || items[0].ConversationKey != "direct:U100:U200" || items[0].EventType != "message.direct.created" ||
+		items[1].ConversationKey != "group:G1" || items[1].EventType != "message.group.created" {
+		t.Fatalf("unexpected eligible conversations: %+v", items)
+	}
+}
+
 func TestPersistentAgentEventSubscriptionControlListsAndRevokesWithAuditReplay(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	store := &subscriptionStoreStub{}
-	service, _ := NewPersistentAgentEventSubscriptionControlV1(store, subscriptionDefinitionReaderStub{definition: subscriptionDefinitionFixture(now)}, func() time.Time { return now })
+	service, _ := NewPersistentAgentEventSubscriptionControlV1(store, subscriptionDefinitionReaderStub{definition: subscriptionDefinitionFixture(now)}, readableSubscriptionConversations(), func() time.Time { return now })
 	request := application.AgentEventSubscriptionCreateRequestV1{
 		TenantID: "dipole", DefinitionUUID: "DEF-1", DefinitionVersion: 1,
-		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
 		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`),
 	}
 	created, _ := service.Create(context.Background(), "U100", request)
@@ -243,7 +303,7 @@ func subscriptionFixture(id string) application.AgentEventSubscriptionV1 {
 	return application.AgentEventSubscriptionV1{
 		SubscriptionUUID: id, DefinitionUUID: "DEF-1", DefinitionVersion: 1,
 		TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
-		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "group:G1",
+		EventType: "message.group.created", ResourceType: "conversation", ResourceID: "group:G1",
 		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: json.RawMessage(`{}`),
 		CreatedByUUID: "U100",
 	}
