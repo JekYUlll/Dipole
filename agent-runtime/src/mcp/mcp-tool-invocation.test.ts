@@ -44,6 +44,20 @@ describe("McpToolInvocationRunner", () => {
     expect(begin).toHaveBeenCalledWith(expect.objectContaining({ argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9" }));
   });
 
+  it("persists a complete external command before opening the Tool operation", async () => {
+    const begin = vi.fn(async () => undefined);
+    const operation = vi.fn(async () => ({ ok: true }));
+    const runner = new McpToolInvocationRunner({ begin, finish: vi.fn(async () => undefined) }, tracerFixture().tracer, () => "INV-EXT", monotonicClock(0, 1));
+    await runner.execute({
+      name: "calendar.create", capabilityId: "conversation.list", profileId: "calendar-prod", serverId: "calendar.example"
+    }, { calendarId: "CAL-1" }, context, operation);
+    expect(begin).toHaveBeenCalledWith(expect.objectContaining({
+      profileId: "calendar-prod", serverId: "calendar.example", argumentsJson: `{"calendarId":"CAL-1"}`,
+      argumentsSha256: sha(`{"calendarId":"CAL-1"}`)
+    }));
+    expect(begin.mock.invocationCallOrder[0]).toBeLessThan(operation.mock.invocationCallOrder[0]!);
+  });
+
   it("records a bounded failed terminal and withholds Tool errors", async () => {
     const begin = vi.fn(async () => undefined);
     const finish = vi.fn(async () => undefined);

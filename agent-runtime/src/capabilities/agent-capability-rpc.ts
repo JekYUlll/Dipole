@@ -6,6 +6,7 @@ import type { ConversationSnapshot } from "../generated/dipole/agent/v1/agent.js
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
+import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 
 const callerService = "dipole-agent";
 
@@ -16,6 +17,21 @@ export interface AgentRunIdentity {
 }
 
 export type AgentRunTerminalStatus = "completed" | "failed" | "cancelled";
+
+export interface AgentMcpToolCommand {
+  readonly invocationId: string;
+  readonly tenantId: string;
+  readonly principalUserId: string;
+  readonly agentId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly profileId: string;
+  readonly serverId: string;
+  readonly toolName: string;
+  readonly capabilityId: string;
+  readonly arguments: Readonly<Record<string, unknown>>;
+  readonly argumentsSha256: string;
+}
 
 export interface AgentRunAdmissionRequest {
   readonly tenantId: string;
@@ -132,6 +148,9 @@ export interface AgentToolInvocationBegin {
   readonly toolName: string;
   readonly capabilityId: string;
   readonly argumentsSha256: string;
+  readonly profileId?: string;
+  readonly serverId?: string;
+  readonly argumentsJson?: string;
   readonly requestId?: string;
   readonly traceId?: string;
   readonly approvalId?: string;
@@ -520,11 +539,40 @@ export class AgentCapabilityRPCClient {
       this.rpc.beginMcpToolInvocation({
         context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
         invocationId: input.invocationId, toolName: input.toolName, capabilityId: input.capabilityId,
-        argumentsSha256: input.argumentsSha256, approvalId: input.approvalId ?? ""
+        argumentsSha256: input.argumentsSha256, approvalId: input.approvalId ?? "",
+        profileId: input.profileId ?? "", serverId: input.serverId ?? "", argumentsJson: Buffer.from(input.argumentsJson ?? "", "utf8")
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Tool invocation begin returned no response"));
         if (response.invocationId !== input.invocationId || response.status !== "running") return reject(new Error("Agent Tool invocation begin returned conflicting evidence"));
         resolve();
+      });
+    });
+  }
+
+  async resolveMcpToolCommand(taskId: string, runId: string, invocationId: string): Promise<AgentMcpToolCommand> {
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.resolveMcpToolCommand({
+        context: this.requestContext(), taskId, runId, invocationId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool command returned no response"));
+        try {
+          const decoded = JSON.parse(Buffer.from(response.argumentsJson).toString("utf8")) as unknown;
+          if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) throw new Error();
+          const canonical = canonicalMcpJSON(decoded);
+          const digest = createHash("sha256").update(canonical).digest("hex");
+          if (response.taskId !== taskId || response.runId !== runId || response.invocationId !== invocationId ||
+              Buffer.from(response.argumentsJson).toString("utf8") !== canonical || response.argumentsSha256 !== digest) {
+            throw new Error();
+          }
+          resolve({
+            invocationId, tenantId: response.tenantId, principalUserId: response.principalUserId, agentId: response.agentId,
+            taskId, runId, profileId: response.profileId, serverId: response.serverId, toolName: response.toolName,
+            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest
+          });
+        } catch {
+          reject(new Error("Agent MCP Tool command returned conflicting evidence"));
+        }
       });
     });
   }
