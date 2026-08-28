@@ -19,6 +19,7 @@
 - Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` Pencil token，并增加设计契约测试，避免交互页面重新引入独立主题变量。
 - Agent Approval 页面增加认证浏览器验收，覆盖精确审批绑定、权威查询失败时的 fail-closed 状态和移动端单列布局。
 - Agent Approval 与 Elicitation 增加 Chromium canonical 截图回归，固定 Pencil 共享 token 的主要桌面布局；功能行为继续由三浏览器 E2E 覆盖。
+- Agent Subscription 与 Memory 管理页增加 Chromium canonical 截图回归，覆盖已迁移共享 token 的 Agent 治理控制面。
 
 - Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
 - `conversation.read` 输入统一采用 canonical `conversationId`（`direct:<user>:<user>` 或 `group:<group>`）；Runtime 先执行精确 scope 检查并解析目标，Core 继续以 principal 的会话关系作为最终授权依据。
