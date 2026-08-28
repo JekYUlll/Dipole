@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-timeline-repair-rollout/v1/evidence.schema.json",
+  "title": "Dipole Agent Timeline Repair Rollout Evidence v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "service", "deploymentRevision", "windowStart", "windowEnd", "workerReady", "operator", "rollbackVerified", "alertState", "outcomes"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.timeline-repair-rollout-evidence.v1"},
+    "service": {"type": "string", "minLength": 1, "maxLength": 128},
+    "deploymentRevision": {"type": "string", "minLength": 1, "maxLength": 256},
+    "windowStart": {"type": "string", "format": "date-time"}, "windowEnd": {"type": "string", "format": "date-time"},
+    "workerReady": {"type": "boolean"}, "operator": {"type": "string", "minLength": 1, "maxLength": 128}, "rollbackVerified": {"type": "boolean"},
+    "alertState": {"enum": ["clear", "warning", "critical"]},
+    "outcomes": {"type": "object", "additionalProperties": false, "required": ["claimed", "repaired", "retried", "projectionError", "completeError", "claimError", "invalid"], "properties": {
+      "claimed": {"type": "integer", "minimum": 0}, "repaired": {"type": "integer", "minimum": 0}, "retried": {"type": "integer", "minimum": 0}, "projectionError": {"type": "integer", "minimum": 0}, "completeError": {"type": "integer", "minimum": 0}, "claimError": {"type": "integer", "minimum": 0}, "invalid": {"type": "integer", "minimum": 0}
+    }}
+  }
+}
