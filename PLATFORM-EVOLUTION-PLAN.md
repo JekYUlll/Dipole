@@ -292,6 +292,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
 - [ ] 达到观察门槛后为 Cassandra hydration 增加受控主读与 MySQL fallback；切换前补齐告警、灰度比例和无 MySQL 内部 ID 的兼容审计。
+- [x] 增加默认关闭的 `sync.cassandra_primary_hydration`，以 locator 为边界优先读取 Cassandra，失败立即回退 MySQL，并拒绝与 shadow hydration 同时启用；真实灰度和停止门禁仍待完成。
 - [x] migration v12 建立 Message Metadata v1，消息事务原子保存幂等 locator、会话 Seq、文件绑定、过期时间和 payload hash；文件授权已停止查询完整消息正文。
 - [x] 增加默认关闭的 Cassandra 幂等响应 hydration：Metadata 校验后按会话 Seq 精确读取 Timeline，缺失/冲突回退 MySQL，并以有界指标记录切换证据。
 - [ ] 将重复发送完整返回从 Metadata locator + MySQL Message 回读切换为 Metadata locator + Cassandra hydration，解除最后的正文依赖。
