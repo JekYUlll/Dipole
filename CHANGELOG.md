@@ -453,6 +453,7 @@
 
 ### 修复
 
+- 前端 Agent Task 响应解析器现在严格解析 `waiting_approval` 的 request/approval/summary/expiry，并对缺失或越权格式 fail closed；审批状态不会再被静默丢弃，`waiting_input` 和旧状态行为保持兼容。
 - 修复 `realtime-cpp` 镜像构建阶段遗漏 authority fence 测试契约目录的问题，确保 CMake/CTest 在独立 builder 中读取完整 golden vectors。
 - 修复 Agent TypeScript Proto 生成物滞后：重新生成 `CorrectOwnedMemory` RPC、Memory root/version/correction 字段及后续方法索引，使 TS 客户端与已发布的 additive Go Proto 定义恢复一致；未改变 Proto schema 或 Runtime 开关。
 - 修复 C1 Kafka lag 采样将无 committed offset 的分区静默当作零积压：独立解析器对 `current-offset=-` 且存在 log end 的行保守计入 retained backlog，并在找不到目标 consumer group 或字段不可解析时 fail closed。真实 node2 首轮恢复演练因此识别出 HTTP 健康早于 72-member consumer group 稳定、`LastOffset` 跳过 40 条 send-requested 的窗口，失败报告未被接受。
