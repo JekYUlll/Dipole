@@ -49,9 +49,30 @@ export type AgentElicitationValue = Record<string, string | boolean | string[]>
 
 export interface AgentTaskClient {
   getTask(taskId: string): Promise<AgentTaskState>
+  getTimeline?(taskId: string, after?: string, limit?: number): Promise<AgentTaskTimelinePage>
   provideInput(taskId: string, requestId: string, value: AgentElicitationValue): Promise<void>
   resolveApproval(taskId: string, approvalId: string, decision: 'approved' | 'denied'): Promise<void>
   cancelTask(taskId: string): Promise<void>
+}
+
+export interface AgentTaskTimelineEvent {
+  eventSeq: string
+  eventId: string
+  taskId: string
+  runId: string
+  kind: string
+  status: string
+  capabilityId?: string
+  approvalId?: string
+  occurredAtUnixMs: number
+}
+
+export interface AgentTaskTimelinePage {
+  schemaVersion: 'dipole.agent.task_timeline.v1'
+  taskId: string
+  revision: number
+  events: AgentTaskTimelineEvent[]
+  nextCursor: string
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
@@ -88,6 +109,14 @@ export const agentTaskClient: AgentTaskClient = {
     requireIdentity(taskId, 'Task')
     return parseAgentTaskResponse(await api.get(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}`))
   },
+  async getTimeline(taskId, after = '', limit = 50) {
+    requireIdentity(taskId, 'Task')
+    if (after !== '' && !/^[0-9]{1,20}$/.test(after)) throw new Error('Agent Task Timeline cursor is invalid')
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Task Timeline limit is invalid')
+    const query = new URLSearchParams({ limit: String(limit) })
+    if (after !== '') query.set('after', after)
+    return parseAgentTaskTimelineResponse(await api.get(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}/timeline?${query.toString()}`))
+  },
   async provideInput(taskId, requestId, value) {
     requireIdentity(taskId, 'Task')
     requireIdentity(requestId, 'request')
@@ -103,6 +132,38 @@ export const agentTaskClient: AgentTaskClient = {
     requireIdentity(taskId, 'Task')
     await api.post(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}/cancel`, { reason: 'user_cancelled' })
   },
+}
+
+function parseAgentTaskTimelineResponse(raw: unknown): AgentTaskTimelinePage {
+  if (!isRecord(raw) || raw.schemaVersion !== 'dipole.agent.task_timeline.v1' || !validIdentity(raw.taskId) ||
+      !Number.isSafeInteger(raw.revision) || (raw.revision as number) < 0 || !Array.isArray(raw.events) ||
+      raw.events.length > 100 || typeof raw.nextCursor !== 'string' || raw.nextCursor.length > 384 ||
+      (raw.nextCursor !== '' && !/^[0-9]{1,20}$/.test(raw.nextCursor))) {
+    throw new Error('Agent Task Timeline response is invalid')
+  }
+  const events = raw.events.map(parseAgentTaskTimelineEvent)
+  if (events.some(event => event.taskId !== raw.taskId)) throw new Error('Agent Task Timeline event binding is invalid')
+  return {
+    schemaVersion: 'dipole.agent.task_timeline.v1', taskId: raw.taskId as string,
+    revision: raw.revision as number, events, nextCursor: raw.nextCursor,
+  }
+}
+
+function parseAgentTaskTimelineEvent(raw: unknown): AgentTaskTimelineEvent {
+  if (!isRecord(raw) || typeof raw.eventSeq !== 'string' || !/^[1-9][0-9]{0,19}$/.test(raw.eventSeq) ||
+      !validIdentity(raw.eventId) || !validIdentity(raw.taskId) || typeof raw.runId !== 'string' || raw.runId.length > 128 ||
+      typeof raw.kind !== 'string' || raw.kind.length === 0 || raw.kind.length > 64 || typeof raw.status !== 'string' ||
+      raw.status.length === 0 || raw.status.length > 64 || !Number.isSafeInteger(raw.occurredAtUnixMs) ||
+      (raw.occurredAtUnixMs as number) <= 0) throw new Error('Agent Task Timeline event is invalid')
+  if (raw.capabilityId !== undefined && !validIdentity(raw.capabilityId)) throw new Error('Agent Task Timeline capability is invalid')
+  if (raw.approvalId !== undefined && !validIdentity(raw.approvalId)) throw new Error('Agent Task Timeline approval is invalid')
+  return {
+    eventSeq: raw.eventSeq as string, eventId: raw.eventId as string, taskId: raw.taskId as string, runId: raw.runId as string,
+    kind: raw.kind as string, status: raw.status as string,
+    ...(raw.capabilityId === undefined ? {} : { capabilityId: raw.capabilityId as string }),
+    ...(raw.approvalId === undefined ? {} : { approvalId: raw.approvalId as string }),
+    occurredAtUnixMs: raw.occurredAtUnixMs as number,
+  }
 }
 
 function parseInputPending(raw: unknown): AgentInputPending {
