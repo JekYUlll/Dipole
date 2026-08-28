@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-external-mcp/v1/deployment-route-manifest.schema.json",
+  "title": "Dipole Agent External MCP Deployment Route Manifest v1",
+  "description": "Credential-free host route bindings for default-off external MCP Temporal dispatch.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.external-mcp-deployment-routes.v1",
+  "required": ["schema_version", "routes"],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.external-mcp-deployment-routes.v1"},
+    "routes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": [
+          "route_id", "route_version", "capability_id", "workflow_step", "ordinal",
+          "profile_id", "server_id", "tool_name", "egress_policy"
+        ],
+        "properties": {
+          "route_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"},
+          "route_version": {"type": "integer", "minimum": 1, "maximum": 1000000},
+          "capability_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"},
+          "workflow_step": {"type": "integer", "minimum": 0, "maximum": 255},
+          "ordinal": {"type": "integer", "minimum": 0, "maximum": 255},
+          "profile_id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"},
+          "server_id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"},
+          "tool_name": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"},
+          "egress_policy": {
+            "type": "object",
+            "required": ["allowed_argument_names", "maximum_bytes"],
+            "properties": {
+              "allowed_argument_names": {
+                "type": "array",
+                "maxItems": 256,
+                "items": {"type": "string", "minLength": 1, "maxLength": 128}
+              },
+              "maximum_bytes": {"type": "integer", "minimum": 2, "maximum": 65536}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
