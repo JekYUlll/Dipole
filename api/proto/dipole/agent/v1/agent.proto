@@ -213,6 +213,7 @@ message ResolveMcpToolCommandResponse {
   string capability_id = 10;
   bytes arguments_json = 11;
   string arguments_sha256 = 12;
+  int64 started_at_unix_ms = 13;
 }
 
 message ClaimMcpToolRoundRequest {

@@ -102,6 +102,8 @@ Activity 取得 `claimed` 后才建立全新 Client/Transport。远端返回结�
 
 该收据仍无法证明远端已执行、但响应尚未到达 Runtime 或本地终态尚未提交的极小窗口。未来只有 Profile 显式声明且验证了服务端幂等键或查询收据协议时，才能对这类调用增加恢复策略。当前 Worker、生产 Transport Factory 与外部网络开关保持关闭，禁止通过缩短 lease 或手工修改 `executing` 记录来重试。
 
+Worker command dispatcher 只接受 Task、Run 和 Invocation ID。它通过认证 Core RPC 重新取得持久 Profile、Server、Tool、Capability、canonical 参数摘要和 Invocation 开始时间；稳定 input request ID 与绝对截止时间均由这些权威字段派生。`wait_input` 外层 checkpoint 绑定完整命令摘要和 Activity checkpoint，进程替换后先重新解析并比较，任何参数或 authority 漂移都会在建连前拒绝。连接 Session Factory 只得到 tenant/profile/server/tool 四字段，不接收 Task/Run/Invocation、参数或 principal。
+
 ## 后续实现门槛
 
 生产 Factory 至少需要：每租户 provider owner 授权、加密 Secret Provider、版本精确读取、lease/zeroization、DNS 全地址和重定向检查、TLS chain/ServerName 校验、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回已建立的 MCP Transport。

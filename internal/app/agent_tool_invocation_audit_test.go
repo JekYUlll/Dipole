@@ -113,7 +113,7 @@ func TestPersistentAgentToolInvocationAuditPersistsAndResolvesExternalCommand(t 
 	if err != nil {
 		t.Fatalf("resolve external command: %v", err)
 	}
-	if command.ProfileID != "calendar-prod" || command.ServerID != "calendar.example" || command.ArgumentsJSON != arguments || command.TenantID != "dipole" {
+	if command.ProfileID != "calendar-prod" || command.ServerID != "calendar.example" || command.ArgumentsJSON != arguments || command.TenantID != "dipole" || command.StartedAt.IsZero() {
 		t.Fatalf("unexpected external command: %+v", command)
 	}
 }
