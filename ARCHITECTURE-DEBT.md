@@ -210,6 +210,7 @@
 - **本轮进展：** Shadow 指标已修正为记录原始候选集合大小，避免以匹配数替代候选数造成成本证据偏差；后续灰度仍需共享环境抓取和完整窗口。
 - **本轮进展：** Shadow metrics observer 已在运行时拒绝闭集之外的 outcome，保持 Prometheus label vocabulary 与 evidence schema 一致；共享环境窗口仍待完成。
 - **本轮进展：** 只读 Prometheus Collector 已对响应体实施 256 KiB 流式上限，并在超限、读取失败或 JSON 异常时统一 fail-closed；共享环境窗口与发布 artifact 交叉核对仍待完成。
+- **本轮进展：** 增加 `SubscriptionRuntimeGate` 三态 rollout seam：`off` 保持规则路径，`shadow` 允许任务并记录观察，`enforced` 仅接受精确哈希绑定且 `eligible` 的候选证据；默认未接入 Kafka、模型和生产 Task 创建。
 - **风险：** 控制面已可安全创建确定性订阅，但 Runtime 仍未消费共享 subscription 流量。在线 Shadow 已有 24 小时窗口、抓取覆盖、counter reset 和零 error 的低敏证据合同，并用只读 Collector 固定查询/单 series/持续启用检查，但尚未归档真实共享环境 evidence；当前指标也无法独立证明部署 artifact revision，仍需发布记录交叉核对。确定性关键词无法覆盖语义等价表达；公开候选接口当前返回有界 Definition scope 的完整交集，尚无超大 scope 分页协议。直接启用共享环境订阅模式仍会造成难以运维的策略或相关事件漏触发。
 - **建议方向：** 使用真实 Project Guardian reviewed corpus 采集 embedding 与小模型 candidate evidence，并与规则基线比较；随后设计 subscription Runtime 的分批灰度、漏触发/成本告警和回切证据。若单 Definition scope 扩展到当前上限之外，再增加稳定 cursor 的候选分页。高成本 Agent 只接收预筛后的事件。
 - **处理门槛：** Project Guardian 或共享环境启用 `subscription` 前完成用户管理界面，归档真实事件 corpus、reviewer agreement 和至少一个候选 evidence/report；synthetic 规则示例只证明 Harness。语义预筛需先离线达标，不能直接对每条消息调用大模型。
