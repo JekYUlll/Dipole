@@ -35,6 +35,8 @@ Memory reviewed corpus v1 采用与订阅语义评测一致的双 reviewer + 独
 
 Memory prefilter evidence v1 进一步将 embedding/small_model 的逐 case 分数、阈值、延迟和成本绑定 reviewed corpus。`eval:memory-prefilter` 只生成低敏聚合报告，供候选比较和后续灰度门禁使用；当前不调用真实模型、不消费 Kafka，也不改变自动 Memory 写入开关。
 
+在进入后续灰度前使用 `eval:memory-prefilter-rollout`。该 CLI 不信任调用方传入的 review/report 摘要，会重新计算 review agreement、gold label 和候选门禁，并输出绑定哈希的 `eligible|blocked` 决策；`eligible` 仅表示离线证据满足策略，不授予 Runtime 或生产写入权。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。

@@ -20,6 +20,7 @@
 - Agent Memory 增加 reviewed corpus v1 语言中立 Schema、双 reviewer/第三方 adjudicator 评测器和 `eval:memory-corpus-review` 离线 CLI。语料只保存候选类型、资源范围、证据数量与内容哈希；CLI 仅输出低敏哈希/计数报告，退出码 `0/2/1` 分别表示通过、门禁失败和输入错误，当前仍需真实脱敏语料与人工签署后才可用于灰度。
 - Agent Memory reviewed corpus 增加 owner-only source manifest loader：加载前校验绝对规范路径、不可跟随符号链接、regular/single-link 文件、owner 权限、2 MiB 大小、审批有效期及 corpus/review SHA-256；失败不会进入评测或晋级。该 loader 仍只服务离线证据，生产自动写入保持关闭。
 - Agent Memory 增加 provider-neutral prefilter evidence v1：embedding/small_model 候选绑定 reviewed corpus SHA-256、revision、configuration SHA-256 和 score/threshold，离线评测输出混淆矩阵、precision/recall、nearest-rank p95、平均/总成本及 fail-closed 门禁原因；新增 `eval:memory-prefilter` 与 policy/evidence/report Schema。该证据不访问模型、Kafka 或数据库，真实语料与在线灰度仍关闭。
+- Agent Memory 增加 prefilter rollout decision v1 与 `eval:memory-prefilter-rollout`：重新计算双 reviewer/adjudicator 结果和候选 evidence 门禁，绑定 corpus/review/final-label/evidence 哈希后输出 `eligible|blocked`；该决策仍只作为离线发布前置证据，不开启 Runtime、Kafka 或自动 Memory 写入。
 
 - Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
 
