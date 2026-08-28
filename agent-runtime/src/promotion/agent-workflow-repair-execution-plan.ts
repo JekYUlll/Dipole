@@ -79,6 +79,11 @@ export function createAgentWorkflowRepairExecutionPlan(
   if (parsed.rollbackProjection !== null && !sameEvidence(parsed.rollbackProjection, parsed.expectedCurrentProjection)) {
     throw new Error("Repair rollback projection must equal the expected current projection");
   }
+  if (parsed.expectedCurrentProjection !== null &&
+      (parsed.expectedCurrentProjection.workflowId !== parsed.targetProjection.workflowId ||
+       parsed.expectedCurrentProjection.workflowRunId !== parsed.targetProjection.workflowRunId)) {
+    throw new Error("Repair projections must bind to the same Workflow Run");
+  }
   const capturedAt = Date.parse(parsed.capturedAt);
   const expiresAt = Date.parse(parsed.expiresAt);
   if (!Number.isFinite(capturedAt) || !Number.isFinite(expiresAt) || expiresAt <= capturedAt || expiresAt - capturedAt > 15 * 60 * 1000) {
