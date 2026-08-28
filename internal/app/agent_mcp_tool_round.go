@@ -30,10 +30,15 @@ func (s *persistentAgentMCPToolRoundServiceV1) Claim(ctx context.Context, claim 
 	if err != nil {
 		return nil, fmt.Errorf("load Agent MCP Tool invocation: %w", err)
 	}
-	if invocation == nil || invocation.TaskUUID != claim.TaskUUID || invocation.RunUUID != claim.RunUUID ||
-		invocation.Status != application.AgentToolInvocationStatusRunning || invocation.ProfileID == "" ||
+	if invocation == nil || invocation.TaskUUID != claim.TaskUUID || invocation.RunUUID != claim.RunUUID || invocation.ProfileID == "" ||
 		application.ValidateAgentMCPToolCommandV1(invocation.ProfileID, invocation.ServerID, invocation.ArgumentsJSON, invocation.ArgumentsSHA256) != nil {
 		return nil, application.ErrAgentMCPToolRoundDenied
+	}
+	if invocation.Status != application.AgentToolInvocationStatusRunning {
+		if invocation.Status != application.AgentToolInvocationStatusCompleted && invocation.Status != application.AgentToolInvocationStatusFailed {
+			return nil, application.ErrAgentMCPToolRoundDenied
+		}
+		return s.replayTerminal(ctx, claim)
 	}
 	created, err := s.store.ClaimMCPToolRound(ctx, claim)
 	if err != nil {
@@ -54,6 +59,26 @@ func (s *persistentAgentMCPToolRoundServiceV1) Claim(ctx context.Context, claim 
 		return &application.AgentMCPToolRoundClaimResultV1{
 			Outcome: application.AgentMCPToolRoundReplayCompleted, ResultJSON: existing.ResultJSON, ResultSHA256: existing.ResultSHA256,
 		}, nil
+	case application.AgentMCPToolRoundStatusFailed:
+		return &application.AgentMCPToolRoundClaimResultV1{Outcome: application.AgentMCPToolRoundReplayFailed, ErrorCode: existing.ErrorCode}, nil
+	case application.AgentMCPToolRoundStatusExecuting:
+		return &application.AgentMCPToolRoundClaimResultV1{Outcome: application.AgentMCPToolRoundAmbiguous}, nil
+	default:
+		return nil, application.ErrAgentMCPToolRoundConflict
+	}
+}
+
+func (s *persistentAgentMCPToolRoundServiceV1) replayTerminal(ctx context.Context, claim application.AgentMCPToolRoundClaimV1) (*application.AgentMCPToolRoundClaimResultV1, error) {
+	existing, err := s.store.GetMCPToolRound(ctx, claim.RoundUUID)
+	if err != nil {
+		return nil, fmt.Errorf("load terminal Agent MCP Tool round: %w", err)
+	}
+	if existing == nil || !sameAgentMCPToolRoundClaimV1(existing.AgentMCPToolRoundClaimV1, claim) {
+		return nil, application.ErrAgentMCPToolRoundDenied
+	}
+	switch existing.Status {
+	case application.AgentMCPToolRoundStatusCompleted:
+		return &application.AgentMCPToolRoundClaimResultV1{Outcome: application.AgentMCPToolRoundReplayCompleted, ResultJSON: existing.ResultJSON, ResultSHA256: existing.ResultSHA256}, nil
 	case application.AgentMCPToolRoundStatusFailed:
 		return &application.AgentMCPToolRoundClaimResultV1{Outcome: application.AgentMCPToolRoundReplayFailed, ErrorCode: existing.ErrorCode}, nil
 	case application.AgentMCPToolRoundStatusExecuting:

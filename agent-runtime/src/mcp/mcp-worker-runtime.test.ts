@@ -22,7 +22,8 @@ const command: AgentMcpToolCommand = {
   capabilityId: "calendar.create",
   arguments: { calendarId: "CAL-1" },
   argumentsSha256: "aa96ead2e2c5f4724afe29d4a10200eb5a8b013adfca2c7f6caf2369028df08f",
-  startedAtUnixMs: 1_000
+  startedAtUnixMs: 1_000,
+  status: "running"
 };
 
 describe("MCP Worker Runtime composition", () => {
@@ -54,6 +55,7 @@ describe("MCP Worker Runtime composition", () => {
     expect(connectTransport).toHaveBeenCalledOnce();
     expect(receipts.finish).toHaveBeenCalledOnce();
 
+    receipts.setStatus("completed");
     const replacement = createMcpWorkerRuntime({
       ...dependencies,
       ownerTokenSha256: () => "b".repeat(64)
@@ -143,6 +145,7 @@ function coreWithClaim(
 }
 
 function receiptStore() {
+  let status: AgentMcpToolCommand["status"] = "running";
   let completed: {
     result: unknown;
     resultJSON: string;
@@ -158,11 +161,11 @@ function receiptStore() {
     }
   });
   const core: McpWorkerCoreClient = {
-    resolveMcpToolCommand: vi.fn(async () => command),
+    resolveMcpToolCommand: vi.fn(async () => ({ ...command, status })),
     claimMcpToolRound: vi.fn(async () => completed === undefined
       ? { outcome: "claimed" as const }
       : { outcome: "replay_completed" as const, ...completed }),
     finishMcpToolRound: finish
   };
-  return { core, finish };
+  return { core, finish, setStatus: (value: AgentMcpToolCommand["status"]) => { status = value; } };
 }

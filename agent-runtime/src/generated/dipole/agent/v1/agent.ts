@@ -677,6 +677,10 @@ export interface ResolveMcpToolCommandResponse {
      * @generated from protobuf field: int64 started_at_unix_ms = 13
      */
     startedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string status = 14
+     */
+    status: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ClaimMcpToolRoundRequest
@@ -3814,7 +3818,8 @@ class ResolveMcpToolCommandResponse$Type extends MessageType<ResolveMcpToolComma
             { no: 10, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 11, name: "arguments_json", kind: "scalar", T: 12 /*ScalarType.BYTES*/ },
             { no: 12, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 13, name: "started_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 13, name: "started_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 14, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ResolveMcpToolCommandResponse>): ResolveMcpToolCommandResponse {
@@ -3832,6 +3837,7 @@ class ResolveMcpToolCommandResponse$Type extends MessageType<ResolveMcpToolComma
         message.argumentsJson = new Uint8Array(0);
         message.argumentsSha256 = "";
         message.startedAtUnixMs = 0n;
+        message.status = "";
         if (value !== undefined)
             reflectionMergePartial<ResolveMcpToolCommandResponse>(this, message, value);
         return message;
@@ -3879,6 +3885,9 @@ class ResolveMcpToolCommandResponse$Type extends MessageType<ResolveMcpToolComma
                     break;
                 case /* int64 started_at_unix_ms */ 13:
                     message.startedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string status */ 14:
+                    message.status = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -3931,6 +3940,9 @@ class ResolveMcpToolCommandResponse$Type extends MessageType<ResolveMcpToolComma
         /* int64 started_at_unix_ms = 13; */
         if (message.startedAtUnixMs !== 0n)
             writer.tag(13, WireType.Varint).int64(message.startedAtUnixMs);
+        /* string status = 14; */
+        if (message.status !== "")
+            writer.tag(14, WireType.LengthDelimited).string(message.status);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

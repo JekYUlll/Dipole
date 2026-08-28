@@ -152,7 +152,7 @@ function commandBindingSha256(command: AgentMcpToolCommand): string {
     invocationId: command.invocationId, tenantId: command.tenantId, principalUserId: command.principalUserId,
     agentId: command.agentId, taskId: command.taskId, runId: command.runId, profileId: command.profileId,
     serverId: command.serverId, toolName: command.toolName, capabilityId: command.capabilityId,
-    argumentsSha256: command.argumentsSha256, startedAtUnixMs: command.startedAtUnixMs
+    argumentsSha256: command.argumentsSha256, startedAtUnixMs: command.startedAtUnixMs, status: command.status
   };
   for (const value of Object.values(binding)) {
     if (typeof value === "string" && !identitySchema.safeParse(value).success) {

@@ -106,6 +106,10 @@ Worker command dispatcher 只接受 Task、Run 和 Invocation ID。它通过认�
 
 `createMcpWorkerRuntime` 将上述 dispatcher 与 Core round receipt、外部 Transport Registry、allowlisted modern Client 和 Activity continuation 组合为专用可注入单元。取消信号会在 Core resolve 前及 resolve 后再次检查，避免尚未发网的取消认领 `executing` receipt；本地 completed receipt 在替换 Runtime 后直接重放，`ambiguous` 在创建 Client/Transport 前终止。
 
+Invocation begin/finish 现支持精确重放。Begin 的稳定 ID 已存在时，Core 重新授权 Task/Run/Capability/Approval，并逐项比较 tenant、principal、Agent、Tool、Profile/Server、canonical 参数、request/trace；只有完全一致才返回原 running/completed/failed 记录。Finish 对 terminal 记录逐项比较结果摘要、字节数、延迟、错误码与 action reference，精确重放不再次更新数据库。
+
+`ResolveMcpToolCommand` 同时返回 Invocation 状态。对于 completed/failed Invocation，Round Service 在任何 claim 写入前读取确定性 Round ID 对应的既有 receipt；completed/failed 结果可重放，executing 返回 ambiguous，缺失或绑定漂移直接拒绝。terminal Invocation 永远不能创建新 round，因此 Activity completion 丢失不会转化为第二次远端调用。
+
 该组合器当前没有进入 `index.ts` 或 Temporal Worker Activity mode。现有系统也没有“查找下一条外部 Invocation”的轮询入口；后续应由受信 Agent Step 在同一持久 Run 内先创建 exact Invocation，再把三 ID 交给组合器。禁止从 Task goal、模型输出、Kafka payload 或客户端参数直接选择 Profile/Server/Tool，也不为此增加重复命令权威的 dispatch 表。
 
 ## 后续实现门槛

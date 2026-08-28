@@ -57,6 +57,12 @@ type AgentToolInvocationV1 struct {
 	TraceID         string
 	ApprovalUUID    string
 	StartedAt       time.Time
+	ResultSHA256    string
+	ResultBytes     uint64
+	LatencyMS       uint64
+	ErrorCode       string
+	ActionReference *AgentToolActionReferenceV1
+	FinishedAt      *time.Time
 }
 
 type AgentToolInvocationBeginV1 struct {
@@ -89,6 +95,7 @@ type AgentMCPToolCommandV1 struct {
 	ArgumentsJSON   string
 	ArgumentsSHA256 string
 	StartedAt       time.Time
+	Status          AgentToolInvocationStatusV1
 }
 
 type AgentToolInvocationFinishV1 struct {
