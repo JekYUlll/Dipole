@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Memory 增加纯离线派生数据 retention policy 决策：严格覆盖 Model Call、Shadow Plan/Step、Artifact、Tool Invocation、Message Action 与 Temporal potential Task，输入绑定已验证的低敏 lineage report，输出绑定 policy/report/decision 三个 SHA-256。parser 会从 lineage 完整性和受影响的人工复核域重新推导阻断原因；CLI 不连接数据库或网络，固定不读取正文、不执行删除且不授予删除或 Runtime 权威。
 - Agent Memory migration v42 将 direct lineage 外键从 Shadow Plan 提前到权威 Agent Task；受管 Model planner 在 Context 编译后、模型调用前写入 `context_pre_model`，失败时模型零调用。Plan-time repair 保持幂等且不能降级来源；只有同时缺少 Plan 与任何 Memory lineage 的 owner 模型结果才进入未归因缺口。
 - Agent Memory migration v41 增加保守的派生影响边界：Shadow Plan 事务同步保存 `Memory -> Task` 直接引用，精确重放补齐索引，representation 漂移 fail closed；只读审计按 root 统计模型调用、Plan/Step、Artifact、Tool、Message Action 与 Temporal 潜在 Task。报告只含 root SHA-256、有界计数和完整性标志，固定不读取内容、不授予删除或 Runtime 权威；历史未索引 Context 或已完成模型调用缺少 Plan 的未归因 Task 都会返回 `lineageComplete=false`。
 - Agent Memory migration v40 增加 root-wide 内容擦除基础：内部 sqlc/Core 事务锁定完整纠正链，撤销 active 版本，并清除正文、compact、URI、resource binding、root 原始来源与自由文本审计原因；只保留 owner、root/version/predecessor、擦除时间和枚举原因码。语言中立 policy/receipt 明确无自动执行或公开 API 权威，当前没有 Proto、Gateway、Vue 或 retention Worker 入口。
@@ -510,6 +511,7 @@
 
 ### 验证
 
+- Agent Memory 派生 retention policy 聚焦测试通过 `6/6`，与 lineage 回归合计 `11/11`；覆盖完整/缺失 lineage、受影响与零影响人工复核域、policy/report/decision hash 漂移、authority 提升、64 KiB 双输入和低敏失败。完整 Agent Runtime 为 `586 passed / 26 expected skipped`；TypeScript typecheck/build、Draft 2020-12 strict Schema 示例、canonical Go test/vet、sqlc、Go/TS Proto、Compose、架构文档、观测规则和生产依赖零漏洞门禁通过。
 - Agent Memory pre-model lineage 通过 Planner 顺序/失败单测与真实 MySQL 20/20 contract：Context 来源优先、Plan repair 不降级、未知 Task 原子拒绝、foreign owner 隔离、无 Plan 模型结果先 fail closed 再由 lineage 恢复 root attribution；v1→v42 与 v42→v41 回滚删除无 Plan 行均通过。完整 Agent Runtime 为 580 passed / 26 expected skipped，Go test/vet、typecheck/build 与生产依赖零漏洞门禁通过。
 - Agent Memory 派生血缘测试覆盖 Context 引用排序/去重、非法 ID、representation 冲突、报告 hash/不变量、CLI 脱敏、并发 Plan 重放、历史缺口、下划线相似 ID 与无 Plan 模型结果；真实 MySQL 8.4 通过 12/12 Runtime contract，并验证 migration v1→v41、48 张表及 v41/v40/v39 分步回滚。完整 Agent Runtime 为 579 passed / 24 expected skipped，Go test/vet、Go/TS Proto、sqlc、Compose、架构文档、观测规则、typecheck/build 与生产依赖零漏洞门禁通过。
 - Agent Memory privacy retention 通过领域/Core/sqlc 聚焦测试和真实 MySQL 8.4 contract：两版本 root 全量 tombstone、原字段清除、Context 零召回、越权拒绝、精确重放，以及 v40/v39 分步回滚均通过。
@@ -623,7 +625,7 @@
 
 ### 已知问题
 
-- Memory root 擦除尚未覆盖模型派生的 Shadow plan、Step、Artifact、Agent Message 或 Temporal history；v42 已为受管 Model planner 建立模型前 root attribution，历史/旁路缺口继续由 owner-scoped 未归因计数阻断。字段级副本与删除语义尚未建立，公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
+- Memory root 派生影响已具备逐域离线 retention policy 决策，但尚未实现 Shadow plan、Step、Artifact、Agent Message 或 Temporal history 的字段级擦除器；v42 已为受管 Model planner 建立模型前 root attribution，历史/旁路缺口继续由 owner-scoped 未归因计数阻断。公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
 - Memory v1 已提供默认关闭的 owner list/revoke HTTP/Pencil/Vue 闭环和追加式撤销审计；自动写入、append-only 纠正/版本冲突、Observation/Reflection Worker、置信度策略及 hybrid/vector retrieval 仍待完成。共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
 - Event Subscription 已具备默认关闭的公开 Definition 目录、authenticated conversation chooser、owner list/create/revoke HTTP/Pencil/Vue 闭环、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；尚未归档真实 Project Guardian corpus/review report、embedding/小模型 candidate evidence或 subscription Runtime 灰度证据。共享环境继续固定 `direct_target`，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。
