@@ -74,6 +74,7 @@
 - Agent G4 隔离全栈 Shadow 证据增加语言中立 JSON Schema、严格 Zod 解析器和 `mcp:shadow-drill:check` CLI；契约固定成功计数/布尔门禁、canonical `content_sha256` 与最多 24 小时有效期，并拒绝额外字段、未同步 hash 的内容漂移、未来或过期文件。
 - Agent G4 增加默认跳过的隔离全栈 Shadow 演练：随机 Compose 项目启动独立 MySQL 8.4 与 Kafka 3.9，测试进程启动内存型 Temporal、owner-only route manifest、可信 Core 夹具和本地只读 MCP Server；演练输出 owner-only、无标识符/正文/凭据的 v1 JSON 证据并自动清理容器、网络和卷。
 - 增加默认关闭的 Agent Elicitation Web 闭环：`/agent/tasks/:taskId/input` 根据 authenticated Task Query 渲染 `text|select|multiselect|boolean`，精确绑定 Task/request 提交并在提交、取消或过期后重新查询权威状态；desktop/mobile 响应式页面与 3 项组件行为测试已接入，入口由 `VITE_AGENT_ELICITATION_ENABLED=false|true` 控制。
+- Agent Elicitation Web 补齐浏览器验收与可访问性语义：Chromium、Firefox、WebKit 覆盖 authenticated Task/request 精确绑定、外部 MCP 来源披露、首次查询失败后的 stale Form 清理与恢复、校验失败聚焦首个无效字段，以及 390x844 单列布局；Form 同步暴露 busy、alert、`aria-invalid` 和错误描述关系，敏感字段与 URL mode 继续关闭。
 - canonical Pencil 增加 Agent Elicitation v1：desktop/mobile 普通 Form、外部来源披露、四类受限字段、七态矩阵及三类可复用组件；设计明确旧 request、敏感字段、URL mode 和依赖不可用时 fail closed，2x 评审图归档于 `design/exports/agent-elicitation-v1/`。
 - canonical Pencil 增加 Agent Workflow Repair v1：desktop evidence review、`proposed|approved|rejected|expired|unavailable` 六态矩阵、mobile 双人审批层及三类可复用组件；界面明确批准只形成审计结论，不执行 projection repair，2x 评审图归档于 `design/exports/agent-repair-v1/`。
 - 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。
