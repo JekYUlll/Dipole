@@ -9,6 +9,10 @@
 - Agent Task 审批页完成 Vue 首个实现切片：沿用既有 Agent Approval 设计基线，展示任务/请求绑定、风险提示、过期和不可用状态；入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭，未扩展 canonical `.pen`。
 - 将 `.pen` Foundations 的颜色、字体、间距和圆角变量映射为 `frontend/src/styles/design-tokens.css`，应用壳层与 Search 工作区复用同一组 `--dp-*` token；新增 Vitest 契约测试，后续设计稿更新需同步调整该文件。
 
+### 验证
+
+- Agent Task Timeline v1 增量设计已建立可复用 brief `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 在两次受限模型调用中均未在超时窗口内完成，safe-edit wrapper 保留 canonical `.pen`，未生成导出图。F3/F4 视觉交付继续保持待处理状态。
+
 ### 新增
 
 - 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。
@@ -32,6 +36,7 @@
 ### 设计决策
 
 - Pencil 增量编辑必须通过 `scripts/pencil-safe-edit.mjs`：真实 CLI 调用写入临时 `.pen`，同时校验文档结构和导出资产，成功后才原子替换 canonical 文件；CLI 超时、进程异常或导出缺失均保留现有设计并进入 `AD-044` 记录。
+- Agent Task Timeline v1 后续编辑优先按 brief 拆分为单 frame 小批次；每批必须同时验证节点命名、canonical JSON 结构和 2x 导出，失败时只保留 brief 与证据，不修改现有设计基线。
 - `sync.item.notify.v1` 的 primary 交互只负责按会话序号补拉并合并已验证消息，不能直接把通知正文当作事实；目标序号或 UUID 校验失败时不展示、不推进客户端状态，服务端 Cassandra 灰度仍由独立运行证据控制。
 - Subscription create 只允许选择 owner active Definition 和 Core 返回的 readable/scope 交集；principal、tenant、event type 与 resource 均由认证上下文和 conversation key 派生，页面不提供手填入口。
 - 创建成功只表示控制记录已持久化。Runtime 与共享环境继续固定 `direct_target`，语义预筛与事件消费晋级需要独立证据。
