@@ -10,6 +10,8 @@ import type {
   AgentMcpToolRoundFinish
 } from "../capabilities/agent-capability-rpc.js";
 import type { McpActivityModernClient } from "../mcp/mcp-input-required-activity.js";
+import type { ExternalMcpConfig } from "../mcp/external-mcp-profile.js";
+import type { ExternalMcpProductionIoConfig } from "../mcp/external-mcp-production-io.js";
 import { ExternalMcpCapabilityRouteRegistry } from "../mcp/mcp-invocation-producer.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { TemporalMcpDispatchCheckpointV1 } from "./mcp-dispatch-activity.js";
@@ -153,7 +155,11 @@ function runtimeHarness(
   });
   const core: TemporalMcpDispatchRuntimeCore = {
     resolveMcpContext, beginMcpToolCommand, resolveMcpToolCommand,
-    claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocationFromRound
+    claimMcpToolRound, finishMcpToolRound, finishMcpToolInvocationFromRound,
+    resolveFreshMcpReadinessEvidence: vi.fn(async (_tenantId, profileBindingSha256, runtimeBindingSha256) => ({
+      evidenceId: "e".repeat(64), profileBindingSha256, runtimeBindingSha256, contentSha256: "c".repeat(64),
+      collectedAt: "2026-08-28T14:00:00.000Z", expiresAt: "2026-08-28T14:30:00.000Z"
+    }))
   };
   const connectTransport = vi.fn(async () => ({ close: vi.fn() }) as unknown as Transport);
   const callToolRound = vi.fn(call);
@@ -164,18 +170,44 @@ function runtimeHarness(
   return {
     dependencies: {
       routes: routes(), core,
-      transports: {
-        describe: () => ({
-          profileId: "calendar-prod", tenantId: "dipole", serverId: "calendar.example",
-          allowedTools: ["calendar.read_event"]
-        }),
-        connect: connectTransport
+      externalMcp: {
+        config: externalMcpConfig(),
+        io: externalMcpIo(),
+        registry: {
+          describe: () => externalMcpConfig().profiles[0]!,
+          connect: connectTransport
+        },
+        readinessBindingOptions: { expectedOwnerUid: 1000, trustedTransportBuilder: true }
       },
       artifacts: { createArtifact }, createClient, now: () => 1_100,
       ownerTokenSha256: () => "e".repeat(64), cancellationSignal
     },
     resolveMcpContext, beginMcpToolCommand, claimMcpToolRound,
     connectTransport, callToolRound, createArtifact
+  };
+}
+
+function externalMcpConfig(): Extract<ExternalMcpConfig, { enabled: true }> {
+  return {
+    enabled: true,
+    profiles: [{
+      profileId: "calendar-prod", tenantId: "dipole", serverId: "calendar.example",
+      endpoint: "https://calendar.example/v1", credentialRef: "CRED-0123456789ABCDEF", credentialVersion: 1,
+      allowedHosts: ["calendar.example"], allowedPorts: [443], dnsResolution: "public_only",
+      tlsServerName: "calendar.example", caBundleRef: "CA-0123456789ABCDEF", allowedTools: ["calendar.read_event"]
+    }]
+  };
+}
+
+function externalMcpIo(): ExternalMcpProductionIoConfig {
+  return {
+    credentialCatalogPath: "/run/dipole/catalog.json",
+    secretProvider: {
+      providerId: "local-aes-gcm",
+      keys: { "KEY-0123456789ABCDEF": "/run/dipole/key.bin" },
+      secrets: { "SECRET-0123456789ABCDEF": { keyRef: "KEY-0123456789ABCDEF", path: "/run/dipole/secret.bin" } }
+    },
+    caBundles: { "CA-0123456789ABCDEF": "/run/dipole/ca.pem" }
   };
 }
 
