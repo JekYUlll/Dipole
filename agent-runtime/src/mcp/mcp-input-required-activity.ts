@@ -97,7 +97,7 @@ interface McpActivityModernClientConfig {
   readonly requestTimeoutMs: number;
 }
 
-type McpActivityModernClientFactory = (config: McpActivityModernClientConfig) => McpActivityModernClient;
+export type McpActivityModernClientFactory = (config: McpActivityModernClientConfig) => McpActivityModernClient;
 
 export class ExternalMcpActivityRoundSessionFactory implements McpActivityRoundSessionFactory {
   readonly #registry: McpActivityExternalTransportRegistry;

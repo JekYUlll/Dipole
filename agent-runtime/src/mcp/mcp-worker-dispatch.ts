@@ -73,10 +73,12 @@ export class McpWorkerCommandDispatcher {
   }
 
   async begin(rawInput: unknown, signal?: AbortSignal): Promise<McpWorkerDispatchResult> {
+    signal?.throwIfAborted();
     const parsed = dispatchInputSchema.safeParse(rawInput);
     if (!parsed.success) throw new Error("MCP Worker dispatch input is invalid");
     const input = parsed.data;
     const command = await this.resolve(input.taskId, input.runId, input.invocationId);
+    signal?.throwIfAborted();
     const expiresAtUnixMs = command.startedAtUnixMs + this.inputWindowMs;
     const now = this.now();
     if (command.startedAtUnixMs > now + 60_000 || expiresAtUnixMs <= now) {
@@ -98,8 +100,10 @@ export class McpWorkerCommandDispatcher {
   }
 
   async resume(rawCheckpoint: unknown, input: McpElicitationResultInput, signal?: AbortSignal): Promise<Extract<McpWorkerDispatchResult, { kind: "complete" }>> {
+    signal?.throwIfAborted();
     const checkpoint = parseDispatchCheckpoint(rawCheckpoint);
     const command = await this.resolve(checkpoint.taskId, checkpoint.runId, checkpoint.invocationId);
+    signal?.throwIfAborted();
     if (commandBindingSha256(command) !== checkpoint.commandBindingSha256 || !sameActivityBinding(command, checkpoint.activity)) {
       throw new Error("MCP Worker command binding changed before resume");
     }
