@@ -19,7 +19,8 @@ const routeSchema = z.object({
   routeVersion: z.number().int().min(1).max(1_000_000),
   capabilityId: identitySchema,
   workflowStep: z.number().int().min(0).max(255),
-  ordinal: z.number().int().min(0).max(255)
+  ordinal: z.number().int().min(0).max(255),
+  deploymentBindingSha256: sha256Schema
 }).strict();
 const beginInputSchema = z.object({
   kind: z.literal("begin"),
@@ -67,6 +68,7 @@ export interface TemporalMcpDispatchRoute {
   readonly capabilityId: string;
   readonly workflowStep: number;
   readonly ordinal: number;
+  readonly deploymentBindingSha256: string;
 }
 
 export interface TemporalMcpDispatchRouteBinding {
@@ -394,7 +396,8 @@ function routeManifestSha256(route: TemporalMcpDispatchRoute): string {
     routeVersion: route.routeVersion,
     capabilityId: route.capabilityId,
     workflowStep: route.workflowStep,
-    ordinal: route.ordinal
+    ordinal: route.ordinal,
+    deploymentBindingSha256: route.deploymentBindingSha256
   }));
 }
 
