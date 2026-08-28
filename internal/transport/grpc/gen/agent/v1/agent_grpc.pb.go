@@ -54,6 +54,7 @@ const (
 	AgentCapabilityService_CreateArtifact_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
 	AgentCapabilityService_GetArtifact_FullMethodName                         = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
 	AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName         = "/dipole.agent.v1.AgentCapabilityService/PublishMcpReadinessEvidence"
+	AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName    = "/dipole.agent.v1.AgentCapabilityService/ResolveFreshMcpReadinessEvidence"
 )
 
 // AgentCapabilityServiceClient is the client API for AgentCapabilityService service.
@@ -95,6 +96,7 @@ type AgentCapabilityServiceClient interface {
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
 	PublishMcpReadinessEvidence(ctx context.Context, in *PublishMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*PublishMcpReadinessEvidenceResponse, error)
+	ResolveFreshMcpReadinessEvidence(ctx context.Context, in *ResolveFreshMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 }
 
 type agentCapabilityServiceClient struct {
@@ -455,6 +457,16 @@ func (c *agentCapabilityServiceClient) PublishMcpReadinessEvidence(ctx context.C
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ResolveFreshMcpReadinessEvidence(ctx context.Context, in *ResolveFreshMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*ResolveFreshMcpReadinessEvidenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveFreshMcpReadinessEvidenceResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentCapabilityServiceServer is the server API for AgentCapabilityService service.
 // All implementations must embed UnimplementedAgentCapabilityServiceServer
 // for forward compatibility.
@@ -494,6 +506,7 @@ type AgentCapabilityServiceServer interface {
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
 	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
 	PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error)
+	ResolveFreshMcpReadinessEvidence(context.Context, *ResolveFreshMcpReadinessEvidenceRequest) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
 }
 
@@ -608,6 +621,9 @@ func (UnimplementedAgentCapabilityServiceServer) GetArtifact(context.Context, *G
 }
 func (UnimplementedAgentCapabilityServiceServer) PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PublishMcpReadinessEvidence not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ResolveFreshMcpReadinessEvidence(context.Context, *ResolveFreshMcpReadinessEvidenceRequest) (*ResolveFreshMcpReadinessEvidenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveFreshMcpReadinessEvidence not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) mustEmbedUnimplementedAgentCapabilityServiceServer() {
 }
@@ -1261,6 +1277,24 @@ func _AgentCapabilityService_PublishMcpReadinessEvidence_Handler(srv interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ResolveFreshMcpReadinessEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveFreshMcpReadinessEvidenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ResolveFreshMcpReadinessEvidence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ResolveFreshMcpReadinessEvidence(ctx, req.(*ResolveFreshMcpReadinessEvidenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentCapabilityService_ServiceDesc is the grpc.ServiceDesc for AgentCapabilityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1407,6 +1441,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PublishMcpReadinessEvidence",
 			Handler:    _AgentCapabilityService_PublishMcpReadinessEvidence_Handler,
+		},
+		{
+			MethodName: "ResolveFreshMcpReadinessEvidence",
+			Handler:    _AgentCapabilityService_ResolveFreshMcpReadinessEvidence_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

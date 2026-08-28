@@ -43,10 +43,45 @@ func TestPersistentAgentMCPReadinessEvidencePublisherV1FailsBeforeOrDuringStorag
 	}
 }
 
+func TestPersistentAgentMCPReadinessEvidenceResolverV1ValidatesFreshStoreResult(t *testing.T) {
+	now := time.Date(2026, 8, 28, 14, 10, 0, 0, time.UTC)
+	record, err := application.NewAgentMCPReadinessEvidenceRecordV1("OPERATOR", readinessEvidencePublishRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &agentMCPReadinessEvidenceStoreStubV1{fresh: &record}
+	resolver, _ := NewPersistentAgentMCPReadinessEvidenceResolverV1(store, func() time.Time { return now })
+	resolved, err := resolver.ResolveFreshAgentMCPReadinessEvidence(context.Background(), "dipole", strings.Repeat("b", 64), strings.Repeat("a", 64))
+	if err != nil || resolved == nil || resolved.EvidenceUUID != record.EvidenceUUID || !store.lookup.At.Equal(now) {
+		t.Fatalf("resolved=%+v lookup=%+v err=%v", resolved, store.lookup, err)
+	}
+
+	corrupt := record
+	corrupt.ContentSHA256 = strings.Repeat("c", 64)
+	store.fresh = &corrupt
+	if _, err := resolver.ResolveFreshAgentMCPReadinessEvidence(context.Background(), "dipole", strings.Repeat("b", 64), strings.Repeat("a", 64)); !errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid) {
+		t.Fatalf("corrupt resolve error=%v", err)
+	}
+	if _, err := resolver.ResolveFreshAgentMCPReadinessEvidence(context.Background(), "dipole", strings.Repeat("B", 64), strings.Repeat("a", 64)); !errors.Is(err, application.ErrAgentMCPReadinessEvidenceInvalid) {
+		t.Fatalf("invalid binding error=%v", err)
+	}
+	store.fresh = nil
+	if resolved, err := resolver.ResolveFreshAgentMCPReadinessEvidence(context.Background(), "dipole", strings.Repeat("b", 64), strings.Repeat("a", 64)); err != nil || resolved != nil {
+		t.Fatalf("missing resolve=%+v err=%v", resolved, err)
+	}
+	want := errors.New("read failed")
+	store.err = want
+	if _, err := resolver.ResolveFreshAgentMCPReadinessEvidence(context.Background(), "dipole", strings.Repeat("b", 64), strings.Repeat("a", 64)); !errors.Is(err, want) {
+		t.Fatalf("storage error=%v", err)
+	}
+}
+
 type agentMCPReadinessEvidenceStoreStubV1 struct {
 	appended *application.AgentMCPReadinessEvidenceRecordV1
 	created  bool
 	err      error
+	fresh    *application.AgentMCPReadinessEvidenceRecordV1
+	lookup   application.AgentMCPReadinessEvidenceLookupV1
 }
 
 func (store *agentMCPReadinessEvidenceStoreStubV1) AppendAgentMCPReadinessEvidence(_ context.Context, record application.AgentMCPReadinessEvidenceRecordV1) (bool, error) {
@@ -61,8 +96,9 @@ func (*agentMCPReadinessEvidenceStoreStubV1) GetAgentMCPReadinessEvidence(contex
 	return nil, nil
 }
 
-func (*agentMCPReadinessEvidenceStoreStubV1) GetFreshAgentMCPReadinessEvidence(context.Context, application.AgentMCPReadinessEvidenceLookupV1) (*application.AgentMCPReadinessEvidenceRecordV1, error) {
-	return nil, nil
+func (store *agentMCPReadinessEvidenceStoreStubV1) GetFreshAgentMCPReadinessEvidence(_ context.Context, lookup application.AgentMCPReadinessEvidenceLookupV1) (*application.AgentMCPReadinessEvidenceRecordV1, error) {
+	store.lookup = lookup
+	return store.fresh, store.err
 }
 
 func readinessEvidencePublishRequest() application.AgentMCPReadinessEvidenceRequestV1 {

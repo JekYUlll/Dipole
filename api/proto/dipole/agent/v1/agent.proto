@@ -631,6 +631,25 @@ message PublishMcpReadinessEvidenceResponse {
   bool created = 9;
 }
 
+message ResolveFreshMcpReadinessEvidenceRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string profile_binding_sha256 = 3;
+  string runtime_binding_sha256 = 4;
+}
+
+message ResolveFreshMcpReadinessEvidenceResponse {
+  bool found = 1;
+  string evidence_id = 2;
+  string schema_version = 3;
+  string profile_binding_sha256 = 4;
+  string runtime_binding_sha256 = 5;
+  string content_sha256 = 6;
+  string status = 7;
+  int64 collected_at_unix_ms = 8;
+  int64 expires_at_unix_ms = 9;
+}
+
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
   rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
@@ -667,4 +686,5 @@ service AgentCapabilityService {
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
   rpc PublishMcpReadinessEvidence(PublishMcpReadinessEvidenceRequest) returns (PublishMcpReadinessEvidenceResponse);
+  rpc ResolveFreshMcpReadinessEvidence(ResolveFreshMcpReadinessEvidenceRequest) returns (ResolveFreshMcpReadinessEvidenceResponse);
 }
