@@ -89,3 +89,40 @@ dipole_sync_hydration_route_total{outcome="hit"} 2
 		t.Fatal("expected duplicate route outcome error")
 	}
 }
+
+func TestEvidenceFromPrometheusRejectsWrongTypeAndExtraLabels(t *testing.T) {
+	cases := []struct {
+		name string
+		data string
+	}{
+		{name: "wrong type", data: `# TYPE dipole_sync_hydration_route_total gauge
+dipole_sync_hydration_route_total{outcome="hit"} 1
+`},
+		{name: "extra label", data: `# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit",service="sync"} 1
+`},
+	}
+	metadata := PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "primary", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if _, err := EvidenceFromPrometheus([]byte(testCase.data), metadata); err == nil {
+				t.Fatal("expected invalid metric error")
+			}
+		})
+	}
+}
+
+func TestEvidenceFromPrometheusRejectsNonMonotonicHistogram(t *testing.T) {
+	data := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 2
+# TYPE dipole_sync_hydration_route_duration_seconds histogram
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="0.001"} 2
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="0.005"} 1
+dipole_sync_hydration_route_duration_seconds_bucket{outcome="hit",le="+Inf"} 2
+dipole_sync_hydration_route_duration_seconds_count{outcome="hit"} 2
+`)
+	metadata := PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "primary", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"}
+	if _, err := EvidenceFromPrometheus(data, metadata); err == nil {
+		t.Fatal("expected non-monotonic histogram error")
+	}
+}
