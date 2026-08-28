@@ -36,7 +36,7 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 文本，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O composition 已实现，但尚未由受控环境配置构造并注册到 `index.ts`。这一行为用于避免配置人员把独立组合器误认为已具备灰度上线条件。
+关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O manifest loader 与 composition 已实现，但尚未注册到 `index.ts`。这一行为用于避免配置人员把独立构件误认为已具备灰度上线条件。
 
 ## 轮换与吊销
 
@@ -66,7 +66,11 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
 
-组合器当前接受显式 typed config，尚未从环境变量、ConfigMap 或 Secret volume 加载路径映射，也未注册到 `index.ts` 或 Temporal Worker。上线接线需要独立实现严格配置 loader、启动前 manifest 审核、provider owner 授权与灰度 tenant allowlist；不要直接把任意 JSON 反序列化后传入组合器。
+`production-io-manifest.schema.json` 定义 credential-free v1 配置：Catalog 路径及上限、单个 encrypted provider 的 ID/key/secret 路径映射、CA ref/path 映射和 TLS connect timeout。Schema 禁止附加字段，Runtime 进一步要求 ref 唯一、secret 引用已声明 key，并让 Catalog、key、secret 与 CA 的全部路径全局唯一。manifest 不得包含 token、password、32 字节 key、envelope 或 CA 正文。
+
+`loadExternalMcpProductionIoManifest` 只在 Profile 开关 enabled 时读取 `DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST`。该路径和 manifest 内所有路径都必须是规范绝对路径；manifest 父目录必须 canonical、owner 正确且不可被 group/world 写，文件必须 owner-only、无执行位、regular/single-link，并通过 `O_NOFOLLOW` 有界读取 UTF-8 JSON。每次调用重新加载，读取或校验失败统一返回低敏错误且不会回退旧快照；disabled 时连残留环境变量 getter 都不触达。
+
+loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。当前 loader 与 composition 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需启动前下游文件 preflight、provider owner 授权、只读 Shadow tenant allowlist 和回滚演练。
 
 ## Network Guard 边界
 
@@ -154,6 +158,6 @@ Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 
 
 文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
 
-生产接入仍至少需要：严格启动配置 loader、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。当前 composition 未注册到 `index.ts` 或 Worker startup，不会读取凭据、发起查询或建立连接。
+生产接入仍至少需要：启动前下游文件 preflight、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。当前 loader/composition 未注册到 `index.ts` 或 Worker startup，不会读取 manifest/凭据、发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。
