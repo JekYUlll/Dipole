@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -11,12 +11,6 @@ import { Kafka, Partitioners } from "kafkajs";
 import { createPool, type Pool } from "mysql2/promise";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type {
-  AgentArtifactCreateInput,
-  AgentArtifactRecord,
-  AgentMcpToolCommand,
-  AgentMcpToolRoundFinish
-} from "../capabilities/agent-capability-rpc.js";
 import { createExternalMcpReadCapabilityDefinitions } from "../mcp/external-mcp-read-capability-definitions.js";
 import {
   externalMcpDeploymentRouteManifestSchemaVersion,
@@ -25,15 +19,15 @@ import {
 import type { ExternalMcpConfig } from "../mcp/external-mcp-profile.js";
 import type { ExternalMcpProductionIoConfig } from "../mcp/external-mcp-production-io.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
-import { agentRunId, agentTaskId, type AgentEvent, type AgentIdentity } from "../events/shadow-processor.js";
-import { createPersistentAgentTaskLifecycleActivities, type PersistentAgentRunLifecyclePort } from "../temporal/agent-task-lifecycle-activities.js";
+import { agentTaskId } from "../events/shadow-processor.js";
+import { createPersistentAgentTaskLifecycleActivities } from "../temporal/agent-task-lifecycle-activities.js";
 import { foundationAgentTaskActivities } from "../temporal/agent-task-activities.js";
-import { createTemporalMcpDispatchRuntime, type TemporalMcpDispatchRuntimeCore } from "../temporal/mcp-dispatch-runtime.js";
+import { createTemporalMcpDispatchRuntime } from "../temporal/mcp-dispatch-runtime.js";
 import { TemporalMcpShadowTaskDispatcher } from "../temporal/mcp-shadow-task-dispatcher.js";
 import { TemporalMcpSubscriptionRouteSelector } from "../temporal/mcp-subscription-route-selector.js";
 import { agentTaskWorkflowId, TemporalMcpTaskClient } from "../temporal/temporal-task-client.js";
 import { TemporalMcpWorkflowExecutionCatalog } from "../temporal/mcp-workflow-envelope.js";
-import { createKafkaShadowRuntime, type ShadowRuntimeConfig } from "./shadow-runtime.js";
+import { createAgentCapabilityRPC, createKafkaShadowRuntime, type ShadowRuntimeConfig } from "./shadow-runtime.js";
 import { createExternalMcpShadowDrillEvidence } from "./external-mcp-shadow-drill-evidence.js";
 
 const enabled = process.env.DIPOLE_AGENT_FULL_STACK_DRILL === "true";
@@ -88,8 +82,11 @@ integration("external MCP isolated full-stack Shadow drill", () => {
     );
     if (loaded === undefined) throw new Error("route manifest unavailable");
 
-    const core = new DrillCore();
-    const mcp = localMcpFixture(config, core);
+    const shadowConfig = runtimeConfig(database, topicPrefix, groupId);
+    const rpc = createAgentCapabilityRPC(shadowConfig);
+    const core = rpc.client;
+    const observation = { toolCalls: 0 };
+    const mcp = localMcpFixture(config, observation);
     const route = loaded.routes[0]!;
     const dispatch = createTemporalMcpDispatchRuntime(route, {
       routes: loaded.registry,
@@ -125,7 +122,6 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       ),
       new TemporalMcpSubscriptionRouteSelector(loaded.subscriptionRoutes)
     );
-    const shadowConfig = runtimeConfig(database, topicPrefix, groupId);
     let runtime = createKafkaShadowRuntime(shadowConfig, dispatcher, core);
 
     try {
@@ -135,8 +131,10 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       const firstTaskId = taskId("MESSAGE-MCP-DRILL-1");
       await expect(workflowResult(temporal, firstTaskId))
         .resolves.toMatchObject({ status: "completed" });
-      expect(core.toolCalls).toBe(1);
-      expect(core.artifacts).toBe(1);
+      expect(observation.toolCalls).toBe(1);
+      expect(await readRPCFixtureState()).toMatchObject({
+        rpc_type: "go_internal_grpc_mtls", rpc_authenticated: true, artifact_count: 1
+      });
 
       await runtime.stop();
       runtime = createKafkaShadowRuntime(shadowConfig, dispatcher, core);
@@ -147,15 +145,19 @@ integration("external MCP isolated full-stack Shadow drill", () => {
         "SELECT COUNT(*) AS count FROM agent_event_ledger WHERE event_id = 'EVENT-MCP-DRILL-1' AND status = 'completed'"
       ))[0][0]?.count) === 1);
       await delay(750);
-      expect(core.toolCalls).toBe(1);
+      expect(observation.toolCalls).toBe(1);
 
-      core.readinessFresh = false;
+      await writeFile(requiredEnv("DIPOLE_TEST_AGENT_RPC_STALE_PATH"), "stale\n", { mode: 0o600 });
       await publish(shadowConfig, eventEnvelope("EVENT-MCP-DRILL-2", "MESSAGE-MCP-DRILL-2"));
       const deniedTaskId = taskId("MESSAGE-MCP-DRILL-2");
       await expect(workflowResult(temporal, deniedTaskId))
         .resolves.toMatchObject({ status: "failed" });
-      expect(core.toolCalls).toBe(1);
-      expect(core.finishedStatuses).toEqual(["completed", "failed"]);
+      expect(observation.toolCalls).toBe(1);
+      expect(await readRPCFixtureState()).toMatchObject({
+        rpc_type: "go_internal_grpc_mtls", rpc_authenticated: true, artifact_count: 1,
+        finished_statuses: ["completed", "failed"]
+      });
+      expect(requiredEnv("DIPOLE_TEST_AGENT_RPC_IDENTITY_DENIALS_VERIFIED")).toBe("true");
 
       await writeEvidence(createExternalMcpShadowDrillEvidence({
         event_count: 2,
@@ -163,13 +165,17 @@ integration("external MCP isolated full-stack Shadow drill", () => {
         tool_call_count: 1,
         artifact_count: 1,
         restart_duplicate_suppressed: true,
-        expired_readiness_denied: true
+        expired_readiness_denied: true,
+        core_rpc_type: "go_internal_grpc_mtls",
+        core_rpc_authenticated: true,
+        core_rpc_identity_denials_verified: true
       }));
     } finally {
       await runtime.stop().catch(() => undefined);
       worker.shutdown();
       await workerRun;
       await mcp.close();
+      rpc.close();
     }
   }, 120_000);
 
@@ -178,114 +184,13 @@ integration("external MCP isolated full-stack Shadow drill", () => {
   }
 });
 
-class DrillCore implements TemporalMcpDispatchRuntimeCore, PersistentAgentRunLifecyclePort {
-  readonly commands = new Map<string, AgentMcpToolCommand>();
-  readonly rounds = new Map<string, AgentMcpToolRoundFinish>();
-  readonly finishedStatuses: string[] = [];
-  readinessFresh = true;
-  toolCalls = 0;
-  artifacts = 0;
-
-  async matchEventSubscriptions(event: AgentEvent, identity: AgentIdentity) {
-    return [{
-      subscriptionId: "SUB-MCP-DRILL", definitionId: "DEF-REPOSITORY-GUARDIAN", definitionVersion: 1,
-      tenantId: identity.tenantId, agentId: identity.agentUuid, eventType: event.eventType,
-      resourceType: "conversation" as const, resourceId: String(event.payload.conversation_key),
-      filterKind: "all" as const, filter: {}
-    }];
-  }
-
-  async admitRun(input: Parameters<PersistentAgentRunLifecyclePort["admitRun"]>[0]) {
-    const taskIdValue = agentTaskId({
-      tenantId: input.tenantId, agentUuid: input.agentId, triggerType: input.triggerType, triggerRef: input.triggerRef
-    });
-    return { taskId: taskIdValue, runId: agentRunId(taskIdValue), runStatus: "running" as const };
-  }
-
-  async finish(_taskId: string, _runId: string, status: "completed" | "failed" | "cancelled") {
-    this.finishedStatuses.push(status);
-  }
-  async requestApproval() { throw new Error("read drill cannot request approval"); }
-  async resolveApproval() { throw new Error("read drill cannot resolve approval"); }
-  async projectTaskWorkflowState() { return {}; }
-
-  async resolveMcpContext(taskId: string, runId: string, principalUserId: string) {
-    return {
-      tenantId: "dipole", principalUuid: principalUserId, agentUuid: "UAI-DRILL", taskId, runId,
-      mode: "shadow" as const, permissions: ["repository.issue.read"],
-      resourceScopes: [{ resourceType: "repository_issue", resourceId: "dipole/dipole#1", actions: ["read"] }],
-      approvedCapabilities: []
-    };
-  }
-
-  async beginMcpToolCommand(input: Parameters<TemporalMcpDispatchRuntimeCore["beginMcpToolCommand"]>[0]) {
-    if (!this.commands.has(input.invocationId)) {
-      this.commands.set(input.invocationId, {
-        invocationId: input.invocationId, tenantId: "dipole", principalUserId: "U100", agentId: "UAI-DRILL",
-        taskId: input.taskId, runId: input.runId, profileId: input.profileId!, serverId: input.serverId!,
-        toolName: input.toolName, capabilityId: input.capabilityId,
-        arguments: JSON.parse(input.argumentsJson!) as Record<string, unknown>, argumentsSha256: input.argumentsSha256,
-        startedAtUnixMs: Date.now(), status: "running"
-      });
-    }
-    return { invocationId: input.invocationId, status: this.commands.get(input.invocationId)!.status };
-  }
-
-  async resolveMcpToolCommand(_taskId: string, _runId: string, invocationId: string) {
-    const command = this.commands.get(invocationId);
-    if (command === undefined) throw new Error("missing drill command");
-    return command;
-  }
-
-  async claimMcpToolRound(input: Parameters<TemporalMcpDispatchRuntimeCore["claimMcpToolRound"]>[0]) {
-    const receipt = this.rounds.get(input.roundId);
-    if (receipt === undefined) return { outcome: "claimed" as const };
-    if (receipt.status === "failed") return { outcome: "replay_failed" as const, errorCode: receipt.errorCode };
-    return { outcome: "replay_completed" as const, result: JSON.parse(receipt.resultJSON) as unknown,
-      resultJSON: receipt.resultJSON, resultSha256: receipt.resultSha256 };
-  }
-
-  async finishMcpToolRound(input: AgentMcpToolRoundFinish) {
-    this.rounds.set(input.roundId, input);
-  }
-
-  async finishMcpToolInvocationFromRound(input: { taskId: string; runId: string; invocationId: string; roundId: string }) {
-    const command = await this.resolveMcpToolCommand(input.taskId, input.runId, input.invocationId);
-    const round = this.rounds.get(input.roundId);
-    const status = round?.status === "failed" ? "failed" as const : "completed" as const;
-    this.commands.set(input.invocationId, { ...command, status });
-    return { invocationId: input.invocationId, status };
-  }
-
-  async resolveFreshMcpReadinessEvidence(_tenantId: string, profileBindingSha256: string, runtimeBindingSha256: string) {
-    const now = Date.now();
-    const expiresAt = this.readinessFresh ? now + 60_000 : now - 1;
-    return {
-      evidenceId: "e".repeat(64), profileBindingSha256, runtimeBindingSha256, contentSha256: "c".repeat(64),
-      collectedAt: new Date(now - 1_000).toISOString(), expiresAt: new Date(expiresAt).toISOString()
-    };
-  }
-
-  async createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord> {
-    this.artifacts += 1;
-    const contentSha256 = sha(input.content);
-    return {
-      schemaVersion: "dipole.agent.artifact.v1",
-      artifactId: sha(Buffer.from(["dipole.agent.artifact.v1", input.taskId, input.runId, input.artifactType, input.version, contentSha256].join("\n"))),
-      taskId: input.taskId, runId: input.runId, artifactType: input.artifactType, version: input.version,
-      title: input.title, mediaType: input.mediaType, contentSha256, sizeBytes: input.content.byteLength,
-      metadata: input.metadata
-    };
-  }
-}
-
-function localMcpFixture(config: Extract<ExternalMcpConfig, { enabled: true }>, core: DrillCore) {
+function localMcpFixture(config: Extract<ExternalMcpConfig, { enabled: true }>, observation: { toolCalls: number }) {
   const server = new Server({ name: "github-mcp", version: "1.0.0" }, { capabilities: { tools: {} } });
   server.setRequestHandler("tools/list", async () => ({
     tools: [{ name: "read_issue", inputSchema: { type: "object" as const } }]
   }));
   server.setRequestHandler("tools/call", async request => {
-    core.toolCalls += 1;
+    observation.toolCalls += 1;
     return { content: [{ type: "text" as const, text: `issue:${String(request.params.arguments?.issue_number)}` }] };
   });
   const handler = createMcpHandler(() => server);
@@ -340,8 +245,11 @@ function runtimeConfig(database: string, topicPrefix: string, groupId: string): 
     topicReplicationFactor: 1, tenantId: "dipole", agentUuid: "UAI-DRILL", triggerMode: "subscription",
     ledgerMode: "mysql", leaseMs: 5_000, modelMode: "metadata", modelRoutes: [], contextCompilerVersion: "v1",
     memoryEnabled: false, modelContextProfiles: [], modelBudget: { maxCalls: 1, totalTimeoutMs: 1_000, maxOutputTokensPerCall: 128 },
-    capabilityRpc: { enabled: true, target: "127.0.0.1:1", secret: "drill", timeoutMs: 500, tls: {
-      enabled: false, caFile: "", certFile: "", keyFile: "", serverName: ""
+    capabilityRpc: { enabled: true, target: requiredEnv("DIPOLE_TEST_AGENT_RPC_TARGET"),
+      secret: requiredEnv("DIPOLE_TEST_AGENT_RPC_SECRET"), timeoutMs: 2_000, tls: {
+      enabled: true, caFile: requiredEnv("DIPOLE_TEST_AGENT_RPC_CA_FILE"),
+      certFile: requiredEnv("DIPOLE_TEST_AGENT_RPC_CERT_FILE"), keyFile: requiredEnv("DIPOLE_TEST_AGENT_RPC_KEY_FILE"),
+      serverName: requiredEnv("DIPOLE_TEST_AGENT_RPC_SERVER_NAME")
     } },
     mysql: { host: mysqlUrl.hostname, port: Number(mysqlUrl.port), user: mysqlUrl.username,
       password: mysqlUrl.password, database }
@@ -428,6 +336,21 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function sha(value: Uint8Array): string {
-  return createHash("sha256").update(value).digest("hex");
+interface AgentRPCFixtureState {
+  rpc_type: string;
+  rpc_authenticated: boolean;
+  rpc_call_count: number;
+  artifact_count: number;
+  finished_statuses: string[];
+}
+
+async function readRPCFixtureState(): Promise<AgentRPCFixtureState> {
+  const value = JSON.parse(await readFile(requiredEnv("DIPOLE_TEST_AGENT_RPC_STATE_PATH"), "utf8")) as Record<string, unknown>;
+  if (value.schema_version !== "dipole.agent.mcp-rpc-drill-state.v1" || value.rpc_type !== "go_internal_grpc_mtls" ||
+      value.rpc_authenticated !== true || !Number.isSafeInteger(value.rpc_call_count) || Number(value.rpc_call_count) < 1 ||
+      !Number.isSafeInteger(value.artifact_count) || !Array.isArray(value.finished_statuses) ||
+      value.finished_statuses.some(item => typeof item !== "string")) {
+    throw new Error("Agent RPC drill fixture state is invalid");
+  }
+  return value as unknown as AgentRPCFixtureState;
 }

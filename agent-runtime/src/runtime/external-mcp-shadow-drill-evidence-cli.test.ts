@@ -50,7 +50,10 @@ function outcome() {
     tool_call_count: 1,
     artifact_count: 1,
     restart_duplicate_suppressed: true,
-    expired_readiness_denied: true
+    expired_readiness_denied: true,
+    core_rpc_type: "go_internal_grpc_mtls",
+    core_rpc_authenticated: true,
+    core_rpc_identity_denials_verified: true
   } as const;
 }
 
