@@ -23,6 +23,17 @@
 
 ## 待处理
 
+### AD-043：Sync Cassandra hydration 缺少共享环境运行时证据闭环
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** Sync Service、Cassandra primary/fallback、Prometheus、灰度与回切门禁
+- **现状：** Sync Service 已提供默认关闭的 Cassandra primary 路径和 MySQL 即时回退；离线 evidence evaluator 可消费 hit、fallback、missing、conflict、error 与 p95 聚合。运行时现在按低基数 outcome 暴露 `dipole_sync_hydration_route_total` 与 `dipole_sync_hydration_route_duration_seconds`，并保留旧日志观测。
+- **风险：** 当前仍缺少真实客户端窗口、共享 Cassandra/Sync 环境采集、missing/conflict 细分的端到端归因、责任人批准、自动停止门禁与可执行回切演练；collector 只能证明进程内路由结果，不能单独证明生产 eligible。
+- **建议方向：** 将 Prometheus snapshot 与脱敏客户端/服务 revision、配置比例、窗口和回切演练 ID 合成为 evidence，再交给既有 evaluator；缺少完整窗口或观测断层时保持 blocked，并持续保留 MySQL 完整消息。
+- **处理门槛：** 任何提高 `sync.cassandra_primary_hydration` 比例前，必须归档共享环境 evidence、复核人批准和自动回切记录；未满足前保持默认关闭或人工小比例运行。
+
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1

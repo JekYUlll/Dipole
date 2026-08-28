@@ -22,19 +22,21 @@ import (
 	syncprojector "github.com/JekYUlll/Dipole/internal/projector/sync"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 type SyncRuntime struct {
-	rpc            *InternalRPCServer
-	coreConn       *grpc.ClientConn
-	db             *sql.DB
-	metrics        *platformobservability.MetricsServer
-	projector      bool
-	shadowHydrator *shadowdata.SyncMessageHydrator
-	cassandra      *gocql.Session
-	shutdownSec    int
+	rpc              *InternalRPCServer
+	coreConn         *grpc.ClientConn
+	db               *sql.DB
+	metrics          *platformobservability.MetricsServer
+	projector        bool
+	shadowHydrator   *shadowdata.SyncMessageHydrator
+	hydrationMetrics *shadowdata.SyncHydrationMetrics
+	cassandra        *gocql.Session
+	shutdownSec      int
 }
 
 func InitializeSyncService(ctx context.Context) (*SyncRuntime, error) {
@@ -106,7 +108,8 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			runtime.shadowHydrator = shadowdata.NewSyncMessageHydrator(primaryHydrator, cassandraHydrator, logSyncHydrationComparison)
 			hydrator = runtime.shadowHydrator
 		} else {
-			fallbackHydrator, fallbackErr := shadowdata.NewFallbackSyncMessageHydrator(cassandraHydrator, primaryHydrator, logSyncHydrationRoute)
+			runtime.hydrationMetrics = shadowdata.NewSyncHydrationMetrics()
+			fallbackHydrator, fallbackErr := shadowdata.NewFallbackSyncMessageHydratorWithMetrics(cassandraHydrator, primaryHydrator, logSyncHydrationRoute, runtime.hydrationMetrics)
 			if fallbackErr != nil {
 				runtime.Close()
 				return nil, fallbackErr
@@ -156,11 +159,14 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			return nil, fmt.Errorf("start Sync projector consumer: %w", projectorErr)
 		}
 	}
+	var hydrationCollectors []prometheus.Collector
 	if runtime.shadowHydrator != nil {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, runtime.shadowHydrator)
-	} else {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber)
+		hydrationCollectors = append(hydrationCollectors, runtime.shadowHydrator)
 	}
+	if runtime.hydrationMetrics != nil {
+		hydrationCollectors = append(hydrationCollectors, runtime.hydrationMetrics)
+	}
+	runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, hydrationCollectors...)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
