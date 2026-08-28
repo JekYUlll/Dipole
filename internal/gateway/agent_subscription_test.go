@@ -14,11 +14,30 @@ import (
 )
 
 type agentSubscriptionRPCStub struct {
+	createRequest     *agentv1.CreateEventSubscriptionRequest
+	optionsRequest    *agentv1.ListEligibleSubscriptionConversationsRequest
 	listRequest       *agentv1.ListEventSubscriptionsRequest
 	revokeRequest     *agentv1.RevokeEventSubscriptionRequest
 	listError         error
 	nilList           bool
 	definitionRequest *agentv1.ListAgentDefinitionsRequest
+}
+
+func (s *agentSubscriptionRPCStub) CreateEventSubscription(_ context.Context, request *agentv1.CreateEventSubscriptionRequest, _ ...grpc.CallOption) (*agentv1.AgentEventSubscription, error) {
+	s.createRequest = request
+	return &agentv1.AgentEventSubscription{
+		SubscriptionId: "SUB-CREATED", DefinitionId: request.GetDefinitionId(), DefinitionVersion: request.GetDefinitionVersion(),
+		TenantId: request.GetTenantId(), AgentId: "UAI", EventType: request.GetEventType(),
+		ResourceType: request.GetResourceType(), ResourceId: request.GetResourceId(), FilterKind: request.GetFilterKind(), FilterJson: request.GetFilterJson(),
+		Status: "active", CreatedById: request.GetContext().GetPrincipalUserId(), CreatedAtUnixMs: 1_000, UpdatedAtUnixMs: 1_000,
+	}, nil
+}
+
+func (s *agentSubscriptionRPCStub) ListEligibleSubscriptionConversations(_ context.Context, request *agentv1.ListEligibleSubscriptionConversationsRequest, _ ...grpc.CallOption) (*agentv1.ListEligibleSubscriptionConversationsResponse, error) {
+	s.optionsRequest = request
+	return &agentv1.ListEligibleSubscriptionConversationsResponse{Conversations: []*agentv1.AgentSubscriptionConversationOption{{
+		ConversationKey: "group:G123", EventType: "message.group.created",
+	}}}, nil
 }
 
 func (s *agentSubscriptionRPCStub) ListAgentDefinitions(_ context.Context, request *agentv1.ListAgentDefinitionsRequest, _ ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error) {
@@ -82,6 +101,19 @@ func TestAgentSubscriptionControlClientBindsTrustedOwnerAndCorrelation(t *testin
 	}
 	if len(page.Subscriptions) != 1 || page.NextCursor != "SUB-1" || page.Subscriptions[0].Filter.Terms[1] != "延期" {
 		t.Fatalf("unexpected page: %+v", page)
+	}
+	options, err := client.ListEligibleConversations(ctx, "U100", "DEF-1", 7)
+	if err != nil || len(options.Conversations) != 1 || options.Conversations[0].ConversationKey != "group:G123" ||
+		rpc.optionsRequest.GetContext().GetPrincipalUserId() != "U100" {
+		t.Fatalf("eligible conversations: options=%+v request=%+v err=%v", options, rpc.optionsRequest, err)
+	}
+	created, err := client.Create(ctx, "U100", AgentSubscriptionCreateInput{
+		DefinitionID: "DEF-1", DefinitionVersion: 7, ConversationKey: "group:G123",
+		FilterKind: "message_contains_any", Filter: AgentSubscriptionFilter{Terms: []string{"事故", "延期"}},
+	})
+	if err != nil || created.SubscriptionID != "SUB-CREATED" || rpc.createRequest.GetTenantId() != "dipole" ||
+		rpc.createRequest.GetEventType() != "message.group.created" || rpc.createRequest.GetResourceType() != "conversation" {
+		t.Fatalf("create subscription: item=%+v request=%+v err=%v", created, rpc.createRequest, err)
 	}
 	item, err := client.Revoke(ctx, "U100", "SUB-1", "project archived")
 	if err != nil || item.Status != "revoked" || rpc.revokeRequest.GetReason() != "project archived" {

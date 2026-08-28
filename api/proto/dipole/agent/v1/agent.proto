@@ -563,6 +563,22 @@ message CreateEventSubscriptionRequest {
   bytes filter_json = 9;
 }
 
+message ListEligibleSubscriptionConversationsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string definition_id = 3;
+  uint64 definition_version = 4;
+}
+
+message AgentSubscriptionConversationOption {
+  string conversation_key = 1;
+  string event_type = 2;
+}
+
+message ListEligibleSubscriptionConversationsResponse {
+  repeated AgentSubscriptionConversationOption conversations = 1;
+}
+
 message ListEventSubscriptionsRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -678,6 +694,7 @@ message ResolveFreshMcpReadinessEvidenceResponse {
 service AgentCapabilityService {
   rpc MatchEventSubscriptions(MatchEventSubscriptionsRequest) returns (MatchEventSubscriptionsResponse);
   rpc CreateEventSubscription(CreateEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc ListEligibleSubscriptionConversations(ListEligibleSubscriptionConversationsRequest) returns (ListEligibleSubscriptionConversationsResponse);
   rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
   rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
   rpc ListAgentDefinitions(ListAgentDefinitionsRequest) returns (ListAgentDefinitionsResponse);
