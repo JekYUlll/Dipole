@@ -33,7 +33,8 @@ export class CapabilityRegistry {
       throw new Error(`capability ${id} is already registered`);
     }
     validateInputSchemaDescriptor(capability.descriptor.inputSchema);
-    this.#capabilities.set(id, capability as AgentCapability<unknown, unknown>);
+    const descriptor = deepFreeze({ ...capability.descriptor }) as CapabilityDescriptor;
+    this.#capabilities.set(id, { ...capability, descriptor } as AgentCapability<unknown, unknown>);
   }
 
   async execute(id: string, rawInput: unknown, context: ExecutionContext): Promise<unknown> {
@@ -91,4 +92,12 @@ function visitInputSchemaValue(value: unknown, depth: number, propertyMap: boole
     if (!propertyMap && !inputSchemaKeys.has(key)) throw new Error(`capability input schema key ${key} is not allowed`);
     visitInputSchemaValue(item, depth + 1, !propertyMap && key === "properties");
   }
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+  }
+  return value;
 }
