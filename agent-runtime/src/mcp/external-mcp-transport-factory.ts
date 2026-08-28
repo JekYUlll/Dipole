@@ -6,6 +6,7 @@ import {
 
 import {
   createExternalMcpAuthProvider,
+  type ExternalMcpAuthProviderOptions,
   type ExternalMcpSecretProvider
 } from "./external-mcp-auth-provider.js";
 import type { ExternalMcpCredentialBinding } from "./external-mcp-credential-catalog.js";
@@ -45,6 +46,7 @@ export interface ExternalMcpStreamableHttpTransportFactoryDependencies {
   readonly secretProvider: ExternalMcpSecretProvider;
   readonly resolver: ExternalMcpDnsResolver;
   readonly dispatcher: ExternalMcpNetworkDispatcher;
+  readonly authProviderOptions?: ExternalMcpAuthProviderOptions;
   readonly transportBuilder?: ExternalMcpStreamableHttpTransportBuilder;
 }
 
@@ -61,7 +63,11 @@ export function createExternalMcpStreamableHttpTransportFactory(
       if (signal?.aborted) throw new ExternalMcpTransportFactoryError("setup_cancelled");
       assertCredentialBinding(profile, credential);
       const endpoint = parseEndpoint(profile);
-      const authProvider = createExternalMcpAuthProvider(credential, dependencies.secretProvider);
+      const authProvider = createExternalMcpAuthProvider(
+        credential,
+        dependencies.secretProvider,
+        dependencies.authProviderOptions
+      );
       const guardedFetch = createExternalMcpNetworkGuardedFetch(profile, dependencies.resolver, dependencies.dispatcher);
       if (signal?.aborted) throw new ExternalMcpTransportFactoryError("setup_cancelled");
 

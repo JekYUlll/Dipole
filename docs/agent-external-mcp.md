@@ -62,7 +62,7 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 ## Production I/O 组合
 
-`createExternalMcpProductionIoRegistry` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只返回 `ExternalMcpTransportRegistry`。调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry` 与 `preflight`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
 
 构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
 
@@ -70,7 +70,11 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 `loadExternalMcpProductionIoManifest` 只在 Profile 开关 enabled 时读取 `DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST`。该路径和 manifest 内所有路径都必须是规范绝对路径；manifest 父目录必须 canonical、owner 正确且不可被 group/world 写，文件必须 owner-only、无执行位、regular/single-link，并通过 `O_NOFOLLOW` 有界读取 UTF-8 JSON。每次调用重新加载，读取或校验失败统一返回低敏错误且不会回退旧快照；disabled 时连残留环境变量 getter 都不触达。
 
-loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。当前 loader 与 composition 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需启动前下游文件 preflight、provider owner 授权、只读 Shadow tenant allowlist 和回滚演练。
+loader 输出的 typed `io/options` 可直接传给 composition，并把同一 expected owner 与各项上限传递给下游文件 adapters。`maximum_secret_bytes` 会同时约束 encrypted Provider、请求期 AuthProvider 和 readiness preflight，避免部署上限与真实请求行为漂移。
+
+`runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
+
+preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatcher，因此不会创建 Transport、DNS client 或 socket。它证明本地策略与文件依赖可用，无法证明远端 DNS、证书链、网络路由或 MCP 协议响应。当前 loader、composition 与 preflight 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、隔离连通演练和回滚证据。
 
 ## Network Guard 边界
 
@@ -78,7 +82,7 @@ loader 输出的 typed `io/options` 可直接传给 composition，并把同一 e
 
 守卫把完整批准地址集合、TLS ServerName 和 opaque CA ref 交给 `ExternalMcpNetworkDispatcher`。Dispatcher 必须直接连接集合中的一个地址并返回 socket 实际 peer，守卫会再次核对；普通 hostname fetch 无法满足该接口。请求固定使用 `redirect=manual`，任何 `3xx`、`response.redirected` 或响应 URL 变化都会被拒绝并释放 body。
 
-当前仓库没有真实 DNS Resolver、TLS pinned Dispatcher 或 CA Secret backend。该模块只固定可测试的 SSRF/DNS rebinding 边界，生产开关仍然 fail closed。后续实现需要把 SDK request timeout/AbortSignal 传播到 DNS、socket connect、TLS handshake 和 response body，并通过真实双栈 DNS、证书不匹配、连接 peer 偏移及超时故障演练。
+仓库已有 request-local Node DNS Resolver、文件 CA Provider 与 pinned TLS Dispatcher，并由 default-off production composition 统一持有；生产开关和启动接线仍然 fail closed。启用前还需通过隔离 Shadow 环境归档真实双栈 DNS、证书不匹配、连接 peer 偏移、超时与回滚故障演练。
 
 ## Result 信任边界
 
