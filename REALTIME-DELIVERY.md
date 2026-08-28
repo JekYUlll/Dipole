@@ -109,6 +109,8 @@ C++ shadow/primary 在 fencing 启用时要求显式稳定 `DIPOLE_REALTIME_INST
 
 `cmd/realtime-cutover-checkpoint` 接受严格的 transition receipt、expected-node manifest 和 checkpoint manifest，成功后将完整 observation aggregate 与其哈希绑定的 Kafka receipt 写入 `checkpoint-bundle.schema.json`。输出文件权限为 `0600`，使用同目录临时文件、文件 fsync、不可覆盖 hard link 与目录 fsync 发布。该命令只生成 eligible receipt，不会改变 authority 或 offset；自动续切/回切及共享拓扑中断演练完成前，生产切流仍受 `AD-041` 阻断。
 
+首个隔离实证归档于 `benchmarks/c3-cutover-checkpoint-2026-08-28/`。compatibility 侧使用真实 kafka-go member，候选侧使用当前 C++ librdkafka shadow member；两者在 direct/group 单分区上均提交到 `1/1`、lag 0，并生成 Schema 有效、mode `0600` 的 bundle。删除 expected-node observation 与停止候选 member 均 fail closed 且没有输出文件。该演练证明跨客户端 assignment 与 receipt 路径；候选进程仅以 shadow authority 建组，完整 frozen/active primary 切换及自动回切仍未声明完成。
+
 本地 `cmd/realtime-authority` CLI 提供受约束 writer。Redis Lua CAS 要求非 bootstrap 操作携带当前 raw lease SHA-256，只允许 absent 到 Go epoch 1、active 到下一 epoch frozen、frozen 同 epoch激活目标 authority，以及同状态延长租期；active 之间不能直切。脚本同时写入绝对过期 lease 和七天低敏幂等 receipt，transition ID 重放只有 canonical request hash 一致时成功。CLI 要求显式 `-confirm`、operator/reason，以及首次执行时距当前 5 秒至 1 小时的固定绝对 deadline；重试必须复用同一 deadline，避免 request hash 漂移。reason 只以摘要进入 receipt。当前 operator 是依赖 OS/Redis 权限的审计标签，节点观测和持久 checkpoint receipt 尚未完成，因此 writer 仍不进入 tracked 自动切流。
 
 首轮跨进程恢复证据位于 `benchmarks/c2-cpp-node-delivery-2026-08-28/`。归档候选在 Gateway 不可用时保留 offset，恢复并重启 worker 后重放成功；将已提交 offset 回拨后，Gateway 对稳定 batch 返回 `duplicate=true`，最终 lag 为 0且客户端写入为 0。后续 runner 已改为在同进程有界退避并重试 pending record。
