@@ -15,13 +15,13 @@
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1
-- **状态：** 暂缓
+- **状态：** 已解决
 - **发现日期：** 2026-08-28
+- **解决日期：** 2026-08-28
 - **影响范围：** Gateway HTTP 访问日志、日志聚合与保留、WebSocket session JWT
-- **现状：** WebSocket 使用 `?token=` 建立连接，Gin 完成日志记录原始 request path。C2 primary seam 演练在未提交日志中检出完整 JWT，归档前已替换为 `token=REDACTED` 并重新执行低敏扫描和校验和。
-- **风险：** 具备日志读取权限的主体可能在令牌有效期内重放 session；集中日志、备份和工单会扩大凭据暴露面。
-- **建议方向：** 在结构化访问日志入口统一清除敏感 query 参数，WebSocket 后续评审短期 ticket、Cookie 或 `Sec-WebSocket-Protocol` 认证方案；增加日志 capture 测试，拒绝 JWT、共享密钥和授权 Header 进入日志正文。
-- **处理门槛：** 任何 Gateway 日志进入共享日志系统前完成脱敏；认证传输方案变化需保留旧客户端兼容窗口和重放威胁测试。
+- **解决方式：** Gin 统一访问日志在 handler 执行前解析 query，对 token、Authorization、API key、client secret、密码和签名类键进行大小写无关匹配，并把每个重复值替换为固定 `REDACTED`；非法 query 不回退原文，整段记录为固定脱敏值。普通参数规范化后继续提供路由诊断，现有 WebSocket query/Bearer 认证协议保持兼容。
+- **验证：** 单元测试覆盖普通参数、百分号编码键、大小写变体、重复凭据和非法分隔符；Zap observer 经真实 Gorilla WebSocket upgrade 捕获访问日志，确认 query token、编码 access token 与 Authorization Header 均未进入结构化字段。logger/server/WS 相关包 race 测试通过。
+- **长期约束：** 新增任何 query credential、短期 WS ticket 或签名参数时，必须同步更新敏感键集合和真实日志 capture 测试。反向代理与外部日志采集器仍需独立确认不记录脱敏前的原始 URI；认证传输方案变化需保留客户端兼容窗口和重放威胁测试。
 
 ### AD-038：Agent 离线评测缺少真实 Task adapter 与生产语料
 

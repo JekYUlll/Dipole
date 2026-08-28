@@ -2,7 +2,9 @@ package logger
 
 import (
 	"net/http"
+	"net/url"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,16 +13,22 @@ import (
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
+var queryKeyNormalizer = strings.NewReplacer("-", "_", ".", "_")
+
 func GinLogger() gin.HandlerFunc {
+	return ginLogger(L())
+}
+
+func ginLogger(log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
-		rawQuery := c.Request.URL.RawQuery
+		query := redactQuery(c.Request.URL.RawQuery)
 
 		c.Next()
 
-		if rawQuery != "" {
-			path = path + "?" + rawQuery
+		if query != "" {
+			path = path + "?" + query
 		}
 
 		fields := []zap.Field{
@@ -41,7 +49,7 @@ func GinLogger() gin.HandlerFunc {
 			fields = append(fields, zap.String("errors", c.Errors.String()))
 		}
 
-		httpLogger := L().Named("http")
+		httpLogger := log.Named("http")
 		switch {
 		case c.Writer.Status() >= http.StatusInternalServerError:
 			httpLogger.Error("request completed", fields...)
@@ -50,6 +58,42 @@ func GinLogger() gin.HandlerFunc {
 		default:
 			httpLogger.Info("request completed", fields...)
 		}
+	}
+}
+
+func redactQuery(raw string) string {
+	if raw == "" {
+		return ""
+	}
+
+	query, err := url.ParseQuery(raw)
+	if err != nil {
+		return "REDACTED"
+	}
+	for key, values := range query {
+		if !sensitiveQueryKey(key) {
+			continue
+		}
+		for index := range values {
+			values[index] = "REDACTED"
+		}
+	}
+	return query.Encode()
+}
+
+func sensitiveQueryKey(key string) bool {
+	normalized := queryKeyNormalizer.Replace(strings.ToLower(strings.TrimSpace(key)))
+	switch normalized {
+	case "token", "access_token", "refresh_token", "id_token", "authorization",
+		"api_key", "apikey", "x_api_key", "awsaccesskeyid", "googleaccessid",
+		"client_secret", "password", "passwd", "secret", "credential", "signature", "sig":
+		return true
+	default:
+		return strings.HasSuffix(normalized, "_token") ||
+			strings.HasSuffix(normalized, "_secret") ||
+			strings.HasSuffix(normalized, "_password") ||
+			strings.HasSuffix(normalized, "_signature") ||
+			strings.HasSuffix(normalized, "_credential")
 	}
 }
 
