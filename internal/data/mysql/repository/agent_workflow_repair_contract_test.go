@@ -93,4 +93,31 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	if _, err := service.Decide(context.Background(), "APPROVER-2", proposal.ProposalUUID, application.AgentWorkflowRepairDecisionRejected); err == nil {
 		t.Fatal("expected immutable decision conflict after approval")
 	}
+
+	execution := application.AgentWorkflowRepairExecutionV1{
+		ExecutionUUID: "repair-execution:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		PlanID:        "repair-plan:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		ProposalUUID:  proposal.ProposalUUID, TaskUUID: task.TaskUUID, ExecutorUUID: "EXECUTOR-1", ExecutorGrantVersion: 3,
+		ExpectedCurrentSHA256: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		TargetSHA256:          "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+		RollbackSHA256:        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		Status:                application.AgentWorkflowRepairExecutionStatusPrepared,
+	}
+	created, err := store.CreateWorkflowRepairExecution(context.Background(), execution)
+	if err != nil || !created {
+		t.Fatalf("create prepared repair execution: created=%v err=%v", created, err)
+	}
+	replayed, err := store.CreateWorkflowRepairExecution(context.Background(), execution)
+	if err != nil || replayed {
+		t.Fatalf("replay prepared repair execution: created=%v err=%v", replayed, err)
+	}
+	loaded, err := store.GetWorkflowRepairExecution(context.Background(), execution.ExecutionUUID)
+	if err != nil || loaded == nil || loaded.PlanID != execution.PlanID || loaded.Status != execution.Status {
+		t.Fatalf("load prepared repair execution: execution=%+v err=%v", loaded, err)
+	}
+	conflict := execution
+	conflict.TargetSHA256 = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	if _, err := store.CreateWorkflowRepairExecution(context.Background(), conflict); err == nil {
+		t.Fatal("expected conflicting plan replay to fail")
+	}
 }
