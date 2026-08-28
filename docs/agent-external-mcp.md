@@ -40,11 +40,15 @@ DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 
 ## 轮换与吊销
 
-Catalog 以 `(tenant_id, credential_ref, version)` 作为唯一 binding。轮换顺序为：Secret Provider 创建新 secret version，Catalog 发布新的 active binding，Profile 切换到新 version，验证新建连，最后把旧 binding 标记 revoked。每次建连重新解析 Catalog，因此后续旧版本调用立即被阻断；已经建立的连接仍需未来 Factory 支持 lease expiry 和主动关闭。
+Catalog 以 `(tenant_id, credential_ref, version)` 作为唯一 binding。轮换顺序为：Secret Provider 创建新 secret version，Catalog 发布新的 active binding，Profile 切换到新 version，验证新建连，关闭旧轮次，最后把旧 binding 标记 revoked。每次建连重新解析 Catalog，因此后续旧版本调用会在 Transport 构造前被阻断。Activity 每个 Tool round 都使用 fresh Client/Transport，并在完成、取消或失败后关闭；Catalog 吊销不具备中断已发出远端请求的 authority，在途窗口由 100 ms 至 60 秒 request timeout、取消传播和下游 Server 端吊销共同约束。
 
 Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
 
 默认 Kubernetes ConfigMap/Secret projected volume 依赖 symlink，会被该 source 拒绝。可以使用输出 regular file 的 CSI provider，或由受信 init/sidecar 把 lifecycle metadata 写入私有 tmpfs，并以同目录原子 rename 更新。Catalog 只含 opaque reference，仍需要部署层完整性、rollback revision 和可用性告警；不要降低 symlink、owner 或 mode 校验来适配挂载。
+
+`scripts/drill-agent-external-mcp-credential-lifecycle.sh` 提供默认不随单测执行的离线生命周期演练。它在临时 owner-only 目录创建两组独立 AES-256-GCM key/envelope，以同目录原子 rename 发布 Catalog，依次验证 v3 初始连接、v4 轮换连接、旧 v3 吊销拒绝、Runtime 重建后的 v4 连接和最终 v4 吊销拒绝。三次成功 Transport 均显式关闭，两次吊销均要求 Transport builder 调用数不增加。
+
+演练证据写入 gitignored 的 `agent-runtime/.artifacts/external-mcp-credential-lifecycle.json`，mode 固定为 `0600`。`contracts/agent-external-mcp/v1/credential-lifecycle-drill-evidence.schema.json` 和 `npm run mcp:credential-drill:check` 共同固定 24 小时有效期、canonical SHA-256、三开三关与 fail-closed 门禁；证据不包含 tenant、Profile、credential/key/secret ref、路径、endpoint 或 Token，并显式声明 `inflight_revocation_authority=false`、`production_authority=false`。该演练使用注入式无网络 Transport，只证明本地生命周期组合，不能替代 provider owner、真实公网 TLS 或下游 Server 端吊销证据。
 
 ## Auth Provider 边界
 
@@ -58,7 +62,7 @@ envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte 
 
 key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
 
-凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或主动吊销连接，encrypted-file Provider 也尚未装配到启动链。
+凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接且旧轮次关闭后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或在途连接主动吊销，encrypted-file Provider 也尚未装配到启动链。
 
 ## Production I/O 组合
 
