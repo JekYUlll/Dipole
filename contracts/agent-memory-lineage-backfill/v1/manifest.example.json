@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "dipole.agent.memory-lineage-backfill-manifest.v1",
+  "policyVersion": "memory-lineage-backfill-v1",
+  "sourceHighWatermarkId": 42,
+  "batchSize": 100,
+  "manifestSha256": "499d4eb6c2380529ad0a5389e2832f63ee113a82c86834cb6ba4da8383b6450a"
+}
