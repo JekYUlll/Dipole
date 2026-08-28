@@ -56,6 +56,23 @@ export interface AgentWorkflowRepairExecutionPlan {
   readonly expiresAt: string;
 }
 
+export interface AgentWorkflowRepairPreflightInput {
+  readonly plan: unknown;
+  readonly proposalStatus: "approved";
+  readonly proposalEvidenceSha256: string;
+  readonly executorGrantVersion: number;
+  readonly currentProjection: AgentWorkflowRepairEvidence | null;
+}
+
+export interface AgentWorkflowRepairPreflightReceipt {
+  readonly schemaVersion: "dipole.agent.workflow-repair-preflight.v1";
+  readonly decision: "ready" | "blocked";
+  readonly planId: string;
+  readonly checkedAt: string;
+  readonly currentProjectionSha256: string | null;
+  readonly reasons: readonly string[];
+}
+
 const inputSchema = z.object({
   proposalId: z.string().regex(/^repair:[a-f0-9]{64}$/u), proposalStatus: z.literal("approved"),
   proposalEvidenceSha256: sha256Schema,
@@ -64,6 +81,12 @@ const inputSchema = z.object({
   approverIds: z.tuple([z.string().trim().min(1).max(24), z.string().trim().min(1).max(24)]),
   expectedCurrentProjection: evidenceSchema.nullable(), targetProjection: evidenceSchema,
   rollbackProjection: evidenceSchema.nullable(), capturedAt: z.string().datetime(), expiresAt: z.string().datetime()
+}).strict();
+
+const planSchema = inputSchema.extend({
+  schemaVersion: z.literal("dipole.agent.workflow-repair-execution-plan.v1"), mode: z.literal("dry_run"),
+  planId: z.string().regex(/^repair-plan:[a-f0-9]{64}$/u),
+  expectedCurrentSha256: sha256Schema.nullable(), targetSha256: sha256Schema, rollbackSha256: sha256Schema.nullable()
 }).strict();
 
 export function createAgentWorkflowRepairExecutionPlan(
@@ -92,7 +115,43 @@ export function createAgentWorkflowRepairExecutionPlan(
   if (capturedAt > now.getTime() + 60_000 || expiresAt <= now.getTime()) {
     throw new Error("Repair execution plan is outside its active window");
   }
-  const body = {
+  const body = planBody(parsed);
+  const planId = `repair-plan:${sha256(canonicalMcpJSON(body))}`;
+  return { ...body, planId };
+}
+
+export function verifyAgentWorkflowRepairPreflight(
+  input: AgentWorkflowRepairPreflightInput,
+  now = new Date()
+): AgentWorkflowRepairPreflightReceipt {
+  const plan = planSchema.parse(input.plan);
+  const currentProjection = evidenceSchema.nullable().parse(input.currentProjection);
+  const proposalEvidenceSha256 = sha256Schema.parse(input.proposalEvidenceSha256);
+  const executorGrantVersion = z.number().int().positive().parse(input.executorGrantVersion);
+  const checkedAt = now.toISOString();
+  const reasons: string[] = [];
+  const expectedPlanId = `repair-plan:${sha256(canonicalMcpJSON(planBody(plan)))}`;
+  if (plan.planId !== expectedPlanId) reasons.push("plan_hash_mismatch");
+  if (input.proposalStatus !== plan.proposalStatus || proposalEvidenceSha256 !== plan.proposalEvidenceSha256) {
+    reasons.push("proposal_binding_mismatch");
+  }
+  if (executorGrantVersion !== plan.executorGrantVersion) reasons.push("executor_grant_mismatch");
+  const currentProjectionSha256 = digestEvidence(currentProjection);
+  if (currentProjectionSha256 !== plan.expectedCurrentSha256 ||
+      !sameEvidence(currentProjection, plan.expectedCurrentProjection)) {
+    reasons.push("current_projection_drift");
+  }
+  const expiresAt = Date.parse(plan.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) reasons.push("plan_expired");
+  return {
+    schemaVersion: "dipole.agent.workflow-repair-preflight.v1",
+    decision: reasons.length === 0 ? "ready" : "blocked",
+    planId: plan.planId, checkedAt, currentProjectionSha256, reasons
+  };
+}
+
+function planBody(parsed: z.infer<typeof inputSchema>) {
+  return {
     schemaVersion: "dipole.agent.workflow-repair-execution-plan.v1" as const, mode: "dry_run" as const,
     proposalId: parsed.proposalId, proposalStatus: parsed.proposalStatus,
     proposalEvidenceSha256: parsed.proposalEvidenceSha256, proposerId: parsed.proposerId,
@@ -104,8 +163,6 @@ export function createAgentWorkflowRepairExecutionPlan(
     targetSha256: digestEvidence(parsed.targetProjection)!, rollbackSha256: digestEvidence(parsed.rollbackProjection),
     capturedAt: parsed.capturedAt, expiresAt: parsed.expiresAt
   };
-  const planId = `repair-plan:${sha256(canonicalMcpJSON(body))}`;
-  return { ...body, planId };
 }
 
 function sameEvidence(left: AgentWorkflowRepairEvidence | null, right: AgentWorkflowRepairEvidence | null): boolean {
