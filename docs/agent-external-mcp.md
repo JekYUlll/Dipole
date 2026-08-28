@@ -104,6 +104,10 @@ Activity 取得 `claimed` 后才建立全新 Client/Transport。远端返回结�
 
 Worker command dispatcher 只接受 Task、Run 和 Invocation ID。它通过认证 Core RPC 重新取得持久 Profile、Server、Tool、Capability、canonical 参数摘要和 Invocation 开始时间；稳定 input request ID 与绝对截止时间均由这些权威字段派生。`wait_input` 外层 checkpoint 绑定完整命令摘要和 Activity checkpoint，进程替换后先重新解析并比较，任何参数或 authority 漂移都会在建连前拒绝。连接 Session Factory 只得到 tenant/profile/server/tool 四字段，不接收 Task/Run/Invocation、参数或 principal。
 
+`createMcpWorkerRuntime` 将上述 dispatcher 与 Core round receipt、外部 Transport Registry、allowlisted modern Client 和 Activity continuation 组合为专用可注入单元。取消信号会在 Core resolve 前及 resolve 后再次检查，避免尚未发网的取消认领 `executing` receipt；本地 completed receipt 在替换 Runtime 后直接重放，`ambiguous` 在创建 Client/Transport 前终止。
+
+该组合器当前没有进入 `index.ts` 或 Temporal Worker Activity mode。现有系统也没有“查找下一条外部 Invocation”的轮询入口；后续应由受信 Agent Step 在同一持久 Run 内先创建 exact Invocation，再把三 ID 交给组合器。禁止从 Task goal、模型输出、Kafka payload 或客户端参数直接选择 Profile/Server/Tool，也不为此增加重复命令权威的 dispatch 表。
+
 ## 后续实现门槛
 
 Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 DNS 全地址、重定向拒绝、peer 复核及 SDK 隐式重试关闭的组合。生产接入仍至少需要：每租户 provider owner 授权、加密 Secret Provider、secret lease/吊销告警、真实 DNS Resolver、按批准 IP 建连且验证 TLS chain/ServerName/opaque CA 的 Dispatcher、有界连接超时、低敏审计及故障演练。Secret 只在 Factory 内短暂使用，接口只向 Runtime 返回 MCP Transport。
