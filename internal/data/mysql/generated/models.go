@@ -283,6 +283,20 @@ type AgentMemory struct {
 	ContentErasureReasonCode string
 }
 
+type AgentMemoryLineageBackfillJob struct {
+	JobName               string
+	Status                string
+	SourceHighWatermarkID uint64
+	LastProcessedID       uint64
+	OwnerID               string
+	LeaseExpiresAt        sql.NullTime
+	AttemptCount          uint64
+	LastError             string
+	CompletedAt           sql.NullTime
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string
