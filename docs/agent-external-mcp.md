@@ -126,6 +126,10 @@ terminal Worker 完成后，Activity 将不可信结果连同 Invocation/Round l
 
 Artifact RPC 已提交后发生取消时，projector 会让当前 Activity 失败；下一次 Activity retry 重新解析命令并精确写入相同内容，现有 content-addressed Store 返回同一收据。Workflow 输出只保存 Invocation ID、Round ID、Artifact ID/version，不保存外部正文。当前普通 Artifact policy 只允许 `dipole-agent` 的 running shadow Run，active MCP 结果会在写入前 fail closed，后续需独立扩展 active Artifact admission 与对应审计。
 
+`createTemporalMcpDispatchRuntime` 将上述边界组装为一个 route-scoped、default-off Runtime。输入只接受 host-owned Route Registry、Core RPC port、Artifact writer、Transport Registry 和有界 timeout/client seam；同一 Registry 既驱动 `TrustedMcpInvocationProducer`，也按当前 Capability 派生 Worker 使用的唯一 Profile/Tool egress policy，因此装配层无法传入第二份漂移策略。Core port 同时承担 Context、Invocation begin/resolve、Round receipt 和 terminal finish，Artifact projector 也通过该 port 重新读取同一命令。
+
+factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`。producer、terminal Worker、projector、Profile/Tool policy 和 Transport session 均留在闭包内，调用方不能跳过三 ID handoff 或替换完成权威。组合测试已证明首次成功后 Activity completion 丢失只读取 durable Round 并重放同一 Artifact，`input_required` 使用新 Context 与同一 Invocation 继续第二轮，预取消在 Core/receipt/Transport/Artifact 之前结束。
+
 该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
