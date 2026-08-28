@@ -85,6 +85,25 @@ func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {
 	if lineageCount != 1 {
 		t.Fatalf("valid reference should be replay-safe before foreign-owner failure, count=%d", lineageCount)
 	}
+	if _, err := db.Exec("UPDATE agent_tasks SET principal_uuid = 'U2' WHERE task_uuid = ?", "TASK-LINEAGE-2"); err != nil {
+		t.Fatalf("repair owner fixture: %v", err)
+	}
+	recovery, err := memorylineage.NewRunner(source, checkpoints, target, memorylineage.Config{
+		JobName: "memory-lineage-contract", OwnerID: "owner-b", BatchSize: 10, LeaseDuration: time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("create recovery runner: %v", err)
+	}
+	recoveryResult, err := recovery.Run(ctx)
+	if err != nil || recoveryResult.LastProcessedID != 2 || recoveryResult.Inserted != 1 || recoveryResult.Duplicates != 1 {
+		t.Fatalf("recovery result=%+v err=%v", recoveryResult, err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM agent_memory_task_lineage").Scan(&lineageCount); err != nil {
+		t.Fatalf("count recovered lineage: %v", err)
+	}
+	if lineageCount != 2 {
+		t.Fatalf("recovered lineage count=%d", lineageCount)
+	}
 
 	if _, err := checkpoints.Acquire(ctx, "memory-lineage-contract", "owner-b", highWatermark-1, time.Minute); !errors.Is(err, mysqlStore.ErrMemoryLineageBackfillSourceMismatch) {
 		t.Fatalf("expected fixed high-water mismatch, got %v", err)
