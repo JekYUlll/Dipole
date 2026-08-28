@@ -1,7 +1,8 @@
 -- name: InsertAgentTaskTimelineEvent :execresult
 INSERT INTO agent_task_timeline_events (
     event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE event_seq = event_seq;
 
 -- name: GetAgentTaskTimelineEvent :one
 SELECT * FROM agent_task_timeline_events
