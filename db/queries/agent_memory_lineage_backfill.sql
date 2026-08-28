@@ -1,5 +1,5 @@
 -- name: GetAgentMemoryLineageBackfillHighWatermark :one
-SELECT COALESCE(MAX(id), 0) AS high_watermark_id
+SELECT CAST(COALESCE(MAX(id), 0) AS UNSIGNED) AS high_watermark_id
 FROM agent_shadow_plans
 WHERE context_manifest_json IS NOT NULL;
 

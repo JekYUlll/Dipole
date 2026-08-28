@@ -91,7 +91,7 @@ type Querier interface {
 	GetAgentMemoryBackfillReference(ctx context.Context, arg GetAgentMemoryBackfillReferenceParams) (string, error)
 	GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMemoryBySupersedesParams) (AgentMemory, error)
 	GetAgentMemoryDerivedImpact(ctx context.Context, arg GetAgentMemoryDerivedImpactParams) (GetAgentMemoryDerivedImpactRow, error)
-	GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (interface{}, error)
+	GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (int64, error)
 	GetAgentMemoryLineageBackfillJob(ctx context.Context, jobName string) (AgentMemoryLineageBackfillJob, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
