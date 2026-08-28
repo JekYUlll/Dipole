@@ -7,7 +7,7 @@
 - Vue 3 + TypeScript + Pinia + Vue Router + Vite。
 - 当前路由包含 Login 与 Chat，复杂交互主要集中在 `ChatView.vue`。
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
-- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Login、完整 Chat 和其他现代 IM 页面仍待补齐。
+- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计；Login、完整 Chat 和其他现代 IM 页面仍待补齐。
 - 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归仍待建立。
 - Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
@@ -75,7 +75,7 @@ design/
 
 ### F3：Agent Experience
 
-- 设计 Agent definition、subscription、Task timeline、approval、elicitation、memory 和 artifact。
+- Agent Workflow Repair proposal/evidence/approval 已完成 desktop、mobile 和六态契约设计；继续设计 Agent definition、subscription、完整 Task timeline、elicitation、memory 和 artifact。
 - UI 状态与 Temporal AgentTask 状态机保持一一映射。
 - 写操作展示风险、影响对象、幂等状态和审计信息。
 
