@@ -2,7 +2,10 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -82,6 +85,59 @@ func TestPersistentAgentToolInvocationAuditBindsAuthoritativeInvocation(t *testi
 	}
 	if record.PrincipalUUID != "U100" || store.begun.AgentUUID != "UAI" || store.begun.Status != application.AgentToolInvocationStatusRunning || !store.begun.StartedAt.Equal(time.UnixMilli(1000)) {
 		t.Fatalf("unexpected authoritative audit: record=%+v stored=%+v", record, store.begun)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditPersistsAndResolvesExternalCommand(t *testing.T) {
+	arguments := `{"calendarId":"CAL-1"}`
+	argumentsSHA := fmt.Sprintf("%x", sha256.Sum256([]byte(arguments)))
+	store := &agentToolAuditStoreStub{}
+	service, err := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions:    []string{application.AgentPermissionConversationList},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	if err != nil {
+		t.Fatalf("new audit service: %v", err)
+	}
+	record, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-EXT-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "calendar.create", CapabilityID: application.AgentCapabilityConversationsList,
+		ArgumentsSHA256: argumentsSHA, ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: arguments,
+	})
+	if err != nil {
+		t.Fatalf("begin external command: %v", err)
+	}
+	store.invocation = record
+	command, err := service.ResolveCommand(context.Background(), "TASK-1", "RUN-1", "INV-EXT-1")
+	if err != nil {
+		t.Fatalf("resolve external command: %v", err)
+	}
+	if command.ProfileID != "calendar-prod" || command.ServerID != "calendar.example" || command.ArgumentsJSON != arguments || command.TenantID != "dipole" {
+		t.Fatalf("unexpected external command: %+v", command)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditRejectsUnsafeExternalCommand(t *testing.T) {
+	store := &agentToolAuditStoreStub{}
+	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		Permissions:    []string{application.AgentPermissionConversationList},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
+	}}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	for name, begin := range map[string]application.AgentToolInvocationBeginV1{
+		"partial":    {ProfileID: "calendar-prod"},
+		"hash drift": {ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: `{"calendarId":"CAL-1"}`},
+		"credential": {ProfileID: "calendar-prod", ServerID: "calendar.example", ArgumentsJSON: `{"apiToken":"hidden"}`, ArgumentsSHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(`{"apiToken":"hidden"}`)))},
+	} {
+		begin.InvocationUUID, begin.TaskUUID, begin.RunUUID = "INV-"+strings.ReplaceAll(name, " ", "-"), "TASK-1", "RUN-1"
+		begin.Transport, begin.ToolName, begin.CapabilityID = application.AgentToolTransportMCP, "calendar.create", application.AgentCapabilityConversationsList
+		if begin.ArgumentsSHA256 == "" && name != "hash drift" {
+			begin.ArgumentsSHA256 = testAuditSHA
+		}
+		if _, err := service.Begin(context.Background(), begin); !errors.Is(err, application.ErrAgentToolInvocationInvalid) {
+			t.Fatalf("%s error = %v", name, err)
+		}
 	}
 }
 

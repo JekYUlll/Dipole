@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -25,7 +26,8 @@ func (r *AgentToolInvocationRepository) BeginToolInvocation(ctx context.Context,
 	begin := application.AgentToolInvocationBeginV1{
 		InvocationUUID: invocation.InvocationUUID, TaskUUID: invocation.TaskUUID, RunUUID: invocation.RunUUID,
 		Transport: invocation.Transport, ToolName: invocation.ToolName, CapabilityID: invocation.CapabilityID,
-		ArgumentsSHA256: invocation.ArgumentsSHA256, RequestID: invocation.RequestID, TraceID: invocation.TraceID, ApprovalUUID: invocation.ApprovalUUID,
+		ArgumentsSHA256: invocation.ArgumentsSHA256, ProfileID: invocation.ProfileID, ServerID: invocation.ServerID, ArgumentsJSON: invocation.ArgumentsJSON,
+		RequestID: invocation.RequestID, TraceID: invocation.TraceID, ApprovalUUID: invocation.ApprovalUUID,
 	}
 	if err := begin.Validate(); err != nil || invocation.Status != application.AgentToolInvocationStatusRunning || invocation.StartedAt.IsZero() || invocation.TenantID == "" || invocation.PrincipalUUID == "" || invocation.AgentUUID == "" {
 		return false, application.ErrAgentToolInvocationInvalid
@@ -33,7 +35,8 @@ func (r *AgentToolInvocationRepository) BeginToolInvocation(ctx context.Context,
 	rows, err := r.queries.InsertAgentToolInvocation(ctx, generated.InsertAgentToolInvocationParams{
 		InvocationUuid: invocation.InvocationUUID, TenantID: invocation.TenantID, PrincipalUuid: invocation.PrincipalUUID, AgentUuid: invocation.AgentUUID,
 		TaskUuid: invocation.TaskUUID, RunUuid: invocation.RunUUID, Transport: string(invocation.Transport), ToolName: invocation.ToolName,
-		CapabilityID: invocation.CapabilityID, ArgumentsSha256: invocation.ArgumentsSHA256, Status: string(invocation.Status),
+		CapabilityID: invocation.CapabilityID, ArgumentsSha256: invocation.ArgumentsSHA256,
+		ProfileID: nullableString(invocation.ProfileID), ServerID: nullableString(invocation.ServerID), ArgumentsJson: nullableAgentToolJSON(invocation.ArgumentsJSON), Status: string(invocation.Status),
 		RequestID: nullableString(invocation.RequestID), TraceID: nullableString(invocation.TraceID), ApprovalUuid: nullableString(invocation.ApprovalUUID), StartedAt: invocation.StartedAt.UTC(),
 	})
 	if err != nil {
@@ -53,7 +56,8 @@ func (r *AgentToolInvocationRepository) GetToolInvocation(ctx context.Context, i
 	record := &application.AgentToolInvocationV1{
 		InvocationUUID: row.InvocationUuid, TenantID: row.TenantID, PrincipalUUID: row.PrincipalUuid, AgentUUID: row.AgentUuid,
 		TaskUUID: row.TaskUuid, RunUUID: row.RunUuid, Transport: application.AgentToolTransportV1(row.Transport), ToolName: row.ToolName,
-		CapabilityID: row.CapabilityID, ArgumentsSHA256: row.ArgumentsSha256, Status: application.AgentToolInvocationStatusV1(row.Status),
+		CapabilityID: row.CapabilityID, ArgumentsSHA256: row.ArgumentsSha256, ProfileID: row.ProfileID.String, ServerID: row.ServerID.String,
+		ArgumentsJSON: string(row.ArgumentsJson), Status: application.AgentToolInvocationStatusV1(row.Status),
 		RequestID: row.RequestID.String, TraceID: row.TraceID.String, ApprovalUUID: row.ApprovalUuid.String, StartedAt: row.StartedAt,
 	}
 	return record, nil
@@ -85,4 +89,11 @@ func (r *AgentToolInvocationRepository) FinishToolInvocation(ctx context.Context
 
 func nullableUint64(value uint64, valid bool) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(value), Valid: valid}
+}
+
+func nullableAgentToolJSON(value string) json.RawMessage {
+	if value == "" {
+		return nil
+	}
+	return json.RawMessage(value)
 }

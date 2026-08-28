@@ -57,7 +57,8 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context,
 	record := application.AgentToolInvocationV1{
 		InvocationUUID: begin.InvocationUUID, TenantID: invocation.TenantID, PrincipalUUID: invocation.PrincipalUUID, AgentUUID: invocation.AgentUUID,
 		TaskUUID: begin.TaskUUID, RunUUID: begin.RunUUID, Transport: begin.Transport, ToolName: begin.ToolName, CapabilityID: begin.CapabilityID,
-		ArgumentsSHA256: begin.ArgumentsSHA256, Status: application.AgentToolInvocationStatusRunning, RequestID: begin.RequestID, TraceID: begin.TraceID, ApprovalUUID: begin.ApprovalUUID,
+		ArgumentsSHA256: begin.ArgumentsSHA256, ProfileID: begin.ProfileID, ServerID: begin.ServerID, ArgumentsJSON: begin.ArgumentsJSON,
+		Status: application.AgentToolInvocationStatusRunning, RequestID: begin.RequestID, TraceID: begin.TraceID, ApprovalUUID: begin.ApprovalUUID,
 		StartedAt: s.now().UTC(),
 	}
 	created, err := s.store.BeginToolInvocation(ctx, record)
@@ -68,6 +69,35 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context,
 		return nil, application.ErrAgentToolInvocationConflict
 	}
 	return &record, nil
+}
+
+func (s *persistentAgentToolInvocationAuditServiceV1) ResolveCommand(ctx context.Context, taskUUID, runUUID, invocationUUID string) (*application.AgentMCPToolCommandV1, error) {
+	taskUUID, runUUID, invocationUUID = strings.TrimSpace(taskUUID), strings.TrimSpace(runUUID), strings.TrimSpace(invocationUUID)
+	if !validToolCommandLookupV1(taskUUID, runUUID, invocationUUID) {
+		return nil, application.ErrAgentToolInvocationInvalid
+	}
+	record, err := s.store.GetToolInvocation(ctx, invocationUUID)
+	if err != nil {
+		return nil, fmt.Errorf("load Agent Tool command: %w", err)
+	}
+	if record == nil || record.TaskUUID != taskUUID || record.RunUUID != runUUID || record.Status != application.AgentToolInvocationStatusRunning ||
+		application.ValidateAgentMCPToolCommandV1(record.ProfileID, record.ServerID, record.ArgumentsJSON, record.ArgumentsSHA256) != nil {
+		return nil, application.ErrAgentToolInvocationDenied
+	}
+	return &application.AgentMCPToolCommandV1{
+		InvocationUUID: record.InvocationUUID, TenantID: record.TenantID, PrincipalUUID: record.PrincipalUUID, AgentUUID: record.AgentUUID,
+		TaskUUID: record.TaskUUID, RunUUID: record.RunUUID, ProfileID: record.ProfileID, ServerID: record.ServerID,
+		ToolName: record.ToolName, CapabilityID: record.CapabilityID, ArgumentsJSON: record.ArgumentsJSON, ArgumentsSHA256: record.ArgumentsSHA256,
+	}, nil
+}
+
+func validToolCommandLookupV1(values ...string) bool {
+	for _, value := range values {
+		if value == "" || len(value) > 64 {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *persistentAgentToolInvocationAuditServiceV1) Finish(ctx context.Context, finish application.AgentToolInvocationFinishV1) error {
