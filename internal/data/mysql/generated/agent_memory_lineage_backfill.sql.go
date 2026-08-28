@@ -127,14 +127,14 @@ func (q *Queries) GetAgentMemoryBackfillReference(ctx context.Context, arg GetAg
 }
 
 const getAgentMemoryLineageBackfillHighWatermark = `-- name: GetAgentMemoryLineageBackfillHighWatermark :one
-SELECT COALESCE(MAX(id), 0) AS high_watermark_id
+SELECT CAST(COALESCE(MAX(id), 0) AS UNSIGNED) AS high_watermark_id
 FROM agent_shadow_plans
 WHERE context_manifest_json IS NOT NULL
 `
 
-func (q *Queries) GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (interface{}, error) {
+func (q *Queries) GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getAgentMemoryLineageBackfillHighWatermark)
-	var high_watermark_id interface{}
+	var high_watermark_id int64
 	err := row.Scan(&high_watermark_id)
 	return high_watermark_id, err
 }
