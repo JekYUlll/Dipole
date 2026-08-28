@@ -17,6 +17,17 @@
 
 ### 新增
 
+- 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
+- Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
+
+### 迁移说明
+
+- 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
+
+### 验证
+
+- 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
+
 - Gateway/WS 新增 `message.timeline_notify_mode=primary`：与客户端 `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐，继续发送无正文 `sync.item.notify.v1` locator，支持客户端按会话序号向 Cassandra 主读路径补拉；`off|shadow` 行为保持兼容，回切只需恢复原模式。
 - Sync Web 客户端支持 `VITE_TIMELINE_NOTIFY_MODE=primary`：收到经过严格校验的 `sync.item.notify.v1` 后，按会话 `message_seq` 串行补拉缺口，只有目标序号和 `message_uuid` 完整匹配才合并消息；事件去重、失败隔离和 shadow/off 兼容行为保持不变。服务端 Cassandra 主读仍需独立灰度证据才能启用。
 - Agent Memory 增加 reviewed corpus v1 语言中立 Schema、双 reviewer/第三方 adjudicator 评测器和 `eval:memory-corpus-review` 离线 CLI。语料只保存候选类型、资源范围、证据数量与内容哈希；CLI 仅输出低敏哈希/计数报告，退出码 `0/2/1` 分别表示通过、门禁失败和输入错误，当前仍需真实脱敏语料与人工签署后才可用于灰度。

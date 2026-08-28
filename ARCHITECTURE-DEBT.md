@@ -23,6 +23,16 @@
 
 ## 待处理
 
+### AD-046：Timeline repair worker 尚未纳入默认服务拓扑
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** Timeline repair、MySQL 权限、Compose 发布与运行时告警
+- **现状：** 已提供独立 `dipole-agent-task-timeline-repair` 镜像二进制、专用最小权限账号和默认关闭的 `agent-timeline-repair` Compose profile；worker 仍需 operator 显式启用。
+- **风险：** 未完成共享环境 operator 灰度、指标抓取和告警演练前，Timeline repair intent 仍可能停留在 pending/retry，不能宣称生产自动修复闭环。
+- **下一步：** 在隔离环境启用 profile，验证 readiness、repair counter、重启恢复与回滚；证据完整后再评估默认拓扑或告警策略。
+
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 
 - **优先级：** P1
