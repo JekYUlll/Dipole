@@ -1,0 +1,16 @@
+{
+  "schema_version": "dipole.realtime.cutover-fault-drill.v1",
+  "git_revision": "f119cd3c78dbd6ede26e566701687444d45f971d",
+  "redis_image": "sha256:54fc9bbc80cdb3b3d8e3a5197732bff502650b62a8bc86f4c3c36e152db4e1af",
+  "kafka_image": "sha256:2956061ba5d3388af8eb3148200f385ccba13ef75bc0eb6dcca5827ebd2d36d4",
+  "kafka_cluster_id": "MkU3OEVBNTcwNTJENDM2Qk",
+  "attempt_id": "fault-1787884251197200488",
+  "controller_crash_artifact_sha256": "eacf6b85366d7efc11c5344bb85f5f8cbce5a0ec9e373aa8445a073af0394e95",
+  "controller_crash_recovered": true,
+  "redis_outage_blocked": true,
+  "kafka_rebalance_blocked": true,
+  "final_state": "completed",
+  "final_sequence": 7,
+  "final_journal_head_sha256": "8dab5c9c427c6d3f0c48d26f385080be61e1f7db49f6b70b0eaf12eb9b12e1a3",
+  "completed_at_unix_ms": 1787884259329
+}

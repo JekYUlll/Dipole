@@ -25,7 +25,8 @@
 - **恢复记录：** cutover attempt 现以不可变 manifest 绑定源/目标 authority、初始 epoch、中断预算、三阶段节点清单与 checkpoint 清单摘要，并用哈希链事件持久化每个 receipt/bundle 摘要。单步 orchestrator 在每次动作前重载 journal，使用确定性幂等 action ID；执行失败保留原状态，首次 freeze 超过预算后自动转入源 authority 回退。不可覆盖 action artifact envelope 保存完整 canonical action 并绑定严格 JSON payload，使模糊故障可返回同一证据；Redis writer 也可按稳定 action ID 恢复已成功但尚未进入 artifact 的 transition receipt。重启后可归约正常续切、冻结期直接回退和目标激活后二次冻结回退；恢复 CLI、租约续期与真实中断演练仍待完成。
 - **执行记录：** production executor 已精确绑定 initial lease 和全部输入 manifest，按 artifact-first、receipt-second、side-effect-last 顺序组合现有 Redis CAS writer、节点 observation aggregate 与双组 checkpoint collector。真实 Redis writer 集成已覆盖 forward、两条 rollback 与 transition/artifact 崩溃窗口；恢复 CLI、运行中 lease renewer 和真实 Kafka rebalance/Redis 故障演练仍未完成。
 - **工作区记录：** attempt 创建现将 initial transition、三阶段节点清单和 checkpoint 清单 canonicalize 后不可覆盖保存在同目录，manifest 由代码生成并在每次加载时重算；恢复流程不再依赖操作员重新提供外部清单。lease renewer 与真实故障演练仍待完成。
-- **命令记录：** `dipole-realtime-cutover` 已提供 create/status/单步 advance/renew/rollback，并在每次调用间保留 fsynced 恢复边界。`renew` 进入同一哈希链且不重置冻结中断预算，绑定旧 lease 的 checkpoint/observation 会回退并要求重新采集。持续续期调度和真实 controller crash、Kafka rebalance、Redis outage 演练仍待完成，CLI 当前不能作为生产切流完成证明。
+- **命令记录：** `dipole-realtime-cutover` 已提供 create/status/单步 advance/renew/rollback，并在每次调用间保留 fsynced 恢复边界。`renew` 进入同一哈希链且不重置冻结中断预算，绑定旧 lease 的 checkpoint/observation 会回退并要求重新采集。持续续期调度、真实 expired-freeze 自动回切和 C++ primary authority 演练仍待完成，CLI 当前不能作为生产切流完成证明。
+- **故障记录：** 隔离 race 演练已使用真实 Kafka/Redis、两个 consumer group 和 TCP fault proxy 证明 controller artifact/journal 崩溃恢复、Redis outage fail-closed、primary member 丢失阻断及恢复后 forward completion；sequence 7 和最终 journal head 已归档于 `benchmarks/c3-cutover-faults-2026-08-28/`。该演练没有启用 C++ primary，也没有执行真实 expired-freeze 自动回切或持续 lease controller，因此 AD-041 继续处理中。
 - **处理门槛：** 用隔离 topology 证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame；完成进程崩溃、Kafka rebalance、Redis 故障和切换中断演练，并保存可执行回切 receipt 后才能开始 C3 用户/节点灰度。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
