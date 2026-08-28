@@ -38,6 +38,7 @@
 
 ### 验证
 
+- Go 微服务测试显式绑定版本化 `configs/config.dist.yaml`，修复干净 worktree 缺少隐式 `config.yaml` 导致的测试失败；`CGO_ENABLED=0 go test ./internal/...` 全部通过，生产配置搜索路径未改变。
 - 新增 `scripts/smoke-agent-timeline-repair-compose.sh` 部署级隔离演练：先校验 v49 migration、Timeline 表和 MySQL `+00:00/+00:00` 时间基准，再在 repair worker 启动前写入 pending intent，验证 opt-in profile 的 `readyz`、启动恢复、持续 replay 和 event UUID 幂等；使用源码构建镜像后完整通过。演练同时发现并修复 MySQL `Asia/Shanghai` 与 Go UTC lease/retry 的 DATETIME 偏移，将微服务 Compose MySQL 固定为 UTC，并避免把一次性 migration job 交给长期服务等待语义。
 - Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
