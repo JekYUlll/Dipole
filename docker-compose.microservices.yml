@@ -288,6 +288,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    environment:
+      DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:-change-me}
     volumes:
       - ./configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
       - ./configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
@@ -297,11 +299,13 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
+        case "$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD" in *"'"*|*\\*) echo "repair password contains unsupported SQL quoting characters" >&2; exit 1;; esac &&
         mysql -h mysql -uroot -proot123 < /grants/message-atomic.sql &&
         mysql -h mysql -uroot -proot123 < /grants/message-projector.sql &&
         mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
         mysql -h mysql -uroot -proot123 < /grants/agent.sql &&
-        mysql -h mysql -uroot -proot123 < /grants/agent-timeline-repair.sql
+        mysql -h mysql -uroot -proot123 < /grants/agent-timeline-repair.sql &&
+        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_timeline_repair'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD'"
 
   core:
     <<: *dipole-service

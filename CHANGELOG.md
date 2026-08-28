@@ -32,6 +32,7 @@
 - 增加 Timeline repair 的 Prometheus 告警规则和 promtool 测试：区分短窗口失败与持续 projection retry，profile 启用时由 observability 配置按可选服务抓取；默认拓扑和 repair 开关保持关闭。
 - 新增正式运维手册 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`：统一记录 repair worker 的前置检查、隔离启用、指标验收、暂停回切和低敏证据归档要求；明确禁止 down migration、手工修改状态和删除 Timeline 事件。
 - repair worker 增加显式 `-once` 有界执行模式，常驻轮询与 CronJob/发布验证复用同一 claim/replay/retry 语义；进程级 smoke 已切换为一次性真实执行，减少外部 timeout 对运行结果的干扰。
+- 修正 repair 专用 MySQL 密码覆盖边界：`mysql-permissions` 现在使用同一环境变量执行 `ALTER USER`，并拒绝无法安全嵌入初始化 SQL 的单引号/反斜杠，避免 Compose 配置与授权账号密码漂移。
 
 - Gateway/WS 新增 `message.timeline_notify_mode=primary`：与客户端 `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐，继续发送无正文 `sync.item.notify.v1` locator，支持客户端按会话序号向 Cassandra 主读路径补拉；`off|shadow` 行为保持兼容，回切只需恢复原模式。
 - Sync Web 客户端支持 `VITE_TIMELINE_NOTIFY_MODE=primary`：收到经过严格校验的 `sync.item.notify.v1` 后，按会话 `message_seq` 串行补拉缺口，只有目标序号和 `message_uuid` 完整匹配才合并消息；事件去重、失败隔离和 shadow/off 兼容行为保持不变。服务端 Cassandra 主读仍需独立灰度证据才能启用。
