@@ -19,6 +19,32 @@ type PersistentAgentMemoryOwnerControlV1 struct {
 	now   func() time.Time
 }
 
+func (s *PersistentAgentMemoryOwnerControlV1) EraseOwnedMemory(ctx context.Context, request application.AgentMemoryOwnerErasureRequestV1) (*application.AgentMemoryOwnerErasureReceiptV1, error) {
+	request.TenantID, request.PrincipalUUID, request.MemoryUUID = strings.TrimSpace(request.TenantID), strings.TrimSpace(request.PrincipalUUID), strings.TrimSpace(request.MemoryUUID)
+	if request.TenantID == "" || request.PrincipalUUID == "" || request.MemoryUUID == "" || utf8.RuneCountInString(request.TenantID) > 64 || utf8.RuneCountInString(request.PrincipalUUID) > 64 || utf8.RuneCountInString(request.MemoryUUID) > 64 {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	item, err := s.store.GetOwnedMemory(ctx, request.TenantID, request.PrincipalUUID, request.MemoryUUID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, application.ErrAgentMemoryDenied
+	}
+	erasedAt := s.now().UTC()
+	if erasedAt.IsZero() {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	receipt, err := s.store.EraseOwnedMemoryRoot(ctx, request.TenantID, request.PrincipalUUID, request.MemoryUUID, request.PrincipalUUID, application.AgentMemoryErasureReasonOwnerRequest, erasedAt)
+	if err != nil {
+		return nil, err
+	}
+	if receipt == nil || receipt.MemoryRootUUID != item.MemoryRootUUID || receipt.ErasedByUUID != request.PrincipalUUID || receipt.Reason != application.AgentMemoryErasureReasonOwnerRequest || receipt.Versions < 1 || receipt.ErasedAt.IsZero() {
+		return nil, application.ErrAgentMemoryConflict
+	}
+	return receipt, nil
+}
+
 func (s *PersistentAgentMemoryOwnerControlV1) CorrectOwnedMemory(ctx context.Context, request application.AgentMemoryOwnerCorrectionRequestV1) (*application.AgentMemoryOwnerCorrectionResultV1, error) {
 	request.TenantID, request.PrincipalUUID, request.MemoryUUID = strings.TrimSpace(request.TenantID), strings.TrimSpace(request.PrincipalUUID), strings.TrimSpace(request.MemoryUUID)
 	request.Reason = strings.TrimSpace(request.Reason)
