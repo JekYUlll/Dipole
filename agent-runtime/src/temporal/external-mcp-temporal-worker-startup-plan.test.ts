@@ -54,6 +54,27 @@ describe("external MCP Temporal Worker startup plan", () => {
     expect(harness.closeResource).toHaveBeenCalledOnce();
   });
 
+  it("composes with the post-resource Worker Activity snapshot", async () => {
+    const harness = startupHarness(deployment());
+    const workerActivities = {
+      ...foundationAgentTaskActivities,
+      admitAgentTask: vi.fn(foundationAgentTaskActivities.admitAgentTask)
+    };
+    (harness.resource as unknown as { workerActivities?: typeof workerActivities }).workerActivities = workerActivities;
+
+    await loadExternalMcpTemporalWorkerStartupPlan(
+      harness.definitions,
+      {},
+      foundationAgentTaskActivities,
+      harness.createResource,
+      {},
+      harness.seams
+    );
+
+    expect(harness.validateCompositionPlan).toHaveBeenCalledWith(harness.deployment, foundationAgentTaskActivities);
+    expect(harness.compose).toHaveBeenCalledWith(harness.deployment, workerActivities, expect.any(Function));
+  });
+
   it("propagates cancellation before loading or between load and resource creation", async () => {
     const before = new AbortController();
     before.abort(new Error("cancelled before deployment load"));
