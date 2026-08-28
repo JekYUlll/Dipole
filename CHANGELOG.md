@@ -58,6 +58,8 @@
 
 ### 验证
 
+- 存储架构隔离 smoke 已通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO 的健康检查及 CRUD 验证；Elasticsearch lab 编排显式使用仅测试环境的磁盘水位参数，健康检查要求 yellow/green，生产配置保持不变。
+
 - Go 微服务测试显式绑定版本化 `configs/config.dist.yaml`，修复干净 worktree 缺少隐式 `config.yaml` 导致的测试失败；`CGO_ENABLED=0 go test ./internal/...` 全部通过，生产配置搜索路径未改变。
 - 新增 `scripts/smoke-agent-timeline-repair-compose.sh` 部署级隔离演练：先校验 v49 migration、Timeline 表和 MySQL `+00:00/+00:00` 时间基准，再在 repair worker 启动前写入 pending intent，验证 opt-in profile 的 `readyz`、启动恢复、持续 replay 和 event UUID 幂等；使用源码构建镜像后完整通过。演练同时发现并修复 MySQL `Asia/Shanghai` 与 Go UTC lease/retry 的 DATETIME 偏移，将微服务 Compose MySQL 固定为 UTC，并避免把一次性 migration job 交给长期服务等待语义。
 - Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
