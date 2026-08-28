@@ -2,6 +2,9 @@ import type { Transport } from "@modelcontextprotocol/client";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AgentMcpToolCommand } from "../capabilities/agent-capability-rpc.js";
+import type { ExternalMcpConfig } from "./external-mcp-profile.js";
+import type { ExternalMcpProductionIoConfig } from "./external-mcp-production-io.js";
+import type { ExternalMcpReadinessUnderlyingRegistry } from "./external-mcp-readiness-egress.js";
 import type {
   McpActivityExternalTransportRegistry,
   McpActivityModernClient,
@@ -36,7 +39,7 @@ describe("MCP Worker Runtime composition", () => {
     const finishMcpToolInvocationFromRound = vi.fn(async () => ({ invocationId: "INV-1", status: "completed" as const }));
     const runtime = createMcpTerminalWorkerRuntime({
       core: { ...receipts.core, finishMcpToolInvocationFromRound },
-      transports: transportRegistry(vi.fn(async () => ({ close: vi.fn() }) as unknown as Transport)),
+      externalMcp: externalMcp(vi.fn(async () => ({ close: vi.fn() }) as unknown as Transport)),
       egressPolicies: policies(),
       createClient: vi.fn(() => ({
         connect: vi.fn(async () => []),
@@ -66,7 +69,7 @@ describe("MCP Worker Runtime composition", () => {
     }));
     const dependencies = {
       core: receipts.core,
-      transports: transportRegistry(connectTransport),
+      externalMcp: externalMcp(connectTransport),
       egressPolicies: policies(),
       createClient,
       now: () => 1_100,
@@ -102,7 +105,7 @@ describe("MCP Worker Runtime composition", () => {
     const core = coreWithClaim({ outcome: "ambiguous" });
     const runtime = createMcpWorkerRuntime({
       core,
-      transports: transportRegistry(connectTransport),
+      externalMcp: externalMcp(connectTransport),
       egressPolicies: policies(),
       createClient,
       now: () => 1_100
@@ -121,7 +124,7 @@ describe("MCP Worker Runtime composition", () => {
     controller.abort(new Error("cancelled before dispatch"));
     const runtime = createMcpWorkerRuntime({
       core,
-      transports: transportRegistry(connectTransport),
+      externalMcp: externalMcp(connectTransport),
       egressPolicies: policies(),
       createClient: vi.fn(),
       now: () => 1_100
@@ -146,16 +149,55 @@ function policies() {
   };
 }
 
-function transportRegistry(connect: McpActivityExternalTransportRegistry["connect"]): McpActivityExternalTransportRegistry {
+function transportRegistry(connect: McpActivityExternalTransportRegistry["connect"]): ExternalMcpReadinessUnderlyingRegistry {
   return {
-    describe: () => ({
-      profileId: "calendar-prod",
-      tenantId: "dipole",
-      serverId: "calendar.example",
-      allowedTools: ["calendar.create"]
-    }),
+    describe: () => externalMcpConfig().profiles[0]!,
     connect
   };
+}
+
+function externalMcp(connect: McpActivityExternalTransportRegistry["connect"]) {
+  return {
+    config: externalMcpConfig(),
+    io: externalMcpIo(),
+    registry: transportRegistry(connect),
+    readinessBindingOptions: { expectedOwnerUid: 1000, trustedTransportBuilder: true }
+  };
+}
+
+function externalMcpConfig(): Extract<ExternalMcpConfig, { enabled: true }> {
+  return {
+    enabled: true,
+    profiles: [{
+      profileId: "calendar-prod", tenantId: "dipole", serverId: "calendar.example",
+      endpoint: "https://calendar.example/v1", credentialRef: "CRED-0123456789ABCDEF", credentialVersion: 1,
+      allowedHosts: ["calendar.example"], allowedPorts: [443], dnsResolution: "public_only",
+      tlsServerName: "calendar.example", caBundleRef: "CA-0123456789ABCDEF", allowedTools: ["calendar.create"]
+    }]
+  };
+}
+
+function externalMcpIo(): ExternalMcpProductionIoConfig {
+  return {
+    credentialCatalogPath: "/run/dipole/catalog.json",
+    secretProvider: {
+      providerId: "local-aes-gcm",
+      keys: { "KEY-0123456789ABCDEF": "/run/dipole/key.bin" },
+      secrets: { "SECRET-0123456789ABCDEF": { keyRef: "KEY-0123456789ABCDEF", path: "/run/dipole/secret.bin" } }
+    },
+    caBundles: { "CA-0123456789ABCDEF": "/run/dipole/ca.pem" }
+  };
+}
+
+function resolveFreshMcpReadinessEvidence(
+  _tenantId: string,
+  profileBindingSha256: string,
+  runtimeBindingSha256: string
+) {
+  return Promise.resolve({
+    evidenceId: "e".repeat(64), profileBindingSha256, runtimeBindingSha256, contentSha256: "c".repeat(64),
+    collectedAt: "2026-08-28T14:00:00.000Z", expiresAt: "2026-08-28T14:30:00.000Z"
+  });
 }
 
 function coreWithClaim(
@@ -167,6 +209,7 @@ function coreWithClaim(
 } {
   return {
     resolveMcpToolCommand: vi.fn(async () => command),
+    resolveFreshMcpReadinessEvidence: vi.fn(resolveFreshMcpReadinessEvidence),
     claimMcpToolRound: vi.fn(async () => outcome),
     finishMcpToolRound: vi.fn(async () => undefined)
   };
@@ -190,6 +233,7 @@ function receiptStore() {
   });
   const core: McpWorkerCoreClient = {
     resolveMcpToolCommand: vi.fn(async () => ({ ...command, status })),
+    resolveFreshMcpReadinessEvidence: vi.fn(resolveFreshMcpReadinessEvidence),
     claimMcpToolRound: vi.fn(async () => completed === undefined
       ? { outcome: "claimed" as const }
       : { outcome: "replay_completed" as const, ...completed }),

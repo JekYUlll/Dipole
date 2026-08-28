@@ -62,7 +62,7 @@ key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止
 
 ## Production I/O 组合
 
-`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound `registry`、local `preflight`、受约束 `shadowConnectivityDrill` 与组合后的 `readinessEvidence`。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
+`createExternalMcpProductionIoRuntime` 是生产 adapters 的单一 construction authority。enabled 时它依次构造受约束文件 Catalog、encrypted-file Secret Provider、request-local Node DNS Resolver、文件 CA Provider、pinned TLS Dispatcher 和 Streamable HTTP Transport Factory，最终只公开 tenant-bound raw `registry`、local `preflight`、受约束 `shadowConnectivityDrill` 与组合后的 `readinessEvidence`。该 raw Registry 专供 readiness 采集及受控演练；MCP Worker 会在其外层强制构造 fresh-readiness gated Registry。兼容入口 `createExternalMcpProductionIoRegistry` 仍只返回 raw Registry；调用方无法取得裸 Secret Provider、Dispatcher 或 guarded fetch 来绕过 tenant Profile 与 Catalog 生命周期检查。
 
 构造阶段只验证 ID、引用、绝对规范路径、映射唯一性和数值上限，不打开 Catalog/key/envelope/CA 文件，不创建 DNS client，也不建立 socket。`Registry.connect` 才重新读取 Catalog并检查 active/revoked；官方 Transport 随后按请求从 AuthProvider 读取 secret，并在 fetch 时解析 DNS、读取 CA 和建连。disabled 时组合器连残留 I/O 配置属性也不读取，保持 kill switch 的无副作用语义。
 
@@ -88,7 +88,9 @@ MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表�
 
 Agent Capability 的 additive `PublishMcpReadinessEvidence` RPC 已连接上述 MySQL Publisher。它只允许 transport 认证的 `dipole-agent` 且 RequestContext principal 必须为空；operator 固定取认证 service identity，request/trace 从已验证上下文派生。请求不提供 Evidence ID、Runtime binding、content hash、status 或 activation 字段。Core 限制 evidence JSON 为 16 KiB 并严格解析 v2；TS adapter 会在发送前规范化字段与时间、复算 content SHA-256，并对响应的确定性 Evidence ID、双 binding、状态和时间逐项复核。exact replay 只改变 `created` 为 false。
 
-`ResolveFreshMcpReadinessEvidence` 是对应的只读解析边界。调用方只能提交 tenant、Profile binding 与 Runtime binding，不能提交查询时间、Evidence ID 或 activation 意图；Core 使用服务端当前时间查询并重新验证记录。未找到返回严格空的 `found=false`，找到时只返回 Evidence ID、schema、双 binding、content hash、status 和 collection/expiry 时间。TS adapter 会拒绝带矛盾字段的空响应、binding/hash/schema/status 漂移及倒置时间。该解析结果当前只供运维核验，不接入 Run admission、Profile activation 或 Runtime promotion。
+`ResolveFreshMcpReadinessEvidence` 是对应的只读解析边界。调用方只能提交 tenant、Profile binding 与 Runtime binding，不能提交查询时间、Evidence ID 或 activation 意图；Core 使用服务端当前时间查询并重新验证记录。未找到返回严格空的 `found=false`，找到时只返回 Evidence ID、schema、双 binding、content hash、status 和 collection/expiry 时间。TS adapter 会拒绝带矛盾字段的空响应、binding/hash/schema/status 漂移及倒置时间。
+
+默认关闭的 MCP Worker 在每次外部 `Registry.connect` 前消费该解析结果。Worker construction root 接受 host-owned Profile、production I/O、binding options 与 raw Registry，自行派生 exact Profile binding 和完整 Runtime binding；LLM、Workflow 与客户端均无法传入摘要或查询时间。每次连接都重新查询 Core且不缓存回执，随后再核对 raw Registry 返回的完整 Profile；缺失、双 binding/哈希/时间结构漂移、Profile 漂移、解析失败或取消都会在 raw `connect`、Catalog 与网络访问前停止。readiness collector 保留 raw Registry 以执行初次受控 discovery，避免形成“已有 readiness 才允许采集 readiness”的循环依赖。解析结果只授权本次 exact Profile egress，不改变 Run admission、Profile activation 或 Runtime promotion。
 
 受控 Shadow 环境可通过独立单次命令采集并发布：
 
@@ -103,7 +105,7 @@ npm --prefix agent-runtime run mcp:readiness:publish -- \
 
 执行前必须设置 enabled Profile、production I/O manifest 和 Agent Capability RPC/mTLS 环境。CLI 在任何文件或网络访问前严格校验五个参数；随后重新加载安全 manifest，构造 production adapters，串行执行全部 Profile local preflight 与 exact Profile 的只读 discovery，并在成功后调用一次 Publisher。有效期从 evidence `completedAt` 派生且限制为 60 至 3600 秒。采集、取消、清理、RPC 或收据校验失败只输出固定错误且不会自动重试。RPC 发出后若响应丢失，先按 request/trace 核对 Core 审计；重新运行命令会产生新的采集时间和 Evidence ID，作为追加历史保存。
 
-该命令没有注册到常驻 `index.ts` 或 Compose，不会随 Agent 启动执行，也不读取 admission 或 activation 状态。当前仍无自动调度、fresh evidence admission consumer、KMS 签名、可信时间戳或独立审计导出；bundle 只能作为可复算的运维完整性证据，需在隔离 Shadow tenant 与 trace/audit 联查。回滚 v37 前应先停止 Publisher 调用并按保留策略导出证据，Down migration 会删除全部 readiness evidence 历史。
+该命令没有注册到常驻 `index.ts` 或 Compose，不会随 Agent 启动执行，也不读取 admission 或 activation 状态。MCP Worker 已具备 per-egress fresh evidence consumer，但 Worker、外部网络和自动采集调度仍未进入启动链；KMS 签名、可信时间戳和独立审计导出也尚未交付。bundle 作为可复算的运维完整性证据，需在隔离 Shadow tenant 与 trace/audit 联查。回滚 v37 前应先停止 Publisher 与 gated Worker，按保留策略导出证据；Down migration 会删除全部 readiness evidence 历史，之后所有 gated egress 都会 fail closed。
 
 ## Network Guard 边界
 
