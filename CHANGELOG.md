@@ -522,6 +522,7 @@
 
 ### 验证
 
+- MySQL migration integration baseline 更新至 v44，并覆盖 v44 execution ledger、v43 lineage backfill、v42 pre-model lineage 的连续回滚与表数量断言；避免新迁移已发布但集成测试仍停留在 v42 的验证盲区。
 - 发布级隔离门禁通过：`scripts/check-compose.sh` 校验全部根目录 Compose 与 Agent Shadow 配置；`scripts/smoke-microservices.sh` 使用独立项目启动并清理 Core、Message、Sync、Gateway、Agent、MySQL、Kafka、Redis 和 MinIO，验证 readiness/metrics、mTLS、Gateway 认证代理与远程 WS ownership。Agent 镜像在隔离构建中通过 `npm ci`、构建和零漏洞审计。
 - 发布级回归重新通过：Go 全量包、Agent Runtime `580 passed / 26 skipped`、前端 `85 passed` 与生产构建、sqlc 漂移和架构文档门禁均通过；修正 Agent Runtime README 对 Subscription 管理 API 的过时描述。Vitest 使用项目原生命令运行，未使用不兼容的 Jest `--runInBand` 参数。
 
