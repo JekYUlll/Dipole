@@ -33,6 +33,7 @@ type Server struct {
 	subscriptionControls application.AgentEventSubscriptionControlServiceV1
 	memories             application.AgentMemoryContextResolverV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
+	toolRounds           application.AgentMCPToolRoundServiceV1
 	messageCommands      application.AgentMessageCommandExecutionV1
 }
 
@@ -73,6 +74,14 @@ func (s *Server) WithToolAudits(audits application.AgentToolInvocationAuditServi
 		return nil, errors.New("Agent Tool invocation audit service is required")
 	}
 	s.toolAudits = audits
+	return s, nil
+}
+
+func (s *Server) WithMCPToolRounds(rounds application.AgentMCPToolRoundServiceV1) (*Server, error) {
+	if s == nil || rounds == nil {
+		return nil, errors.New("Agent MCP Tool round service is required")
+	}
+	s.toolRounds = rounds
 	return s, nil
 }
 
@@ -721,6 +730,47 @@ func (s *Server) ResolveMcpToolCommand(ctx context.Context, request *agentv1.Res
 	}, nil
 }
 
+func (s *Server) ClaimMcpToolRound(ctx context.Context, request *agentv1.ClaimMcpToolRoundRequest) (*agentv1.ClaimMcpToolRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolRounds == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool round receipt is unavailable")
+	}
+	if request.GetRoundNumber() > 1 {
+		return nil, mapAgentMCPToolRoundErrorV1(application.ErrAgentMCPToolRoundInvalid)
+	}
+	result, err := s.toolRounds.Claim(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMCPToolRoundClaimV1{
+		RoundUUID: request.GetRoundId(), InvocationUUID: request.GetInvocationId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		RoundNumber: uint8(request.GetRoundNumber()), RequestSHA256: request.GetRequestSha256(), OwnerTokenSHA256: request.GetOwnerTokenSha256(),
+	})
+	if err != nil {
+		return nil, mapAgentMCPToolRoundErrorV1(err)
+	}
+	return &agentv1.ClaimMcpToolRoundResponse{
+		RoundId: request.GetRoundId(), Outcome: string(result.Outcome), ResultJson: []byte(result.ResultJSON),
+		ResultSha256: result.ResultSHA256, ErrorCode: result.ErrorCode,
+	}, nil
+}
+
+func (s *Server) FinishMcpToolRound(ctx context.Context, request *agentv1.FinishMcpToolRoundRequest) (*agentv1.FinishMcpToolRoundResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.toolRounds == nil {
+		return nil, status.Error(codes.Unavailable, "Agent MCP Tool round receipt is unavailable")
+	}
+	finish := application.AgentMCPToolRoundFinishV1{
+		RoundUUID: request.GetRoundId(), OwnerTokenSHA256: request.GetOwnerTokenSha256(),
+		Status: application.AgentMCPToolRoundStatusV1(request.GetStatus()), ResultJSON: string(request.GetResultJson()),
+		ResultSHA256: request.GetResultSha256(), ErrorCode: request.GetErrorCode(),
+	}
+	if err := s.toolRounds.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
+		return nil, mapAgentMCPToolRoundErrorV1(err)
+	}
+	return &agentv1.FinishMcpToolRoundResponse{RoundId: finish.RoundUUID, Status: string(finish.Status)}, nil
+}
+
 func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.FinishMcpToolInvocationRequest) (*agentv1.FinishMcpToolInvocationResponse, error) {
 	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
 		return nil, err
@@ -796,6 +846,19 @@ func mapAgentToolInvocationErrorV1(err error) error {
 		return status.Error(codes.Aborted, "Agent Tool invocation state conflicts")
 	default:
 		return status.Error(codes.Internal, "Agent Tool invocation audit failed")
+	}
+}
+
+func mapAgentMCPToolRoundErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMCPToolRoundInvalid):
+		return status.Error(codes.InvalidArgument, "Agent MCP Tool round evidence is invalid")
+	case errors.Is(err, application.ErrAgentMCPToolRoundDenied):
+		return status.Error(codes.PermissionDenied, "Agent MCP Tool round denied")
+	case errors.Is(err, application.ErrAgentMCPToolRoundConflict):
+		return status.Error(codes.Aborted, "Agent MCP Tool round state conflicts")
+	default:
+		return status.Error(codes.Internal, "Agent MCP Tool round receipt failed")
 	}
 }
 
