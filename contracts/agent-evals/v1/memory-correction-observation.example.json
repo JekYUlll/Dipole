@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "dipole.agent.memory-correction-eval-observation.v1",
+  "memoryRootId": "MEM-ROOT-PRIVATE",
+  "previous": {"memoryId": "MEM-SOURCE", "memoryVersion": 1, "status": "revoked", "revokedByRole": "owner"},
+  "corrected": {
+    "memoryId": "MEM-CORRECTED", "memoryVersion": 2, "status": "active", "supersedesMemoryId": "MEM-SOURCE",
+    "correctedByRole": "owner", "provenanceSourceType": "owner_correction", "provenanceSourceId": "MEM-SOURCE", "provenanceSequence": "2"
+  },
+  "trajectory": ["memory.owner.get", "memory.owner.lock", "memory.predecessor.revoke", "memory.successor.append", "memory.authority.read"],
+  "authorizationChecks": [{"actorRole": "owner", "decision": "allowed"}, {"actorRole": "foreign", "decision": "denied"}],
+  "retrievedMemoryIds": ["MEM-CORRECTED"],
+  "activeRootRecordCount": 1,
+  "lineageRecordCount": 2,
+  "exactReplayConverged": true,
+  "driftConflict": true,
+  "metrics": {"modelCalls": 0, "toolCalls": 0, "totalTokens": 0, "totalCostMicrousd": 0, "latencyMs": 80}
+}

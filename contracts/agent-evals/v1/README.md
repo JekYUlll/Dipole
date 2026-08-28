@@ -41,3 +41,16 @@ npm run eval:shadow -- --manifest=../path/to/reviewed-shadow-manifest.json
 Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observation。五个 case ID 携带 Task/Run SHA-256 摘要，Suite SHA-256 因此绑定候选、评审标签、派生 observation 与来源执行。Context provenance 仅输出 `evidence:<sha256>`，报告不回显 Task/Run、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。集合查询读取约定上限外一条哨兵记录，超过 256 个 Step/Artifact/MCP 调用或 64 次模型调用时拒绝评测，避免无界读取和静默截断。
 
 评审清单中的 `permission.stepNo` 绑定真实 Step；capability 必须与持久记录一致，decision 由 Step 终态派生。模型调用缺少 Token/延迟、Step 或 MCP Tool 调用缺少延迟、路由没有单价、Task/Run/Step 尚未终止时，命令返回 `1` 并 fail closed。成本按每百万 Token 的微美元整数单价计算并向上取整；Tool 次数统计 Shadow Step 与独立 MCP 调用，延迟为模型、Step 和 MCP 调用的记录耗时之和。当前 Step 表只保留最后一次 attempt 的区间，`attempt_count != 1` 时拒绝生成成本证据，后续逐 attempt 审计完成前不会低估重试。退出码 `0` 表示五类通过，`2` 表示有效证据未达阈值，`1` 表示清单、持久证据或连接无效。
+
+## Memory correction 离线评测
+
+`memory-correction-manifest.schema.json` 与 `memory-correction-observation.schema.json` 定义语言中立的 append-only correction 审计输入。Observation 由受控测试或审计采集器生成，必须绑定 predecessor/successor、完整 lineage、exact replay、drift conflict、owner/foreign 授权和 successor-only retrieval，并证明过程没有模型、Tool、Token 或模型成本。
+
+```bash
+cd agent-runtime
+npm run eval:memory-correction -- \
+  --manifest=../contracts/agent-evals/v1/memory-correction-manifest.example.json \
+  --observation=../contracts/agent-evals/v1/memory-correction-observation.example.json
+```
+
+两个输入文件各自限制为 64 KiB，未知字段、正文载荷、证据漂移和非零模型调用均 fail closed。输出复用标准五类离线报告，只包含候选版本、摘要 ID、失败原因和数值指标，不回显 Memory、principal 或正文。该命令只读取文件，不连接生产数据库，也不会创建或修改 Memory。
