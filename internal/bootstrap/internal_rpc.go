@@ -347,6 +347,7 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_RequestApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ReadConversation_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&

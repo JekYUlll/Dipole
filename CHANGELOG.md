@@ -17,11 +17,13 @@
 
 ### 新增
 
+- Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
 - 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
 - Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
 
 ### 迁移说明
 
+- 本次新增 Agent Capability RPC 不要求数据库迁移；升级时需同时部署匹配的 Go gRPC 服务和 TypeScript Runtime 生成代码，旧 Runtime 可继续使用既有 RPC。`conversation.read` 仍受 Task/Run 解析、Core 资源授权和 Runtime `conversation.read` 权限三重约束。
 - 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
 
 ### 验证
@@ -29,6 +31,7 @@
 - 新增 `scripts/smoke-agent-timeline-repair-compose.sh` 部署级隔离演练：先校验 v49 migration、Timeline 表和 MySQL `+00:00/+00:00` 时间基准，再在 repair worker 启动前写入 pending intent，验证 opt-in profile 的 `readyz`、启动恢复、持续 replay 和 event UUID 幂等；使用源码构建镜像后完整通过。演练同时发现并修复 MySQL `Asia/Shanghai` 与 Go UTC lease/retry 的 DATETIME 偏移，将微服务 Compose MySQL 固定为 UTC，并避免把一次性 migration job 交给长期服务等待语义。
 - Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
 - 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
+- 新增 `conversation.read` gRPC/TypeScript 契约测试：验证 Core 从可信 Task/Run 解析身份、拒绝客户端伪造 principal、映射消息字段，并验证 Runtime 权限缺失时不会发起远程调用；`scripts/check-proto.sh`、`node scripts/check-agent-proto-ts.mjs`、Go 定向测试与 Agent Runtime typecheck/测试通过。
 - 新增 `scripts/smoke-agent-timeline-repair.sh` 进程级隔离演练：使用临时 MySQL、真实迁移和独立 repair 二进制，验证 repair intent 被 claim/replay、状态收敛为 `completed` 且 Timeline 事件保持单份；worker 由 timeout 有界停止，演练不会启用共享环境服务。
 - `smoke-agent-timeline-repair.sh` 真实运行通过：隔离 MySQL、migration、repair process 和幂等事件计数均通过，失败时会保留状态诊断并自动清理临时资源。
 - 增加 Timeline repair 的 Prometheus 告警规则和 promtool 测试：区分短窗口失败与持续 projection retry，profile 启用时由 observability 配置按可选服务抓取；默认拓扑和 repair 开关保持关闭。

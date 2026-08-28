@@ -13,6 +13,8 @@ execFileSync("protoc", [
   `--ts_out=${output}`,
   "--ts_opt=client_grpc1,long_type_bigint,ts_nocheck",
   resolve(root, "api/proto/dipole/common/v1/context.proto"),
+  resolve(root, "api/proto/dipole/message/v1/message.proto"),
+  "/usr/include/google/protobuf/timestamp.proto",
   resolve(root, "api/proto/dipole/agent/v1/agent.proto")
 ], { cwd: root, stdio: "inherit" });
 
