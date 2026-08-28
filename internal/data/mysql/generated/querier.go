@@ -84,6 +84,7 @@ type Querier interface {
 	GetAgentMCPReadinessEvidence(ctx context.Context, arg GetAgentMCPReadinessEvidenceParams) (AgentMcpReadinessEvidence, error)
 	GetAgentMCPToolRound(ctx context.Context, roundUuid string) (AgentMcpToolRound, error)
 	GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMemoryBySupersedesParams) (AgentMemory, error)
+	GetAgentMemoryDerivedImpact(ctx context.Context, arg GetAgentMemoryDerivedImpactParams) (GetAgentMemoryDerivedImpactRow, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
@@ -144,6 +145,7 @@ type Querier interface {
 	InsertAgentMCPReadinessEvidence(ctx context.Context, arg InsertAgentMCPReadinessEvidenceParams) (int64, error)
 	InsertAgentMCPToolRound(ctx context.Context, arg InsertAgentMCPToolRoundParams) (int64, error)
 	InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryParams) error
+	InsertAgentMemoryTaskLineage(ctx context.Context, arg InsertAgentMemoryTaskLineageParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
