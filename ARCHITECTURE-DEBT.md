@@ -235,18 +235,18 @@
 - **建议方向：** 下一步使用 Pencil 维护的 Agent Task/Approval 设计稿实现恢复界面，并设计显式、可回滚、再次授权的 repair executor；完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。
 
+## 已关闭
+
 ### AD-011：前端缺少可版本化的完整设计基线
 
 - **优先级：** P2
-- **状态：** 处理中
+- **状态：** 已解决
 - **发现日期：** 2026-08-26
+- **完成日期：** 2026-08-28
 - **影响范围：** `frontend`、响应式布局、Agent UI、视觉一致性
-- **现状：** 已建立 canonical `design/dipole-ui.pen`、设计日志、Search desktop/mobile 四态预览和 Vue 工作区；Sync 状态矩阵、desktop/mobile 恢复稿与 Vue 标题栏状态也已纳入同一基线。Login/完整 Chat、通用 token 到 Vue 的映射及自动视觉回归仍未完成。
-- **风险：** 新增 Sync、Search、Agent Task、Approval 和 Artifact 页面时容易出现交互与视觉漂移，desktop/mobile 状态覆盖无法持续审查。
-- **建议方向：** 使用 Pencil 维护 canonical `.pen`，覆盖 foundations、组件、页面与异常状态；通过设计日志、Vue token 和 Playwright 视觉回归保持同步。
-- **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
-
-## 已关闭
+- **解决方案：** 建立单一 canonical `design/dipole-ui.pen`、统一设计 token、可复用组件、Login/Chat desktop/mobile、Search 四态、Sync 恢复状态、关键异常状态、设计日志和评审导出图。
+- **验证：** pen.dev CLI 识别 23 个顶层 frame 和 10 个可复用组件；结构检查无 placeholder、未命名节点、裁剪或布局告警；Login、Chat、Search、Sync 代表画板均完成渲染复核。
+- **后续范围：** Vue token 映射和自动视觉回归继续由 F4 跟踪，不再阻塞 F1 设计基线关闭。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 

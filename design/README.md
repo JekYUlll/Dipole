@@ -2,6 +2,18 @@
 
 `dipole-ui.pen` 是 Dipole 前端的 canonical 可编辑设计文件。产品交互、响应式状态或视觉 token 变化时，应增量修改同一文件，并同步更新 `DESIGN-CHANGELOG.md`。
 
+## F1 Frame 与评审导出
+
+| Frame | 评审导出 |
+| --- | --- |
+| Dipole Foundations + Components | `exports/foundations.png` |
+| Login Desktop | `exports/login-desktop.png` |
+| Login Mobile | `exports/login-mobile.png` |
+| Chat Desktop | `exports/chat-desktop.png` |
+| Chat Mobile | `exports/chat-mobile.png` |
+| Design Review Checklist | `exports/review-checklist.png` |
+| 完整画布总览 | `exports/dipole-ui-overview.png` |
+
 ## 当前 Frame
 
 ### Foundations 与组件
