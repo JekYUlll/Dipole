@@ -88,7 +88,7 @@ func (r *AgentPolicyRepository) ClaimAgentTaskTimelineRepairs(limit int, now tim
 	var result []application.AgentTaskTimelineRepairV1
 	err := r.withTransaction(ctx, func(q generated.Querier) error {
 		rows, err := q.SelectClaimableAgentTaskTimelineRepairs(ctx, generated.SelectClaimableAgentTaskTimelineRepairsParams{
-			NextRetryAt: nullableTime(&now), LockedAt: nullableTime(&lockedBefore), Limit: int32(limit),
+			LockedAt: nullableTime(&lockedBefore), Limit: int32(limit),
 		})
 		if err != nil {
 			return fmt.Errorf("claim Agent Task Timeline repairs: %w", err)
