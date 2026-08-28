@@ -3,6 +3,10 @@ import type { AgentTaskWorkflowControlPort } from "../control/agent-task-control
 import type { AgentTaskState } from "../task/agent-task-state.js";
 import type { Connection } from "@temporalio/client";
 import type { AgentTaskWorkflowInspector } from "../reconcile/agent-task-projection-reconciler.js";
+import {
+  TemporalMcpWorkflowExecutionCatalog,
+  type TemporalMcpWorkflowExecutionV1
+} from "./mcp-workflow-envelope.js";
 
 export interface AgentTaskWorkflowInput {
   taskId: string;
@@ -17,7 +21,15 @@ export interface AgentTaskWorkflowInput {
     payload: Readonly<Record<string, unknown>>;
     subscriptionId?: string | undefined;
   };
+  execution?: never;
 }
+
+export interface ExternalMcpAgentTaskWorkflowInput extends Omit<AgentTaskWorkflowInput, "execution"> {
+  admission: AgentTaskAdmissionInput;
+  execution: TemporalMcpWorkflowExecutionV1;
+}
+
+export type AgentTaskWorkflowHistoryInput = AgentTaskWorkflowInput | ExternalMcpAgentTaskWorkflowInput;
 
 export interface AgentTaskAdmissionInput {
   tenantId: string;
@@ -48,7 +60,7 @@ interface TemporalWorkflowStartPort {
     workflowId: string;
     workflowIdConflictPolicy: "USE_EXISTING";
     workflowIdReusePolicy: "REJECT_DUPLICATE";
-    args: [AgentTaskWorkflowInput];
+    args: [AgentTaskWorkflowHistoryInput];
   }): Promise<TemporalWorkflowStartHandle>;
 }
 
@@ -69,15 +81,29 @@ export class TemporalTaskClient {
   ) {}
 
   async start(input: AgentTaskWorkflowInput): Promise<TemporalWorkflowHandle> {
-    const handle = await this.workflow.start("agentTaskWorkflow", {
-      taskQueue: this.taskQueue,
-      workflowId: agentTaskWorkflowId(input.taskId),
-      workflowIdConflictPolicy: "USE_EXISTING",
-      workflowIdReusePolicy: "REJECT_DUPLICATE",
-      args: [input]
-    });
-    const runId = handle.firstExecutionRunId ?? handle.runId;
-    return { workflowId: handle.workflowId, ...(runId === undefined ? {} : { runId }) };
+    return startTaskWorkflow(this.workflow, this.taskQueue, input);
+  }
+}
+
+export interface TemporalMcpTaskStartInput extends Omit<ExternalMcpAgentTaskWorkflowInput, "execution"> {
+  readonly routeId: string;
+  readonly arguments: unknown;
+}
+
+export class TemporalMcpTaskClient {
+  constructor(
+    private readonly workflow: TemporalWorkflowStartPort,
+    private readonly taskQueue: string,
+    private readonly catalog: TemporalMcpWorkflowExecutionCatalog
+  ) {}
+
+  async start(input: TemporalMcpTaskStartInput): Promise<TemporalWorkflowHandle> {
+    const { routeId, arguments: rawArguments, ...task } = input;
+    const historyInput: ExternalMcpAgentTaskWorkflowInput = {
+      ...task,
+      execution: this.catalog.create(routeId, rawArguments)
+    };
+    return startTaskWorkflow(this.workflow, this.taskQueue, historyInput);
   }
 }
 
@@ -206,4 +232,20 @@ export function agentTaskWorkflowId(taskId: string): string {
     throw new Error("Agent Task ID is required for a Temporal Workflow");
   }
   return `dipole-agent-task/${normalized}`;
+}
+
+async function startTaskWorkflow(
+  workflow: TemporalWorkflowStartPort,
+  taskQueue: string,
+  input: AgentTaskWorkflowHistoryInput
+): Promise<TemporalWorkflowHandle> {
+  const handle = await workflow.start("agentTaskWorkflow", {
+    taskQueue,
+    workflowId: agentTaskWorkflowId(input.taskId),
+    workflowIdConflictPolicy: "USE_EXISTING",
+    workflowIdReusePolicy: "REJECT_DUPLICATE",
+    args: [input]
+  });
+  const runId = handle.firstExecutionRunId ?? handle.runId;
+  return { workflowId: handle.workflowId, ...(runId === undefined ? {} : { runId }) };
 }

@@ -195,7 +195,13 @@ factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`
 
 未知 route、残缺 selector 和重复 route 会在 Core 调用前拒绝；route-local 绑定失败与 Temporal cancellation 不被包装或降级。该组合只创建无启动副作用的闭包和映射，不读取凭据文件、不注册 Worker、不执行 RPC、preflight、DNS 或网络连接。后续 Worker 接线必须只注册这一份 Activity，并由受信版本化 Workflow 写入 plan 返回的 route binding。
 
-该 Activity 没有注册到通用 `agentTaskWorkflow`、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
+`TemporalMcpWorkflowExecutionCatalog` 接受 deployment dispatcher 返回的 route bindings，并为专用 `TemporalMcpTaskClient` 生成 `external_mcp_v1` history envelope。启动调用方只提供受信业务选择的 route ID 与 16 KiB 内 JSON object；catalog 注入 route version 和 manifest digest、规范化参数并拒绝空集、重复/未知 route。启动接口不接受 Profile、Server、Tool、Capability、egress policy 或任意摘要，因此 goal、模型输出、Kafka payload 和客户端正文无法覆盖部署 authority。
+
+通用 `agentTaskWorkflow` 对 envelope 采用 additive 分支。首次执行从持久 admission 和 Core admission 结果派生 Task、Run、principal、request/trace，再调用唯一 `executeMcpDispatch`；`wait_input` 后只用 Activity 返回的完整 checkpoint 和状态机验证过的 Signal value 构造 resume。没有 envelope 的现有任务继续调用 `executeAgentTaskStep`，`TemporalTaskClient` 的普通输入类型不包含 execution authority。直接构造缺少 admission 或带附加 authority 字段的 envelope 会 fail closed，route-local Activity 仍会重新验证完整 binding 与参数。
+
+本地 Temporal Server 已验证 MCP begin、durable Elicitation、Worker replacement 和 resume，并回归现有 retry、approval、cancel、input expiry、step budget 与 read-shadow recovery。当前生产 `AgentTaskWorkerActivities` 未注册 `executeMcpDispatch`，专用 MCP client 也未装配到 `index.ts`；只有测试 Worker 显式提供 Activity。下一步仍需受控 Capability definition、真实 route manifest 和独立启动/回滚门禁。
+
+该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
 

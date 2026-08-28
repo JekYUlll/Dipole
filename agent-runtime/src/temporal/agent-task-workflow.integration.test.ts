@@ -3,7 +3,14 @@ import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
 import type { AgentTaskFinishInput, AgentTaskWorkerActivities } from "./agent-task-activities.js";
-import { TemporalTaskClient, TemporalTaskControlClient, TemporalTaskWorkflowInspector } from "./temporal-task-client.js";
+import {
+  TemporalMcpTaskClient,
+  TemporalTaskClient,
+  TemporalTaskControlClient,
+  TemporalTaskWorkflowInspector
+} from "./temporal-task-client.js";
+import { TemporalMcpWorkflowExecutionCatalog } from "./mcp-workflow-envelope.js";
+import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
 import { AgentTaskProjectionReconciler } from "../reconcile/agent-task-projection-reconciler.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
@@ -130,6 +137,112 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(report).toMatchObject({ consistent: true, scanned: 1, outcomes: { match: 1 } });
 
     await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
+    workerTwo.shutdown();
+    await workerTwoRun;
+  }, 120_000);
+
+  it("keeps host route authority in history and resumes through the dedicated MCP Activity", async () => {
+    const taskQueue = `dipole-agent-task-mcp-${Date.now()}`;
+    const routeBinding = {
+      routeId: "calendar-event-read",
+      routeVersion: 3,
+      routeManifestSha256: "a".repeat(64)
+    };
+    const activityInputs: unknown[] = [];
+    const checkpoint = { durable: "MCP-CHECKPOINT-1" };
+    const activities: AgentTaskWorkerActivities & TemporalMcpDispatchActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "RUN-MCP-1", runStatus: "running" };
+      },
+      async finishAgentTask() {},
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep() {
+        throw new Error("generic Agent step must not receive an external MCP execution");
+      },
+      async executeMcpDispatch(input) {
+        activityInputs.push(input);
+        if (input.kind === "begin") {
+          return {
+            kind: "wait_input",
+            requestId: "INPUT-MCP-1",
+            prompt: "Choose calendar scope",
+            form: {
+              schemaVersion: "dipole.agent.elicitation.v1",
+              fields: [{ id: "scope", label: "Scope", type: "select", required: true, options: ["today", "week"] }]
+            },
+            source: {
+              kind: "mcp",
+              serverId: "calendar.example",
+              toolName: "calendar.read_event",
+              invocationId: "c".repeat(64),
+              trust: "untrusted"
+            },
+            expiresAtUnixMs: Date.now() + 60_000,
+            checkpoint
+          };
+        }
+        return { kind: "complete", output: { artifactId: "ARTIFACT-MCP-1" } };
+      }
+    };
+    const workerOne = await createWorker(env, taskQueue, activities);
+    const workerOneRun = workerOne.run();
+    const tasks = new TemporalMcpTaskClient(
+      env.client.workflow,
+      taskQueue,
+      new TemporalMcpWorkflowExecutionCatalog([routeBinding])
+    );
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+    const started = await tasks.start({
+      taskId: "TASK-MCP-1",
+      goal: "read one calendar event",
+      routeId: routeBinding.routeId,
+      arguments: { calendarId: "CAL-1", eventId: "EV-1" },
+      admission: {
+        tenantId: "dipole",
+        principalUserId: "U100",
+        agentId: "UAI",
+        triggerType: "user_request",
+        triggerRef: "CONV-1",
+        eventId: "EVENT-MCP-1",
+        requestId: "REQ-MCP-1",
+        traceId: "TRACE-MCP-1"
+      }
+    });
+    const handle = env.client.workflow.getHandle(started.workflowId);
+    await waitForStatus(env, handle, "waiting_input");
+
+    workerOne.shutdown();
+    await workerOneRun;
+    const workerTwo = await createWorker(env, taskQueue, activities);
+    const workerTwoRun = workerTwo.run();
+    await controls.provideInput("TASK-MCP-1", {
+      requestId: "INPUT-MCP-1",
+      value: { scope: "today" }
+    });
+
+    await expect(handle.result()).resolves.toMatchObject({
+      status: "completed",
+      output: { artifactId: "ARTIFACT-MCP-1" }
+    });
+    expect(activityInputs).toEqual([
+      {
+        kind: "begin",
+        ...routeBinding,
+        taskId: "TASK-MCP-1",
+        runId: "RUN-MCP-1",
+        principalUserId: "U100",
+        arguments: { calendarId: "CAL-1", eventId: "EV-1" },
+        requestId: "REQ-MCP-1",
+        traceId: "TRACE-MCP-1"
+      },
+      {
+        kind: "resume",
+        checkpoint,
+        resume: { kind: "input", requestId: "INPUT-MCP-1", value: { scope: "today" } }
+      }
+    ]);
     workerTwo.shutdown();
     await workerTwoRun;
   }, 120_000);
