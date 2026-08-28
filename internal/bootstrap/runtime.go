@@ -197,6 +197,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
 		}
+		readinessEvidence, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent MCP readiness evidence Publisher: %w", composeErr)
+		}
 		subscriptionResolver, composeErr := appComposition.NewPersistentAgentEventSubscriptionResolverV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
@@ -249,7 +253,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

@@ -5,6 +5,67 @@ import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
 describe("AgentCapabilityRPCClient", () => {
+  it("publishes v2 readiness evidence with service-owned provenance and verifies the deterministic receipt", async () => {
+    const evidence = {
+      schemaVersion: "dipole.agent.external-mcp-readiness-evidence.v2" as const,
+      bindingSha256: "a".repeat(64), profileBindingSha256: "b".repeat(64),
+      startedAt: "2026-08-28T14:00:00.000Z", completedAt: "2026-08-28T14:00:03.000Z",
+      preflightCheckedAt: "2026-08-28T14:00:01.000Z", connectivityCheckedAt: "2026-08-28T14:00:02.000Z",
+      profileCount: 1, credentialCount: 1, caBundleCount: 1, toolCount: 2
+    };
+    const expiresAt = "2026-08-28T14:30:00.000Z";
+    const publishMcpReadinessEvidence = vi.fn((input, metadata, _options, callback) => {
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      expect(input.context).toMatchObject({ principalUserId: "", requestId: "REQ-1", traceId: "TRACE-1", callerService: "dipole-agent" });
+      expect(input).not.toHaveProperty("operatorId");
+      expect(input).not.toHaveProperty("status");
+      const content = Buffer.from(input.evidenceJson).toString("utf8");
+      expect(JSON.parse(content)).toEqual(evidence);
+      const contentSha256 = createHash("sha256").update(content).digest("hex");
+      const evidenceId = createHash("sha256").update([
+        "dipole.agent.external-mcp-readiness-evidence-record.v1", "dipole", evidence.profileBindingSha256,
+        evidence.bindingSha256, contentSha256, "dipole-agent", "REQ-1", "TRACE-1", expiresAt
+      ].join("\n")).digest("hex");
+      callback(null, {
+        evidenceId, schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+        contentSha256, status: "recorded", collectedAtUnixMs: BigInt(Date.parse(evidence.completedAt)),
+        expiresAtUnixMs: BigInt(Date.parse(expiresAt)), created: true
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ publishMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    const receipt = await client.publishMcpReadinessEvidence("dipole", evidence, expiresAt, { requestId: "REQ-1", traceId: "TRACE-1" });
+
+    expect(receipt).toMatchObject({ created: true, contentSha256: expect.stringMatching(/^[a-f0-9]{64}$/), expiresAt });
+  });
+
+  it("rejects stale input and conflicting readiness publication receipts", async () => {
+    const evidence = {
+      schemaVersion: "dipole.agent.external-mcp-readiness-evidence.v2" as const,
+      bindingSha256: "a".repeat(64), profileBindingSha256: "b".repeat(64),
+      startedAt: "2026-08-28T14:00:00.000Z", completedAt: "2026-08-28T14:00:03.000Z",
+      preflightCheckedAt: "2026-08-28T14:00:01.000Z", connectivityCheckedAt: "2026-08-28T14:00:02.000Z",
+      profileCount: 1, credentialCount: 1, caBundleCount: 1, toolCount: 2
+    };
+    const publishMcpReadinessEvidence = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        evidenceId: "f".repeat(64), schemaVersion: "dipole.agent.external-mcp-readiness-evidence-record.v1",
+        profileBindingSha256: evidence.profileBindingSha256, runtimeBindingSha256: evidence.bindingSha256,
+        contentSha256: "c".repeat(64), status: "recorded",
+        collectedAtUnixMs: BigInt(Date.parse(evidence.completedAt)), expiresAtUnixMs: BigInt(Date.parse("2026-08-28T14:30:00.000Z")), created: false
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ publishMcpReadinessEvidence } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(client.publishMcpReadinessEvidence("dipole", evidence, "2026-08-28T14:30:00.000Z"))
+      .rejects.toThrow("conflicting evidence");
+    await expect(client.publishMcpReadinessEvidence("dipole", evidence, "2026-08-28T16:00:00.000Z"))
+      .rejects.toThrow("expiry is invalid");
+    expect(publishMcpReadinessEvidence).toHaveBeenCalledTimes(1);
+  });
+
   it("admits from trusted event identity and lists by Task/Run only", async () => {
     const admitRun = vi.fn((_input, metadata, _options, callback) => {
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);

@@ -2,6 +2,7 @@ package agentgrpc
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -864,6 +865,127 @@ func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.
 	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.GetRuntimePromotion(ctx, request) }); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent Runtime control code = %s", status.Code(err))
 	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCUsesAuthenticatedRuntimeIdentity(t *testing.T) {
+	publisher := &mcpReadinessEvidencePublisherStub{created: true}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidencePublisher(publisher)
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	profileBinding := strings.Repeat("b", 64)
+	evidence := application.AgentMCPReadinessEvidenceV1{
+		SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+		BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: profileBinding,
+		StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second),
+		ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+		ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 2,
+	}
+	body, _ := json.Marshal(evidence)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: profileBinding, EvidenceJson: body, ExpiresAtUnixMs: startedAt.Add(30 * time.Minute).UnixMilli(),
+	}
+	request.Context.RequestId, request.Context.TraceId = "REQ-1", "TRACE-1"
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := response.(*agentv1.PublishMcpReadinessEvidenceResponse)
+	if publisher.operator != "dipole-agent" || publisher.request.RequestID != "REQ-1" || publisher.request.TraceID != "TRACE-1" ||
+		result.GetEvidenceId() != publisher.record.EvidenceUUID || result.GetContentSha256() != publisher.record.ContentSHA256 || !result.GetCreated() {
+		t.Fatalf("response=%+v operator=%s request=%+v", result, publisher.operator, publisher.request)
+	}
+	publisher.created = false
+	replay, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	})
+	if err != nil || replay.(*agentv1.PublishMcpReadinessEvidenceResponse).GetEvidenceId() != result.GetEvidenceId() || replay.(*agentv1.PublishMcpReadinessEvidenceResponse).GetCreated() {
+		t.Fatalf("replay=%+v err=%v", replay, err)
+	}
+
+	request.Context.PrincipalUserId = "U-OPS"
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("principal injection code=%s", status.Code(err))
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway publish code=%s", status.Code(err))
+	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCRejectsInvalidEvidenceBeforeStore(t *testing.T) {
+	publisher := &mcpReadinessEvidencePublisherStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMCPReadinessEvidencePublisher(publisher)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: strings.Repeat("b", 64), EvidenceJson: []byte(`{"schemaVersion":"dipole.agent.external-mcp-readiness-evidence.v2","token":"secret"}`),
+		ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
+	}
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.InvalidArgument || publisher.calls != 0 {
+		t.Fatalf("invalid evidence code=%s calls=%d", status.Code(err), publisher.calls)
+	}
+
+	server.readinessEvidence = nil
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Unavailable {
+		t.Fatalf("missing Publisher code=%s", status.Code(err))
+	}
+}
+
+func TestPublishMcpReadinessEvidenceRPCRejectsEmptyPublisherResult(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server.readinessEvidence = emptyMCPReadinessEvidencePublisherStub{}
+	startedAt := time.Date(2026, 8, 28, 14, 0, 0, 0, time.UTC)
+	evidence := application.AgentMCPReadinessEvidenceV1{
+		SchemaVersion: application.AgentMCPReadinessEvidenceSchemaVersionV2,
+		BindingSHA256: strings.Repeat("a", 64), ProfileBindingSHA256: strings.Repeat("b", 64),
+		StartedAt: startedAt, PreflightCheckedAt: startedAt.Add(time.Second),
+		ConnectivityCheckedAt: startedAt.Add(2 * time.Second), CompletedAt: startedAt.Add(3 * time.Second),
+		ProfileCount: 1, CredentialCount: 1, CABundleCount: 1, ToolCount: 2,
+	}
+	body, _ := json.Marshal(evidence)
+	request := &agentv1.PublishMcpReadinessEvidenceRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole",
+		ProfileBindingSha256: evidence.ProfileBindingSHA256, EvidenceJson: body,
+		ExpiresAtUnixMs: startedAt.Add(30 * time.Minute).UnixMilli(),
+	}
+	if _, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PublishMcpReadinessEvidence(ctx, request)
+	}); status.Code(err) != codes.Internal {
+		t.Fatalf("empty Publisher result code=%s", status.Code(err))
+	}
+}
+
+type mcpReadinessEvidencePublisherStub struct {
+	operator string
+	request  application.AgentMCPReadinessEvidenceRequestV1
+	record   application.AgentMCPReadinessEvidenceRecordV1
+	calls    int
+	created  bool
+}
+
+type emptyMCPReadinessEvidencePublisherStub struct{}
+
+func (emptyMCPReadinessEvidencePublisherStub) PublishAgentMCPReadinessEvidence(context.Context, string, application.AgentMCPReadinessEvidenceRequestV1) (*application.AgentMCPReadinessEvidenceRecordV1, bool, error) {
+	return nil, false, nil
+}
+
+func (publisher *mcpReadinessEvidencePublisherStub) PublishAgentMCPReadinessEvidence(_ context.Context, operator string, request application.AgentMCPReadinessEvidenceRequestV1) (*application.AgentMCPReadinessEvidenceRecordV1, bool, error) {
+	publisher.operator, publisher.request = operator, request
+	publisher.calls++
+	record, err := application.NewAgentMCPReadinessEvidenceRecordV1(operator, request)
+	publisher.record = record
+	return &publisher.record, publisher.created, err
 }
 
 type runtimePromotionEvidenceServiceStub struct {
