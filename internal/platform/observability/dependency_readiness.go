@@ -12,8 +12,9 @@ import (
 )
 
 type DependencyProbe struct {
-	Name  string
-	Check func(context.Context) error
+	Name                  string
+	RequireInitialSuccess bool
+	Check                 func(context.Context) error
 }
 
 type DependencyReadinessPolicy struct {
@@ -70,7 +71,7 @@ func newDependencyReadinessMonitor(server *MetricsServer, probes []DependencyPro
 	states := make([]dependencyProbeState, 0, len(probes))
 	for _, probe := range probes {
 		probe.Name = strings.TrimSpace(probe.Name)
-		states = append(states, dependencyProbeState{probe: probe, healthy: true})
+		states = append(states, dependencyProbeState{probe: probe, healthy: !probe.RequireInitialSuccess})
 	}
 	return &dependencyReadinessMonitor{
 		server: server, policy: policy, states: states,
@@ -88,7 +89,11 @@ func newDependencyReadinessMonitor(server *MetricsServer, probes []DependencyPro
 
 func (m *dependencyReadinessMonitor) start() {
 	for index := range m.states {
-		m.ready.WithLabelValues(m.states[index].probe.Name).Set(1)
+		ready := 0.0
+		if m.states[index].healthy {
+			ready = 1
+		}
+		m.ready.WithLabelValues(m.states[index].probe.Name).Set(ready)
 		m.failures.WithLabelValues(m.states[index].probe.Name)
 	}
 	m.refresh(context.Background())

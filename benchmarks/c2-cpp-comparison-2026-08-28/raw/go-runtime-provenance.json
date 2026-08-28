@@ -1,0 +1,35 @@
+{
+  "schema_version": "dipole.performance.runtime-provenance.v1",
+  "expected_revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+  "source_aligned": true,
+  "services": {
+    "core": {
+      "container_id": "a48ae87f4c8986121eaaf2452ab3b7f4598475592735d9ad4d88db6e791943b6",
+      "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+      "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+      "created": "2026-08-27T22:07:28Z",
+      "source_dirty": false
+    },
+    "gateway": {
+      "container_id": "d8f37c2bf2b3e55490f132dcf5aa4af8fd6c5239e48a22a911ed5104da278a3e",
+      "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+      "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+      "created": "2026-08-27T22:07:28Z",
+      "source_dirty": false
+    },
+    "message": {
+      "container_id": "ca0b8d1afc7b9680f8310e6323210bed5dc1fb4fe77b7043372e85e6eb71743c",
+      "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+      "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+      "created": "2026-08-27T22:07:28Z",
+      "source_dirty": false
+    },
+    "sync": {
+      "container_id": "9adb69d3577ee6bf4d19c8cfaea4cd87bd393f893d963d5cc9b8267c54211d9f",
+      "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+      "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+      "created": "2026-08-27T22:07:28Z",
+      "source_dirty": false
+    }
+  }
+}

@@ -170,6 +170,10 @@ export async function clearBrowserMessages(userUUID: string) {
   if (typeof indexedDB !== 'undefined') await getStore().clearUser(userUUID)
 }
 
+export async function claimBrowserDelivery(userUUID: string, deliveryID: string) {
+  return getStore().claimDelivery(userUUID, deliveryID)
+}
+
 function getStore() {
   if (typeof indexedDB === 'undefined') throw new Error('IndexedDB is unavailable')
   store ??= new IndexedDBSyncStore()

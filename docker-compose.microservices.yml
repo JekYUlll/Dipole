@@ -2,7 +2,8 @@ x-dipole-service: &dipole-service
   image: ${DIPOLE_IMAGE:-dipole-server:latest}
   restart: unless-stopped
   env_file:
-    - .env
+    - path: .env
+      required: false
   volumes:
     - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
 
@@ -87,9 +88,9 @@ services:
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
     volumes:
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/agent.pem:/run/dipole/certs/agent.pem:ro
-      - ./certs/internal/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
       kafka:
         condition: service_healthy
@@ -257,9 +258,9 @@ services:
     entrypoint: ["/app/dipole-server"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/core.pem:/run/dipole/certs/core.pem:ro
-      - ./certs/internal/core-key.pem:/run/dipole/certs/core-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core.pem:/run/dipole/certs/core.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core-key.pem:/run/dipole/certs/core-key.pem:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -306,9 +307,9 @@ services:
     entrypoint: ["/app/dipole-message"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/message.pem:/run/dipole/certs/message.pem:ro
-      - ./certs/internal/message-key.pem:/run/dipole/certs/message-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message.pem:/run/dipole/certs/message.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message-key.pem:/run/dipole/certs/message-key.pem:ro
     depends_on:
       mysql-permissions:
         condition: service_completed_successfully
@@ -343,9 +344,9 @@ services:
     entrypoint: ["/app/dipole-sync"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/sync.pem:/run/dipole/certs/sync.pem:ro
-      - ./certs/internal/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync.pem:/run/dipole/certs/sync.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -403,9 +404,9 @@ services:
     entrypoint: ["/app/dipole-search"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/search.pem:/run/dipole/certs/search.pem:ro
-      - ./certs/internal/search-key.pem:/run/dipole/certs/search-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search.pem:/run/dipole/certs/search.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search-key.pem:/run/dipole/certs/search-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -432,9 +433,9 @@ services:
     entrypoint: ["/app/dipole-gateway"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ./certs/internal/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ./certs/internal/gateway.pem:/run/dipole/certs/gateway.pem:ro
-      - ./certs/internal/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway.pem:/run/dipole/certs/gateway.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -459,6 +460,10 @@ services:
       DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE: ${DIPOLE_MESSAGE_TIMELINE_NOTIFY_MODE:-off}
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/gateway.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/gateway-key.pem
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_ENABLED: ${DIPOLE_DELIVERY_OBSERVATION_ENABLED:-false}
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_LISTEN_ADDRESS: 0.0.0.0:9095
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_CAPACITY: ${DIPOLE_DELIVERY_OBSERVATION_CAPACITY:-1024}
+      DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_RETRY_AFTER_MS: ${DIPOLE_DELIVERY_OBSERVATION_RETRY_AFTER_MS:-25}
       DIPOLE_PRESENCE_NODE_ID: gateway-1
       DIPOLE_REDIS_HOST: redis
       DIPOLE_METRICS_ENABLED: "true"

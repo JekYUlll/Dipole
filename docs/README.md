@@ -6,7 +6,7 @@ Dipole 的长期架构文档需要随实现一起评审、提交和回滚。受�
 ./scripts/check-architecture-docs.sh
 ```
 
-清单当前覆盖平台演进、架构债务、sqlc 数据访问、微服务部署、Sync、Cassandra Timeline、Elasticsearch Search、Agent Runtime、前端设计和性能基线。新增长期架构约束时，应同步更新清单、实现文档和 `CHANGELOG.md`。
+清单当前覆盖平台演进、架构债务、sqlc 数据访问、微服务部署、Sync、Cassandra Timeline、Elasticsearch Search、Realtime Delivery、Agent Runtime、前端设计和性能基线。新增长期架构约束时，应同步更新清单、实现文档和 `CHANGELOG.md`。
 
 `docs/` 下另有一组本地研究、面试和历史分析材料。它们通过文件级规则显式忽略，不承担当前实现契约：
 

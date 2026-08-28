@@ -1,0 +1,14 @@
+
+GROUP                                TOPIC                         PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                                 HOST            CLIENT-ID
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 0          12              12              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  1          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 2          13              13              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 1          12              12              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  2          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 4          13              13              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  0          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 3          14              14              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  5          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.direct.created 5          16              16              0               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  3          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow
+dipole-realtime-shadow-comparison-v3 dipole.message.group.created  4          -               0               -               dipole-realtime-shadow-6560e279-12d9-4221-bebf-864064583ac4 /172.21.0.10    dipole-realtime-shadow

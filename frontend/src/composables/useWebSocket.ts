@@ -1,25 +1,72 @@
 import { ref, onUnmounted } from 'vue'
 import type { WsPacket } from '@/types'
 import { getDeviceID } from '@/device'
+import { claimBrowserDelivery } from '@/sync/browserSync'
 
 interface UseWsOptions {
-  onMessage?: (packet: WsPacket) => void
+  onMessage?: (packet: WsPacket) => void | Promise<void>
   onConnected?: () => void
   onDisconnected?: () => void
+}
+
+type DeliveryClaim = (userUUID: string, deliveryID: string) => Promise<boolean>
+
+const deliveryReplayCapacity = 4096
+
+export class DeliveryDeduplicator {
+  private readonly seen = new Set<string>()
+  private readonly order: string[] = []
+
+  constructor(private readonly capacity: number) {
+    if (!Number.isSafeInteger(capacity) || capacity < 1) throw new Error('delivery replay capacity must be positive')
+  }
+
+  accept(packet: WsPacket): boolean {
+    const deliveryID = packet.delivery_id?.trim()
+    if (!deliveryID) return true
+    if (this.seen.has(deliveryID)) return false
+    this.seen.add(deliveryID)
+    this.order.push(deliveryID)
+    if (this.order.length > this.capacity) {
+      this.seen.delete(this.order.shift()!)
+    }
+    return true
+  }
+}
+
+export async function acceptDeliveryPacket(
+  deduplicator: DeliveryDeduplicator,
+  packet: WsPacket,
+  userUUID: string,
+  claim: DeliveryClaim = claimBrowserDelivery,
+) {
+  if (!deduplicator.accept(packet)) return false
+  const deliveryID = packet.delivery_id?.trim()
+  if (!deliveryID || !userUUID) return true
+  try {
+    return await claim(userUUID, deliveryID)
+  } catch {
+    // Keep realtime delivery available while in-memory dedup remains active.
+    return true
+  }
 }
 
 export function useWebSocket(options: UseWsOptions = {}) {
   const isConnected = ref(false)
   let ws: WebSocket | null = null
   let token = ''
+  let userUUID = ''
   let reconnectAttempts = 0
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let manualClose = false
+  const deliveryDeduplicator = new DeliveryDeduplicator(deliveryReplayCapacity)
+  let inboundQueue = Promise.resolve()
 
-  const connect = (authToken: string) => {
+  const connect = (authToken: string, authenticatedUserUUID: string) => {
     if (ws && ws.readyState === WebSocket.OPEN) return
     token = authToken
+    userUUID = authenticatedUserUUID
     manualClose = false
     _open()
   }
@@ -40,7 +87,12 @@ export function useWebSocket(options: UseWsOptions = {}) {
     ws.onmessage = (event) => {
       try {
         const packet: WsPacket = JSON.parse(event.data as string)
-        options.onMessage?.(packet)
+        inboundQueue = inboundQueue.then(async () => {
+          if (!await acceptDeliveryPacket(deliveryDeduplicator, packet, userUUID)) return
+          await options.onMessage?.(packet)
+        }).catch(() => {
+          // A failed handler cannot stop later WebSocket frames.
+        })
       } catch {
         // ignore malformed frames
       }

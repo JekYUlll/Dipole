@@ -17,8 +17,10 @@ import (
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
+	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
+	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
 	syncv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1"
@@ -35,12 +37,13 @@ import (
 )
 
 const (
-	gatewayServiceName = "dipole-gateway"
-	coreServiceName    = "dipole-core"
-	messageServiceName = "dipole-message"
-	searchServiceName  = "dipole-search"
-	syncServiceName    = "dipole-sync"
-	agentServiceName   = "dipole-agent"
+	gatewayServiceName  = "dipole-gateway"
+	coreServiceName     = "dipole-core"
+	messageServiceName  = "dipole-message"
+	searchServiceName   = "dipole-search"
+	syncServiceName     = "dipole-sync"
+	agentServiceName    = "dipole-agent"
+	realtimeServiceName = "dipole-realtime"
 )
 
 type InternalRPCServer struct {
@@ -49,6 +52,15 @@ type InternalRPCServer struct {
 	health   *health.Server
 	done     chan struct{}
 	stopOnce sync.Once
+}
+
+func NewDeliveryObservationRPCServer(cfg config.InternalRPC, adapter *deliverygrpc.ShadowServer) (*InternalRPCServer, error) {
+	if adapter == nil {
+		return nil, errors.New("delivery observation rpc adapter is required")
+	}
+	return newInternalRPCServer(cfg, cfg.DeliveryObservationListenAddress, []string{realtimeServiceName}, func(server *grpc.Server) {
+		deliveryv1.RegisterNodeDeliveryServiceServer(server, adapter)
+	})
 }
 
 func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*InternalRPCServer, error) {

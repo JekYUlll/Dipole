@@ -1,0 +1,31 @@
+{
+  "schema_version": "dipole.performance.recovery-evidence.v1",
+  "run_id": "c1-ce4b600-node2-recovery",
+  "target_service": "dipole-node2",
+  "expected_revision": "ce4b6005650b5c29e1f01d3955ae3d0491559bba",
+  "fault": {
+    "action": "stop_start",
+    "consumer_group": "dipole-consumer",
+    "stable_member_count": 72
+  },
+  "timeline": {
+    "fault_started_at": "2026-08-27T19:49:03.194652Z",
+    "unavailable_observed_at": "2026-08-27T19:49:03.844728Z",
+    "start_requested_at": "2026-08-27T19:49:03.846101Z",
+    "ready_observed_at": "2026-08-27T19:49:17.372739Z"
+  },
+  "before": {
+    "container_id": "0f015f75d7c7369edd93495124067e516e188892cd815086f41f9d8dfdb5f6e0",
+    "image_id": "sha256:651fd9f80f1becb5582314fb646406940d7e744b5b27700d9a18f3de92c3d0a7",
+    "revision": "ce4b6005650b5c29e1f01d3955ae3d0491559bba",
+    "source_dirty": false,
+    "pid": 887973
+  },
+  "after": {
+    "container_id": "0f015f75d7c7369edd93495124067e516e188892cd815086f41f9d8dfdb5f6e0",
+    "image_id": "sha256:651fd9f80f1becb5582314fb646406940d7e744b5b27700d9a18f3de92c3d0a7",
+    "revision": "ce4b6005650b5c29e1f01d3955ae3d0491559bba",
+    "source_dirty": false,
+    "pid": 898410
+  }
+}

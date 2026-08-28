@@ -11,6 +11,8 @@ SCENARIO_FILTER="${SCENARIO_FILTER:-}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8081}"
 NODE1_WS="${NODE1_WS:-ws://127.0.0.1:8081}"
 NODE2_WS="${NODE2_WS:-ws://127.0.0.1:8082}"
+NODE1_HEALTH_URL="${NODE1_HEALTH_URL:-${BASE_URL%/}/health}"
+NODE2_HEALTH_URL="${NODE2_HEALTH_URL:-http://127.0.0.1:8082/health}"
 USER_COUNT="${USER_COUNT:-50}"
 GROUP_SIZE="${GROUP_SIZE:-50}"
 PHONE_PREFIX="${PHONE_PREFIX:-138}"
@@ -32,6 +34,7 @@ HOT_GROUP_MESSAGE_THRESHOLD="${HOT_GROUP_MESSAGE_THRESHOLD:-}"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
 KAFKA_SERVICE="${KAFKA_SERVICE:-kafka}"
 CONVERSATION_METRICS_SERVICES="${CONVERSATION_METRICS_SERVICES:-dipole-node1 dipole-node2 dipole-node3}"
+PROCESS_METRICS_SERVICES="${PROCESS_METRICS_SERVICES:-dipole-node1 dipole-node2 dipole-node3}"
 
 SUMMARY_JSON="${RESULTS_DIR}/${RUN_ID}.k6-summary.json"
 OPERATIONS_JSON="${RESULTS_DIR}/${RUN_ID}.operations.json"
@@ -40,7 +43,12 @@ BASELINE_MD="${RESULTS_DIR}/${RUN_ID}.baseline.md"
 RUN_LOG="${RESULTS_DIR}/${RUN_ID}.log"
 LAG_FILE="${RESULTS_DIR}/${RUN_ID}.lag"
 CONVERSATION_METRICS_JSON="${RESULTS_DIR}/${RUN_ID}.conversation-metrics.json"
+PROCESS_SAMPLES_JSONL="${RESULTS_DIR}/${RUN_ID}.process-samples.jsonl"
+PROCESS_RESOURCES_JSON="${RESULTS_DIR}/${RUN_ID}.process-resources.json"
+RUNTIME_PROVENANCE_JSON="${RESULTS_DIR}/${RUN_ID}.runtime-provenance.json"
 CONVERSATION_METRIC_ARGS=()
+PROCESS_METRIC_ARGS=()
+RUNTIME_PROVENANCE_SERVICE_ARGS=()
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -49,9 +57,15 @@ require_command() {
   }
 }
 
-for command in docker curl k6 jq python3; do
+for command in docker curl git k6 jq python3; do
   require_command "${command}"
 done
+
+git_commit="$(git rev-parse HEAD)"
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "benchmark source tree has tracked changes; commit them before collecting a baseline" >&2
+  exit 1
+fi
 
 if [[ ! "${RUN_ID}" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "RUN_ID may contain only letters, numbers, dot, underscore, and hyphen" >&2
@@ -64,10 +78,11 @@ fi
 
 mkdir -p "${RESULTS_DIR}"
 : >"${LAG_FILE}"
+: >"${PROCESS_SAMPLES_JSONL}"
 
-for port in 8081 8082; do
-  curl --fail --silent --show-error "http://127.0.0.1:${port}/health" >/dev/null || {
-    echo "Dipole node on port ${port} is not ready; start ${COMPOSE_FILE} first" >&2
+for health_url in "${NODE1_HEALTH_URL}" "${NODE2_HEALTH_URL}"; do
+  curl --fail --silent --show-error "${health_url}" >/dev/null || {
+    echo "Dipole node is not ready at ${health_url}; start ${COMPOSE_FILE} first" >&2
     exit 1
   }
 done
@@ -84,7 +99,7 @@ sample_kafka_lag() {
   LAST_KAFKA_LAG="$(docker compose -f "${COMPOSE_FILE}" exec -T "${KAFKA_SERVICE}" \
     /opt/kafka/bin/kafka-consumer-groups.sh \
     --bootstrap-server 127.0.0.1:9092 --all-groups --describe 2>/dev/null \
-    | awk '$1 ~ /^dipole/ && $6 ~ /^[0-9]+$/ { total += $6 } END { print total + 0 }')"
+    | python3 scripts/bench/kafka_lag.py --group-prefix dipole)"
   printf '%s\n' "${LAST_KAFKA_LAG}" >>"${LAG_FILE}"
 }
 
@@ -100,7 +115,55 @@ capture_conversation_metrics() {
   done
 }
 
+resolve_process_metric_bindings() {
+  local service container_id host_pid image_id revision created source_dirty service_json
+  for service in ${PROCESS_METRICS_SERVICES}; do
+    container_id="$(docker compose -f "${COMPOSE_FILE}" ps -q "${service}")"
+    if [[ -z "${container_id}" ]]; then
+      echo "process metrics service is not running: ${service}" >&2
+      exit 1
+    fi
+    host_pid="$(docker inspect --format '{{.State.Pid}}' "${container_id}")"
+    if [[ ! "${host_pid}" =~ ^[1-9][0-9]*$ ]]; then
+      echo "process metrics service has no host pid: ${service}" >&2
+      exit 1
+    fi
+    PROCESS_METRIC_ARGS+=(--service "${service}=${host_pid}")
+
+    image_id="$(docker inspect --format '{{.Image}}' "${container_id}")"
+    revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${image_id}")"
+    created="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' "${image_id}")"
+    source_dirty="$(docker image inspect --format '{{index .Config.Labels "io.dipole.source.dirty"}}' "${image_id}")"
+    if [[ "${source_dirty}" != "true" && "${source_dirty}" != "false" ]]; then
+      echo "runtime image has no valid source dirty label: ${service} (${image_id})" >&2
+      exit 1
+    fi
+    service_json="$(jq -cn \
+      --arg name "${service}" \
+      --arg container_id "${container_id}" \
+      --arg image_id "${image_id}" \
+      --arg revision "${revision}" \
+      --arg created "${created}" \
+      --argjson source_dirty "${source_dirty}" \
+      '{name: $name, container_id: $container_id, image_id: $image_id, revision: $revision, created: $created, source_dirty: $source_dirty}')"
+    RUNTIME_PROVENANCE_SERVICE_ARGS+=(--service-json "${service_json}")
+  done
+
+  python3 scripts/bench/runtime_provenance.py \
+    --expected-revision "${git_commit}" \
+    "${RUNTIME_PROVENANCE_SERVICE_ARGS[@]}" \
+    --output "${RUNTIME_PROVENANCE_JSON}"
+}
+
+capture_process_metrics() {
+  python3 scripts/bench/process_metrics.py capture \
+    "${PROCESS_METRIC_ARGS[@]}" \
+    --output "${PROCESS_SAMPLES_JSONL}"
+}
+
 capture_conversation_metrics before
+resolve_process_metric_bindings
+capture_process_metrics
 
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
@@ -129,12 +192,14 @@ k6_pid=$!
 
 while kill -0 "${k6_pid}" 2>/dev/null; do
   sample_kafka_lag
+  capture_process_metrics
   sleep "${LAG_SAMPLE_SECONDS}"
 done
 wait "${k6_pid}"
 k6_status=$?
 set -e
 sample_kafka_lag
+capture_process_metrics
 settle_started="$(date +%s)"
 while [[ "${LAST_KAFKA_LAG}" != "0" ]] && (( $(date +%s) - settle_started < LAG_SETTLE_TIMEOUT_SECONDS )); do
   sleep "${LAG_SAMPLE_SECONDS}"
@@ -147,6 +212,11 @@ python3 scripts/bench/conversation_metrics.py \
   "${CONVERSATION_METRIC_ARGS[@]}" \
   --output "${CONVERSATION_METRICS_JSON}"
 conversation_metrics="$(cat "${CONVERSATION_METRICS_JSON}")"
+python3 scripts/bench/process_metrics.py summarize \
+  --input "${PROCESS_SAMPLES_JSONL}" \
+  --output "${PROCESS_RESOURCES_JSON}"
+process_resources="$(cat "${PROCESS_RESOURCES_JSON}")"
+runtime_provenance="$(cat "${RUNTIME_PROVENANCE_JSON}")"
 
 if [[ ! -s "${SUMMARY_JSON}" ]]; then
   echo "k6 did not produce ${SUMMARY_JSON}" >&2
@@ -168,8 +238,6 @@ read -r direct_messages direct_inbox group_messages group_inbox conversation_mes
 
 lag_samples="$(jq --raw-input --slurp 'split("\n") | map(select(length > 0) | tonumber)' "${LAG_FILE}")"
 cpu_model="$(awk -F ': ' '/model name/ { print $2; exit }' /proc/cpuinfo)"
-git_commit="$(git rev-parse HEAD)"
-
 jq -n \
   --arg run_id "${RUN_ID}" \
   --arg scenario "${SCENARIO}" \
@@ -177,6 +245,9 @@ jq -n \
   --arg git_commit "${git_commit}" \
   --arg cpu "${cpu_model}" \
   --arg topology "${COMPOSE_FILE}" \
+  --arg api_base_url "${BASE_URL}" \
+  --arg node1_ws "${NODE1_WS}" \
+  --arg node2_ws "${NODE2_WS}" \
   --arg bench_script "${BENCH_SCRIPT}" \
   --argjson user_count "${USER_COUNT}" \
   --argjson group_size "${GROUP_SIZE}" \
@@ -197,12 +268,21 @@ jq -n \
   --argjson conversation_rows "${conversation_rows}" \
   --argjson conversation_messages "${conversation_messages}" \
   --argjson conversation_metrics "${conversation_metrics}" \
+  --argjson process_resources "${process_resources}" \
+  --argjson runtime_provenance "${runtime_provenance}" \
   '{
-    schema_version: "dipole.performance.operations.v3",
+    schema_version: "dipole.performance.operations.v4",
     run_id: $run_id,
     scenario: $scenario,
     captured_at: $captured_at,
-    environment: {git_commit: $git_commit, cpu: $cpu, topology: $topology},
+    environment: {
+      git_commit: $git_commit,
+      cpu: $cpu,
+      topology: $topology,
+      api_base_url: $api_base_url,
+      node1_ws: $node1_ws,
+      node2_ws: $node2_ws
+    },
     parameters: {
       bench_script: $bench_script,
       user_count: $user_count,
@@ -220,6 +300,7 @@ jq -n \
         else $send_count
         end
       ),
+      message_type: 0,
       receiver_conn_ms: $receiver_conn_ms,
       sender_conn_ms: $sender_conn_ms,
       hot_group_warmup_messages: $hot_group_warmup_messages,
@@ -234,7 +315,9 @@ jq -n \
         messages_observed: $conversation_messages
       })
     },
-    kafka_lag_samples: $kafka_lag_samples
+    kafka_lag_samples: $kafka_lag_samples,
+    process_resources: $process_resources,
+    runtime_provenance: $runtime_provenance
   }' >"${OPERATIONS_JSON}"
 
 report_args=(
