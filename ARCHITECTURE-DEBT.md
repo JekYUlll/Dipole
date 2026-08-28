@@ -403,6 +403,7 @@
 - **本轮进展：** Agent Task Timeline 已迁移至共享 `--dp-*` token，并用组件契约测试锁定核心颜色、字体和表面样式；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 - **本轮进展：** Login 页面已迁移至共享 `--dp-*` token，并增加源码契约测试；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 - **本轮进展：** Agent Task Timeline 路由页面外壳已与组件共同使用共享 `--dp-*` token；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
+- **本轮进展：** Agent Event Subscription 管理页已接入共享 `--dp-*` 主题 token，并以组件测试锁定 token 映射；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 
 ### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
 
