@@ -21,6 +21,8 @@ import type {
   AgentTaskProjectionInput,
   AgentTaskRunBinding
 } from "./agent-task-activities.js";
+import type { AgentMemoryPromotionActivities } from "./agent-task-activities.js";
+import type { AgentMemoryPromotionReceipt } from "../memory/agent-memory-promotion-receipt.js";
 import type { AgentTaskWorkflowHistoryInput } from "./temporal-task-client.js";
 import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
 import {
@@ -65,6 +67,10 @@ const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTask
     maximumAttempts: 3
   }
 });
+const { prepareAgentMemoryPromotion } = proxyActivities<AgentMemoryPromotionActivities>({
+  startToCloseTimeout: "30 seconds",
+  retry: { initialInterval: "1 second", backoffCoefficient: 2, maximumInterval: "10 seconds", maximumAttempts: 3 }
+});
 
 export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): Promise<AgentTaskState> {
   let state = createAgentTaskState(input.taskId);
@@ -81,6 +87,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
   }
   const projectionEnabled = patched("agent-task-workflow-projection-v1");
   const workflow = workflowInfo();
+  let promotionReceipt: AgentMemoryPromotionReceipt | undefined;
 
   setHandler(taskStateQuery, () => state);
   setHandler(provideTaskInputSignal, (signal) => {
@@ -107,6 +114,12 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
 
   const binding = await admitAgentTask(input);
   assertRunBinding(input.taskId, binding);
+  if (input.memoryPromotion !== undefined) {
+    promotionReceipt = await prepareAgentMemoryPromotion({
+      ...input.memoryPromotion,
+      createdAt: new Date().toISOString()
+    });
+  }
   if (binding.runStatus === "completed") {
     const replayed: AgentTaskState = {
       taskId: input.taskId,
@@ -201,7 +214,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
         ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
       });
     }
-    state = applyDirective(state, directive);
+    state = applyDirective(state, directive, promotionReceipt);
   }
   if (projectionEnabled && projectedRevision !== state.revision) {
     await projectAgentTaskState(projectionActivityInput(input, binding, state, workflow));
@@ -228,7 +241,7 @@ function projectionActivityInput(
   };
 }
 
-function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): AgentTaskState {
+function applyDirective(state: AgentTaskState, directive: AgentTaskDirective, promotionReceipt?: AgentMemoryPromotionReceipt): AgentTaskState {
   switch (directive.kind) {
     case "continue":
       return state.resume === undefined
@@ -246,7 +259,10 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective): A
         expiresAtUnixMs: directive.approval.expiresAtUnixMs
       });
     case "complete":
-      return transitionAgentTask(state, { type: "complete", output: directive.output });
+      return transitionAgentTask(state, {
+        type: "complete",
+        output: promotionReceipt === undefined ? directive.output : { result: directive.output, promotionReceipt }
+      });
     case "failed":
       return transitionAgentTask(state, { type: "fail", message: directive.message });
   }

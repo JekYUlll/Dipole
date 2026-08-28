@@ -27,6 +27,8 @@ v47 增加 promotion receipt 字段。Core 在事务内锁定 accepted candidate
 
 当前已增加 `PromoteMemoryCandidate` additive gRPC 与 Gateway HTTP 入口。入口只接受候选 ID、候选 SHA-256 和 review ID，Gateway 从 JWT 会话绑定 principal，Core 再执行 accepted/status/scope/30 天证据窗口校验。返回结果要求保持候选来源与 review ID 一致；Temporal 自动晋级和 Runtime 旁路仍关闭。
 
+Temporal preparation Activity 现使用 `agent-memory-promotion-receipt.v1` 记录可恢复晋级意图。receipt 不复制 candidate summary 或 evidence，绑定 Task/Run、owner、候选/审核哈希、策略版本和最多 15 分钟租约；它可以在 Workflow 重放时复用，不能替代 Core v47 事务，也不能单独证明 Memory 已写入。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
