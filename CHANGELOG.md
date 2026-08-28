@@ -513,6 +513,7 @@
 ### 验证
 
 - Agent Memory lineage backfill CLI 通过默认 dry-run、审批/manifest hash 绑定、owner 身份匹配和输入大小边界测试；隔离 MySQL 8.4 通过 v43 migration up/down/reapply、失败后恢复、owner 隔离和精确重放验证。
+- Backfill execute approval 收紧为独立 operator/approver 双身份，二者必须不同并共同绑定 job、manifest hash 与 source high-water；CLI 不提供自审批路径。
 
 - Agent Memory lineage backfill runner/contract 测试通过 `7/7`，覆盖固定 manifest/receipt hash、unknown field、authority/counter drift、resume、duplicate convergence、目标失败不推进 checkpoint、非法引用和配置边界；JSON Schema examples 通过 Draft 2020-12 校验。v43 migration、sqlc 生成物和隔离 MySQL 8.4 已验证固定 high-water、跨 owner 引用阻断、失败后恢复与精确重放幂等。
 - Agent Memory 派生 retention policy 聚焦测试通过 `6/6`，与 lineage 回归合计 `11/11`；覆盖完整/缺失 lineage、受影响与零影响人工复核域、policy/report/decision hash 漂移、authority 提升、64 KiB 双输入和低敏失败。完整 Agent Runtime 为 `586 passed / 26 expected skipped`；TypeScript typecheck/build、Draft 2020-12 strict Schema 示例、canonical Go test/vet、sqlc、Go/TS Proto、Compose、架构文档、观测规则和生产依赖零漏洞门禁通过。

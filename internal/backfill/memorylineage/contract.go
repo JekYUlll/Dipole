@@ -49,6 +49,7 @@ type Approval struct {
 	PolicyVersion         string `json:"policyVersion"`
 	JobName               string `json:"jobName"`
 	OperatorID            string `json:"operatorId"`
+	ApproverID            string `json:"approverId"`
 	ManifestSHA256        string `json:"manifestSha256"`
 	SourceHighWatermarkID uint64 `json:"sourceHighWatermarkId"`
 	Approved              bool   `json:"approved"`
@@ -122,17 +123,17 @@ func ParseReceipt(data []byte) (Receipt, error) {
 	return receipt, nil
 }
 
-func NewApproval(manifest Manifest, jobName, operatorID string) (Approval, error) {
+func NewApproval(manifest Manifest, jobName, operatorID, approverID string) (Approval, error) {
 	if _, err := ParseManifest(mustJSON(manifest)); err != nil {
 		return Approval{}, err
 	}
 	approval := Approval{
 		SchemaVersion: ApprovalSchemaVersion, PolicyVersion: PolicyVersion,
-		JobName: strings.TrimSpace(jobName), OperatorID: strings.TrimSpace(operatorID),
+		JobName: strings.TrimSpace(jobName), OperatorID: strings.TrimSpace(operatorID), ApproverID: strings.TrimSpace(approverID),
 		ManifestSHA256: manifest.ManifestSHA256, SourceHighWatermarkID: manifest.SourceHighWatermarkID,
 		Approved: true,
 	}
-	if approval.JobName == "" || approval.OperatorID == "" {
+	if approval.JobName == "" || approval.OperatorID == "" || approval.ApproverID == "" || approval.OperatorID == approval.ApproverID {
 		return Approval{}, errors.New("Memory lineage backfill approval identity is required")
 	}
 	approval.ApprovalSHA256 = approvalDigest(approval)
@@ -151,6 +152,7 @@ func ParseApproval(data []byte, manifest Manifest, jobName string) (Approval, er
 		!approval.Approved || strings.TrimSpace(approval.JobName) != strings.TrimSpace(jobName) ||
 		!validSHA256(approval.ManifestSHA256) || approval.ManifestSHA256 != manifest.ManifestSHA256 ||
 		approval.SourceHighWatermarkID != manifest.SourceHighWatermarkID || strings.TrimSpace(approval.OperatorID) == "" ||
+		strings.TrimSpace(approval.ApproverID) == "" || strings.TrimSpace(approval.OperatorID) == strings.TrimSpace(approval.ApproverID) ||
 		!validSHA256(approval.ApprovalSHA256) {
 		return Approval{}, errors.New("Memory lineage backfill approval is invalid")
 	}
