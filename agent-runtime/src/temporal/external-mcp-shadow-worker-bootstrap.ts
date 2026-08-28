@@ -50,7 +50,7 @@ export async function startExternalMcpShadowWorkerBootstrap(
       env,
       baseActivities,
       (plan, resourceSignal) => {
-        createResource ??= seams.createResourceFactory(shadowConfig);
+        createResource ??= seams.createResourceFactory(shadowConfig, { baseActivities });
         return createResource(plan, resourceSignal);
       },
       { ...options, signal }
