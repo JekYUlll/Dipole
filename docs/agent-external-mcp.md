@@ -235,7 +235,11 @@ bootstrap 在 lifecycle 调用前拥有 startup：load 完成后的取消会先�
 
 `TemporalMcpShadowTaskDispatcher` 提供事件驱动路径的可信 Workflow start boundary。它重新解析 `AgentEvent` 与 `AgentIdentity`，按 tenant、Agent、event type 和 aggregate 复算确定性 Task ID；不匹配会在 route selector 与 Temporal Client 前拒绝。admission 与固定 goal 在 selector 调用前由 Runtime 固化，事件和身份快照也会冻结，因此 selector 只能根据受信宿主逻辑返回 strict `{routeId, arguments}`，不能覆盖 tenant、principal、Agent、trigger、request/trace 或 goal。
 
-dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalog 注入 route version 与 manifest digest，再写入 `external_mcp_v1` history。业务参数仍会经过 16 KiB canonical JSON、route-local Capability schema、egress policy、Core Context 与资源权限复核。当前该类仅是可测试原语，没有创建 Temporal connection，也没有进入 `index.ts`、Compose 或 Shadow bootstrap。Kafka subscription match 目前只把 `subscriptionId` 投影到事件，未把持久 definition 映射为代码/部署拥有的 route selection；在补齐该映射和受管 Client 生命周期前不得直接以消息正文、模型输出或事件 payload 选择 route。
+dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalog 注入 route version 与 manifest digest，再写入 `external_mcp_v1` history。业务参数仍会经过 16 KiB canonical JSON、route-local Capability schema、egress policy、Core Context 与资源权限复核。当前该类仅是可测试原语，没有创建 Temporal connection，也没有进入 `index.ts`、Compose 或 Shadow bootstrap。在受管 Client 生命周期和固定 route registration 接线前，不得直接以消息正文、模型输出或事件 payload 选择 route。
+
+subscription mode 现在将 Core 返回且经本地 filter 选中的 subscription 固化为 `subscriptionBinding`：其中只含 subscription ID、definition ID/version、tenant 与 Agent。事件 schema 要求 binding 的 subscription ID 与 admission 使用的顶层 ID 一致；旧 direct-target 和只有顶层 ID 的事件仍可解析。`TemporalMcpSubscriptionRouteSelector` 进一步把 exact definition ID/version 映射到代码注册的 route 和参数 resolver，并在 resolver 前核对 tenant/Agent。definition 版本升级不会沿用旧映射，重复 binding、未知版本和非对象参数均固定拒绝。
+
+该 selector 不接受 Profile、Server、Tool、manifest digest、admission 或 goal；route ID 还需经过 Worker composition 提供的 `TemporalMcpWorkflowExecutionCatalog`。参数 resolver 可以从事件构造业务参数，随后仍受 route-local schema、egress 与 Core resource scope 限制。当前生产没有注册任何 definition route 或 resolver，也没有创建受管 Workflow Client；因此这项元数据保留不会触发外部调用。后续接线应先为受控 Shadow definition 提供固定 resolver 和测试 manifest，禁止把模型输出或消息字段直接解释为 route ID。
 
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
