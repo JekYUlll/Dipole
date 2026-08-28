@@ -32,6 +32,7 @@
 - **现状：** 已提供独立 `dipole-agent-task-timeline-repair` 镜像二进制、专用最小权限账号和默认关闭的 `agent-timeline-repair` Compose profile；隔离 MySQL 进程级 smoke 已验证 claim/replay、completed 收敛和事件幂等，并新增短窗口失败/持续 retry 的 Prometheus 告警规则与 promtool 测试，worker 仍需 operator 显式启用。
 - **风险：** 未完成共享环境 operator 灰度、指标抓取和告警演练前，Timeline repair intent 仍可能停留在 pending/retry，不能宣称生产自动修复闭环。
 - **下一步：** 在隔离环境启用 profile，验证 readiness、repair counter、重启恢复与回滚；证据完整后再评估默认拓扑或告警策略。
+- **运维约束：** 启用、暂停和回切步骤已收敛到 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`；当前仍要求显式 profile、完整窗口和原始指标快照，未满足时保持默认关闭。
 
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 
