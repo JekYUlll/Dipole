@@ -14,6 +14,8 @@ Dipole
 
 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)
 
+[Pencil 设计资产](design/README.md)
+
 [IM Gateway 渐进部署手册](GATEWAY-DEPLOYMENT.md)
 
 [最小微服务开发拓扑](MICROSERVICES-DEPLOYMENT.md)
