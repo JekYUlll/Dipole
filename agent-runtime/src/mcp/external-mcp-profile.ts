@@ -162,11 +162,8 @@ export class ExternalMcpTransportRegistry {
   }
 
   async connect(profileId: string, tenantId: string, signal?: AbortSignal): Promise<Transport> {
-    if (!this.#config.enabled) throw new Error("External MCP connections are disabled");
     signal?.throwIfAborted();
-    const profile = this.#config.profiles.find(candidate => candidate.profileId === profileId);
-    if (profile === undefined) throw new Error("External MCP profile is not configured");
-    if (profile.tenantId !== tenantId) throw new Error("External MCP profile tenant does not match the execution tenant");
+    const profile = this.describe(profileId, tenantId);
     const credential = await this.#credentialCatalog.resolve({
       tenantId,
       credentialRef: profile.credentialRef,
@@ -175,6 +172,14 @@ export class ExternalMcpTransportRegistry {
     });
     signal?.throwIfAborted();
     return this.#factory.connect({ profile, credential }, signal);
+  }
+
+  describe(profileId: string, tenantId: string): ExternalMcpProfile {
+    if (!this.#config.enabled) throw new Error("External MCP connections are disabled");
+    const profile = this.#config.profiles.find(candidate => candidate.profileId === profileId);
+    if (profile === undefined) throw new Error("External MCP profile is not configured");
+    if (profile.tenantId !== tenantId) throw new Error("External MCP profile tenant does not match the execution tenant");
+    return profile;
   }
 }
 
