@@ -29,6 +29,7 @@ struct DeliveryRuntimeConfig {
   bool fencing_enabled = false;
   std::string fencing_key;
   std::uint64_t fencing_epoch = 0;
+  std::string instance_id;
   bool node_transport_enabled = false;
   GrpcNodeTransportConfig node_transport;
 };

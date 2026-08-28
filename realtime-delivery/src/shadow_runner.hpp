@@ -105,6 +105,7 @@ class ShadowRunner {
   AuthorityFenceReader* authority_fence_;
   std::optional<KafkaRecord> pending_record_;
   std::atomic_bool healthy_ = true;
+  std::atomic_bool fence_healthy_ = true;
   ShadowRunnerStats stats_;
 };
 

@@ -11,6 +11,7 @@ RUN apt-get update \
       libgrpc++-dev \
       librdkafka-dev \
       libprotobuf-dev \
+      libssl-dev \
       ninja-build \
       nlohmann-json3-dev \
       pkg-config \

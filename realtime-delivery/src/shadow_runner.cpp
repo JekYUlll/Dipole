@@ -59,6 +59,14 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
   } else {
     result = consumer_->Poll(poll_timeout_ms_);
     if (result.status == PollStatus::kTimeout) {
+      if (authority_fence_ != nullptr) {
+        if (const auto fence_error = authority_fence_->Heartbeat(); fence_error) {
+          ++stats_.fence_errors;
+          fence_healthy_.store(false);
+          return "delivery authority fence heartbeat denied: " + *fence_error;
+        }
+        fence_healthy_.store(true);
+      }
       return std::nullopt;
     }
     if (result.status == PollStatus::kError) {
@@ -73,9 +81,10 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
   if (authority_fence_ != nullptr) {
     if (const auto fence_error = authority_fence_->Assert(); fence_error) {
       ++stats_.fence_errors;
-      healthy_.store(false);
+      fence_healthy_.store(false);
       return "delivery authority fence denied: " + *fence_error;
     }
+    fence_healthy_.store(true);
   }
 
   delivery::v1::DeliveryEnvelope envelope;
@@ -195,8 +204,8 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
 }
 
 bool ShadowRunner::Ready() const {
-  return healthy_.load() && consumer_ != nullptr && evidence_sink_ != nullptr && poll_timeout_ms_ > 0 &&
-         consumer_->AssignmentCount() > 0;
+  return healthy_.load() && fence_healthy_.load() && consumer_ != nullptr && evidence_sink_ != nullptr &&
+         poll_timeout_ms_ > 0 && consumer_->AssignmentCount() > 0;
 }
 
 ShadowRunnerStats ShadowRunner::Stats() const {

@@ -7,6 +7,7 @@
       "expected_authority": "go",
       "expected_epoch": 17,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "authorized",
       "authorized": true
     },
     {
@@ -15,6 +16,7 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "authorized",
       "authorized": true
     },
     {
@@ -23,6 +25,7 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "frozen",
       "authorized": false
     },
     {
@@ -31,6 +34,7 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "expired",
       "authorized": false
     },
     {
@@ -39,6 +43,7 @@
       "expected_authority": "go",
       "expected_epoch": 17,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "epoch_mismatch",
       "authorized": false
     },
     {
@@ -47,6 +52,7 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "authority_mismatch",
       "authorized": false
     },
     {
@@ -55,6 +61,7 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "invalid_record",
       "authorized": false
     },
     {
@@ -63,6 +70,25 @@
       "expected_authority": "cpp",
       "expected_epoch": 18,
       "now_unix_ms": 1787875200000,
+      "expected_reason": "invalid_record",
+      "authorized": false
+    },
+    {
+      "name": "unknown phase",
+      "payload": "{\"schema_version\":\"dipole.realtime.delivery-fence.v1\",\"epoch\":18,\"authority\":\"cpp\",\"phase\":\"draining\",\"lease_until_unix_ms\":1787875260000}",
+      "expected_authority": "cpp",
+      "expected_epoch": 18,
+      "now_unix_ms": 1787875200000,
+      "expected_reason": "invalid_record",
+      "authorized": false
+    },
+    {
+      "name": "nonpositive lease",
+      "payload": "{\"schema_version\":\"dipole.realtime.delivery-fence.v1\",\"epoch\":18,\"authority\":\"cpp\",\"phase\":\"active\",\"lease_until_unix_ms\":0}",
+      "expected_authority": "cpp",
+      "expected_epoch": 18,
+      "now_unix_ms": 1787875200000,
+      "expected_reason": "invalid_record",
       "authorized": false
     }
   ]

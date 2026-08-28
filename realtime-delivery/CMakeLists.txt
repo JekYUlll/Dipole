@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 pkg_check_modules(PROTOBUF REQUIRED IMPORTED_TARGET "protobuf>=3.21")
 pkg_check_modules(HIREDIS REQUIRED IMPORTED_TARGET "hiredis>=1.2")
 find_program(PROTOC_EXECUTABLE protoc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
@@ -101,6 +102,7 @@ target_link_libraries(delivery_contract PUBLIC
   GRPC::grpc++
   RDKAFKA::rdkafka
   nlohmann_json::nlohmann_json
+  OpenSSL::Crypto
 )
 target_compile_options(delivery_contract PRIVATE -Wall -Wextra -Wpedantic -Werror)
 

@@ -19,6 +19,7 @@ func TestAuthorityFenceSharedVectors(t *testing.T) {
 		ExpectedAuthority string `json:"expected_authority"`
 		ExpectedEpoch     uint64 `json:"expected_epoch"`
 		NowUnixMS         int64  `json:"now_unix_ms"`
+		ExpectedReason    string `json:"expected_reason"`
 		Authorized        bool   `json:"authorized"`
 	}
 	var vectors struct {
@@ -38,11 +39,15 @@ func TestAuthorityFenceSharedVectors(t *testing.T) {
 				t.Fatal(err)
 			}
 			record, err := decodeFenceRecord([]byte(test.Payload))
+			reason := FenceReasonInvalidRecord
 			if err == nil {
-				_, err = validateFenceRecord(record, authority, test.ExpectedEpoch, time.UnixMilli(test.NowUnixMS))
+				reason, err = validateFenceRecord(record, authority, test.ExpectedEpoch, time.UnixMilli(test.NowUnixMS))
 			}
 			if (err == nil) != test.Authorized {
 				t.Fatalf("authorized = %v, error = %v", err == nil, err)
+			}
+			if string(reason) != test.ExpectedReason {
+				t.Fatalf("reason = %q, want %q", reason, test.ExpectedReason)
 			}
 		})
 	}

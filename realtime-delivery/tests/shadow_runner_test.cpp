@@ -151,8 +151,15 @@ class FakeAuthorityFence final : public dipole::realtime::AuthorityFenceReader {
     return error;
   }
 
+  dipole::realtime::ValidationError Heartbeat() override {
+    ++heartbeat_attempts;
+    return heartbeat_error;
+  }
+
   int attempts = 0;
+  int heartbeat_attempts = 0;
   dipole::realtime::ValidationError error;
+  dipole::realtime::ValidationError heartbeat_error;
 };
 
 void TestProjectedRecordCommitsAfterEvidence() {
@@ -476,6 +483,27 @@ void TestTimeoutAndPollError() {
   Check(runner.Stats().poll_errors == 1 && !runner.Ready(), "poll error removes readiness");
 }
 
+void TestTimeoutRefreshesAuthorityFenceAndRecoversReadiness() {
+  FakeConsumer consumer;
+  consumer.results.push_back(PollTimeout());
+  consumer.results.push_back(PollTimeout());
+  FakeEvidenceSink sink;
+  FakeAuthorityFence fence;
+  fence.heartbeat_error = "frozen";
+  dipole::realtime::ShadowRunner runner(
+      &consumer, &sink, 100, nullptr, nullptr, dipole::realtime::NodeTransportMode::kObserve, &fence);
+
+  const auto denied = runner.RunOnce({});
+  Check(denied.has_value() && denied->find("fence") != std::string::npos,
+        "idle fence denial reaches caller");
+  Check(fence.heartbeat_attempts == 1 && fence.attempts == 0 && !runner.Ready(),
+        "idle fence denial removes readiness without record assertion");
+  fence.heartbeat_error = std::nullopt;
+  Check(!runner.RunOnce({}), "idle fence recovers without a Kafka record");
+  Check(fence.heartbeat_attempts == 2 && runner.Ready(),
+        "idle heartbeat restores assigned runtime readiness");
+}
+
 void TestInvalidConstruction() {
   FakeConsumer consumer;
   FakeEvidenceSink sink;
@@ -509,6 +537,7 @@ int main() {
     TestAuthorityFenceRetriesPendingRecordBeforeProjection();
     TestCommitFailureReachesCaller();
     TestTimeoutAndPollError();
+    TestTimeoutRefreshesAuthorityFenceAndRecoversReadiness();
     TestInvalidConstruction();
   } catch (const std::exception& error) {
     std::cerr << "FAIL: unexpected exception: " << error.what() << '\n';

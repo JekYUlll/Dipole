@@ -38,6 +38,7 @@ grep -q 'DIPOLE_REALTIME_FENCING_EPOCH must be a positive integer' "${log_file}"
 DIPOLE_REALTIME_DELIVERY=shadow \
 DIPOLE_REALTIME_FENCING_ENABLED=true \
 DIPOLE_REALTIME_FENCING_EPOCH=1 \
+DIPOLE_REALTIME_INSTANCE_ID=cpp-health-test \
 DIPOLE_REALTIME_KAFKA_BROKERS=127.0.0.1:1 \
 DIPOLE_REALTIME_EVIDENCE_FILE="${evidence}" \
   "${binary}" shadow "${testdata}" >"${log_file}" 2>&1 && {
@@ -45,6 +46,17 @@ DIPOLE_REALTIME_EVIDENCE_FILE="${evidence}" \
   exit 1
 }
 grep -q 'exactly one Redis direct or Sentinel mode is required' "${log_file}"
+
+DIPOLE_REALTIME_DELIVERY=shadow \
+DIPOLE_REALTIME_FENCING_ENABLED=true \
+DIPOLE_REALTIME_FENCING_EPOCH=1 \
+DIPOLE_REALTIME_KAFKA_BROKERS=127.0.0.1:1 \
+DIPOLE_REALTIME_EVIDENCE_FILE="${evidence}" \
+  "${binary}" shadow "${testdata}" >"${log_file}" 2>&1 && {
+  echo "shadow runtime unexpectedly accepted fencing without instance identity" >&2
+  exit 1
+}
+grep -q 'DIPOLE_REALTIME_INSTANCE_ID is required when fencing is enabled' "${log_file}"
 
 DIPOLE_REALTIME_DELIVERY=shadow \
 DIPOLE_REALTIME_HOST=127.0.0.1 \
