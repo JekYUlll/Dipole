@@ -7,8 +7,41 @@ import { ModelShadowPlanner } from "./model-shadow-planner.js";
 import type { ModelRouter } from "./model-router.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
+import type { ConversationReadResult } from "../capabilities/agent-capability-rpc.js";
 
 describe("ModelShadowPlanner", () => {
+  it("reads the authorized conversation and compiles messages as untrusted evidence", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const conversation: ConversationReadResult = {
+      found: true, reason: "", targetId: "G1", targetType: 2,
+      messages: [{
+        id: 42n, serverMessageId: "M42", clientMessageId: "C42", conversationKey: "group:G1", sequence: 42n,
+        senderId: "U200", targetType: 2, targetId: "G1", messageType: 1, content: "延期风险待确认",
+        fileId: "", fileName: "", fileSize: 0n, fileUrl: "", fileContentType: ""
+      }]
+    };
+    const readConversation = vi.fn(async (_context, conversationId: string, limit: number) => {
+      expect(conversationId).toBe("group:G1");
+      expect(limit).toBe(20);
+      return conversation;
+    });
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.read"], new DeterministicContextCompiler(),
+      undefined, undefined, undefined, { readConversation }
+    );
+
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
+
+    expect(readConversation).toHaveBeenCalledOnce();
+    const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
+    expect(prompt).toContain('"sourceType":"conversation_message"');
+    expect(prompt).toContain("延期风险待确认");
+    expect(prompt).toContain('"trust":"untrusted"');
+  });
+
   it("retrieves scoped Memories and compiles them as untrusted provenance records", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
