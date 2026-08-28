@@ -24,3 +24,30 @@
 3. 保持 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`；无需数据库迁移或 EventLedger 清理。
 
 若 matcher error 告警触发，优先执行上述回滚。不得通过切换到 `subscription` 主模式规避告警。
+
+## 证据合同
+
+`contracts/agent-subscription-shadow/v1/input.schema.json` 定义 Prometheus 起止快照输入，必须绑定：
+
+- UTC `window_start/window_end`，跨度 24 小时至 31 天；
+- 当前 tracked tree 或镜像内容的 `runtime_revision` SHA-256；
+- `deploy/observability/prometheus-services.yml` 与规则查询集合的 `prometheus_config_sha256`；
+- 固定 `query_revision=subscription-shadow-v1`；
+- 按抓取间隔计算的 `expected_scrapes`、Prometheus 实际成功样本 `successful_scrapes`；
+- 窗口内对两个 counter family 执行 `resets(...[window])` 后汇总的 `counter_resets`；
+- 六个 comparison series 和 candidate counter 的起止累计值。
+
+生成证据：
+
+```bash
+cd agent-runtime
+npm run eval:subscription-shadow-evidence -- --input=/secure/subscription-shadow-input.json
+```
+
+将标准输出保存为 owner-only 文件后可独立验证：
+
+```bash
+npm run eval:subscription-shadow-evidence -- --evidence=/secure/subscription-shadow-evidence.json
+```
+
+生成器要求抓取覆盖率至少 95%、观察事件至少 100、counter 全部单调、`resets=0` 且 matcher error 为零。证据最多有效 24 小时，canonical SHA-256 覆盖完整正文，并固定 `production_authority=false`、`runtime_change_authority=false`。该文件没有 Runtime admission、Trigger mode 或 Capability 授权用途。
