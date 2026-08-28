@@ -712,6 +712,14 @@ message CorrectOwnedMemoryResponse {
   AgentOwnedMemory corrected = 2;
 }
 
+message PromoteMemoryCandidateRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string candidate_id = 3;
+  string candidate_sha256 = 4;
+  string review_id = 5;
+}
+
 message PublishMcpReadinessEvidenceRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -762,6 +770,7 @@ service AgentCapabilityService {
   rpc ListOwnedMemories(ListOwnedMemoriesRequest) returns (ListOwnedMemoriesResponse);
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
+  rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);

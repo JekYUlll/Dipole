@@ -66,6 +66,10 @@ type AgentMemoryCandidatePromotionStoreV1 interface {
 	PromoteCandidate(ctx context.Context, candidate AgentMemoryCandidateV1, review AgentMemoryCandidateReviewV1, memory AgentMemoryV1) (*AgentMemoryV1, error)
 }
 
+type AgentMemoryCandidatePromotionServiceV1 interface {
+	Promote(ctx context.Context, request AgentMemoryCandidatePromotionRequestV1) (*AgentMemoryV1, error)
+}
+
 func (candidate AgentMemoryCandidateV1) Validate() error {
 	if anyBlank(candidate.CandidateUUID, candidate.TenantID, candidate.PrincipalUUID, candidate.AgentUUID, candidate.ResourceType, candidate.ResourceID, candidate.SourceID, candidate.Summary, candidate.PolicyVersion, candidate.CandidateSHA256, candidate.Status) ||
 		len(candidate.CandidateUUID) > 72 || len(candidate.TenantID) > 64 || len(candidate.PrincipalUUID) > 64 || len(candidate.AgentUUID) > 24 || len(candidate.ResourceType) > 64 || len(candidate.ResourceID) > 128 || len(candidate.Summary) > 4096 || len(candidate.PolicyVersion) > 64 || len(candidate.CandidateSHA256) != 64 || !isHex(candidate.CandidateSHA256) || candidate.ObservedAt.IsZero() ||

@@ -36,6 +36,7 @@ type Server struct {
 	definitionCatalog    application.AgentDefinitionCatalogServiceV1
 	memories             application.AgentMemoryContextResolverV1
 	memoryControls       application.AgentMemoryOwnerControlServiceV1
+	memoryPromotions     application.AgentMemoryCandidatePromotionServiceV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
 	toolRounds           application.AgentMCPToolRoundServiceV1
 	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
@@ -146,6 +147,14 @@ func (s *Server) WithMemoryOwnerControls(controls application.AgentMemoryOwnerCo
 	return s, nil
 }
 
+func (s *Server) WithMemoryCandidatePromotions(promotions application.AgentMemoryCandidatePromotionServiceV1) (*Server, error) {
+	if s == nil || promotions == nil {
+		return nil, errors.New("Agent Memory candidate promotion service is required")
+	}
+	s.memoryPromotions = promotions
+	return s, nil
+}
+
 func (s *Server) ListOwnedMemories(ctx context.Context, request *agentv1.ListOwnedMemoriesRequest) (*agentv1.ListOwnedMemoriesResponse, error) {
 	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -215,6 +224,24 @@ func (s *Server) CorrectOwnedMemory(ctx context.Context, request *agentv1.Correc
 	}, nil
 }
 
+func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.PromoteMemoryCandidateRequest) (*agentv1.AgentOwnedMemory, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryPromotions == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+	item, err := s.memoryPromotions.Promote(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidatePromotionRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, CandidateUUID: request.GetCandidateId(),
+		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(),
+	})
+	if err != nil {
+		return nil, agentMemoryCandidatePromotionErrorV1(err)
+	}
+	return agentOwnedMemoryResponseV1(*item), nil
+}
+
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	authenticated, ok := grpcauth.CallerService(ctx)
 	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
@@ -236,6 +263,17 @@ func agentMemoryOwnerErrorV1(err error) error {
 		return status.Error(codes.FailedPrecondition, "Agent Memory request is invalid")
 	default:
 		return status.Error(codes.Internal, "Agent Memory owner control failed")
+	}
+}
+
+func agentMemoryCandidatePromotionErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMemoryCandidateInvalid):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, application.ErrAgentMemoryCandidateConflict):
+		return status.Error(codes.Aborted, err.Error())
+	default:
+		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
 	}
 }
 
