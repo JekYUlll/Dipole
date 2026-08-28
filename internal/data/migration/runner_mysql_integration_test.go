@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 38
+const currentMigrationVersion = 39
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -55,6 +55,12 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory correction migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 38)
+		assertTableCount(t, db, 47)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Memory owner governance migration: %v", err)
 		}
@@ -447,9 +453,11 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	}
 	if _, err := db.Exec(`INSERT INTO agent_memories (
 		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
-		resource_type, resource_id, content, priority, source_type, source_id, valid_from
+		resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+		memory_root_uuid, memory_version
 	) VALUES ('MEM-1', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
-		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3))`); err != nil {
+		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3),
+		'MEM-1', 1)`); err != nil {
 		t.Fatalf("insert valid Agent Memory: %v", err)
 	}
 	if _, err := db.Exec(`UPDATE agent_memories SET status = 'revoked', revoked_at = UTC_TIMESTAMP(3) WHERE memory_uuid = 'MEM-1'`); err == nil {
@@ -468,11 +476,49 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	} {
 		if _, err := db.Exec(`INSERT INTO agent_memories (
 			memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
-			resource_type, resource_id, content, priority, source_type, source_id, valid_from
+			resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+			memory_root_uuid, memory_version
 		) VALUES (?, 'dipole', 'U100', 'UAI000000000000000001', ?, ?,
-			'conversation', 'group:G1', 'invalid', ?, 'message', 'M2', UTC_TIMESTAMP(3))`, invalid.uuid, invalid.memoryType, invalid.status, invalid.priority); err == nil {
+			'conversation', 'group:G1', 'invalid', ?, 'message', 'M2', UTC_TIMESTAMP(3), ?, 1)`, invalid.uuid, invalid.memoryType, invalid.status, invalid.priority, invalid.uuid); err == nil {
 			t.Fatalf("expected Agent Memory constraint for %+v", invalid)
 		}
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, source_sequence, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-2', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Bob', 80, 'owner_correction', 'MEM-1', '2', UTC_TIMESTAMP(3),
+		'MEM-1', 2, 'MEM-1', 'U100', 'owner corrected')`); err != nil {
+		t.Fatalf("insert corrected Agent Memory: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-FORK', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Carol', 80, 'owner_correction', 'MEM-1', UTC_TIMESTAMP(3),
+		'MEM-1', 2, 'MEM-1', 'U100', 'fork')`); err == nil {
+		t.Fatal("expected correction fork constraint")
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, source_sequence, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-BAD-SEQUENCE', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Carol', 80, 'owner_correction', 'MEM-2', '999', UTC_TIMESTAMP(3),
+		'MEM-1', 3, 'MEM-2', 'U100', 'owner corrected')`); err == nil {
+		t.Fatal("expected correction sequence constraint")
+	}
+	if err := runner.Down(ctx, currentMigrationVersion-1); err != nil {
+		t.Fatalf("roll back Agent Memory correction migration: %v", err)
+	}
+	var lineageColumns int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agent_memories' AND column_name IN ('memory_root_uuid', 'memory_version', 'supersedes_memory_uuid', 'corrected_by_uuid', 'correction_reason')`).Scan(&lineageColumns); err != nil || lineageColumns != 0 {
+		t.Fatalf("Agent Memory correction rollback columns=%d err=%v", lineageColumns, err)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("reapply Agent Memory correction migration: %v", err)
 	}
 	if err := runner.Down(ctx, currentMigrationVersion-28); err != nil {
 		t.Fatalf("roll back Agent Memory migration: %v", err)

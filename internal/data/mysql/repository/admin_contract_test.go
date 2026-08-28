@@ -58,11 +58,12 @@ func seedAdminOverview(t *testing.T, db *sql.DB) {
 VALUES ('U-user-2', 'disabled', '18800000002', 'hash', FALSE, ?)`, model.UserStatusDisabled); err != nil {
 		t.Fatalf("seed disabled user: %v", err)
 	}
-	_, err := db.Exec(`
-INSERT INTO users (uuid, nickname, telephone, password_hash, is_admin, status) VALUES
-('U-admin-1', 'admin', '18800000001', 'hash', TRUE, 0),
-('U-user-3', 'normal', '18800000003', 'hash', FALSE, 0);
-INSERT INTO ` + "`groups`" + ` (uuid, name, owner_uuid, status) VALUES
+	if _, err := db.Exec(`INSERT INTO users (uuid, nickname, telephone, password_hash, is_admin, status) VALUES
+('U-admin-1', 'admin', '18800000001', 'hash', TRUE, ?),
+('U-user-3', 'normal', '18800000003', 'hash', FALSE, ?)`, model.UserStatusNormal, model.UserStatusNormal); err != nil {
+		t.Fatalf("seed active users: %v", err)
+	}
+	_, err := db.Exec(`INSERT INTO ` + "`groups`" + ` (uuid, name, owner_uuid, status) VALUES
 ('G-admin-1', 'active', 'U-admin-1', 0),
 ('G-admin-2', 'dismissed', 'U-admin-1', 1);
 INSERT INTO messages (uuid, client_message_id, conversation_key, seq, sender_uuid, target_type, target_uuid, message_type, content, sent_at) VALUES

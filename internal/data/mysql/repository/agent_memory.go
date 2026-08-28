@@ -9,10 +9,14 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 )
 
-type AgentMemoryRepository struct{ queries generated.Querier }
+type AgentMemoryRepository struct {
+	queries generated.Querier
+	store   transactionStore
+}
 
 var _ application.AgentMemoryStoreV1 = (*AgentMemoryRepository)(nil)
 var _ application.AgentMemoryOwnerStoreV1 = (*AgentMemoryRepository)(nil)
@@ -24,7 +28,15 @@ func NewAgentMemoryRepository(queries generated.Querier) (*AgentMemoryRepository
 	return &AgentMemoryRepository{queries: queries}, nil
 }
 
+func NewAgentMemoryRepositoryWithTransactions(store transactionStore) (*AgentMemoryRepository, error) {
+	if store == nil || store.Queries() == nil {
+		return nil, errors.New("Agent Memory transaction store is required")
+	}
+	return &AgentMemoryRepository{queries: store.Queries(), store: store}, nil
+}
+
 func (r *AgentMemoryRepository) CreateMemory(ctx context.Context, memory application.AgentMemoryV1) error {
+	memory = application.CanonicalAgentMemoryLineageV1(memory)
 	if err := memory.Validate(); err != nil || memory.Status != application.AgentMemoryStatusActive || memory.RevokedAt != nil {
 		return fmt.Errorf("validate Agent Memory: %w", application.ErrAgentMemoryInvalid)
 	}
@@ -35,10 +47,110 @@ func (r *AgentMemoryRepository) CreateMemory(ctx context.Context, memory applica
 		SourceType: memory.Provenance.SourceType, SourceID: memory.Provenance.SourceID,
 		SourceUri: nullableString(memory.Provenance.URI), SourceSequence: nullableString(memory.Provenance.Sequence),
 		ValidFrom: memory.ValidFrom, ExpiresAt: nullableTime(memory.ExpiresAt), RevokedAt: nullableTime(memory.RevokedAt),
+		MemoryRootUuid: memory.MemoryRootUUID, MemoryVersion: memory.MemoryVersion, SupersedesMemoryUuid: nullableString(memory.SupersedesMemoryUUID),
+		CorrectedByUuid: memory.CorrectedByUUID, CorrectionReason: memory.CorrectionReason,
 	}); err != nil {
 		return fmt.Errorf("create Agent Memory: %w", err)
 	}
 	return nil
+}
+
+func (r *AgentMemoryRepository) CorrectOwnedMemory(ctx context.Context, write application.AgentMemoryOwnerCorrectionWriteV1) (*application.AgentMemoryOwnerCorrectionResultV1, error) {
+	if r.store == nil || strings.TrimSpace(write.TenantID) == "" || strings.TrimSpace(write.PrincipalUUID) == "" ||
+		strings.TrimSpace(write.SourceMemoryUUID) == "" || write.ExpectedVersion == 0 || write.CorrectedAt.IsZero() || write.Corrected.Validate() != nil {
+		return nil, application.ErrAgentMemoryInvalid
+	}
+	var result *application.AgentMemoryOwnerCorrectionResultV1
+	err := r.store.WithinTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, func(queries *generated.Queries) error {
+		row, err := queries.GetOwnedAgentMemoryForUpdate(ctx, generated.GetOwnedAgentMemoryForUpdateParams{
+			TenantID: write.TenantID, PrincipalUuid: write.PrincipalUUID, MemoryUuid: write.SourceMemoryUUID,
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return application.ErrAgentMemoryDenied
+		}
+		if err != nil {
+			return fmt.Errorf("lock owned Agent Memory: %w", err)
+		}
+		previous := mapAgentMemory(row)
+		if previous.MemoryVersion != write.ExpectedVersion {
+			return application.ErrAgentMemoryConflict
+		}
+		if previous.Status == application.AgentMemoryStatusActive {
+			if previous.ExpiresAt != nil && !previous.ExpiresAt.After(write.CorrectedAt) {
+				return application.ErrAgentMemoryConflict
+			}
+			rows, updateErr := queries.SupersedeOwnedAgentMemory(ctx, generated.SupersedeOwnedAgentMemoryParams{
+				RevokedAt: sql.NullTime{Time: write.CorrectedAt, Valid: true}, RevokedByUuid: write.PrincipalUUID,
+				RevokeReason: "superseded by " + write.Corrected.MemoryUUID, TenantID: write.TenantID,
+				PrincipalUuid: write.PrincipalUUID, MemoryUuid: write.SourceMemoryUUID, MemoryVersion: write.ExpectedVersion,
+			})
+			if updateErr != nil {
+				return fmt.Errorf("supersede owned Agent Memory: %w", updateErr)
+			}
+			if rows != 1 {
+				return application.ErrAgentMemoryConflict
+			}
+			if insertErr := insertAgentMemoryV1(ctx, queries, write.Corrected); insertErr != nil {
+				if mysqlData.IsDuplicateKey(insertErr) {
+					return application.ErrAgentMemoryConflict
+				}
+				return fmt.Errorf("insert corrected Agent Memory: %w", insertErr)
+			}
+		} else if previous.Status != application.AgentMemoryStatusRevoked {
+			return application.ErrAgentMemoryConflict
+		}
+		successorRow, err := queries.GetAgentMemoryBySupersedes(ctx, generated.GetAgentMemoryBySupersedesParams{
+			TenantID: write.TenantID, PrincipalUuid: write.PrincipalUUID, SupersedesMemoryUuid: nullableString(write.SourceMemoryUUID),
+		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return application.ErrAgentMemoryConflict
+		}
+		if err != nil {
+			return fmt.Errorf("get corrected Agent Memory: %w", err)
+		}
+		previousRow, err := queries.GetOwnedAgentMemory(ctx, generated.GetOwnedAgentMemoryParams{
+			TenantID: write.TenantID, PrincipalUuid: write.PrincipalUUID, MemoryUuid: write.SourceMemoryUUID,
+		})
+		if err != nil {
+			return fmt.Errorf("get superseded Agent Memory: %w", err)
+		}
+		storedPrevious, storedCorrected := mapAgentMemory(previousRow), mapAgentMemory(successorRow)
+		if !exactStoredAgentMemoryCorrectionV1(storedPrevious, storedCorrected, write) {
+			return application.ErrAgentMemoryConflict
+		}
+		result = &application.AgentMemoryOwnerCorrectionResultV1{Previous: storedPrevious, Corrected: storedCorrected}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func insertAgentMemoryV1(ctx context.Context, queries generated.Querier, memory application.AgentMemoryV1) error {
+	return queries.InsertAgentMemory(ctx, generated.InsertAgentMemoryParams{
+		MemoryUuid: memory.MemoryUUID, TenantID: memory.TenantID, PrincipalUuid: memory.PrincipalUUID, AgentUuid: memory.AgentUUID,
+		MemoryType: string(memory.MemoryType), Status: string(memory.Status), ResourceType: memory.ResourceType, ResourceID: memory.ResourceID,
+		Content: memory.Content, CompactContent: nullableString(memory.CompactContent), Priority: memory.Priority,
+		SourceType: memory.Provenance.SourceType, SourceID: memory.Provenance.SourceID, SourceUri: nullableString(memory.Provenance.URI),
+		SourceSequence: nullableString(memory.Provenance.Sequence), ValidFrom: memory.ValidFrom, ExpiresAt: nullableTime(memory.ExpiresAt),
+		RevokedAt: nullableTime(memory.RevokedAt), MemoryRootUuid: memory.MemoryRootUUID, MemoryVersion: memory.MemoryVersion,
+		SupersedesMemoryUuid: nullableString(memory.SupersedesMemoryUUID), CorrectedByUuid: memory.CorrectedByUUID, CorrectionReason: memory.CorrectionReason,
+	})
+}
+
+func exactStoredAgentMemoryCorrectionV1(previous, corrected application.AgentMemoryV1, write application.AgentMemoryOwnerCorrectionWriteV1) bool {
+	expected := write.Corrected
+	return previous.Validate() == nil && corrected.Validate() == nil && previous.MemoryUUID == write.SourceMemoryUUID &&
+		previous.MemoryVersion == write.ExpectedVersion && previous.Status == application.AgentMemoryStatusRevoked &&
+		previous.RevokedByUUID == write.PrincipalUUID && previous.RevokeReason == "superseded by "+expected.MemoryUUID &&
+		corrected.MemoryUUID == expected.MemoryUUID && corrected.TenantID == expected.TenantID && corrected.PrincipalUUID == expected.PrincipalUUID &&
+		corrected.AgentUUID == expected.AgentUUID && corrected.MemoryType == expected.MemoryType && corrected.Status == application.AgentMemoryStatusActive &&
+		corrected.ResourceType == expected.ResourceType && corrected.ResourceID == expected.ResourceID && corrected.Content == expected.Content &&
+		corrected.CompactContent == expected.CompactContent && corrected.Priority == expected.Priority && corrected.MemoryRootUUID == expected.MemoryRootUUID &&
+		corrected.MemoryVersion == expected.MemoryVersion && corrected.SupersedesMemoryUUID == expected.SupersedesMemoryUUID &&
+		corrected.CorrectedByUUID == expected.CorrectedByUUID && corrected.CorrectionReason == expected.CorrectionReason &&
+		corrected.Provenance == expected.Provenance
 }
 
 func (r *AgentMemoryRepository) ListContextMemories(ctx context.Context, query application.AgentMemoryQueryV1) ([]application.AgentMemoryV1, error) {
@@ -136,5 +248,7 @@ func mapAgentMemory(row generated.AgentMemory) application.AgentMemoryV1 {
 			SourceType: row.SourceType, SourceID: row.SourceID, URI: row.SourceUri.String, Sequence: row.SourceSequence.String,
 		}, ValidFrom: row.ValidFrom, ExpiresAt: timePointer(row.ExpiresAt), RevokedAt: timePointer(row.RevokedAt),
 		RevokedByUUID: row.RevokedByUuid, RevokeReason: row.RevokeReason, CreatedAt: row.CreatedAt,
+		MemoryRootUUID: row.MemoryRootUuid, MemoryVersion: row.MemoryVersion, SupersedesMemoryUUID: row.SupersedesMemoryUuid.String,
+		CorrectedByUUID: row.CorrectedByUuid, CorrectionReason: row.CorrectionReason,
 	}
 }

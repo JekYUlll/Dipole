@@ -17,6 +17,7 @@
 
 ### 安全
 
+- Agent Memory owner correction 继续沿用认证派生权限：公开请求只提交 Memory ID、期望版本、纠正内容与原因，tenant/principal/corrector 由 Gateway/Core 认证链绑定；响应省略内部 provenance URI，并同时返回权威 predecessor 与 successor，客户端不推断并发结果。
 - Agent Memory 增加 owner-scoped 治理边界：公开 HTTP 不接收 tenant/principal，Gateway 从已认证会话构造 Core RequestContext；Core 只允许认证 `dipole-gateway` 调用并再次按 tenant、principal 与 Memory ID 约束查询和撤销。公开 DTO 省略内部 provenance URI，撤销必须提交有界原因并保存 revoker、原因和时间；不同原因的终态重放返回冲突。
 - Gin HTTP 访问日志统一脱敏敏感查询参数：WebSocket 兼容的 `token`/`access_token` 及 refresh/id token、Authorization、API key、client secret、密码和签名类键按大小写无关识别，重复值全部替换为 `REDACTED`；非法 query 编码整段关闭，普通参数继续规范化记录。真实 WebSocket 握手日志捕获测试同时证明查询凭据与 Authorization Header 不进入结构化字段。
 - Agent Runtime 增加默认跳过的外部 MCP encrypted credential 生命周期演练：临时 owner-only 文件以独立 key/ref/version 完成 v3 到 v4 轮换，Catalog 通过原子 rename 发布并在旧版本与当前版本吊销后于 Transport 构造前拒绝；Runtime 重建继续解析 v4，三次成功 Transport 全部关闭。语言中立 v1 证据与 `mcp:credential-drill:check` 固定三开三关、双吊销、canonical SHA-256、24 小时有效期及 `inflight_revocation_authority=false`、`production_authority=false`，不记录凭据、身份、路径或 endpoint。该离线演练不提供在途 socket 主动撤销或共享 provider authority。
@@ -71,6 +72,7 @@
 
 ### 新增
 
+- Agent Memory 增加 append-only owner correction：migration v39 为每条记录保存 root/version/predecessor/corrector/reason，唯一 predecessor 与 `(tenant, root, version)` 约束阻止分叉；sqlc transaction 在同一事务中撤销前序版本并追加 successor，稳定 correction ID 支持精确重放，payload 或期望版本漂移返回冲突。additive gRPC、Gateway 与 Vue 已形成完整闭环，`VITE_AGENT_MEMORY_CORRECTION_ENABLED=false` 默认关闭纠正入口，Pencil 文件维护 desktop/mobile 与六类纠正状态。
 - Agent G3 增加默认关闭的 Memory owner 管理闭环：migration v38 与 sqlc 提供稳定 cursor 分页、owner 隔离的 authoritative get/revoke 和完整撤销审计；additive Agent gRPC 由 Gateway-only 控制面调用，公开 list/revoke API 与 canonical Pencil desktop/mobile 设计、Vue 页面覆盖 loading、ready、empty、inactive、expired、unavailable、revoking 和 conflict 状态。长期 Memory 始终显示 `UNTRUSTED MEMORY`、owner provenance 与自动写入关闭状态；纠正入口等待 append-only 版本模型后再开放。
 - 增加语言中立 `dipole.agent.subscription-shadow-collection.v1` 与只读 Prometheus Collector：从无凭据 origin 执行固定 19 次历史查询，要求单 Agent series、全窗口 Shadow enabled、vector 单值和非负安全整数，自动生成 evidence v1 所需的起止 counter、抓取覆盖与 reset 输入；Collector 不修改共享状态、不输出 Prometheus URL，也明确保留部署 revision 的发布记录核验门槛。
 - 增加语言中立 `dipole.agent.subscription-shadow-evidence.v1` 与独立 CLI：Prometheus 起止快照绑定 24 小时以上窗口、Runtime/config SHA-256、query revision、抓取覆盖率、六类 comparison、candidate 和 counter resets；至少 95% 抓取、100 个事件、零 reset、零 matcher error 才生成最多有效 24 小时的 canonical-hashed passing evidence。输入/证据 Schema 均拒绝附加字段，收据固定 `production_authority=false` 与 `runtime_change_authority=false`，Runtime 启动链不读取该文件。
@@ -430,6 +432,7 @@
 
 ### 迁移说明
 
+- v39 在 `agent_memories` 上追加 lineage 与 correction 审计列，并把历史记录回填为 `root=self/version=1`。发布顺序为 migration/sqlc 与 Core transaction、additive gRPC/Gateway、最后显式开启 `VITE_AGENT_MEMORY_CORRECTION_ENABLED`；回滚前先关闭前端入口，Down 会删除纠正 lineage 字段，执行前需确认是否保留已产生的版本链审计。
 - migration v38 为 `agent_memories` 增加 `revoked_by_uuid` 与 `revoke_reason`，并约束 active 记录审计字段为空、revoked 记录同时具备时间、revoker 和原因。历史 revoked 记录以原 principal 和固定 `legacy internal revocation` 回填。发布顺序为 Core migration/sqlc 与 additive gRPC、Gateway、最后显式开启 `gateway.agent_memory_enabled` 和前端 `VITE_AGENT_MEMORIES_ENABLED`；回滚先关闭两个入口，Down 会移除新增撤销审计列，需先确认审计保留要求。
 - Agent Subscription owner create 使用 additive `ListEligibleSubscriptionConversations` RPC，无数据库迁移。先确认 Core 已应用 migration v34，再滚动 Core/Go Proto、Gateway/Web 和 TS 生成客户端；旧 Runtime 不调用该 RPC。`gateway.agent_subscription_enabled=false` 与 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false` 仍需同时显式启用。回滚先关闭前端入口，再关闭 Gateway adapter；该流程不修改 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。
 - `PublishMcpReadinessEvidence` 是 additive Agent Capability RPC，依赖 migration v37。先迁移并滚动 Core，再发布 TS Runtime；旧 Runtime 不调用该方法。回滚时先确保没有证据 Publisher 调用，再回退 Runtime/Core；当前没有 startup scheduler 或 admission consumer，部署后不会自动建立外部连接或激活 Profile。
@@ -498,6 +501,7 @@
 
 ### 验证
 
+- Agent Memory correction 通过应用/事务/传输/Gateway/Vue 聚焦测试、canonical Go 全仓测试、前端 85 项 Vitest、工具链 3 项与生产构建；真实 MySQL 8.4 完整 migration v1→v39、v39→v38→后续逐级回滚及 owner repository 并发精确重放通过。真实测试同时修复显式 migration 目标版本、SQL NULL Tool arguments 与 MySQL JSON compact 的兼容基线。
 - Agent Memory owner 治理测试覆盖稳定分页、并发精确撤销重放、不同原因冲突、owner/tenant 隔离、Gateway 服务身份、客户端 principal 注入拒绝、公开 URI 省略、严格前端响应解析和 authoritative row replacement；Vue 21 个文件共 83 项 Vitest、生产构建及 Chromium、Firefox、WebKit 共 6 项 desktop/mobile E2E 通过。真实 MySQL 8.4 验证 migration v1→v38、v38→v37 回滚、生命周期 CHECK、历史审计回填和 owner sqlc contract；canonical Go test/vet、完整 Agent Runtime 566 项通过且 22 项按环境预期跳过，双端构建与官方 npm audit 零高危漏洞。
 - Agent Subscription Shadow Collector 与 evidence 聚焦测试通过 `13/13`，完整 Runtime 通过 `566 passed / 22 expected skipped`；覆盖固定查询/时间、单 series、持续启用、URL 凭据、缺失/多值/非整数/error envelope、CLI 低敏失败、三类严格 Schema 及 Collector-to-evidence 兼容。typecheck/build、官方 npm 源 `0 vulnerabilities`、canonical Go、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
 - Agent Subscription Shadow evidence 合同通过聚焦 `7/7` 与完整 Runtime `560 passed / 22 expected skipped`，覆盖 CLI create/verify、Schema 字段对照、部分窗口、低覆盖、reset、matcher error、低样本、counter 回退、过期和 canonical hash 篡改；typecheck/build、官方 npm 源零高危审计、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。

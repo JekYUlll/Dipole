@@ -677,6 +677,11 @@ message AgentOwnedMemory {
   string revoked_by_id = 14;
   string revoke_reason = 15;
   int64 created_at_unix_ms = 16;
+  string memory_root_id = 17;
+  uint32 memory_version = 18;
+  string supersedes_memory_id = 19;
+  string corrected_by_id = 20;
+  string correction_reason = 21;
 }
 
 message ListOwnedMemoriesResponse {
@@ -690,6 +695,21 @@ message RevokeOwnedMemoryRequest {
   string tenant_id = 2;
   string memory_id = 3;
   string reason = 4;
+}
+
+message CorrectOwnedMemoryRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string memory_id = 3;
+  uint32 expected_version = 4;
+  string content = 5;
+  string compact_content = 6;
+  string reason = 7;
+}
+
+message CorrectOwnedMemoryResponse {
+  AgentOwnedMemory previous = 1;
+  AgentOwnedMemory corrected = 2;
 }
 
 message PublishMcpReadinessEvidenceRequest {
@@ -741,6 +761,7 @@ service AgentCapabilityService {
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc ListOwnedMemories(ListOwnedMemoriesRequest) returns (ListOwnedMemoriesResponse);
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
+  rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
