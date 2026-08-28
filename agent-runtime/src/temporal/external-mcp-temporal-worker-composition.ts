@@ -12,11 +12,16 @@ import {
 } from "./mcp-multi-route-runtime.js";
 import { TemporalMcpWorkflowExecutionCatalog } from "./mcp-workflow-envelope.js";
 import { externalMcpReadinessBindingSha256 } from "../mcp/external-mcp-readiness-evidence.js";
+import {
+  TemporalMcpSubscriptionRouteSelector,
+  type TemporalMcpSubscriptionRouteDefinition
+} from "./mcp-subscription-route-selector.js";
 
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
 export interface ExternalMcpTemporalWorkerCompositionPlan extends TemporalMcpMultiRoutePlan {
   readonly runtimeBindingSha256: string;
+  readonly subscriptionRoutes?: readonly TemporalMcpSubscriptionRouteDefinition[];
 }
 
 export type ExternalMcpTemporalWorkerActivities = AgentTaskWorkerActivities & TemporalMcpDispatchActivities;
@@ -31,6 +36,7 @@ export interface ExternalMcpTemporalWorkerComposition {
   readonly routeBindings: readonly TemporalMcpDispatchRouteBinding[];
   readonly workflowExecutions: TemporalMcpWorkflowExecutionCatalog;
   readonly runtimeBindingSha256: string;
+  readonly subscriptionRoutes: readonly TemporalMcpSubscriptionRouteDefinition[];
 }
 
 export function createExternalMcpTemporalWorkerComposition(
@@ -52,7 +58,8 @@ export function createExternalMcpTemporalWorkerComposition(
     activities: Object.freeze({ ...baseActivities, ...runtime.activities }),
     routeBindings: Object.freeze([...runtime.routeBindings]),
     workflowExecutions,
-    runtimeBindingSha256: plan.runtimeBindingSha256
+    runtimeBindingSha256: plan.runtimeBindingSha256,
+    subscriptionRoutes: Object.freeze((plan.subscriptionRoutes ?? []).map(route => Object.freeze({ ...route })))
   };
 }
 
@@ -77,6 +84,13 @@ export function validateExternalMcpTemporalWorkerCompositionPlan(
   const expectedBindings = plan.routes.map(temporalMcpDispatchRouteBinding);
   for (const route of plan.routes) plan.routeRegistry.workerEgressPolicies(route.capabilityId);
   new TemporalMcpWorkflowExecutionCatalog(expectedBindings);
+  if ((plan.subscriptionRoutes?.length ?? 0) > 0) {
+    new TemporalMcpSubscriptionRouteSelector(plan.subscriptionRoutes!);
+    const routeIds = new Set(expectedBindings.map(binding => binding.routeId));
+    if (plan.subscriptionRoutes!.some(route => !routeIds.has(route.routeId))) {
+      throw new Error("External MCP subscription routes conflict with the Worker catalog");
+    }
+  }
 }
 
 function assertExactBindings(
