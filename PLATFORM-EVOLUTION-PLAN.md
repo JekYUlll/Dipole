@@ -376,6 +376,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] migration v32 增加 durable Runtime promotion grant：双人签署并绑定 candidate/Definition/promotion v2/evidence/Eval Suite；active Run 持久 candidate，每次 context resolve 重查撤销状态，生产签发与装配继续关闭。
   - [x] 增加默认关闭的 durable MCP Elicitation adapter 与单轮 MRTR continuation：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline、原 Tool 参数与 opaque `requestState`；现代 Client 显式锁定 `2026-07-28` 并可在新连接中生成精确续接请求。生产 Activity/Transport Factory 装配、多轮与敏感授权仍关闭。
   - [x] 增加默认关闭的 Activity-safe round runner 与 External Profile adapter：每轮使用全新现代 Client/Transport，tenant/profile/server/tool 漂移、取消、握手失败和第二轮 input request 均 fail closed；生产 Worker mode 与外部 Provider 装配仍关闭。
+  - [x] migration v35 与 Resolve RPC 持久化外部 MCP Tool command，绑定 running Task/Run/Invocation、canonical 参数摘要和无凭据 Profile/Server；Worker mode 仍需 round receipt/idempotency 处理远端成功后 Activity completion 丢失窗口。
   - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
   - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。

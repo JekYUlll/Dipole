@@ -8,6 +8,7 @@ package generated
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -66,7 +67,7 @@ func (q *Queries) FinishAgentToolInvocation(ctx context.Context, arg FinishAgent
 }
 
 const getAgentToolInvocation = `-- name: GetAgentToolInvocation :one
-SELECT id, invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid, transport, tool_name, capability_id, arguments_sha256, status, result_sha256, result_bytes, latency_ms, error_code, request_id, trace_id, started_at, finished_at, created_at, updated_at, approval_uuid, action_resource_type, action_resource_uuid, action_command_kind, action_command_id FROM agent_tool_invocations WHERE invocation_uuid = ? LIMIT 1
+SELECT id, invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid, transport, tool_name, capability_id, arguments_sha256, status, result_sha256, result_bytes, latency_ms, error_code, request_id, trace_id, started_at, finished_at, created_at, updated_at, approval_uuid, action_resource_type, action_resource_uuid, action_command_kind, action_command_id, profile_id, server_id, arguments_json FROM agent_tool_invocations WHERE invocation_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentToolInvocation(ctx context.Context, invocationUuid string) (AgentToolInvocation, error) {
@@ -100,6 +101,9 @@ func (q *Queries) GetAgentToolInvocation(ctx context.Context, invocationUuid str
 		&i.ActionResourceUuid,
 		&i.ActionCommandKind,
 		&i.ActionCommandID,
+		&i.ProfileID,
+		&i.ServerID,
+		&i.ArgumentsJson,
 	)
 	return i, err
 }
@@ -107,9 +111,9 @@ func (q *Queries) GetAgentToolInvocation(ctx context.Context, invocationUuid str
 const insertAgentToolInvocation = `-- name: InsertAgentToolInvocation :execrows
 INSERT IGNORE INTO agent_tool_invocations (
     invocation_uuid, tenant_id, principal_uuid, agent_uuid, task_uuid, run_uuid,
-    transport, tool_name, capability_id, arguments_sha256, status,
+    transport, tool_name, capability_id, arguments_sha256, profile_id, server_id, arguments_json, status,
     request_id, trace_id, approval_uuid, started_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAgentToolInvocationParams struct {
@@ -123,6 +127,9 @@ type InsertAgentToolInvocationParams struct {
 	ToolName        string
 	CapabilityID    string
 	ArgumentsSha256 string
+	ProfileID       sql.NullString
+	ServerID        sql.NullString
+	ArgumentsJson   json.RawMessage
 	Status          string
 	RequestID       sql.NullString
 	TraceID         sql.NullString
@@ -142,6 +149,9 @@ func (q *Queries) InsertAgentToolInvocation(ctx context.Context, arg InsertAgent
 		arg.ToolName,
 		arg.CapabilityID,
 		arg.ArgumentsSha256,
+		arg.ProfileID,
+		arg.ServerID,
+		arg.ArgumentsJson,
 		arg.Status,
 		arg.RequestID,
 		arg.TraceID,
