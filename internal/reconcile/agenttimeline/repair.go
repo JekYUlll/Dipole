@@ -16,6 +16,10 @@ type Report struct {
 	Retried  int
 }
 
+type Observer interface {
+	Observe(outcome string, duration time.Duration)
+}
+
 type Repairer struct {
 	repairs      application.AgentTaskTimelineRepairStoreV1
 	timeline     application.AgentTaskTimelineStoreV1
@@ -23,6 +27,14 @@ type Repairer struct {
 	lease        time.Duration
 	retryBackoff time.Duration
 	interval     time.Duration
+	observer     Observer
+}
+
+func (r *Repairer) WithObserver(observer Observer) *Repairer {
+	if r != nil {
+		r.observer = observer
+	}
+	return r
 }
 
 func NewRepairer(repairs application.AgentTaskTimelineRepairStoreV1, timeline application.AgentTaskTimelineStoreV1, batchSize int, lease, retryBackoff, interval time.Duration) (*Repairer, error) {
@@ -42,20 +54,24 @@ func (r *Repairer) RunOnce(ctx context.Context, now time.Time) (Report, error) {
 	if err := ctx.Err(); err != nil {
 		return Report{}, err
 	}
+	started := time.Now()
 	now = now.UTC()
 	items, err := r.repairs.ClaimAgentTaskTimelineRepairs(r.batchSize, now, r.lease)
 	if err != nil {
+		r.observe("claim_error", time.Since(started))
 		return Report{}, fmt.Errorf("claim Agent Task Timeline repairs: %w", err)
 	}
 	report := Report{Claimed: len(items)}
 	var firstErr error
 	for _, item := range items {
+		itemStarted := time.Now()
 		event := application.AgentTaskTimelineEventV1{
 			EventUUID: item.EventUUID, TaskUUID: item.TaskUUID, RunUUID: item.RunUUID,
 			Kind: item.Kind, Status: item.Status, CapabilityID: item.CapabilityID,
 			ApprovalUUID: item.ApprovalUUID, OccurredAt: item.OccurredAt,
 		}
 		if err := event.Validate(); err != nil {
+			r.observe("invalid", time.Since(itemStarted))
 			firstErr = joinFirst(firstErr, fmt.Errorf("validate repair %s: %w", item.EventUUID, err))
 			continue
 		}
@@ -63,17 +79,31 @@ func (r *Repairer) RunOnce(ctx context.Context, now time.Time) (Report, error) {
 			report.Retried++
 			next := now.Add(r.retryBackoff)
 			if retryErr := r.repairs.MarkAgentTaskTimelineRepairRetry(item.EventUUID, item.RetryCount+1, next, err); retryErr != nil {
+				r.observe("complete_error", time.Since(itemStarted))
 				firstErr = joinFirst(firstErr, fmt.Errorf("retry repair %s: %w", item.EventUUID, retryErr))
+			} else {
+				r.observe("projection_error", time.Since(itemStarted))
 			}
 			continue
 		}
 		if err := r.repairs.MarkAgentTaskTimelineRepairCompleted(item.EventUUID); err != nil {
+			r.observe("complete_error", time.Since(itemStarted))
 			firstErr = joinFirst(firstErr, fmt.Errorf("complete repair %s: %w", item.EventUUID, err))
 			continue
 		}
 		report.Repaired++
+		r.observe("repaired", time.Since(itemStarted))
+	}
+	if report.Claimed == 0 {
+		r.observe("empty", 0)
 	}
 	return report, firstErr
+}
+
+func (r *Repairer) observe(outcome string, duration time.Duration) {
+	if r != nil && r.observer != nil {
+		r.observer.Observe(outcome, duration)
+	}
 }
 
 func (r *Repairer) Run(ctx context.Context) error {
