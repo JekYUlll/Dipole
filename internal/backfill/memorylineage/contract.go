@@ -8,11 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 )
 
 const (
 	ManifestSchemaVersion = "dipole.agent.memory-lineage-backfill-manifest.v1"
 	ReceiptSchemaVersion  = "dipole.agent.memory-lineage-backfill-receipt.v1"
+	ApprovalSchemaVersion = "dipole.agent.memory-lineage-backfill-approval.v1"
 	PolicyVersion         = "memory-lineage-backfill-v1"
 )
 
@@ -41,6 +44,17 @@ type Receipt struct {
 	ReceiptSHA256         string `json:"receiptSha256"`
 }
 
+type Approval struct {
+	SchemaVersion         string `json:"schemaVersion"`
+	PolicyVersion         string `json:"policyVersion"`
+	JobName               string `json:"jobName"`
+	OperatorID            string `json:"operatorId"`
+	ManifestSHA256        string `json:"manifestSha256"`
+	SourceHighWatermarkID uint64 `json:"sourceHighWatermarkId"`
+	Approved              bool   `json:"approved"`
+	ApprovalSHA256        string `json:"approvalSha256"`
+}
+
 func NewManifest(highWatermark uint64, batchSize uint32) (Manifest, error) {
 	manifest := Manifest{SchemaVersion: ManifestSchemaVersion, PolicyVersion: PolicyVersion, SourceHighWatermarkID: highWatermark, BatchSize: batchSize}
 	if err := validateManifest(manifest); err != nil {
@@ -63,6 +77,14 @@ func ParseManifest(data []byte) (Manifest, error) {
 		return Manifest{}, errors.New("Memory lineage backfill manifest hash is invalid")
 	}
 	return manifest, nil
+}
+
+func ParseManifestFile(path string) (Manifest, error) {
+	data, err := readContractFile(path)
+	if err != nil {
+		return Manifest{}, err
+	}
+	return ParseManifest(data)
 }
 
 func BuildReceipt(manifest Manifest, result Result) (Receipt, error) {
@@ -98,6 +120,52 @@ func ParseReceipt(data []byte) (Receipt, error) {
 		return Receipt{}, errors.New("Memory lineage backfill receipt hash is invalid")
 	}
 	return receipt, nil
+}
+
+func NewApproval(manifest Manifest, jobName, operatorID string) (Approval, error) {
+	if _, err := ParseManifest(mustJSON(manifest)); err != nil {
+		return Approval{}, err
+	}
+	approval := Approval{
+		SchemaVersion: ApprovalSchemaVersion, PolicyVersion: PolicyVersion,
+		JobName: strings.TrimSpace(jobName), OperatorID: strings.TrimSpace(operatorID),
+		ManifestSHA256: manifest.ManifestSHA256, SourceHighWatermarkID: manifest.SourceHighWatermarkID,
+		Approved: true,
+	}
+	if approval.JobName == "" || approval.OperatorID == "" {
+		return Approval{}, errors.New("Memory lineage backfill approval identity is required")
+	}
+	approval.ApprovalSHA256 = approvalDigest(approval)
+	return approval, nil
+}
+
+func ParseApproval(data []byte, manifest Manifest, jobName string) (Approval, error) {
+	if _, err := ParseManifest(mustJSON(manifest)); err != nil {
+		return Approval{}, err
+	}
+	var approval Approval
+	if err := decodeStrict(data, &approval); err != nil {
+		return Approval{}, err
+	}
+	if approval.SchemaVersion != ApprovalSchemaVersion || approval.PolicyVersion != PolicyVersion ||
+		!approval.Approved || strings.TrimSpace(approval.JobName) != strings.TrimSpace(jobName) ||
+		!validSHA256(approval.ManifestSHA256) || approval.ManifestSHA256 != manifest.ManifestSHA256 ||
+		approval.SourceHighWatermarkID != manifest.SourceHighWatermarkID || strings.TrimSpace(approval.OperatorID) == "" ||
+		!validSHA256(approval.ApprovalSHA256) {
+		return Approval{}, errors.New("Memory lineage backfill approval is invalid")
+	}
+	if approval.ApprovalSHA256 != approvalDigest(approval) {
+		return Approval{}, errors.New("Memory lineage backfill approval hash is invalid")
+	}
+	return approval, nil
+}
+
+func ParseApprovalFile(path string, manifest Manifest, jobName string) (Approval, error) {
+	data, err := readContractFile(path)
+	if err != nil {
+		return Approval{}, err
+	}
+	return ParseApproval(data, manifest, jobName)
 }
 
 func validateManifest(manifest Manifest) error {
@@ -140,6 +208,13 @@ func receiptDigest(receipt Receipt) string {
 	return hex.EncodeToString(digest[:])
 }
 
+func approvalDigest(approval Approval) string {
+	approval.ApprovalSHA256 = ""
+	encoded, _ := json.Marshal(approval)
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:])
+}
+
 func validSHA256(value string) bool {
 	if len(value) != 64 {
 		return false
@@ -149,3 +224,18 @@ func validSHA256(value string) bool {
 }
 
 func mustJSON(value any) []byte { encoded, _ := json.Marshal(value); return encoded }
+
+func readContractFile(path string) ([]byte, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("Memory lineage backfill contract path is required")
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.Size() > 64*1024 {
+		return nil, errors.New("Memory lineage backfill contract file is invalid")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) > 64*1024 {
+		return nil, errors.New("Memory lineage backfill contract file is invalid")
+	}
+	return data, nil
+}
