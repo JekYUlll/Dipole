@@ -78,3 +78,14 @@ dipole_sync_hydration_route_total{outcome="hit"} 1
 		t.Fatal("expected counter reset error")
 	}
 }
+
+func TestEvidenceFromPrometheusRejectsDuplicateRouteOutcome(t *testing.T) {
+	data := []byte(`# TYPE dipole_sync_hydration_route_total counter
+dipole_sync_hydration_route_total{outcome="hit"} 1
+dipole_sync_hydration_route_total{outcome="hit"} 2
+`)
+	_, err := EvidenceFromPrometheus(data, PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "primary", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"})
+	if err == nil {
+		t.Fatal("expected duplicate route outcome error")
+	}
+}
