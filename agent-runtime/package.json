@@ -14,6 +14,7 @@
     "check:proto": "node ../scripts/check-agent-proto-ts.mjs",
     "context:calibrate": "tsx src/context/token-calibration-cli.ts",
     "eval:offline": "tsx src/evals/offline-eval-cli.ts",
+    "eval:memory-correction": "tsx src/evals/memory-correction-eval-cli.ts",
     "eval:prefilter": "tsx src/evals/subscription-prefilter-eval-cli.ts",
     "eval:prefilter-review": "tsx src/evals/subscription-corpus-review-cli.ts",
     "eval:subscription-rollout": "tsx src/evals/subscription-rollout-eval-cli.ts",
