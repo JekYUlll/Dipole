@@ -47,6 +47,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
       ca-certificates \
+      curl \
       libhiredis1.1.0 \
       libgrpc++1.51t64 \
       librdkafka1 \

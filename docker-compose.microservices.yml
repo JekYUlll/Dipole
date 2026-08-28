@@ -150,6 +150,53 @@ services:
       timeout: 3s
       retries: 20
 
+  realtime-cpp:
+    profiles: ["realtime-cpp"]
+    build:
+      context: .
+      dockerfile: realtime-delivery/Dockerfile
+    image: ${DIPOLE_REALTIME_IMAGE:-dipole-realtime-delivery:latest}
+    restart: unless-stopped
+    volumes:
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/realtime.pem:/run/dipole/certs/realtime.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/realtime-key.pem:/run/dipole/certs/realtime-key.pem:ro
+      - realtime_cpp_evidence:/var/lib/dipole
+    depends_on:
+      gateway:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *internal-rpc
+      DIPOLE_REALTIME_DELIVERY: cpp
+      DIPOLE_REALTIME_PRIMARY_ENABLED: "true"
+      DIPOLE_REALTIME_HOST: 0.0.0.0
+      DIPOLE_REALTIME_PORT: "8092"
+      DIPOLE_REALTIME_KAFKA_BROKERS: kafka:9092
+      DIPOLE_REALTIME_KAFKA_CLIENT_ID: dipole-realtime-primary
+      DIPOLE_REALTIME_KAFKA_GROUP_ID: dipole-realtime-primary-v1
+      DIPOLE_REALTIME_EVIDENCE_FILE: /var/lib/dipole/realtime-primary.ndjson
+      DIPOLE_REALTIME_FENCING_ENABLED: ${DIPOLE_REALTIME_FENCING_ENABLED:-true}
+      DIPOLE_REALTIME_FENCING_EPOCH: ${DIPOLE_REALTIME_FENCING_EPOCH:-0}
+      DIPOLE_REALTIME_INSTANCE_ID: ${DIPOLE_REALTIME_INSTANCE_ID:-realtime-cpp-1}
+      DIPOLE_REALTIME_REDIS_ENDPOINT: redis:6379
+      DIPOLE_REALTIME_PRESENCE_MODE: primary
+      DIPOLE_REALTIME_NODE_TRANSPORT_MODE: primary
+      DIPOLE_REALTIME_NODE_TARGETS: gateway-1=gateway:9095
+      DIPOLE_REALTIME_NODE_TLS_ENABLED: "true"
+      DIPOLE_REALTIME_NODE_TLS_CA_FILE: /run/dipole/certs/ca.pem
+      DIPOLE_REALTIME_NODE_TLS_CERT_FILE: /run/dipole/certs/realtime.pem
+      DIPOLE_REALTIME_NODE_TLS_KEY_FILE: /run/dipole/certs/realtime-key.pem
+      DIPOLE_REALTIME_NODE_TLS_SERVER_NAME: dipole-internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8092/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
@@ -465,6 +512,10 @@ services:
       DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_LISTEN_ADDRESS: 0.0.0.0:9095
       DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_CAPACITY: ${DIPOLE_DELIVERY_OBSERVATION_CAPACITY:-1024}
       DIPOLE_INTERNAL_RPC_DELIVERY_OBSERVATION_RETRY_AFTER_MS: ${DIPOLE_DELIVERY_OBSERVATION_RETRY_AFTER_MS:-25}
+      DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED: ${DIPOLE_DELIVERY_PRIMARY_ENABLED:-false}
+      DIPOLE_REALTIME_DELIVERY: ${DIPOLE_REALTIME_DELIVERY:-go}
+      DIPOLE_REALTIME_FENCING_ENABLED: ${DIPOLE_REALTIME_FENCING_ENABLED:-false}
+      DIPOLE_REALTIME_FENCING_EPOCH: ${DIPOLE_REALTIME_FENCING_EPOCH:-0}
       DIPOLE_PRESENCE_NODE_ID: gateway-1
       DIPOLE_REDIS_HOST: redis
       DIPOLE_METRICS_ENABLED: "true"
@@ -520,3 +571,4 @@ volumes:
   minio_microservices_data:
   elasticsearch_microservices_data:
   tempo_trace_data:
+  realtime_cpp_evidence:
