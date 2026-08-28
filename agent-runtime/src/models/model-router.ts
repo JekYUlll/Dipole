@@ -57,6 +57,13 @@ export interface ModelAuditStore {
   failTask(taskId: string, error: unknown): Promise<void>;
 }
 
+export interface ModelTimelineSink {
+  appendAgentTaskTimelineEvent(input: {
+    readonly eventId: string; readonly taskId: string; readonly runId: string; readonly kind: string; readonly status: string;
+    readonly capabilityId?: string; readonly occurredAtUnixMs: number;
+  }): Promise<unknown>;
+}
+
 export class ModelRoutingError extends Error {
   constructor(
     readonly attempts: number,
@@ -78,7 +85,8 @@ export class ModelRouter {
     policy: ModelRunBudgetPolicy,
     private readonly now: () => number = () => Date.now(),
     private readonly audit?: ModelAuditStore,
-    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
+    private readonly timeline?: ModelTimelineSink
   ) {
     this.#routes = normalizeRoutes(routes);
     this.#policy = validatePolicy(policy);
@@ -123,6 +131,12 @@ export class ModelRouter {
       }
       runId = reservation?.runId ?? runId;
       attempts += 1;
+      if (reservation !== undefined) {
+        await this.appendTimeline({
+          eventId: `model:${reservation.callId}:begin`, taskId: input.taskId!, runId: reservation.runId,
+          kind: "model_call", status: "running", occurredAtUnixMs: this.now()
+        });
+      }
       const callStartedAt = this.now();
       let response: Awaited<ReturnType<StructuredModelClient["generate"]>>;
       try {
@@ -147,6 +161,10 @@ export class ModelRouter {
       } catch (error) {
         if (reservation !== undefined) {
           await this.audit!.failCall(reservation, error, elapsed(this.now(), callStartedAt));
+          await this.appendTimeline({
+            eventId: `model:${reservation.callId}:finish`, taskId: input.taskId!, runId: reservation.runId,
+            kind: "model_call", status: "failed", occurredAtUnixMs: this.now()
+          });
         }
         errors.push(error);
         continue;
@@ -156,6 +174,10 @@ export class ModelRouter {
           reservation, response.output, response.usage, response.finishReason ?? "unknown", elapsed(this.now(), callStartedAt)
         );
         await this.audit!.completeRun(reservation.runId);
+        await this.appendTimeline({
+          eventId: `model:${reservation.callId}:finish`, taskId: input.taskId!, runId: reservation.runId,
+          kind: "model_call", status: "completed", occurredAtUnixMs: this.now()
+        });
       }
       return {
         output: response.output as T,
@@ -174,6 +196,11 @@ export class ModelRouter {
       await this.audit.failTask(input.taskId!, failure);
     }
     throw failure;
+  }
+
+  private async appendTimeline(input: Parameters<ModelTimelineSink["appendAgentTaskTimelineEvent"]>[0]): Promise<void> {
+    if (this.timeline === undefined) return;
+    try { await this.timeline.appendAgentTaskTimelineEvent(input); } catch { /* Timeline is a secondary projection. */ }
   }
 }
 
