@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "dipole.agent.timeline-repair-rollout-evidence.v1",
+  "service": "dipole-agent-task-timeline-repair",
+  "deploymentRevision": "local-fixture-rev-1",
+  "windowStart": "2026-08-29T00:00:00Z",
+  "windowEnd": "2026-08-29T02:00:00Z",
+  "workerReady": true,
+  "operator": "fixture-operator",
+  "rollbackVerified": true,
+  "alertState": "clear",
+  "outcomes": {
+    "claimed": 100,
+    "repaired": 98,
+    "retried": 2,
+    "projectionError": 1,
+    "completeError": 0,
+    "claimError": 0,
+    "invalid": 0
+  }
+}
