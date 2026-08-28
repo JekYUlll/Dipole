@@ -62,6 +62,12 @@ describe("subscription Shadow Prometheus collector", () => {
     const client = new HTTPPrometheusQueryClient("https://prometheus.example", fetcher as typeof fetch);
     await expect(client.query("up", windowEnd)).resolves.toEqual(vector(1));
   });
+
+  it("rejects oversized Prometheus response bodies with a fixed error", async () => {
+    const fetcher = vi.fn(async () => new Response("x".repeat(256 * 1024 + 1), { status: 200 }));
+    const client = new HTTPPrometheusQueryClient("https://prometheus.example", fetcher as typeof fetch);
+    await expect(client.query("up", windowEnd)).rejects.toThrow("Prometheus response is invalid");
+  });
 });
 
 function request() { return {
