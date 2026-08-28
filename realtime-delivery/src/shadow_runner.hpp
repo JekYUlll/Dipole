@@ -8,6 +8,7 @@
 #include <string>
 
 #include "event_projection.hpp"
+#include "authority_fence.hpp"
 #include "node_delivery_transport.hpp"
 #include "presence_projection.hpp"
 
@@ -79,13 +80,15 @@ struct ShadowRunnerStats {
   std::uint64_t commit_errors = 0;
   std::uint64_t presence_read_errors = 0;
   std::uint64_t transport_errors = 0;
+  std::uint64_t fence_errors = 0;
 };
 
 class ShadowRunner {
  public:
   ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
                PresenceReader* presence_reader = nullptr, NodeBatchTransport* node_transport = nullptr,
-               NodeTransportMode node_transport_mode = NodeTransportMode::kObserve);
+               NodeTransportMode node_transport_mode = NodeTransportMode::kObserve,
+               AuthorityFenceReader* authority_fence = nullptr);
 
   ValidationError RunOnce(const ProjectionPolicy& policy,
                           const std::optional<PresenceProjectionPolicy>& presence_policy = std::nullopt);
@@ -99,8 +102,10 @@ class ShadowRunner {
   PresenceReader* presence_reader_;
   NodeBatchTransport* node_transport_;
   NodeTransportMode node_transport_mode_;
+  AuthorityFenceReader* authority_fence_;
   std::optional<KafkaRecord> pending_record_;
   std::atomic_bool healthy_ = true;
+  std::atomic_bool fence_healthy_ = true;
   ShadowRunnerStats stats_;
 };
 

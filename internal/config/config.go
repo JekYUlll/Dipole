@@ -39,7 +39,10 @@ type Gateway struct {
 }
 
 type Realtime struct {
-	Delivery string `mapstructure:"delivery"`
+	Delivery       string `mapstructure:"delivery"`
+	FencingEnabled bool   `mapstructure:"fencing_enabled"`
+	FencingKey     string `mapstructure:"fencing_key"`
+	FencingEpoch   uint64 `mapstructure:"fencing_epoch"`
 }
 
 type TLS struct {
@@ -351,6 +354,9 @@ func Load() error {
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
 		v.SetDefault("realtime.delivery", "go")
+		v.SetDefault("realtime.fencing_enabled", false)
+		v.SetDefault("realtime.fencing_key", "dipole:realtime:delivery:authority:v1")
+		v.SetDefault("realtime.fencing_epoch", 0)
 		v.SetDefault("tls.enabled", false)
 		v.SetDefault("tls.cert_file", "certs/local/dipole-local.pem")
 		v.SetDefault("tls.key_file", "certs/local/dipole-local-key.pem")
@@ -752,7 +758,12 @@ func GatewayConfig() Gateway {
 
 func RealtimeConfig() Realtime {
 	MustLoad()
-	return Realtime{Delivery: strings.ToLower(strings.TrimSpace(cfg.GetString("realtime.delivery")))}
+	return Realtime{
+		Delivery:       strings.ToLower(strings.TrimSpace(cfg.GetString("realtime.delivery"))),
+		FencingEnabled: cfg.GetBool("realtime.fencing_enabled"),
+		FencingKey:     strings.TrimSpace(cfg.GetString("realtime.fencing_key")),
+		FencingEpoch:   cfg.GetUint64("realtime.fencing_epoch"),
+	}
 }
 
 func MySQLConfig() MySQL {

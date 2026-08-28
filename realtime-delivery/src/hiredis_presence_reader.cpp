@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -180,6 +181,33 @@ ValidationError HiredisPresenceReader::ReadUsers(const std::vector<std::string>&
     result->parse_stats.observed_records += stats.observed_records;
     result->parse_stats.parsed_records += stats.parsed_records;
     result->parse_stats.malformed_records += stats.malformed_records;
+  }
+  return std::nullopt;
+}
+
+ValidationError HiredisPresenceReader::ReadString(const std::string& key, std::string* value) {
+  if (key.empty() || value == nullptr) return "Redis string key and destination are required";
+  value->clear();
+  if (auto error = EnsureConnected()) return error;
+  const auto reply = Command(context_, {"GET", key});
+  if (reply && reply->type == REDIS_REPLY_NIL) return "Redis string value is missing";
+  if (!reply || reply->type != REDIS_REPLY_STRING) {
+    if (!reply || reply->type == REDIS_REPLY_ERROR) Close();
+    return "Redis string value is unavailable";
+  }
+  value->assign(reply->str, reply->len);
+  return std::nullopt;
+}
+
+ValidationError HiredisPresenceReader::WriteStringWithTTL(const std::string& key,
+                                                          const std::string& value,
+                                                          std::int64_t ttl_ms) {
+  if (key.empty() || value.empty() || ttl_ms < 1) return "Redis string write is invalid";
+  if (auto error = EnsureConnected()) return error;
+  const auto reply = Command(context_, {"SET", key, value, "PX", std::to_string(ttl_ms)});
+  if (!reply || reply->type != REDIS_REPLY_STATUS || std::string_view(reply->str, reply->len) != "OK") {
+    if (!reply || reply->type == REDIS_REPLY_ERROR) Close();
+    return "Redis string write failed";
   }
   return std::nullopt;
 }

@@ -15,6 +15,7 @@ import (
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	realtimedelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 )
 
 type readinessValidator interface {
@@ -68,6 +69,15 @@ func kafkaConsumerReadinessProbe(name string, consumer *platformkafka.Consumer) 
 		RequireInitialSuccess: true,
 		Check:                 consumer.ValidateReadiness,
 	}
+}
+
+func authorityFenceReadinessProbe(name string, fence realtimedelivery.AuthorityFence, authority realtimedelivery.Authority) platformobservability.DependencyProbe {
+	return platformobservability.DependencyProbe{Name: name, Check: func(ctx context.Context) error {
+		if fence == nil {
+			return fmt.Errorf("delivery authority fence is unavailable")
+		}
+		return fence.Assert(ctx, authority)
+	}}
 }
 
 func grpcReadinessProbe(name string, connection *grpc.ClientConn) platformobservability.DependencyProbe {

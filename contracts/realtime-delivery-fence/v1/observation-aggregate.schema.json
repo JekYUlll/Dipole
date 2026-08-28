@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/observation-aggregate.schema.json",
+  "title": "Dipole Realtime Delivery Fence Observation Aggregate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "decision", "manifest_id", "manifest_sha256", "transition_id",
+    "request_sha256", "lease_sha256", "authority", "phase", "epoch",
+    "lease_until_unix_ms", "captured_at_unix_ms", "observations"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.delivery-fence-observation-aggregate.v1" },
+    "decision": { "const": "eligible" },
+    "manifest_id": { "$ref": "#/$defs/id" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "transition_id": { "$ref": "#/$defs/id" },
+    "request_sha256": { "$ref": "#/$defs/sha256" },
+    "lease_sha256": { "$ref": "#/$defs/sha256" },
+    "authority": { "enum": ["go", "shadow", "cpp"] },
+    "phase": { "enum": ["active", "frozen"] },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "lease_until_unix_ms": { "type": "integer", "minimum": 1 },
+    "captured_at_unix_ms": { "type": "integer", "minimum": 1 },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "observation.schema.json" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

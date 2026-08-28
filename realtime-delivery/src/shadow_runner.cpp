@@ -20,13 +20,14 @@ int ProjectedMessageType(const delivery::v1::DeliveryEnvelope& envelope) {
 
 ShadowRunner::ShadowRunner(ShadowRecordConsumer* consumer, ShadowEvidenceSink* evidence_sink, int poll_timeout_ms,
                            PresenceReader* presence_reader, NodeBatchTransport* node_transport,
-                           NodeTransportMode node_transport_mode)
+                           NodeTransportMode node_transport_mode, AuthorityFenceReader* authority_fence)
     : consumer_(consumer),
       evidence_sink_(evidence_sink),
       poll_timeout_ms_(poll_timeout_ms),
       presence_reader_(presence_reader),
       node_transport_(node_transport),
-      node_transport_mode_(node_transport_mode) {
+      node_transport_mode_(node_transport_mode),
+      authority_fence_(authority_fence) {
 }
 
 ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
@@ -58,6 +59,14 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
   } else {
     result = consumer_->Poll(poll_timeout_ms_);
     if (result.status == PollStatus::kTimeout) {
+      if (authority_fence_ != nullptr) {
+        if (const auto fence_error = authority_fence_->Heartbeat(); fence_error) {
+          ++stats_.fence_errors;
+          fence_healthy_.store(false);
+          return "delivery authority fence heartbeat denied: " + *fence_error;
+        }
+        fence_healthy_.store(true);
+      }
       return std::nullopt;
     }
     if (result.status == PollStatus::kError) {
@@ -67,6 +76,15 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
     }
     ++stats_.polled;
     pending_record_ = result.record;
+  }
+
+  if (authority_fence_ != nullptr) {
+    if (const auto fence_error = authority_fence_->Assert(); fence_error) {
+      ++stats_.fence_errors;
+      fence_healthy_.store(false);
+      return "delivery authority fence denied: " + *fence_error;
+    }
+    fence_healthy_.store(true);
   }
 
   delivery::v1::DeliveryEnvelope envelope;
@@ -186,8 +204,8 @@ ValidationError ShadowRunner::RunOnce(const ProjectionPolicy& policy,
 }
 
 bool ShadowRunner::Ready() const {
-  return healthy_.load() && consumer_ != nullptr && evidence_sink_ != nullptr && poll_timeout_ms_ > 0 &&
-         consumer_->AssignmentCount() > 0;
+  return healthy_.load() && fence_healthy_.load() && consumer_ != nullptr && evidence_sink_ != nullptr &&
+         poll_timeout_ms_ > 0 && consumer_->AssignmentCount() > 0;
 }
 
 ShadowRunnerStats ShadowRunner::Stats() const {

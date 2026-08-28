@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "presence_projection.hpp"
+#include "authority_fence.hpp"
 
 struct redisContext;
 
@@ -29,7 +30,7 @@ struct HiredisPresenceConfig {
 ValidationError ParseRedisEndpoint(const std::string& value, RedisEndpoint* endpoint);
 ValidationError ValidateHiredisPresenceConfig(const HiredisPresenceConfig& config);
 
-class HiredisPresenceReader final : public PresenceReader {
+class HiredisPresenceReader final : public PresenceReader, public StringValueReader, public StringValueWriter {
  public:
   explicit HiredisPresenceReader(HiredisPresenceConfig config);
   ~HiredisPresenceReader();
@@ -38,6 +39,9 @@ class HiredisPresenceReader final : public PresenceReader {
 
   ValidationError ReadUsers(const std::vector<std::string>& user_ids,
                             PresenceReadResult* result) override;
+  ValidationError ReadString(const std::string& key, std::string* value) override;
+  ValidationError WriteStringWithTTL(const std::string& key, const std::string& value,
+                                     std::int64_t ttl_ms) override;
 
  private:
   ValidationError EnsureConnected();

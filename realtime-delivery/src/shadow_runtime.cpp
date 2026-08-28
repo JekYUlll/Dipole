@@ -60,6 +60,19 @@ bool ParseBool(const std::string& raw, bool* output) {
   return false;
 }
 
+bool ParsePositiveUint64(const std::string& raw, std::uint64_t* output) {
+  if (raw.empty() || raw.find_first_not_of("0123456789") != std::string::npos) return false;
+  try {
+    std::size_t consumed = 0;
+    const auto value = std::stoull(raw, &consumed);
+    if (consumed != raw.size() || value == 0) return false;
+    *output = value;
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
 ValidationError ParseEndpoints(const std::string& raw, std::vector<RedisEndpoint>* endpoints) {
   endpoints->clear();
   if (raw.empty()) return std::nullopt;
@@ -97,11 +110,25 @@ ValidationError ValidateDeliveryRuntimeConfig(const DeliveryRuntimeConfig& confi
   if (primary && (!config.presence_enabled || !config.node_transport_enabled)) {
     return "primary runtime requires Presence and node transport";
   }
-  if (config.presence_enabled) {
+  if (config.presence_enabled || config.fencing_enabled) {
     if (config.presence_ttl_ms < 1000 || config.presence_ttl_ms > 3'600'000) {
       return "delivery Presence ttl is out of range";
     }
     if (auto error = ValidateHiredisPresenceConfig(config.presence)) return error;
+  }
+  if (config.fencing_enabled) {
+    if (config.fencing_key.empty() || config.fencing_epoch == 0) {
+      return "delivery authority fencing key and epoch are required";
+    }
+    if (auto error = ValidateFenceObservationConfig(
+            {.key_prefix = config.fencing_key + ":observation:",
+             .component = "realtime-delivery",
+             .observer_id = config.instance_id,
+             .ttl_ms = 15'000,
+             .interval_ms = 5'000});
+        error) {
+      return error;
+    }
   }
   if (config.node_transport_enabled) {
     if (!config.presence_enabled) return "node transport requires Presence routing";
@@ -157,7 +184,20 @@ ValidationError LoadDeliveryRuntimeConfig(DeliveryRuntimeAuthority authority, De
            "authority";
   }
   config->presence_enabled = presence_mode == authority_name;
-  if (config->presence_enabled) {
+  if (!ParseBool(Environment("DIPOLE_REALTIME_FENCING_ENABLED", "false"), &config->fencing_enabled)) {
+    return "DIPOLE_REALTIME_FENCING_ENABLED must be true or false";
+  }
+  if (config->fencing_enabled) {
+    config->fencing_key = Environment("DIPOLE_REALTIME_FENCING_KEY", "dipole:realtime:delivery:authority:v1");
+    if (!ParsePositiveUint64(Environment("DIPOLE_REALTIME_FENCING_EPOCH"), &config->fencing_epoch)) {
+      return "DIPOLE_REALTIME_FENCING_EPOCH must be a positive integer";
+    }
+    config->instance_id = Environment("DIPOLE_REALTIME_INSTANCE_ID");
+    if (config->instance_id.empty()) {
+      return "DIPOLE_REALTIME_INSTANCE_ID is required when fencing is enabled";
+    }
+  }
+  if (config->presence_enabled || config->fencing_enabled) {
     const auto direct = Environment("DIPOLE_REALTIME_REDIS_ENDPOINT");
     if (!direct.empty()) {
       if (auto error = ParseRedisEndpoint(direct, &config->presence.direct)) return error;
@@ -170,11 +210,14 @@ ValidationError LoadDeliveryRuntimeConfig(DeliveryRuntimeAuthority authority, De
     config->presence.sentinel_password = Environment("DIPOLE_REALTIME_REDIS_SENTINEL_PASSWORD");
     int db = 0;
     int timeout_ms = 0;
-    int ttl_seconds = 0;
+    int ttl_seconds = 120;
     if (!ParseBoundedInt(Environment("DIPOLE_REALTIME_REDIS_DB", "0"), 0, 15, &db) ||
-        !ParseBoundedInt(Environment("DIPOLE_REALTIME_REDIS_TIMEOUT_MS", "500"), 10, 5000, &timeout_ms) ||
-        !ParseBoundedInt(Environment("DIPOLE_REALTIME_PRESENCE_TTL_SECONDS", "120"), 1, 3600, &ttl_seconds)) {
+        !ParseBoundedInt(Environment("DIPOLE_REALTIME_REDIS_TIMEOUT_MS", "500"), 10, 5000, &timeout_ms)) {
       return "delivery Presence Redis environment is invalid";
+    }
+    if (config->presence_enabled &&
+        !ParseBoundedInt(Environment("DIPOLE_REALTIME_PRESENCE_TTL_SECONDS", "120"), 1, 3600, &ttl_seconds)) {
+      return "delivery Presence ttl environment is invalid";
     }
     config->presence.db = db;
     config->presence.timeout_ms = timeout_ms;
@@ -231,6 +274,37 @@ int RunDelivery(const DeliveryRuntimeConfig& config, volatile std::sig_atomic_t&
     std::cerr << *error << '\n';
     return 2;
   }
+  std::unique_ptr<HiredisPresenceReader> presence_reader;
+  if (config.presence_enabled || config.fencing_enabled) {
+    presence_reader = std::make_unique<HiredisPresenceReader>(config.presence);
+  }
+  std::unique_ptr<RedisAuthorityFenceReader> authority_reader;
+  std::unique_ptr<RedisObservedAuthorityFenceReader> authority_fence;
+  if (config.fencing_enabled) {
+    const auto expected_authority = config.authority == DeliveryRuntimeAuthority::kPrimary
+                                        ? FenceAuthority::kCpp
+                                        : FenceAuthority::kShadow;
+    const auto now_unix_ms = []() {
+      const auto now = std::chrono::system_clock::now().time_since_epoch();
+      return std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    };
+    authority_reader = std::make_unique<RedisAuthorityFenceReader>(
+        presence_reader.get(), config.fencing_key,
+        AuthorityFenceExpectation{.authority = expected_authority, .epoch = config.fencing_epoch},
+        now_unix_ms);
+    authority_fence = std::make_unique<RedisObservedAuthorityFenceReader>(
+        authority_reader.get(), presence_reader.get(),
+        FenceObservationConfig{.key_prefix = config.fencing_key + ":observation:",
+                               .component = "realtime-delivery",
+                               .observer_id = config.instance_id,
+                               .ttl_ms = 15'000,
+                               .interval_ms = 5'000},
+        now_unix_ms);
+    if (const auto error = authority_fence->Assert(); error) {
+      std::cerr << "verify delivery authority fence: " << *error << '\n';
+      return 1;
+    }
+  }
   std::ofstream evidence(config.evidence_file, std::ios::app);
   if (!evidence) {
     std::cerr << "open delivery evidence file: " << config.evidence_file << '\n';
@@ -242,10 +316,6 @@ int RunDelivery(const DeliveryRuntimeConfig& config, volatile std::sig_atomic_t&
     return 1;
   }
   JsonLineEvidenceSink sink(&evidence);
-  std::unique_ptr<HiredisPresenceReader> presence_reader;
-  if (config.presence_enabled) {
-    presence_reader = std::make_unique<HiredisPresenceReader>(config.presence);
-  }
   std::unique_ptr<GrpcNodeBatchTransport> node_transport;
   if (config.node_transport_enabled) {
     if (const auto error = GrpcNodeBatchTransport::Create(config.node_transport, &node_transport); error) {
@@ -255,8 +325,9 @@ int RunDelivery(const DeliveryRuntimeConfig& config, volatile std::sig_atomic_t&
   }
   const auto transport_mode = config.authority == DeliveryRuntimeAuthority::kPrimary ? NodeTransportMode::kPrimary
                                                                                      : NodeTransportMode::kObserve;
-  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, presence_reader.get(), node_transport.get(),
-                      transport_mode);
+  PresenceReader* projection_presence = config.presence_enabled ? presence_reader.get() : nullptr;
+  ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, projection_presence, node_transport.get(),
+                      transport_mode, authority_fence.get());
   const ProjectionPolicy policy{.timeline_notify_shadow = config.timeline_notify_enabled};
 
   std::thread worker([&]() {

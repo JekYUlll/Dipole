@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/realtime-delivery-fence/v1/decision-artifact.schema.json",
+  "title": "Dipole Realtime Delivery Cutover Decision Artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "attempt_id", "event_type", "decision",
+    "expected_epoch", "decided_at_unix_ms"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.realtime.cutover-decision-artifact.v1" },
+    "attempt_id": { "$ref": "#/$defs/id" },
+    "event_type": { "enum": ["completed", "rollback_requested", "rolled_back"] },
+    "decision": { "enum": ["completed", "rollback_requested", "rolled_back"] },
+    "expected_epoch": { "type": "integer", "minimum": 1 },
+    "decided_at_unix_ms": { "type": "integer", "minimum": 1 }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$" }
+  }
+}

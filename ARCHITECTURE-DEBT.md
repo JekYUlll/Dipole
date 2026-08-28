@@ -12,18 +12,6 @@
 
 ## 待处理
 
-### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
-
-- **优先级：** P0
-- **状态：** 处理中
-- **发现日期：** 2026-08-28
-- **影响范围：** Gateway Kafka consumer、C++ primary consumer、WebSocket 客户端、C3 灰度与自动回切
-- **现状：** 隔离 primary runtime 演练中，Go Gateway 权威 consumer 与 C++ 专用 consumer group 同时处理同一 `message.created`。客户端对每个测试事件收到一条无 `delivery_id` 的 legacy Go frame 和一条带稳定 `delivery_id` 的 C++ frame。C++ ACK、evidence 和 offset 均正确，双 authority 仍会造成可见重复投递。
-- **风险：** 直接把 C++ primary 加入 Compose 会让客户端重复展示消息或重复执行通知副作用；legacy frame 缺少同一 delivery ID，Web 持久 claim 无法将两条跨 authority frame 合并。两个 consumer group 的 offset 独立，未经协议的回切还可能重放不同窗口。
-- **建议方向：** 在 Gateway 投递 handler 前建立版本化 `realtime.delivery=go|shadow|cpp` authority，保持消息事实、Conversation/Inbox projector 不受影响；`cpp` 模式停止 Go 客户端写入但保留可观测性，切换时记录双 group checkpoint、高水位和稳定窗口。回切先冻结 C++ authority，再从明确 checkpoint 恢复 Go，禁止两个客户端写 authority 同时为 active。
-- **阶段记录：** 2026-08-28 已增加默认 `go` 的本地契约与启动组合校验。`cpp` 模式将 Go 的两个 message-created Handler 替换为事件校验后 checkpoint-only，原 Go group 持续追平；其他 Gateway 事件继续投递。C++ shadow/primary 命令也要求匹配的 `shadow/cpp` 值。隔离 `go`/`cpp` 实测进一步证明两种模式各产生且只产生一个目标客户端 frame；`cpp` 下兼容 checkpoint group 与 primary group 均追至 log end/lag 0，证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`。该阶段尚未实现跨 Gateway/C++ 实例共享的动态 authority fencing，因此不能用于生产切流。
-- **处理门槛：** 用隔离 topology 证明 `go` 和 `cpp` 模式下每个事件恰有一个客户端 frame；完成进程崩溃、Kafka rebalance、Redis 故障和切换中断演练，并保存可执行回切 receipt 后才能开始 C3 用户/节点灰度。
-
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
 - **优先级：** P1
@@ -259,6 +247,16 @@
 - **处理门槛：** 大规模拆分或重写现有前端页面前完成 F1。
 
 ## 已关闭
+
+### AD-041：Go 与 C++ Realtime Delivery 缺少互斥切流 authority
+
+- **优先级：** P0
+- **状态：** 已解决
+- **发现日期：** 2026-08-28
+- **完成日期：** 2026-08-28
+- **解决方式：** 建立默认 Go 的 `go|shadow|cpp` 本地 authority、跨语言 Redis epoch lease 与 fail-closed reader、短 TTL 节点 observation、双 Kafka group 零 lag checkpoint、不可变 attempt workspace、哈希链 journal、幂等 action artifact 与 production executor。`dipole-realtime-cutover run` 在单一同步循环中统一 advance、条件续租、冻结超时回切和阻塞重试，并以 attempt-scoped Redis owner token 排除并发 controller；回切必须先确认 source nodes，且 `rollback_requested` 续租保留回切意图。
+- **验证：** 隔离证据覆盖 Go/C++ 各一条客户端 frame、跨客户端 checkpoint、controller artifact 崩溃恢复、Redis outage、Kafka member loss、500 ms expired-freeze 回切、真实 C++ Primary lease/observation/assignment/readiness，以及 Controller A 无 release 进程退出后 B 在 5 秒 TTL 前被拒、到期后从同一 journal 完成。证据归档于 `benchmarks/c3-delivery-authority-2026-08-28/`、`benchmarks/c3-cutover-checkpoint-2026-08-28/`、`benchmarks/c3-cutover-faults-2026-08-28/`、`benchmarks/c3-cutover-cpp-primary-2026-08-28/` 与 `benchmarks/c3-cutover-controller-2026-08-28/`。
+- **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 
 ### AD-039：Gateway Kafka assignment 未纳入 readiness
 

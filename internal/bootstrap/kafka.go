@@ -123,7 +123,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return err
 		}
-		if err := registerGatewayKafkaHandlers(hub, authority); err != nil {
+		if err := registerGatewayKafkaHandlers(hub, authority, nil); err != nil {
 			return err
 		}
 	}
@@ -135,17 +135,17 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	return nil
 }
 
-func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority) error {
+func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
 	if hub == nil {
 		return fmt.Errorf("gateway kafka event sender is required")
 	}
-	return registerGatewayKafkaHandlers(hub, authority)
+	return registerGatewayKafkaHandlers(hub, authority, fence)
 }
 
-func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority) error {
+func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	hotGroups := platformHotGroup.NewRedisDetector()
 	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
@@ -159,6 +159,8 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	if err != nil {
 		return err
 	}
+	directHandler = fenceMessageDeliveryHandler(authority, fence, directHandler)
+	groupHandler = fenceMessageDeliveryHandler(authority, fence, groupHandler)
 	platformKafka.Subscriber.Register("message.direct.created", directHandler)
 	platformKafka.Subscriber.Register("message.group.created", groupHandler)
 	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
@@ -186,6 +188,28 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
 	return nil
+}
+
+func fenceMessageDeliveryHandler(authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence, next platformKafka.Handler) platformKafka.Handler {
+	if fence == nil {
+		return next
+	}
+	return func(ctx context.Context, event platformKafka.Event) error {
+		for {
+			if err := fence.Assert(ctx, authority); err == nil {
+				return next(ctx, event)
+			}
+			timer := time.NewTimer(250 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return fmt.Errorf("wait for realtime delivery authority fence: %w", ctx.Err())
+			case <-timer.C:
+			}
+		}
+	}
 }
 
 func gatewayMessageDeliveryHandlers(
