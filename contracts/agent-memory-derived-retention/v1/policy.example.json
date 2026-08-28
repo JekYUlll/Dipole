@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "dipole.agent.memory-derived-retention-policy.v1",
+  "policyVersion": "memory-derived-retention-v1",
+  "domains": {
+    "modelCalls": { "action": "retain_minimal_audit" },
+    "shadowPlans": { "action": "erase_derived_content" },
+    "shadowSteps": { "action": "erase_derived_content" },
+    "artifacts": { "action": "erase_derived_content" },
+    "toolInvocations": { "action": "retain_minimal_audit" },
+    "messageActions": { "action": "retain_minimal_audit" },
+    "temporalHistoryPotentialTasks": { "action": "expire_after_days", "retentionDays": 30 }
+  },
+  "contentRead": false,
+  "deletionAuthority": false,
+  "runtimeAuthority": false
+}
