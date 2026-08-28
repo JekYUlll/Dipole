@@ -46,14 +46,28 @@ func TestAgentMemoryRepositoryContract(t *testing.T) {
 	if err != nil || len(items) != 2 || items[0].MemoryUUID != "MEM-A" || items[1].MemoryUUID != "MEM-B" || items[0].CompactContent != "first compact" {
 		t.Fatalf("scoped Memories=%+v err=%v", items, err)
 	}
-	if err := store.RevokeMemory(context.Background(), "MEM-A", now); err != nil {
+	owned, err := store.ListOwnedMemories(context.Background(), application.AgentMemoryOwnerListRequestV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AfterCreatedAt: createdBefore, Limit: 10,
+	})
+	if err != nil || len(owned) != 2 || owned[0].PrincipalUUID != "U100" || owned[1].PrincipalUUID != "U100" {
+		t.Fatalf("owned Memories=%+v err=%v", owned, err)
+	}
+	if err := store.RevokeOwnedMemory(context.Background(), "dipole", "U100", "MEM-A", "U100", "outdated", now); err != nil {
 		t.Fatalf("revoke Memory: %v", err)
+	}
+	revoked, err := store.GetOwnedMemory(context.Background(), "dipole", "U100", "MEM-A")
+	if err != nil || revoked == nil || revoked.RevokedByUUID != "U100" || revoked.RevokeReason != "outdated" || revoked.Validate() != nil {
+		t.Fatalf("audited revoked Memory=%+v err=%v", revoked, err)
+	}
+	foreign, err := store.GetOwnedMemory(context.Background(), "dipole", "U999", "MEM-A")
+	if err != nil || foreign != nil {
+		t.Fatalf("foreign owner Memory=%+v err=%v", foreign, err)
 	}
 	items, _ = store.ListContextMemories(context.Background(), query)
 	if len(items) != 1 || items[0].MemoryUUID != "MEM-B" {
 		t.Fatalf("revoked Memory remained visible: %+v", items)
 	}
-	if err := store.RevokeMemory(context.Background(), "MEM-A", now); !errors.Is(err, application.ErrAgentMemoryInvalid) {
+	if err := store.RevokeOwnedMemory(context.Background(), "dipole", "U100", "MEM-A", "U100", "outdated", now); !errors.Is(err, application.ErrAgentMemoryConflict) {
 		t.Fatalf("second revoke error=%v", err)
 	}
 }
