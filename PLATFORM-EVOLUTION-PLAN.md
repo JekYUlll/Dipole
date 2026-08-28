@@ -434,7 +434,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 增加 create/status/单步 advance/rollback 恢复命令，所有变更要求确认并在每个副作用后形成持久边界。
     - [x] 增加证据链内的单步 lease renew；续期不重置冻结预算，并强制重采绑定旧 lease 的节点/checkpoint 证据。
     - [x] 用隔离真实 Kafka/Redis 与 race harness 完成 controller crash、Kafka member loss/rejoin、Redis outage/recovery 的 forward cutover 演练并归档证据。
-    - [ ] 增加持续续期调度，并完成真实 expired-freeze 自动回切与 C++ primary authority 演练。
+    - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
+    - [ ] 增加持续续期调度，并完成 C++ primary authority 演练。
 - [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
 - [ ] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
