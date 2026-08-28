@@ -70,6 +70,7 @@
 
 ### 新增
 
+- 增加默认关闭的 Agent Subscription 在线 Shadow 对照：`direct_target` Kafka handler 在 EventLedger 前调用同一 Core matcher，只记录固定 `accepted|ignored × match|miss|error` 矩阵和候选总数；matcher 异常不阻断主路径，且不会创建第二个 Task、Workflow 或模型调用。Agent `/metrics` 暴露低敏零值/开关状态，Prometheus 新增 matcher error 与 admission drift 告警；Compose 固定关闭，启用与回滚见 `docs/agent-subscription-shadow.md`。
 - 增加默认关闭的 Agent Event Subscription owner create 闭环：Core additive RPC 将 authenticated readable conversation 与精确 Definition scope 求交集并派生 direct/group event type；Gateway 只接受 Definition、conversation 与确定性 filter，从 JWT/配置派生 principal/tenant，并在创建时重新派生 resource。Vue 从 active Definition 目录和权威候选中选择绑定，关键词超限显式阻止提交，成功后以 Core 结果更新列表；canonical Pencil 增加 desktop/mobile 创建稿、七类状态和两个复用组件。Runtime 与 Compose 继续固定 `direct_target`。
 - 增加默认关闭的 Agent Definition catalog：sqlc 按 tenant/owner、服务端有效期、`conversation.read` 与可读 conversation scope 筛选 active 版本，应用层二次复核 authority；additive Core RPC 与 Gateway `/api/v1/agent/definitions` 从认证 principal 派生 owner，并以 opaque 复合 cursor 分页。公开投影不含原始 permissions、owner 或非 conversation scope；前端严格 API parser 已就绪，conversation chooser、create UI 与 Runtime 切换继续关闭。
 - 增加默认关闭的 Agent Event Subscription owner list/revoke Web 闭环：Gateway 复用现有 Core Agent gRPC 连接，从认证会话派生 principal 并固定 tenant；Vue 以严格响应解析展示 Definition version、conversation scope、确定性 filter 与撤销审计，查询失败清空旧状态，撤销要求精确原因并以权威响应收敛。desktop/mobile 路由已通过 Chromium、Firefox 与 WebKit 验收。该阶段公开 Definition 目录与 create 尚未交付，现由同一 `Unreleased` 中的 owner create 闭环补齐；Runtime `subscription` 继续关闭。
@@ -492,6 +493,7 @@
 
 ### 验证
 
+- Agent Subscription Shadow observation 通过聚焦 `15/15`、完整 Runtime `553 passed / 22 expected skipped`、typecheck/build 和官方 npm 源零高危审计；Prometheus 五条 Agent 规则及测试、Compose、服务观测与架构文档门禁通过。测试固定 matcher match/miss/error、direct-target accepted/ignored、EventLedger 单一路径和默认关闭指标面。
 - Agent Subscription create 权限链通过 canonical Go test/vet、Agent Runtime `549 passed / 22 expected skipped`、前端 `78/78`、工具链 `3/3`、两端生产构建与官方 npm 源零高危审计；Go/TS Proto、sqlc、Compose、架构文档和全部维护中的观测规则门禁通过。Chromium、Firefox、WebKit 完整矩阵为 `34 passed / 8 expected skipped`，覆盖认证 Definition/options/create、精确瘦请求、权威响应、撤销与不可用/mobile 状态；WebKit 使用临时用户态兼容库，未修改系统或仓库配置。
 - Agent Subscription owner list/revoke 通过 Gateway/config/bootstrap 聚焦 Go 测试、5 项 Vue API/组件测试和 Chromium/Firefox/WebKit 共 6 项路由 E2E；WebKit 在本机通过临时用户态兼容库运行，未修改系统包或仓库配置。服务端覆盖认证派生、游标/limit、撤销原因、nil/错误映射与默认关闭，浏览器覆盖 Bearer、精确撤销、不可用状态清理和 390x844 mobile sheet。
 - Go Core mTLS fixture 认证测试通过：正确 Agent 身份可调用，错误 shared secret 返回 unauthenticated，证书 CN 与 caller 不一致返回 permission denied，无客户端证书无法建立可用 RPC；联合演练随后通过真实 mTLS 完成全部 12 类 Core RPC，并输出 v2 低敏证据。
