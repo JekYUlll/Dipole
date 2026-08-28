@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createAgentWorkflowRepairExecutionPlan } from "./agent-workflow-repair-execution-plan.js";
+import { createAgentWorkflowRepairExecutionPlan, verifyAgentWorkflowRepairPreflight } from "./agent-workflow-repair-execution-plan.js";
 
 const current = { workflowId: "dipole-agent-task/TASK-1", workflowRunId: "WR-1", status: "running", revision: 2 } as const;
 const target = { workflowId: "dipole-agent-task/TASK-1", workflowRunId: "WR-1", status: "completed", revision: 3 } as const;
@@ -44,5 +44,24 @@ describe("Agent Workflow repair execution plan", () => {
     expect(() => createAgentWorkflowRepairExecutionPlan({
       ...input(), targetProjection: { ...target, workflowRunId: "WR-OTHER" }
     }, new Date("2026-08-28T00:05:00.000Z"))).toThrow(/same Workflow Run/);
+  });
+
+  it("returns a ready receipt only when proposal, grant and current CAS evidence still match", () => {
+    const plan = createAgentWorkflowRepairExecutionPlan(input(), new Date("2026-08-28T00:05:00.000Z"));
+    const base = { plan, proposalStatus: "approved" as const, proposalEvidenceSha256: plan.proposalEvidenceSha256,
+      executorGrantVersion: plan.executorGrantVersion, currentProjection: current };
+    expect(verifyAgentWorkflowRepairPreflight(base, new Date("2026-08-28T00:06:00.000Z"))).toMatchObject({ decision: "ready", reasons: [] });
+    expect(verifyAgentWorkflowRepairPreflight({ ...base, currentProjection: target }, new Date("2026-08-28T00:06:00.000Z"))).toMatchObject({
+      decision: "blocked", reasons: ["current_projection_drift"]
+    });
+  });
+
+  it("blocks a stale plan and binding drift without exposing projection contents", () => {
+    const plan = createAgentWorkflowRepairExecutionPlan(input(), new Date("2026-08-28T00:05:00.000Z"));
+    const receipt = verifyAgentWorkflowRepairPreflight({ plan, proposalStatus: "approved", proposalEvidenceSha256: "c".repeat(64),
+      executorGrantVersion: plan.executorGrantVersion + 1, currentProjection: current }, new Date("2026-08-28T00:16:00.000Z"));
+    expect(receipt.decision).toBe("blocked");
+    expect(receipt.reasons).toEqual(["proposal_binding_mismatch", "executor_grant_mismatch", "plan_expired"]);
+    expect(receipt).not.toHaveProperty("currentProjection");
   });
 });
