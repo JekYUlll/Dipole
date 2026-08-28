@@ -28,6 +28,10 @@ gateway:
 realtime:
   # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.
   delivery: go
+  # C3 shared fencing remains opt-in until the lease writer, C++ reader and cutover receipt are complete.
+  fencing_enabled: false
+  fencing_key: dipole:realtime:delivery:authority:v1
+  fencing_epoch: 0
 
 tls:
   enabled: false

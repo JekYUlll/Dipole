@@ -53,6 +53,12 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	if got := v.GetString("realtime.delivery"); got != "go" {
 		t.Fatalf("safe realtime delivery default = %q, want go", got)
 	}
+	if v.GetBool("realtime.fencing_enabled") || v.GetUint64("realtime.fencing_epoch") != 0 {
+		t.Fatal("shared realtime fencing must remain opt-in")
+	}
+	if got := v.GetString("realtime.fencing_key"); got != "dipole:realtime:delivery:authority:v1" {
+		t.Fatalf("realtime fencing key = %q", got)
+	}
 }
 
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {

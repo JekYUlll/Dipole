@@ -86,7 +86,8 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	gatewayCfg := config.GatewayConfig()
 	kafkaCfg := config.KafkaConfig()
-	deliveryAuthority, err := realtimeDelivery.ParseAuthority(config.RealtimeConfig().Delivery)
+	realtimeCfg := config.RealtimeConfig()
+	deliveryAuthority, err := realtimeDelivery.ParseAuthority(realtimeCfg.Delivery)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +111,20 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	runtime := &GatewayRuntime{redis: store.RDB}
 	cleanup := func() { runtime.Close() }
+	var deliveryFence realtimeDelivery.AuthorityFence
+	if realtimeCfg.FencingEnabled {
+		deliveryFence, err = realtimeDelivery.NewRedisAuthorityFence(
+			store.RDB, realtimeCfg.FencingKey, realtimeCfg.FencingEpoch, time.Now,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize realtime delivery authority fence: %w", err)
+		}
+		if err = deliveryFence.Assert(ctx, deliveryAuthority); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("verify realtime delivery authority fence: %w", err)
+		}
+	}
 
 	if err := platformKafka.Init(); err != nil {
 		cleanup()
@@ -218,7 +233,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			eventSender = runtime.router
 		}
 	}
-	if err := RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority); err != nil {
+	if err := RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register gateway kafka handlers: %w", err)
 	}
