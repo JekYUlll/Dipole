@@ -8,6 +8,7 @@ const active: AgentMemory = {
   resourceType: 'conversation', resourceId: 'group:G1', content: '项目 A 的数据库迁移负责人是 Alice', compactContent: 'Owner: Alice', priority: 80,
   provenance: { sourceType: 'message', sourceId: 'MSG-1', sequence: '42' },
   validFromUnixMs: 1_700_000_000_000, createdAtUnixMs: 1_700_000_100_000,
+  memoryRootId: 'MEM-1', memoryVersion: 1,
 }
 
 function service(): AgentMemoryClient {
@@ -15,6 +16,14 @@ function service(): AgentMemoryClient {
     list: vi.fn().mockResolvedValue({ memories: [active], nextCursor: '' }),
     revoke: vi.fn().mockImplementation(async (_id: string, reason: string) => ({
       ...active, status: 'revoked', revokedAtUnixMs: 1_700_000_200_000, revokedById: 'U100', revokeReason: reason,
+    })),
+    correct: vi.fn().mockImplementation(async (_id: string, expectedVersion: number, content: string, compactContent: string, reason: string) => ({
+      previous: { ...active, status: 'revoked', revokedAtUnixMs: 1_700_000_200_000, revokedById: 'U100', revokeReason: 'superseded by MEM-2' },
+      corrected: {
+        ...active, memoryId: 'MEM-2', content, compactContent, memoryVersion: expectedVersion + 1,
+        supersedesMemoryId: 'MEM-1', correctedById: 'U100', correctionReason: reason,
+        provenance: { sourceType: 'owner_correction', sourceId: 'MEM-1', sequence: '2' },
+      },
     })),
   }
 }
@@ -30,7 +39,30 @@ describe('AgentMemoryManager', () => {
     expect(wrapper.text()).toContain('UNTRUSTED MEMORY')
     expect(wrapper.text()).toContain('AUTO WRITE')
     expect(wrapper.text()).toContain('MSG-1')
-    expect(wrapper.text()).toContain('纠正将在版本化写入后开放')
+    expect(wrapper.text()).toContain('版本化纠正默认关闭')
+    expect(wrapper.find('[data-agent-memory-correct]').exists()).toBe(false)
+  })
+
+  it('appends an authoritative correction version only when explicitly enabled', async () => {
+    const client = service()
+    const wrapper = mount(AgentMemoryManager, { attachTo: document.body, props: { client, correctionEnabled: true } })
+    await flushPromises()
+    await wrapper.get('[data-agent-memory-correct="MEM-1"]').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[data-agent-memory-correction-content]').element)
+    await wrapper.get('[data-agent-memory-correction-content]').setValue('项目 A 的数据库迁移负责人是 Bob')
+    await wrapper.get('[data-agent-memory-correction-compact]').setValue('Owner: Bob')
+    await wrapper.get('[data-agent-memory-correction-confirm]').trigger('click')
+    expect(wrapper.text()).toContain('请输入纠正原因')
+    await wrapper.get('[data-agent-memory-correction-reason]').setValue('负责人信息已确认')
+    await wrapper.get('[data-agent-memory-correction-confirm]').trigger('click')
+    await flushPromises()
+
+    expect(client.correct).toHaveBeenCalledWith('MEM-1', 1, '项目 A 的数据库迁移负责人是 Bob', 'Owner: Bob', '负责人信息已确认')
+    expect(wrapper.text()).toContain('V2')
+    expect(wrapper.text()).toContain('REVOKED')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('requires a reason and replaces the row only with authoritative revoke output', async () => {

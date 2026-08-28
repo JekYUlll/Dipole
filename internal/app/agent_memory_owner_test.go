@@ -15,6 +15,8 @@ type agentMemoryOwnerStoreStub struct {
 	revokeRequest      application.AgentMemoryOwnerRevokeRequestV1
 	revokedAt          time.Time
 	conflictAfterWrite bool
+	correctionWrite    application.AgentMemoryOwnerCorrectionWriteV1
+	correctionResult   *application.AgentMemoryOwnerCorrectionResultV1
 }
 
 func (s *agentMemoryOwnerStoreStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) ([]application.AgentMemoryV1, error) {
@@ -49,6 +51,26 @@ func (s *agentMemoryOwnerStoreStub) RevokeOwnedMemory(_ context.Context, tenantI
 		}
 	}
 	return application.ErrAgentMemoryConflict
+}
+
+func (s *agentMemoryOwnerStoreStub) CorrectOwnedMemory(_ context.Context, write application.AgentMemoryOwnerCorrectionWriteV1) (*application.AgentMemoryOwnerCorrectionResultV1, error) {
+	s.correctionWrite = write
+	if s.correctionResult != nil {
+		result := *s.correctionResult
+		return &result, nil
+	}
+	for index := range s.items {
+		previous := &s.items[index]
+		if previous.MemoryUUID != write.SourceMemoryUUID || previous.Status != application.AgentMemoryStatusActive || previous.MemoryVersion != write.ExpectedVersion {
+			continue
+		}
+		revokedAt := write.CorrectedAt
+		previous.Status, previous.RevokedAt = application.AgentMemoryStatusRevoked, &revokedAt
+		previous.RevokedByUUID, previous.RevokeReason = write.PrincipalUUID, "superseded by "+write.Corrected.MemoryUUID
+		s.items = append(s.items, write.Corrected)
+		return &application.AgentMemoryOwnerCorrectionResultV1{Previous: *previous, Corrected: write.Corrected}, nil
+	}
+	return nil, application.ErrAgentMemoryConflict
 }
 
 func TestPersistentAgentMemoryOwnerControlListsStableOwnerPage(t *testing.T) {
@@ -112,6 +134,68 @@ func TestPersistentAgentMemoryOwnerControlAcceptsConcurrentExactRevocation(t *te
 	revoked, err := service.RevokeOwnedMemory(context.Background(), request)
 	if err != nil || revoked.Status != application.AgentMemoryStatusRevoked || revoked.RevokeReason != request.Reason {
 		t.Fatalf("concurrent exact revoke: memory=%+v err=%v", revoked, err)
+	}
+}
+
+func TestPersistentAgentMemoryOwnerControlCorrectsAppendOnlyWithStableReplay(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	source := agentMemoryOwnerFixture("MEM-1", "U100", now.Add(-time.Hour))
+	source.MemoryRootUUID, source.MemoryVersion = source.MemoryUUID, 1
+	store := &agentMemoryOwnerStoreStub{items: []application.AgentMemoryV1{source}}
+	service, _ := NewPersistentAgentMemoryOwnerControlV1(store, func() time.Time { return now })
+	request := application.AgentMemoryOwnerCorrectionRequestV1{
+		TenantID: "dipole", PrincipalUUID: "U100", MemoryUUID: "MEM-1", ExpectedVersion: 1,
+		Content: "Owner is Bob", CompactContent: "Owner: Bob", Reason: "owner changed in MSG-2",
+	}
+
+	result, err := service.CorrectOwnedMemory(context.Background(), request)
+	if err != nil {
+		t.Fatalf("correct Memory: %v", err)
+	}
+	if result.Previous.Status != application.AgentMemoryStatusRevoked || result.Corrected.MemoryVersion != 2 ||
+		result.Corrected.MemoryRootUUID != "MEM-1" || result.Corrected.SupersedesMemoryUUID != "MEM-1" ||
+		result.Corrected.CorrectedByUUID != "U100" || result.Corrected.CorrectionReason != request.Reason ||
+		result.Corrected.Provenance.SourceType != application.AgentMemorySourceOwnerCorrectionV1 || result.Corrected.Provenance.SourceID != "MEM-1" ||
+		result.Corrected.Provenance.Sequence != "2" {
+		t.Fatalf("correction result = %+v", result)
+	}
+	firstID := result.Corrected.MemoryUUID
+
+	replayStore := &agentMemoryOwnerStoreStub{items: []application.AgentMemoryV1{result.Previous}, correctionResult: result}
+	replayService, _ := NewPersistentAgentMemoryOwnerControlV1(replayStore, func() time.Time { return now.Add(time.Minute) })
+	replayed, err := replayService.CorrectOwnedMemory(context.Background(), request)
+	if err != nil || replayed.Corrected.MemoryUUID != firstID {
+		t.Fatalf("exact replay: result=%+v err=%v", replayed, err)
+	}
+	request.Content = "Owner is Carol"
+	if _, err = replayService.CorrectOwnedMemory(context.Background(), request); !errors.Is(err, application.ErrAgentMemoryConflict) {
+		t.Fatalf("drifted replay error = %v", err)
+	}
+}
+
+func TestPersistentAgentMemoryOwnerControlRejectsStaleExpiredAndForeignCorrection(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	source := agentMemoryOwnerFixture("MEM-1", "U100", now.Add(-time.Hour))
+	source.MemoryRootUUID, source.MemoryVersion = source.MemoryUUID, 1
+	expiredAt := now.Add(-time.Minute)
+	source.ExpiresAt = &expiredAt
+	service, _ := NewPersistentAgentMemoryOwnerControlV1(&agentMemoryOwnerStoreStub{items: []application.AgentMemoryV1{source}}, func() time.Time { return now })
+	request := application.AgentMemoryOwnerCorrectionRequestV1{
+		TenantID: "dipole", PrincipalUUID: "U100", MemoryUUID: "MEM-1", ExpectedVersion: 1,
+		Content: "Owner is Bob", Reason: "owner changed",
+	}
+	if _, err := service.CorrectOwnedMemory(context.Background(), request); !errors.Is(err, application.ErrAgentMemoryConflict) {
+		t.Fatalf("expired correction error = %v", err)
+	}
+	request.PrincipalUUID = "U999"
+	if _, err := service.CorrectOwnedMemory(context.Background(), request); !errors.Is(err, application.ErrAgentMemoryDenied) {
+		t.Fatalf("foreign correction error = %v", err)
+	}
+	request.PrincipalUUID, request.ExpectedVersion = "U100", 2
+	if _, err := service.CorrectOwnedMemory(context.Background(), request); !errors.Is(err, application.ErrAgentMemoryConflict) {
+		t.Fatalf("stale correction error = %v", err)
 	}
 }
 

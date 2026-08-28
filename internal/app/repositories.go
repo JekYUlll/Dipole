@@ -110,6 +110,10 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("repository composition requires database/sql connection")
 	}
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
+	}
 	repos := &Repositories{}
 	adapter, err := sqlcRepository.NewAICallLogRepository(generated.New(db))
 	if err != nil {
@@ -131,7 +135,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
 	}
 	repos.AgentArtifacts = agentArtifacts
-	agentMemories, err := sqlcRepository.NewAgentMemoryRepository(generated.New(db))
+	agentMemories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
 	}
@@ -167,10 +171,6 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc contact repository: %w", err)
 	}
 	repos.Contacts = NewCachedContactStore(contactAdapter)
-	mysqlStore, err := mysqlData.NewStore(db)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
-	}
 	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
