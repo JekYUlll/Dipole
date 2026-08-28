@@ -241,7 +241,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加不可变完整消息归档与 source-bound Cassandra Job；按固定 MinIO 对象版本恢复后删除 MySQL 正文，仍可完成 Timeline 重建、全量对账和篡改检测。
 - [x] 固化重复消息 Cassandra hydration 的 24 小时观测门禁：至少 100 次 hit、零 fallback、零历史无 Seq，并以 promtool 固定时序验证晋级和停止条件。
 - [ ] 持续提升 Cassandra 读取比例并完成生产观测；A4 期间继续保存 MySQL 完整消息，保留对账与即时回切基准。
-  - [x] 增加 Cassandra read rollout evidence v1 与低敏 Go CLI：聚合记录 read share、fallback、verification、p95 和 deployment revision，按策略输出 `eligible|blocked`；真实共享环境采集、责任人批准和回切窗口仍待完成。
+-  - [x] 增加 Cassandra read rollout evidence v1 与低敏 Go CLI：聚合记录 read share、fallback、verification、p95 和 deployment revision，按策略输出 `eligible|blocked`；真实共享环境采集、责任人批准和回切窗口仍待完成。
+- [x] 重新执行隔离 Cassandra read-routing smoke，确认 Cassandra 页面读取、payload 损坏和缺失行均按同一 Seq cursor 回退 MySQL；该证据不改变主读比例和生产开关。
 - [ ] A5/A6 替代读契约双跑通过后，再停止向 MySQL 保存完整消息正文，只保留幂等、Outbox、路由和必要元数据。
 - [ ] 在切换为 metadata-only 写入前完成固定快照备份、事件回放演练、责任人和明确回滚窗口。
 - [ ] 达到保留期后再归档或删除 MySQL 历史消息表。

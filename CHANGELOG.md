@@ -29,6 +29,7 @@
 - Conversation Projection 增加 sqlc 批量群消息 upsert：在保持 sender `read_seq`、成员未读计算、Seq 单调更新和幂等语义的前提下，将普通群一次消息的数据库写入收敛为单条 `INSERT ... SELECT`；旧 Repository/test double 继续兼容逐成员路径。
 - Conversation Projection 归档真实 MySQL 8.4.8 的 1000 成员 SQL 对照：serial、batch、并发 serial、并发 batch 均通过行数/序号校验，batch 数据库层耗时约降低 37.3-353.8 倍，InnoDB row-lock wait 增量为零；该证据仍不替代端到端 P95 容量测试。
 - 修正 MySQL migration integration baseline 与实际 v49 schema 漂移：补齐 v49 到 v44 的逐步回滚/表数断言，并恢复 Metadata backfill 测试窗口；隔离 MySQL 8.4.8 + Cassandra hydration smoke 全部通过。
+- Cassandra read-routing 隔离 smoke 已在迁移 v49、临时 MySQL 与 Cassandra 环境通过：Cassandra 页面读取、payload 损坏回退和缺失行回退均符合契约，临时资源已自动清理。
 - Kafka Shadow Runtime 增加可选 Subscription gate 注入点；enforced blocked 会在订阅匹配和 EventLedger claim 前停止，默认未注入以保持现有路径兼容。
 
 - Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
