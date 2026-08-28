@@ -15,6 +15,12 @@ message event
 
 本切片只生成候选，不自动写入 `agent_memories`，也不调用模型、Kafka、数据库或外部工具。后续接入时必须通过显式 sink、owner/policy 校验和独立 rollout 开关。
 
+## Candidate Ledger
+
+v45 的 `agent_memory_candidates` 只保存 `compactContent` 摘要、候选来源、证据 ID 列表、策略版本、规范哈希和 `pending|accepted|rejected` 状态。完整 candidate content 不进入 ledger；候选 ID 唯一键与内容哈希冲突校验共同提供精确重放语义。
+
+Ledger 的写入不会改变 `agent_memories`。只有后续经过 reviewer、scope/TTL/correction 校验和 Temporal durable receipt 的显式投影，才可以创建长期 Memory。
+
 ## 不变量
 
 - Observation 以 `eventId` 幂等；同一 worker 重复收到事件不会生成第二个候选。
