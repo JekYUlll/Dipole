@@ -1,0 +1,84 @@
+import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
+import {
+  temporalMcpDispatchRouteBinding,
+  type TemporalMcpDispatchActivities,
+  type TemporalMcpDispatchRouteBinding
+} from "./mcp-dispatch-activity.js";
+import {
+  createTemporalMcpMultiRouteRuntime,
+  type TemporalMcpMultiRoutePlan,
+  type TemporalMcpMultiRouteRuntime,
+  type TemporalMcpMultiRouteRuntimeDependencies
+} from "./mcp-multi-route-runtime.js";
+import { TemporalMcpWorkflowExecutionCatalog } from "./mcp-workflow-envelope.js";
+import { externalMcpReadinessBindingSha256 } from "../mcp/external-mcp-readiness-evidence.js";
+
+const sha256Pattern = /^[a-f0-9]{64}$/;
+
+export interface ExternalMcpTemporalWorkerCompositionPlan extends TemporalMcpMultiRoutePlan {
+  readonly runtimeBindingSha256: string;
+}
+
+export type ExternalMcpTemporalWorkerActivities = AgentTaskWorkerActivities & TemporalMcpDispatchActivities;
+
+export type TemporalMcpMultiRouteRuntimeFactory = (
+  plan: TemporalMcpMultiRoutePlan,
+  dependencies: TemporalMcpMultiRouteRuntimeDependencies
+) => TemporalMcpMultiRouteRuntime;
+
+export interface ExternalMcpTemporalWorkerComposition {
+  readonly activities: ExternalMcpTemporalWorkerActivities;
+  readonly routeBindings: readonly TemporalMcpDispatchRouteBinding[];
+  readonly workflowExecutions: TemporalMcpWorkflowExecutionCatalog;
+  readonly runtimeBindingSha256: string;
+}
+
+export function createExternalMcpTemporalWorkerComposition(
+  plan: ExternalMcpTemporalWorkerCompositionPlan | undefined,
+  baseActivities: AgentTaskWorkerActivities,
+  resolveDependencies: () => TemporalMcpMultiRouteRuntimeDependencies,
+  createRuntime: TemporalMcpMultiRouteRuntimeFactory = createTemporalMcpMultiRouteRuntime
+): ExternalMcpTemporalWorkerComposition | undefined {
+  if (plan === undefined) return undefined;
+  if (!sha256Pattern.test(plan.runtimeBindingSha256)) {
+    throw new Error("External MCP Temporal Worker Runtime binding is invalid");
+  }
+  if (externalMcpReadinessBindingSha256(
+    plan.workerExternalMcp.config,
+    plan.workerExternalMcp.io,
+    plan.workerExternalMcp.readinessBindingOptions
+  ) !== plan.runtimeBindingSha256) {
+    throw new Error("External MCP Temporal Worker Runtime binding is conflicting");
+  }
+  if ("executeMcpDispatch" in baseActivities) {
+    throw new Error("External MCP Temporal Worker Activity collision");
+  }
+
+  const expectedBindings = plan.routes.map(temporalMcpDispatchRouteBinding);
+  for (const route of plan.routes) plan.routeRegistry.workerEgressPolicies(route.capabilityId);
+  const workflowExecutions = new TemporalMcpWorkflowExecutionCatalog(expectedBindings);
+  const dependencies = resolveDependencies();
+  const runtime = createRuntime(plan, dependencies);
+  assertExactBindings(expectedBindings, runtime.routeBindings);
+
+  return {
+    activities: Object.freeze({ ...baseActivities, ...runtime.activities }),
+    routeBindings: Object.freeze([...runtime.routeBindings]),
+    workflowExecutions,
+    runtimeBindingSha256: plan.runtimeBindingSha256
+  };
+}
+
+function assertExactBindings(
+  expected: readonly TemporalMcpDispatchRouteBinding[],
+  actual: readonly TemporalMcpDispatchRouteBinding[]
+): void {
+  if (actual.length !== expected.length || actual.some((binding, index) => {
+    const candidate = expected[index];
+    return candidate === undefined || binding.routeId !== candidate.routeId ||
+      binding.routeVersion !== candidate.routeVersion ||
+      binding.routeManifestSha256 !== candidate.routeManifestSha256;
+  })) {
+    throw new Error("External MCP Temporal Worker route bindings are conflicting");
+  }
+}
