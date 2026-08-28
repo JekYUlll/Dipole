@@ -17,6 +17,7 @@ export interface TimelineNotifyShadowTransport {
 }
 
 type OutcomeReporter = (outcome: TimelineNotifyShadowOutcome) => void | Promise<void>
+type MessageDelivery = (messages: Message[]) => void
 
 export class TimelineNotifyShadowVerifier {
   private readonly pageSize: number
@@ -30,6 +31,7 @@ export class TimelineNotifyShadowVerifier {
   constructor(
     private readonly transport: TimelineNotifyShadowTransport,
     private readonly report: OutcomeReporter,
+    private readonly deliver?: MessageDelivery,
     options: { pageSize?: number; maxPages?: number; maxSeenEvents?: number } = {},
   ) {
     this.pageSize = boundedInteger(options.pageSize, 100, 1, 200)
@@ -61,6 +63,7 @@ export class TimelineNotifyShadowVerifier {
     if (verified !== undefined && notification.message_seq <= verified) return
 
     let cursor = verified ?? notification.message_seq - 1
+    const messages: Message[] = []
     try {
       for (let pageNumber = 0; pageNumber < this.maxPages && cursor < notification.message_seq; pageNumber += 1) {
         const page = await this.transport.list(notification, cursor, this.pageSize)
@@ -77,12 +80,14 @@ export class TimelineNotifyShadowVerifier {
             return
           }
           previous = sequence
+          messages.push(message)
           if (sequence === notification.message_seq) {
             if (message.message_id !== notification.message_uuid) {
               this.reportSafely('mismatch')
               return
             }
             this.verifiedSequences.set(notification.conversation_key, notification.message_seq)
+            this.deliverSafely(messages)
             this.reportSafely('match')
             return
           }
@@ -112,6 +117,15 @@ export class TimelineNotifyShadowVerifier {
       void Promise.resolve(this.report(outcome)).catch(() => {})
     } catch {
       // Shadow telemetry cannot affect realtime message delivery.
+    }
+  }
+
+  private deliverSafely(messages: Message[]) {
+    if (!this.deliver || messages.length === 0) return
+    try {
+      this.deliver(messages)
+    } catch {
+      // A verified notification must not enter a retry loop because a UI listener failed.
     }
   }
 }

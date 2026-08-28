@@ -589,7 +589,7 @@ import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
-import { observeBrowserTimelineNotification } from '@/sync/browserSync'
+import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1728,7 +1728,9 @@ const handleWsPacket = async (packet: WsPacket) => {
     }
     case 'sync.item.notify.v1': {
       const userUUID = auth.currentUser?.uuid || ''
-      void observeBrowserTimelineNotification(userUUID, data as unknown as SyncItemNotify)
+      void observeBrowserTimelineNotification(userUUID, data as unknown as SyncItemNotify, messages => {
+        if (browserSyncMode === 'primary') messages.forEach(message => chat.pushMessage(message))
+      })
       break
     }
     case 'contact.friend_deleted': {
