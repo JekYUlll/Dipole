@@ -1,8 +1,20 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import AgentTaskTimeline from './AgentTaskTimeline.vue'
 
+const source = readFileSync(resolve(import.meta.dirname, 'AgentTaskTimeline.vue'), 'utf8')
+
 describe('AgentTaskTimeline', () => {
+  it('uses the shared Pencil token surface for the timeline shell', () => {
+    expect(source).toContain('var(--dp-surface)')
+    expect(source).toContain('var(--dp-line)')
+    expect(source).toContain('var(--dp-font-body)')
+    expect(source).not.toContain('#fbfaf7')
+    expect(source).not.toContain('#b66a43')
+  })
+
   it('renders a low-sensitivity page and follows its cursor', async () => {
     const getTimeline = vi.fn()
       .mockResolvedValueOnce({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2, events: [{ eventSeq: '1', eventId: 'EV-1', taskId: 'TASK-1', runId: 'RUN-1', kind: 'model_call', status: 'completed', occurredAtUnixMs: 1_000 }], nextCursor: '1' })
