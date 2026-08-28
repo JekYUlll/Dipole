@@ -9,6 +9,8 @@ import { createHash } from "node:crypto";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 
 const callerService = "dipole-agent";
+const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
+const mcpToolRoundResultLimit = 128 * 1024;
 
 export interface AgentRunIdentity {
   readonly taskId: string;
@@ -32,6 +34,30 @@ export interface AgentMcpToolCommand {
   readonly arguments: Readonly<Record<string, unknown>>;
   readonly argumentsSha256: string;
 }
+
+export interface AgentMcpToolRoundClaim {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly invocationId: string;
+  readonly roundId: string;
+  readonly roundNumber: 0 | 1;
+  readonly requestSha256: string;
+  readonly ownerTokenSha256: string;
+}
+
+export type AgentMcpToolRoundClaimResult =
+  | { readonly outcome: "claimed" }
+  | { readonly outcome: "replay_completed"; readonly result: unknown; readonly resultJSON: string; readonly resultSha256: string }
+  | { readonly outcome: "replay_failed"; readonly errorCode: string }
+  | { readonly outcome: "ambiguous" };
+
+export type AgentMcpToolRoundFinish = {
+  readonly roundId: string;
+  readonly ownerTokenSha256: string;
+} & (
+  | { readonly status: "completed"; readonly resultJSON: string; readonly resultSha256: string }
+  | { readonly status: "failed"; readonly errorCode: string }
+);
 
 export interface AgentRunAdmissionRequest {
   readonly tenantId: string;
@@ -577,6 +603,76 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async claimMcpToolRound(input: AgentMcpToolRoundClaim): Promise<AgentMcpToolRoundClaimResult> {
+    assertSha256(input.roundId, "round ID");
+    assertSha256(input.requestSha256, "request digest");
+    assertSha256(input.ownerTokenSha256, "owner token digest");
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.claimMcpToolRound({
+        context: this.requestContext(), taskId: input.taskId, runId: input.runId, invocationId: input.invocationId,
+        roundId: input.roundId, roundNumber: input.roundNumber, requestSha256: input.requestSha256,
+        ownerTokenSha256: input.ownerTokenSha256
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool round claim returned no response"));
+        try {
+          if (response.roundId !== input.roundId) throw new Error();
+          const resultJSON = Buffer.from(response.resultJson).toString("utf8");
+          switch (response.outcome) {
+            case "claimed":
+            case "ambiguous":
+              if (resultJSON !== "" || response.resultSha256 !== "" || response.errorCode !== "") throw new Error();
+              return resolve({ outcome: response.outcome });
+            case "replay_failed":
+              if (resultJSON !== "" || response.resultSha256 !== "" || !errorCodePattern.test(response.errorCode)) throw new Error();
+              return resolve({ outcome: response.outcome, errorCode: response.errorCode });
+            case "replay_completed": {
+              const result = JSON.parse(resultJSON) as unknown;
+              if (!isRecord(result) || Buffer.byteLength(resultJSON, "utf8") > mcpToolRoundResultLimit) throw new Error();
+              const canonical = canonicalMcpJSON(result);
+              const digest = createHash("sha256").update(canonical).digest("hex");
+              if (canonical !== resultJSON || digest !== response.resultSha256 || response.errorCode !== "") throw new Error();
+              return resolve({ outcome: response.outcome, result, resultJSON, resultSha256: digest });
+            }
+            default:
+              throw new Error();
+          }
+        } catch {
+          reject(new Error("Agent MCP Tool round claim returned conflicting evidence"));
+        }
+      });
+    });
+  }
+
+  async finishMcpToolRound(input: AgentMcpToolRoundFinish): Promise<void> {
+    assertSha256(input.roundId, "round ID");
+    assertSha256(input.ownerTokenSha256, "owner token digest");
+    if (input.status === "completed") {
+      const decoded = JSON.parse(input.resultJSON) as unknown;
+      if (!isRecord(decoded) || Buffer.byteLength(input.resultJSON, "utf8") > mcpToolRoundResultLimit) {
+        throw new Error("Agent MCP Tool round completion evidence is invalid");
+      }
+      const canonical = canonicalMcpJSON(decoded);
+      if (canonical !== input.resultJSON || createHash("sha256").update(canonical).digest("hex") !== input.resultSha256) {
+        throw new Error("Agent MCP Tool round completion evidence is invalid");
+      }
+    } else if (!errorCodePattern.test(input.errorCode)) {
+      throw new Error("Agent MCP Tool round failure evidence is invalid");
+    }
+    const metadata = this.metadata();
+    return new Promise((resolve, reject) => {
+      this.rpc.finishMcpToolRound({
+        context: this.requestContext(), roundId: input.roundId, ownerTokenSha256: input.ownerTokenSha256,
+        status: input.status, resultJson: Buffer.from(input.status === "completed" ? input.resultJSON : "", "utf8"),
+        resultSha256: input.status === "completed" ? input.resultSha256 : "", errorCode: input.status === "failed" ? input.errorCode : ""
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Agent MCP Tool round finish returned no response"));
+        if (response.roundId !== input.roundId || response.status !== input.status) return reject(new Error("Agent MCP Tool round finish returned conflicting evidence"));
+        resolve();
+      });
+    });
+  }
+
   async finishToolInvocation(input: AgentToolInvocationFinish): Promise<void> {
     const metadata = this.metadata();
     return new Promise((resolve, reject) => {
@@ -783,6 +879,14 @@ function validBoundedIdentifier(value: string, maximum: number): boolean {
 
 function validSHA256(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertSha256(value: string, label: string): void {
+  if (!validSHA256(value)) throw new Error(`Agent MCP Tool ${label} is invalid`);
 }
 
 function safeUnixMilliseconds(value: bigint): number {
