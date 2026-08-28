@@ -127,6 +127,7 @@
 - **本轮进展：** 增加 `PromoteMemoryCandidate` additive gRPC 与 Gateway HTTP 控制入口。Gateway 只提交候选 ID、候选哈希和 review ID，Core 从认证 principal 派生 owner 并调用 v47 promotion service；Gateway/TS client 对返回 Memory 的来源、review 绑定和 active 状态进行复核。Temporal 自动触发、Runtime 旁路、双人审批和真实 reviewed corpus 继续关闭。
 - **本轮进展：** 增加 `agent-memory-promotion-receipt.v1` 语言中立契约和 Temporal preparation Activity。receipt 仅绑定 Task/Run、owner、候选/审核摘要与短时效窗口，支持确定性重放和 fail-closed 过期检查；当前只形成 durable intent，未开放 Runtime 直接写 Memory、自动晋级或生产灰度。
 - **本轮进展：** 增加 Memory reviewed corpus v1、双 reviewer/独立 adjudicator 门禁和离线 CLI。输入不含消息正文，只绑定候选类型、资源、证据数量与内容哈希；报告不输出 case/reviewer 标识，分歧、覆盖不完整、gold drift 或 corpus hash 漂移均 fail closed。当前仓库仅有脱敏测试夹具，真实 owner-approved corpus、retrieval ranking 标注和灰度证据仍待完成。
+- **本轮进展：** 增加 source manifest v1 与安全加载器，要求 owner UID、绝对规范路径、无符号链接、严格文件权限/大小、批准时间窗口以及 corpus/review 双哈希一致；该边界允许后续接入真实脱敏文件，同时阻断任意本地文件冒充已批准语料。当前仍缺真实 owner-approved corpus、发布签名和共享环境评测证据。
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 
