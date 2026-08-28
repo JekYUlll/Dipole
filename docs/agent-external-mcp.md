@@ -88,6 +88,8 @@ MySQL migration v37 新增独立的 `agent_mcp_readiness_evidence` 控制面表�
 
 Agent Capability 的 additive `PublishMcpReadinessEvidence` RPC 已连接上述 MySQL Publisher。它只允许 transport 认证的 `dipole-agent` 且 RequestContext principal 必须为空；operator 固定取认证 service identity，request/trace 从已验证上下文派生。请求不提供 Evidence ID、Runtime binding、content hash、status 或 activation 字段。Core 限制 evidence JSON 为 16 KiB 并严格解析 v2；TS adapter 会在发送前规范化字段与时间、复算 content SHA-256，并对响应的确定性 Evidence ID、双 binding、状态和时间逐项复核。exact replay 只改变 `created` 为 false。
 
+`ResolveFreshMcpReadinessEvidence` 是对应的只读解析边界。调用方只能提交 tenant、Profile binding 与 Runtime binding，不能提交查询时间、Evidence ID 或 activation 意图；Core 使用服务端当前时间查询并重新验证记录。未找到返回严格空的 `found=false`，找到时只返回 Evidence ID、schema、双 binding、content hash、status 和 collection/expiry 时间。TS adapter 会拒绝带矛盾字段的空响应、binding/hash/schema/status 漂移及倒置时间。该解析结果当前只供运维核验，不接入 Run admission、Profile activation 或 Runtime promotion。
+
 受控 Shadow 环境可通过独立单次命令采集并发布：
 
 ```bash
