@@ -107,6 +107,7 @@ type Querier interface {
 	GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetAgentShadowPlanRow, error)
 	GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error)
 	GetAgentTask(ctx context.Context, taskUuid string) (AgentTask, error)
+	GetAgentTaskTimelineEvent(ctx context.Context, arg GetAgentTaskTimelineEventParams) (AgentTaskTimelineEvent, error)
 	GetAgentToolInvocation(ctx context.Context, invocationUuid string) (AgentToolInvocation, error)
 	GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAgentWorkflowRepairDecisionParams) (AgentWorkflowRepairDecision, error)
 	GetAgentWorkflowRepairExecution(ctx context.Context, executionUuid string) (AgentWorkflowRepairExecution, error)
@@ -167,6 +168,7 @@ type Querier interface {
 	InsertAgentShadowPlan(ctx context.Context, arg InsertAgentShadowPlanParams) (int64, error)
 	InsertAgentShadowStep(ctx context.Context, arg InsertAgentShadowStepParams) error
 	InsertAgentTask(ctx context.Context, arg InsertAgentTaskParams) (int64, error)
+	InsertAgentTaskTimelineEvent(ctx context.Context, arg InsertAgentTaskTimelineEventParams) (sql.Result, error)
 	InsertAgentToolInvocation(ctx context.Context, arg InsertAgentToolInvocationParams) (int64, error)
 	InsertAgentWorkflowRepairDecision(ctx context.Context, arg InsertAgentWorkflowRepairDecisionParams) (int64, error)
 	InsertAgentWorkflowRepairExecution(ctx context.Context, arg InsertAgentWorkflowRepairExecutionParams) (int64, error)
@@ -177,6 +179,7 @@ type Querier interface {
 	ListAgentEvalObservationSteps(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationStepsRow, error)
 	ListAgentEvalObservationToolCalls(ctx context.Context, arg ListAgentEvalObservationToolCallsParams) ([]ListAgentEvalObservationToolCallsRow, error)
 	ListAgentMemoryLineageBackfill(ctx context.Context, arg ListAgentMemoryLineageBackfillParams) ([]ListAgentMemoryLineageBackfillRow, error)
+	ListAgentTaskTimelineEvents(ctx context.Context, arg ListAgentTaskTimelineEventsParams) ([]AgentTaskTimelineEvent, error)
 	ListAgentTaskWorkflowProjectionSnapshots(ctx context.Context, arg ListAgentTaskWorkflowProjectionSnapshotsParams) ([]ListAgentTaskWorkflowProjectionSnapshotsRow, error)
 	ListApprovedAgentApprovalGrants(ctx context.Context, arg ListApprovedAgentApprovalGrantsParams) ([]AgentApproval, error)
 	ListContactsByUser(ctx context.Context, userUuid string) ([]Contact, error)
