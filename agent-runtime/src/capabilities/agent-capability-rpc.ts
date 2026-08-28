@@ -33,6 +33,7 @@ export interface AgentMcpToolCommand {
   readonly capabilityId: string;
   readonly arguments: Readonly<Record<string, unknown>>;
   readonly argumentsSha256: string;
+  readonly startedAtUnixMs: number;
 }
 
 export interface AgentMcpToolRoundClaim {
@@ -587,6 +588,7 @@ export class AgentCapabilityRPCClient {
           if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) throw new Error();
           const canonical = canonicalMcpJSON(decoded);
           const digest = createHash("sha256").update(canonical).digest("hex");
+          const startedAtUnixMs = safeUnixMilliseconds(response.startedAtUnixMs);
           if (response.taskId !== taskId || response.runId !== runId || response.invocationId !== invocationId ||
               Buffer.from(response.argumentsJson).toString("utf8") !== canonical || response.argumentsSha256 !== digest) {
             throw new Error();
@@ -594,7 +596,7 @@ export class AgentCapabilityRPCClient {
           resolve({
             invocationId, tenantId: response.tenantId, principalUserId: response.principalUserId, agentId: response.agentId,
             taskId, runId, profileId: response.profileId, serverId: response.serverId, toolName: response.toolName,
-            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest
+            capabilityId: response.capabilityId, arguments: decoded as Record<string, unknown>, argumentsSha256: digest, startedAtUnixMs
           });
         } catch {
           reject(new Error("Agent MCP Tool command returned conflicting evidence"));

@@ -61,7 +61,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, {
         invocationId: "INV-EXT-1", tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
         profileId: "calendar-prod", serverId: "calendar.example", toolName: "calendar.create", capabilityId: "conversation.list",
-        argumentsJson, argumentsSha256: createHash("sha256").update(argumentsJson).digest("hex")
+        argumentsJson, argumentsSha256: createHash("sha256").update(argumentsJson).digest("hex"), startedAtUnixMs: 1_000n
       });
       return {};
     });
@@ -280,7 +280,7 @@ describe("AgentCapabilityRPCClient", () => {
       capabilityId: "conversation.list", argumentsSha256: "a".repeat(64), requestId: "R1", traceId: "T1"
     })).resolves.toBeUndefined();
     await expect(client.resolveMcpToolCommand("TASK-1", "RUN-1", "INV-EXT-1")).resolves.toMatchObject({
-      profileId: "calendar-prod", serverId: "calendar.example", arguments: { calendarId: "CAL-1" }
+      profileId: "calendar-prod", serverId: "calendar.example", arguments: { calendarId: "CAL-1" }, startedAtUnixMs: 1_000
     });
     const roundId = "d".repeat(64);
     const ownerTokenSha256 = "e".repeat(64);

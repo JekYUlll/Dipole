@@ -88,6 +88,7 @@ type AgentMCPToolCommandV1 struct {
 	CapabilityID    string
 	ArgumentsJSON   string
 	ArgumentsSHA256 string
+	StartedAt       time.Time
 }
 
 type AgentToolInvocationFinishV1 struct {
