@@ -82,7 +82,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		return nil, fmt.Errorf("compose MySQL Sync message hydrator: %w", err)
 	}
 	var hydrator application.SyncMessageHydrator = primaryHydrator
-	if syncCfg.CassandraShadowHydration {
+	if syncCfg.CassandraShadowHydration || syncCfg.CassandraPrimaryHydration {
 		runtime.cassandra, err = cassandradata.OpenSession(cassandraCfg)
 		if err != nil {
 			runtime.Close()
@@ -102,8 +102,17 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			runtime.Close()
 			return nil, hydrationErr
 		}
-		runtime.shadowHydrator = shadowdata.NewSyncMessageHydrator(primaryHydrator, cassandraHydrator, logSyncHydrationComparison)
-		hydrator = runtime.shadowHydrator
+		if syncCfg.CassandraShadowHydration {
+			runtime.shadowHydrator = shadowdata.NewSyncMessageHydrator(primaryHydrator, cassandraHydrator, logSyncHydrationComparison)
+			hydrator = runtime.shadowHydrator
+		} else {
+			fallbackHydrator, fallbackErr := shadowdata.NewFallbackSyncMessageHydrator(cassandraHydrator, primaryHydrator, logSyncHydrationRoute)
+			if fallbackErr != nil {
+				runtime.Close()
+				return nil, fallbackErr
+			}
+			hydrator = fallbackHydrator
+		}
 	}
 	repositories, err := appcomposition.NewSyncProcessRepositoriesWithHydrator(db, hydrator)
 	if err != nil {
@@ -171,15 +180,22 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		bindRPCReadiness(runtime.metrics, runtime.rpc)
 		markRuntimeReady(runtime.metrics)
 	}
-	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration))
+	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration), zap.Bool("cassandra_primary_hydration", syncCfg.CassandraPrimaryHydration))
 	return runtime, nil
 }
 
 func validateSyncHydrationConfig(syncCfg config.Sync, cassandraCfg config.Cassandra) error {
-	if syncCfg.CassandraShadowHydration && !cassandraCfg.Enabled {
-		return fmt.Errorf("Sync Cassandra shadow hydration requires cassandra.enabled")
+	if syncCfg.CassandraShadowHydration && syncCfg.CassandraPrimaryHydration {
+		return fmt.Errorf("Sync Cassandra shadow and primary hydration are mutually exclusive")
+	}
+	if (syncCfg.CassandraShadowHydration || syncCfg.CassandraPrimaryHydration) && !cassandraCfg.Enabled {
+		return fmt.Errorf("Sync Cassandra hydration requires cassandra.enabled")
 	}
 	return nil
+}
+
+func logSyncHydrationRoute(outcome string) {
+	logger.Debug("Sync Cassandra hydration route selected", zap.String("outcome", outcome))
 }
 
 func logSyncHydrationComparison(comparison shadowdata.SyncHydrationComparison) {
