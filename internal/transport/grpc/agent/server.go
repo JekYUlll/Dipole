@@ -14,6 +14,8 @@ import (
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
+	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -1615,6 +1617,47 @@ func (s *Server) ListConversations(ctx context.Context, request *agentv1.ListCon
 	for _, item := range items {
 		if item != nil {
 			response.Conversations = append(response.Conversations, conversationToProto(item))
+		}
+	}
+	return response, nil
+}
+
+func (s *Server) ReadConversation(ctx context.Context, request *agentv1.ReadConversationRequest) (*agentv1.ReadConversationResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	limit := int(request.GetLimit())
+	if limit < 1 || limit > 100 {
+		return nil, status.Error(codes.InvalidArgument, "limit must be between 1 and 100")
+	}
+	targetID := strings.TrimSpace(request.GetTargetId())
+	if targetID == "" {
+		return nil, status.Error(codes.InvalidArgument, "target_id is required")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	result, err := s.capability.ReadConversation(ctx, invocation, targetID, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent conversation read failed")
+	}
+	response := &agentv1.ReadConversationResponse{
+		Found: result.Found, Reason: result.Reason, TargetId: result.TargetUUID, TargetType: int32(result.TargetType),
+		Messages: make([]*messagev1.Message, 0, len(result.Messages)),
+	}
+	for _, message := range result.Messages {
+		if message != nil {
+			response.Messages = append(response.Messages, grpcmapping.MessageToProto(message))
 		}
 	}
 	return response, nil

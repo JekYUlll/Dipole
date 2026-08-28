@@ -2,6 +2,7 @@ import { buildServer } from "./server.js";
 import { AgentTaskControlService } from "./control/agent-task-control.js";
 import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
+import { ConversationReadCapability } from "./capabilities/conversation-read.js";
 import { CapabilityRegistry } from "./capabilities/registry.js";
 import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
 import { McpToolInvocationRunner } from "./mcp/mcp-tool-invocation.js";
@@ -101,6 +102,7 @@ const controlService = controlEnabled
   : undefined;
 const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));
+if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationReadCapability(mcpRPC!.client));
 const mcpAuthExtraSchema = z.object({
   resource: z.literal(mcpResource),
   taskId: z.string().trim().min(1),
