@@ -29,6 +29,11 @@ describe("matchEventSubscriptions", () => {
     expect(() => matchEventSubscriptions(event, [subscription("SUB-1", "message_contains_any", { terms: [] })])).toThrow(/terms/);
     expect(() => matchEventSubscriptions(event, [subscription("SUB-2", "model", { prompt: "classify" })])).toThrow(/filterKind/);
   });
+
+  it("bounds the candidate set before parsing and matching", () => {
+    const candidates = Array.from({ length: 257 }, (_, index) => subscription(`SUB-${index}`, "all", {}));
+    expect(() => matchEventSubscriptions(event, candidates)).toThrow(/candidate set exceeds 256/);
+  });
 });
 
 function subscription(subscriptionId: string, filterKind: string, filter: unknown) {
