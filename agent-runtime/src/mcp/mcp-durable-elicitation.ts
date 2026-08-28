@@ -74,6 +74,10 @@ export class McpDurableElicitationAdapter {
       checkpoint,
       directive: {
         kind: "wait_input", requestId: input.requestId, prompt: parsed.prompt, form: parsed.form,
+        source: {
+          kind: "mcp", serverId: input.serverId, toolName: input.toolName,
+          invocationId: input.invocationId, trust: "untrusted"
+        },
         expiresAtUnixMs: input.expiresAtUnixMs, checkpoint
       }
     };

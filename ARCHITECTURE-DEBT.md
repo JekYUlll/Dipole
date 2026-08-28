@@ -45,16 +45,16 @@
 - **建议方向：** 接入真实 OAuth 2.1 Authorization Server 后发布 discovery/PKCE；实现 credential-aware Transport Factory，在建连时按 tenant 解析 opaque ref、校验版本/吊销状态、DNS 全部地址与 TLS 证书，绝不把 secret 返回 Runtime。外部 Tool 结果作为 untrusted Context fragment。生产 trace 使用对象存储与通知链；write Tool 必须绑定现有 Approval 与 Agent lineage。durable Elicitation adapter 已限制 form schema 并绑定 checkpoint，后续仍需 MCP input-required continuation、Workflow 恢复和 UI 来源提示接线。
 - **处理门槛：** 任何共享环境 MCP 开关启用、外部 Server 连接或 write/destructive Tool 上线前完成。当前网络入口仅用于受控认证和授权边界验证。
 
-### AD-036：Elicitation 缺少客户端 UI、敏感输入策略与 MCP 生产接线
+### AD-036：Elicitation 缺少 MCP continuation 与敏感授权隔离
 
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Human-in-the-loop、Web 客户端、MCP 集成、凭据与第三方授权
-- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验、大小上限和绝对截止时间；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点和 Timer，到期自动以 `input_expired` 取消。默认关闭的 MCP adapter 已将受限 form mode 映射为 `wait_input`，以 checkpoint 绑定 untrusted Server/Tool/Invocation/Form/deadline，并拒绝 URL、敏感字段与有损 schema。canonical Pencil 已覆盖 desktop/mobile 普通 Form、来源披露和 waiting/validation/submitting/running/cancelled/expired/unavailable 七态。当前未交付前端渲染、Client capability/handler 或跨 Activity continuation。
-- **风险：** 缺少 UI 时用户无法在产品内完成 durable input；将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；未来生产接线仍需处理来源展示、连接丢失、用户取消和 Server 无恢复能力等差异。
-- **建议方向：** 按已维护的 Pencil 契约实现 schema 驱动前端、来源提示、校验、取消和过期状态；普通 Form 继续禁止敏感字段。第三方授权采用独立 URL mode、短期 challenge 与回调绑定；MCP 编排接线使用 input-required continuation 或可恢复协议状态，固定来源、progress/cancel 和版本映射，并增加审计与端到端测试。
-- **处理门槛：** Project Guardian 面向用户演示前完成普通 Form UI；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成敏感输入隔离与威胁建模。
+- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验、大小上限和绝对截止时间；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点和 Timer，到期自动以 `input_expired` 取消。默认关闭的 MCP adapter 已将受限 form mode 映射为 `wait_input`，以 checkpoint 绑定 untrusted Server/Tool/Invocation/Form/deadline，并拒绝 URL、敏感字段与有损 schema。canonical Pencil 已覆盖 desktop/mobile 普通 Form、来源披露和七态。默认关闭的 Vue 页面现通过 authenticated Task query/input/cancel API 渲染普通 Form，披露 Agent 或 untrusted MCP 来源，精确提交当前 Task/request，且在查询失败时清空缓存 Form；Runtime 与 Web 均拒绝凭据类字段。当前尚未交付 MCP input-required continuation、跨 Activity 恢复、敏感授权 URL mode 和产品入口编排。
+- **风险：** 浏览器闭环只能恢复已进入 `waiting_input` 的 Task；MCP Server 仍无法在 durable input 完成后恢复原 Tool 调用。将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；未来生产接线仍需处理连接丢失、用户取消和 Server 无恢复能力等差异。
+- **建议方向：** 保持普通 Form 的字段白名单和默认关闭灰度，补充 authenticated 路由 E2E、键盘/可访问性与视觉回归。第三方授权采用独立 URL mode、短期 challenge 与回调绑定；MCP 编排接线使用 input-required continuation 或可恢复协议状态，固定来源、progress/cancel 和版本映射，并增加审计与端到端测试。
+- **处理门槛：** Project Guardian 的普通 Form UI 已完成并保持默认关闭；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成独立敏感输入隔离、continuation 和威胁建模。
 
 ### AD-035：Memory foundation 缺少受控写入、压缩与删除治理
 
