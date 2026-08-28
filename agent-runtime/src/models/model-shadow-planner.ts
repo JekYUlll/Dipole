@@ -129,7 +129,7 @@ function contextFragments(
       const content = JSON.stringify({
         conversationId: message.conversationKey, sequence: message.sequence.toString(), senderId: message.senderId,
         targetId: message.targetId, messageType: message.messageType, content: message.content,
-        ...(message.sentAt === undefined ? {} : { sentAt: message.sentAt })
+        ...(message.sentAt === undefined ? {} : { sentAt: { seconds: message.sentAt.seconds.toString(), nanos: message.sentAt.nanos } })
       });
       const compactContent = JSON.stringify({
         conversationId: message.conversationKey, sequence: message.sequence.toString(), senderId: message.senderId,
