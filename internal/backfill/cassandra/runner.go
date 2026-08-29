@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/model"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 
 const (

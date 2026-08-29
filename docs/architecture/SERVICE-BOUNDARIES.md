@@ -23,6 +23,7 @@
 - `internal/model`、`internal/dto`：经过版本兼容约束的领域数据结构。
 - `internal/config`、`internal/logger`、`internal/middleware`：基础运行时能力。
 - `internal/platform`：数据库连接、Kafka、Redis、对象存储和 RPC/TLS 等基础设施适配。
+- `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `api/proto`、`contracts`：跨服务 RPC、事件和 Agent 契约。
 
 ### 需要收敛

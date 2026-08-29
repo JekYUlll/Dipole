@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	cassandraprojector "github.com/JekYUlll/Dipole/internal/projector/cassandra"
