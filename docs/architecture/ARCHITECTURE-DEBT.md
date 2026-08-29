@@ -58,6 +58,7 @@
 - **本轮进展：** Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；`internal/service/message_event_compat.go` 仅保留类型、错误和函数兼容入口，事件、Search mutation 和 Inbox locator contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Message 核心 domain 实现及测试已迁入 `internal/services/message/domain/`；`internal/service/message_event_compat.go` 继续提供兼容类型、错误和构造入口，消息发送、历史查询、幂等、Outbox、Seq、文件授权和热群策略 contract 保持兼容，旧核心实现路径由结构门禁阻止回流。
 - **本轮进展：** Message 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/repository/message_compat.go` 仅保留兼容别名和构造入口，生成代码、事务 Store 和消息表 ownership 保持稳定，旧共享 repository 路径由结构门禁阻止回流。
+- **本轮进展：** Message 独立 runtime 已直接装配 `internal/services/message/infrastructure/mysql` 与 Message application，移除对 `internal/app` 聚合 Composition Root 的依赖；服务布局门禁已固定该启动边界，embedded 聚合入口继续保留作为回滚路径。
 - **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 - **本轮进展：** 聚合 `Repositories` 已显式持有 Core、Message、Sync、Agent 四类 process composition，embedded 入口开始复用服务所有权分组；独立启动链仍待切换到这些分组，当前聚合入口保留为回滚路径。
 - **本轮进展：** Core remote 入口已切换到 `InitializeCoreService`，只装配 `CoreProcessRepositories`、Core projection Kafka consumer 和 Core Capability RPC；embedded 模式保留原聚合入口作为本地兼容路径。Core/Message/Agent 的数据库账号和全量运行时切换仍按后续门禁推进。
