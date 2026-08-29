@@ -12,6 +12,7 @@ import (
 	"time"
 
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 func TestDomainEventSchemasMatchProducerContracts(t *testing.T) {
@@ -51,7 +52,7 @@ func TestDomainEventSchemasMatchProducerContracts(t *testing.T) {
 		{
 			name: "session logout", schemaFile: "session-force-logout.schema.json", eventType: "session.force_logout",
 			eventTypes: []string{"session.force_logout"}, definition: "session_payload",
-			payload: SessionKickEventPayload{UserUUID: "U1", All: true, Reason: "forced_logout_all", OccurredAt: now},
+			payload: coresession.SessionKickEventPayload{UserUUID: "U1", All: true, Reason: "forced_logout_all", OccurredAt: now},
 		},
 	}
 
