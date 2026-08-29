@@ -52,6 +52,9 @@ jq -e '
   and .services.core.entrypoint == ["/app/service"]
   and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "grpc"
   and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "grpc"
+  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_CANDIDATE_VERSION == ""
+  and .services.agent.environment.DIPOLE_AGENT_RELEASE_MANIFEST == "/run/dipole/release/manifest.json"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
   and .services.message.image == "dipole-message:latest"

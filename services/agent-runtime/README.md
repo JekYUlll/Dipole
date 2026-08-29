@@ -92,7 +92,7 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
 
-Active Runtime 还要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时先将 Runtime mode 恢复为 shadow 并关闭 active 依赖，release manifest 不会被启动过程改写。
+Active Runtime 还要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。微服务 Compose 默认显式传递 `shadow`、空 candidate 和 `/run/dipole/release/manifest.json`，不挂载 release 文件；启用 active 的部署 override 必须以只读方式挂载已批准的 manifest。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时先将 Runtime mode 恢复为 shadow 并关闭 active 依赖，release manifest 不会被启动过程改写。
 
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 
