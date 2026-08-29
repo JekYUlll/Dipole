@@ -206,7 +206,7 @@ func gatewayMessageDeliveryHandlers(
 ) (platformKafka.Handler, platformKafka.Handler, error) {
 	switch authority {
 	case realtimeDelivery.AuthorityGo, realtimeDelivery.AuthorityShadow:
-		return deliverDirectMessageHandler(hub, timelineNotifyMode), deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
+		return gatewaykafka.NewDirectMessageHandler(hub, timelineNotifyMode), deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
 	case realtimeDelivery.AuthorityCPP:
 		return checkpointMessageDeliveryHandler("direct"), checkpointMessageDeliveryHandler("group"), nil
 	default:
@@ -281,35 +281,6 @@ func updateConversationHandler(updater kafkaConversationUpdater, isGroup bool) p
 			zap.String("message_id", payload.MessageID),
 			zap.Int64("offset", event.Offset),
 		)
-		return nil
-	}
-}
-
-func deliverDirectMessageHandler(hub kafkaWSEventSender, timelineNotifyMode string) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeMessageEventPayload(event)
-		if err != nil {
-			logger.Warn("decode direct message for delivery failed", zap.Error(err))
-			return err
-		}
-
-		sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatMessage, wsTransport.ChatMessageData{
-			MessageID:   payload.MessageID,
-			MessageSeq:  payload.MessageSeq,
-			FromUUID:    payload.SenderUUID,
-			TargetUUID:  payload.TargetUUID,
-			TargetType:  payload.TargetType,
-			MessageType: payload.MessageType,
-			Content:     payload.Content,
-			File:        payloadToWSFile(payload),
-			SentAt:      payload.SentAt,
-		})
-		if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
-			sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeSyncItemNotifyV1, notify)
-		}
-
 		return nil
 	}
 }
