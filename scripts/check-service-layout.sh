@@ -284,6 +284,11 @@ if ! rg --quiet 'gateway\.NewServerWithDependencies\(' "${root_dir}/internal/ser
   exit 1
 fi
 
+if ! rg --quiet 'dependencies\.TokenResolver == nil' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway dependency-injection constructor must require a token resolver" >&2
+  exit 1
+fi
+
 if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/middleware/auth.go"; then
   echo "shared authentication middleware must depend on application token contracts" >&2
   exit 1
