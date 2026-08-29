@@ -51,6 +51,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Message HTTP/WS 错误和 service 构造调用已统一迁移到 Message-owned contract，删除无调用者的 `internal/compat/service/message_compat.go`；兼容目录仅保留跨版本 domain-event decoder 辅助。
 - 2026-08-30：Message event payload、mutation 和 Search/Sync projection 调用已统一迁移到 Message domain，兼容文件重命名并缩减为仍有调用者的 Message service/错误 contract；Kafka、Search、Sync 和 Gateway 事件行为保持兼容。
 - 2026-08-30：Core Group 的 HTTP、DTO、Gateway Kafka 和 embedded 解码调用已统一迁移到 Core-owned Group domain contract，删除无调用者的 `internal/compat/service/group_compat.go`；群组 HTTP/Kafka contract 保持兼容。
 - 2026-08-30：Core File 的 HTTP、DTO 和测试调用已统一迁移到 Core-owned File domain contract，删除无调用者的 `internal/compat/service/file_compat.go`；文件上传、分片会话和下载内容 HTTP contract 保持兼容。
