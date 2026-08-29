@@ -41,6 +41,8 @@ import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
+  runtimeMode: z.enum(["shadow", "active"]),
+  candidateVersion: z.string().trim(),
   brokers: z.array(z.string().trim().min(1)),
   clientId: z.string().trim().min(1),
   groupId: z.string().trim().min(1),
@@ -86,6 +88,18 @@ const shadowRuntimeConfigSchema = z.object({
     database: z.string().trim()
   }).strict()
 }).strict().superRefine((config, refinement) => {
+  if (config.runtimeMode === "active" && !config.enabled) {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires Kafka", path: ["enabled"] });
+  }
+  if (config.runtimeMode === "active" && config.ledgerMode !== "mysql") {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires the persistent MySQL ledger", path: ["ledgerMode"] });
+  }
+  if (config.runtimeMode === "active" && config.modelMode !== "ai_sdk") {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires AI SDK model mode", path: ["modelMode"] });
+  }
+  if (config.runtimeMode === "active" && config.candidateVersion.length === 0) {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a candidate version", path: ["candidateVersion"] });
+  }
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
   }
@@ -161,6 +175,8 @@ export type ShadowRuntimeConfig = z.infer<typeof shadowRuntimeConfigSchema>;
 export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeConfig {
   return shadowRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
+    runtimeMode: env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() === "remote" ? "active" : "shadow",
+    candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
     brokers: (env.DIPOLE_AGENT_KAFKA_BROKERS ?? "").split(",").map((broker) => broker.trim()).filter(Boolean),
     clientId: env.DIPOLE_AGENT_KAFKA_CLIENT_ID ?? "dipole-agent",
     groupId: env.DIPOLE_AGENT_KAFKA_GROUP_ID ?? "dipole-agent-shadow-v1",
@@ -428,8 +444,10 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   return {
     activities: createTemporalReadStepActivities({
       planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
+      runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
-      artifacts: rpc.client
+      ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
+      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {})
     }),
     client: rpc.client,
     start: async () => {
@@ -457,7 +475,7 @@ export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client:
   } : {};
   const transport = new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options);
   return {
-    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs),
+    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
     close: () => transport.close()
   };
 }

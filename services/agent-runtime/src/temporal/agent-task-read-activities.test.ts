@@ -83,6 +83,35 @@ describe("Temporal read Step Activities", () => {
     expect(planner.plan).not.toHaveBeenCalled();
   });
 
+  it("uses the Core-owned Context for an active read Step", async () => {
+    const event: AgentEvent = {
+      eventId: "E-ACTIVE-READ", eventType: "message.direct.created", aggregateId: "M-ACTIVE-READ",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "active read" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const contextResolver = {
+      resolveMcpContext: vi.fn(async () => ({
+        tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+        permissions: ["conversation.list", "conversation.read"],
+        resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
+        approvedCapabilities: [], eventId: event.eventId
+      }))
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "active observe", steps: [] }) },
+      audit: { append: vi.fn(async () => undefined) },
+      registry: new CapabilityRegistry(), trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-ACTIVE" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "active observe", stepCount: 0 } });
+    expect(contextResolver.resolveMcpContext).toHaveBeenCalledWith(taskId, runId, "U100", {});
+  });
+
   it("waits for a crashed Step lease and accepts its completed replay", async () => {
     const event: AgentEvent = {
       eventId: "E-BUSY", eventType: "message.direct.created", aggregateId: "M-BUSY",

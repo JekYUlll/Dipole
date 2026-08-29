@@ -9,13 +9,19 @@ import {
 import type { AgentTaskActivities } from "./agent-task-activities.js";
 import type { AgentArtifactCreateInput, AgentArtifactRecord } from "../capabilities/agent-capability-rpc.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
+import type { AgentRuntimeMode } from "../capabilities/agent-capability-rpc.js";
+import type { ExecutionContext } from "../runtime/execution-context.js";
 
 interface AgentArtifactWriter {
   createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord>;
 }
 
+interface AgentContextResolver {
+  resolveMcpContext(taskId: string, runId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<ExecutionContext>;
+}
+
 export function createTemporalReadStepActivities(
-  dependencies: ShadowPlanExecutionDependencies & { readonly artifacts?: AgentArtifactWriter }
+  dependencies: ShadowPlanExecutionDependencies & { readonly artifacts?: AgentArtifactWriter; readonly runtimeMode?: AgentRuntimeMode; readonly contextResolver?: AgentContextResolver }
 ): AgentTaskActivities {
   return {
     async executeAgentTaskStep(input) {
@@ -30,25 +36,37 @@ export function createTemporalReadStepActivities(
         triggerType: event.eventType,
         triggerRef: event.aggregateId
       });
-      if (input.taskId !== expectedTaskId || input.runId !== agentRunId(expectedTaskId) ||
+      const runtimeMode = dependencies.runtimeMode ?? "shadow";
+      if (input.taskId !== expectedTaskId || input.runId !== agentRunId(expectedTaskId, "dipole-agent", runtimeMode) ||
           admission.eventId !== event.eventId || admission.triggerType !== event.eventType ||
           admission.triggerRef !== event.aggregateId) {
         throw new Error("Temporal read Step Task, Run, admission, and event binding mismatch");
       }
-      const context = executionContextSchema.parse({
-        tenantId: admission.tenantId,
-        principalUuid: admission.principalUserId,
-        agentUuid: admission.agentId,
-        taskId: input.taskId,
-        runId: input.runId,
-        mode: "shadow",
-        permissions: ["conversation.list", "conversation.read"],
-        resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
-        approvedCapabilities: [],
-        eventId: event.eventId,
-        ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
-        ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
-      });
+      if (runtimeMode === "active" && dependencies.contextResolver === undefined) {
+        throw new Error("Active Temporal read Step requires the Core Context resolver");
+      }
+      const context = dependencies.contextResolver === undefined
+        ? executionContextSchema.parse({
+          tenantId: admission.tenantId,
+          principalUuid: admission.principalUserId,
+          agentUuid: admission.agentId,
+          taskId: input.taskId,
+          runId: input.runId,
+          mode: runtimeMode,
+          permissions: ["conversation.list", "conversation.read"],
+          resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
+          approvedCapabilities: [],
+          eventId: event.eventId,
+          ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
+          ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
+        })
+        : await dependencies.contextResolver.resolveMcpContext(input.taskId, input.runId, admission.principalUserId, {
+          ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
+          ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
+        });
+      if (context.mode !== runtimeMode || context.taskId !== input.taskId || context.runId !== input.runId || context.eventId !== event.eventId) {
+        throw new Error("Core Context binding mismatch for Temporal read Step");
+      }
       const telemetry = dependencies.telemetry ?? new AgentTelemetry();
       return telemetry.withSpan("agent.run", {
         taskId: context.taskId, runId: context.runId,

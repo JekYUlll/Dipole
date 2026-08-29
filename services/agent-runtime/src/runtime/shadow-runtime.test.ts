@@ -10,10 +10,11 @@ import { SubscriptionShadowMetrics } from "../observability/subscription-shadow-
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
-      enabled: false, groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
+      enabled: false, runtimeMode: "shadow", candidateVersion: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
       contextCompilerVersion: "v1", memoryEnabled: false, triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
       DIPOLE_AGENT_KAFKA_BROKERS: "kafka-1:9092, kafka-2:9092"

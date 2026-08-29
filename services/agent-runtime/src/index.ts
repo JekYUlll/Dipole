@@ -42,6 +42,12 @@ const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
+if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active") {
+  throw new Error("Active Agent Runtime requires read_active Temporal Activities");
+}
+if (shadowConfig.runtimeMode === "active" && !temporalConfig.enabled) {
+  throw new Error("Active Agent Runtime requires Temporal");
+}
 const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
 const subscriptionShadowMetrics = new SubscriptionShadowMetrics(shadowConfig.subscriptionShadowEnabled);
 const externalMcpEnvironment = Object.freeze({ ...process.env });
@@ -76,11 +82,11 @@ let temporalRuntime: TemporalWorkerRuntime | undefined;
 let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
 const mcpRPC = mcpEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
-const temporalReadResources = temporalConfig.enabled && temporalConfig.activityMode === "read_shadow"
+const temporalReadResources = temporalConfig.enabled && (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active")
   ? createTemporalReadActivityResources(shadowConfig)
   : undefined;
 let temporalDispatcher: TemporalTaskDispatchRuntime | undefined;
-if (temporalConfig.enabled && ((temporalConfig.activityMode === "read_shadow" && shadowConfig.enabled) || controlEnabled)) {
+if (temporalConfig.enabled && (((temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active") && shadowConfig.enabled) || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
 const shadowRuntime = shadowConfig.enabled && !externalMcpShadowEnabled
@@ -232,7 +238,7 @@ if (temporalConfig.enabled && !externalMcpShadowEnabled) {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalRPC.client)
     };
-  } else if (temporalConfig.activityMode === "read_shadow") {
+  } else if (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active") {
     activities = {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalReadResources!.client),
