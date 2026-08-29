@@ -35,6 +35,14 @@ if [[ ! -f "${root_dir}/internal/services/message/application/application.go" ]]
   echo "Message application implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/message/domain/message_event.go" ]]; then
+  echo "Message event domain implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/message/domain/sync_projection.go" ]]; then
+  echo "Message Sync projection implementation is outside its service boundary" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; then
   echo "Core capability implementation is outside its service boundary" >&2
   exit 1
@@ -131,6 +139,10 @@ if [[ -e "${root_dir}/internal/service/conversation_service.go" ]]; then
 fi
 if [[ -e "${root_dir}/internal/service/sync_service.go" ]]; then
   echo "legacy Sync implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/message_event.go" || -e "${root_dir}/internal/service/message_sync_projection.go" ]]; then
+  echo "legacy Message event implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
