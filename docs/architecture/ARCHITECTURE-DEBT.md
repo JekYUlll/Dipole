@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：修正平台演进计划中滞后的 Agent/Frontend 质量数字和 F4 描述，明确已验证的 token、流程与跨浏览器功能范围，同时保留截图级视觉基线、真实 Pencil CLI 增量编辑和共享环境门禁为未完成项。
 - 2026-08-30：主线综合复核通过架构文档、服务布局、SQLC 与 Go 全量 test/vet 门禁；文档目录继续保持根目录入口、`docs/` 分类和历史证据分离，后续共享环境切换仍需独立运行证据。
 - 2026-08-30：清理开发路线图中对已退役 `internal/service` 的过时依赖描述，改为引用共享兼容适配器和服务边界目录；结构门禁与历史债务记录继续保留对旧路径的负向检查。
 - 2026-08-30：在 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke，逐服务 readiness/metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等均通过；该证据限于隔离拓扑，生产 Kafka ownership、候选发布和可执行回滚 receipt 仍待完成。
