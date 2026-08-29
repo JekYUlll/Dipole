@@ -25,6 +25,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
 	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
@@ -238,7 +239,7 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	})
 
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialCoreCapability(context.Background(), cfg)
+	client, connection, err := messagebootstrap.DialCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial core capability: %v", err)
 	}
@@ -495,7 +496,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 	}
 	t.Cleanup(func() { server.Close(context.Background()) })
 	cfg.CoreTarget = server.Address()
-	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	gatewayClient, gatewayConnection, err := gatewaybootstrap.DialGatewayAgentCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +559,7 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	}
 
 	cfg.CoreTarget = server.Address()
-	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	gatewayClient, gatewayConnection, err := gatewaybootstrap.DialGatewayAgentCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -678,7 +679,7 @@ func TestInternalRPCRejectsMissingRuntimeCredentials(t *testing.T) {
 	if _, err := NewCoreRPCServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}); err == nil {
 		t.Fatal("expected core rpc server without shared secret to fail")
 	}
-	if _, _, err := DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
+	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
 		t.Fatal("expected core rpc client without shared secret to fail")
 	}
 }
@@ -706,7 +707,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 		server.Close(ctx)
 	})
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialCoreCapability(context.Background(), cfg)
+	client, connection, err := messagebootstrap.DialCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial mtls core capability: %v", err)
 	}
@@ -722,7 +723,7 @@ func TestInternalRPCRejectsPlaintextOutsideLoopback(t *testing.T) {
 		t.Fatal("expected non-loopback plaintext listener to fail")
 	}
 	cfg.CoreTarget = "10.0.0.1:9091"
-	if _, _, err := DialCoreCapability(context.Background(), cfg); err == nil {
+	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), cfg); err == nil {
 		t.Fatal("expected non-loopback plaintext target to fail")
 	}
 }

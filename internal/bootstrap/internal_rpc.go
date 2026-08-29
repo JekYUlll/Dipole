@@ -175,38 +175,10 @@ func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	}, restrictCoreServiceMethods)
 }
 
-func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
-	return dialCoreCapabilityAs(ctx, cfg, messageServiceName)
-}
-
-func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (agentv1.AgentCapabilityServiceClient, *grpc.ClientConn, error) {
-	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: gatewayServiceName, Secret: cfg.SharedSecret})
-	if err != nil {
-		return nil, nil, fmt.Errorf("dial Gateway Agent capability: %w", err)
-	}
-	return agentv1.NewAgentCapabilityServiceClient(connection), connection, nil
-}
-
 // RestrictCoreServiceMethods is kept as a shared policy hook while the Core
 // service bootstrap owns its transport adapter.
 func RestrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	return restrictCoreServiceMethods(ctx, request, info, handler)
-}
-
-func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*coregrpc.Client, *grpc.ClientConn, error) {
-	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{
-		Service: callerService,
-		Secret:  cfg.SharedSecret,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("dial core rpc: %w", err)
-	}
-	client, err := coregrpc.NewClientForService(corev1.NewCoreCapabilityServiceClient(connection), callerService)
-	if err != nil {
-		_ = connection.Close()
-		return nil, nil, fmt.Errorf("create core capability client: %w", err)
-	}
-	return client, connection, nil
 }
 
 func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
