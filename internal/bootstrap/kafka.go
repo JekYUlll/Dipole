@@ -170,7 +170,7 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	groupHandler = gatewaykafka.FenceMessageDeliveryHandler(authority, fence, groupHandler)
 	platformKafka.Subscriber.Register("message.direct.created", directHandler)
 	platformKafka.Subscriber.Register("message.group.created", groupHandler)
-	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
+	platformKafka.Subscriber.Register("conversation.direct.read", gatewaykafka.NewDirectReadHandler(hub))
 	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{
 			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
@@ -416,36 +416,6 @@ func messagePreview(payload service.MessageEventPayload) string {
 		return "[文件]"
 	}
 	return payload.Content
-}
-
-func deliverDirectReadHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		envelope, err := requireEnvelope(event)
-		if err != nil {
-			logger.Warn("decode direct read envelope failed", zap.Error(err))
-			return err
-		}
-
-		payload, err := service.DecodeConversationReadReceipt(envelope.EventType, envelope.Payload)
-		if err != nil {
-			logger.Warn("decode direct read payload failed", zap.Error(err))
-			return err
-		}
-
-		sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatRead, wsTransport.ChatReadData{
-			ReaderUUID:          payload.ReaderUUID,
-			TargetUUID:          payload.TargetUUID,
-			TargetType:          payload.TargetType,
-			ConversationKey:     payload.ConversationKey,
-			LastReadMessageUUID: payload.LastReadMessageUUID,
-			LastReadSeq:         payload.LastReadSeq,
-			ReadAt:              payload.ReadAt,
-		})
-
-		return nil
-	}
 }
 
 func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1, policyStore applicationPort.AgentPolicyStoreV1) (*aiModule.Service, error) {

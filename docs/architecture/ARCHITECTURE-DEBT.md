@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，新增服务自有契约测试；其余消息与会话事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway realtime delivery authority fence 已迁入 `internal/services/gateway/infrastructure/kafka/`，embedded 装配改用服务自有实现；完整消息 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway 热群通知聚合器及测试已迁入 `internal/services/gateway/infrastructure/kafka/`，共享 handler 改用服务自有 `Notifier`；完整消息投递 handler 仍待按依赖闭包继续迁移。
 - 2026-08-29：Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，独立和 embedded runtime 均直接使用服务自有 handler，原共享注册包装已退休。
