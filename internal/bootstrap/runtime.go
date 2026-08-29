@@ -35,7 +35,7 @@ type Runtime struct {
 	outboxFlow  *messagekafka.Relay
 	messageFlow *appComposition.MessageApplicationTransport
 	syncFlow    *appComposition.SyncApplicationTransport
-	coreRPC     *InternalRPCServer
+	coreRPC     *corerpc.Server
 	metrics     *platformObservability.MetricsServer
 }
 
@@ -151,7 +151,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	conversationProjectionMetrics := platformObservability.NewConversationProjectionCollector()
 	localMessaging.Conversations.SetProjectionWriteObserver(conversationProjectionMetrics.Observe)
 	rpcCfg := config.InternalRPCConfig()
-	var coreRPC *InternalRPCServer
+	var coreRPC *corerpc.Server
 	if rpcCfg.Enabled {
 		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
 		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
@@ -356,7 +356,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 	rt.metrics, err = platformRuntime.StartMetrics(
 		config.MetricsConfig(),
-		coreServiceName,
+		"dipole-core",
 		platformKafka.Subscriber,
 		syncComparisonMetrics,
 		conversationProjectionMetrics,

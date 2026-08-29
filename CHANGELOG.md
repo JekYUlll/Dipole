@@ -44,8 +44,8 @@
 
 ## [Unreleased]
 
-- 迁移 `internal/bootstrap` RPC contract 测试至 `internal/services/core/rpc`，删除 Core RPC 组合的旧 bootstrap 函数 wrapper；embedded 仍保留 `InternalRPCServer` 类型别名和本地服务名常量，便于兼容运行与回滚。
-- 将 Core RPC 组合逻辑迁入 `internal/services/core/rpc/`；embedded runtime 直接使用 Core-owned composition，`internal/bootstrap/internal_rpc.go` 仅保留迁移期类型别名和服务名常量，RPC 协议、mTLS、caller allowlist 和 Agent 方法权限保持兼容。
+- 迁移 `internal/bootstrap` RPC contract 测试至 `internal/services/core/rpc`，删除 Core RPC 组合的旧 bootstrap wrapper、类型别名和生产服务名常量；embedded runtime 直接持有 Core-owned RPC 类型，测试常量仅保留在测试辅助文件。
+- 将 Core RPC 组合逻辑迁入 `internal/services/core/rpc/`；embedded runtime 直接使用 Core-owned composition，旧 `internal/bootstrap/internal_rpc.go` 已完全移除，RPC 协议、mTLS、caller allowlist 和 Agent 方法权限保持兼容。
 - 修正文档中的 SQLC 仓储目录描述，使 `REPOSITORY-STRUCTURE.md` 与 `SERVICE-BOUNDARIES.md` 和结构门禁一致：`internal/data/mysql` 已退役，业务仓储由各服务 infrastructure 独占，`internal/platform/mysql` 仅保留共享数据库基础设施。
 - 复测 `master` 上 1000 成员 Conversation SQLC 批量 upsert：四个固定 workload 子项通过，batch 相比 serial 约降低 46.2 倍，并发对照约降低 286.9 倍；SQL 层锁等待增量为零。证据见 `benchmarks/ad005-conversation-batch-2026-08-30/`，端到端 P95、多轮统计和共享拓扑容量仍待完成。
 - 将仅供 embedded 聚合运行时使用的 Sync transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；local/grpc/shadow 回退、设备 checkpoint 和同步查询语义保持不变。
