@@ -18,7 +18,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -26,6 +25,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -75,7 +75,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine := gin.New()
 	engine.Use(middleware.Correlation(), logger.GinLogger(), logger.GinRecovery(), cors.Default())
 	hub := wsTransport.NewHub(wsTransport.WithPresenceTracker(dependencies.Presence))
-	tokenService := service.NewTokenService()
+	tokenService := coreauth.NewTokenService()
 	userFinder := coreUserFinder{core: dependencies.Core}
 	authenticator := wsTransport.NewAuthenticator(tokenService, userFinder)
 	limiter := dependencies.Limiter
@@ -132,7 +132,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentMCP != nil {
-		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
+		if err := coreauth.ValidateAgentMCPResource(coreauth.AgentMCPResourceIdentifier()); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
 		}
 		auth := middleware.AgentMCPAuth(tokenService, userFinder)

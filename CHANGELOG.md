@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：Core Auth 的 TokenService、TokenSession 与 MCP 资源校验调用已统一迁移到 Core-owned Auth domain，删除无调用者的 `internal/compat/service/token_compat.go`；Auth grant contract 兼容入口继续保留。
 - 2026-08-30：执行 `scripts/smoke-kafka-rebalance.sh`，隔离验证双 consumer 加入、成员退出后的六分区接管和 lag 归零；临时 Kafka 集群自动清理，生产 consumer ownership、offset 和切换配置保持不变。
 - 2026-08-30：完成 TypeScript Agent Runtime 独立交付回归：Vitest 通过 125 个测试文件（662 个测试），`typecheck` 与生产构建均通过；真实共享 Kafka/Temporal/MCP 联调和 active authority 仍按发布门禁保持关闭。
 - 2026-08-30：执行 `scripts/smoke-search-service.sh`，隔离验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Search Service 内部 RPC contract；临时资源自动清理，生产 Search Alias 与索引切换保持关闭。
