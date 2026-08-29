@@ -103,18 +103,18 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 		"users": repos.Users, "messages": repos.Messages, "files": repos.Files,
 		"conversations": repos.Conversations, "contacts": repos.Contacts,
 		"groups": repos.Groups, "admin": repos.Admin, "sync": repos.Sync,
-		"ai_call_logs": repos.AICallLogs, "agent_policy": repos.AgentPolicy, "outbox": repos.Outbox,
+		"ai_call_logs": repos.AgentProcess.AICallLogs, "agent_policy": repos.AgentProcess.Policy, "outbox": repos.Outbox,
 	}
 	for name, repository := range required {
 		if repository == nil {
 			t.Errorf("repository %s is nil", name)
 		}
 	}
-	if _, ok := repos.AICallLogs.(*agentmysql.AICallLogRepository); !ok {
-		t.Fatalf("expected sqlc AI call log repository, got %T", repos.AICallLogs)
+	if _, ok := repos.AgentProcess.AICallLogs.(*agentmysql.AICallLogRepository); !ok {
+		t.Fatalf("expected sqlc AI call log repository, got %T", repos.AgentProcess.AICallLogs)
 	}
-	if _, ok := repos.AgentPolicy.(*agentmysql.AgentPolicyRepository); !ok {
-		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.AgentPolicy)
+	if _, ok := repos.AgentProcess.Policy.(*agentmysql.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.AgentProcess.Policy)
 	}
 	if _, ok := repos.Admin.(*coremysql.AdminRepository); !ok {
 		t.Fatalf("expected sqlc admin repository, got %T", repos.Admin)
