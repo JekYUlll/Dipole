@@ -615,6 +615,18 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/search/main.go"; th
   echo "Search entrypoint must not depend directly on shared bootstrap" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/message/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/message/bootstrap/README.md" ]]; then
+  echo "Message bootstrap boundary is missing" >&2
+  exit 1
+fi
+if ! rg --quiet 'internal/services/message/bootstrap' "${root_dir}/cmd/services/message/main.go"; then
+  echo "Message entrypoint must use its service-owned bootstrap boundary" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/message/main.go"; then
+  echo "Message entrypoint must not depend directly on shared bootstrap" >&2
+  exit 1
+fi
 
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then

@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message 服务新增 `internal/services/message/bootstrap/` 入口边界，`cmd/services/message` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Outbox、Cassandra routing、gRPC 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Search 服务新增 `internal/services/search/bootstrap/` 入口边界，`cmd/services/search` 已停止直接依赖共享 `internal/bootstrap`；底层运行时保留兼容 facade，便于后续独立抽离 gRPC、metrics 和 readiness 基础设施并支持快速回滚。
 - 新增 `deploy/microservices/inbox-projector.yml` 可移除的 Inbox ownership 切换 overlay：绑定 Message projector 模式、`dipole_message_projector` 最小账号和 Sync projector 开关，并由 `scripts/check-compose.sh` 校验配置一致性；默认 atomic 回滚路径保持不变。
 - 重新通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；共享候选环境切换仍需维护窗口 receipt。
