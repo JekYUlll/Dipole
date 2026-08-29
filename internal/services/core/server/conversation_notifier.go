@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -13,7 +13,7 @@ func newConversationNotifier(hub *wsTransport.Hub) *conversationNotifier {
 	return &conversationNotifier{hub: hub}
 }
 
-func (n *conversationNotifier) NotifyDirectRead(receipt service.ConversationReadReceipt) {
+func (n *conversationNotifier) NotifyDirectRead(receipt coreconversation.ConversationReadReceipt) {
 	if n == nil || n.hub == nil {
 		return
 	}

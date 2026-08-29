@@ -12,19 +12,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 )
 
 type stubConversationService struct {
-	listForUserFn       func(userUUID string, limit int) ([]*service.ConversationView, error)
-	markDirectReadFn    func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
+	listForUserFn       func(userUUID string, limit int) ([]*coreconversation.ConversationView, error)
+	markDirectReadFn    func(userUUID, targetUUID string) (*coreconversation.ConversationReadReceipt, error)
 	markGroupReadFn     func(userUUID, groupUUID string) error
 	updateGroupRemarkFn func(userUUID, groupUUID, remark string) (*model.Conversation, error)
 }
 
-func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*service.ConversationView, error) {
+func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*coreconversation.ConversationView, error) {
 	if s.listForUserFn == nil {
 		return nil, nil
 	}
@@ -32,7 +32,7 @@ func (s *stubConversationService) ListForUser(userUUID string, limit int) ([]*se
 	return s.listForUserFn(userUUID, limit)
 }
 
-func (s *stubConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
+func (s *stubConversationService) MarkDirectConversationRead(userUUID, targetUUID string) (*coreconversation.ConversationReadReceipt, error) {
 	if s.markDirectReadFn == nil {
 		return nil, nil
 	}
@@ -60,7 +60,7 @@ func TestConversationHandlerListSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewConversationHandler(&stubConversationService{
-		listForUserFn: func(userUUID string, limit int) ([]*service.ConversationView, error) {
+		listForUserFn: func(userUUID string, limit int) ([]*coreconversation.ConversationView, error) {
 			if userUUID != "U100" {
 				t.Fatalf("unexpected user uuid: %s", userUUID)
 			}
@@ -68,7 +68,7 @@ func TestConversationHandlerListSuccess(t *testing.T) {
 				t.Fatalf("unexpected limit: %d", limit)
 			}
 
-			return []*service.ConversationView{
+			return []*coreconversation.ConversationView{
 				{
 					Conversation: &model.Conversation{
 						UserUUID:           "U100",
@@ -116,8 +116,8 @@ func TestConversationHandlerMarkDirectReadNotFound(t *testing.T) {
 	t.Parallel()
 
 	handler := NewConversationHandler(&stubConversationService{
-		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
-			return nil, service.ErrConversationTargetNotFound
+		markDirectReadFn: func(userUUID, targetUUID string) (*coreconversation.ConversationReadReceipt, error) {
+			return nil, coreconversation.ErrConversationTargetNotFound
 		},
 	})
 
@@ -146,7 +146,7 @@ func TestConversationHandlerMarkDirectReadInternal(t *testing.T) {
 	t.Parallel()
 
 	handler := NewConversationHandler(&stubConversationService{
-		markDirectReadFn: func(userUUID, targetUUID string) (*service.ConversationReadReceipt, error) {
+		markDirectReadFn: func(userUUID, targetUUID string) (*coreconversation.ConversationReadReceipt, error) {
 			return nil, errors.New("boom")
 		},
 	})
@@ -169,7 +169,7 @@ func TestConversationHandlerMarkGroupReadForbidden(t *testing.T) {
 
 	handler := NewConversationHandler(&stubConversationService{
 		markGroupReadFn: func(userUUID, groupUUID string) error {
-			return service.ErrConversationPermissionDenied
+			return coreconversation.ErrConversationPermissionDenied
 		},
 	})
 
