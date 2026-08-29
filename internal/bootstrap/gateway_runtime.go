@@ -248,8 +248,8 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		AgentMemories:      agentMemories,
 		AgentMCP:           agentMCP,
 		Presence:           wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:            platformRateLimit.NewLimiter(),
-		AgentMCPLimiter:    platformRateLimit.NewLimiter(),
+		Limiter:            platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		AgentMCPLimiter:    platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
 	})
 	if err != nil {
 		cleanup()

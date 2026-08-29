@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -21,12 +22,20 @@ const requestTimeout = time.Second
 type Limiter struct {
 	config config.RateLimit
 	log    *zap.Logger
+	redis  *redis.Client
 }
 
 func NewLimiter() *Limiter {
+	return NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
+}
+
+// NewLimiterWithClient binds rate limiting to one Redis client. NewLimiter
+// remains as the compatibility constructor for embedded callers.
+func NewLimiterWithClient(cfg config.RateLimit, client *redis.Client) *Limiter {
 	return &Limiter{
-		config: config.RateLimitConfig(),
+		config: cfg,
 		log:    logger.Named("rate_limit"),
+		redis:  client,
 	}
 }
 
@@ -94,21 +103,25 @@ func (l *Limiter) AllowAgentMCP(principalUUID string) (bool, time.Duration) {
 // On the first increment the TTL is set, establishing the window boundary.
 // Returns (true, 0) when allowed, or (false, retryAfter) when the limit is exceeded.
 func (l *Limiter) allow(key string, limit int, window time.Duration, failOpen bool) (bool, time.Duration) {
-	if cache.RDB == nil || limit <= 0 || window <= 0 || key == "" {
+	client := l.redis
+	if client == nil {
+		client = cache.RDB
+	}
+	if client == nil || limit <= 0 || window <= 0 || key == "" {
 		return rateLimitDependencyResult(failOpen, window)
 	}
 
 	ctx, cancel := storeContext()
 	defer cancel()
 
-	count, err := cache.RDB.Incr(ctx, key).Result()
+	count, err := client.Incr(ctx, key).Result()
 	if err != nil {
 		l.log.Warn("increment redis rate limit counter failed", zap.String("key", key), zap.Error(err))
 		return rateLimitDependencyResult(failOpen, window)
 	}
 
 	if count == 1 {
-		if err := cache.RDB.Expire(ctx, key, window).Err(); err != nil {
+		if err := client.Expire(ctx, key, window).Err(); err != nil {
 			l.log.Warn("set redis rate limit ttl failed", zap.String("key", key), zap.Error(err))
 			return rateLimitDependencyResult(failOpen, window)
 		}
@@ -118,7 +131,7 @@ func (l *Limiter) allow(key string, limit int, window time.Duration, failOpen bo
 		return true, 0
 	}
 
-	retryAfter, err := cache.RDB.TTL(ctx, key).Result()
+	retryAfter, err := client.TTL(ctx, key).Result()
 	if err != nil {
 		l.log.Warn("read redis rate limit ttl failed", zap.String("key", key), zap.Error(err))
 		return false, window
