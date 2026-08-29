@@ -12,8 +12,8 @@
 | Sync | `cmd/services/sync` | User Inbox、Device Cursor、Group Checkpoint | Gateway、Message、Core | `user_sync_inbox`、设备/群同步状态 | Cassandra hydration 仍为可选 primary，MySQL 保留回退 |
 | Search | `cmd/services/search` | 受权限约束的消息搜索 | Gateway | 无事实消息表；只读 Elasticsearch | Core-derived scope 通过 Capability RPC 获取 |
 | Search Indexer | `cmd/services/search-indexer` | 消费事件并写入搜索索引 | Kafka | Elasticsearch 索引和 tombstone | 与 Search 共享 Elasticsearch 集群但使用不同 Alias/写入职责 |
-| Agent Runtime | `agent-runtime` | Agent Task、Memory、Tool、Approval、Artifact | Kafka、Gateway、Core Capability | Agent 任务和记忆元数据、Artifact 元数据 | Go/Eino 兼容链路仍保留，TS Runtime 按发布门禁逐步接管 |
-| Realtime Delivery | `realtime-delivery` | 高吞吐实时投递候选数据面 | Kafka、Redis、Gateway | 无消息事实表 | C++ profile 默认关闭，Go 仍是默认 authority |
+| Agent Runtime | `services/agent-runtime` | Agent Task、Memory、Tool、Approval、Artifact | Kafka、Gateway、Core Capability | Agent 任务和记忆元数据、Artifact 元数据 | Go/Eino 兼容链路仍保留，TS Runtime 按发布门禁逐步接管 |
+| Realtime Delivery | `services/realtime-delivery` | 高吞吐实时投递候选数据面 | Kafka、Redis、Gateway | 无消息事实表 | C++ profile 默认关闭，Go 仍是默认 authority |
 
 ## 共享层规则
 

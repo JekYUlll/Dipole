@@ -5,7 +5,7 @@
 Corpus 标签来自 `agent-memory-reviewed-corpus/v1` 的 `goldPromotable`。候选必须完整覆盖每个 case，且 `selected` 必须与 `scoreBps >= decisionThresholdBps` 一致。报告只输出哈希、候选摘要、聚合指标和门禁原因，不回显 case、消息正文或 reviewer 身份。
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 npm run eval:memory-prefilter -- --corpus=../path/corpus.json --evidence=../path/evidence.json --policy=../path/policy.json
 ```
 

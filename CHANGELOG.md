@@ -15,6 +15,8 @@
 
 ## [Unreleased]
 
+- 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
+
 ### 变更
 - Search HTTP handler 已迁入 `internal/gateway/`，Search application 继续位于 `internal/services/search/application/`；公共 API 和错误响应保持兼容，结构门禁会阻止旧通用路径回流。
 - Search application 已从共享 `internal/app` 迁移到 `internal/services/search/application/`，Search runtime 保持原 application port 不变；结构门禁会阻止旧实现路径回流。
@@ -110,13 +112,13 @@
 
 - C++ Realtime Delivery 增加 `scripts/check-cpp-realtime-container.sh` 容器门禁：复用 Ubuntu 24.04 Dockerfile，自动绑定 revision/created/dirty provenance，在宿主机缺少 gRPC C++ 开发包时仍可复现依赖、编译和 CTest 验证；该门禁不改变 Go 默认投递 authority。
 
-- 2026-08-29 复核平台静态与协议门禁：Go 全量测试、sqlc、Go/TS Proto、Compose、架构文档、Web Sync 观察和 Agent OTel 检查均通过；C++ Realtime Delivery 通过仓库自带 Ubuntu 24.04 构建镜像完成编译与 14/14 CTest。宿主机缺少 `grpc++ >= 1.51` 时应使用 `realtime-delivery/Dockerfile` 或显式依赖根目录，不能将宿主机失败误判为源码失败。
+- 2026-08-29 复核平台静态与协议门禁：Go 全量测试、sqlc、Go/TS Proto、Compose、架构文档、Web Sync 观察和 Agent OTel 检查均通过；C++ Realtime Delivery 通过仓库自带 Ubuntu 24.04 构建镜像完成编译与 14/14 CTest。宿主机缺少 `grpc++ >= 1.51` 时应使用 `services/realtime-delivery/Dockerfile` 或显式依赖根目录，不能将宿主机失败误判为源码失败。
 
 - 平台级门禁与 Agent 观测链路复核通过：`scripts/check-go.sh`、`check-sqlc.sh`、`check-compose.sh`、`check-architecture-docs.sh` 和 `check-agent-otel-observability.sh` 全部通过；独立 OTel smoke 验证 trace 经 Collector 写入并可由 Tempo 查询。
 
 - 微服务部署 smoke 在独立 Compose project 和新构建镜像上通过：MySQL、Redis、Kafka、Core、Message、Sync、Gateway、Agent 均 healthy，且 readiness、Prometheus、Core 代理、TLS 1.3 mTLS 和 remote WS ownership 验收通过；脚本 HTTP 探针增加有界重试/超时，失败可回收。
 
-- 修复 Go 根模块递归扫描 `agent-runtime/node_modules` 内嵌 Go 源码的问题：新增 TS 服务目录的 Go module boundary 后，`CGO_ENABLED=0 go test ./...` 全仓通过；Agent Runtime 仍单独通过 Vitest、typecheck 和 production build。
+- 修复 Go 根模块递归扫描 `services/agent-runtime/node_modules` 内嵌 Go 源码的问题：新增 TS 服务目录的 Go module boundary 后，`CGO_ENABLED=0 go test ./...` 全仓通过；Agent Runtime 仍单独通过 Vitest、typecheck 和 production build。
 
 - Agent Runtime 独立服务完成全量回归：Vitest 124 个测试文件通过、650 个测试通过，TypeScript typecheck 与生产构建通过；同时 `CGO_ENABLED=0 go test ./internal/...` 全部通过，确认 TS Runtime 的 shadow/协议边界未破坏 Go Core、存储和微服务路径。
 
@@ -302,7 +304,7 @@
 - canonical Pencil 增加 Agent Workflow Repair v1：desktop evidence review、`proposed|approved|rejected|expired|unavailable` 六态矩阵、mobile 双人审批层及三类可复用组件；界面明确批准只形成审计结论，不执行 projection repair，2x 评审图归档于 `design/exports/agent-repair-v1/`。
 - 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。
 - C3 增加持续 cutover controller 并关闭 `AD-041`：`dipole-realtime-cutover -operation run` 在一个同步循环中统一拥有状态推进、冻结超时回切、阻塞重试与临近到期的 authority lease 续期。Redis attempt-scoped ownership 通过 owner token 的 acquire/renew/release Lua 比较阻止并发 controller；control lease 至少覆盖两倍 action timeout。当前 authority deadline 只从 initial input 或最新 journal-bound transition artifact 恢复，拒绝采用未入 journal 的孤儿 transition；`rollback_requested` 续租保留回切意图和二次冻结要求。隔离 Docker Redis + race 演练证明 Controller A 无 release 退出后，B 在 5 秒 TTL 前被阻断、到期后从 sequence 1 继续到 completed sequence 6，证据归档于 `benchmarks/c3-cutover-controller-2026-08-28/`。
-- C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
+- C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `services/realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
 - C3 增加 production cutover executor：启动时校验 attempt 对初始 lease、三阶段节点清单和双组 checkpoint 清单的 SHA-256 绑定；每个动作固定执行 `artifact lookup -> Redis receipt recovery -> new side effect`，只有明确缺失 receipt 才允许新的 CAS。source/target/rollback checkpoint 复用节点聚合器和双组 collector，正常切换、冻结期源恢复及目标激活后二次冻结回退均验证 authority、epoch、phase、lease 与 manifest。完成、回退意图和回退完成使用版本化 decision artifact。真实 Redis writer + 模拟 observation/Kafka collector 集成覆盖 forward、两条 rollback 和 transition 成功但 artifact 缺失的恢复。恢复 CLI、租约续期和真实 crash/rebalance/Redis 故障演练仍待完成。
 - C3 增加自包含 cutover attempt workspace：创建时 canonicalize 并不可覆盖保存 initial transition、source/frozen/target 节点清单与 checkpoint 清单，由代码生成精确绑定 initial lease 和全部输入摘要的 `attempt.json`；重试创建只接受完全相同的 canonical 输入。恢复加载会严格解码并重算每个绑定，再打开独立 artifacts 目录，避免操作员在续切时重新提供已漂移的外部文件。
 - C3 增加 `dipole-realtime-cutover` 恢复命令：`create` 在 initial lease 有效期内生成 workspace，`status` 无需 Redis/Kafka 即可回放状态，`advance` 每次只执行一个外部动作并落盘一个事件，`rollback` 从合法状态记录回退意图。变更操作要求显式确认与 operator，单动作 30 秒超时；模糊失败后重复调用会恢复同一 artifact/receipt，禁止一次进程跨多个未持久化副作用。
@@ -408,7 +410,7 @@
 - Agent Runtime 增加有界 Kafka 失败转移：`dipole.<topic>.retry/.dead` 显式创建并校验拓扑，无效 envelope/tombstone 直接死信，处理错误最多尝试三次且保留原始 key/value/header；publisher 失败时 handler 拒绝完成。真实 Kafka 3.9 已验证 poison、retry→dead、offset LAG 归零和双副本 rebalance。
 - Agent Runtime 增加 migration v18 与 MySQL EventLedger：Event ID/Task ID 双唯一、事务 claim、lease crash recovery、attempt 和精确 token 终态；微服务默认使用最小权限 `dipole_agent`，真实 MySQL 8.4 与 Kafka 3.9 验证并发单 owner、失败重领、旧 owner 拒绝及 Runtime 重启后重复事件收敛。
 - TypeScript Agent Runtime 增加 `message.direct.created` v1 decoder、KafkaJS 独立 shadow consumer、稳定 Task ID 和 EventLedger port；冷启动 metadata 未收敛时会断开旧客户端并有界重连，微服务 Compose 可独立启动只读 Agent，真实 Kafka 3.9 重放同一事件只产生一条 metadata plan。
-- 增加独立 `agent-runtime/` TypeScript foundation：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2，提供 trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine、shadow 写隔离和 `/livez`/`/readyz`；模型路由与持久审计留待 G2 后续切片。
+- 增加独立 `services/agent-runtime/` TypeScript foundation：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2，提供 trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine、shadow 写隔离和 `/livez`/`/readyz`；模型路由与持久审计留待 G2 后续切片。
 - Embedded Agent 增加持久执行策略：`ai.policy_mode=persistent` 默认从版本化 Definition 创建确定性 AgentTask、固定并重读精确 policy version，Invocation 携带 permission/resource scope；`static` 保留显式回滚，Task 以 compare-and-set 进入 completed/failed。
 - 增加版本化 Web Sync 真实观察 Session/Evidence 与 `web_sync_observation.py`：`start/status/finalize` 将候选版本、完整 Git commit、实际发布 bundle SHA-256、初始/最终 Prometheus 原始响应和 24 小时门禁绑定为不可覆盖证据；窗口不足、候选漂移、告警、差异或溢出均 fail closed，blocked 窗口仍保留审计结果且不会自动切换客户端或 Cassandra 路由。
 - 增加 `dipole.agent.policy.persistence.v1`、migration v16 与 sqlc `AgentPolicyStoreV1`：版本化 Definition 保存 permission/scope/有效期/撤销状态，AgentTask 固定 Definition version 与 principal 并以 compare-and-set 迁移状态，Approval 支持 pending→approved、撤销及绑定 capability/canonical scope hash/arguments hash/nonce/有效期的一次性消费；真实 MySQL 8.4 并发测试要求 16 个竞争者仅一个成功。

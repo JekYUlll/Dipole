@@ -16,6 +16,7 @@ scripts/check-architecture-docs.sh
 - [Realtime Delivery](architecture/REALTIME-DELIVERY.md)
 - [Agent Runtime 设计](architecture/AGENT-RUNTIME-DESIGN.md)
 - [仓库结构](architecture/REPOSITORY-STRUCTURE.md)
+- [多语言服务目录](../services/README.md)
 - [参考项目与演进原则](architecture/architecture-reference.md)
 - [开发路线图](architecture/DEVELOPMENT-ROADMAP.md)
 - [架构问答与审查](architecture/ARCHITECTURE-QA.md)

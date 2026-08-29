@@ -24,10 +24,10 @@ Corpus SHA-256 先按 case ID 升序规范化 `cases`，随后递归按 ASCII �
 规则基线直接复用生产 `matchEventSubscriptions`：
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 npm run eval:prefilter -- \
-  --corpus=../contracts/agent-subscription-prefilter/v1/corpus.example.json \
-  --subscription=../contracts/agent-subscription-prefilter/v1/subscription.example.json
+  --corpus=../../contracts/agent-subscription-prefilter/v1/corpus.example.json \
+  --subscription=../../contracts/agent-subscription-prefilter/v1/subscription.example.json
 ```
 
 外部 embedding/小模型 adapter 先生成 evidence，再运行：
@@ -40,17 +40,17 @@ npm run eval:prefilter -- --corpus=../path/corpus.json --evidence=../path/candid
 
 ```bash
 npm run eval:prefilter-review -- \
-  --corpus=../contracts/agent-subscription-prefilter/v1/corpus.example.json \
-  --review=../contracts/agent-subscription-prefilter/v1/review.example.json
+  --corpus=../../contracts/agent-subscription-prefilter/v1/corpus.example.json \
+  --review=../../contracts/agent-subscription-prefilter/v1/review.example.json
 ```
 
 完成受控 review 与 candidate evidence 后，统一重算 rollout decision：
 
 ```bash
 npm run eval:subscription-rollout -- \
-  --corpus=../contracts/agent-subscription-prefilter/v1/corpus.example.json \
-  --review=../contracts/agent-subscription-prefilter/v1/review.example.json \
-  --evidence=../contracts/agent-subscription-prefilter/v1/evidence.example.json
+  --corpus=../../contracts/agent-subscription-prefilter/v1/corpus.example.json \
+  --review=../../contracts/agent-subscription-prefilter/v1/review.example.json \
+  --evidence=../../contracts/agent-subscription-prefilter/v1/evidence.example.json
 ```
 
 退出码 `0` 表示全部门槛通过，`2` 表示有效证据未达门槛，`1` 表示参数、schema、哈希或逐 case 绑定无效。通过报告只可作为现有五类 Agent Eval 的 retrieval/cost 输入，不能单独启用生产 `subscription` 模式。
