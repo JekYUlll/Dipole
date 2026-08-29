@@ -70,6 +70,9 @@ func (s *PersistentAgentWorkflowRepairExecutorV1) Execute(ctx context.Context, r
 	if execution.Status != application.AgentWorkflowRepairExecutionStatusPrepared {
 		return nil, fmt.Errorf("%w: execution is not prepared", application.ErrAgentWorkflowRepairConflict)
 	}
+	if err := validateRollbackPayload(execution, request.Rollback); err != nil {
+		return nil, err
+	}
 	grant, err := s.repairs.GetWorkflowRepairOperatorGrant(ctx, executorUUID)
 	if err != nil {
 		return nil, fmt.Errorf("load Workflow repair executor grant: %w", err)
@@ -170,4 +173,17 @@ func (s *PersistentAgentWorkflowRepairExecutorV1) fail(ctx context.Context, exec
 		return nil, fmt.Errorf("%w: fail execution after %v: %v", application.ErrAgentWorkflowRepairConflict, cause, err)
 	}
 	return nil, fmt.Errorf("%w: %v", application.ErrAgentWorkflowRepairPrecondition, cause)
+}
+
+func validateRollbackPayload(execution *application.AgentWorkflowRepairExecutionV1, rollback *application.AgentTaskWorkflowProjectionV1) error {
+	if rollback == nil {
+		if execution.RollbackSHA256 != "" {
+			return fmt.Errorf("%w: rollback projection is required by execution plan", application.ErrAgentWorkflowRepairPrecondition)
+		}
+		return nil
+	}
+	if rollback.Validate() != nil || execution.RollbackSHA256 == "" || rollback.TaskUUID != execution.TaskUUID || application.WorkflowProjectionSHA256V1(rollback) != execution.RollbackSHA256 {
+		return fmt.Errorf("%w: rollback projection hash mismatch", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	return nil
 }
