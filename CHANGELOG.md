@@ -18,7 +18,8 @@
 
 ## [Unreleased]
 
-- 聚合 `internal/app/composition_compat.go` 已退休；composition 测试已归属 `internal/bootstrap/embedded` 并直接验证 embedded repository/service 装配，`internal/app` 继续仅保留 Agent、Core repository 与 Sync repository 等仍在迁移期的兼容边界。
+- Core、Sync 和 Agent repository compatibility facade 已完成调用者清理并退休；生产与 embedded composition 直接使用各服务 infrastructure，服务布局门禁同步移除三项历史登记及过时的存在性断言。
+- 聚合 `internal/app/composition_compat.go` 已退休；composition 测试已归属 `internal/bootstrap/embedded` 并直接验证 embedded repository/service 装配，`internal/app` 当前仅保留仍在迁移期的 Agent application 兼容边界。
 - Core embedded compatibility facade 已移除无调用者的 Inbox 写入开关转发和旧 Message application 构造入口；Inbox projector 与 Message application 继续由服务专属/embedded composition 直接装配，保留仍有调用者的兼容 API。
 - 服务布局门禁已同步移除已退休的 `internal/app/core_capability.go` 必需登记项，避免已删除的孤立 facade 阻断后续结构检查。
 - Core 已删除无调用者的 `internal/app/core_capability.go` 兼容构造入口；Core 能力继续由服务自身 application 与 embedded composition 装配。
