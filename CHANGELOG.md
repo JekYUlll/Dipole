@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：在 `master` 当前基线复跑 Agent Runtime 与服务级回归门禁：Vitest 通过 125 个测试文件（662 个测试，7 个文件/27 个测试按契约跳过），`typecheck`、生产构建、Go 全仓、服务布局和 Compose 契约均通过；本次验证仍只覆盖 shadow/协议边界，不改变 active authority、Temporal 共享联调或生产灰度开关。
 - 复跑 `scripts/smoke-sync-cassandra-primary-compose.sh`：隔离微服务 Compose 真实验证 Cassandra schema init、MySQL migration、Core/Message/Sync readiness 与 `primary=true` 配置；临时资源自动清理，生产 Cassandra 主读和共享环境灰度保持关闭。
 - 复跑 `scripts/smoke-cassandra-read-routing.sh`：在隔离 MySQL/Cassandra 与 migration v50 环境验证 Timeline 页面使用 Cassandra，并在 payload 损坏或记录缺失时按同一 locator 安全回退 MySQL；临时资源自动清理，生产主读开关保持关闭。
 - 将 Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配迁入 `internal/services/gateway/server/`，Gateway bootstrap 直接使用服务自有 server；共享 Gin handler 保留在 `internal/gateway/http/` 供兼容 Core server 复用。
