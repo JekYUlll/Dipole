@@ -118,7 +118,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	})
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
-	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.
+	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/embedded/kafka.go.
 	// Passing nil here prevents the dispatcher from doing a redundant synchronous update.
 	var conversationUpdater wsTransportConversationUpdater
 	if !config.KafkaConfig().Enabled {
