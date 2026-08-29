@@ -15,6 +15,7 @@
 - 2026-08-29：Hot Group Detector 已支持显式 Redis 客户端并由生产 Composition Root 注入，结构门禁阻止生产装配回到无参数全局构造；兼容构造仍保留，Presence 和限流的显式客户端注入继续作为后续切片。
 - 2026-08-29：Presence 已支持显式 Redis 客户端并由 Gateway、embedded Server 和 WebSocket 路由注入，新增隔离测试与结构门禁；兼容构造仍保留，限流的显式客户端注入继续作为后续切片。
 - 2026-08-29：Rate Limiter 已支持显式 Redis 客户端并由 Gateway、embedded Server 和 Agent MCP 入口注入，新增隔离测试与结构门禁；兼容构造仍保留，Redis 业务适配器的全局状态清理进入后续阶段。
+- 2026-08-29：Rate Limiter 执行路径已移除对全局 Redis 的回退，普通业务 fail-open 与 Agent MCP fail-closed 均基于实例客户端判定；全局状态仅由兼容构造保留，Redis 业务适配器清理进入收尾阶段。
 - 2026-08-29：Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/sync/` 已由结构门禁阻止回流，后续仍需继续收敛跨服务运维工具和共享 SQLC 基础设施。
 - 2026-08-29：Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/search/` 已由结构门禁阻止回流，Cassandra Projector 仍保留为独立实验性运行时，后续继续评估其入口归属。
 - 2026-08-29：Cassandra Message Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，复用 Message domain event contract；旧 `internal/projector/cassandra/` 已由结构门禁阻止回流，独立 `cmd/tools/cassandra-projector` 入口暂保留用于可选存储实验和回滚。
