@@ -1,6 +1,6 @@
 # Search Service 渐进部署手册
 
-`cmd/search-service` 是只读消息检索服务，拥有 Elasticsearch read Alias 查询，并通过 Core Capability 获取认证用户的会话范围。Search Indexer 继续独立消费 Kafka mutation 并拥有 write Alias。
+`cmd/services/search` 是只读消息检索服务，拥有 Elasticsearch read Alias 查询，并通过 Core Capability 获取认证用户的会话范围。Search Indexer 继续独立消费 Kafka mutation 并拥有 write Alias。
 
 ```text
 Gateway -> Search RPC -> Core Capability -> MySQL metadata

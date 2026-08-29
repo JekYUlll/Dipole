@@ -37,7 +37,7 @@ Client -- WS/HTTP --> IM Gateway --> Message Service --> MySQL / Kafka
 ```bash
 docker compose up -d mysql redis kafka
 go run ./cmd/migrate -direction up
-go run ./cmd/server
+go run ./cmd/services/core
 ```
 
 启动前端：
@@ -66,6 +66,7 @@ scripts/check-sqlc.sh
 scripts/check-proto.sh
 scripts/check-compose.sh
 scripts/check-architecture-docs.sh
+scripts/check-service-layout.sh
 ```
 
 前端验证：

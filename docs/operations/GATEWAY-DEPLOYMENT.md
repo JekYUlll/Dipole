@@ -1,14 +1,14 @@
 # IM Gateway 渐进部署手册
 
-本文档描述 M5 独立 Gateway 的部署、验收与回滚。默认 `gateway.mode=embedded` 保持模块化单体路径；`remote` 将公开 HTTP/WS 和实时投递交给 `cmd/gateway`。
+本文档描述 M5 独立 Gateway 的部署、验收与回滚。默认 `gateway.mode=embedded` 保持模块化单体路径；`remote` 将公开 HTTP/WS 和实时投递交给 `cmd/services/gateway`。
 
 ## 职责边界
 
 | 进程 | 公开入口 | 持久化依赖 | 主要职责 |
 | --- | --- | --- | --- |
-| `cmd/gateway` | HTTP/HTTPS、WebSocket | 无 MySQL | WS 认证、限流、连接、Redis Presence、Kafka 实时投递、Core HTTP 代理 |
-| `cmd/server` | 仅私网 HTTP 与 Core RPC | MySQL、Redis | Auth、User、Group、Contact、File、Conversation 与领域投影 |
-| `cmd/message-service` | 仅内部 Message RPC | MySQL、Redis | 消息命令、历史、幂等、Inbox、Outbox 与消息持久化 |
+| `cmd/services/gateway` | HTTP/HTTPS、WebSocket | 无 MySQL | WS 认证、限流、连接、Redis Presence、Kafka 实时投递、Core HTTP 代理 |
+| `cmd/services/core` | 仅私网 HTTP 与 Core RPC | MySQL、Redis | Auth、User、Group、Contact、File、Conversation 与领域投影 |
+| `cmd/services/message` | 仅内部 Message RPC | MySQL、Redis | 消息命令、历史、幂等、Inbox、Outbox 与消息持久化 |
 
 Gateway 自己处理 `/health` 和 `/api/v1/ws`。其余 HTTP、Swagger 与静态 Web 在 M5 期间代理到 Core，后续可按流量和安全需求继续抽离。
 
@@ -42,7 +42,7 @@ WebSocket 当前继续兼容 `token`、`access_token` query 和 Bearer Header。
 2. 保持 `gateway.mode=embedded`，确认 Core/Message 的 Remote 契约、Kafka 和 Redis Presence 正常。
 3. 准备 Core 私网监听端口，例如 `8081`，并配置 `gateway.mode=remote`、`message.transport=grpc`。
 4. 并行启动 Core 与 Message；Core 会先开放 Capability listener，再连接 Message。编排器应配置健康检查和失败重启。
-5. 启动 `go run ./cmd/gateway`，确认 `/health`、Core HTTP 代理和两个内部 RPC 健康。
+5. 启动 `go run ./cmd/services/gateway`，确认 `/health`、Core HTTP 代理和两个内部 RPC 健康。
 6. 将少量测试流量切到 Gateway，验证登录、WS 重连、私聊、群聊、文件消息、踢下线与跨节点投递。
 7. 完成全流量切换后，移除公开网络到 Core 的直连规则；保留 `embedded` 配置和单体制品作为回滚路径。
 
