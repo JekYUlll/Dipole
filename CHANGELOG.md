@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway `session.force_logout` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，通过服务自有 `ConnectionController` 保持指定连接和全量连接断开语义，并补充契约测试。
 - Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增用户范围 WS 契约测试并保持 malformed event 重试语义。
 - Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增契约测试并保持 WS read receipt 与 malformed event 重试语义。
 - Gateway realtime delivery authority fence 已迁入 `internal/services/gateway/infrastructure/kafka`，embedded 装配改用服务自有实现；消息 delivery handler 仍按依赖闭包继续迁移。
