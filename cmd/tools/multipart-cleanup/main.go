@@ -46,11 +46,12 @@ func main() {
 	confirm := flag.Bool("confirm", false, "confirm that aborting eligible uploads is intentional")
 	redisOrphans := flag.Bool("redis-orphans", false, "scan and report Redis multipart session anomalies")
 	reconcile := flag.Bool("reconcile", false, "read-only compare MinIO incomplete uploads with Redis sessions")
+	reconcileFailOnDrift := flag.Bool("reconcile-fail-on-drift", false, "exit 3 when reconciliation finds cross-store drift")
 	redisScanCount := flag.Int64("redis-scan-count", 100, "Redis SCAN batch size")
 	redisMaxKeys := flag.Int64("redis-max-keys", 10000, "maximum Redis keys to inspect per key family")
 	flag.Parse()
-	if *olderThan <= 0 || (*execute && !*confirm) || *redisScanCount <= 0 || *redisMaxKeys <= 0 {
-		fmt.Fprintln(os.Stderr, "older-than, redis-scan-count and redis-max-keys must be positive; --execute requires --confirm")
+	if *olderThan <= 0 || (*execute && !*confirm) || *redisScanCount <= 0 || *redisMaxKeys <= 0 || (*reconcileFailOnDrift && !*reconcile) {
+		fmt.Fprintln(os.Stderr, "older-than, redis-scan-count and redis-max-keys must be positive; --execute requires --confirm; --reconcile-fail-on-drift requires --reconcile")
 		os.Exit(2)
 	}
 	if err := config.Load(); err != nil {
@@ -105,4 +106,11 @@ func main() {
 	if report.Failed > 0 {
 		os.Exit(1)
 	}
+	if *reconcileFailOnDrift && reconciliationHasDrift(output.Reconciliation) {
+		os.Exit(3)
+	}
+}
+
+func reconciliationHasDrift(report *storageops.MultipartReconciliationReport) bool {
+	return report != nil && (report.MissingRedis > 0 || report.MissingMinIO > 0)
 }
