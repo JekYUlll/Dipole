@@ -127,8 +127,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if repos.MessageProcess == nil {
 		return nil, fmt.Errorf("compose Message repositories: process set is nil")
 	}
+	if repos.CoreProcess == nil {
+		return nil, fmt.Errorf("compose Core repositories: process set is nil")
+	}
+	coreRepos := repos.CoreProcess
 	agentRepos := repos.AgentProcess
-	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
+	if err := coreapplication.EnsureAIAssistantUser(coreRepos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -304,8 +308,8 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 	syncComparisonMetrics := platformObservability.NewClientSyncComparisonCollector()
 	srv := server.NewWithDependencies(&server.Repositories{
-		Users: repos.Users, Files: repos.Files, Conversations: repos.Conversations,
-		Contacts: repos.Contacts, Groups: repos.Groups, Admin: repos.Admin,
+		Users: coreRepos.Users, Files: coreRepos.Files, Conversations: coreRepos.Conversations,
+		Contacts: coreRepos.Contacts, Groups: coreRepos.Groups, Admin: coreRepos.Admin,
 	}, server.Dependencies{
 		Messages:       messageFlow.Application,
 		Sync:           syncFlow.Application,
