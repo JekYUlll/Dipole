@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Agent Execution Policy 测试已改用 Agent application 的持久策略构造器，删除 `internal/app` 中无调用的策略 alias 与构造转发；剩余兼容入口继续按真实调用者收敛。
 - 2026-08-29：Memory Resolver 测试已迁入 `internal/services/agent/application`，其 memory、invocation 和 task reader stub 随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Runtime Promotion Evidence Review 测试已迁入 `internal/services/agent/application`，其 operator control 与 artifact reader stub 随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Memory Owner Control 测试已迁入 `internal/services/agent/application`，其 owner store stub 与 fixture 随测试归属迁移，并删除 `internal/app` 对应 facade。
