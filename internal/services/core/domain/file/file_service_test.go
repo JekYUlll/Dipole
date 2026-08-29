@@ -44,6 +44,8 @@ type stubUploader struct {
 	uploadPartFn        func(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error)
 	completeMultipartFn func(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error)
 	abortMultipartFn    func(ctx context.Context, objectKey, uploadID string) error
+	openObjectFn        func(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error)
+	removeObjectFn      func(ctx context.Context, bucket, objectKey string) error
 }
 
 func (u *stubUploader) UploadMessageFile(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*platformStorage.UploadedObject, error) {
@@ -91,10 +93,20 @@ func (u *stubUploader) InspectMultipartPart(ctx context.Context, objectKey, uplo
 }
 
 func (u *stubUploader) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
+	if u.openObjectFn != nil {
+		return u.openObjectFn(ctx, bucket, objectKey)
+	}
 	_ = ctx
 	_ = bucket
 	_ = objectKey
 	return io.NopCloser(bytes.NewReader(nil)), nil
+}
+
+func (u *stubUploader) RemoveObject(ctx context.Context, bucket, objectKey string) error {
+	if u.removeObjectFn == nil {
+		return errors.New("unexpected remove object call")
+	}
+	return u.removeObjectFn(ctx, bucket, objectKey)
 }
 
 func (u *stubUploader) InitiateMessageMultipartUpload(ctx context.Context, fileName, contentType string) (*platformStorage.MultipartUpload, error) {
@@ -438,6 +450,88 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	}
 	if file == nil || file.UUID == "" {
 		t.Fatalf("expected uploaded file record, got %+v", file)
+	}
+}
+
+func TestFileServiceMultipartChecksumRequiredAndVerified(t *testing.T) {
+	t.Parallel()
+	content := []byte("data")
+	digest := sha256.Sum256(content)
+	removed := false
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "dipole-files", ObjectKey: "message-files/data", UploadID: "UPLOAD-CHECKSUM"}, nil
+		},
+		uploadPartFn: func(_ context.Context, _ string, _ string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+			_, _ = io.Copy(io.Discard, reader)
+			return &platformStorage.UploadedPart{PartNumber: partNumber, ETag: "etag-1", Size: size}, nil
+		},
+		completeMultipartFn: func(_ context.Context, _, objectKey, fileName, contentType string, fileSize int64, _ []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error) {
+			return &platformStorage.UploadedObject{Bucket: "dipole-files", ObjectKey: objectKey, FileName: fileName, ContentType: contentType, FileSize: fileSize}, nil
+		},
+		openObjectFn: func(context.Context, string, string) (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(content)), nil
+		},
+		removeObjectFn: func(context.Context, string, string) error { removed = true; return nil },
+	}, 50*1024*1024, 5, time.Hour, 10*time.Minute)
+	service.multipartRequireChecksum = true
+	service.sessionStore = &stubMultipartSessionStore{}
+
+	if _, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "data", FileSize: int64(len(content))}); !errors.Is(err, ErrMultipartChecksumRequired) {
+		t.Fatalf("expected required checksum error, got %v", err)
+	}
+	initResult, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "data", FileSize: int64(len(content)), FileSHA256: hex.EncodeToString(digest[:])})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, int64(len(content)), "", bytes.NewReader(content)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", initResult.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if removed {
+		t.Fatal("matching checksum removed completed object")
+	}
+}
+
+func TestFileServiceMultipartChecksumMismatchRemovesObject(t *testing.T) {
+	t.Parallel()
+	removed := false
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "dipole-files", ObjectKey: "message-files/data", UploadID: "UPLOAD-MISMATCH"}, nil
+		},
+		uploadPartFn: func(_ context.Context, _ string, _ string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+			_, _ = io.Copy(io.Discard, reader)
+			return &platformStorage.UploadedPart{PartNumber: partNumber, ETag: "etag-1", Size: size}, nil
+		},
+		completeMultipartFn: func(_ context.Context, _, objectKey, _, contentType string, fileSize int64, _ []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error) {
+			return &platformStorage.UploadedObject{Bucket: "dipole-files", ObjectKey: objectKey, ContentType: contentType, FileSize: fileSize}, nil
+		},
+		openObjectFn: func(context.Context, string, string) (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader([]byte("actual"))), nil
+		},
+		removeObjectFn: func(context.Context, string, string) error { removed = true; return nil },
+	}, 50*1024*1024, 5, time.Hour, 10*time.Minute)
+	service.multipartRequireChecksum = true
+	service.sessionStore = &stubMultipartSessionStore{}
+	digest := sha256.Sum256([]byte("expected"))
+	initResult, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "data", FileSize: 6, FileSHA256: hex.EncodeToString(digest[:])})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, 5, "", bytes.NewReader([]byte("actua"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 2, 1, "", bytes.NewReader([]byte("l"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", initResult.SessionID); !errors.Is(err, ErrMultipartChecksumMismatch) {
+		t.Fatalf("expected checksum mismatch, got %v", err)
+	}
+	if !removed {
+		t.Fatal("checksum mismatch did not remove completed object")
 	}
 }
 

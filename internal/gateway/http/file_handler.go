@@ -273,6 +273,7 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 		FileName:    req.FileName,
 		FileSize:    req.FileSize,
 		ContentType: req.ContentType,
+		FileSHA256:  req.FileSHA256,
 	})
 	if err != nil {
 		h.handleMultipartError(c, err)
@@ -508,6 +509,8 @@ func (h *FileHandler) handleMultipartError(c *gin.Context, err error) {
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartSessionInvalid, "multipart upload session is invalid")
 	case errors.Is(err, corefile.ErrMultipartPartInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "multipart upload part is invalid")
+	case errors.Is(err, corefile.ErrMultipartChecksumRequired), errors.Is(err, corefile.ErrMultipartChecksumMismatch):
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "multipart file checksum is invalid")
 	case errors.Is(err, corefile.ErrFileStorageUnavailable):
 		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 	default:
