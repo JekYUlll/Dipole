@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 清理 MySQL 共享 repository 目录中的无调用者 contract test helper；各服务继续在自身 infrastructure 测试边界维护 contract database helper，历史兼容包仅保留别名和构造转发。
 - 修正文档中的目录基线：明确共享 `internal/handler` 已清空，当前仅保留 `internal/store`、`internal/app` 和历史 SQLC 兼容入口，避免服务边界清单继续引用已删除的共享 Handler 目录。
 - 补齐兼容目录的结构说明：`internal/app`、`internal/data/mysql`、历史 repository aliases 和 `internal/store` 均增加 ownership/迁移出口 README，服务布局门禁将其作为仓库导航约束；未改变兼容入口和运行时行为。
 - 收敛 MySQL repository 调用边界：Sync 运维、Message/Sync/Cassandra 集成测试和 embedded composition 测试改用对应服务自有 SQLC repository；历史 `internal/data/mysql/repository` 兼容别名继续保留，但结构门禁禁止新的运行时代码依赖该路径。
