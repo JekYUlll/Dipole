@@ -17,6 +17,7 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
+	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"go.uber.org/zap"
 )
@@ -52,7 +53,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("Core database schema is not ready: %w", err)
 	}
-	coreRepos, err := appComposition.NewCoreProcessRepositories(store.SQLDB)
+	coreRepos, err := coremysql.NewProcessRepositories(store.SQLDB)
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}

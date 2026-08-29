@@ -1,4 +1,4 @@
-package app
+package coremysql
 
 import (
 	"strings"
@@ -80,7 +80,7 @@ func (s *CachedUserStore) List(keyword string, status *int8, limit int) ([]*mode
 }
 
 func (s *CachedUserStore) ListByUUIDs(uuids []string) ([]*model.User, error) {
-	normalized := normalizeUserUUIDs(uuids)
+	normalized := normalizeCachedUserUUIDs(uuids)
 	if len(normalized) == 0 {
 		return []*model.User{}, nil
 	}
@@ -143,7 +143,7 @@ func (s *CachedUserStore) cache(user *model.User, addToBloom bool) {
 	_ = platformCache.SetJSON(ctx, platformCache.UserProfileKey(user.UUID), user, platformCache.UserProfileTTL)
 }
 
-func normalizeUserUUIDs(uuids []string) []string {
+func normalizeCachedUserUUIDs(uuids []string) []string {
 	seen := make(map[string]struct{}, len(uuids))
 	normalized := make([]string, 0, len(uuids))
 	for _, uuid := range uuids {
