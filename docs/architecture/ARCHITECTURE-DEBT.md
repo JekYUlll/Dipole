@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，独立 runtime 直接注册服务自有 handler；embedded 兼容注册入口保留，投递与会话投影继续由各自 owner 管理。
 - 2026-08-29：Message Outbox relay 已迁入 `internal/services/message/infrastructure/kafka/`，独立 runtime 直接使用服务自有 relay；embedded 仅保留薄兼容包装，Outbox ownership 和回滚边界保持可验证。
 - 2026-08-29：Message shadow 的 Query-only adapter 及测试已迁入 `internal/services/message/bootstrap/`，独立 runtime 直接使用服务自有实现并移除对应共享 facade；其余 Outbox、Kafka handler 和数据库权限兼容入口继续按回滚边界收敛。
 - 2026-08-29：惰性 Core Capability adapter 及其重试测试已迁入 `internal/services/message/bootstrap/`，Message runtime 直接使用服务自有实现并移除对应共享 facade；AD-049 的共享环境冷启动、ownership 和回切证据仍待完成。

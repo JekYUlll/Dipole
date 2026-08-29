@@ -143,7 +143,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		servedMessages = newQueryOnlyMessageApplication(messages)
 	}
 	if messageCfg.RuntimeMode == "owner" {
-		legacybootstrap.RegisterMessageKafkaHandlers(messages)
+		messagekafka.RegisterPersistenceHandlers(platformKafka.Subscriber, messages)
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
 		if err := platformKafka.Client.EnsureTopics(messageOwnedKafkaTopics()); err != nil {

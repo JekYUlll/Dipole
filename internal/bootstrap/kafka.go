@@ -21,6 +21,7 @@ import (
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -28,14 +29,6 @@ import (
 type kafkaConversationUpdater interface {
 	UpdateDirectConversations(message *model.Message) error
 	UpdateGroupConversations(message *model.Message) error
-}
-
-type kafkaMessagePersister interface {
-	PersistRequestedMessage(payload service.MessageEventPayload) (*model.Message, error)
-}
-
-type kafkaMessagePersisterContext interface {
-	PersistRequestedMessageContext(ctx context.Context, payload service.MessageEventPayload) (*model.Message, error)
 }
 
 type kafkaWSEventSender interface {
@@ -252,12 +245,8 @@ func checkpointMessageDeliveryHandler(label string) platformKafka.Handler {
 	}
 }
 
-func RegisterMessageKafkaHandlers(persister kafkaMessagePersister) {
-	if platformKafka.Subscriber == nil || persister == nil {
-		return
-	}
-	platformKafka.Subscriber.Register("message.direct.send_requested", persistMessageHandler(persister, "direct"))
-	platformKafka.Subscriber.Register("message.group.send_requested", persistMessageHandler(persister, "group"))
+func RegisterMessageKafkaHandlers(persister messagekafka.MessagePersister) {
+	messagekafka.RegisterPersistenceHandlers(platformKafka.Subscriber, persister)
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {
@@ -288,32 +277,6 @@ func logKafkaEventHandler(topic string) platformKafka.Handler {
 			zap.Int("partition", event.Partition),
 			zap.Int64("offset", event.Offset),
 			zap.Any("payload", payload),
-		)
-		return nil
-	}
-}
-
-func persistMessageHandler(persister kafkaMessagePersister, label string) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		payload, err := decodeMessageEventPayload(event)
-		if err != nil {
-			logger.Warn("decode "+label+" message requested payload failed", zap.Error(err))
-			return err
-		}
-
-		if contextual, ok := persister.(kafkaMessagePersisterContext); ok {
-			_, err = contextual.PersistRequestedMessageContext(ctx, payload)
-		} else {
-			_, err = persister.PersistRequestedMessage(payload)
-		}
-		if err != nil {
-			logger.Warn("persist "+label+" message from kafka failed", zap.Error(err))
-			return err
-		}
-
-		logger.Info(label+" message persisted from kafka",
-			zap.String("message_id", payload.MessageID),
-			zap.Int64("offset", event.Offset),
 		)
 		return nil
 	}
