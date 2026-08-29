@@ -35,6 +35,10 @@ if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; t
   echo "Core capability implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/bootstrap/core_runtime.go" ]]; then
+  echo "standalone Core composition root is missing" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/core/application/conversation.go" ]]; then
   echo "Core conversation application is outside its service boundary" >&2
   exit 1
