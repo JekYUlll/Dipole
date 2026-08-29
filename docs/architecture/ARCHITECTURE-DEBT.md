@@ -30,6 +30,7 @@
 - 2026-08-29：Cassandra routing、shadow message store 和 Sync hydration fallback 已迁入 `internal/platform/storage/`；装饰器仍只通过 application port 运行，后续需继续评估迁移完成后的删除时机和 routing/shadow 配置 owner。
 - 2026-08-29：跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器已迁入 `internal/platform/cassandra/`；服务业务 projection 保持在各自边界，后续仍需评估 routing/shadow 装饰器和 Cassandra 数据 owner 的最终归属。
 - 2026-08-29：兼容别名已从 `internal/service` 收纳到 `internal/compat/service`；`internal/service` 仅保留共享事件发布契约与实现，后续仍需逐步迁移调用方并缩减兼容入口。
+- 2026-08-29：确认 `internal/service/event_publisher.go` 已无调用者并删除，`internal/service` 不再承载 Go 实现；服务布局门禁阻止该目录重新出现业务实现，跨服务事件契约继续由 application port 和版本化事件包承载。
 - 开始处理时补充负责人或关联 Issue/PR；解决后记录提交、验证方式和完成日期。
 - 本台账描述风险和演进方向，不代表当前迭代立即修改对应实现。
 
