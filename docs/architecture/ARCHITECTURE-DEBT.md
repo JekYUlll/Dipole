@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：调用审计确认 `internal/app/composition_compat.go` 中的 Inbox 写入开关转发和旧 Message application 构造均无外部调用者，已删除两处兼容入口；其余 composition facade 仍服务于 embedded 回滚或兼容测试，继续按调用者迁移。
 - 2026-08-29：服务布局门禁已同步删除 Core capability facade 的历史必需登记，当前兼容根目录只保留仍有调用者的 adapter、说明文件与兼容测试。
 - 2026-08-29：全仓调用审计确认 `internal/app/core_capability.go` 无生产或测试调用者，已删除该孤立兼容构造；Core application 和 embedded repository composition 继续作为唯一装配路径。
 - 2026-08-29：Core 独立 runtime 的模式校验已完成测试归属迁移，删除旧 bootstrap 中无生产调用者的重复 facade；embedded 组合入口仍保留，Core standalone 与 remote/embedded 模式约束由服务自身测试锁定。
