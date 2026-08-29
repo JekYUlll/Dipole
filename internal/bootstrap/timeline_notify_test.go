@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -61,7 +62,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 			sender := &recordingWSEventSender{}
 			event := directCreatedEvent(t, 42)
 			ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R42", TraceID: "T42", EventID: "E42"})
-			if err := deliverDirectMessageHandler(sender, test.mode)(ctx, event); err != nil {
+			if err := gatewaykafka.NewDirectMessageHandler(sender, test.mode)(ctx, event); err != nil {
 				t.Fatalf("deliver direct event: %v", err)
 			}
 			if len(sender.events) != len(test.wantTypes) {
@@ -105,8 +106,8 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
-			aggregator := newHotGroupNotifyAggregator(sender, time.Millisecond)
-			if err := deliverGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
+			aggregator := gatewaykafka.NewNotifier(sender, time.Millisecond)
+			if err := gatewaykafka.NewGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
 				t.Fatalf("deliver group event: %v", err)
 			}
 			if test.hot {
@@ -139,7 +140,7 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 
 func TestDeliverDirectMessageSkipsTimelineNotificationWithoutSequence(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	if err := deliverDirectMessageHandler(sender, wsTransport.TimelineNotifyShadow)(context.Background(), directCreatedEvent(t, 0)); err != nil {
+	if err := gatewaykafka.NewDirectMessageHandler(sender, wsTransport.TimelineNotifyShadow)(context.Background(), directCreatedEvent(t, 0)); err != nil {
 		t.Fatalf("deliver legacy direct event: %v", err)
 	}
 	if len(sender.events) != 1 || sender.events[0].eventType != wsTransport.TypeChatMessage {

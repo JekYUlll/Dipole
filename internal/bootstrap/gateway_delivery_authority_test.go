@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -35,11 +36,11 @@ func (s *recoveringAuthorityFenceStub) Assert(_ context.Context, _ realtimeDeliv
 
 func TestGatewayMessageHandlersCheckpointOnlyInCPPMode(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, group, err := gatewayMessageDeliveryHandlers(
+	direct, group, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -58,11 +59,11 @@ func TestGatewayMessageHandlersCheckpointOnlyInCPPMode(t *testing.T) {
 
 func TestGatewayCheckpointHandlerRejectsMalformedMessage(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -80,11 +81,11 @@ func TestGatewayCheckpointHandlerRejectsMalformedMessage(t *testing.T) {
 
 func TestGatewayMessageHandlersKeepGoWritesInShadowMode(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityShadow,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -101,18 +102,18 @@ func TestGatewayMessageHandlersKeepGoWritesInShadowMode(t *testing.T) {
 
 func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fence := &authorityFenceStub{err: errors.New("frozen")}
-	guarded := fenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
+	guarded := gatewaykafka.FenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := guarded(ctx, directCreatedEvent(t, 42)); !errors.Is(err, context.Canceled) {
@@ -136,18 +137,18 @@ func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 
 func TestGatewayMessageHandlerContinuesSameRecordAfterFenceRecovery(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fence := &recoveringAuthorityFenceStub{}
-	guarded := fenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
+	guarded := gatewaykafka.FenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
 	if err := guarded(context.Background(), directCreatedEvent(t, 42)); err != nil {
 		t.Fatalf("recover fence on same record: %v", err)
 	}
