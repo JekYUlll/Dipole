@@ -77,6 +77,10 @@ if [[ ! -f "${root_dir}/internal/services/core/domain/admin/admin_service.go" ]]
   echo "Core admin domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/domain/session/session_service.go" ]]; then
+  echo "Core session domain implementation is outside its service boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
@@ -87,6 +91,10 @@ if [[ -e "${root_dir}/internal/service/auth_service.go" || -e "${root_dir}/inter
 fi
 if [[ -e "${root_dir}/internal/service/admin_service.go" ]]; then
   echo "legacy Core admin implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/session_service.go" ]]; then
+  echo "legacy Core session implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then

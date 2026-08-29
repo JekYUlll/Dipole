@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Core Session domain 实现及测试已迁入 `internal/services/core/domain/session/`；旧 `internal/service` 仅保留兼容别名和构造入口，设备会话查询、强制下线和 Token 撤销 contract 保持兼容。
 - Core Admin domain 实现及测试已迁入 `internal/services/core/domain/admin/`；旧 `internal/service` 仅保留兼容别名和构造入口，后台概览 HTTP contract 与 `ErrAdminRequired` 语义保持兼容。
 - Core Auth/Token domain 实现及测试已迁入 `internal/services/core/domain/auth/`；旧 `internal/service` 仅保留兼容类型、常量、错误和构造入口，现有认证、MCP 授权、Middleware、Gateway 与 WS contract 保持兼容。
 - Gateway 全部 HTTP handler 及测试已从 `internal/handler/http` 迁入 `internal/gateway/http/`；保留现有路由、认证、错误响应和 application port contract，旧共享目录由结构门禁阻止回流。

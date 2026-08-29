@@ -4,7 +4,7 @@ import (
 	"time"
 
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type SessionPresence interface {
@@ -29,11 +29,11 @@ type SessionDependencies struct {
 
 // LocalSessionApplication keeps device-session use cases behind the Core boundary.
 type LocalSessionApplication struct {
-	*service.SessionService
+	*coresession.SessionService
 }
 
 func NewSessionApplication(dependencies SessionDependencies) *LocalSessionApplication {
 	return &LocalSessionApplication{
-		SessionService: service.NewSessionService(dependencies.Presence, dependencies.Tokens, dependencies.Kicker),
+		SessionService: coresession.NewSessionService(dependencies.Presence, dependencies.Tokens, dependencies.Kicker),
 	}
 }
