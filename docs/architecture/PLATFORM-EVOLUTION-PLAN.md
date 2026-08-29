@@ -329,7 +329,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 将分片上传升级为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、完成和取消，降低大文件对业务服务带宽与连接的占用。
 - [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败仍由上层取消整个 Multipart 会话。
 - [ ] 增加暂停/继续和断点恢复；会话恢复必须绑定用户、对象键、文件大小、内容类型和 upload ID。
-- [x] 增加 `X-Part-SHA256` part checksum：现代 Web Crypto 可用时由客户端发送，Core 在保存 ETag/Size 前恒时比较；旧客户端缺少该头时保持兼容。
+- [x] 增加 `X-Part-SHA256` part checksum：现代 Web Crypto 可用时由客户端发送，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较摘要；旧客户端缺少该头时保持兼容。
 - [ ] 增加整文件 SHA-256、强制 checksum 模式和完成结果校验，防止网络重试或客户端异常导致内容静默错误。
 - [ ] 增加 MinIO 未完成 Multipart 生命周期清理、Redis 会话过期扫描、完成/取消幂等和孤儿对象 reconciliation；指标至少覆盖 active、complete、abort、expired、retry、checksum mismatch 与耗时分位数。
 - [ ] 将大文件上限、分片大小、并发数、URL TTL 和失败重试次数纳入版本化配置与发布清单，保留旧单请求路径作为可即时回切的兼容实现。
