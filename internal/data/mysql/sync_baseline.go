@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	syncbaseline "github.com/JekYUlll/Dipole/internal/baseline/sync"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var ErrUnsafeSyncBaselineRestore = errors.New("Sync baseline restore requires a missing-only reconciliation")

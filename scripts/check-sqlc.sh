@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${repo_root}"
 
-generated_dir="internal/data/mysql/generated"
+generated_dir="internal/platform/mysql/generated"
 before_snapshot="$(mktemp)"
 after_snapshot="$(mktemp)"
 trap 'rm -f "${before_snapshot}" "${after_snapshot}"' EXIT
