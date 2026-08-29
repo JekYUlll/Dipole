@@ -20,12 +20,11 @@ import (
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	"github.com/apache/cassandra-gocql-driver/v2"
-	"google.golang.org/grpc"
 )
 
 type MessageRuntime struct {
 	rpc                *InternalRPCServer
-	coreConn           *grpc.ClientConn
+	coreCapability     *lazyCoreCapability
 	outboxFlow         *outboxRelay
 	shutdownSec        int
 	metrics            *platformObservability.MetricsServer
@@ -82,11 +81,10 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
-	core, coreConn, err := DialCoreCapability(ctx, rpcCfg)
-	if err != nil {
-		return nil, err
+	runtime := &MessageRuntime{
+		coreCapability: newLazyCoreCapability(rpcCfg),
+		shutdownSec:    rpcCfg.ShutdownTimeoutSeconds,
 	}
-	runtime := &MessageRuntime{coreConn: coreConn, shutdownSec: rpcCfg.ShutdownTimeoutSeconds}
 	var duplicateHydrator applicationPort.SyncMessageHydrator
 	if messageCfg.CassandraShadowReads || messageCfg.CassandraReadPercent > 0 || messageCfg.CassandraDuplicateHydration {
 		runtime.cassandra, err = cassandraData.OpenSession(cassandraCfg)
@@ -131,7 +129,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if runtime.duplicateHydration != nil {
 		duplicateObserver = runtime.duplicateHydration.Observe
 	}
-	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
+	messages := messageapplication.New(repos.Messages, runtime.coreCapability, messageapplication.Dependencies{
 		Events: events, HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB), DuplicateHydrator: duplicateHydrator,
 		DuplicateHydrationObserver: duplicateObserver,
 	})
@@ -167,7 +165,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
 		mysqlReadinessProbe("mysql", platformmysql.SQLDB),
-		grpcReadinessProbe("core-rpc", runtime.coreConn),
+		lazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		readinessProbes = append(readinessProbes, kafkaReadinessProbe("kafka", platformKafka.Client))
@@ -269,8 +267,8 @@ func (r *MessageRuntime) Close() {
 	if err := platformKafka.Close(); err != nil {
 		_ = err
 	}
-	if r.coreConn != nil {
-		_ = r.coreConn.Close()
+	if r.coreCapability != nil {
+		_ = r.coreCapability.Close()
 	}
 	if cache.RDB != nil {
 		_ = cache.RDB.Close()

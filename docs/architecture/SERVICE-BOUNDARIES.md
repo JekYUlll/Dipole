@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Gateway | `cmd/services/gateway` | HTTP、WebSocket、认证上下文、限流、实时连接和消息/同步查询入口 | Client | 无业务表；Redis 实时连接状态 | 其他 Core 业务 HTTP 暂通过 Core 反代 |
 | Core | `cmd/services/core` | Auth、User、Group、Contact、File、Conversation | Gateway、Message、Sync、Agent Capability | 用户、群组、联系人、文件元数据、Conversation State | 仅 embedded 模式保留消息/同步 HTTP 与 WS；remote 模式由 Gateway 直接承接，系统消息通过受限 Message RPC |
-| Message | `cmd/services/message` | Send、History、Idempotency、Seq、Outbox、Message Store | Gateway、Core、Sync | `messages`、消息幂等、Outbox、消息 Timeline | 与 Core 暂共享 MySQL 集群，账号和表权限按迁移计划逐步收紧 |
+| Message | `cmd/services/message` | Send、History、Idempotency、Seq、Outbox、Message Store | Gateway、Core、Sync | `messages`、消息幂等、Outbox、消息 Timeline | Core Capability 采用惰性 RPC 连接并由就绪探针验证；与 Core 暂共享 MySQL 集群，账号和表权限按迁移计划逐步收紧 |
 | Sync | `cmd/services/sync` | User Inbox、Device Cursor、Group Checkpoint | Gateway、Message、Core | `user_sync_inbox`、设备/群同步状态 | Cassandra hydration 仍为可选 primary，MySQL 保留回退 |
 | Search | `cmd/services/search` | 受权限约束的消息搜索 | Gateway | 无事实消息表；只读 Elasticsearch | Core-derived scope 通过 Capability RPC 获取 |
 | Search Indexer | `cmd/services/search-indexer` | 消费事件并写入搜索索引 | Kafka | Elasticsearch 索引和 tombstone | 与 Search 共享 Elasticsearch 集群但使用不同 Alias/写入职责 |

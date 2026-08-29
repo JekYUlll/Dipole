@@ -140,12 +140,13 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-29
 - **影响范围：** Core/Message 微服务冷启动、Compose 健康依赖、消息表写入 ownership
-- **现状：** Core 初始化远程 Message Application，Message 初始化 Core Capability RPC，双方在服务尚未监听时会形成冷启动环。Core 现支持独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 覆盖，微服务 Compose 默认让 Core 使用本地实现，Message 仍通过 Core Capability RPC 启动；全局 Message transport 继续由远程 Gateway 使用 gRPC。
-- **风险：** Core 保留本地 Message Application 会让未来 Core HTTP 或内部调用存在越过 Message Service ownership 的可能，当前只能视为启动兼容层，不能直接宣称 Message 写路径已完全单一化。
-- **下一步：** 将 Core 的消息依赖收窄为只读/受控 Capability，或引入显式异步连接状态与远程重连机制；补充 Core HTTP 路由 ownership、Kafka consumer 唯一性和远程冷启动回切证据。
+- **现状：** Core 的 system-message 写入已通过受限 Message RPC 访问，Message 的 Core Capability 改为惰性 RPC adapter；两侧启动阶段不再强制互相拨号，失败连接不缓存，后续请求和就绪探针会触发有界重试。微服务 Compose 默认使用远程 transport，embedded/local 仍保留回滚路径。
+- **风险：** 当前已消除初始化阶段的双向硬依赖，但共享环境仍需验证 Core/Message/Gateway 的完整冷启动顺序、RPC mTLS、Kafka consumer 唯一性和服务级数据库权限；消息写路径的生产切换证据尚未闭合。
+- **下一步：** 在隔离 Compose 与共享环境记录冷启动、依赖 readiness、端到端消息和 Local 回切 evidence，再继续收紧 Core/Message 数据库账号与服务启动权限。
 - **验证门槛：** 默认微服务 Compose 冷启动中 Core、Message、Sync、Gateway 均 healthy；Core 专用 transport 配置单测、远程 Message mTLS contract、端到端消息 smoke 和 Local 回切 smoke 均通过。
 - **本轮进展：** 远程模式下 Core 的本地启动兼容层不再注册 Message persistence consumer，也不初始化消息 topic；消息写入与 topic ownership 继续收敛到 Message Service，新增 ownership 单测并由 Compose 配置门禁固定全局 transport 为 gRPC。
 - **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息组合仍需后续改为受控远程 Capability。
+- **本轮进展：** Message Core Capability 改为惰性连接：构造时不拨号，首次调用或依赖就绪探针按当前 RPC 认证配置建立连接；连接失败不进入缓存，Core 恢复后可重试，新增冷启动/重试/关闭回归测试。完整隔离 Compose 和共享环境证据仍待补齐。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 
