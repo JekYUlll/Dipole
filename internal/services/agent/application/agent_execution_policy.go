@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -46,13 +46,20 @@ type agentEventSubscriptionReaderV1 interface {
 var _ application.AgentInvocationResolverV1 = (*PersistentAgentInvocationResolverV1)(nil)
 
 func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
+	return NewPersistentAgentInvocationResolverV1WithClock(store, time.Now, activeAuthorizers...)
+}
+
+func NewPersistentAgentInvocationResolverV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
 	if store == nil {
 		return nil, fmt.Errorf("persistent Agent Invocation resolver requires store")
 	}
 	if len(activeAuthorizers) > 1 {
 		return nil, fmt.Errorf("persistent Agent Invocation resolver accepts at most one active promotion authorizer")
 	}
-	resolver := &PersistentAgentInvocationResolverV1{store: store, now: time.Now}
+	if now == nil {
+		return nil, fmt.Errorf("persistent Agent Invocation resolver requires clock")
+	}
+	resolver := &PersistentAgentInvocationResolverV1{store: store, now: now}
 	if len(activeAuthorizers) == 1 {
 		resolver.activeAuthorizer = activeAuthorizers[0]
 	}
@@ -113,13 +120,20 @@ func (r *PersistentAgentInvocationResolverV1) Resolve(ctx context.Context, taskU
 var _ application.AgentRunAdmissionServiceV1 = (*PersistentAgentRunAdmissionV1)(nil)
 
 func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
+	return NewPersistentAgentRunAdmissionV1WithClock(store, time.Now, activeAuthorizers...)
+}
+
+func NewPersistentAgentRunAdmissionV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
 	if store == nil {
 		return nil, fmt.Errorf("persistent Agent Run admission requires store")
 	}
 	if len(activeAuthorizers) > 1 {
 		return nil, fmt.Errorf("persistent Agent Run admission accepts at most one active promotion authorizer")
 	}
-	admission := &PersistentAgentRunAdmissionV1{store: store, now: time.Now}
+	if now == nil {
+		return nil, fmt.Errorf("persistent Agent Run admission requires clock")
+	}
+	admission := &PersistentAgentRunAdmissionV1{store: store, now: now}
 	if len(activeAuthorizers) == 1 {
 		admission.activeAuthorizer = activeAuthorizers[0]
 	}
@@ -283,7 +297,7 @@ func authorizeTriggerSubscriptionV1(ctx context.Context, store application.Agent
 		TenantID: request.TenantID, AgentUUID: request.AgentUUID, EventType: request.TriggerType,
 		ResourceType: subscription.ResourceType, ResourceID: subscription.ResourceID,
 	}
-	if subscription.SubscriptionUUID != subscriptionUUID || !validSubscriptionDefinitionV1(definition, *subscription, match, at.UTC()) {
+	if subscription.SubscriptionUUID != subscriptionUUID || !ValidSubscriptionDefinitionV1(definition, *subscription, match, at.UTC()) {
 		return fmt.Errorf("%w: Agent Event Subscription binding is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
 	return nil
@@ -368,6 +382,10 @@ func (*StaticAgentExecutionPolicyV1) Fail(context.Context, application.AgentPoli
 
 func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
 	return newPersistentAgentExecutionPolicyV1(store, time.Now)
+}
+
+func NewPersistentAgentExecutionPolicyV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentExecutionPolicyV1, error) {
+	return newPersistentAgentExecutionPolicyV1(store, now)
 }
 
 func newPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1, now agentPolicyClockV1) (*PersistentAgentExecutionPolicyV1, error) {
@@ -587,4 +605,12 @@ func clonePolicyScopesV1(scopes []application.AgentResourceScopeV1) []applicatio
 		cloned[index].Actions = append([]string(nil), scope.Actions...)
 	}
 	return cloned
+}
+
+func AgentTaskUUIDV1(request application.AgentExecutionPolicyStartV1) string {
+	return agentTaskUUIDV1(request)
+}
+
+func ClonePolicyScopesV1(scopes []application.AgentResourceScopeV1) []application.AgentResourceScopeV1 {
+	return clonePolicyScopesV1(scopes)
 }
