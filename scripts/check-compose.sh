@@ -29,6 +29,18 @@ for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
   check_bind_sources "$file"
 done
 
+cluster_config="$(docker compose --profile observability -f deploy/compose/docker-compose.cluster.yml config --format json)"
+jq -e '
+  any(.services.prometheus.volumes[];
+    (.source | endswith("/deploy/observability/duplicate-hydration-alerts.yml"))
+    and .target == "/etc/prometheus/duplicate-hydration-alerts.yml"
+  )
+  and any(.services.prometheus.volumes[];
+    (.source | endswith("/deploy/observability/agent-timeline-repair-alerts.yml"))
+    and .target == "/etc/prometheus/agent-timeline-repair-alerts.yml"
+  )
+' <<<"${cluster_config}" >/dev/null
+
 default_microservices_config="$(docker compose -f deploy/compose/docker-compose.microservices.yml config --format json)"
 jq -e '
   (.services["realtime-cpp"] == null)

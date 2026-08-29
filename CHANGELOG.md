@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- Kafka 三节点故障与消费 ownership 演练通过：RF=3/min ISR=2 下验证单 broker 存活、低于 quorum 拒绝确认写入、consumer member 丢失后的 6 分区接管和 lag 归零；Prometheus 观测演练覆盖 lag、retry、DLQ、ISR 缺口及 broker 恢复。
+- 修复 Kafka cluster observability profile 的 Prometheus rule-file 挂载漂移，补齐 duplicate hydration 和 Agent Timeline repair 规则，并在 `scripts/check-compose.sh` 增加挂载门禁；生产 Kafka ownership 切换和可执行回滚 receipt 仍按 AD-048 跟踪。
 - Redis Sentinel 三节点故障演练通过：真实客户端完成 master 切换、Pub/Sub 重连、Presence、Hot Group 和限流恢复，旧 master 重新加入为 replica；可靠消息仍由 Kafka/Sync Timeline 提供补偿。
 - 修复 Redis Sentinel 故障 smoke 使用旧 `internal/store` 测试包的问题，改为构建 `internal/platform/cache` 的真实故障测试，保持兼容目录仅作回滚出口。
 - 修复 storage-lab 在受限宿主机上的 Elasticsearch 启动与磁盘水位问题：支持 `COMPOSE_PROJECT_NAME` 隔离调试，实验栈使用仅限 lab 的 `90%/99%/99.5%` 磁盘阈值，并为 API 版本探针增加有界重试；storage-lab Cassandra 5.0.9、Elasticsearch 9.5.2、MinIO CRUD smoke 已通过，生产水位配置未改变。

@@ -82,6 +82,8 @@ services:
       - ../../deploy/observability/cassandra-read-alerts.yml:/etc/prometheus/cassandra-read-alerts.yml:ro
       - ../../deploy/observability/sync-projector-alerts.yml:/etc/prometheus/sync-projector-alerts.yml:ro
       - ../../deploy/observability/web-sync-alerts.yml:/etc/prometheus/web-sync-alerts.yml:ro
+      - ../../deploy/observability/duplicate-hydration-alerts.yml:/etc/prometheus/duplicate-hydration-alerts.yml:ro
+      - ../../deploy/observability/agent-timeline-repair-alerts.yml:/etc/prometheus/agent-timeline-repair-alerts.yml:ro
       - prometheus_cluster_data:/prometheus
     depends_on:
       - kafka-exporter
