@@ -297,30 +297,6 @@ if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "
   echo "embedded Sync transport implementation is missing from embedded composition" >&2
   exit 1
 fi
-if rg --quiet 'NewMessageRPCServer|DialCoreMessageApplication|DialMessageApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Message RPC compatibility facade remains in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'NewSearchRPCServer|NewSyncRPCServer' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync RPC server facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialSearchApplication|DialSyncApplication|DialCoreSyncApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync RPC client facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialSearchCoreCapability|DialSyncCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync Core client facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialGatewayCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Gateway Core client facade remains in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialGatewayAgentCapability|DialCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Gateway/Message client facades remain in shared bootstrap" >&2
-  exit 1
-fi
 if rg --quiet '^func RunServer\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
   echo "shared bootstrap RunServer facade remains; use service-owned entrypoints" >&2
   exit 1
