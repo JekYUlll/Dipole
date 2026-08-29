@@ -23,7 +23,7 @@ import (
 type fileService interface {
 	UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 	InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
-	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
+	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	AbortMultipartUpload(uploaderUUID, sessionID string) error
 	CreateDownloadLink(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
@@ -281,6 +281,7 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 // @Produce json
 // @Param session_id path string true "上传会话 ID"
 // @Param part_number path int true "分片编号"
+// @Param X-Part-SHA256 header string false "分片 SHA-256（十六进制）"
 // @Success 200 {object} MultipartPartResponseEnvelope
 // @Failure 400 {object} ErrorEnvelope
 // @Failure 401 {object} ErrorEnvelope
@@ -308,7 +309,7 @@ func (h *FileHandler) UploadPart(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UploadMultipartPart(currentUser.UUID, sessionID, partNumber, contentLength, c.Request.Body); err != nil {
+	if err := h.service.UploadMultipartPart(currentUser.UUID, sessionID, partNumber, contentLength, c.GetHeader("X-Part-SHA256"), c.Request.Body); err != nil {
 		h.handleMultipartError(c, err)
 		return
 	}
