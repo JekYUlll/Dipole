@@ -542,6 +542,7 @@
 - **影响范围：** `agent-runtime`、Kafka poison event、失败重试、offset 提交与故障恢复
 - **解决方式：** Agent Runtime 使用 `<prefix>.<topic>`、`.retry`、`.dead` 三个显式 topic；无效 envelope 与 tombstone 直接进入 dead，处理错误按 `retry_attempt` 有界转移，达到上限后以 `handler_failed` 终止。转移保留原始 key/value/header，并增加 `original_topic`、`last_error`、`dead_reason` 和时间诊断。只有失败消息发布成功后 KafkaJS handler 才返回；publisher 异常向上抛出，保留源消息的未完成语义。启动时仅创建缺失 topic，并在 readiness 前验证分区数和副本数。
 - **验证：** 31 项 TypeScript 测试覆盖永久失败、tombstone、重试上限、原始 metadata 和 publisher reject。真实 Kafka 3.9 验证 poison event 直达 dead，ledger 绑定冲突经过两次 retry 后以 `retry_attempt=2` 进入 dead；两副本加入/退出触发 rebalance 后 partition 4 均继续消费到 LAG 0。Compose 使用 6 分区和可配置副本数。
+- **验证记录：** 2026-08-30 重新执行 `scripts/smoke-kafka-observability.sh`，真实验证三节点 Kafka、Prometheus 规则、consumer lag、retry/DLQ、ISR 缺口和 broker 恢复；临时集群自动清理，生产 Kafka ownership、topic 和 consumer group 配置保持不变。
 - **长期约束：** retry/dead topic 必须与主 topic 使用相同分区数和副本数；新增事件类型需先分类永久/瞬时错误。Temporal 接入后复用持久 Task ID 作为 Workflow ID，不另建重复幂等键。
 
 ### AD-026：Readiness 尚未持续感知运行期依赖退化
