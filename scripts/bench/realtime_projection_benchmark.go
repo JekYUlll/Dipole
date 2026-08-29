@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/service"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 )
 
 type event struct {
-	EventID   string                       `json:"event_id"`
-	EventType string                       `json:"event_type"`
+	EventID   string                      `json:"event_id"`
+	EventType string                      `json:"event_type"`
 	Payload   service.MessageEventPayload `json:"payload"`
 }
 
@@ -63,11 +63,11 @@ func main() {
 	elapsed := time.Since(started)
 	result := report{
 		SchemaVersion: "dipole.realtime.projection-benchmark.v1",
-		Language: "go",
-		Iterations: iterations,
-		ItemCount: itemCount,
-		ElapsedNS: elapsed.Nanoseconds(),
-		OpsPerSecond: float64(iterations) / elapsed.Seconds(),
+		Language:      "go",
+		Iterations:    iterations,
+		ItemCount:     itemCount,
+		ElapsedNS:     elapsed.Nanoseconds(),
+		OpsPerSecond:  float64(iterations) / elapsed.Seconds(),
 	}
 	encoded, err := json.Marshal(result)
 	if err != nil {

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 var (

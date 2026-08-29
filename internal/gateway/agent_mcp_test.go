@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JekYUlll/Dipole/internal/service"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 )
 
 func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *testing.T) {
