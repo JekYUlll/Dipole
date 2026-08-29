@@ -31,9 +31,17 @@ if [[ ! -f "${root_dir}/internal/platform/elasticsearch/README.md" || ! -f "${ro
   echo "shared Elasticsearch adapter and schema must remain under internal/platform/elasticsearch" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/platform/mysql/store.go" || ! -f "${root_dir}/internal/platform/mysql/README.md" ]]; then
+if [[ ! -f "${root_dir}/internal/platform/mysql/store.go" || ! -f "${root_dir}/internal/platform/mysql/global.go" || ! -f "${root_dir}/internal/platform/mysql/README.md" ]]; then
   echo "shared SQLC MySQL transaction boundary must remain under internal/platform/mysql" >&2
   exit 1
+fi
+if [[ -e "${root_dir}/internal/store/mysql.go" ]]; then
+	echo "legacy MySQL global connection remains under internal/store" >&2
+	exit 1
+fi
+if rg --quiet 'store\.(InitMySQL|InitMySQLWithConfig|SQLDB)' "${root_dir}/internal/bootstrap" "${root_dir}/cmd/tools" "${root_dir}/internal/platform/bloom" --glob '*.go'; then
+	echo "MySQL global connection callers must use internal/platform/mysql" >&2
+	exit 1
 fi
 if [[ -e "${root_dir}/internal/data/mysql/store.go" ]]; then
   echo "MySQL transaction implementation remains in legacy internal/data/mysql" >&2
