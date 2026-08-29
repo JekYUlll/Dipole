@@ -12,7 +12,6 @@ import (
 // These aliases preserve the embedded composition root during migration.
 type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApprovalServiceV1
 type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTaskControlAuthorizerV1
-type PersistentAgentDefinitionCatalogV1 = agentapplication.PersistentAgentDefinitionCatalogV1
 type PersistentAgentMemoryCandidatePromotionServiceV1 = agentapplication.PersistentAgentMemoryCandidatePromotionServiceV1
 type PersistentAgentTaskWorkflowProjectionServiceV1 = agentapplication.PersistentAgentTaskWorkflowProjectionServiceV1
 type PersistentAgentMCPReadinessEvidenceResolverV1 = agentapplication.PersistentAgentMCPReadinessEvidenceResolverV1
@@ -47,10 +46,6 @@ func NewPersistentAgentApprovalServiceV1WithClock(store application.AgentPolicyS
 
 func NewPersistentAgentTaskControlAuthorizerV1(store application.AgentPolicyStoreV1) (*PersistentAgentTaskControlAuthorizerV1, error) {
 	return agentapplication.NewPersistentAgentTaskControlAuthorizerV1(store)
-}
-
-func NewPersistentAgentDefinitionCatalogV1(store application.AgentDefinitionCatalogStoreV1, now func() time.Time) (*PersistentAgentDefinitionCatalogV1, error) {
-	return agentapplication.NewPersistentAgentDefinitionCatalogV1(store, now)
 }
 
 func NewPersistentAgentMemoryCandidatePromotionServiceV1(store application.AgentMemoryCandidatePromotionStoreV1, now func() time.Time) (*PersistentAgentMemoryCandidatePromotionServiceV1, error) {
