@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
@@ -12,6 +13,13 @@ const (
 )
 
 var ErrInvalidAgentMCPResource = errors.New("invalid Agent MCP resource")
+
+type AgentTokenSession struct {
+	UserUUID  string
+	TokenID   string
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+}
 
 func AgentMCPResourceIdentifier(configured string) string {
 	if resource := strings.TrimSpace(configured); resource != "" {
