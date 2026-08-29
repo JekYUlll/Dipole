@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Search runtime、单测和 Elasticsearch 集成测试已从共享 `internal/bootstrap` 迁入 `internal/services/search/bootstrap/`，Search application 与平台 runtime 直接由服务边界组合；共享 Internal RPC 暂保留窄 compatibility adapter，后续继续抽取平台 RPC transport。
 - 2026-08-29：Search Indexer runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/search-indexer/bootstrap/`，直接组合服务自有 projector 与 Kafka、Elasticsearch、metrics/readiness 平台能力；旧实现路径由结构门禁阻止回流，后续继续处理 Search、Sync、Message 和 Gateway 的实际启动实现迁移。
 - 2026-08-29：将依赖 readiness 编排、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定下沉到 `internal/platform/runtime`，各服务 runtime 已切换公开平台 API，并保留旧 bootstrap helper 作为回滚兼容出口；服务特有启动校验和共享环境 readiness 证据仍待继续收敛。
 - 2026-08-29：Kafka 三节点 quorum、consumer rebalance 和 Prometheus observability smoke 均通过，验证 RF=3/min ISR=2 下的 broker 故障拒绝与恢复、6 分区 ownership 接管、lag 归零及 retry/DLQ/ISR 指标；同时修复 cluster profile 漏挂 duplicate hydration 和 Agent Timeline repair rule files，并加入 Compose 挂载门禁。共享候选环境的 Kafka ownership 切换与可执行回滚 receipt 仍待完成。

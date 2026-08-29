@@ -44,7 +44,7 @@ func TestSearchRuntimeComposesCoreScopeAndReadOnlyElasticsearch(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	rpcCfg.CoreTarget = coreServer.Address()
-	runtime, err := initializeSearchService(t.Context(), rpcCfg, config.Elasticsearch{
+	runtime, err := InitializeWithConfig(t.Context(), rpcCfg, config.Elasticsearch{
 		Enabled: true, Address: elasticsearch.URL, IndexPrefix: "dipole", Shards: 1, Replicas: 0, RequestTimeoutSeconds: 2,
 	}, config.Metrics{})
 	if err != nil {
