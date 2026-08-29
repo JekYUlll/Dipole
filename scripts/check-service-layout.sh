@@ -23,6 +23,14 @@ if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/se
   echo "legacy shared Search application path remains under internal/app" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/gateway/search_handler.go" ]]; then
+  echo "Gateway Search HTTP handler is outside the Gateway boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/handler/http/search_handler.go" || -e "${root_dir}/internal/handler/http/search_handler_test.go" ]]; then
+  echo "legacy shared Search HTTP handler path remains under internal/handler/http" >&2
+  exit 1
+fi
 for service in "${expected_services[@]}"; do
   if [[ ! -f "${root_dir}/cmd/services/${service}/main.go" ]]; then
     echo "missing service entrypoint: cmd/services/${service}/main.go" >&2

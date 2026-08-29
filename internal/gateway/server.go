@@ -104,7 +104,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
 	}
 	if dependencies.Search != nil {
-		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
+		searchHandler := NewSearchHandler(dependencies.Search)
 		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
