@@ -89,6 +89,28 @@ describe('uploadMultipartParts', () => {
     expect(progress.at(-1)).toEqual([5, 5])
   })
 
+  it('pauses scheduling without discarding the resumable session', async () => {
+    const file = new Blob(['0123456789'])
+    const uploaded: number[] = []
+    let paused = true
+    let releaseResume!: () => void
+    const resumed = new Promise<void>(resolve => { releaseResume = resolve })
+    const run = uploadMultipartParts(file, 2, 5, async partNumber => {
+      uploaded.push(partNumber)
+    }, {
+      concurrency: 2,
+      isPaused: () => paused,
+      waitUntilResumed: () => resumed,
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(uploaded).toEqual([])
+    paused = false
+    releaseResume()
+    await run
+    expect(uploaded).toHaveLength(5)
+  })
+
   it('retries a failed part with exponential backoff', async () => {
     const file = new Blob(['abcd'])
     const attempts = vi.fn()
