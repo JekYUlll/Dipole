@@ -20,6 +20,8 @@ go run ./cmd/tools/multipart-cleanup --older-than=24h --redis-orphans --redis-ma
 
 重点复核：`minio.candidates`、`redis.candidates`、`redis.complete` 和 `redis.errors`。`metadata_missing_ttl` 只进入人工复核，工具不会自动删除该 meta。
 
+`redis.complete=false` 表示本次扫描达到上限或发生依赖错误，必须调整 `--redis-max-keys` 或修复依赖后重新预览；禁止在不完整报告上执行清理。
+
 ## 执行
 
 确认维护窗口、对象前缀和报告后，才允许执行：
@@ -33,6 +35,8 @@ go run ./cmd/tools/multipart-cleanup \
 ```
 
 执行范围包括 MinIO 过期 upload Abort 和 Redis 中无 meta 的 parts 删除。工具不会删除仍有 meta 的会话；任一分项失败会在 JSON 中保留错误并返回非零状态。
+
+清理操作按 Redis `DEL` 语义设计，可安全重复执行；重复运行前仍应保留每次完整 JSON 报告。
 
 ## 回滚与复核
 

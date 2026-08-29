@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：为 Redis Multipart 清理增加幂等与截断保护回归：重复执行不会重复删除，达到 `--redis-max-keys` 时报告 `complete=false`，避免把部分扫描结果误判为全量清理。
 - 2026-08-30：扩展 `dipole-multipart-cleanup` 的可选 Redis 生命周期扫描：`--redis-orphans` 以有界 SCAN 检测无 TTL 的 Multipart meta 与 meta 已过期的孤儿 parts，默认 dry-run，只有 `--execute --confirm` 才删除孤儿 parts；保留原 MinIO 报告字段，完整过期 upload reconciliation 和告警仍待 A7/AD-055。
 - 2026-08-30：Core File Service 接入低基数 Multipart 指标 `dipole_multipart_operations_total` 与 `dipole_multipart_operation_duration_seconds`，覆盖 initiate、presign、register、upload_part、complete、abort 的结果和耗时；不记录用户、会话或对象标识，Redis 过期扫描与清理指标仍待 A7/AD-055。
 - 2026-08-30：新增可选真实 MinIO 预签名代理集成测试，验证 Multipart `UploadPart` 经 Gateway 同源代理转发后仍通过 S3 Host 签名校验，并完成 ETag、Complete 和对象内容核对；测试通过后自动清理测试对象，完整故障矩阵与默认切流仍待 A7/AD-055。
