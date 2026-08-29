@@ -269,6 +269,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-08-30 验证：** readiness smoke 通过 Core/Message/Sync/Gateway 冷启动、Gateway assignment、Elasticsearch 停止后的 Search/Indexer readiness 降级与恢复，并确认核心服务容器未因依赖退化重启；同时为探针增加 10 秒 `docker compose exec` 超时，避免异常时无限等待。共享环境发布、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 - **发现日期：** 2026-08-29
 - **影响范围：** Core/Message 微服务冷启动、Compose 健康依赖、消息表写入 ownership
 - **现状：** Core 的 system-message 写入已通过受限 Message RPC 访问，Message 的 Core Capability 改为惰性 RPC adapter；两侧启动阶段不再强制互相拨号，失败连接不缓存，后续请求和就绪探针会触发有界重试。微服务 Compose 默认使用远程 transport，embedded/local 仍保留回滚路径。
