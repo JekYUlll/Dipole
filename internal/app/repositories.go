@@ -13,6 +13,10 @@ import (
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
+	CoreProcess            *CoreProcessRepositories
+	MessageProcess         *MessageProcessRepositories
+	SyncProcess            *SyncProcessRepositories
+	AgentProcess           *AgentProcessRepositories
 	Users                  application.UserStore
 	Messages               application.MessageStore
 	Files                  application.FileMetadataStore
@@ -254,6 +258,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}
+	repos.CoreProcess = coreRepos
 	repos.Users = coreRepos.Users
 	repos.Files = coreRepos.Files
 	repos.Conversations = coreRepos.Conversations
@@ -264,6 +269,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose Agent repositories: %w", err)
 	}
+	repos.AgentProcess = agentRepos
 	repos.AICallLogs = agentRepos.AICallLogs
 	repos.AgentPolicy = agentRepos.Policy
 	repos.AgentTaskTimeline = agentRepos.TaskTimeline
@@ -280,25 +286,23 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	repos.AgentMemoryPromotions = agentRepos.MemoryPromotions
 	repos.AgentToolAudits = agentRepos.ToolAudits
 	repos.AgentToolRounds = agentRepos.ToolRounds
-	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
+	messageRepos, err := NewMessageProcessRepositoriesWithInboxWrites(db, true)
 	if err != nil {
-		return nil, fmt.Errorf("create sqlc message repository: %w", err)
+		return nil, fmt.Errorf("compose Message repositories: %w", err)
 	}
-	repos.Messages = messageAdapter
-	syncAdapter, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	repos.MessageProcess = messageRepos
+	repos.Messages = messageRepos.Messages
+	repos.Outbox = messageRepos.Outbox
+	syncRepos, err := NewSyncProcessRepositories(db)
 	if err != nil {
-		return nil, fmt.Errorf("create sqlc sync repository: %w", err)
+		return nil, fmt.Errorf("compose Sync repositories: %w", err)
 	}
-	repos.Sync = syncAdapter
+	repos.SyncProcess = syncRepos
+	repos.Sync = syncRepos.Sync
 	searchAdapter, err := sqlcRepository.NewSearchIndexRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
 	}
 	repos.Search = searchAdapter
-	outboxAdapter, err := sqlcRepository.NewOutboxRepository(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc outbox relay repository: %w", err)
-	}
-	repos.Outbox = outboxAdapter
 	return repos, nil
 }

@@ -38,16 +38,55 @@ type MessagingServices struct {
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
-	files := coreapplication.NewFileApplication(repos.Files, repos.Messages, dependencies.Storage)
+	if repos == nil {
+		repos = &Repositories{}
+	}
+	coreRepos := repos.CoreProcess
+	if coreRepos == nil {
+		coreRepos = &CoreProcessRepositories{
+			Users: repos.Users, Files: repos.Files, Conversations: repos.Conversations,
+			Contacts: repos.Contacts, Groups: repos.Groups, Admin: repos.Admin,
+		}
+	}
+	messageRepos := repos.MessageProcess
+	if messageRepos == nil {
+		messageRepos = &MessageProcessRepositories{Messages: repos.Messages, Outbox: repos.Outbox}
+	}
+	syncRepos := repos.SyncProcess
+	if syncRepos == nil {
+		syncRepos = &SyncProcessRepositories{Sync: repos.Sync}
+	}
+	return NewMessagingServicesFromProcesses(coreRepos, messageRepos, syncRepos, dependencies)
+}
+
+// NewMessagingServicesFromProcesses composes the messaging facade from
+// service-owned repository groups. The aggregate constructor above remains a
+// compatibility entry point for embedded callers.
+func NewMessagingServicesFromProcesses(
+	coreRepos *CoreProcessRepositories,
+	messageRepos *MessageProcessRepositories,
+	syncRepos *SyncProcessRepositories,
+	dependencies MessagingDependencies,
+) *MessagingServices {
+	if coreRepos == nil {
+		coreRepos = &CoreProcessRepositories{}
+	}
+	if messageRepos == nil {
+		messageRepos = &MessageProcessRepositories{}
+	}
+	if syncRepos == nil {
+		syncRepos = &SyncProcessRepositories{}
+	}
+	files := coreapplication.NewFileApplication(coreRepos.Files, messageRepos.Messages, dependencies.Storage)
 	core := dependencies.Core
 	if core == nil {
 		core = coreapplication.New(coreapplication.Dependencies{
-			Users: repos.Users, Contacts: repos.Contacts, Groups: repos.Groups,
-			Files: repos.Files, Conversations: repos.Conversations,
+			Users: coreRepos.Users, Contacts: coreRepos.Contacts, Groups: coreRepos.Groups,
+			Files: coreRepos.Files, Conversations: coreRepos.Conversations,
 		})
 	}
 
-	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
+	messages := messageapplication.New(messageRepos.Messages, core, messageapplication.Dependencies{
 		Events:                     dependencies.Events,
 		HotGroups:                  dependencies.HotGroups,
 		DuplicateHydrator:          dependencies.DuplicateHydrator,
@@ -58,15 +97,15 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		Files:    files,
 		Messages: messages,
 		Conversations: coreapplication.NewConversationApplication(
-			repos.Conversations,
-			repos.Users,
-			repos.Groups,
+			coreRepos.Conversations,
+			coreRepos.Users,
+			coreRepos.Groups,
 			coreapplication.ConversationDependencies{
 				Notifier: dependencies.ConversationNotifier,
 				Events:   dependencies.Events,
 			},
 		),
-		Sync: syncapplication.New(repos.Sync, core),
+		Sync: syncapplication.New(syncRepos.Sync, core),
 	}
 }
 
