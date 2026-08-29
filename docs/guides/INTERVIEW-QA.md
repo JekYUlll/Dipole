@@ -6,7 +6,7 @@
 
 `Dipole` 是我用 Go 独立设计和持续迭代的一个即时通讯后端项目。我想做的不是一个只会收发文本的小 demo，而是一套链路完整、能体现工程能力的 IM 系统。现在它已经支持用户登录鉴权、好友关系、单聊群聊、会话和未读数、文件消息、分片上传、三节点部署下的在线连接管理，还有一个接在现有消息系统上的 AI 助手。
 
-技术栈上我主要用了 `Go + Gin + GORM + MySQL + Redis + Kafka + MinIO + WebSocket`。整体架构我做成了模块化单体，先把用户、联系人、消息、会话、群组、文件、AI 这些边界收清楚，再逐步补分布式能力。消息链路里我用 Kafka 做异步解耦，又补了事务型 outbox，解决“消息已经落库，但后续 created 事件可能丢”的一致性问题。
+技术栈上我主要用了 `Go + Gin + sqlc + MySQL + Redis + Kafka + MinIO + WebSocket`，并将 Agent Runtime 独立为 `TypeScript + Node.js` 服务。当前仓库采用面向服务边界的 Monorepo：Core、Gateway、Message、Sync、Search 具备独立入口，消息链路通过 Kafka 和事务型 outbox 解耦，服务仍保留 embedded 兼容路径以支持渐进迁移和回滚。
 
 这个项目里我觉得比较有代表性的点有三个。第一，我把单聊、群聊、会话、文件、已读、离线补拉这些主链路都真正跑通了。第二，我做了三节点部署，结合 Redis presence 和 Pub/Sub，把跨节点 WebSocket 投递串起来了。第三，我针对大群场景做了热点群优化，把完整 push 改成 `notify + pull`，又加了 `singleflight` 和短 TTL 缓存，500 人群压测能稳定在秒级。
 
@@ -20,7 +20,7 @@
 
 **答：**
 
-它是一个模块化单体的 IM 后端。当前阶段我没有直接做成微服务，因为 IM 的核心问题首先是业务链路和状态管理要理顺。相比一开始就拆服务，我先把用户、联系人、消息、会话、群组、文件、AI 这些模块边界做清楚，再通过 Kafka、Redis、Nginx、多节点部署把分布式能力逐步补上。
+它是一套采用渐进式微服务边界的 IM 平台。Core、Gateway、Message、Sync、Search 和 Agent Runtime 已有独立的入口或服务目录；embedded 启动路径仍作为兼容与回滚方式保留。相比一次性拆分所有组件，当前方案优先稳定跨服务契约、数据所有权和可回滚门禁。
 
 ### Q2：为什么选择模块化单体，而不是一开始做微服务？
 
@@ -35,10 +35,10 @@
 可以分成几层：
 
 - 接入层：Gin HTTP + WebSocket
-- 业务层：Auth、User、Contact、Conversation、Message、Group、File、Session、Admin、AI
+- 业务层：Core（Auth、User、Contact、Conversation、Group、File）、Message、Sync、Search、Agent
 - 异步层：Kafka producer / consumer + outbox relay
 - 状态层：Redis cache / presence / rate limit / hot-group
-- 存储层：MySQL + MinIO
+- 存储层：sqlc/MySQL、Kafka、Redis、Cassandra、Elasticsearch、MinIO；其中 Cassandra 和 Elasticsearch 按独立投影及回滚门禁逐步接管
 - 分布式投递层：Redis presence + PubSubRouter + Hub
 
 ### Q4：Nginx 在项目里起什么作用？
@@ -202,7 +202,7 @@
 
 - 冷群：直接推 `chat.message`
 - 热群：推 `group.message.notify`
-- 客户端收到通知后，调用 `GET /messages/group/:group_uuid?after_id=...` 增量补拉
+- 客户端收到通知后，调用 `GET /messages/group/:group_uuid?after_seq=...` 增量补拉
 
 ### Q17：热点群改造后效果怎么样？
 
@@ -219,7 +219,7 @@
 
 **答：**
 
-因为热群模式里，很多客户端会在收到同一条 `notify` 后同时发起相同的增量补拉请求。单机内这会形成大量重复查询。我就在群消息增量拉取路径上加了 `singleflight`，按 `group_uuid + after_id + limit` 合并并发请求，减少热群场景下的读放大。
+因为热群模式里，很多客户端会在收到同一条 `notify` 后同时发起相同的增量补拉请求。单机内这会形成大量重复查询。我就在群消息增量拉取路径上加了 `singleflight`，按 `group_uuid + after_seq + limit` 合并并发请求，减少热群场景下的读放大。
 
 ---
 
@@ -1083,17 +1083,17 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 
 ## 14. 设计取舍
 
-### Q40：为什么当前还没有 inbox 模型？
+### Q40：Message Store 和 Sync Store 如何分工？
 
 **答：**
 
-我现在的策略是先把 `messages + conversations` 做稳。Conversation 已经承担了一部分用户视角聚合索引的职责，所以单聊、群聊、未读、会话列表都能跑通。相比一开始就把 inbox/outbox/inbox-fanout 全部做齐，我先补了业务主链路和事件可靠性。后面如果要做更强的群已读统计、逐用户投递状态、多端精细同步，再往 inbox 演进会更顺。
+`messages` 按 `conversation_key + message_seq` 保存会话历史，承担 Message Store；`user_sync_inbox` 按 `user_uuid + sync_seq` 保存用户同步 Timeline，承担 Sync Store。Conversation State 保存最近消息和 `read_seq`，设备侧通过 Sync Cursor 增量消费 Inbox。普通群使用成员级投影，热群保留高水位加 `notify + pull`，以控制写扩散。
 
 ### Q41：为什么先做 outbox，而不是马上做 inbox？
 
 **答：**
 
-因为 outbox 修的是当前已经存在的正确性问题：消息可能落库成功，但 `created` 事件丢失。这个问题和 inbox 无关，值得先修。相比 inbox，outbox 的收益更直接，改动边界也更清晰。
+Outbox 保证 Message Store 的事实写入与 `message.created` 事件发布之间可恢复；Sync Projector 再以幂等方式写入 User Inbox。两者职责分离后，消息事实、同步状态和投递重放可以分别验证和回滚。
 
 ### Q42：singleflight 为什么只放在热群 pull 路径？
 
@@ -1662,17 +1662,17 @@ Kafka 在生产消息时，可以带一个 `key`。只要生产端使用的是�
 
 这让链路里的先后关系比较清晰，能避免“后续副作用先发生，消息事实还没稳定”的问题。
 
-2. 会话内读取顺序主要按消息表自增 `id`
+2. 会话内读取顺序优先使用 `message_seq`，兼容请求继续使用消息表自增 `id`
 - 历史翻页
 - 增量补拉
-- 热群 `after_id`
+- 热群 `after_seq`
 
-这些当前都依赖 `messages.id`
+新链路使用 `conversation_key + message_seq`；旧客户端路径仍依赖 `messages.id`
 
 所以读取侧的顺序基线并不只靠 Kafka，而是靠：
 
 - 消息事实先落库
-- 再按 MySQL 自增 `id` 去做会话内读取
+- 再按会话内 `message_seq` 做历史和增量读取，旧路径按 MySQL 自增 `id` 读取
 
 3. 业务上把顺序语义收成“会话内顺序”
 - 单聊关注 `conversation_key`

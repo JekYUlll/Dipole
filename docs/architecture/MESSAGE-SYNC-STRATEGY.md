@@ -17,15 +17,16 @@
 当前已经提供以下能力：
 
 - `WebSocket` 实时推送在线消息
-- `GET /api/v1/messages/offline?after_id=<id>&limit=<n>` 增量拉取离线消息
-- `GET /api/v1/conversations` 拉取最近会话与未读数
+- `GET /api/v1/sync?after_seq=<seq>&limit=<n>` 从 User Inbox 增量同步
+- `GET /api/v1/messages/offline?after_id=<id>&limit=<n>` 旧客户端兼容补拉
+- `GET /api/v1/conversations` 拉取最近会话、`read_seq` 和兼容未读投影
 - `PATCH /api/v1/conversations/direct/:target_uuid/read` 标记单聊已读
 - `PATCH /api/v1/conversations/group/:group_uuid/read` 标记群聊已读
 
 离线消息接口的语义是：
 
-- 只返回 `id > after_id` 的消息
-- 返回顺序为 `id ASC`
+- 新同步接口只返回 `sync_seq > after_seq` 的 Inbox 条目
+- 新同步接口按 `sync_seq ASC` 返回；旧接口继续按 `id ASC` 返回
 - 包含发给当前用户的单聊消息
 - 包含当前用户所属群的群消息
 - 群聊里会排除用户自己发送的消息
@@ -36,13 +37,14 @@
 
 每个客户端实例至少维护这两个状态：
 
-- `last_synced_message_id`
+- `last_synced_sync_seq`
+- 旧客户端兼容时保留 `last_synced_message_id`
 - 本地已持有的 `message_uuid` 集合或去重能力
 
 推荐做法：
 
-- 以 `message.id` 作为补拉游标
-- 以 `message.uuid` 作为去重键
+- 以 `sync_seq` 作为 User Inbox 游标
+- 以 `message_uuid` 作为跨实时推送、Inbox 重放和本地写入的去重键
 
 这样可以同时解决：
 
@@ -57,12 +59,12 @@
 推荐顺序如下：
 
 1. 客户端完成 HTTP 登录，拿到 JWT
-2. 客户端读取本地 `last_synced_message_id`
+2. 客户端读取本地 `last_synced_sync_seq`
 3. 客户端建立 `WebSocket` 连接
-4. 收到 `connected` 事件后，开始调用离线消息接口
-5. 以分页方式循环请求 `GET /messages/offline`
+4. 收到 `connected` 事件后，开始调用 User Inbox 同步接口
+5. 以分页方式循环请求 `GET /api/v1/sync`
 6. 每次取到消息后按 `message.uuid` 去重并写入本地
-7. 用当前批次里最大的 `message.id` 推进本地游标
+7. 只有本地事务提交当前批次后，才推进 `sync_seq` 游标
 8. 直到某一页返回空数组，说明本轮补拉完成
 9. 再刷新最近会话列表与未读数
 
@@ -80,17 +82,17 @@
 推荐顺序如下：
 
 1. 检测到连接断开
-2. 客户端保留当前本地 `last_synced_message_id`
+2. 客户端保留当前本地 `last_synced_sync_seq`
 3. 用现有 JWT 重新建立 `WebSocket`
-4. 收到 `connected` 事件后，从本地游标继续调用离线消息接口
+4. 收到 `connected` 事件后，从本地 Sync Cursor 继续调用 User Inbox 接口
 5. 分页拉取直到空结果
 6. 对实时消息与离线消息统一做 `message.uuid` 去重
 
 这个策略的关键点是：
 
 - 不依赖“断线时间”
-- 不依赖“服务端记住客户端上次连到哪”
-- 只依赖客户端本地游标和服务端的增量接口
+- 设备游标由 Sync Service 持久化，客户端本地游标用于原子提交和恢复
+- 只依赖 User Inbox 的 `sync_seq` 增量接口
 
 ---
 
@@ -106,7 +108,7 @@
 推荐循环逻辑：
 
 - 如果本页为空，结束
-- 如果本页不为空，推进游标到最后一条消息的 `id`
+- 如果本页不为空，只有本地原子提交成功后才推进到最后一条 `sync_seq`
 - 继续请求下一页
 
 ---
@@ -132,8 +134,8 @@
 为了让后续实现保持稳定，当前先明确以下约定：
 
 - `WebSocket` 负责实时消息推送
-- `offline API` 负责断线恢复与登录后补拉
-- 客户端本地维护增量游标
+- User Inbox API 负责断线恢复与登录后增量同步
+- Sync Service 持久化设备游标，客户端本地维护提交中的 Sync Cursor
 - 客户端负责基于 `message.uuid` 去重
 - 已读状态由显式“进入会话/查看消息”触发
 
@@ -143,9 +145,9 @@
 
 后面如果需要，可以在这套策略上继续增强：
 
-- 为离线补拉增加服务端返回的 `next_after_id`
+- 对 Cassandra hydration 完成真实观测后再切换主读
 - 增加“最近一次同步时间”调试字段
-- 增加多端同步状态记录
+- 增加多端同步状态记录和 Inbox 安全回收水位
 - 增加“已送达/已读人数”这类群消息状态
 - 为客户端提供“首次全量同步完成”标识
 
