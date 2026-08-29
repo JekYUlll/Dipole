@@ -39,6 +39,7 @@ type stubUploader struct {
 	uploadFn            func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*platformStorage.UploadedObject, error)
 	presignFn           func(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
 	presignPartFn       func(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error)
+	inspectPartFn       func(ctx context.Context, objectKey, uploadID string, partNumber int) (*platformStorage.UploadedPart, error)
 	initiateMultipartFn func(ctx context.Context, fileName, contentType string) (*platformStorage.MultipartUpload, error)
 	uploadPartFn        func(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error)
 	completeMultipartFn func(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error)
@@ -80,6 +81,13 @@ func (u *stubUploader) PresignMultipartPartURL(ctx context.Context, objectKey, u
 		return "", errors.New("unexpected multipart presign call")
 	}
 	return u.presignPartFn(ctx, objectKey, uploadID, partNumber, expiry)
+}
+
+func (u *stubUploader) InspectMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int) (*platformStorage.UploadedPart, error) {
+	if u.inspectPartFn == nil {
+		return nil, errors.New("unexpected multipart inspect call")
+	}
+	return u.inspectPartFn(ctx, objectKey, uploadID, partNumber)
 }
 
 func (u *stubUploader) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
@@ -460,6 +468,34 @@ func TestFileServicePresignMultipartPartsValidatesOwnerAndOrdersParts(t *testing
 	}
 	if _, err := service.PresignMultipartParts("U200", "session-1", []int{1}); !errors.Is(err, ErrFilePermissionDenied) {
 		t.Fatalf("expected owner rejection, got %v", err)
+	}
+}
+
+func TestFileServiceRegisterMultipartPartVerifiesStorageMetadata(t *testing.T) {
+	t.Parallel()
+
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		inspectPartFn: func(_ context.Context, objectKey, uploadID string, partNumber int) (*platformStorage.UploadedPart, error) {
+			if objectKey != "message-files/f.bin" || uploadID != "upload-1" || partNumber != 1 {
+				t.Fatalf("unexpected inspect input: %s %s %d", objectKey, uploadID, partNumber)
+			}
+			return &platformStorage.UploadedPart{PartNumber: 1, ETag: "etag-1", Size: 5}, nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	store := &stubMultipartSessionStore{}
+	service.sessionStore = store
+	store.Create(context.Background(), &multipartUploadSession{
+		SessionID: "session-1", UploaderUUID: "U100", ObjectKey: "message-files/f.bin", UploadID: "upload-1", TotalParts: 2, ChunkSize: 5,
+	}, time.Hour)
+
+	if err := service.RegisterMultipartPart("U100", "session-1", 1, RegisterMultipartPartInput{ETag: "\"etag-1\"", Size: 5}); err != nil {
+		t.Fatalf("register part: %v", err)
+	}
+	if len(store.parts["session-1"]) != 1 || store.parts["session-1"][0].ETag != "etag-1" {
+		t.Fatalf("part was not persisted: %+v", store.parts)
+	}
+	if err := service.RegisterMultipartPart("U100", "session-1", 1, RegisterMultipartPartInput{ETag: "wrong", Size: 5}); !errors.Is(err, ErrMultipartPartInvalid) {
+		t.Fatalf("expected metadata rejection, got %v", err)
 	}
 }
 
