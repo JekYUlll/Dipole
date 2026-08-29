@@ -22,6 +22,7 @@
 - 将 Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配从 `internal/bootstrap/` 分别收纳到 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时、命令参数和回滚语义保持兼容。
 - 将 Agent Memory lineage backfill 装配从 `internal/bootstrap/` 收纳到 `internal/operations/agent/`；dry-run、审批绑定、manifest 校验和回执语义保持兼容。
 - 将 embedded 聚合 `Repositories`、`MessagingServices` 及其构造实现从 `internal/app/` 收纳到 `internal/bootstrap/embedded/`，`internal/app` 保留兼容 facade；服务启动行为和 Agent 兼容构造语义保持兼容。
+- 将 protobuf Go 生成物从 `internal/transport/grpc/gen/` 收纳到 `api/gen/go/`，同步更新 `go_package`、生成脚本和全部 RPC 适配引用；RPC 方法、版本和 wire 兼容性保持不变。
 - 将 MySQL 全局连接初始化从 `internal/store` 收敛到 `internal/platform/mysql`，生产启动入口、Bloom 初始化和 Agent 维护工具统一使用新平台边界；旧 MySQL 入口保留为兼容转发，Redis 迁移保持独立节奏。
 - 将 Redis 客户端初始化和全局状态从 `internal/store` 收敛到 `internal/platform/cache`，同步迁移 Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具；旧 Redis 入口保留为兼容转发，单节点/Sentinel 配置和实时状态语义保持兼容。
 - Hot Group Detector 新增显式 Redis 客户端注入，Core、Message、embedded 和 Kafka 投影装配统一传入平台客户端；无参数构造函数继续保留为兼容入口，检测阈值和热群策略保持不变。

@@ -7,8 +7,8 @@
 package syncv1
 
 import (
-	v1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	v11 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	v1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	v11 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -638,7 +638,7 @@ const file_dipole_sync_v1_sync_proto_rawDesc = "" +
 	"\x13GetDeviceCheckpoint\x12*.dipole.sync.v1.GetDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponse\x12s\n" +
 	"\x17AdvanceDeviceCheckpoint\x12..dipole.sync.v1.AdvanceDeviceCheckpointRequest\x1a(.dipole.sync.v1.DeviceCheckpointResponse\x12q\n" +
 	"\x14ListGroupCheckpoints\x12+.dipole.sync.v1.ListGroupCheckpointsRequest\x1a,.dipole.sync.v1.ListGroupCheckpointsResponse\x12h\n" +
-	"\x16AdvanceGroupCheckpoint\x12-.dipole.sync.v1.AdvanceGroupCheckpointRequest\x1a\x1f.dipole.sync.v1.GroupCheckpointBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1b\x06proto3"
+	"\x16AdvanceGroupCheckpoint\x12-.dipole.sync.v1.AdvanceGroupCheckpointRequest\x1a\x1f.dipole.sync.v1.GroupCheckpointB6Z4github.com/JekYUlll/Dipole/api/gen/go/sync/v1;syncv1b\x06proto3"
 
 var (
 	file_dipole_sync_v1_sync_proto_rawDescOnce sync.Once

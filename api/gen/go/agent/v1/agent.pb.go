@@ -7,8 +7,8 @@
 package agentv1
 
 import (
-	v1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	v11 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	v1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	v11 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -8769,7 +8769,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x0eCreateArtifact\x12&.dipole.agent.v1.CreateArtifactRequest\x1a'.dipole.agent.v1.CreateArtifactResponse\x12X\n" +
 	"\vGetArtifact\x12#.dipole.agent.v1.GetArtifactRequest\x1a$.dipole.agent.v1.GetArtifactResponse\x12\x88\x01\n" +
 	"\x1bPublishMcpReadinessEvidence\x123.dipole.agent.v1.PublishMcpReadinessEvidenceRequest\x1a4.dipole.agent.v1.PublishMcpReadinessEvidenceResponse\x12\x97\x01\n" +
-	" ResolveFreshMcpReadinessEvidence\x128.dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest\x1a9.dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponseBIZGgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1b\x06proto3"
+	" ResolveFreshMcpReadinessEvidence\x128.dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest\x1a9.dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponseB8Z6github.com/JekYUlll/Dipole/api/gen/go/agent/v1;agentv1b\x06proto3"
 
 var (
 	file_dipole_agent_v1_agent_proto_rawDescOnce sync.Once

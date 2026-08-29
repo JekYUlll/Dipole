@@ -5,11 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

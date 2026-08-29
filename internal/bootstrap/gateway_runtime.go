@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
+	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -19,8 +21,6 @@ import (
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
-	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
-	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"

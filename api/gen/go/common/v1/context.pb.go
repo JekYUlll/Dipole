@@ -110,7 +110,7 @@ const file_dipole_common_v1_context_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
 	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12%\n" +
-	"\x0ecaller_service\x18\x05 \x01(\tR\rcallerServiceBKZIgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1;commonv1b\x06proto3"
+	"\x0ecaller_service\x18\x05 \x01(\tR\rcallerServiceB:Z8github.com/JekYUlll/Dipole/api/gen/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_dipole_common_v1_context_proto_rawDescOnce sync.Once

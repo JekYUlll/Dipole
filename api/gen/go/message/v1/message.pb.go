@@ -7,7 +7,7 @@
 package messagev1
 
 import (
-	v1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
+	v1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -1242,7 +1242,7 @@ const file_dipole_message_v1_message_proto_rawDesc = "" +
 	"\x18GetMessageCommandReceipt\x122.dipole.message.v1.GetMessageCommandReceiptRequest\x1a3.dipole.message.v1.GetMessageCommandReceiptResponse\x12i\n" +
 	"\x11ListDirectHistory\x12+.dipole.message.v1.ListDirectHistoryRequest\x1a'.dipole.message.v1.ListMessagesResponse\x12g\n" +
 	"\x10ListGroupHistory\x12*.dipole.message.v1.ListGroupHistoryRequest\x1a'.dipole.message.v1.ListMessagesResponse\x12m\n" +
-	"\x13ListOfflineMessages\x12-.dipole.message.v1.ListOfflineMessagesRequest\x1a'.dipole.message.v1.ListMessagesResponseBMZKgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1;messagev1b\x06proto3"
+	"\x13ListOfflineMessages\x12-.dipole.message.v1.ListOfflineMessagesRequest\x1a'.dipole.message.v1.ListMessagesResponseB<Z:github.com/JekYUlll/Dipole/api/gen/go/message/v1;messagev1b\x06proto3"
 
 var (
 	file_dipole_message_v1_message_proto_rawDescOnce sync.Once

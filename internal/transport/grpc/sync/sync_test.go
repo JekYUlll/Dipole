@@ -5,10 +5,10 @@ import (
 	"net"
 	"testing"
 
+	syncv1 "github.com/JekYUlll/Dipole/api/gen/go/sync/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	syncv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"

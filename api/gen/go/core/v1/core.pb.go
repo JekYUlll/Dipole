@@ -7,7 +7,7 @@
 package corev1
 
 import (
-	v1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
+	v1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1087,7 +1087,7 @@ const file_dipole_core_v1_core_proto_rawDesc = "" +
 	"\x0eGetGroupMember\x12%.dipole.core.v1.GetGroupMemberRequest\x1a&.dipole.core.v1.GetGroupMemberResponse\x12e\n" +
 	"\x10ListGroupMembers\x12'.dipole.core.v1.ListGroupMembersRequest\x1a(.dipole.core.v1.ListGroupMembersResponse\x12Y\n" +
 	"\fGetOwnedFile\x12#.dipole.core.v1.GetOwnedFileRequest\x1a$.dipole.core.v1.GetOwnedFileResponse\x12\x83\x01\n" +
-	"\x1aListSearchConversationKeys\x121.dipole.core.v1.ListSearchConversationKeysRequest\x1a2.dipole.core.v1.ListSearchConversationKeysResponseBGZEgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1;corev1b\x06proto3"
+	"\x1aListSearchConversationKeys\x121.dipole.core.v1.ListSearchConversationKeysRequest\x1a2.dipole.core.v1.ListSearchConversationKeysResponseB6Z4github.com/JekYUlll/Dipole/api/gen/go/core/v1;corev1b\x06proto3"
 
 var (
 	file_dipole_core_v1_core_proto_rawDescOnce sync.Once

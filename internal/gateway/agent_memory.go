@@ -11,8 +11,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

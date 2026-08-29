@@ -7,7 +7,7 @@
 package searchv1
 
 import (
-	v1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
+	v1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -248,7 +248,7 @@ const file_dipole_search_v1_search_proto_rawDesc = "" +
 	"\x16SearchMessagesResponse\x12;\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1f.dipole.search.v1.SearchMessageR\bmessages2t\n" +
 	"\rSearchService\x12c\n" +
-	"\x0eSearchMessages\x12'.dipole.search.v1.SearchMessagesRequest\x1a(.dipole.search.v1.SearchMessagesResponseBKZIgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1;searchv1b\x06proto3"
+	"\x0eSearchMessages\x12'.dipole.search.v1.SearchMessagesRequest\x1a(.dipole.search.v1.SearchMessagesResponseB:Z8github.com/JekYUlll/Dipole/api/gen/go/search/v1;searchv1b\x06proto3"
 
 var (
 	file_dipole_search_v1_search_proto_rawDescOnce sync.Once
