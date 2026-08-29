@@ -13,6 +13,15 @@ func TestAgentMCPContractAcceptsHTTPResource(t *testing.T) {
 	}
 }
 
+func TestAgentMCPResourceIdentifierUsesConfiguredValue(t *testing.T) {
+	if got := AgentMCPResourceIdentifier("  https://agent.local/mcp "); got != "https://agent.local/mcp" {
+		t.Fatalf("configured resource was not normalized: %q", got)
+	}
+	if got := AgentMCPResourceIdentifier(" "); got != AgentMCPResource {
+		t.Fatalf("empty resource should use default: %q", got)
+	}
+}
+
 func TestAgentMCPContractRejectsUnsafeResource(t *testing.T) {
 	for _, resource := range []string{"", "ftp://agent.local/mcp", "https://agent.local/mcp?token=secret", "https://user:pass@agent.local/mcp", "https://agent.local/mcp#fragment"} {
 		if err := ValidateAgentMCPResource(resource); !errors.Is(err, ErrInvalidAgentMCPResource) {

@@ -132,7 +132,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentMCP != nil {
-		if err := coreauth.ValidateAgentMCPResource(coreauth.AgentMCPResourceIdentifier()); err != nil {
+		if err := application.ValidateAgentMCPResource(application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource)); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
 		}
 		auth := middleware.AgentMCPAuth(tokenService, userFinder)
