@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- Redis Sentinel 三节点故障演练通过：真实客户端完成 master 切换、Pub/Sub 重连、Presence、Hot Group 和限流恢复，旧 master 重新加入为 replica；可靠消息仍由 Kafka/Sync Timeline 提供补偿。
+- 修复 Redis Sentinel 故障 smoke 使用旧 `internal/store` 测试包的问题，改为构建 `internal/platform/cache` 的真实故障测试，保持兼容目录仅作回滚出口。
 - 修复 storage-lab 在受限宿主机上的 Elasticsearch 启动与磁盘水位问题：支持 `COMPOSE_PROJECT_NAME` 隔离调试，实验栈使用仅限 lab 的 `90%/99%/99.5%` 磁盘阈值，并为 API 版本探针增加有界重试；storage-lab Cassandra 5.0.9、Elasticsearch 9.5.2、MinIO CRUD smoke 已通过，生产水位配置未改变。
 - Sync Cassandra primary Compose smoke 通过：隔离微服务拓扑完成 Cassandra schema init，Core、Message、Sync 与基础依赖达到 healthy，Sync primary hydration 配置和 readiness 验收通过并自动清理；生产主读灰度继续保持关闭。
 - Cassandra read-routing 隔离 smoke 通过：真实 Cassandra/MySQL 双存储验证 Seq 页面主读，payload 损坏和缺失行按同一 cursor 回退 MySQL；该验证不改变默认生产主读比例，生产观测和回切审批继续受 AD-043 约束。

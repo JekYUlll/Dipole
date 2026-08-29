@@ -484,6 +484,7 @@
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **本轮验证：** Redis Sentinel 真实三节点故障演练已验证 master 切换和 replica 重加入期间的客户端恢复、Presence、Hot Group 与限流语义；Pub/Sub 在切主瞬间的已发布消息仍无法补读，持久可靠性继续由 Kafka/Sync Timeline 承担。
+- **追加验证：** 2026-08-29 修正 smoke 构建入口至 `internal/platform/cache` 后重新完成三 Redis + 三 Sentinel 演练；当前 master 停止、新 master 发现、Pub/Sub 重连、Presence/Hot Group/限流恢复及旧 master 以 replica 重加入均通过。Pub/Sub at-most-once 边界保持不变。
 
 - **优先级：** P2
 - **状态：** 接受风险
@@ -493,6 +494,7 @@
 - **风险：** master 切换窗口内，在线用户可能暂时缺少一条跨节点通知；Redis Sentinel 无法提供持久队列或消费位点。
 - **接受依据：** 消息事实、用户 Inbox、设备 Cursor 和热群 checkpoint 均保存在 MySQL/Kafka 链路，客户端重连或增量同步能够恢复已确认消息；Redis 只承担实时状态。
 - **阶段记录：** 2026-08-28 已建立 `dipole.delivery.v1` envelope、节点批次、逐项 ACK/error 与背压契约，并固定 Kafka source coordinates 和 Go legacy adapter；C++ shadow 已接入独立 Kafka group、hiredis direct/Sentinel reader、单连接 TTL 投影、低敏 evidence v3、mTLS `ObserveNodeBatch` 和 assignment readiness。真实 Kafka+Redis+Gateway 演练覆盖故障保留 offset、同进程恢复重试、稳定 batch 去重、真实 queue saturation/backpressure、同 workload Go/C++ 40/40 对照与最终 lag 归零。`AD-039` 已关闭。默认关闭的 primary seam 提供 connection 定向入队、逐项 ACK、部分成功 connection 重试、有界 Gateway replay state 与 additive WebSocket delivery ID；Web 通过账户隔离的 IndexedDB v4 原子 claim 跨页面重载去重。C++ one-shot probe 经 mTLS 实际验证 `ENQUEUED(1)`、稳定重放去重与 stale Presence `OFFLINE`。显式 primary CLI 现使用独立 `dipole-realtime-primary-*` authority，要求 enable/Presence/transport 三重配置，并将 terminal ACK、低敏 primary evidence 与 Kafka commit 串联；partial/rejected/failed、身份漂移和故障保留同一 pending record。默认关闭的 `realtime-cpp` Compose profile 现提供独立 primary 部署描述，但 Go authority、Gateway primary RPC 和共享环境切换仍保持关闭，必须经过 C3 证据与维护窗口。
+- **验证记录：** 2026-08-29 修正 Redis Sentinel smoke 的静态测试构建路径，从已迁移的 `internal/store` 兼容目录切换到 `internal/platform/cache` ownership 包；后续故障切换演练需以该入口验证。
 - **后续方向：** `benchmarks/c2-primary-runtime-2026-08-28/` 已验证真实 queue saturation、terminal ACK 后 commit、故障 retain、`SIGKILL` 后同坐标重放和 lag 归零；窄 terminal-evidence-to-commit 崩溃窗口仍未作确定性声明。C3 由 `AD-041` 继续跟踪互斥 authority 与自动回切。IndexedDB 不可用时 Web 保持 fail-open，持久记录按 4096 项容量淘汰；保留 Sync Timeline 作为存储故障、去重窗口外重放和进程崩溃窗口的最终补偿路径。
 - **重新评估门槛：** 产品要求在线 push 本身具备不丢 SLA，或 Kafka consumer 在 Pub/Sub 发布失败后仍提交 offset 造成可观测缺口时。
 

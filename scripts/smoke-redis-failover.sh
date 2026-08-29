@@ -71,7 +71,7 @@ compose up -d --wait
 printf 'Building static Redis failover integration probe\n'
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go test -c ./internal/store -o "$probe_binary"
+  CGO_ENABLED=0 go test -c ./internal/platform/cache -o "$probe_binary"
 )
 
 docker run --rm --name "$probe_container" \
