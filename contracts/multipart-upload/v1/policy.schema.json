@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/multipart-upload/v1/policy.schema.json",
+  "title": "Dipole Multipart Upload Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_version",
+    "mode",
+    "fallback_mode",
+    "direct_upload_threshold_bytes",
+    "max_file_size_bytes",
+    "chunk_size_bytes",
+    "max_concurrency",
+    "max_retries",
+    "retry_delay_ms",
+    "presign_url_ttl_seconds"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.multipart-upload.policy.v1" },
+    "policy_version": { "type": "string", "pattern": "^v[0-9]+$" },
+    "mode": { "enum": ["relay", "presigned"] },
+    "fallback_mode": { "const": "relay" },
+    "direct_upload_threshold_bytes": { "type": "integer", "minimum": 1 },
+    "max_file_size_bytes": { "type": "integer", "minimum": 1 },
+    "chunk_size_bytes": { "type": "integer", "minimum": 5242880 },
+    "max_concurrency": { "type": "integer", "minimum": 1, "maximum": 32 },
+    "max_retries": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "retry_delay_ms": { "type": "integer", "minimum": 0, "maximum": 60000 },
+    "presign_url_ttl_seconds": { "type": "integer", "minimum": 60, "maximum": 3600 }
+  }
+}
