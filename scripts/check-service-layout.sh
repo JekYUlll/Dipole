@@ -27,6 +27,10 @@ if [[ ! -f "${root_dir}/internal/services/search/infrastructure/mysql/search_ind
   echo "Search index repository implementation is outside the Search service boundary" >&2
   exit 1
 fi
+if [[ -e "${root_dir}/internal/data/mysql/repository/store.go" || -e "${root_dir}/internal/data/mysql/repository/uuid_helpers.go" ]]; then
+  echo "unused shared MySQL repository support file remains after service extraction" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/data/mysql/repository/search_index.go" ]]; then
   echo "legacy Search index repository remains in shared repository package" >&2
   exit 1

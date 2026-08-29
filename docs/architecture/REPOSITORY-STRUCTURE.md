@@ -51,6 +51,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Agent 的 SQLC repository 实现必须位于 `internal/services/agent/infrastructure/mysql/`；共享 `internal/data/mysql/repository/agent_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
 - Core 的 SQLC repository 实现必须位于 `internal/services/core/infrastructure/mysql/`；共享 `internal/data/mysql/repository/core_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
 - Search Index 的 SQLC repository 实现必须位于 `internal/services/search/infrastructure/mysql/`；共享 `internal/data/mysql/repository/search_index_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
+- `internal/data/mysql/repository/` 当前仅保留 Core、Agent、Message、Search Index、Sync 的兼容入口；新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`，禁止在共享目录增加实现。
 
 ## Compose 配置层级
 
