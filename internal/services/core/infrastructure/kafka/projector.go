@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	"go.uber.org/zap"
 )
@@ -48,7 +48,7 @@ func initGroupConversations(projector interface {
 		if err != nil {
 			return err
 		}
-		payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := coregroup.DecodeEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode group event contract: %w", err)
 		}

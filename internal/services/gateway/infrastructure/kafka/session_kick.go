@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type ConnectionController interface {
@@ -21,7 +21,7 @@ func NewSessionKickHandler(controller ConnectionController) platformKafka.Handle
 			return fmt.Errorf("decode session kick envelope: %w", err)
 		}
 
-		payload, err := service.DecodeSessionKickEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := coresession.DecodeKickEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode session kick payload: %w", err)
 		}

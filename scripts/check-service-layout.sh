@@ -311,6 +311,10 @@ if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstr
   echo "shared Core policy facade remains; keep policy implementation private to its server" >&2
   exit 1
 fi
+if rg --quiet 'internal/compat/service' "${root_dir}/internal" --glob '*.go' --glob '!**/*_test.go'; then
+  echo "production code must depend on service-owned contracts, not internal/compat/service" >&2
+  exit 1
+fi
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
   echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
