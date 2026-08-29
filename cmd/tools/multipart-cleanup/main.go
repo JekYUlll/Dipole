@@ -16,7 +16,13 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	storageops "github.com/JekYUlll/Dipole/internal/operations/storage"
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 )
+
+type cleanupOutput struct {
+	storageops.MultipartCleanupReport
+	Redis *storageops.RedisMultipartCleanupReport `json:"redis,omitempty"`
+}
 
 type minioMultipartClient struct {
 	client *minio.Client
@@ -36,9 +42,12 @@ func main() {
 	olderThan := flag.Duration("older-than", 24*time.Hour, "minimum age of an incomplete upload")
 	execute := flag.Bool("execute", false, "abort eligible uploads; omitted means dry-run")
 	confirm := flag.Bool("confirm", false, "confirm that aborting eligible uploads is intentional")
+	redisOrphans := flag.Bool("redis-orphans", false, "scan and report Redis multipart session anomalies")
+	redisScanCount := flag.Int64("redis-scan-count", 100, "Redis SCAN batch size")
+	redisMaxKeys := flag.Int64("redis-max-keys", 10000, "maximum Redis keys to inspect per key family")
 	flag.Parse()
-	if *olderThan <= 0 || (*execute && !*confirm) {
-		fmt.Fprintln(os.Stderr, "older-than must be positive; --execute requires --confirm")
+	if *olderThan <= 0 || (*execute && !*confirm) || *redisScanCount <= 0 || *redisMaxKeys <= 0 {
+		fmt.Fprintln(os.Stderr, "older-than, redis-scan-count and redis-max-keys must be positive; --execute requires --confirm")
 		os.Exit(2)
 	}
 	if err := config.Load(); err != nil {
@@ -58,9 +67,24 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	report := storageops.RunMultipartCleanup(ctx, minioMultipartClient{client: client, core: minio.Core{Client: client}}, cfg.Bucket, storageops.NormalizePrefix(*prefix), time.Now().UTC().Add(-*olderThan), *execute)
+	output := cleanupOutput{MultipartCleanupReport: report}
+	if *redisOrphans {
+		redisClient, redisErr := platformCache.NewRedisClient(config.RedisConfig())
+		if redisErr != nil {
+			fmt.Fprintln(os.Stderr, redisErr)
+			os.Exit(1)
+		}
+		defer redisClient.Close()
+		redisReport := storageops.RunRedisMultipartCleanup(ctx, redisClient, *redisScanCount, *redisMaxKeys, *execute && *confirm)
+		output.Redis = &redisReport
+		if !redisReport.Complete || redisReport.Failed > 0 {
+			report.Failed++
+		}
+	}
+	output.MultipartCleanupReport = report
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(report); err != nil {
+	if err := encoder.Encode(output); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
