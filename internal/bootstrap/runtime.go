@@ -23,6 +23,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -267,7 +268,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 				return nil, fmt.Errorf("compose Agent Runtime promotion evidence review: %w", artifactErr)
 			}
 		}
-		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
+		coreRPC, err = corerpc.NewWithAgentArtifacts(
 			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, repos.AgentTaskTimeline, memoryResolver,
 		)
 		if err != nil {
