@@ -24,6 +24,7 @@
 - Core capability 实现已迁入 `internal/services/core/application/`；factory 改用用户、联系人、群组、文件和会话查询所需的最小接口，embedded 兼容构造入口保留，便于后续 Core 服务独立部署。
 - Core Conversation application 装配已迁入 `internal/services/core/application/`；Core 的 embedded 与独立 runtime 共用服务专属 local adapter，底层 ConversationService 保持兼容并列入后续物理迁移。
 - Core User application 装配已迁入 `internal/services/core/application/`；Server 继续使用原 User HTTP contract，同时将 User/File store 和对象存储依赖收敛到 Core 服务 factory。
+- Core Contact application 装配已迁入 `internal/services/core/application/`；Server 继续使用原联系人 HTTP contract，同时将联系人 store、事件、通知和系统消息依赖收敛到 Core 服务 factory。
 - 新增 `CoreProcessRepositories`，集中装配 Core 所有的 SQLC repository，并由聚合 `NewRepositories` 复用；现有 embedded 入口保持兼容，便于后续 Core 独立 runtime 切换。
 - 新增 `AgentProcessRepositories`，集中装配 Agent-owned SQLC repository，并由聚合入口复用；Core 兼容 Capability 继续通过 port 使用，便于后续 TS Agent Runtime 独立接管。
 - Search application 已从共享 `internal/app` 迁移到 `internal/services/search/application/`，Search runtime 保持原 application port 不变；结构门禁会阻止旧实现路径回流。
