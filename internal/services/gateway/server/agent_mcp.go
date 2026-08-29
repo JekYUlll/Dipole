@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 var agentMCPIdentifier = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
@@ -32,7 +32,7 @@ func NewAgentMCPProxy(target, secret, resource string) (*AgentMCPProxy, error) {
 	if strings.TrimSpace(secret) == "" {
 		return nil, errors.New("Agent MCP secret is required")
 	}
-	if err := service.ValidateAgentMCPResource(resource); err != nil {
+	if err := coreauth.ValidateAgentMCPResource(resource); err != nil {
 		return nil, errors.New("Agent MCP resource is invalid")
 	}
 	return &AgentMCPProxy{target: parsed, secret: secret, resource: strings.TrimSpace(resource)}, nil
@@ -60,7 +60,7 @@ func (p *AgentMCPProxy) ServeMCP(writer http.ResponseWriter, request *http.Reque
 		proxied.Header.Set("X-Dipole-Service-Token", p.secret)
 		proxied.Header.Set("X-Dipole-Principal-User-ID", principalUUID)
 		proxied.Header.Set("X-Dipole-OAuth-Resource", p.resource)
-		proxied.Header.Set("X-Dipole-OAuth-Scope", service.AgentMCPReadScope)
+		proxied.Header.Set("X-Dipole-OAuth-Scope", coreauth.AgentMCPReadScope)
 		ids := correlation.FromContext(proxied.Context())
 		proxied.Header.Set(correlation.RequestHeader, ids.RequestID)
 		proxied.Header.Set(correlation.TraceHeader, ids.TraceID)
