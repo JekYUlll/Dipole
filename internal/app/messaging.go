@@ -5,6 +5,7 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/service"
+	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
 
@@ -30,13 +31,9 @@ type MessagingDependencies struct {
 type MessagingServices struct {
 	Core          applicationPort.CoreCapability
 	Files         *service.FileService
-	Messages      *LocalMessageApplication
+	Messages      *messageapplication.LocalApplication
 	Conversations *service.ConversationService
 	Sync          applicationPort.SyncApplication
-}
-
-type LocalMessageApplication struct {
-	*service.MessageService
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
@@ -46,14 +43,16 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		core = NewLocalCoreCapability(repos)
 	}
 
-	messageService := service.NewMessageServiceWithCore(
-		repos.Messages, core, nil, dependencies.Events, dependencies.HotGroups,
-	)
-	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
+	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
+		Events:                     dependencies.Events,
+		HotGroups:                  dependencies.HotGroups,
+		DuplicateHydrator:          dependencies.DuplicateHydrator,
+		DuplicateHydrationObserver: dependencies.DuplicateHydrationObserver,
+	})
 	return &MessagingServices{
 		Core:     core,
 		Files:    files,
-		Messages: &LocalMessageApplication{MessageService: messageService},
+		Messages: messages,
 		Conversations: service.NewConversationService(
 			repos.Conversations,
 			repos.Users,
@@ -65,14 +64,11 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 	}
 }
 
-func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *LocalMessageApplication {
-	messageService := service.NewMessageServiceWithCore(
-		messages,
-		core,
-		nil,
-		dependencies.Events,
-		dependencies.HotGroups,
-	)
-	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
-	return &LocalMessageApplication{MessageService: messageService}
+func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *messageapplication.LocalApplication {
+	return messageapplication.New(messages, core, messageapplication.Dependencies{
+		Events:                     dependencies.Events,
+		HotGroups:                  dependencies.HotGroups,
+		DuplicateHydrator:          dependencies.DuplicateHydrator,
+		DuplicateHydrationObserver: dependencies.DuplicateHydrationObserver,
+	})
 }

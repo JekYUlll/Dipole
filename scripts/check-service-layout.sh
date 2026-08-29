@@ -27,6 +27,14 @@ if [[ ! -f "${root_dir}/internal/services/sync/application/application.go" ]]; t
   echo "Sync application implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/message/application/application.go" ]]; then
+  echo "Message application implementation is outside its service boundary" >&2
+  exit 1
+fi
+if rg --quiet '^type LocalMessageApplication struct' "${root_dir}/internal/app"; then
+  echo "legacy shared Message application implementation remains under internal/app" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/app/sync.go" || -e "${root_dir}/internal/app/sync_test.go" ]]; then
   echo "legacy shared Sync application path remains under internal/app" >&2
   exit 1
