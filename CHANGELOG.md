@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- 2026-08-30：新增开发主机 preflight `scripts/check-dev-host.sh` 与 Node 测试：Remote GPU profile 用于完整微服务和负载测试，TencentCloud profile 仅用于轻量 smoke，本机资源不足时 fail closed；检查支持资源覆盖、Docker daemon 和 Compose 配置校验，当前仅完成门禁实现，尚未执行远程部署。
+
 - 2026-08-30：完成开发期部署环境评估：Remote GPU（224 vCPU、188 GiB 内存、约 1.1 TiB 可用磁盘、4 张 RTX 4090）作为完整微服务、存储实验、Agent Runtime 和分级负载测试环境；TencentCloud_01（2 vCPU、2 GiB 内存、50 GiB 磁盘）收敛为轻量 smoke 与低资源兼容性环境；本机暂不运行完整集群压测。远程部署门禁、资源快照、不可变镜像、隔离 Compose project、故障停止和回滚要求已写入平台演进计划，当前尚未执行远程部署。
 
 - 2026-08-30：Multipart 初始化支持可选 `file_sha256`，会话绑定整文件摘要；开启 `storage.multipart_require_checksum` 后，Complete 会读取已完成对象校验 SHA-256，缺失或不匹配时拒绝并清理对象，前端会在初始化阶段提交 Web Crypto 摘要，默认仍保持兼容模式。
