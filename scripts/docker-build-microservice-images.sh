@@ -22,6 +22,7 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
 fi
 
 declare -a services=(
+  "migrate:dipole-migrate"
   "core:dipole-server"
   "gateway:dipole-gateway"
   "message:dipole-message"
@@ -33,7 +34,10 @@ declare -a services=(
 for service_binary in "${services[@]}"; do
   service=${service_binary%%:*}
   binary=${service_binary#*:}
-  image_variable="DIPOLE_${service^^}_IMAGE"
+  case "${service}" in
+    search-indexer) image_variable=DIPOLE_SEARCH_INDEXER_IMAGE ;;
+    *) image_variable="DIPOLE_${service^^}_IMAGE" ;;
+  esac
   image=${!image_variable:-dipole-${service}:latest}
   echo "==> building ${service} image ${image}"
   docker build \
