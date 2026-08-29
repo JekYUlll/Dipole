@@ -10,6 +10,12 @@ type UploadPart = (partNumber: number, chunk: Blob) => Promise<void>
 
 const defaultSleep = (delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs))
 
+export const sha256Hex = async (chunk: Blob): Promise<string | undefined> => {
+  if (!globalThis.crypto?.subtle || typeof chunk.arrayBuffer !== 'function') return undefined
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', await chunk.arrayBuffer())
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
 const uploadWithRetry = async (
   partNumber: number,
   chunk: Blob,

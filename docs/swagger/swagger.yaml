@@ -1670,6 +1670,11 @@ paths:
         name: part_number
         required: true
         type: integer
+      - description: 分片 SHA-256（十六进制）
+        in: header
+        name: X-Part-SHA256
+        required: false
+        type: string
       produces:
       - application/json
       responses:

@@ -22,7 +22,7 @@ import (
 type stubFileService struct {
 	uploadFn            func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
-	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
+	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
 	downloadFn          func(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
@@ -61,11 +61,11 @@ func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input cor
 	return s.initiateMultipartFn(uploaderUUID, input)
 }
 
-func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {
+func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
 	if s.uploadPartFn == nil {
 		return nil
 	}
-	return s.uploadPartFn(uploaderUUID, sessionID, partNumber, contentLength, body)
+	return s.uploadPartFn(uploaderUUID, sessionID, partNumber, contentLength, partSHA256, body)
 }
 
 func (s *stubFileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
@@ -270,9 +270,12 @@ func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		uploadPartFn: func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {
+		uploadPartFn: func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
 			if uploaderUUID != "U100" || sessionID != "MU100" || partNumber != 1 || contentLength != 5 {
 				t.Fatalf("unexpected multipart part args: %s %s %d %d", uploaderUUID, sessionID, partNumber, contentLength)
+			}
+			if partSHA256 != "checksum-1" {
+				t.Fatalf("unexpected multipart checksum: %s", partSHA256)
 			}
 			data, err := io.ReadAll(body)
 			if err != nil {
@@ -289,6 +292,7 @@ func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	context, _ := gin.CreateTestContext(recorder)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/files/uploads/MU100/parts/1", bytes.NewBufferString("hello"))
 	req.ContentLength = 5
+	req.Header.Set("X-Part-SHA256", "checksum-1")
 	context.Request = req
 	context.Params = gin.Params{
 		{Key: "session_id", Value: "MU100"},
