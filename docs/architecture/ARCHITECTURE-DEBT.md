@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：收敛 Agent Runtime 的部署文档语义：Compose 默认启动容器并运行 Kafka Shadow，`active` authority、模型调用和写能力仍默认关闭；补充 active 启用前的 release manifest、Temporal 和 promotion binding 前置条件。该变更只澄清现状，不改变运行时开关。
 - 2026-08-30：诊断 Pencil Gemini 增量路径，CLI 在执行前因缺少 selected model API key 退出；safe-edit wrapper 已清理临时输出，canonical `.pen` 未改变。Claude 执行路径仍受 MCP 调用超时影响，AD-044 等待可用凭据和稳定执行窗口。
 - 2026-08-30：使用显式 `--prompt`/`--prompt-file` 重试 Agent Task Timeline Pencil 增量编辑；CLI 成功进入 Agent 会话但在 90 秒内未完成，safe-edit wrapper 已清理临时输出且 canonical `.pen` 未改变，AD-044 仍等待稳定增量执行。
 - 2026-08-30：补充根级 `/agent-runtime/` 遗留构建产物的显式忽略规则和仓库结构说明；TypeScript Agent 源码继续唯一归属 `services/agent-runtime/`，Go 继续通过显式包白名单避免递归扫描本地构建输出。
