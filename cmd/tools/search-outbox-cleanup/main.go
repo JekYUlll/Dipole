@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	searchops "github.com/JekYUlll/Dipole/internal/operations/search"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	result, err := bootstrap.RunSearchOutboxCleanup(ctx, bootstrap.SearchCleanupOptions{
+	result, err := searchops.RunSearchOutboxCleanup(ctx, searchops.SearchCleanupOptions{
 		ReceiptPath: *receipt, ReconcileReportPath: *reconcileReport, TargetIndex: *targetIndex,
 		BatchSize: *batchSize, Execute: *execute, MaintenanceConfirmed: *confirmed, Operator: *operator,
 	})

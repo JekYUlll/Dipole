@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	searchcutover "github.com/JekYUlll/Dipole/internal/cutover/search"
+	searchops "github.com/JekYUlll/Dipole/internal/operations/search"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	maxExamples := flag.Int("max-examples", 100, "maximum reconciliation mismatch examples")
 	rollbackHours := flag.Int("rollback-window-hours", 24, "old-index retention window recorded in the receipt")
 	confirmed := flag.Bool("confirm-maintenance-window", false, "confirm Message mutation producers are paused for the operation")
-	source := flag.String("source", bootstrap.SearchSourceMySQL, "snapshot source: mysql or archive")
+	source := flag.String("source", searchops.SearchSourceMySQL, "snapshot source: mysql or archive")
 	archiveManifest := flag.String("archive-manifest", "", "verified archive manifest when source=archive")
 	flag.Parse()
 
@@ -39,7 +39,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	receipt, err := bootstrap.RunSearchAliasOperation(ctx, bootstrap.SearchAliasOptions{
+	receipt, err := searchops.RunSearchAliasOperation(ctx, searchops.SearchAliasOptions{
 		Action: searchcutover.Action(strings.TrimSpace(*action)), JobName: *jobName,
 		FromIndex: *fromIndex, ToIndex: *toIndex, BatchSize: *batchSize, MaxExamples: *maxExamples,
 		MaintenanceConfirmed: *confirmed, RollbackWindow: time.Duration(*rollbackHours) * time.Hour,
