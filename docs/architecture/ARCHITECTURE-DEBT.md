@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Gateway 热群通知聚合器及测试已迁入 `internal/services/gateway/infrastructure/kafka/`，共享 handler 改用服务自有 `Notifier`；完整消息投递 handler 仍待按依赖闭包继续迁移。
 - 2026-08-29：Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，独立和 embedded runtime 均直接使用服务自有 handler，原共享注册包装已退休。
 - 2026-08-29：Message Outbox relay 已迁入 `internal/services/message/infrastructure/kafka/`，独立和 embedded runtime 均直接使用服务自有 relay，原共享 alias/构造包装已退休。
 - 2026-08-29：Message shadow 的 Query-only adapter 及测试已迁入 `internal/services/message/bootstrap/`，独立 runtime 直接使用服务自有实现并移除对应共享 facade；Message 专属旧兼容入口已按调用者完成清理。

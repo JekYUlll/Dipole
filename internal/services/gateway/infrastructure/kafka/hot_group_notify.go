@@ -1,4 +1,4 @@
-package bootstrap
+package kafka
 
 import (
 	"sync"
@@ -7,10 +7,14 @@ import (
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
-const hotGroupNotifyWindow = 200 * time.Millisecond
+const DefaultNotifyWindow = 200 * time.Millisecond
 
-type hotGroupNotifyAggregator struct {
-	hub    kafkaWSEventSender
+type EventSender interface {
+	SendEventToUser(userUUID, eventType string, data any) int
+}
+
+type Notifier struct {
+	hub    EventSender
 	window time.Duration
 
 	mu      sync.Mutex
@@ -23,22 +27,22 @@ type pendingHotGroupNotify struct {
 	timer      *time.Timer
 }
 
-func newHotGroupNotifyAggregator(hub kafkaWSEventSender, window time.Duration) *hotGroupNotifyAggregator {
+func NewNotifier(hub EventSender, window time.Duration) *Notifier {
 	if hub == nil {
 		return nil
 	}
 	if window <= 0 {
-		window = hotGroupNotifyWindow
+		window = DefaultNotifyWindow
 	}
 
-	return &hotGroupNotifyAggregator{
+	return &Notifier{
 		hub:     hub,
 		window:  window,
 		pending: make(map[string]*pendingHotGroupNotify),
 	}
 }
 
-func (a *hotGroupNotifyAggregator) Enqueue(groupUUID string, data wsTransport.GroupMessageNotifyData, recipients []string) {
+func (a *Notifier) Enqueue(groupUUID string, data wsTransport.GroupMessageNotifyData, recipients []string) {
 	if a == nil || groupUUID == "" {
 		return
 	}
@@ -67,7 +71,7 @@ func (a *hotGroupNotifyAggregator) Enqueue(groupUUID string, data wsTransport.Gr
 	}
 }
 
-func (a *hotGroupNotifyAggregator) flush(groupUUID string) {
+func (a *Notifier) flush(groupUUID string) {
 	a.mu.Lock()
 	entry := a.pending[groupUUID]
 	if entry == nil {
