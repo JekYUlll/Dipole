@@ -1,4 +1,4 @@
-package service
+package syncdomain
 
 import (
 	"errors"
@@ -29,7 +29,8 @@ type syncRepository interface {
 	AdvanceDeviceGroupSyncCheckpoint(userUUID, deviceID, groupUUID string, messageSeq uint64) error
 }
 
-type syncGroupAuthorizer interface {
+// SyncGroupAuthorizer authorizes access to group sync timelines.
+type SyncGroupAuthorizer interface {
 	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
 }
 
@@ -81,10 +82,10 @@ func normalizeSyncDeviceID(deviceID string) (string, error) {
 
 type SyncService struct {
 	repo       syncRepository
-	groupsAuth syncGroupAuthorizer
+	groupsAuth SyncGroupAuthorizer
 }
 
-func NewSyncService(repo syncRepository, authorizers ...syncGroupAuthorizer) *SyncService {
+func NewSyncService(repo syncRepository, authorizers ...SyncGroupAuthorizer) *SyncService {
 	service := &SyncService{repo: repo}
 	if len(authorizers) > 0 {
 		service.groupsAuth = authorizers[0]

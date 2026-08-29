@@ -27,6 +27,10 @@ if [[ ! -f "${root_dir}/internal/services/sync/application/application.go" ]]; t
   echo "Sync application implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/sync/domain/sync_service.go" ]]; then
+  echo "Sync domain implementation is outside its service boundary" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/message/application/application.go" ]]; then
   echo "Message application implementation is outside its service boundary" >&2
   exit 1
@@ -123,6 +127,10 @@ if [[ -e "${root_dir}/internal/service/contact_service.go" ]]; then
 fi
 if [[ -e "${root_dir}/internal/service/conversation_service.go" ]]; then
   echo "legacy Core conversation implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/sync_service.go" ]]; then
+  echo "legacy Sync implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
