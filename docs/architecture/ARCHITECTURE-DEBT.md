@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Elasticsearch Search Service 隔离 smoke 通过，验证 Elasticsearch 9.5.2 查询、Core 派生 scope 和内部 RPC contract；Search 生产 Alias 切换、共享环境观测、回滚责任人和可执行回切仍待完成。
 - 2026-08-30：Cassandra read-routing 隔离 smoke 通过，真实验证 Timeline 页面 Cassandra 主读及 payload 损坏/缺行按同一 cursor 回退 MySQL；AD-019 的消息正文替代读契约、共享环境主读观测和可执行回切仍待完成。
 - 2026-08-30：Cassandra primary 隔离 Compose smoke 通过，验证 schema init、MySQL migration、Sync primary 配置和 readiness；AD-043 的共享环境真实 hydration、主读灰度、责任人批准与可执行回切仍待完成。
 - 2026-08-30：shared `newInternalRPCServer` 与 `dialInternalRPC` 已完成调用审计并退休；Core embedded 组合和 RPC fixture 直接使用 `internal/platform/rpc`，认证、TLS、caller allowlist 和回滚行为保持兼容。
