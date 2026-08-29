@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：收敛 Chat 初始化阶段的认证恢复异常：HTTP 401 仍由统一拦截器执行会话清理和跳转，Vue 生命周期不再产生未处理 Promise rejection；共享设备认证 E2E 在 Chromium、Firefox、WebKit 共 `6/6` 通过。
 - 2026-08-30：完成前端全浏览器 Playwright 回归：Chromium、Firefox、WebKit 共 `90` 项配置测试中 `64` 项通过、`26` 项按平台/条件跳过；Agent 表单、Task Timeline、IndexedDB 恢复、Search 视觉状态和设备会话均通过适用场景。
 - 2026-08-30：修正 Agent Memory Chromium E2E 的非精确标题断言，避免 `长期记忆` 与 `正在读取长期记忆` 触发 Playwright strict mode；目标场景 `3/3`、完整 Chromium E2E `28` 项通过（`2` 项按条件跳过）。
 - 2026-08-30：修正 Vite 生产构建输出边界，前端产物统一写入 Core-owned `internal/services/core/server/webapp/`，避免构建重新生成已退役的 `internal/server/webapp/`；工具链 `3/3`、Vitest `28` 个文件/`104` 个测试、`vue-tsc` 和生产构建均通过。

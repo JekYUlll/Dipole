@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：修复 Chat 初始化认证恢复的未处理 Promise rejection；共享设备 HTTP 401 E2E 已覆盖会话清理、登录页跳转和三浏览器无 `pageerror`，避免认证失败污染前端错误信号。
 - 2026-08-30：复核 Go/Eino 回滚基线，项目当前锁定 `github.com/cloudwego/eino v0.9.17`，`go list -m -u` 未发现更高稳定升级；预发布版本不进入生产依赖，Eino 继续仅承担 embedded legacy 回滚职责。
 - 2026-08-30：Agent Active Compose 增加缺失 release manifest/candidate 的负向门禁，部署插值不完整时 fail closed；默认 Shadow、显式 `user_gray` manifest 和回滚路径保持不变。
 - 2026-08-30：修正 Vite 构建输出从退役的横向 `internal/server/webapp/` 回流到 Core-owned `internal/services/core/server/webapp/`，并同步工具链断言；前端构建不会再产生未跟踪的旧目录产物。
