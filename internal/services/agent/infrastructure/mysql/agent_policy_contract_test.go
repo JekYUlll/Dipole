@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
@@ -381,10 +380,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	permissions, scopes := application.EmbeddedAgentPolicyGrantV1()
 	const persistentAgentUUID = "UAI000000000000000001"
 	const persistentPrincipalUUID = "USR000000000000000001"
-	if err := appComposition.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", persistentAgentUUID, permissions, scopes); err != nil {
+	if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", persistentAgentUUID, permissions, scopes); err != nil {
 		t.Fatalf("ensure persistent Embedded Definition: %v", err)
 	}
-	policy, err := appComposition.NewPersistentAgentExecutionPolicyV1(store)
+	policy, err := agentapplication.NewPersistentAgentExecutionPolicyV1(store)
 	if err != nil {
 		t.Fatalf("create persistent execution policy: %v", err)
 	}
@@ -413,7 +412,7 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		t.Fatalf("persistent execution Run: %+v err=%v", persistedRun, err)
 	}
 
-	admission, err := appComposition.NewPersistentAgentRunAdmissionV1(store)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1(store)
 	if err != nil {
 		t.Fatalf("create persistent Run admission: %v", err)
 	}
