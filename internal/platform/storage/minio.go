@@ -252,6 +252,19 @@ func (u *MinIOUploader) InspectMultipartPart(ctx context.Context, objectKey, upl
 	return nil, fmt.Errorf("multipart part %d was not found", partNumber)
 }
 
+func (u *MinIOUploader) RemoveObject(ctx context.Context, bucket, objectKey string) error {
+	if u == nil || u.client == nil {
+		return fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(bucket) == "" || strings.TrimSpace(objectKey) == "" {
+		return fmt.Errorf("bucket and object key are required")
+	}
+	if err := u.client.RemoveObject(ctx, bucket, objectKey, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("remove minio object: %w", err)
+	}
+	return nil
+}
+
 func (u *MinIOUploader) CompleteMessageMultipartUpload(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []MultipartCompletePart) (*UploadedObject, error) {
 	if u == nil || u.client == nil {
 		return nil, fmt.Errorf("storage uploader is not initialized")
