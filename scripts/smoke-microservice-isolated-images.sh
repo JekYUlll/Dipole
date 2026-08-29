@@ -175,6 +175,18 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
     -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
   test "${outbox_count}" = "1"
   test "${inbox_count}" = "1"
+  history_response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
+    -H "Authorization: Bearer ${sender_token}" \
+    "http://127.0.0.1:${gateway_port}/api/v1/messages/direct/${target_uuid}?before_seq=0&limit=20")
+  jq -e --arg content "${message_content}" \
+    'any(.data[]?; .content == $content and ((.message_seq // 0) > 0))' \
+    <<<"${history_response}" >/dev/null
+  incremental_response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
+    -H "Authorization: Bearer ${target_token}" \
+    "http://127.0.0.1:${gateway_port}/api/v1/messages/direct/${sender_uuid}?after_seq=0&limit=20")
+  jq -e --arg content "${message_content}" \
+    'any(.data[]?; .content == $content and ((.message_seq // 0) > 0))' \
+    <<<"${incremental_response}" >/dev/null
   printf 'isolated candidate message flow passed: sender=%s target=%s\n' "${sender_uuid}" "${target_uuid}"
 fi
 

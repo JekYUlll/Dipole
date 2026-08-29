@@ -44,6 +44,14 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("docker compose", script)
         self.assertNotIn("down --volumes", script)
 
+    def test_isolated_message_flow_checks_timeline_reads(self):
+        script = (ROOT / "scripts/smoke-microservice-isolated-images.sh").read_text(encoding="utf-8")
+
+        self.assertIn("before_seq=0&limit=20", script)
+        self.assertIn("after_seq=0&limit=20", script)
+        self.assertIn("message_seq", script)
+        self.assertIn("user_sync_inbox", script)
+
     def test_canonical_compose_gate_renders_candidate_overrides(self):
         script = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
 
