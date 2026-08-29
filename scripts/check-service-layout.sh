@@ -350,11 +350,11 @@ if [[ ! -f "${root_dir}/internal/services/message/infrastructure/mysql/message_r
   echo "Message MySQL repository is outside its service boundary" >&2
   exit 1
 fi
-if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/bootstrap/message_runtime.go"; then
+if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/services/message/bootstrap/runtime.go"; then
   echo "standalone Message runtime must not depend on aggregate internal/app composition" >&2
   exit 1
 fi
-if ! rg --quiet 'services/message/infrastructure/mysql' "${root_dir}/internal/bootstrap/message_runtime.go"; then
+if ! rg --quiet 'services/message/infrastructure/mysql' "${root_dir}/internal/services/message/bootstrap/runtime.go"; then
   echo "standalone Message runtime must use Message-owned repository composition" >&2
   exit 1
 fi
@@ -679,14 +679,14 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go message_runtime.go gateway_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go gateway_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
   fi
 done
 
-for runtime_file in runtime.go core_runtime.go message_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'ConfigureDependencyReadiness|BindRPCReadiness' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use platform readiness orchestration: ${runtime_file}" >&2
     exit 1
@@ -714,6 +714,14 @@ if [[ -e "${root_dir}/internal/bootstrap/sync_runtime.go" || -e "${root_dir}/int
 fi
 if [[ ! -f "${root_dir}/internal/services/sync/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/sync/infrastructure' "${root_dir}/internal/services/sync/bootstrap/runtime.go"; then
   echo "Sync runtime must remain under its service bootstrap boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/bootstrap/message_runtime.go" ]]; then
+  echo "Message runtime remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/message/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/message/infrastructure' "${root_dir}/internal/services/message/bootstrap/runtime.go"; then
+  echo "Message runtime must remain under its service bootstrap boundary" >&2
   exit 1
 fi
 
