@@ -10,6 +10,7 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
@@ -29,6 +30,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const gatewayServiceName = "dipole-gateway"
+
 type GatewayRuntime struct {
 	server                 *gateway.Server
 	router                 *wsTransport.PubSubRouter
@@ -38,10 +41,16 @@ type GatewayRuntime struct {
 	searchConn             *grpc.ClientConn
 	redis                  *redis.Client
 	metrics                *platformObservability.MetricsServer
-	deliveryObservationRPC *InternalRPCServer
+	deliveryObservationRPC *legacybootstrap.InternalRPCServer
 	deliveryObserver       *deliverygrpc.ShadowServer
 	fenceHeartbeatCancel   context.CancelFunc
 	fenceHeartbeatDone     chan struct{}
+}
+
+type kafkaWSEventSender interface {
+	SendEventToUser(userUUID, eventType string, data any) int
+	DisconnectConnections(userUUID string, connectionIDs []string, reason string) int
+	DisconnectAllConnections(userUUID string, reason string) int
 }
 
 const (
@@ -93,7 +102,7 @@ func (s *gatewayObservationSink) Observe(batch *deliveryv1.NodeDeliveryBatch) {
 	}
 }
 
-func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
+func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	gatewayCfg := config.GatewayConfig()
 	kafkaCfg := config.KafkaConfig()
@@ -105,7 +114,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	if err := deliveryAuthority.ValidateGatewayCapabilities(rpcCfg.DeliveryObservationEnabled, rpcCfg.DeliveryPrimaryEnabled); err != nil {
 		return nil, err
 	}
-	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+	if err := legacybootstrap.ValidateTimelineNotifyMode(config.MessageConfig()); err != nil {
 		return nil, err
 	}
 	if !rpcCfg.Enabled {
@@ -171,19 +180,19 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		cleanup()
 		return nil, fmt.Errorf("gateway kafka consumer init failed: %w", err)
 	}
-	messages, messageConn, err := DialMessageApplication(ctx, rpcCfg)
+	messages, messageConn, err := legacybootstrap.DialMessageApplication(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
 	}
 	runtime.messageConn = messageConn
-	syncApplication, syncConn, err := DialSyncApplication(ctx, rpcCfg)
+	syncApplication, syncConn, err := legacybootstrap.DialSyncApplication(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
 	}
 	runtime.syncConn = syncConn
-	core, coreConn, err := DialGatewayCoreCapability(ctx, rpcCfg)
+	core, coreConn, err := legacybootstrap.DialGatewayCoreCapability(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
@@ -191,7 +200,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	runtime.coreConn = coreConn
 	var search application.SearchApplication
 	if config.SearchConfig().Enabled {
-		searchClient, searchConnection, err := DialSearchApplication(ctx, rpcCfg)
+		searchClient, searchConnection, err := legacybootstrap.DialSearchApplication(ctx, rpcCfg)
 		if err != nil {
 			cleanup()
 			return nil, err
@@ -286,7 +295,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 				return nil, fmt.Errorf("enable primary delivery dispatcher: %w", primaryErr)
 			}
 		}
-		runtime.deliveryObservationRPC, err = NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
+		runtime.deliveryObservationRPC, err = legacybootstrap.NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("start delivery observation rpc: %w", err)
@@ -301,7 +310,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			eventSender = runtime.router
 		}
 	}
-	if err := RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
+	if err := legacybootstrap.RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register gateway kafka handlers: %w", err)
 	}
@@ -420,7 +429,7 @@ func RunGatewayServer(srv *gateway.Server, tlsCfg config.TLS) error {
 	if !tlsCfg.Enabled {
 		return srv.Run(config.Addr())
 	}
-	if err := ensureTLSFiles(tlsCfg); err != nil {
+	if err := legacybootstrap.EnsureTLSFiles(tlsCfg); err != nil {
 		return err
 	}
 	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)
