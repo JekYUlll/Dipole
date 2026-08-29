@@ -3,6 +3,7 @@ export type MultipartUploadOptions = {
   maxRetries?: number
   retryDelayMs?: number
   sleep?: (delayMs: number) => Promise<void>
+  skipParts?: ReadonlySet<number>
   onPartComplete?: (completedParts: number, totalParts: number) => void
 }
 
@@ -55,15 +56,20 @@ export const uploadMultipartParts = async (
   const maxRetries = Math.max(0, Math.floor(options.maxRetries ?? 2))
   const retryDelayMs = Math.max(0, options.retryDelayMs ?? 250)
   const sleep = options.sleep ?? defaultSleep
+  const skipParts = options.skipParts ?? new Set<number>()
   let nextPart = 1
-  let completedParts = 0
+  let completedParts = skipParts.size
   let stopped = false
   let firstError: unknown
+
+  options.onPartComplete?.(completedParts, totalParts)
 
   const worker = async () => {
     while (!stopped) {
       const partNumber = nextPart++
       if (partNumber > totalParts) return
+
+      if (skipParts.has(partNumber)) continue
 
       const start = (partNumber - 1) * chunkSize
       const chunk = file.slice(start, Math.min(start + chunkSize, file.size))
