@@ -440,6 +440,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 模型、Prompt、Tool Schema 与 Memory Policy 升级先离线评测，再 shadow，最后按用户灰度。
   - [x] 增加 `agent.release-manifest.v1`，把四类运行组件版本/哈希与 offline Eval Suite 精确绑定，并将 promotion 输入限制在 `shadow` 阶段；真实语料、共享环境观察窗口和用户灰度仍待完成。
   - [x] 将 release manifest 接入 promotion publication CLI/Artifact：携带 manifest 的新输入强制走绑定入口并持久化 manifest 哈希，旧 v2 证据回放继续兼容。
+  - [x] 增加 release manifest 单步阶段转移与回滚校验，禁止 `offline` 直接跳到 `user_gray`；阶段变化仍需 operator 证据，不自动改变 Runtime 开关。
 - [ ] 保留 Agent 总开关；A2A、多 Agent 与 MCP experimental Tasks 在核心门禁通过后评估。
 
 **阶段三验收：** Agent Runtime 可独立部署和扩容；故障与升级不影响 IM Core；权限、审计、成本和效果均可观测。
