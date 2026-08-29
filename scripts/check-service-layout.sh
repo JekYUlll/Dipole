@@ -3,6 +3,18 @@ set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 expected_services=(core gateway message sync search search-indexer)
+if [[ ! -f "${root_dir}/cmd/services/README.md" ]]; then
+  echo "service entrypoint index is missing: cmd/services/README.md" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/docs/architecture/SERVICE-BOUNDARIES.md" ]]; then
+  echo "service boundary manifest is missing: docs/architecture/SERVICE-BOUNDARIES.md" >&2
+  exit 1
+fi
+if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
+  echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
+  exit 1
+fi
 for service in "${expected_services[@]}"; do
   if [[ ! -f "${root_dir}/cmd/services/${service}/main.go" ]]; then
     echo "missing service entrypoint: cmd/services/${service}/main.go" >&2

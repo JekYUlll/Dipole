@@ -16,6 +16,8 @@
 ## [Unreleased]
 
 ### 变更
+- 新增 `docs/architecture/SERVICE-BOUNDARIES.md` 和 `cmd/services/README.md`，明确服务入口、数据所有权、允许共享层与渐进迁移例外；结构门禁现在校验服务边界清单存在且已纳入版本控制。
+- 明确 `internal/` 当前是迁移中的共享实现区，后续按 Core、Message、Sync、Search 和 Agent 责任逐步收敛，避免把入口拆分误判为业务实现已经完全自治。
 - 微服务 Compose 为 Core 增加独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 启动配置，默认使用本地消息实现完成 Core readiness；全局 `DIPOLE_MESSAGE_TRANSPORT=grpc` 继续保留给 Gateway/远程调用方，解除 Core/Message 冷启动环。
 - 远程 Gateway 模式下 Core 不再注册消息持久化 Kafka handlers 或负责消息 topic 初始化，避免 Core 的本地启动兼容实现与 Message Service 形成双重 owner。
 - Sync 微服务 Compose 补齐 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION`、`DIPOLE_CASSANDRA_ENABLED` 和 `DIPOLE_CASSANDRA_HOSTS` 配置契约；primary hydration 仍默认关闭，启用时保留 shadow 互斥和 MySQL 即时回退。
