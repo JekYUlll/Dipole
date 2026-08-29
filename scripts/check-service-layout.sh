@@ -670,19 +670,27 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
   fi
 done
 
-for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'ConfigureDependencyReadiness|BindRPCReadiness' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use platform readiness orchestration: ${runtime_file}" >&2
     exit 1
   fi
 done
+if [[ -e "${root_dir}/internal/bootstrap/cassandra_projector_runtime.go" ]]; then
+  echo "Cassandra Projector runtime remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/message/bootstrap/cassandra_projector_runtime.go" ]] || ! rg --quiet 'internal/services/message/bootstrap' "${root_dir}/cmd/tools/cassandra-projector/main.go"; then
+  echo "Cassandra Projector runtime must remain under the Message bootstrap boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/bootstrap/search_indexer_runtime.go" ]]; then
   echo "Search Indexer runtime remains in shared bootstrap" >&2
   exit 1
