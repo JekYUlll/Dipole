@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
+	"github.com/JekYUlll/Dipole/internal/application"
 )
 
 func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *testing.T) {
@@ -32,7 +32,7 @@ func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *test
 	}))
 	defer upstream.Close()
 
-	proxy, err := NewAgentMCPProxy(upstream.URL, "mcp-secret", coreauth.AgentMCPResource)
+	proxy, err := NewAgentMCPProxy(upstream.URL, "mcp-secret", application.AgentMCPResource)
 	if err != nil {
 		t.Fatalf("new Agent MCP proxy: %v", err)
 	}
@@ -53,16 +53,16 @@ func TestAgentMCPProxyInjectsTrustedIdentityAndPreservesProtocolResponse(t *test
 }
 
 func TestAgentMCPProxyRejectsInvalidConfigurationAndIdentifiers(t *testing.T) {
-	if _, err := NewAgentMCPProxy("ftp://agent", "secret", coreauth.AgentMCPResource); err == nil {
+	if _, err := NewAgentMCPProxy("ftp://agent", "secret", application.AgentMCPResource); err == nil {
 		t.Fatal("expected invalid target rejection")
 	}
-	if _, err := NewAgentMCPProxy("http://agent:8091", "", coreauth.AgentMCPResource); err == nil {
+	if _, err := NewAgentMCPProxy("http://agent:8091", "", application.AgentMCPResource); err == nil {
 		t.Fatal("expected missing secret rejection")
 	}
 	if _, err := NewAgentMCPProxy("http://agent:8091", "secret", "mcp.example.com"); err == nil {
 		t.Fatal("expected invalid resource rejection")
 	}
-	proxy, _ := NewAgentMCPProxy("http://agent:8091", "secret", coreauth.AgentMCPResource)
+	proxy, _ := NewAgentMCPProxy("http://agent:8091", "secret", application.AgentMCPResource)
 	response := httptest.NewRecorder()
 	proxy.ServeMCP(response, httptest.NewRequest(http.MethodPost, "/public", nil), "U100", "bad/task", "RUN-1")
 	if response.Code != http.StatusBadRequest {
