@@ -696,6 +696,7 @@
 
 - **优先级：** P2
 - **状态：** 处理中
+- **2026-08-30 验证：** 在 `master` 当前基线复跑 Go 全仓、服务布局、Compose 契约和 Agent Runtime 独立门禁；Vitest 为 125 个文件/662 个测试通过，`typecheck` 与生产构建通过。该证据确认当前代码边界稳定，仍不覆盖共享 Temporal、真实 Kafka、active authority 和生产故障回切。
 - **发现日期：** 2026-08-26
 - **影响范围：** `agent-runtime`、Temporal、长任务、审批、失败恢复和评测
 - **现状：** migration v16-v29 已落地 Definition、Task、独立 Runtime Run、可重放模型输出/预算、不可变 Plan/Context manifest、带 lease 的 Step 终态、附加 Workflow projection、版本化 Artifact、Subscription 与 scoped Memory。Temporal Workflow 已持久化 Task/Run admission、三类 Run 终态、Approval/Input Signal 和 deadline Timer；默认关闭的 `read_shadow` 由 Kafka 启动稳定 Workflow，并在 Activity 内执行 ContextCompiler、ModelRouter、只读 Capability Step 和内容寻址 Artifact 创建。Message v1 Envelope 已通过可选 lineage传播根 Task，TS Runtime 在高成本处理前阻断同源 Agent 因果链。Gateway 已提供默认关闭的 JWT Task query/cancel/approval/input API；repair 审计 RPC 只接受 Gateway principal。离线对账与 Shadow 晋级保持只生成证据和 eligible/blocked 决策。Compose 继续关闭 Temporal、Task 控制桥并固定 `foundation`。
