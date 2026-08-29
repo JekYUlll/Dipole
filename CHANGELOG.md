@@ -19,6 +19,7 @@
 ## [Unreleased]
 
 - Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
+- 更新平台演进计划的当前基线，使部署入口、Gateway/Message/Sync ownership、MySQL/Kafka/Cassandra/Redis 分层和 Go/Eino 到 TS Runtime 的过渡状态与仓库现状一致；保留 embedded 与 shadow/primary 回滚边界。
 - 删除已无调用者的 `internal/service/event_publisher.go` 旧接口，并由服务布局门禁阻止 `internal/service/` 重新承载实现；跨服务事件契约继续使用 `internal/application` 和版本化事件包。
 - Message RPC 新增 Core-only system message command，Core standalone 通过懒连接 adapter 将联系人/群组系统消息交给 Message Service 持久化；默认微服务配置启用远程路径，embedded 模式保持本地回滚。
 - 将 Message 与 Core 共享的文件错误提升到 `internal/application` 契约，解除 Message domain 对 Core domain 实现的直接依赖；保留 Core/兼容入口的错误身份和 HTTP 错误映射。
@@ -699,11 +700,11 @@
 - Kafka Topic 创建后使用有界 metadata 收敛重试，避免冷启动期间短暂的 `Unknown Topic Or Partition` 造成服务退出。
 - Conversation 投影按 Seq 拒绝重复和过期消息回退；`unread_count` 继续作为兼容投影，由 `last_message_seq - read_seq` 语义维护。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
-- User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Conversation 的消息预览规则收敛到 domain model，GORM 与 sqlc 投影复用同一文本、文件、AI 和系统消息摘要语义。
-- Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
+- User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Conversation 的消息预览规则收敛到 domain model，SQLC 投影复用统一的文本、文件、AI 和系统消息摘要语义。
+- Eino 从 `v0.8.8` 升级至 `v0.9.17`，`eino-ext/components/model/openai` 保持 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
