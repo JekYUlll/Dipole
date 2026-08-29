@@ -139,7 +139,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	})
 	servedMessages := applicationPort.MessageApplication(messages)
 	if messageCfg.RuntimeMode == "shadow" {
-		servedMessages = legacybootstrap.NewQueryOnlyMessageApplication(messages)
+		servedMessages = newQueryOnlyMessageApplication(messages)
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		legacybootstrap.RegisterMessageKafkaHandlers(messages)

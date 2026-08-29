@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message shadow runtime 的 Query-only adapter 及契约测试已迁入 `internal/services/message/bootstrap/`，删除共享 bootstrap 中对应兼容 alias/构造转发；shadow 写拒绝和查询透传语义保持不变。
 - Message bootstrap 已接管惰性 Core Capability adapter 及其重试测试，runtime 不再通过共享 `internal/bootstrap` facade 获取 Core capability；旧共享拨号能力仍为其他兼容调用者保留。
 - 五条主要 Epic 分支已同步到当前 `master` 基线并推送：`epic/01-microservices`、`epic/02-storage-architecture`、`epic/03-agent-runtime`、`epic/04-cpp-realtime`、`epic/05-frontend-experience`；后续里程碑开发可继续保持阶段隔离。
 - 删除已无实现的 `internal/app/agent_application_compat.go`，同步收紧服务布局门禁和仓库边界文档，避免通过空兼容文件维持过时结构。
