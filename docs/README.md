@@ -38,6 +38,7 @@ scripts/check-architecture-docs.sh
 
 ## 部署与运行
 
+- [远程开发部署与压测](operations/REMOTE-DEV-DEPLOYMENT.md)
 - [Gateway 部署](operations/GATEWAY-DEPLOYMENT.md)
 - [Message Service 部署](operations/MESSAGE-SERVICE-DEPLOYMENT.md)
 - [Search Service 部署](operations/SEARCH-SERVICE-DEPLOYMENT.md)
