@@ -325,6 +325,10 @@ if rg --quiet '^func RunServer\(' "${root_dir}/internal/bootstrap" --glob '*.go'
   echo "shared bootstrap RunServer facade remains; use service-owned entrypoints" >&2
   exit 1
 fi
+if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "shared Core policy facade remains; keep policy implementation private to its server" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2

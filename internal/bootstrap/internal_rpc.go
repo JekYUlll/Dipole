@@ -175,12 +175,6 @@ func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	}, restrictCoreServiceMethods)
 }
 
-// RestrictCoreServiceMethods is kept as a shared policy hook while the Core
-// service bootstrap owns its transport adapter.
-func RestrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	return restrictCoreServiceMethods(ctx, request, info, handler)
-}
-
 func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	caller, _ := grpcauth.CallerService(ctx)
 	if caller == agentServiceName &&
