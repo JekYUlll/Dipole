@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Agent Timeline repair 隔离 Compose smoke 通过：验证 v50 migration、UTC 时间基准、专用最小权限、worker readiness、启动前 pending intent 恢复和 event UUID 幂等；临时栈自动清理，默认 production profile 仍关闭。
 - Agent Workflow repair 已完成 operator grant 版本与 CAS executor 的本地实现验证：migration v50 提供 `grant_version`/`can_execute`，执行与回滚均要求 fresh grant、projection hash 和事务性 CAS；公开生产控制面与共享环境演练继续关闭。
 - 更新 `docs/architecture/DEVELOPMENT-ROADMAP.md`：将长期路线图收敛为 G0、微服务、分层存储、Sync、TypeScript Agent Runtime 和 C++ Realtime Delivery 轨道，移除旧 Cgo 必做主线叙述。
 - 对齐面向当前读者的架构材料：更新面试问答、消息存储与同步策略，统一描述 sqlc、服务边界、Message Store、User Inbox、`message_seq`、`read_seq` 和 `sync_seq`；保留 `after_id` 与 `/messages/offline` 的兼容语义。
