@@ -5,7 +5,7 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 )
 
 type ContactNotifier interface {
@@ -22,7 +22,7 @@ type ContactDependencies struct {
 
 // LocalContactApplication keeps Core contact use cases behind the service boundary.
 type LocalContactApplication struct {
-	*service.ContactService
+	*corecontact.ContactService
 }
 
 func NewContactApplication(
@@ -30,7 +30,7 @@ func NewContactApplication(
 	users applicationPort.UserStore,
 	dependencies ContactDependencies,
 ) *LocalContactApplication {
-	contactService := service.NewContactService(repository, users).
+	contactService := corecontact.NewContactService(repository, users).
 		WithNotifier(dependencies.Notifier).
 		WithEvents(dependencies.Events).
 		WithSystemMessenger(dependencies.SystemMessenger)

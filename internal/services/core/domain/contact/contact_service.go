@@ -1,4 +1,4 @@
-package service
+package corecontact
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
@@ -74,7 +75,7 @@ type ContactService struct {
 	repo            contactRepository
 	userFinder      contactUserFinder
 	notifier        contactNotifier
-	events          eventPublisher
+	events          application.EventPublisher
 	systemMessenger contactSystemMessenger
 }
 
@@ -104,7 +105,7 @@ func (s *ContactService) WithNotifier(notifier contactNotifier) *ContactService 
 	return s
 }
 
-func (s *ContactService) WithEvents(events eventPublisher) *ContactService {
+func (s *ContactService) WithEvents(events application.EventPublisher) *ContactService {
 	s.events = events
 	return s
 }
