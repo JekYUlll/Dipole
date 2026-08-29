@@ -1,0 +1,26 @@
+{
+  "schema_version": "dipole.microservices.smoke-receipt.v1",
+  "compose_project": "dipole-ad048-message-20260830",
+  "source": {
+    "revision": "b7be0369c6073a305aa2e43347cdf9d88498a1e5",
+    "dirty": false
+  },
+  "validation": {
+    "gateway_port": 18089,
+    "inbox_projector": false,
+    "message_flow": true,
+    "coverage": [
+      "registration_and_login",
+      "friendship_application",
+      "websocket_send",
+      "message_outbox_inbox_idempotency",
+      "before_seq_history",
+      "after_seq_incremental_read"
+    ],
+    "result": "passed"
+  },
+  "rollback": {
+    "action": "remove deploy/microservices/inbox-projector.yml and restore DIPOLE_MESSAGE_INBOX_WRITE_MODE=atomic",
+    "destructive_data_migration": false
+  }
+}
