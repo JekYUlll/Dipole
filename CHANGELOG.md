@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 将 Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配迁入 `internal/services/gateway/server/`，Gateway bootstrap 直接使用服务自有 server；共享 Gin handler 保留在 `internal/gateway/http/` 供兼容 Core server 复用。
 - 将 Core HTTP/WS server、静态资源和通知适配器迁入 `internal/services/core/server/`，独立 Core 与 embedded 兼容入口统一使用 Core-owned server；旧 `internal/server/` 路径退役，HTTP、WS 和回滚语义保持兼容。
 - 服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，embedded runtime 必须位于 `internal/bootstrap/embedded/runtime/`，独立服务 runtime 必须位于对应服务 bootstrap。
 - 将 embedded 聚合 runtime 的 Message persistence ownership 策略迁入 `internal/bootstrap/embedded/`，runtime 通过 embedded-owned API 判断 local/gRPC/remote 组合；独立服务的 ownership 与回滚语义保持不变。

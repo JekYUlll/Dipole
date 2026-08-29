@@ -18,7 +18,7 @@ func TestTransportPackagesDoNotImportDataImplementations(t *testing.T) {
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
 
-	for _, relativeDirectory := range []string{"internal/services/core/server", "internal/gateway", "internal/transport"} {
+	for _, relativeDirectory := range []string{"internal/services/core/server", "internal/services/gateway/server", "internal/gateway/http", "internal/transport"} {
 		directory := filepath.Join(repositoryRoot, relativeDirectory)
 		err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
