@@ -11,6 +11,7 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 )
@@ -18,6 +19,14 @@ import (
 func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transactionalStore, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,5 +153,17 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	loaded, err = store.GetWorkflowRepairExecution(context.Background(), execution.ExecutionUUID)
 	if err != nil || loaded == nil || loaded.Status != application.AgentWorkflowRepairExecutionStatusFailed {
 		t.Fatalf("load failed repair execution: execution=%+v err=%v", loaded, err)
+	}
+	secondExecutionUUID := "repair-execution:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	secondPlanID := "repair-plan:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	if _, err := db.Exec(`INSERT INTO agent_workflow_repair_executions (execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version, target_sha256) VALUES (?, ?, ?, ?, ?, ?, ?)`, secondExecutionUUID, secondPlanID, execution.ProposalUUID, execution.TaskUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, execution.TargetSHA256); err != nil {
+		t.Fatalf("seed transactional repair execution: %v", err)
+	}
+	if claimed, err := store.ClaimWorkflowRepairExecution(context.Background(), secondExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, startedAt.Add(4*time.Second)); err != nil || !claimed {
+		t.Fatalf("claim transactional repair execution: claimed=%v err=%v", claimed, err)
+	}
+	transactionalTarget := application.AgentTaskWorkflowProjectionV1{TaskUUID: task.TaskUUID, WorkflowID: "dipole-agent-task/" + task.TaskUUID, RunID: "WR-REPAIR", Status: application.AgentTaskWorkflowStatusFailed, Revision: 3}
+	if committed, err := transactionalStore.CommitWorkflowRepairProjection(context.Background(), secondExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, &projection, transactionalTarget, startedAt.Add(5*time.Second)); err != nil || !committed {
+		t.Fatalf("commit transactional repair projection: committed=%v err=%v", committed, err)
 	}
 }
