@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/gateway"
+	"github.com/JekYUlll/Dipole/internal/services/gateway/server"
 )
 
 type Runtime = GatewayRuntime
