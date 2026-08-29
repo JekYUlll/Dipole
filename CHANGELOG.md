@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 服务布局门禁现在同时检查已跟踪和未忽略的未跟踪兼容目录文件；负向测试确认未登记文件会 fail closed，避免本地新文件绕过 `internal/app`、`internal/store` 和 `internal/data/mysql` 的物理边界约束。
 - 收紧微服务仓库物理边界门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 现在仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；未知文件会 fail closed，避免服务抽取后重新形成共享实现区。现有兼容入口和回滚行为保持不变。
 - 微服务隔离部署 smoke 通过：在独立 Compose project 和候选服务镜像上验证 Core、Message、Sync、Gateway、Agent 及基础设施的冷启动、readiness、metrics、TLS 1.3 mTLS、Core 代理和 remote WS ownership，并自动清理临时拓扑；共享环境发布切换与回滚 receipt 仍按架构债务台账跟踪。
 - Agent Runtime 新增容器交付门禁 `scripts/check-agent-runtime-container.sh`：镜像绑定 OCI revision/created/dirty provenance，自动验证非 root `node` 用户与 foundation `/readyz`，为独立制品和回滚路径提供可重复检查。
