@@ -3,8 +3,8 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
 
 type CreateGroupRequest struct {
@@ -14,8 +14,8 @@ type CreateGroupRequest struct {
 	MemberUUIDs []string `json:"member_uuids"`
 }
 
-func (r CreateGroupRequest) ToInput() service.CreateGroupInput {
-	return service.CreateGroupInput{
+func (r CreateGroupRequest) ToInput() coregroup.CreateGroupInput {
+	return coregroup.CreateGroupInput{
 		Name:        r.Name,
 		Notice:      r.Notice,
 		Avatar:      r.Avatar,
@@ -33,8 +33,8 @@ type UpdateGroupRequest struct {
 	Avatar string `json:"avatar" binding:"omitempty,max=255"`
 }
 
-func (r UpdateGroupRequest) ToInput() service.UpdateGroupInput {
-	return service.UpdateGroupInput{
+func (r UpdateGroupRequest) ToInput() coregroup.UpdateGroupInput {
+	return coregroup.UpdateGroupInput{
 		Name:   r.Name,
 		Notice: r.Notice,
 		Avatar: r.Avatar,
@@ -66,7 +66,7 @@ type GroupResponse struct {
 	CreatedAt          time.Time              `json:"created_at"`
 }
 
-func ToGroupResponse(view *service.GroupView) *GroupResponse {
+func ToGroupResponse(view *coregroup.GroupView) *GroupResponse {
 	if view == nil || view.Group == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func ToGroupResponse(view *service.GroupView) *GroupResponse {
 	return response
 }
 
-func ToGroupMemberResponses(items []*service.GroupMemberView) []*GroupMemberResponse {
+func ToGroupMemberResponses(items []*coregroup.GroupMemberView) []*GroupMemberResponse {
 	response := make([]*GroupMemberResponse, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.Member == nil {
