@@ -6,6 +6,7 @@ rule_files:
   - /etc/prometheus/kafka-alerts.yml
   - /etc/prometheus/cassandra-read-alerts.yml
   - /etc/prometheus/sync-projector-alerts.yml
+  - /etc/prometheus/multipart-alerts.yml
   - /etc/prometheus/web-sync-alerts.yml
   - /etc/prometheus/duplicate-hydration-alerts.yml
   - /etc/prometheus/agent-timeline-repair-alerts.yml
