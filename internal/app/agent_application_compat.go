@@ -25,6 +25,8 @@ type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAge
 type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
 type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
 type LocalAgentCapabilityV1 = agentapplication.LocalAgentCapabilityV1
+type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
+type PersistentAgentWorkflowRepairExecutorV1 = agentapplication.PersistentAgentWorkflowRepairExecutorV1
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
 	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
@@ -120,4 +122,20 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentap
 
 func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
 	return agentapplication.AgentCommandCapabilityIDV1(kind)
+}
+
+func NewPersistentAgentWorkflowRepairPrepareServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {
+	return agentapplication.NewPersistentAgentWorkflowRepairPrepareServiceV1(policies, repairs, executions)
+}
+
+func NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {
+	return agentapplication.NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies, repairs, executions, now)
+}
+
+func NewPersistentAgentWorkflowRepairExecutorV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1, transaction application.AgentWorkflowRepairTransactionalStoreV1) (*PersistentAgentWorkflowRepairExecutorV1, error) {
+	return agentapplication.NewPersistentAgentWorkflowRepairExecutorV1(policies, repairs, executions, transaction)
+}
+
+func NewPersistentAgentWorkflowRepairExecutorV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1, transaction application.AgentWorkflowRepairTransactionalStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairExecutorV1, error) {
+	return agentapplication.NewPersistentAgentWorkflowRepairExecutorV1WithClock(policies, repairs, executions, transaction, now)
 }

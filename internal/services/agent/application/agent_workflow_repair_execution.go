@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -23,10 +23,11 @@ func NewPersistentAgentWorkflowRepairPrepareServiceV1(
 	repairs application.AgentWorkflowRepairAuditStoreV1,
 	executions application.AgentWorkflowRepairExecutionStoreV1,
 ) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {
-	return newPersistentAgentWorkflowRepairPrepareServiceV1(policies, repairs, executions, time.Now)
+	return NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies, repairs, executions, time.Now)
 }
 
-func newPersistentAgentWorkflowRepairPrepareServiceV1(
+// NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock keeps repair tests deterministic.
+func NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(
 	policies application.AgentPolicyStoreV1,
 	repairs application.AgentWorkflowRepairAuditStoreV1,
 	executions application.AgentWorkflowRepairExecutionStoreV1,

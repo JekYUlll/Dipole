@@ -97,6 +97,7 @@
 - **本轮进展：** 2026-08-29 将 Agent Artifact 和 Memory Owner application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，Artifact policy 依赖改为显式接口，结构门禁覆盖十三类已迁移实现。Agent capability/command、execution policy、Subscription、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
 - **本轮进展：** 2026-08-29 将 Agent Event Subscription application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，结构门禁覆盖十四类已迁移实现。Agent capability/command、execution policy、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
 - **本轮进展：** 2026-08-29 将 Agent Capability 与 Command application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，消息与会话依赖显式化，结构门禁覆盖十六类已迁移实现。Execution Policy、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
+- **本轮进展：** 2026-08-29 将 Workflow Repair Prepare 和 Executor application 实现迁入 Agent 服务边界；兼容入口保留，结构门禁覆盖十八类已迁移实现。Execution Policy、Agent Runtime 独立 Composition Root 及聚合 Composition Root仍待继续收敛。
 
 ### AD-049：Core 与 Message 远程初始化存在双向依赖
 

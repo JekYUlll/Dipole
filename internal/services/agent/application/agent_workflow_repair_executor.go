@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -33,13 +33,11 @@ func NewPersistentAgentWorkflowRepairExecutorV1(
 	executions application.AgentWorkflowRepairExecutionStoreV1,
 	transaction application.AgentWorkflowRepairTransactionalStoreV1,
 ) (*PersistentAgentWorkflowRepairExecutorV1, error) {
-	if policies == nil || repairs == nil || executions == nil || transaction == nil {
-		return nil, fmt.Errorf("Agent repair executor requires policy, execution, and transactional stores")
-	}
-	return &PersistentAgentWorkflowRepairExecutorV1{policies: policies, repairs: repairs, executions: executions, transaction: transaction, now: time.Now}, nil
+	return NewPersistentAgentWorkflowRepairExecutorV1WithClock(policies, repairs, executions, transaction, time.Now)
 }
 
-func newPersistentAgentWorkflowRepairExecutorV1(
+// NewPersistentAgentWorkflowRepairExecutorV1WithClock keeps repair tests deterministic.
+func NewPersistentAgentWorkflowRepairExecutorV1WithClock(
 	policies application.AgentPolicyStoreV1,
 	repairs application.AgentWorkflowRepairAuditStoreV1,
 	executions application.AgentWorkflowRepairExecutionStoreV1,
