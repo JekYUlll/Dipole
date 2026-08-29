@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Active Run Promotion Authorizer 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中无调用的类型与构造转发。
 - Agent Capability 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
 - Agent Command 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
 - Agent Event Subscription 控制面测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
