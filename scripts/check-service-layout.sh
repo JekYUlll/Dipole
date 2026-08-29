@@ -639,6 +639,18 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/sync/main.go"; then
   echo "Sync entrypoint must not depend directly on shared bootstrap" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/gateway/bootstrap/README.md" ]]; then
+  echo "Gateway bootstrap boundary is missing" >&2
+  exit 1
+fi
+if ! rg --quiet 'internal/services/gateway/bootstrap' "${root_dir}/cmd/services/gateway/main.go"; then
+  echo "Gateway entrypoint must use its service-owned bootstrap boundary" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/gateway/main.go"; then
+  echo "Gateway entrypoint must not depend directly on shared bootstrap" >&2
+  exit 1
+fi
 
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then
