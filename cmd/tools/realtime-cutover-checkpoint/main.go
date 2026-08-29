@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func main() {
@@ -50,10 +50,10 @@ func main() {
 	if !kafkaConfig.Enabled {
 		fatal(fmt.Errorf("Kafka must be enabled for delivery checkpoint capture"))
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		fatal(fmt.Errorf("initialize Redis: %w", err))
 	}
-	defer func() { _ = store.RDB.Close() }()
+	defer func() { _ = cache.RDB.Close() }()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -61,7 +61,7 @@ func main() {
 	defer cancel()
 	realtimeConfig := config.RealtimeConfig()
 	aggregator, err := realtimeDelivery.NewRedisFenceObservationAggregator(
-		store.RDB, realtimeConfig.FencingKey+":observation:", time.Now,
+		cache.RDB, realtimeConfig.FencingKey+":observation:", time.Now,
 	)
 	if err != nil {
 		fatal(err)

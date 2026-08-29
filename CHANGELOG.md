@@ -19,6 +19,7 @@
 ## [Unreleased]
 
 - 将 MySQL 全局连接初始化从 `internal/store` 收敛到 `internal/platform/mysql`，生产启动入口、Bloom 初始化和 Agent 维护工具统一使用新平台边界；旧 MySQL 入口保留为兼容转发，Redis 迁移保持独立节奏。
+- 将 Redis 客户端初始化和全局状态从 `internal/store` 收敛到 `internal/platform/cache`，同步迁移 Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具；旧 Redis 入口保留为兼容转发，单节点/Sentinel 配置和实时状态语义保持兼容。
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 - 将 Sync Kafka Projector 从 `internal/projector/sync` 收敛到 `internal/services/sync/infrastructure/kafka`，直接复用 Message domain 事件解码与 Inbox projection contract；新增目录说明和结构门禁，运行时注册、Kafka topic 和 atomic/projector 回滚语义保持兼容。
 - 将 Search Indexer Kafka Projector 从 `internal/projector/search` 收敛到 `internal/services/search/infrastructure/kafka`，直接复用 Message domain 事件解码与 Search mutation contract；新增目录说明和结构门禁，Kafka retry/DLQ 与 Alias 回滚语义保持兼容。

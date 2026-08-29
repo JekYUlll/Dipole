@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestRedisPresenceRegisterTouchAndUnregister(t *testing.T) {
@@ -116,11 +116,11 @@ func setupPresenceTest(t *testing.T) func() {
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	oldRDB := store.RDB
-	store.RDB = rdb
+	oldRDB := cache.RDB
+	cache.RDB = rdb
 
 	return func() {
-		store.RDB = oldRDB
+		cache.RDB = oldRDB
 		_ = rdb.Close()
 		mr.Close()
 	}

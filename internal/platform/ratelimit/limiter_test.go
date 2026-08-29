@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestLimiterAllowLoginBlocksAfterLimit(t *testing.T) {
@@ -89,9 +89,9 @@ func TestLimiterAllowAgentMCPUsesPrincipalScopedFailClosedCounter(t *testing.T) 
 }
 
 func TestLimiterAllowAgentMCPFailsClosedWithoutRedisAndPreservesMessageFailOpen(t *testing.T) {
-	oldRDB := store.RDB
-	store.RDB = nil
-	t.Cleanup(func() { store.RDB = oldRDB })
+	oldRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = oldRDB })
 	limiter := &Limiter{config: config.RateLimit{
 		Enabled: true, MessageLimit: 1, MessageWindowSeconds: 60,
 		AgentMCPLimit: 2, AgentMCPWindowSeconds: 60,
@@ -113,11 +113,11 @@ func setupLimiterTest(t *testing.T) func() {
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	oldRDB := store.RDB
-	store.RDB = rdb
+	oldRDB := cache.RDB
+	cache.RDB = rdb
 
 	return func() {
-		store.RDB = oldRDB
+		cache.RDB = oldRDB
 		_ = rdb.Close()
 		mr.Close()
 	}

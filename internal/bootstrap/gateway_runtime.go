@@ -12,12 +12,12 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/store"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
@@ -116,10 +116,10 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	if !kafkaCfg.Enabled {
 		return nil, fmt.Errorf("gateway requires kafka.enabled for durable realtime delivery")
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return nil, fmt.Errorf("gateway redis init failed: %w", err)
 	}
-	runtime := &GatewayRuntime{redis: store.RDB}
+	runtime := &GatewayRuntime{redis: cache.RDB}
 	cleanup := func() { runtime.Close() }
 	presence := platformPresence.NewRedisPresence()
 	var deliveryFence realtimeDelivery.AuthorityFence
@@ -130,7 +130,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("realtime delivery fencing requires Redis Presence node identity")
 		}
 		reader, fenceErr := realtimeDelivery.NewRedisAuthorityFence(
-			store.RDB, realtimeCfg.FencingKey, realtimeCfg.FencingEpoch, time.Now,
+			cache.RDB, realtimeCfg.FencingKey, realtimeCfg.FencingEpoch, time.Now,
 		)
 		if fenceErr != nil {
 			cleanup()
@@ -138,7 +138,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		}
 		deliveryFence = reader
 		deliveryObservationFence, fenceErr = realtimeDelivery.NewRedisObservedAuthorityFence(
-			reader, store.RDB, realtimeCfg.FencingKey+":observation:", "gateway", presence.NodeID(),
+			reader, cache.RDB, realtimeCfg.FencingKey+":observation:", "gateway", presence.NodeID(),
 			gatewayFenceObservationTTL, time.Now,
 		)
 		if fenceErr != nil {
@@ -293,8 +293,8 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	}
 
 	var eventSender kafkaWSEventSender = srv.WSHub()
-	if config.PresenceConfig().Enabled && store.RDB != nil {
-		runtime.router = wsTransport.NewPubSubRouter(srv.WSHub(), presence, store.RDB)
+	if config.PresenceConfig().Enabled && cache.RDB != nil {
+		runtime.router = wsTransport.NewPubSubRouter(srv.WSHub(), presence, cache.RDB)
 		if runtime.router != nil {
 			runtime.router.Start()
 			eventSender = runtime.router
@@ -408,8 +408,8 @@ func (r *GatewayRuntime) Close() {
 	}
 	if r.redis != nil {
 		_ = r.redis.Close()
-		if store.RDB == r.redis {
-			store.RDB = nil
+		if cache.RDB == r.redis {
+			cache.RDB = nil
 		}
 		r.redis = nil
 	}

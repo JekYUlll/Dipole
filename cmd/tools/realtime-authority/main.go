@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func main() {
@@ -36,14 +36,14 @@ func main() {
 	if err := config.Load(); err != nil {
 		fatal(fmt.Errorf("load config: %w", err))
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		fatal(fmt.Errorf("initialize Redis: %w", err))
 	}
-	defer func() { _ = store.RDB.Close() }()
+	defer func() { _ = cache.RDB.Close() }()
 
 	realtimeCfg := config.RealtimeConfig()
 	writer, err := realtimeDelivery.NewRedisAuthorityFenceWriter(
-		store.RDB,
+		cache.RDB,
 		realtimeCfg.FencingKey,
 		realtimeCfg.FencingKey+":receipt:",
 		7*24*time.Hour,

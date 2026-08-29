@@ -7,17 +7,15 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
-
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func TestRequiredStateHelpersUseRedisAndTransaction(t *testing.T) {
 	server := miniredis.RunT(t)
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: server.Addr()})
+	previousRedis := RDB
+	RDB = redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() {
-		_ = store.RDB.Close()
-		store.RDB = previousRedis
+		_ = RDB.Close()
+		RDB = previousRedis
 	})
 
 	ctx := context.Background()
@@ -45,9 +43,9 @@ func TestRequiredStateHelpersUseRedisAndTransaction(t *testing.T) {
 }
 
 func TestRequiredStateHelpersFailWhenRedisIsUnavailable(t *testing.T) {
-	previousRedis := store.RDB
-	store.RDB = nil
-	t.Cleanup(func() { store.RDB = previousRedis })
+	previousRedis := RDB
+	RDB = nil
+	t.Cleanup(func() { RDB = previousRedis })
 
 	ctx := context.Background()
 	if Available() {
