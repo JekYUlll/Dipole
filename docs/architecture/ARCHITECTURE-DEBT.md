@@ -14,6 +14,7 @@
 - 2026-08-30：Agent Active Compose 增加缺失 release manifest/candidate 的负向门禁，部署插值不完整时 fail closed；默认 Shadow、显式 `user_gray` manifest 和回滚路径保持不变。
 - 2026-08-30：修正 Vite 构建输出从退役的横向 `internal/server/webapp/` 回流到 Core-owned `internal/services/core/server/webapp/`，并同步工具链断言；前端构建不会再产生未跟踪的旧目录产物。
 - 2026-08-30：修正 Agent Memory Chromium E2E 的标题查询歧义；Agent Memory 目标场景 `3/3` 和完整 Chromium E2E `28` 项通过，F4 当前仍保留跨浏览器和真实 Pencil 增量编辑待办。
+- 2026-08-30：完成 Chromium、Firefox、WebKit 全浏览器 Playwright 回归，`64` 项通过、`26` 项按平台/条件跳过；F4 的真实 Pencil 增量编辑和未覆盖平台场景仍保持待办。
 - 2026-08-30：C++ Realtime Delivery 标准容器门禁通过，CMake 配置、构建和 14/14 CTest 在 Ubuntu 24.04 容器内成功；本机 host gate 因缺少 `grpc++` 仅记录为环境缺口，不影响默认 Go authority，也不授权 C++ primary 灰度。
 - 2026-08-30：C++ Realtime Delivery CMake 已支持本地源码布局与容器扁平布局的 canonical 根目录探测，并在缺少 delivery proto/fence testdata 时 fail fast；该修复只恢复一致构建路径，C++ primary 仍保持默认关闭。
 - 2026-08-30：Agent Runtime 配置解析新增 `shadow|remote` 严格枚举和非法值 fail-closed 回归测试；该修复防止配置拼写错误被静默降级，不改变默认 Shadow 或 active promotion 门禁。
