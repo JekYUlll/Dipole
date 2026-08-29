@@ -704,7 +704,7 @@ func (r *AgentPolicyRepository) GetWorkflowRepairOperatorGrant(ctx context.Conte
 	if err != nil {
 		return nil, fmt.Errorf("get Workflow repair operator grant: %w", err)
 	}
-	return &application.AgentWorkflowRepairOperatorGrantV1{UserUUID: row.UserUuid, CanPropose: row.CanPropose, CanApprove: row.CanApprove,
+	return &application.AgentWorkflowRepairOperatorGrantV1{UserUUID: row.UserUuid, Version: row.GrantVersion, CanPropose: row.CanPropose, CanApprove: row.CanApprove, CanExecute: row.CanExecute,
 		GrantedByUUID: row.GrantedByUuid, ValidFrom: row.ValidFrom, ExpiresAt: timePointer(row.ExpiresAt), RevokedAt: timePointer(row.RevokedAt)}, nil
 }
 
