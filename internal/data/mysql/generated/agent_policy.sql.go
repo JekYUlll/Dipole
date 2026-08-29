@@ -147,6 +147,36 @@ func (q *Queries) ClaimAgentWorkflowRepairExecution(ctx context.Context, arg Cla
 	return result.RowsAffected()
 }
 
+const clearAgentWorkflowRepairProjection = `-- name: ClearAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = NULL, workflow_run_id = NULL, workflow_status = NULL, workflow_revision = NULL, workflow_updated_at = NULL
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type ClearAgentWorkflowRepairProjectionParams struct {
+	TaskUuid         string
+	WorkflowID       sql.NullString
+	WorkflowRunID    sql.NullString
+	WorkflowStatus   sql.NullString
+	WorkflowRevision sql.NullInt64
+}
+
+func (q *Queries) ClearAgentWorkflowRepairProjection(ctx context.Context, arg ClearAgentWorkflowRepairProjectionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearAgentWorkflowRepairProjection,
+		arg.TaskUuid,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const commitAgentWorkflowRepairExecution = `-- name: CommitAgentWorkflowRepairExecution :execrows
 UPDATE agent_workflow_repair_executions
 SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
@@ -1356,6 +1386,33 @@ func (q *Queries) ListOwnedAgentEventSubscriptions(ctx context.Context, arg List
 	return items, nil
 }
 
+const markAgentWorkflowRepairExecutionRolledBack = `-- name: MarkAgentWorkflowRepairExecutionRolledBack :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'rolled_back', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'committed' AND started_at IS NOT NULL AND finished_at IS NOT NULL
+`
+
+type MarkAgentWorkflowRepairExecutionRolledBackParams struct {
+	FinishedAt           sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) MarkAgentWorkflowRepairExecutionRolledBack(ctx context.Context, arg MarkAgentWorkflowRepairExecutionRolledBackParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markAgentWorkflowRepairExecutionRolledBack,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
 UPDATE agent_tasks
 SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
@@ -1488,6 +1545,44 @@ type RevokeAgentRuntimePromotionGrantParams struct {
 
 func (q *Queries) RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentRuntimePromotionGrant, arg.RevokedAt, arg.GrantUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const rollbackAgentWorkflowRepairProjection = `-- name: RollbackAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type RollbackAgentWorkflowRepairProjectionParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowStatus_2   sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) RollbackAgentWorkflowRepairProjection(ctx context.Context, arg RollbackAgentWorkflowRepairProjectionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, rollbackAgentWorkflowRepairProjection,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowStatus_2,
+		arg.WorkflowRevision_2,
+	)
 	if err != nil {
 		return 0, err
 	}

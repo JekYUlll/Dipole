@@ -23,6 +23,7 @@
 - Workflow Repair operator grant 增加可验证的 `grant_version` 和独立 `can_execute` 权限字段。历史授权默认不获得执行权限，后续 CAS executor 必须同时校验执行能力、版本和有效期。
 - Workflow Repair execution ledger 增加 `prepared -> executing -> failed` 的执行人、授权版本和状态 CAS 边界；当前仅提供持久状态认领与失败终止，projection 写入、commit 和 rollback 仍保持关闭。
 - Workflow Repair 增加事务化 projection commit：在同一 MySQL 事务内完成 projection CAS 与 execution `committed` 更新，任一条件失败都会回滚。
+- Workflow Repair 增加事务化 rollback：支持恢复已提交 projection 或清空 projection，并将 execution 原子标记为 `rolled_back`。
 
 ### 新增
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
