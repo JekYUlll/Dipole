@@ -28,6 +28,7 @@ import (
 	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
 	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	"google.golang.org/grpc"
@@ -363,7 +364,11 @@ func rpcObservationBatch(batchID string) *deliveryv1.NodeDeliveryBatch {
 
 func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgent(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{})
+	agentAdapter, err := agentgrpc.NewServer(rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{})
+	if err != nil {
+		t.Fatalf("create Agent rpc adapter: %v", err)
+	}
+	server, err := newCoreRPCServer(cfg, rpcCoreStub{}, agentAdapter)
 	if err != nil {
 		t.Fatalf("start Agent rpc server: %v", err)
 	}
