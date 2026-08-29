@@ -14,6 +14,7 @@ import (
 
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -24,7 +25,6 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )

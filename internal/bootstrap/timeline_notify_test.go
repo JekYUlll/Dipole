@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
