@@ -13,7 +13,6 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -27,6 +26,7 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
+	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -37,19 +37,41 @@ type Server struct {
 	httpServer *http.Server
 }
 
+// Repositories contains only the stores required by the Core HTTP surface.
+// Embedded composition adapts its aggregate repository set at the boundary.
+type Repositories struct {
+	Users         applicationPort.UserStore
+	Files         applicationPort.FileMetadataStore
+	Conversations applicationPort.ConversationStore
+	Contacts      applicationPort.ContactStore
+	Groups        applicationPort.GroupStore
+	Admin         applicationPort.AdminOverviewStore
+}
+
+// MessagingServices is the minimum local/remote-compatible application set
+// needed by the Core server. The aggregate composition remains outside this
+// package and supplies these ports during embedded fallback.
+type MessagingServices struct {
+	Core          applicationPort.CoreCapability
+	Files         *coreapplication.LocalFileApplication
+	Messages      *messageapplication.LocalApplication
+	Conversations *coreapplication.LocalConversationApplication
+	Sync          applicationPort.SyncApplication
+}
+
 type Dependencies struct {
 	Messages       applicationPort.MessageApplication
 	Sync           applicationPort.SyncApplication
 	SyncComparison applicationPort.ClientSyncComparisonObserver
-	Messaging      *appComposition.MessagingServices
+	Messaging      *MessagingServices
 	SystemMessages applicationPort.SystemMessageSender
 }
 
-func NewWithRepositories(repos *appComposition.Repositories) *Server {
+func NewWithRepositories(repos *Repositories) *Server {
 	return NewWithDependencies(repos, Dependencies{})
 }
 
-func NewWithDependencies(repos *appComposition.Repositories, dependencies Dependencies) *Server {
+func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server {
 	if repos == nil {
 		panic("server repositories are required")
 	}
@@ -89,13 +111,11 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	}
 	messaging := dependencies.Messaging
 	if messaging == nil {
-		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
-			Events:    kafkaEvents,
-			HotGroups: hotGroupDetector,
-			Storage:   platformStorage.Client,
-		})
+		messaging = &MessagingServices{}
 	}
-	messaging.Conversations.WithNotifier(newConversationNotifier(wsHub))
+	if messaging.Conversations != nil {
+		messaging.Conversations.WithNotifier(newConversationNotifier(wsHub))
+	}
 	messageApplication := applicationPort.MessageApplication(messaging.Messages)
 	if dependencies.Messages != nil {
 		messageApplication = dependencies.Messages

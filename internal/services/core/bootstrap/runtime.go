@@ -7,7 +7,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
@@ -80,8 +79,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if config.KafkaConfig().Enabled {
 		events = platformKafka.Client
 	}
-	processRepos := &appComposition.Repositories{
-		CoreProcess:   coreRepos,
+	processRepos := &server.Repositories{
 		Users:         coreRepos.Users,
 		Files:         coreRepos.Files,
 		Conversations: coreRepos.Conversations,
@@ -89,15 +87,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		Groups:        coreRepos.Groups,
 		Admin:         coreRepos.Admin,
 	}
-	messaging := appComposition.NewMessagingServicesFromProcesses(
+	messaging := newCoreMessagingServices(
 		coreRepos,
-		&appComposition.MessageProcessRepositories{},
-		&appComposition.SyncProcessRepositories{},
-		appComposition.MessagingDependencies{
-			Events:    events,
-			HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
-			Storage:   platformStorage.Client,
-		},
+		events,
+		platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
+		platformStorage.Client,
 	)
 
 	runtime := &CoreRuntime{}
