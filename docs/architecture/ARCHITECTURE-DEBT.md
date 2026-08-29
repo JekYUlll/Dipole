@@ -37,6 +37,7 @@
 - **本轮进展：** 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 已通过，补齐真实 MySQL atomic/projector ownership、三节点 Kafka backlog/实时事件、retry/DLQ 和 projector 收敛证据；候选镜像经 Gateway 的端到端消息发送及生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 完成候选镜像端到端消息 smoke：注册/登录、好友关系、WebSocket 发送，以及 Message/Outbox/目标用户 Inbox 持久化均通过；重复请求、Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 扩展候选消息 smoke，按 `before_seq=0` 和 `after_seq=0` 通过 Gateway 读取同一消息，并校验返回持久化 `message_seq`；历史读取证据已覆盖，Kafka authority 和生产回滚仍待完成。
+- **本轮进展：** 2026-08-29 在已提交 revision `fe84b7b` 上重建七个候选镜像，逐项核对同一 revision、`io.dipole.source.dirty=false` 和服务二进制标签；独立消息流程再次通过，候选供应链与 Timeline 读取证据已闭合，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
 
