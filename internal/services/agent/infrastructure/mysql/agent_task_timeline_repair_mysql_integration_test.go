@@ -8,9 +8,9 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile"
+	mysqldata "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 

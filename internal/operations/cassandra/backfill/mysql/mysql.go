@@ -9,6 +9,7 @@ import (
 	"time"
 
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/mapper"
 )
@@ -22,7 +23,7 @@ var (
 
 type CassandraBackfillSource struct{ queries *generated.Queries }
 
-func NewCassandraBackfillSource(store *Store) (*CassandraBackfillSource, error) {
+func NewCassandraBackfillSource(store *platformmysql.Store) (*CassandraBackfillSource, error) {
 	if store == nil {
 		return nil, errors.New("Cassandra backfill MySQL store is required")
 	}
@@ -58,10 +59,10 @@ func (s *CassandraBackfillSource) ListAfter(ctx context.Context, afterID, throug
 }
 
 type CassandraBackfillCheckpointStore struct {
-	store *Store
+	store *platformmysql.Store
 }
 
-func NewCassandraBackfillCheckpointStore(store *Store) (*CassandraBackfillCheckpointStore, error) {
+func NewCassandraBackfillCheckpointStore(store *platformmysql.Store) (*CassandraBackfillCheckpointStore, error) {
 	if store == nil {
 		return nil, errors.New("Cassandra backfill checkpoint MySQL store is required")
 	}

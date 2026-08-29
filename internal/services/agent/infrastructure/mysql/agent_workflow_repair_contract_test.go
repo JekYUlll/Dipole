@@ -9,9 +9,9 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )

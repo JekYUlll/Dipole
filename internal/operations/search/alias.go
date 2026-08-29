@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
 	searchcutover "github.com/JekYUlll/Dipole/internal/operations/search/cutover"
 	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
 	"github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 )
 
 type SearchAliasOptions struct {
@@ -36,7 +37,7 @@ func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (s
 		return searchcutover.Receipt{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
@@ -44,7 +45,7 @@ func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (s
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
-	checkpoints, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.ToIndex)
+	checkpoints, err := searchmysql.NewSearchBackfillCheckpointStore(store, options.ToIndex)
 	if err != nil {
 		return searchcutover.Receipt{}, err
 	}
@@ -73,7 +74,7 @@ func RunSearchAliasOperation(ctx context.Context, options SearchAliasOptions) (s
 }
 
 type sourceBoundSearchSnapshot struct {
-	checkpoints *mysqldata.SearchBackfillCheckpointStore
+	checkpoints *searchmysql.SearchBackfillCheckpointStore
 	source      searchbackfill.Source
 }
 

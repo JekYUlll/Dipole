@@ -8,12 +8,13 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 	syncreconcile "github.com/JekYUlll/Dipole/internal/operations/sync/reconcile"
+	syncreplaymysql "github.com/JekYUlll/Dipole/internal/operations/sync/replay/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	mysqlconfig "github.com/JekYUlll/Dipole/internal/platform/mysql/config"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -36,11 +37,11 @@ func RunSyncReplay(ctx context.Context, options SyncReplayOptions) (syncbackfill
 		return syncbackfill.Result{}, err
 	}
 	defer db.Close()
-	source, err := mysqldata.NewSyncReplaySource(store)
+	source, err := syncreplaymysql.NewSyncReplaySource(store)
 	if err != nil {
 		return syncbackfill.Result{}, err
 	}
-	checkpoints, err := mysqldata.NewSyncReplayCheckpointStore(store)
+	checkpoints, err := syncreplaymysql.NewSyncReplayCheckpointStore(store)
 	if err != nil {
 		return syncbackfill.Result{}, err
 	}
@@ -64,15 +65,15 @@ func RunSyncReconciliation(ctx context.Context, options SyncReconciliationOption
 		return syncreconcile.Report{}, err
 	}
 	defer db.Close()
-	source, err := mysqldata.NewSyncReplaySource(store)
+	source, err := syncreplaymysql.NewSyncReplaySource(store)
 	if err != nil {
 		return syncreconcile.Report{}, err
 	}
-	checkpoints, err := mysqldata.NewSyncReplayCheckpointStore(store)
+	checkpoints, err := syncreplaymysql.NewSyncReplayCheckpointStore(store)
 	if err != nil {
 		return syncreconcile.Report{}, err
 	}
-	target, err := mysqldata.NewSyncInboxReconcileTarget(store)
+	target, err := syncreplaymysql.NewSyncInboxReconcileTarget(store)
 	if err != nil {
 		return syncreconcile.Report{}, err
 	}
@@ -85,7 +86,7 @@ func RunSyncReconciliation(ctx context.Context, options SyncReconciliationOption
 	return reconciler.Run(ctx)
 }
 
-func openSyncRecoveryStore(ctx context.Context, operation string) (*sql.DB, *mysqldata.Store, error) {
+func openSyncRecoveryStore(ctx context.Context, operation string) (*sql.DB, *platformmysql.Store, error) {
 	db, err := sql.Open("mysql", mysqlconfig.DSN(config.SyncMySQLConfig(), false))
 	if err != nil {
 		return nil, nil, fmt.Errorf("open Sync %s MySQL: %w", operation, err)
@@ -103,7 +104,7 @@ func openSyncRecoveryStore(ctx context.Context, operation string) (*sql.DB, *mys
 		db.Close()
 		return nil, nil, fmt.Errorf("validate Sync %s MySQL schema: %w", operation, err)
 	}
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		db.Close()
 		return nil, nil, err

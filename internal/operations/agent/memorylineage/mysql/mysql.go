@@ -10,6 +10,7 @@ import (
 	"time"
 
 	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
@@ -38,7 +39,7 @@ func decodeMemoryLineageManifest(data []byte) (memoryLineageManifest, error) {
 
 type MemoryLineageBackfillSource struct{ queries *generated.Queries }
 
-func NewMemoryLineageBackfillSource(store *Store) (*MemoryLineageBackfillSource, error) {
+func NewMemoryLineageBackfillSource(store *platformmysql.Store) (*MemoryLineageBackfillSource, error) {
 	if store == nil {
 		return nil, errors.New("Memory lineage backfill MySQL store is required")
 	}
@@ -96,7 +97,7 @@ func (s *MemoryLineageBackfillSource) ListAfter(ctx context.Context, afterID, th
 
 type MemoryLineageBackfillTarget struct{ queries *generated.Queries }
 
-func NewMemoryLineageBackfillTarget(store *Store) (*MemoryLineageBackfillTarget, error) {
+func NewMemoryLineageBackfillTarget(store *platformmysql.Store) (*MemoryLineageBackfillTarget, error) {
 	if store == nil {
 		return nil, errors.New("Memory lineage backfill target MySQL store is required")
 	}
@@ -117,9 +118,9 @@ func (t *MemoryLineageBackfillTarget) Apply(ctx context.Context, reference memor
 	return rows == 1, rows == 0, nil
 }
 
-type MemoryLineageBackfillCheckpointStore struct{ store *Store }
+type MemoryLineageBackfillCheckpointStore struct{ store *platformmysql.Store }
 
-func NewMemoryLineageBackfillCheckpointStore(store *Store) (*MemoryLineageBackfillCheckpointStore, error) {
+func NewMemoryLineageBackfillCheckpointStore(store *platformmysql.Store) (*MemoryLineageBackfillCheckpointStore, error) {
 	if store == nil {
 		return nil, errors.New("Memory lineage backfill checkpoint MySQL store is required")
 	}

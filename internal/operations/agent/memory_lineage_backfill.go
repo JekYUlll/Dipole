@@ -8,10 +8,11 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
+	memorylineagemysql "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	mysqlconfig "github.com/JekYUlll/Dipole/internal/platform/mysql/config"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -28,11 +29,11 @@ func ReadMemoryLineageBackfillHighWatermark(ctx context.Context) (uint64, error)
 		return 0, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return 0, err
 	}
-	source, err := mysqldata.NewMemoryLineageBackfillSource(store)
+	source, err := memorylineagemysql.NewMemoryLineageBackfillSource(store)
 	if err != nil {
 		return 0, err
 	}
@@ -45,19 +46,19 @@ func RunMemoryLineageBackfill(ctx context.Context, options MemoryLineageBackfill
 		return memorylineage.Result{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return memorylineage.Result{}, err
 	}
-	source, err := mysqldata.NewMemoryLineageBackfillSource(store)
+	source, err := memorylineagemysql.NewMemoryLineageBackfillSource(store)
 	if err != nil {
 		return memorylineage.Result{}, err
 	}
-	checkpoints, err := mysqldata.NewMemoryLineageBackfillCheckpointStore(store)
+	checkpoints, err := memorylineagemysql.NewMemoryLineageBackfillCheckpointStore(store)
 	if err != nil {
 		return memorylineage.Result{}, err
 	}
-	target, err := mysqldata.NewMemoryLineageBackfillTarget(store)
+	target, err := memorylineagemysql.NewMemoryLineageBackfillTarget(store)
 	if err != nil {
 		return memorylineage.Result{}, err
 	}

@@ -5,12 +5,14 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cleanupmysql "github.com/JekYUlll/Dipole/internal/operations/search/cleanup/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
 )
 
 func TestSearchOutboxCleanupStoreContract(t *testing.T) {
-	db := openTemporaryDatabase(t)
+	db := mysqltestutil.OpenTemporaryDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatal(err)
@@ -28,11 +30,11 @@ func TestSearchOutboxCleanupStoreContract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cleanup, err := mysqldata.NewSearchOutboxCleanupStore(store)
+	cleanup, err := cleanupmysql.NewSearchOutboxCleanupStore(store)
 	if err != nil {
 		t.Fatal(err)
 	}

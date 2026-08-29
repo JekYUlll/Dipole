@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 
@@ -69,11 +70,11 @@ func RunSearchArchive(ctx context.Context, options SearchArchiveOptions) (search
 		return searchbackfill.ArchiveManifest{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return searchbackfill.ArchiveManifest{}, err
 	}
-	source, err := mysqldata.NewSearchBackfillSource(store)
+	source, err := searchmysql.NewSearchBackfillSource(store)
 	if err != nil {
 		return searchbackfill.ArchiveManifest{}, err
 	}

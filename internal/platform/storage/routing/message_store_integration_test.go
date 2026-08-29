@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	mysqlRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	_ "github.com/go-sql-driver/mysql"
 )
 

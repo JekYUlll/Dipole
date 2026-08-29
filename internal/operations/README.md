@@ -16,4 +16,7 @@
 `cutover/`、`evidence/` 和 `reconcile/`。这样可以从服务边界直接定位运维代码，
 也避免把一次性操作误认为长期运行时依赖。
 
+需要 MySQL 的操作 adapter 放在对应操作的 `mysql/` 子目录；共享连接、迁移 runner
+和 DSN 组装统一位于 `internal/platform/mysql/`，避免再次形成通用数据目录。
+
 操作包必须保持幂等、可审计，并为高风险写操作提供预览、确认和回滚路径。

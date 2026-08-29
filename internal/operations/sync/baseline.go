@@ -3,8 +3,8 @@ package syncops
 import (
 	"context"
 
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
+	syncbaselinemysql "github.com/JekYUlll/Dipole/internal/operations/sync/baseline/mysql"
 )
 
 func RunSyncBaselineCapture(ctx context.Context, jobName string) (syncbaseline.Manifest, error) {
@@ -13,7 +13,7 @@ func RunSyncBaselineCapture(ctx context.Context, jobName string) (syncbaseline.M
 		return syncbaseline.Manifest{}, err
 	}
 	defer db.Close()
-	baseline, err := mysqldata.NewSyncBaselineStore(store)
+	baseline, err := syncbaselinemysql.NewSyncBaselineStore(store)
 	if err != nil {
 		return syncbaseline.Manifest{}, err
 	}
@@ -26,7 +26,7 @@ func RunSyncBaselineReconciliation(ctx context.Context, jobName string, maxExamp
 		return syncbaseline.Report{}, err
 	}
 	defer db.Close()
-	baseline, err := mysqldata.NewSyncBaselineStore(store)
+	baseline, err := syncbaselinemysql.NewSyncBaselineStore(store)
 	if err != nil {
 		return syncbaseline.Report{}, err
 	}
@@ -39,7 +39,7 @@ func RunSyncBaselineRestore(ctx context.Context, jobName string, maxExamples int
 		return syncbaseline.Report{}, err
 	}
 	defer db.Close()
-	baseline, err := mysqldata.NewSyncBaselineStore(store)
+	baseline, err := syncbaselinemysql.NewSyncBaselineStore(store)
 	if err != nil {
 		return syncbaseline.Report{}, err
 	}

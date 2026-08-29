@@ -12,11 +12,11 @@ import (
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	mysqldata "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	_ "github.com/go-sql-driver/mysql"
 )

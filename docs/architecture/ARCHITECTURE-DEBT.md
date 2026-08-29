@@ -796,3 +796,13 @@
 - **现状：** 回填、基线、清理、切换、证据和对账代码已按 Agent、Cassandra、Search、Sync 服务域迁入 `internal/operations/<service>/`，长期运行时仍位于 `internal/bootstrap/`，命令入口仍位于 `cmd/tools/`。
 - **解决方式：** 删除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向目录；通过 `check-service-layout.sh` 阻止旧目录回流，并在操作目录 README 中固定分层约定。
 - **验证：** 旧目录和旧包引用扫描为空，结构门禁与 Go 全量测试通过后合并。
+
+### AD-051：MySQL 运维 adapter 与平台基础设施边界混杂
+
+- **优先级：** P2
+- **状态：** 已完成
+- **发现日期：** 2026-08-29
+- **影响范围：** `internal/data/mysql`、migration runner、DSN 配置、运维 contract test
+- **现状：** MySQL 事务 Store 已位于 `internal/platform/mysql`；迁移 runner、DSN 组装和运维 adapter 曾继续分散在旧数据目录。
+- **解决方式：** migration runner 和 DSN 配置迁入 MySQL 平台目录，Agent/Cassandra/Search/Sync adapter 按操作域迁入 `internal/operations/<service>/<operation>/mysql/`，`internal/data/mysql` 保留兼容别名与构造转发。
+- **验证：** 操作域、MySQL 平台和工具包定向测试通过；结构门禁阻止旧 adapter、migration 和 DSN 目录回流。

@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
+	memorylineagemysql "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
 )
 
 func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {
-	db := openTemporaryDatabase(t)
+	db := mysqltestutil.OpenTemporaryDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -28,19 +30,19 @@ func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {
 	insertTaskAndPlan(t, db, "TASK-LINEAGE-1", "T1", "U1", "MEM-LINEAGE-1", "E1")
 	insertTaskAndPlan(t, db, "TASK-LINEAGE-2", "T1", "U1", "MEM-LINEAGE-2", "E2")
 
-	store, err := mysqlStore.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	source, err := mysqlStore.NewMemoryLineageBackfillSource(store)
+	source, err := memorylineagemysql.NewMemoryLineageBackfillSource(store)
 	if err != nil {
 		t.Fatalf("create source: %v", err)
 	}
-	target, err := mysqlStore.NewMemoryLineageBackfillTarget(store)
+	target, err := memorylineagemysql.NewMemoryLineageBackfillTarget(store)
 	if err != nil {
 		t.Fatalf("create target: %v", err)
 	}
-	checkpoints, err := mysqlStore.NewMemoryLineageBackfillCheckpointStore(store)
+	checkpoints, err := memorylineagemysql.NewMemoryLineageBackfillCheckpointStore(store)
 	if err != nil {
 		t.Fatalf("create checkpoints: %v", err)
 	}
@@ -105,7 +107,7 @@ func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {
 		t.Fatalf("recovered lineage count=%d", lineageCount)
 	}
 
-	if _, err := checkpoints.Acquire(ctx, "memory-lineage-contract", "owner-b", highWatermark-1, time.Minute); !errors.Is(err, mysqlStore.ErrMemoryLineageBackfillSourceMismatch) {
+	if _, err := checkpoints.Acquire(ctx, "memory-lineage-contract", "owner-b", highWatermark-1, time.Minute); !errors.Is(err, memorylineagemysql.ErrMemoryLineageBackfillSourceMismatch) {
 		t.Fatalf("expected fixed high-water mismatch, got %v", err)
 	}
 	if err := runner.Down(ctx, 1); err != nil {

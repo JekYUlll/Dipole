@@ -11,6 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
@@ -24,7 +25,7 @@ var (
 
 type SearchBackfillSource struct{ queries *generated.Queries }
 
-func NewSearchBackfillSource(store *Store) (*SearchBackfillSource, error) {
+func NewSearchBackfillSource(store *platformmysql.Store) (*SearchBackfillSource, error) {
 	if store == nil {
 		return nil, errors.New("Search backfill MySQL store is required")
 	}
@@ -79,11 +80,11 @@ func (s *SearchBackfillSource) ListAfter(ctx context.Context, afterID, throughID
 }
 
 type SearchBackfillCheckpointStore struct {
-	store       *Store
+	store       *platformmysql.Store
 	targetIndex string
 }
 
-func NewSearchBackfillCheckpointStore(store *Store, targetIndex string) (*SearchBackfillCheckpointStore, error) {
+func NewSearchBackfillCheckpointStore(store *platformmysql.Store, targetIndex string) (*SearchBackfillCheckpointStore, error) {
 	if store == nil {
 		return nil, errors.New("Search backfill checkpoint MySQL store is required")
 	}
