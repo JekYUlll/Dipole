@@ -7,13 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type sessionService interface {
-	ListUserDevices(userUUID string) ([]*service.DeviceSessionView, error)
+	ListUserDevices(userUUID string) ([]*coresession.DeviceSessionView, error)
 	ForceLogoutConnection(userUUID, connectionID string) error
 	ForceLogoutAll(userUUID, currentToken string) error
 }
@@ -72,9 +72,9 @@ func (h *SessionHandler) ForceLogoutDevice(c *gin.Context) {
 
 	if err := h.service.ForceLogoutConnection(currentUser.UUID, c.Param("connection_id")); err != nil {
 		switch {
-		case errors.Is(err, service.ErrSessionConnectionRequired):
+		case errors.Is(err, coresession.ErrSessionConnectionRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.SessionConnectionRequired, "connection_id is required")
-		case errors.Is(err, service.ErrSessionNotFound):
+		case errors.Is(err, coresession.ErrSessionNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.SessionNotFound, "session not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
