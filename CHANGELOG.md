@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message MySQL least-privilege database permission probe 已迁入 `internal/services/message/infrastructure/mysql`；独立 Message runtime 直接校验服务自有边界，embedded 入口保留兼容转发，权限探针单元测试与真实账号集成测试随服务 infrastructure 归属。
 - Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接注册服务 handler，embedded 保留兼容注册包装。
 - Message Outbox relay 已下沉至 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接使用服务实现，embedded 回滚路径保留薄兼容包装。
 - Message shadow runtime 的 Query-only adapter 及契约测试已迁入 `internal/services/message/bootstrap/`，删除共享 bootstrap 中对应兼容 alias/构造转发；shadow 写拒绝和查询透传语义保持不变。

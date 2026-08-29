@@ -126,7 +126,7 @@
 - **验证备注：** Gateway HTTP 普通测试、完整 Go 门禁、架构文档门禁、Compose 门禁和差异检查通过；本机 `go test -race ./internal/gateway/http` 因 Homebrew Go 运行环境缺少 `libresolv.so.2` 无法启动，未发现代码级 race 结果。
 - **本轮进展：** Sync application 装配已从 `internal/app` 迁入 `internal/services/sync/application/`，`MessagingServices` 只持有共享 `SyncApplication` port，独立 Sync runtime 与 embedded 兼容路径共用服务专属 factory；结构门禁已增加 Sync application 路径检查。
 - **本轮进展：** Search 入口装配已收敛到 `internal/services/search/bootstrap/`，`cmd/services/search` 不再直接依赖共享 `internal/bootstrap`；当前底层 Search runtime 仍通过兼容 facade 调用共享 gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
-- **本轮进展：** Message 入口装配已收敛到 `internal/services/message/bootstrap/`，`cmd/services/message` 不再直接依赖共享 `internal/bootstrap`；当前底层 Message runtime 仍通过兼容 facade 调用共享 Kafka、数据库、Cassandra、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
+- **本轮进展：** Message 入口装配已收敛到 `internal/services/message/bootstrap/`，`cmd/services/message` 不再直接依赖共享 `internal/bootstrap`；数据库权限探针已迁入 `internal/services/message/infrastructure/mysql/` 并由独立 runtime 直接调用，embedded 仅保留兼容转发，其他共享基础设施继续按回滚切片收敛。
 - **本轮进展：** Sync 入口装配已收敛到 `internal/services/sync/bootstrap/`，`cmd/services/sync` 不再直接依赖共享 `internal/bootstrap`；当前底层 Sync runtime 仍通过兼容 facade 调用共享 Kafka projector、Cassandra hydration、数据库、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Gateway 入口装配已收敛到 `internal/services/gateway/bootstrap/`，`cmd/services/gateway` 不再直接依赖共享 `internal/bootstrap`；当前底层 Gateway runtime 仍通过兼容 facade 调用共享实时投递 authority、Kafka、Redis、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Core 入口装配已收敛到 `internal/services/core/bootstrap/`，`cmd/services/core` 不再直接依赖共享 `internal/bootstrap`；入口显式区分独立 Core 与 embedded 回滚路径，底层 Core runtime 仍通过兼容 facade 调用共享 RPC、Kafka、storage、metrics 和 readiness 设施，后续继续完成实现迁移。
