@@ -25,6 +25,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
 	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
@@ -230,7 +231,7 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil)
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start core rpc server: %v", err)
 	}
@@ -369,7 +370,7 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Agent rpc adapter: %v", err)
 	}
-	server, err := newCoreRPCServer(cfg, rpcCoreStub{}, agentAdapter)
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, agentAdapter)
 	if err != nil {
 		t.Fatalf("start Agent rpc server: %v", err)
 	}
@@ -422,7 +423,7 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 
 func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgentControlAndProjection(
+	server, err := corerpc.NewWithAgentControlAndProjection(
 		cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{},
 	)
 	if err != nil {
@@ -472,7 +473,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil)
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start core rpc server: %v", err)
 	}
@@ -496,7 +497,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	repairs := &rpcAgentWorkflowRepairStub{}
-	server, err := NewCoreRPCServerWithAgentControlAndProjection(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, repairs)
+	server, err := corerpc.NewWithAgentControlAndProjection(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, repairs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +527,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
+	server, err := corerpc.NewWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +585,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
 		SearchListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
 	}
-	coreServer, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil)
+	coreServer, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start Core rpc server: %v", err)
 	}
@@ -633,7 +634,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
 		SyncListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
 	}
-	coreServer, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil)
+	coreServer, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start Core rpc server: %v", err)
 	}
@@ -682,7 +683,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 }
 
 func TestInternalRPCRejectsMissingRuntimeCredentials(t *testing.T) {
-	if _, err := newCoreRPCServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}, nil); err == nil {
+	if _, err := corerpc.NewServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}, nil); err == nil {
 		t.Fatal("expected core rpc server without shared secret to fail")
 	}
 	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
@@ -703,7 +704,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 		TLSCAFile:          caFile,
 		TLSServerName:      "localhost",
 	}
-	server, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil)
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start mtls core rpc server: %v", err)
 	}
@@ -725,7 +726,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 
 func TestInternalRPCRejectsPlaintextOutsideLoopback(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "0.0.0.0:0"}
-	if _, err := newCoreRPCServer(cfg, rpcCoreStub{}, nil); err == nil {
+	if _, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil); err == nil {
 		t.Fatal("expected non-loopback plaintext listener to fail")
 	}
 	cfg.CoreTarget = "10.0.0.1:9091"
