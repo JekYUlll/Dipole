@@ -47,6 +47,14 @@ if [[ -d "${root_dir}/internal/projector/sync" ]]; then
   echo "legacy Sync projector directory remains outside the Sync service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/search/infrastructure/kafka/projector.go" ]]; then
+  echo "Search Indexer Kafka projector must remain under the Search service boundary" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/projector/search" ]]; then
+  echo "legacy Search projector directory remains outside the Search service boundary" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
