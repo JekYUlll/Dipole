@@ -16,6 +16,7 @@
 ## [Unreleased]
 
 ### 变更
+- Sync 微服务 Compose 补齐 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION`、`DIPOLE_CASSANDRA_ENABLED` 和 `DIPOLE_CASSANDRA_HOSTS` 配置契约；primary hydration 仍默认关闭，启用时保留 shadow 互斥和 MySQL 即时回退。
 - 在干净提交 `fe84b7b` 上重建并验证七个候选微服务镜像，确认 revision、`dirty=false`、服务二进制标签一致；独立消息流程再次通过 Inbox、`before_seq` 历史读取和 `after_seq` 增量读取。
 - 候选微服务消息 smoke 增加 Seq Timeline 验收：同一消息写入后分别通过 `before_seq=0` 和 `after_seq=0` 查询，并校验 `message_seq` 持久化结果，补齐历史读取与增量读取证据。
 - 修正候选拓扑发布前的源码脏状态判定，仅阻断已跟踪文件变更，允许仓库中的本地 `.planning/` 和 `.codex/` 记录存在而不污染候选镜像发布门禁。
