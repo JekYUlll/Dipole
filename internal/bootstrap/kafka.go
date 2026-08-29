@@ -50,14 +50,6 @@ type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
 }
 
-func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
-	return registerCoreKafkaHandlers(hub, repos, nil, true)
-}
-
-func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
-	return registerCoreKafkaHandlers(hub, repos, nil, false)
-}
-
 // RegisterCoreProjectionKafkaHandlers registers only projections owned by the
 // standalone Core process. Message persistence and Agent handlers belong to
 // their own service runtimes and must not be recreated here.
