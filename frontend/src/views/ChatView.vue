@@ -590,6 +590,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
+import { uploadMultipartParts } from '@/upload/multipartUpload'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1321,17 +1322,19 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
   }) as { session_id: string; chunk_size: number; total_parts: number }
 
   try {
-    for (let partNumber = 1; partNumber <= init.total_parts; partNumber += 1) {
-      const start = (partNumber - 1) * init.chunk_size
-      const end = Math.min(start + init.chunk_size, file.size)
-      const chunk = file.slice(start, end)
-      uploadingFileLabel.value = `上传中 ${partNumber}/${init.total_parts}...`
+    await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
       await api.put(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}`, chunk, {
         headers: {
           'Content-Type': 'application/octet-stream',
         },
       })
-    }
+    }, {
+      concurrency: 3,
+      maxRetries: 2,
+      onPartComplete: (completedParts, totalParts) => {
+        uploadingFileLabel.value = `上传中 ${completedParts}/${totalParts}...`
+      },
+    })
     uploadingFileLabel.value = '合并文件中...'
     return await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
   } catch (err) {
