@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：调用审计确认 Core、Sync、Agent repository facade 已无生产或测试调用者，已删除 `internal/app/*_repository_compat.go` 三组兼容入口并收紧服务布局门禁；同时移除门禁中过时的 Agent repository 存在性断言，`internal/app` 当前仅保留仍被 Agent 测试使用的 application facade。
 - 2026-08-29：`internal/app/composition_compat.go` 已无生产调用者，composition 测试已迁入 `internal/bootstrap/embedded` 并改为直接覆盖 embedded composition；聚合 app composition facade 已删除，剩余兼容入口继续按调用者逐步退休。
 - 2026-08-29：调用审计确认 `internal/app/composition_compat.go` 中的 Inbox 写入开关转发和旧 Message application 构造均无外部调用者，已删除两处兼容入口；其余 composition facade 仍服务于 embedded 回滚或兼容测试，继续按调用者迁移。
 - 2026-08-29：服务布局门禁已同步删除 Core capability facade 的历史必需登记，当前兼容根目录只保留仍有调用者的 adapter、说明文件与兼容测试。

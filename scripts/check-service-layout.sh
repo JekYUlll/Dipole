@@ -104,9 +104,6 @@ done
  # new shared implementation area as services are extracted.
 for compatibility_file in \
   internal/app/agent_application_compat.go \
-  internal/app/agent_repository_compat.go \
-  internal/app/core_repository_compat.go \
-  internal/app/sync_repository_compat.go \
   internal/store/mysql_compat.go \
   internal/store/redis_compat.go; do
   if [[ ! -f "${root_dir}/${compatibility_file}" ]]; then
@@ -116,7 +113,7 @@ for compatibility_file in \
 done
 while IFS= read -r compatibility_file; do
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/agent_repository_compat.go|internal/app/core_repository_compat.go|internal/app/sync_repository_compat.go|internal/app/README.md|internal/store/README.md|internal/store/mysql_compat.go|internal/store/redis_compat.go|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/message_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/data/mysql/repository/sync_compat.go|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/store/README.md|internal/store/mysql_compat.go|internal/store/redis_compat.go|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/message_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/data/mysql/repository/sync_compat.go|internal/app/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
@@ -298,7 +295,7 @@ if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/boo
   echo "Search composition must use Search-owned index repository" >&2
   exit 1
 fi
-if rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go' --glob '!core_repository_compat.go'; then
+if rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Core repository composition must live in the Core service infrastructure" >&2
   exit 1
 fi
@@ -324,7 +321,7 @@ if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/sync_reposit
   echo "Sync MySQL repository is outside its service boundary" >&2
   exit 1
 fi
-if rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go' --glob '!sync_repository_compat.go'; then
+if rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Sync repository composition must live in the Sync service infrastructure" >&2
   exit 1
 fi
@@ -556,10 +553,6 @@ for agent_application in agent_approval_grant.go agent_approval_service.go agent
 done
 if [[ ! -f "${root_dir}/internal/app/agent_application_compat.go" ]]; then
   echo "embedded Agent application compatibility boundary is missing" >&2
-  exit 1
-fi
-if [[ ! -f "${root_dir}/internal/app/agent_repository_compat.go" ]]; then
-  echo "embedded Agent repository compatibility boundary is missing" >&2
   exit 1
 fi
 # The aggregate app facade is a compatibility boundary. Keep production code
