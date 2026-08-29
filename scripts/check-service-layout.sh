@@ -93,6 +93,14 @@ if [[ ! -f "${root_dir}/services/agent-runtime/package.json" || ! -f "${root_dir
   echo "Agent Runtime is outside the services boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/agent/legacy/service.go" ]]; then
+  echo "Go/Eino compatibility baseline is outside the Agent service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/modules/ai" ]]; then
+  echo "legacy Agent module remains under internal/modules/ai" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/services/realtime-delivery/CMakeLists.txt" || ! -f "${root_dir}/services/realtime-delivery/src/main.cpp" ]]; then
   echo "Realtime Delivery is outside the services boundary" >&2
   exit 1
