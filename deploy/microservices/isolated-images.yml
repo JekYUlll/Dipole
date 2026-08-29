@@ -1,0 +1,13 @@
+services:
+  core:
+    image: ${DIPOLE_CORE_IMAGE:-dipole-core:latest}
+  gateway:
+    image: ${DIPOLE_GATEWAY_IMAGE:-dipole-gateway:latest}
+  message:
+    image: ${DIPOLE_MESSAGE_IMAGE:-dipole-message:latest}
+  sync:
+    image: ${DIPOLE_SYNC_IMAGE:-dipole-sync:latest}
+  search:
+    image: ${DIPOLE_SEARCH_IMAGE:-dipole-search:latest}
+  search-indexer:
+    image: ${DIPOLE_SEARCH_INDEXER_IMAGE:-dipole-search-indexer:latest}

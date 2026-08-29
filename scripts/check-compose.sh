@@ -18,6 +18,19 @@ jq -e '
   and .services.gateway.environment.DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED == "false"
 ' <<<"${default_microservices_config}" >/dev/null
 
+isolated_microservices_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  docker compose -f docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json
+})"
+jq -e '
+  .services.core.image == "dipole-core:latest"
+  and .services.gateway.image == "dipole-gateway:latest"
+  and .services.message.image == "dipole-message:latest"
+  and .services.sync.image == "dipole-sync:latest"
+  and .services.search.image == "dipole-search:latest"
+  and .services["search-indexer"].image == "dipole-search-indexer:latest"
+' <<<"${isolated_microservices_config}" >/dev/null
+
 cpp_microservices_config="$(
   DIPOLE_REALTIME_DELIVERY=cpp \
   DIPOLE_DELIVERY_PRIMARY_ENABLED=true \
