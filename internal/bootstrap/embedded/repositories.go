@@ -20,12 +20,6 @@ type Repositories struct {
 	MessageProcess *MessageProcessRepositories
 	SyncProcess    *SyncProcessRepositories
 	AgentProcess   *AgentProcessRepositories
-	Users          application.UserStore
-	Files          application.FileMetadataStore
-	Conversations  application.ConversationStore
-	Contacts       application.ContactStore
-	Groups         application.GroupStore
-	Admin          application.AdminOverviewStore
 	Search         application.SearchIndex
 }
 
@@ -53,12 +47,6 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}
 	repos.CoreProcess = coreRepos
-	repos.Users = coreRepos.Users
-	repos.Files = coreRepos.Files
-	repos.Conversations = coreRepos.Conversations
-	repos.Contacts = coreRepos.Contacts
-	repos.Groups = coreRepos.Groups
-	repos.Admin = coreRepos.Admin
 	agentRepos, err := agentmysql.NewProcessRepositories(db)
 	if err != nil {
 		return nil, fmt.Errorf("compose Agent repositories: %w", err)

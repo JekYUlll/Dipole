@@ -38,10 +38,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 	}
 	coreRepos := repos.CoreProcess
 	if coreRepos == nil {
-		coreRepos = &CoreProcessRepositories{
-			Users: repos.Users, Files: repos.Files, Conversations: repos.Conversations,
-			Contacts: repos.Contacts, Groups: repos.Groups, Admin: repos.Admin,
-		}
+		coreRepos = &CoreProcessRepositories{}
 	}
 	messageRepos := repos.MessageProcess
 	if messageRepos == nil {
