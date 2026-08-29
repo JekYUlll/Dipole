@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Sync 独立 runtime 已直接装配 Sync-owned repository、hydrator、projection 和 process composition，移除对 `internal/app` 聚合 Composition Root 的依赖；embedded 模式兼容入口保持可回滚。
 - Sync 专属 MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接装配服务边界，embedded 聚合兼容入口继续保留。
 - Message 独立 runtime 已直接装配 Message-owned repository composition 和 application factory，移除对 `internal/app` 聚合 Composition Root 的依赖；embedded 模式兼容入口保持可回滚。
 - Message 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/message/infrastructure/mysql/`；共享 `internal/data/mysql` 仅保留基础 Store、生成代码和其他服务 repository，旧构造入口继续兼容。

@@ -37,6 +37,7 @@
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Sync MySQL repository、hydrator 和 projection 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接使用服务专属 composition，旧共享 repository 仅保留兼容入口。
+- Sync 独立 runtime 已直接装配 Sync infrastructure composition，`internal/app` 仅保留 embedded 聚合兼容入口；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
 - Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
