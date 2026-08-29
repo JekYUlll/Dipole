@@ -11,11 +11,11 @@ tests:
       - series: 'dipole_multipart_operations_total{operation="complete",outcome="checksum_mismatch"}'
         values: '0 0 1 1 1 1 1'
       - series: 'dipole_multipart_operation_duration_seconds_bucket{operation="complete",le="30"}'
-        values: '0 0 0 0 0 0 0'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0'
       - series: 'dipole_multipart_operation_duration_seconds_bucket{operation="complete",le="60"}'
-        values: '0 1 2 3 4 5 6'
+        values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
       - series: 'dipole_multipart_operation_duration_seconds_bucket{operation="complete",le="+Inf"}'
-        values: '0 1 2 3 4 5 6'
+        values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
     alert_rule_test:
       - eval_time: 6m
         alertname: DipoleMultipartOperationErrors
@@ -34,6 +34,11 @@ tests:
               severity: critical
             exp_annotations:
               summary: Multipart checksum mismatches were detected
-      - eval_time: 6m
+      - eval_time: 12m
         alertname: DipoleMultipartOperationLatencyHigh
-        exp_alerts: []
+        exp_alerts:
+          - exp_labels:
+              operation: complete
+              severity: warning
+            exp_annotations:
+              summary: Multipart operation p95 latency is high
