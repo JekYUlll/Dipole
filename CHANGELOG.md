@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Core embedded compatibility facade 已移除无调用者的 Inbox 写入开关转发和旧 Message application 构造入口；Inbox projector 与 Message application 继续由服务专属/embedded composition 直接装配，保留仍有调用者的兼容 API。
 - 服务布局门禁已同步移除已退休的 `internal/app/core_capability.go` 必需登记项，避免已删除的孤立 facade 阻断后续结构检查。
 - Core 已删除无调用者的 `internal/app/core_capability.go` 兼容构造入口；Core 能力继续由服务自身 application 与 embedded composition 装配。
 - Core 已移除无调用者的旧 `validateStandaloneCoreMode` compatibility facade，并将模式校验测试归属 `internal/services/core/bootstrap`；embedded 组合逻辑与回滚入口保持不变。
