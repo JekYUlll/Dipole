@@ -254,6 +254,7 @@
 - **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息已通过受限 Message RPC 接入，连接建立采用惰性 adapter。
 - **本轮进展：** Message Core Capability 改为惰性连接：构造时不拨号，首次调用或依赖就绪探针按当前 RPC 认证配置建立连接；连接失败不进入缓存，Core 恢复后可重试，新增冷启动/重试/关闭回归测试。完整隔离 Compose 和共享环境证据仍待补齐。
 - **本轮进展：** Compose 门禁已固定默认微服务拓扑中 Core 与 Message 不得互相 `depends_on`，且默认 Core Message transport 必须为 gRPC；`cassandra-primary` 的 embedded/local 回滚覆盖层仍单独保留并验证。
+- **本轮验证：** 2026-08-30 在最新 `master` 重新执行 `scripts/smoke-microservices.sh`，Core、Message、Sync、Gateway、Agent 与 MySQL、Redis、Kafka、MinIO 均完成隔离冷启动；readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等通过。共享环境发布、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 隔离微服务 Compose 已验证 Core/Message/Sync/Gateway 冷启动、依赖 readiness、RPC mTLS、Core 代理和远程 WS ownership；当前证据覆盖开发候选拓扑，Local 回切与共享环境发布窗口演练仍待完成。
 - **本轮进展：** 运维代码、服务集成测试和平台测试已停止引用 `internal/data/mysql/repository` 历史兼容别名，统一使用各服务自有 SQLC repository；后续调用审计已完成该历史目录退役，结构门禁阻止新的运行时代码回流。
 - **本轮进展：** 为 `internal/app`、`internal/data/mysql`、`internal/data/mysql/repository` 和 `internal/store` 增加目录级 ownership/迁移说明，并由服务布局门禁检查；后续调用审计已完成 `internal/store` 与 `internal/data/mysql` 目录退役。
