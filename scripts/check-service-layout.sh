@@ -189,6 +189,10 @@ if [[ ! -f "${root_dir}/internal/services/core/infrastructure/mysql/composition.
   echo "Core process repository composition is outside the Core service boundary" >&2
   exit 1
 fi
+if rg --quiet 'github.com/JekYUlll/Dipole/internal/store' "${root_dir}/internal/services/core/domain" --glob '*.go' --glob '!*_test.go'; then
+  echo "Core domain implementation must not depend directly on aggregate internal/store" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
