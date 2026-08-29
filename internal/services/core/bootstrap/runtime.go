@@ -7,6 +7,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -60,7 +61,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}
-	if err := ensureAIAssistantUser(coreRepos.Users); err != nil {
+	if err := legacybootstrap.EnsureAIAssistantUser(coreRepos.Users); err != nil {
 		return nil, fmt.Errorf("ensure AI assistant user: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -106,7 +107,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
-	if err := RegisterCoreProjectionKafkaHandlers(messaging); err != nil {
+	if err := legacybootstrap.RegisterCoreProjectionKafkaHandlers(messaging); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)
 	}

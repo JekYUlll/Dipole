@@ -302,7 +302,7 @@ for legacy_core_file in cached_user_store.go cached_group_store.go cached_contac
     exit 1
   fi
 done
-if ! rg --quiet 'coremysql.NewProcessRepositories' "${root_dir}/internal/bootstrap/core_runtime.go"; then
+if ! rg --quiet 'coremysql.NewProcessRepositories' "${root_dir}/internal/services/core/bootstrap/runtime.go"; then
   echo "standalone Core runtime must use Core-owned repository composition" >&2
   exit 1
 fi
@@ -362,7 +362,7 @@ if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; t
   echo "Core capability implementation is outside its service boundary" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/bootstrap/core_runtime.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/runtime.go" ]]; then
   echo "standalone Core composition root is missing" >&2
   exit 1
 fi

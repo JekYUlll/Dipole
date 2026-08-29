@@ -21,7 +21,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 
 ## 共享代码与契约
 
-- `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。Core 独立 Composition Root 位于 `internal/bootstrap/core_runtime.go`，embedded 聚合入口仅作为本地兼容和回滚路径。
+- `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。Core 独立 Composition Root 位于 `internal/services/core/bootstrap/runtime.go`，embedded 聚合入口仅作为本地兼容和回滚路径。
 - `internal/bootstrap/` 只负责长期运行服务的启动与生命周期管理；回填、对账、归档和受控切换等一次性操作统一放在 `internal/operations/<domain>/`，由 `cmd/tools/` 调用。
 - 当前 `internal/operations/` 已包含 `agent/`、`cassandra/`、`search/` 和 `sync/` 四类运维操作包；各领域继续按 `backfill/`、`baseline/`、`cleanup/`、`cutover/`、`evidence/` 和 `reconcile/` 分层。新增操作应按领域归档，避免重新进入服务 bootstrap，也禁止恢复旧的 `internal/backfill`、`internal/reconcile` 等横向目录。
 - `internal/application`、`internal/model`、`internal/platform` 是优先允许共享的基础层；`internal/app` 和 `internal/store` 的服务归属以[服务边界清单](SERVICE-BOUNDARIES.md)为准，迁移完成的实现不得回流。共享 `internal/handler` 与 `internal/service` 实现已清空，兼容入口位于 `internal/compat/service/`。跨 Message/Sync 复用的 Cassandra Timeline 适配器位于 `internal/platform/cassandra/`；服务业务 projection 不得回流。Redis 客户端和缓存适配器位于 `internal/platform/cache/`，`internal/store/redis_compat.go` 仅保留旧入口。Core repository composition、缓存适配器、Sync repository composition 和 embedded 聚合装配已分别归档到服务 infrastructure 与 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容别名与转发。
@@ -30,7 +30,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Message 服务的入口装配边界位于 `internal/services/message/bootstrap/`；runtime 与配置校验测试已在该目录直接组合 Message infrastructure 和平台能力，Message RPC adapter 已直接使用 `internal/platform/rpc`，少量 Kafka handler、Outbox、Lazy Core 与其他兼容 helper 仍按回滚切片逐步收敛，旧共享 runtime 路径由结构门禁阻止回流。
 - Sync 服务的入口装配边界位于 `internal/services/sync/bootstrap/`；runtime、数据库权限校验和测试已在该目录直接组合 Sync infrastructure 与平台能力，Sync RPC adapter 已直接使用 `internal/platform/rpc`，旧共享 runtime 路径由结构门禁阻止回流。
 - Gateway 服务的入口装配边界位于 `internal/services/gateway/bootstrap/`；runtime 与 RPC bootstrap 已在该目录直接组合 Gateway 边缘适配、Redis、Kafka、实时投递 authority 和 `internal/platform/rpc`，Kafka handler、TLS 与时间线校验仍保留兼容入口，旧共享 runtime 路径由结构门禁阻止回流。
-- Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`；当前 `entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，底层 RPC、Kafka、storage、metrics 和 readiness 设施完成拆分后再移除兼容调用。
+- Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`；`entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，独立 runtime 和 RPC adapter 已归属该目录，Kafka projection、assistant seed 及少量平台生命周期兼容调用仍按切片逐步收敛。
 - Search Indexer 服务的入口装配边界位于 `internal/services/search-indexer/bootstrap/`；runtime 已在该目录直接组合 Search Indexer projector 与平台 Kafka、Elasticsearch、metrics、readiness 能力，旧共享 runtime 路径由结构门禁阻止回流。
 - 跨服务 metrics 生命周期、readiness 编排和 Internal RPC transport 位于 `internal/platform/runtime/`、`internal/platform/rpc/`；平台包统一提供依赖探针、RPC serving 绑定、gRPC listener、服务认证、TLS 1.3 mTLS、health check 和优雅关闭，服务特有启动条件与协议方法仍由各自 runtime 负责。`internal/bootstrap/metrics.go`、`dependency_readiness.go` 和 `internal_rpc.go` 仅保留兼容 helper，服务 runtime 后续继续直接依赖平台包。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。

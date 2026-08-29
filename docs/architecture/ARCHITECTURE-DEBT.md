@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：独立 Core 的 runtime、system-message sender 和 RPC adapter 已迁移到 `internal/services/core/bootstrap`，生产入口不再通过旧 bootstrap 初始化 Core；Core Kafka projection 与 assistant seed 仍是显式兼容依赖，后续继续收敛。
 - 2026-08-29：Gateway 生产 RPC server/client 已迁入 Gateway bootstrap 并直接使用平台 transport，覆盖 Message、Sync、Core、Search 和 realtime delivery observation；Kafka handler、TLS 和时间线校验仍保留窄兼容边界，后续继续收敛。
 - 2026-08-29：Sync 生产 RPC adapter 已迁入 Sync bootstrap 并直接使用平台 transport，保留原有 Core capability 调用方身份和 query server 白名单；剩余 legacy 依赖继续按服务切片收敛。
 - 2026-08-29：Message 生产 RPC adapter 已迁入 Message bootstrap 并直接使用平台 transport，runtime 不再通过共享 bootstrap 注册 Message RPC；Lazy Core、权限校验和其他服务基础设施兼容边界仍待后续切片收敛。

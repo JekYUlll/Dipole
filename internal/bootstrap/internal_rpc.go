@@ -213,6 +213,12 @@ func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (ag
 	return agentv1.NewAgentCapabilityServiceClient(connection), connection, nil
 }
 
+// RestrictCoreServiceMethods is kept as a shared policy hook while the Core
+// service bootstrap owns its transport adapter.
+func RestrictCoreServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return restrictCoreServiceMethods(ctx, request, info, handler)
+}
+
 func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*coregrpc.Client, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{
 		Service: callerService,

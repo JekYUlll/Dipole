@@ -50,7 +50,7 @@ func (s *lazyCoreMessageSender) getClient() (*messagegrpc.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
-	client, conn, err := DialCoreMessageApplication(context.Background(), s.cfg)
+	client, conn, err := dialCoreMessageApplication(context.Background(), s.cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Core 独立服务的 runtime、system-message sender 和 RPC adapter 已迁移到 `internal/services/core/bootstrap`；embedded 启动仍保留为回滚路径，Kafka projection 与 assistant seed 通过显式兼容 facade 复用。
 - Gateway 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 管理 Message、Sync、Core、Search 客户端和 realtime delivery observation server；Kafka handler、TLS 与时间线校验兼容边界保持不变，支持后续独立迁移。
 - Sync 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Sync query adapter 和拨号 Core capability；旧 `internal/bootstrap` RPC wrapper 不再参与 Sync 生产装配，调用方白名单和回滚语义保持不变。
 - Message 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Message adapter，并由 Message runtime 自有入口启动；旧 `internal/bootstrap` RPC server wrapper 不再参与 Message 生产装配，其他兼容依赖继续保持可回滚。

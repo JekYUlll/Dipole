@@ -501,3 +501,9 @@ func ensureAIAssistantUser(users aiAssistantUserRepository) error {
 	)
 	return nil
 }
+
+// EnsureAIAssistantUser exposes the compatibility bootstrap's shared seed
+// operation to the standalone Core service bootstrap.
+func EnsureAIAssistantUser(users interface{ UpsertAssistant(*model.User) error }) error {
+	return ensureAIAssistantUser(users)
+}
