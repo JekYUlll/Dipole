@@ -1,8 +1,8 @@
 package httpdto
 
 import (
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	"time"
 )
 
@@ -51,7 +51,7 @@ type FileMultipartInitiateResponse struct {
 	TotalParts int    `json:"total_parts"`
 }
 
-func ToFileMultipartInitiateResponse(result *service.InitiateMultipartUploadResult) *FileMultipartInitiateResponse {
+func ToFileMultipartInitiateResponse(result *corefile.InitiateMultipartUploadResult) *FileMultipartInitiateResponse {
 	if result == nil {
 		return nil
 	}
@@ -63,7 +63,7 @@ func ToFileMultipartInitiateResponse(result *service.InitiateMultipartUploadResu
 	}
 }
 
-func ToFileDownloadResponse(result *service.FileDownloadResult) *FileDownloadResponse {
+func ToFileDownloadResponse(result *corefile.FileDownloadResult) *FileDownloadResponse {
 	if result == nil {
 		return nil
 	}
