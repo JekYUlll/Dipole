@@ -550,6 +550,7 @@
 - **本轮进展：** 追加 Workflow/Run 身份绑定校验，当前投影与目标投影必须属于同一运行实例，跨运行证据在 plan 编译阶段拒绝；新增回归测试并保持 v1 dry-run 与无写执行器边界。
 - **验证记录：** TS Agent Runtime 独立执行 `npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；当前 Compose 仍固定 shadow/metadata/foundation，尚未宣称生产接管。
 - **制品验证：** `services/agent-runtime/Dockerfile` 真实构建成功，生产镜像以 `node` 用户启动；foundation 配置下容器 `/readyz` 返回 200，Kafka/RPC 关闭时无外部副作用。该证据覆盖独立交付，不替代 active Runtime 的 Temporal、Capability、真实 Kafka 和共享环境切换门槛。
+- **门禁固化：** 新增 `scripts/check-agent-runtime-container.sh`，构建时绑定 OCI revision/created/dirty provenance，并自动验证镜像 provenance、非 root 用户和 foundation readiness；默认不改变 shadow/metadata/foundation 回滚配置。
 - **本轮进展：** 增加 `repair:preflight` 二次采证器，按 plan/proposal/grant/current CAS 生成低敏 `ready|blocked` 收据；它不读取数据库、不调用 Temporal、不修改 projection，真实 executor 与生产 authority 继续关闭。
 - **本轮进展：** migration v44 与 sqlc 新增 prepared execution ledger，持久化唯一 plan 的执行意图、提案/任务/执行人绑定和 CAS 摘要；应用接口仅支持创建/读取 prepared 记录，未增加状态推进或写入 RPC，便于后续 executor 在独立版本中实现可恢复提交与回滚。
 - **本轮进展：** migration v50 为 Workflow Repair operator grant 增加 `grant_version` 与独立 `can_execute` 能力；旧授权默认保持提案/审批权限，执行器必须绑定非零版本并单独授予执行权，避免仅凭旧 `executor_grant_version` 进入写路径。

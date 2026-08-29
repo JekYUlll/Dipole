@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Runtime 新增容器交付门禁 `scripts/check-agent-runtime-container.sh`：镜像绑定 OCI revision/created/dirty provenance，自动验证非 root `node` 用户与 foundation `/readyz`，为独立制品和回滚路径提供可重复检查。
 - Agent Runtime 完成独立制品验证：`services/agent-runtime/Dockerfile` 构建成功，生产镜像仅包含编译后的 `dist` 与裁剪后依赖；容器以 `node` 用户运行，关闭 Kafka/RPC 的 foundation 配置下 `/readyz` 返回 200。
 - TS Agent Runtime 独立 module 完成当前基线验证：`npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；Compose 仍保持 shadow、metadata、foundation 默认回滚模式。
 - 完成当前仓库结构基线验证：全量 `CGO_ENABLED=0 go test ./...` 通过，覆盖服务入口、运维工具、兼容包、平台层和 RPC/WS transport；根级目录白名单与服务边界门禁继续通过。
