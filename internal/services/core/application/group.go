@@ -6,7 +6,7 @@ import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain"
 )
 
 type GroupHotGroupReader interface {
@@ -27,7 +27,7 @@ type GroupDependencies struct {
 
 // LocalGroupApplication keeps Core group use cases behind the service boundary.
 type LocalGroupApplication struct {
-	*service.GroupService
+	*coregroup.GroupService
 }
 
 func NewGroupApplication(
@@ -35,7 +35,7 @@ func NewGroupApplication(
 	users applicationPort.UserStore,
 	dependencies GroupDependencies,
 ) *LocalGroupApplication {
-	groupService := service.NewGroupService(repository, users, dependencies.Events, dependencies.HotGroups).
+	groupService := coregroup.NewGroupService(repository, users, dependencies.Events, dependencies.HotGroups).
 		WithAvatarStorage(dependencies.Files, dependencies.Storage, dependencies.AvatarMaxBytes, dependencies.AvatarURLTTL).
 		WithSystemMessenger(dependencies.SystemMessenger)
 	return &LocalGroupApplication{GroupService: groupService}

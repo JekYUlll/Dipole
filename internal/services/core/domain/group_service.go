@@ -1,4 +1,4 @@
-package service
+package coregroup
 
 import (
 	"context"
@@ -129,6 +129,11 @@ type GroupEventPayload struct {
 	MemberUUIDs    []string  `json:"member_uuids,omitempty"`
 	RecipientUUIDs []string  `json:"recipient_uuids,omitempty"`
 	OccurredAt     time.Time `json:"occurred_at"`
+}
+
+type eventPublisher interface {
+	PublishJSON(ctx context.Context, topic string, key string, payload any, headers map[string]string) error
+	PublishEvent(ctx context.Context, topic string, key string, eventType string, payload any, headers map[string]string) error
 }
 
 func NewGroupService(repo groupRepository, userFinder groupUserFinder, events eventPublisher, hotGroups groupHeatReader) *GroupService {

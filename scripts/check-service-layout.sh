@@ -61,6 +61,14 @@ for core_app in auth admin session; do
     exit 1
   fi
 done
+if [[ ! -f "${root_dir}/internal/services/core/domain/group_service.go" ]]; then
+  echo "Core group domain implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
+  echo "legacy Core group implementation remains under internal/service" >&2
+  exit 1
+fi
 if ! rg --quiet '^type CoreProcessRepositories struct' "${root_dir}/internal/app/repositories.go"; then
   echo "Core process repository composition is missing" >&2
   exit 1
