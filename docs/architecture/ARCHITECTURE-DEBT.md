@@ -947,6 +947,7 @@
 - **现状：** MySQL 事务 Store 已位于 `internal/platform/mysql`；迁移 runner、DSN 组装和运维 adapter 曾继续分散在旧数据目录。
 - **解决方式：** migration runner 和 DSN 配置迁入 MySQL 平台目录，Agent/Cassandra/Search/Sync adapter 按操作域迁入 `internal/operations/<service>/<operation>/mysql/`；`internal/data/mysql` 历史兼容目录已退役。
 - **验证：** 操作域、MySQL 平台和工具包定向测试通过；结构门禁阻止旧 adapter、migration 和 DSN 目录回流。
+- **本轮验证：** 2026-08-30 通过 `scripts/smoke-mysql-cluster.sh` 完成隔离 MySQL 8.4.8 三节点 InnoDB Cluster 验收：migration v50、Router writer failover、已提交数据连续可见和停止成员 AdminAPI rejoin 均通过；脚本使用一次性 YAML 配置固定 Router 地址并显式 `CGO_ENABLED=0`，临时 Compose 资源自动清理。
 
 ### AD-052：Message domain 直接依赖 Core 文件 domain
 

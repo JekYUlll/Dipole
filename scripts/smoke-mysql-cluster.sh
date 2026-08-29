@@ -5,6 +5,7 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 COMPOSE_FILE="$ROOT_DIR/deploy/compose/docker-compose.mysql-cluster.yml"
 PROJECT_NAME="dipole-mysql-cluster-${RANDOM}"
 PROBE_LOG=$(mktemp)
+CONFIG_FILE=$(mktemp --suffix=.yaml)
 
 compose() {
   docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" "$@"
@@ -16,6 +17,7 @@ cleanup() {
     return
   fi
   compose down --volumes --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$PROBE_LOG" "$CONFIG_FILE"
 }
 trap cleanup EXIT
 
@@ -29,10 +31,19 @@ export DIPOLE_MYSQL_PORT=16446
 export DIPOLE_MYSQL_USER=dipole
 export DIPOLE_MYSQL_PASSWORD=dipole123
 export DIPOLE_MYSQL_DBNAME=dipole
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go run ./cmd/tools/migrate -direction up
+cat >"$CONFIG_FILE" <<YAML
+mysql:
+  host: 127.0.0.1
+  port: 16446
+  user: dipole
+  password: dipole123
+  dbname: dipole
+YAML
+export DIPOLE_CONFIG_FILE="$CONFIG_FILE"
+CGO_ENABLED=0 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go run ./cmd/tools/migrate -direction up
 
 export DIPOLE_TEST_MYSQL_FAILOVER_DSN='dipole:dipole123@tcp(127.0.0.1:16446)/dipole?parseTime=true&collation=utf8mb4_unicode_ci'
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestMySQLRouterWriterFailover -v ./internal/platform/mysql/config >"$PROBE_LOG" 2>&1 &
+CGO_ENABLED=0 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestMySQLRouterWriterFailover -v ./internal/platform/mysql/config >"$PROBE_LOG" 2>&1 &
 probe_pid=$!
 
 for ((i = 1; i <= 60; i++)); do

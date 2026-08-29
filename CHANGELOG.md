@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：修复 `scripts/smoke-mysql-cluster.sh` 的隔离配置注入，使用带 YAML 后缀的一次性 Router 配置并显式禁用宿主机 cgo DNS；MySQL 8.4.8 三节点 migration v50、Router writer 故障转移、已提交数据可见和停止节点 AdminAPI rejoin smoke 全部通过，临时资源自动清理。
 - Agent 增加独立 `deploy/microservices/agent-active.yml` 部署 override：显式要求 candidate 和 release manifest 文件，并以只读方式挂载；默认 Compose 仍为 shadow，移除 override 即可回滚。
 - 2026-08-30：重新执行 Sync Cassandra primary Compose smoke，验证 Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz`；临时拓扑自动清理，生产 Cassandra 主读保持关闭。
 - Agent 微服务 Compose 增加显式 Runtime mode、candidate 和 release manifest 路径契约：默认固定 `shadow` 且不挂载 manifest，active override 必须只读挂载 `user_gray` 清单；回滚恢复 shadow 配置即可。
