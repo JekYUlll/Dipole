@@ -7,7 +7,6 @@ import (
 	"time"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -280,7 +279,7 @@ func decodeGroupEventPayload(event platformKafka.Event) (coregroup.GroupEventPay
 		return coregroup.GroupEventPayload{}, err
 	}
 
-	payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+	payload, err := coregroup.DecodeEventPayload(envelope.EventType, envelope.Payload)
 	if err != nil {
 		return coregroup.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
 	}
