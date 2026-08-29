@@ -43,6 +43,15 @@ func NewConversationApplication(
 	return &LocalConversationApplication{ConversationService: conversationService}
 }
 
+// WithNotifier attaches the realtime read-receipt notifier without exposing
+// the domain package's private notifier contract to service composition.
+func (a *LocalConversationApplication) WithNotifier(notifier ConversationNotifier) *LocalConversationApplication {
+	if a != nil && a.ConversationService != nil {
+		a.ConversationService.WithNotifier(notifier)
+	}
+	return a
+}
+
 var _ interface {
 	UpdateDirectConversations(*model.Message) error
 	UpdateGroupConversations(*model.Message) error
