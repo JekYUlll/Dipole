@@ -14,6 +14,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
@@ -102,7 +103,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	if platformKafka.Client != nil {
 		events = platformKafka.Client
 	}
-	hotGroupDetector := platformHotGroup.NewRedisDetector()
+	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	if messaging == nil {
 		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
 			Events:    events,
@@ -168,7 +169,7 @@ func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 }
 
 func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
-	hotGroups := platformHotGroup.NewRedisDetector()
+	hotGroups := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
 	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
 		return wsTransport.GroupCreatedEventData{
