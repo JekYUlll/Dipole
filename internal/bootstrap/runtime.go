@@ -388,23 +388,6 @@ func (r *Runtime) Server() *server.Server {
 	return r.server
 }
 
-func RunServer(srv *server.Server, tlsCfg config.TLS) error {
-	if !tlsCfg.Enabled {
-		return srv.Run(config.Addr())
-	}
-
-	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
-		return err
-	}
-
-	logger.Info("tls enabled",
-		zap.String("cert_file", tlsCfg.CertFile),
-		zap.String("key_file", tlsCfg.KeyFile),
-	)
-
-	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)
-}
-
 func (r *Runtime) Close() {
 	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("metrics server close failed", zap.Error(err))
