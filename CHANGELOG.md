@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：将 Core RPC 测试 helper 切换到 Core-owned bootstrap，删除无生产调用者的 `internal/bootstrap.NewCoreRPCServer` 公开 facade；Core capability 的认证、mTLS 和协议行为保持兼容。
 - 2026-08-30：将 Delivery Observation RPC 的测试调用切换到 Gateway-owned bootstrap，删除无生产调用者的 `internal/bootstrap` facade；Realtime 服务身份、mTLS transport 和 backpressure contract 保持兼容。
 - 2026-08-30：收敛 embedded runtime 的 metrics 入口，删除无生产调用者的 `internal/bootstrap` 转发层，测试迁入 `internal/platform/runtime` 并直接验证平台 API；指标启停、地址校验和 typed-nil collector 语义保持不变。
 - 2026-08-30：修复 `scripts/smoke-mysql-cluster.sh` 的隔离配置注入，使用带 YAML 后缀的一次性 Router 配置并显式禁用宿主机 cgo DNS；MySQL 8.4.8 三节点 migration v50、Router writer 故障转移、已提交数据可见和停止节点 AdminAPI rejoin smoke 全部通过，临时资源自动清理。
