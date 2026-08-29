@@ -1,7 +1,24 @@
 import { describe, expect, it, vi } from 'vitest'
-import { sha256Hex, uploadMultipartParts } from './multipartUpload'
+import { sha256Hex, uploadMultipartParts, uploadPresignedPart } from './multipartUpload'
 
 describe('uploadMultipartParts', () => {
+  it('uploads a presigned part without sending it through the application API', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: { ETag: '"etag-1"' },
+    }))
+
+    const etag = await uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)
+
+    expect(etag).toBe('"etag-1"')
+    expect(fetchImpl).toHaveBeenCalledWith('https://minio.test/part-1', expect.objectContaining({ method: 'PUT' }))
+  })
+
+  it('rejects a successful direct upload without an ETag', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }))
+    await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)).rejects.toThrow('ETag')
+  })
+
   it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {
     const checksum = await sha256Hex(new Blob(['data']))
     if (checksum === undefined) return

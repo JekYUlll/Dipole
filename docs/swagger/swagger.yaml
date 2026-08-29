@@ -594,6 +594,13 @@ definitions:
           $ref: '#/definitions/httpdto.FileMultipartPresignPart'
         type: array
     type: object
+  httpdto.FileMultipartPartRegisterRequest:
+    properties:
+      etag:
+        type: string
+      size:
+        type: integer
+    type: object
   httpdto.GroupMemberResponse:
     properties:
       joined_at:
@@ -1807,6 +1814,63 @@ paths:
       security:
       - BearerAuth: []
       summary: 签发分片直传 URL
+      tags:
+      - File
+  /files/uploads/{session_id}/parts/{part_number}/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      - description: 分片编号
+        in: path
+        name: part_number
+        required: true
+        type: integer
+      - description: 分片 ETag 和尺寸
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.FileMultipartPartRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MultipartPartResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 登记已直传分片
       tags:
       - File
   /files/uploads/{session_id}/parts/{part_number}:
