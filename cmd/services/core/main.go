@@ -10,8 +10,8 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/server"
 	corebootstrap "github.com/JekYUlll/Dipole/internal/services/core/bootstrap"
+	"github.com/JekYUlll/Dipole/internal/services/core/server"
 	"go.uber.org/zap"
 )
 

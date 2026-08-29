@@ -5,7 +5,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
-	"github.com/JekYUlll/Dipole/internal/server"
+	"github.com/JekYUlll/Dipole/internal/services/core/server"
 	"go.uber.org/zap"
 )
 

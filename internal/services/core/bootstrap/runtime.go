@@ -19,10 +19,10 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/server"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
+	"github.com/JekYUlll/Dipole/internal/services/core/server"
 	"go.uber.org/zap"
 )
 
