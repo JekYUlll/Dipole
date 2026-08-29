@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Multipart 完成阶段新增 part 实际大小校验；新 Redis 会话保存 `ETag + Size`，前置分片和最后分片必须匹配初始化文件尺寸，旧 ETag-only 会话在无法证明完整性时安全拒绝完成，并通过 Core File/Storage 定向测试。
 - 2026-08-30：Web 大文件 Multipart 上传新增可测试的有界并发与分片重试：默认 3 路并发、每个 part 最多 2 次指数退避重试，永久失败停止继续调度并沿用现有会话 Abort 回滚；暂停/断点恢复、预签名直传和 checksum 继续由 A7/AD-055 跟踪。
 - 2026-08-30：确认文件上传已支持 MinIO 原生 S3 Multipart Upload：Web 端超过 `4 MiB` 自动进入初始化、5 MiB 分片和完成流程，Core 使用 `NewMultipartUpload`、`PutObjectPart`、`CompleteMultipartUpload`，失败时执行 Abort；当前默认上限为 `50 MiB`，后续 A7 计划增强预签名直传、并发重试、断点恢复、checksum 和未完成 upload 清理。
 - 2026-08-30：将 Group、Conversation、Contact、Session domain-event decoder 下沉到对应 Core domain，删除生产代码对 `internal/compat/service` 的依赖，并新增门禁阻止兼容目录回流；事件校验和 Kafka 投递 contract 保持兼容。
