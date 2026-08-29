@@ -590,7 +590,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
-import { uploadMultipartParts } from '@/upload/multipartUpload'
+import { sha256Hex, uploadMultipartParts } from '@/upload/multipartUpload'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1323,9 +1323,11 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
 
   try {
     await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
+      const checksum = await sha256Hex(chunk)
       await api.put(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}`, chunk, {
         headers: {
           'Content-Type': 'application/octet-stream',
+          ...(checksum ? { 'X-Part-SHA256': checksum } : {}),
         },
       })
     }, {
