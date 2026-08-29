@@ -9,8 +9,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	elasticsearchdata "github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	searchprojector "github.com/JekYUlll/Dipole/internal/projector/search"
