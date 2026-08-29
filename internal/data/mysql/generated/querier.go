@@ -33,6 +33,7 @@ type Querier interface {
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
+	ClearAgentWorkflowRepairProjection(ctx context.Context, arg ClearAgentWorkflowRepairProjectionParams) (int64, error)
 	CommitAgentWorkflowRepairExecution(ctx context.Context, arg CommitAgentWorkflowRepairExecutionParams) (int64, error)
 	CompleteAgentEvent(ctx context.Context, arg CompleteAgentEventParams) (int64, error)
 	CompleteAgentMemoryLineageBackfillJob(ctx context.Context, arg CompleteAgentMemoryLineageBackfillJobParams) (sql.Result, error)
@@ -231,6 +232,7 @@ type Querier interface {
 	MarkAgentTaskTimelineRepairCompleted(ctx context.Context, eventUuid string) (sql.Result, error)
 	MarkAgentTaskTimelineRepairRetry(ctx context.Context, arg MarkAgentTaskTimelineRepairRetryParams) (sql.Result, error)
 	MarkAgentTaskTimelineRepairsProcessing(ctx context.Context, arg MarkAgentTaskTimelineRepairsProcessingParams) (sql.Result, error)
+	MarkAgentWorkflowRepairExecutionRolledBack(ctx context.Context, arg MarkAgentWorkflowRepairExecutionRolledBackParams) (int64, error)
 	MarkConversationReadThrough(ctx context.Context, arg MarkConversationReadThroughParams) (sql.Result, error)
 	MarkOutboxEventsProcessing(ctx context.Context, arg MarkOutboxEventsProcessingParams) (sql.Result, error)
 	MarkOutboxPublished(ctx context.Context, arg MarkOutboxPublishedParams) (sql.Result, error)
@@ -251,6 +253,7 @@ type Querier interface {
 	RevokeAgentMemory(ctx context.Context, arg RevokeAgentMemoryParams) (int64, error)
 	RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error)
 	RevokeOwnedAgentMemory(ctx context.Context, arg RevokeOwnedAgentMemoryParams) (int64, error)
+	RollbackAgentWorkflowRepairProjection(ctx context.Context, arg RollbackAgentWorkflowRepairProjectionParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]AgentTaskTimelineRepair, error)

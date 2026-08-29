@@ -166,4 +166,11 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	if committed, err := transactionalStore.CommitWorkflowRepairProjection(context.Background(), secondExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, &projection, transactionalTarget, startedAt.Add(5*time.Second)); err != nil || !committed {
 		t.Fatalf("commit transactional repair projection: committed=%v err=%v", committed, err)
 	}
+	if rolledBack, err := transactionalStore.RollbackWorkflowRepairProjection(context.Background(), secondExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, transactionalTarget, &projection, startedAt.Add(6*time.Second)); err != nil || !rolledBack {
+		t.Fatalf("rollback transactional repair projection: rolled_back=%v err=%v", rolledBack, err)
+	}
+	loaded, err = store.GetWorkflowRepairExecution(context.Background(), secondExecutionUUID)
+	if err != nil || loaded == nil || loaded.Status != application.AgentWorkflowRepairExecutionStatusRolledBack {
+		t.Fatalf("load rolled-back repair execution: execution=%+v err=%v", loaded, err)
+	}
 }

@@ -176,3 +176,56 @@ func (r *AgentPolicyRepository) CommitWorkflowRepairProjection(ctx context.Conte
 	}
 	return true, nil
 }
+
+func (r *AgentPolicyRepository) RollbackWorkflowRepairProjection(ctx context.Context, executionUUID, executorUUID string, grantVersion uint64, expected application.AgentTaskWorkflowProjectionV1, rollback *application.AgentTaskWorkflowProjectionV1, finishedAt time.Time) (bool, error) {
+	if r.store == nil || strings.TrimSpace(executionUUID) == "" || strings.TrimSpace(executorUUID) == "" || grantVersion == 0 || finishedAt.IsZero() {
+		return false, fmt.Errorf("validate Workflow repair rollback: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	if err := expected.Validate(); err != nil {
+		return false, fmt.Errorf("validate Workflow repair rollback expected: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	if rollback != nil && (rollback.Validate() != nil || rollback.TaskUUID != expected.TaskUUID) {
+		return false, fmt.Errorf("validate Workflow repair rollback target: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	err := r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+		var rows int64
+		var rollbackErr error
+		expectedWorkflowID := sql.NullString{String: expected.WorkflowID, Valid: true}
+		expectedRunID := sql.NullString{String: expected.RunID, Valid: true}
+		expectedStatus := sql.NullString{String: string(expected.Status), Valid: true}
+		expectedRevision := sql.NullInt64{Int64: int64(expected.Revision), Valid: true}
+		if rollback == nil {
+			rows, rollbackErr = q.ClearAgentWorkflowRepairProjection(ctx, generated.ClearAgentWorkflowRepairProjectionParams{
+				TaskUuid: expected.TaskUUID, WorkflowID: expectedWorkflowID, WorkflowRunID: expectedRunID, WorkflowStatus: expectedStatus, WorkflowRevision: expectedRevision,
+			})
+		} else {
+			rows, rollbackErr = q.RollbackAgentWorkflowRepairProjection(ctx, generated.RollbackAgentWorkflowRepairProjectionParams{
+				WorkflowID: sql.NullString{String: rollback.WorkflowID, Valid: true}, WorkflowRunID: sql.NullString{String: rollback.RunID, Valid: true}, WorkflowStatus: sql.NullString{String: string(rollback.Status), Valid: true}, WorkflowRevision: sql.NullInt64{Int64: int64(rollback.Revision), Valid: true},
+				TaskUuid: expected.TaskUUID, WorkflowID_2: expectedWorkflowID, WorkflowRunID_2: expectedRunID, WorkflowStatus_2: expectedStatus, WorkflowRevision_2: expectedRevision,
+			})
+		}
+		if rollbackErr != nil {
+			return fmt.Errorf("rollback Workflow repair projection in transaction: %w", rollbackErr)
+		}
+		if rows == 0 {
+			return errRepairExecutionCASNoop
+		}
+		marked, markErr := q.MarkAgentWorkflowRepairExecutionRolledBack(ctx, generated.MarkAgentWorkflowRepairExecutionRolledBackParams{
+			FinishedAt: sql.NullTime{Time: finishedAt.UTC(), Valid: true}, ExecutionUuid: strings.TrimSpace(executionUUID), ExecutorUuid: strings.TrimSpace(executorUUID), ExecutorGrantVersion: grantVersion,
+		})
+		if markErr != nil {
+			return fmt.Errorf("mark Workflow repair execution rolled back in transaction: %w", markErr)
+		}
+		if marked == 0 {
+			return errRepairExecutionCASNoop
+		}
+		return nil
+	})
+	if errors.Is(err, errRepairExecutionCASNoop) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}

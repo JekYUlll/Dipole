@@ -289,3 +289,23 @@ UPDATE agent_workflow_repair_executions
 SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
 WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
   AND status = 'executing' AND started_at IS NOT NULL AND finished_at IS NULL;
+
+-- name: RollbackAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;
+
+-- name: ClearAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = NULL, workflow_run_id = NULL, workflow_status = NULL, workflow_revision = NULL, workflow_updated_at = NULL
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;
+
+-- name: MarkAgentWorkflowRepairExecutionRolledBack :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'rolled_back', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'committed' AND started_at IS NOT NULL AND finished_at IS NOT NULL;
