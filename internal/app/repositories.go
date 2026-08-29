@@ -64,6 +64,83 @@ type CoreProcessRepositories struct {
 	Admin         application.AdminOverviewStore
 }
 
+// AgentProcessRepositories contains repositories owned by the Agent runtime.
+// The Go Core still consumes selected Agent ports for the compatibility RPC
+// surface, while the process boundary remains explicit for later extraction.
+type AgentProcessRepositories struct {
+	AICallLogs        application.AICallLogStore
+	Policy            application.AgentPolicyStoreV1
+	TaskTimeline      application.AgentTaskTimelineStoreV1
+	DefinitionCatalog application.AgentDefinitionCatalogStoreV1
+	ApprovalGrants    application.AgentApprovalGrantStoreV1
+	Promotions        application.AgentRuntimePromotionGrantStoreV1
+	PromotionControls application.AgentRuntimePromotionControlStoreV1
+	ReadinessEvidence application.AgentMCPReadinessEvidenceStoreV1
+	Subscriptions     application.AgentEventSubscriptionStoreV1
+	Repairs           application.AgentWorkflowRepairAuditStoreV1
+	Artifacts         application.AgentArtifactStoreV1
+	Memories          application.AgentMemoryStoreV1
+	MemoryOwners      application.AgentMemoryOwnerStoreV1
+	MemoryPromotions  application.AgentMemoryCandidatePromotionStoreV1
+	ToolAudits        application.AgentToolInvocationStoreV1
+	ToolRounds        application.AgentMCPToolRoundStoreV1
+}
+
+func NewAgentProcessRepositories(db *sql.DB) (*AgentProcessRepositories, error) {
+	if db == nil {
+		return nil, fmt.Errorf("agent repository composition requires database/sql connection")
+	}
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("create agent transaction store: %w", err)
+	}
+	return newAgentProcessRepositories(db, mysqlStore)
+}
+
+func newAgentProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*AgentProcessRepositories, error) {
+	queries := generated.New(db)
+	aiCallLogs, err := sqlcRepository.NewAICallLogRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
+	}
+	policy, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
+	}
+	artifacts, err := sqlcRepository.NewAgentArtifactRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
+	}
+	memories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
+	}
+	toolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
+	}
+	toolRounds, err := sqlcRepository.NewAgentMCPToolRoundRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
+	}
+	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
+	}
+	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
+	}
+	return &AgentProcessRepositories{
+		AICallLogs: aiCallLogs, Policy: policy, TaskTimeline: policy,
+		DefinitionCatalog: policy, ApprovalGrants: policy, Promotions: policy,
+		Subscriptions: policy, Repairs: policy, Artifacts: artifacts,
+		Memories: memories, MemoryOwners: memories, MemoryPromotions: memories,
+		ToolAudits: toolAudits, ToolRounds: toolRounds,
+		PromotionControls: promotionControls, ReadinessEvidence: readinessEvidence,
+	}, nil
+}
+
 func NewCoreProcessRepositories(db *sql.DB) (*CoreProcessRepositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("core repository composition requires database/sql connection")
@@ -183,54 +260,26 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	repos.Contacts = coreRepos.Contacts
 	repos.Groups = coreRepos.Groups
 	repos.Admin = coreRepos.Admin
-	adapter, err := sqlcRepository.NewAICallLogRepository(generated.New(db))
+	agentRepos, err := newAgentProcessRepositories(db, mysqlStore)
 	if err != nil {
-		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
+		return nil, fmt.Errorf("compose Agent repositories: %w", err)
 	}
-	repos.AICallLogs = adapter
-	agentPolicy, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
-	}
-	repos.AgentPolicy = agentPolicy
-	repos.AgentTaskTimeline = agentPolicy
-	repos.AgentDefinitionCatalog = agentPolicy
-	repos.AgentApprovalGrants = agentPolicy
-	repos.AgentPromotions = agentPolicy
-	repos.AgentSubscriptions = agentPolicy
-	repos.AgentRepairs = agentPolicy
-	agentArtifacts, err := sqlcRepository.NewAgentArtifactRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
-	}
-	repos.AgentArtifacts = agentArtifacts
-	agentMemories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
-	}
-	repos.AgentMemories = agentMemories
-	repos.AgentMemoryOwners = agentMemories
-	repos.AgentMemoryPromotions = agentMemories
-	agentToolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
-	}
-	repos.AgentToolAudits = agentToolAudits
-	agentToolRounds, err := sqlcRepository.NewAgentMCPToolRoundRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
-	}
-	repos.AgentToolRounds = agentToolRounds
-	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
-	}
-	repos.AgentPromotionControls = promotionControls
-	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
-	}
-	repos.AgentReadinessEvidence = readinessEvidence
+	repos.AICallLogs = agentRepos.AICallLogs
+	repos.AgentPolicy = agentRepos.Policy
+	repos.AgentTaskTimeline = agentRepos.TaskTimeline
+	repos.AgentDefinitionCatalog = agentRepos.DefinitionCatalog
+	repos.AgentApprovalGrants = agentRepos.ApprovalGrants
+	repos.AgentPromotions = agentRepos.Promotions
+	repos.AgentPromotionControls = agentRepos.PromotionControls
+	repos.AgentReadinessEvidence = agentRepos.ReadinessEvidence
+	repos.AgentSubscriptions = agentRepos.Subscriptions
+	repos.AgentRepairs = agentRepos.Repairs
+	repos.AgentArtifacts = agentRepos.Artifacts
+	repos.AgentMemories = agentRepos.Memories
+	repos.AgentMemoryOwners = agentRepos.MemoryOwners
+	repos.AgentMemoryPromotions = agentRepos.MemoryPromotions
+	repos.AgentToolAudits = agentRepos.ToolAudits
+	repos.AgentToolRounds = agentRepos.ToolRounds
 	messageAdapter, err := sqlcRepository.NewMessageRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc message repository: %w", err)
