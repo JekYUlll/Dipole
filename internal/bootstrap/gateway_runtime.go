@@ -121,7 +121,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	runtime := &GatewayRuntime{redis: cache.RDB}
 	cleanup := func() { runtime.Close() }
-	presence := platformPresence.NewRedisPresence()
+	presence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 	var deliveryFence realtimeDelivery.AuthorityFence
 	var deliveryObservationFence realtimeDelivery.AuthorityFence
 	if realtimeCfg.FencingEnabled {
