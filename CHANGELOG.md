@@ -22,6 +22,7 @@
 - 将 Redis 客户端初始化和全局状态从 `internal/store` 收敛到 `internal/platform/cache`，同步迁移 Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具；旧 Redis 入口保留为兼容转发，单节点/Sentinel 配置和实时状态语义保持兼容。
 - Hot Group Detector 新增显式 Redis 客户端注入，Core、Message、embedded 和 Kafka 投影装配统一传入平台客户端；无参数构造函数继续保留为兼容入口，检测阈值和热群策略保持不变。
 - Presence 新增显式 Redis 客户端注入，Gateway、embedded Server 和 WebSocket 路由统一使用平台客户端；无参数构造函数继续保留为兼容入口，连接 TTL、节点状态和故障语义保持兼容。
+- Rate Limiter 新增显式 Redis 客户端注入，Gateway、embedded Server 和 Agent MCP 入口统一使用平台客户端；普通业务限流的 fail-open 与 Agent MCP 的 fail-closed 语义保持兼容。
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 - 将 Sync Kafka Projector 从 `internal/projector/sync` 收敛到 `internal/services/sync/infrastructure/kafka`，直接复用 Message domain 事件解码与 Inbox projection contract；新增目录说明和结构门禁，运行时注册、Kafka topic 和 atomic/projector 回滚语义保持兼容。
 - 将 Search Indexer Kafka Projector 从 `internal/projector/search` 收敛到 `internal/services/search/infrastructure/kafka`，直接复用 Message domain 事件解码与 Search mutation contract；新增目录说明和结构门禁，Kafka retry/DLQ 与 Alias 回滚语义保持兼容。
