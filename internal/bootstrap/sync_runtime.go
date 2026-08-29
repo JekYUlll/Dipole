@@ -20,6 +20,7 @@ import (
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	syncprojector "github.com/JekYUlll/Dipole/internal/projector/sync"
+	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -128,7 +129,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		return nil, err
 	}
 	runtime.coreConn = coreConnection
-	syncApplication := appcomposition.NewSyncApplication(repositories.Sync, core)
+	syncApplication := syncapplication.New(repositories.Sync, core)
 	var subscriber *platformkafka.Consumer
 	if syncCfg.ProjectorEnabled {
 		projector, projectorErr := syncprojector.New(repositories.Projection)

@@ -23,6 +23,14 @@ if [[ ! -f "${root_dir}/internal/services/search/application/search.go" ]]; then
   echo "Search application implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/sync/application/application.go" ]]; then
+  echo "Sync application implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/app/sync.go" || -e "${root_dir}/internal/app/sync_test.go" ]]; then
+  echo "legacy shared Sync application path remains under internal/app" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/search_test.go" ]]; then
   echo "legacy shared Search application path remains under internal/app" >&2
   exit 1
