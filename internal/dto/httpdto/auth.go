@@ -3,8 +3,8 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 type RegisterRequest struct {
@@ -14,8 +14,8 @@ type RegisterRequest struct {
 	Email     string `json:"email" binding:"omitempty,email,max=64"`
 }
 
-func (r RegisterRequest) ToInput() service.RegisterInput {
-	return service.RegisterInput{
+func (r RegisterRequest) ToInput() coreauth.RegisterInput {
+	return coreauth.RegisterInput{
 		Nickname:  r.Nickname,
 		Telephone: r.Telephone,
 		Password:  r.Password,
@@ -42,7 +42,7 @@ type AgentMCPGrantResponse struct {
 	Scope       string `json:"scope"`
 }
 
-func NewAgentMCPGrantResponse(result *service.AgentMCPGrantResult) *AgentMCPGrantResponse {
+func NewAgentMCPGrantResponse(result *coreauth.AgentMCPGrantResult) *AgentMCPGrantResponse {
 	if result == nil {
 		return nil
 	}
@@ -52,8 +52,8 @@ func NewAgentMCPGrantResponse(result *service.AgentMCPGrantResult) *AgentMCPGran
 	}
 }
 
-func (r LoginRequest) ToInput() service.LoginInput {
-	return service.LoginInput{
+func (r LoginRequest) ToInput() coreauth.LoginInput {
+	return coreauth.LoginInput{
 		Telephone: r.Telephone,
 		Password:  r.Password,
 	}
@@ -64,7 +64,7 @@ type AuthResponse struct {
 	User  *PrivateUserResponse `json:"user"`
 }
 
-func NewAuthResponse(result *service.AuthResult) *AuthResponse {
+func NewAuthResponse(result *coreauth.AuthResult) *AuthResponse {
 	if result == nil {
 		return nil
 	}
