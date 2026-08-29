@@ -16,6 +16,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const searchServiceName = "dipole-search"
+
 type SearchRuntime struct {
 	rpc         *InternalRPCServer
 	coreConn    *grpc.ClientConn
@@ -24,11 +26,11 @@ type SearchRuntime struct {
 	shutdownSec int
 }
 
-func InitializeSearchService(ctx context.Context) (*SearchRuntime, error) {
-	return initializeSearchService(ctx, config.InternalRPCConfig(), config.ElasticsearchConfig(), config.MetricsConfig())
+func Initialize(ctx context.Context) (*SearchRuntime, error) {
+	return InitializeWithConfig(ctx, config.InternalRPCConfig(), config.ElasticsearchConfig(), config.MetricsConfig())
 }
 
-func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, elasticsearchCfg config.Elasticsearch, metricsCfg config.Metrics) (*SearchRuntime, error) {
+func InitializeWithConfig(ctx context.Context, rpcCfg config.InternalRPC, elasticsearchCfg config.Elasticsearch, metricsCfg config.Metrics) (*SearchRuntime, error) {
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("Search Service requires internal_rpc.enabled")
 	}

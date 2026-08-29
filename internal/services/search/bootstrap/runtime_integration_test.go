@@ -58,7 +58,7 @@ func TestSearchRuntimeElasticsearchContract(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	rpcCfg.CoreTarget = coreServer.Address()
-	runtime, err := initializeSearchService(t.Context(), rpcCfg, config.Elasticsearch{
+	runtime, err := InitializeWithConfig(t.Context(), rpcCfg, config.Elasticsearch{
 		Enabled: true, Address: address, IndexPrefix: prefix, Shards: 1, Replicas: 0, RequestTimeoutSeconds: 5,
 	}, config.Metrics{})
 	if err != nil {
