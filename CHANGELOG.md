@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：Core Contact 的输入、响应、错误和事件契约调用已统一迁移到 Core-owned Contact domain，删除无调用者的 `internal/compat/service/contact_compat.go`；联系人 HTTP/Kafka contract 保持兼容。
 - 2026-08-30：Core User 的输入、响应、错误和 User HTTP 调用已统一迁移到 Core-owned User domain，删除无调用者的 `internal/compat/service/user_compat.go`；用户管理和头像 HTTP contract 保持兼容。
 - 2026-08-30：Core Session 的设备会话、Session Kick 事件和错误契约调用已统一迁移到 Core-owned Session domain，删除无调用者的 `internal/compat/service/session_compat.go`；设备会话 HTTP/Kafka contract 保持兼容。
 - 2026-08-30：Core Admin 的 Overview、错误契约和 HTTP/DTO 调用已统一迁移到 Core-owned Admin domain，删除无调用者的 `internal/compat/service/admin_compat.go`；User/Auth 等仍有实际调用者的兼容入口继续保留。
