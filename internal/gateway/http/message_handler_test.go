@@ -11,9 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type stubMessageService struct {
@@ -245,7 +245,7 @@ func TestMessageHandlerListDirectNotFound(t *testing.T) {
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
-			return nil, service.ErrMessageTargetNotFound
+			return nil, messagedomain.ErrMessageTargetNotFound
 		},
 	})
 
@@ -275,7 +275,7 @@ func TestMessageHandlerListDirectRequiresFriendship(t *testing.T) {
 
 	handler := NewMessageHandler(&stubMessageService{
 		listDirectFn: func(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
-			return nil, service.ErrMessageFriendRequired
+			return nil, messagedomain.ErrMessageFriendRequired
 		},
 	})
 
@@ -333,7 +333,7 @@ func TestMessageHandlerListGroupForbidden(t *testing.T) {
 
 	handler := NewMessageHandler(&stubMessageService{
 		listGroupFn: func(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
-			return nil, service.ErrMessageGroupForbidden
+			return nil, messagedomain.ErrMessageGroupForbidden
 		},
 	})
 

@@ -11,9 +11,9 @@ import (
 	"go.uber.org/zap"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type inboundHandler interface {
@@ -273,19 +273,19 @@ func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *mod
 
 func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string, clientMessageID string) {
 	switch {
-	case errors.Is(err, service.ErrMessageTargetRequired):
+	case errors.Is(err, messagedomain.ErrMessageTargetRequired):
 		_ = client.SendError(ErrorBadRequest, "target_uuid is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageContentRequired):
+	case errors.Is(err, messagedomain.ErrMessageContentRequired):
 		_ = client.SendError(ErrorBadRequest, "content is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageContentTooLong):
+	case errors.Is(err, messagedomain.ErrMessageContentTooLong):
 		_ = client.SendError(ErrorBadRequest, "content is too long", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFileRequired):
+	case errors.Is(err, messagedomain.ErrMessageFileRequired):
 		_ = client.SendError(ErrorBadRequest, "file_id is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFriendRequired), errors.Is(err, service.ErrMessageGroupForbidden):
+	case errors.Is(err, messagedomain.ErrMessageFriendRequired), errors.Is(err, messagedomain.ErrMessageGroupForbidden):
 		_ = client.SendError(ErrorPermissionDenied, "message send permission denied", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageTargetUnavailable), errors.Is(err, service.ErrMessageTargetNotFound):
+	case errors.Is(err, messagedomain.ErrMessageTargetUnavailable), errors.Is(err, messagedomain.ErrMessageTargetNotFound):
 		_ = client.SendError(ErrorTargetUnavailable, unavailableMessage, requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFileUnavailable):
+	case errors.Is(err, messagedomain.ErrMessageFileUnavailable):
 		_ = client.SendError(ErrorBadRequest, "file is unavailable", requestType, clientMessageID)
 	default:
 		client.log.Warn("persist websocket message failed", zap.Error(err))

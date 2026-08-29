@@ -14,10 +14,10 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type stubTokenResolver struct {
@@ -560,7 +560,7 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
 		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
-			return nil, service.ErrMessageFriendRequired
+			return nil, messagedomain.ErrMessageFriendRequired
 		},
 	}, &stubConversationUpdater{}, true)
 

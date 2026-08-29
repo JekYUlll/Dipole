@@ -9,10 +9,10 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type MessageHandler struct {
@@ -80,11 +80,11 @@ func (h *MessageHandler) ListDirect(c *gin.Context) {
 	}
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrMessageTargetRequired):
+		case errors.Is(err, messagedomain.ErrMessageTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.MessageTargetRequired, "target_uuid is required")
-		case errors.Is(err, service.ErrMessageTargetNotFound):
+		case errors.Is(err, messagedomain.ErrMessageTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "target user not found")
-		case errors.Is(err, service.ErrMessageFriendRequired):
+		case errors.Is(err, messagedomain.ErrMessageFriendRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.MessageFriendRequired, "direct message requires friendship")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -174,11 +174,11 @@ func (h *MessageHandler) ListGroup(c *gin.Context) {
 	}
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrMessageTargetRequired):
+		case errors.Is(err, messagedomain.ErrMessageTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.MessageTargetRequired, "group_uuid is required")
-		case errors.Is(err, service.ErrMessageTargetNotFound):
+		case errors.Is(err, messagedomain.ErrMessageTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "group not found")
-		case errors.Is(err, service.ErrMessageGroupForbidden):
+		case errors.Is(err, messagedomain.ErrMessageGroupForbidden):
 			ErrorWithCode(c, http.StatusForbidden, code.MessageGroupForbidden, "group message requires membership")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
