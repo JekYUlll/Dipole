@@ -59,10 +59,8 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - 根目录禁止重新出现 `services/agent-runtime/`、`services/realtime-delivery/` 两个服务源码目录。
 - 结构门禁只检查 Git 跟踪内容；本地构建生成的同名忽略目录不会改变仓库结构判定。
 - Agent 兼容基线必须位于 `internal/services/agent/legacy/`；`internal/modules/ai/` 已禁用，避免旧模块重新成为服务入口。
-- Agent 的 SQLC repository 实现必须位于 `internal/services/agent/infrastructure/mysql/`；共享 `internal/data/mysql/repository/agent_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
-- Core 的 SQLC repository 实现必须位于 `internal/services/core/infrastructure/mysql/`；共享 `internal/data/mysql/repository/core_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
-- Search Index 的 SQLC repository 实现必须位于 `internal/services/search/infrastructure/mysql/`；共享 `internal/data/mysql/repository/search_index_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
-- `internal/data/mysql/repository/` 当前仅保留仍有回滚调用者的 Core、Agent、Search Index 兼容入口；Message 与 Sync facade 已完成调用审计并退役。新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`，禁止在共享目录增加实现。
+- Agent、Core 和 Search Index 的 SQLC repository 实现分别位于各自服务的 `internal/services/<service>/infrastructure/mysql/`；Message、Sync 的仓储实现也由对应服务独占，禁止恢复已退役的共享 repository 目录。
+- 新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`；`internal/platform/mysql/` 仅提供跨服务共享的 SQLC 连接、生成代码、mapper、migration runner 和事务基础设施，不承载领域仓储。
 - `internal/compat/` 只允许存放迁移兼容入口；禁止在此目录新增领域逻辑。
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
 - `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
