@@ -11,8 +11,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 type multipartUploadSession struct {
@@ -44,7 +44,7 @@ func newMultipartUploadSessionStore() multipartUploadSessionStore {
 }
 
 func (s *redisMultipartUploadSessionStore) Create(ctx context.Context, session *multipartUploadSession, ttl time.Duration) error {
-	if store.RDB == nil {
+	if !platformCache.Available() {
 		return fmt.Errorf("redis is not initialized")
 	}
 	if session == nil {
@@ -56,21 +56,21 @@ func (s *redisMultipartUploadSessionStore) Create(ctx context.Context, session *
 		return fmt.Errorf("marshal multipart session: %w", err)
 	}
 
-	pipe := store.RDB.TxPipeline()
-	pipe.Set(ctx, multipartSessionMetaKey(session.SessionID), payload, ttl)
-	pipe.Del(ctx, multipartSessionPartsKey(session.SessionID))
-	if _, err := pipe.Exec(ctx); err != nil {
+	if err := platformCache.RunTransaction(ctx, func(pipe redis.Pipeliner) {
+		pipe.Set(ctx, multipartSessionMetaKey(session.SessionID), payload, ttl)
+		pipe.Del(ctx, multipartSessionPartsKey(session.SessionID))
+	}); err != nil {
 		return fmt.Errorf("store multipart session: %w", err)
 	}
 	return nil
 }
 
 func (s *redisMultipartUploadSessionStore) Get(ctx context.Context, sessionID string) (*multipartUploadSession, error) {
-	if store.RDB == nil {
+	if !platformCache.Available() {
 		return nil, fmt.Errorf("redis is not initialized")
 	}
 
-	raw, err := store.RDB.Get(ctx, multipartSessionMetaKey(sessionID)).Bytes()
+	raw, err := platformCache.GetBytes(ctx, multipartSessionMetaKey(sessionID))
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -86,29 +86,29 @@ func (s *redisMultipartUploadSessionStore) Get(ctx context.Context, sessionID st
 }
 
 func (s *redisMultipartUploadSessionStore) SavePart(ctx context.Context, sessionID string, part *platformStorage.UploadedPart, ttl time.Duration) error {
-	if store.RDB == nil {
+	if !platformCache.Available() {
 		return fmt.Errorf("redis is not initialized")
 	}
 	if part == nil {
 		return fmt.Errorf("multipart part is required")
 	}
 
-	pipe := store.RDB.TxPipeline()
-	pipe.HSet(ctx, multipartSessionPartsKey(sessionID), strconv.Itoa(part.PartNumber), strings.TrimSpace(part.ETag))
-	pipe.Expire(ctx, multipartSessionMetaKey(sessionID), ttl)
-	pipe.Expire(ctx, multipartSessionPartsKey(sessionID), ttl)
-	if _, err := pipe.Exec(ctx); err != nil {
+	if err := platformCache.RunTransaction(ctx, func(pipe redis.Pipeliner) {
+		pipe.HSet(ctx, multipartSessionPartsKey(sessionID), strconv.Itoa(part.PartNumber), strings.TrimSpace(part.ETag))
+		pipe.Expire(ctx, multipartSessionMetaKey(sessionID), ttl)
+		pipe.Expire(ctx, multipartSessionPartsKey(sessionID), ttl)
+	}); err != nil {
 		return fmt.Errorf("save multipart part: %w", err)
 	}
 	return nil
 }
 
 func (s *redisMultipartUploadSessionStore) ListParts(ctx context.Context, sessionID string) ([]platformStorage.MultipartCompletePart, error) {
-	if store.RDB == nil {
+	if !platformCache.Available() {
 		return nil, fmt.Errorf("redis is not initialized")
 	}
 
-	values, err := store.RDB.HGetAll(ctx, multipartSessionPartsKey(sessionID)).Result()
+	values, err := platformCache.HashGetAll(ctx, multipartSessionPartsKey(sessionID))
 	if err != nil {
 		return nil, fmt.Errorf("list multipart parts: %w", err)
 	}
@@ -130,10 +130,10 @@ func (s *redisMultipartUploadSessionStore) ListParts(ctx context.Context, sessio
 }
 
 func (s *redisMultipartUploadSessionStore) Delete(ctx context.Context, sessionID string) error {
-	if store.RDB == nil {
+	if !platformCache.Available() {
 		return nil
 	}
-	if err := store.RDB.Del(ctx, multipartSessionMetaKey(sessionID), multipartSessionPartsKey(sessionID)).Err(); err != nil {
+	if err := platformCache.Delete(ctx, multipartSessionMetaKey(sessionID), multipartSessionPartsKey(sessionID)); err != nil {
 		return fmt.Errorf("delete multipart session: %w", err)
 	}
 	return nil
