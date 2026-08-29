@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 微服务隔离部署 smoke 通过：在独立 Compose project 和候选服务镜像上验证 Core、Message、Sync、Gateway、Agent 及基础设施的冷启动、readiness、metrics、TLS 1.3 mTLS、Core 代理和 remote WS ownership，并自动清理临时拓扑；共享环境发布切换与回滚 receipt 仍按架构债务台账跟踪。
 - Agent Runtime 新增容器交付门禁 `scripts/check-agent-runtime-container.sh`：镜像绑定 OCI revision/created/dirty provenance，自动验证非 root `node` 用户与 foundation `/readyz`，为独立制品和回滚路径提供可重复检查。
 - Agent Runtime 完成独立制品验证：`services/agent-runtime/Dockerfile` 构建成功，生产镜像仅包含编译后的 `dist` 与裁剪后依赖；容器以 `node` 用户运行，关闭 Kafka/RPC 的 foundation 配置下 `/readyz` 返回 200。
 - TS Agent Runtime 独立 module 完成当前基线验证：`npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；Compose 仍保持 shadow、metadata、foundation 默认回滚模式。

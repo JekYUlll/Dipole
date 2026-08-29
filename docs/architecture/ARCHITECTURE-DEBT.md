@@ -127,6 +127,7 @@
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 基础微服务 Compose 切换为逐服务镜像与统一 `/app/service` 入口，补充 repair worker 镜像构建；基础核心 smoke、Search profile 消息 smoke 和 repair profile v50 恢复/幂等 smoke 均通过。共享环境 Kafka ownership、发布切换与可执行回滚 receipt 仍待完成。
+- **本轮进展：** 2026-08-29 使用 `COMPOSE_PROJECT_NAME` 隔离项目运行 `scripts/smoke-microservices.sh`，Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 均完成冷启动并达到 healthy；readiness、metrics、TLS 1.3 mTLS、Core HTTP 代理和 remote WS ownership 均通过，脚本自动清理拓扑。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 将 Agent 审批、审批授权和任务控制 application 实现迁入 `internal/services/agent/application/`；embedded `internal/app` 保留兼容别名与构造转发，Bootstrap 和 Agent SQLC 契约测试已直接依赖服务专属包；新增结构门禁阻止这三类实现回流。其余 Agent application、聚合 Composition Root、独立数据库账号和服务自治仍待继续收敛。
 - **本轮进展：** 2026-08-29 继续将 Agent Definition Catalog、Memory Candidate Promotion 和 Task Workflow Projection application 实现迁入同一服务边界；embedded 兼容转发保持，结构门禁已扩展覆盖六类已迁移实现。其余 Agent application、聚合 Composition Root、独立数据库账号和服务自治仍待继续收敛。
 - **本轮进展：** 2026-08-29 继续将 MCP readiness、MCP tool round、tool invocation audit、Runtime promotion evidence 和 Workflow repair audit application 实现迁入 Agent 服务边界；Bootstrap 与 SQLC 契约测试已直接使用服务包，结构门禁覆盖十一类已迁移实现。Agent capability/command、execution policy、Memory owner、Subscription、Artifact、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
@@ -152,6 +153,7 @@
 - **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息已通过受限 Message RPC 接入，连接建立采用惰性 adapter。
 - **本轮进展：** Message Core Capability 改为惰性连接：构造时不拨号，首次调用或依赖就绪探针按当前 RPC 认证配置建立连接；连接失败不进入缓存，Core 恢复后可重试，新增冷启动/重试/关闭回归测试。完整隔离 Compose 和共享环境证据仍待补齐。
 - **本轮进展：** Compose 门禁已固定默认微服务拓扑中 Core 与 Message 不得互相 `depends_on`，且默认 Core Message transport 必须为 gRPC；`cassandra-primary` 的 embedded/local 回滚覆盖层仍单独保留并验证。
+- **本轮进展：** 2026-08-29 隔离微服务 Compose 已验证 Core/Message/Sync/Gateway 冷启动、依赖 readiness、RPC mTLS、Core 代理和远程 WS ownership；当前证据覆盖开发候选拓扑，Local 回切与共享环境发布窗口演练仍待完成。
 - **本轮进展：** 运维代码、服务集成测试和平台测试已停止引用 `internal/data/mysql/repository` 历史兼容别名，统一使用各服务自有 SQLC repository；兼容别名仅保留回滚入口，结构门禁阻止新的运行时代码回流。
 - **本轮进展：** 为 `internal/app`、`internal/data/mysql`、`internal/data/mysql/repository` 和 `internal/store` 增加目录级 ownership/迁移说明，并由服务布局门禁检查；兼容目录仍保留，避免将回滚入口误认为新的共享业务实现。
 - **本轮进展：** 删除已无调用者的共享 repository contract helper；各服务的 MySQL contract database helper 已在自身 infrastructure 测试边界内维护，历史 repository 包进一步收敛为别名与构造转发。
