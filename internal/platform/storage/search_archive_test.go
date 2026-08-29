@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 )
 
 func TestSearchArchiveStoreEnforcesRetentionAndPinnedReads(t *testing.T) {

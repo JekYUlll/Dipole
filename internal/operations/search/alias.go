@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/config"
-	searchcutover "github.com/JekYUlll/Dipole/internal/cutover/search"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchcutover "github.com/JekYUlll/Dipole/internal/operations/search/cutover"
+	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
 	"github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
-	searchreconcile "github.com/JekYUlll/Dipole/internal/reconcile/search"
 )
 
 type SearchAliasOptions struct {

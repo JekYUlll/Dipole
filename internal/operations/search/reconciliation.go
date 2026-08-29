@@ -6,7 +6,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	searchreconcile "github.com/JekYUlll/Dipole/internal/reconcile/search"
+	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
 )
 
 type SearchReconciliationOptions struct {

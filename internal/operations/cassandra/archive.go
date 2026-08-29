@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
 	"github.com/JekYUlll/Dipole/internal/config"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 

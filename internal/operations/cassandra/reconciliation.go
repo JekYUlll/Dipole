@@ -6,8 +6,8 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cassandrareconcile "github.com/JekYUlll/Dipole/internal/operations/cassandra/reconcile"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
-	cassandrareconcile "github.com/JekYUlll/Dipole/internal/reconcile/cassandra"
 )
 
 type CassandraReconciliationOptions struct {

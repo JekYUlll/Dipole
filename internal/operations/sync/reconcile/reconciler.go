@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	syncbackfill "github.com/JekYUlll/Dipole/internal/backfill/sync"
 	"github.com/JekYUlll/Dipole/internal/model"
+	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 )
 
 type Source interface {

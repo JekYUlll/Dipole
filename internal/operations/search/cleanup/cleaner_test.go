@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
-	searchreconcile "github.com/JekYUlll/Dipole/internal/reconcile/search"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
 )
 
 func TestCleanerDefaultsToDryRunAndRequiresConsistentEvidence(t *testing.T) {

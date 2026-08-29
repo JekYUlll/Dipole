@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	memorylineage "github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
+	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 

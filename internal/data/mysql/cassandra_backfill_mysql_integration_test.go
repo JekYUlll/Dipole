@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 )
 
 func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {

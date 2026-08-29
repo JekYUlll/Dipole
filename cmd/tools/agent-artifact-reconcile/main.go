@@ -10,10 +10,10 @@ import (
 	"syscall"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	artifactreconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile/artifact"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/config"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 

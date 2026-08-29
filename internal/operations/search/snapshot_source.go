@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 )
 
 const (

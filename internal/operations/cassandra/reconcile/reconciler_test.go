@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
 	"github.com/JekYUlll/Dipole/internal/model"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 

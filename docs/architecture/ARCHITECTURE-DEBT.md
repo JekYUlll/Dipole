@@ -787,3 +787,12 @@
 - **完成日期：** 2026-08-26
 - **解决方式：** 修复 Outbox/Inbox 前校验发送者、目标类型、目标 UUID 和会话键；冲突时返回明确错误，并基于已有消息重新计算可信收件人。
 - **验证：** 覆盖同一 `client_message_id` 改投其他目标的隔离测试，并通过完整测试与定向 race 测试。
+### AD-050：一次性运维代码仍混杂在横向目录
+
+- **优先级：** P2
+- **状态：** 已完成
+- **发现日期：** 2026-08-29
+- **影响范围：** 仓库导航、服务边界识别、运维工具维护
+- **现状：** 回填、基线、清理、切换、证据和对账代码已按 Agent、Cassandra、Search、Sync 服务域迁入 `internal/operations/<service>/`，长期运行时仍位于 `internal/bootstrap/`，命令入口仍位于 `cmd/tools/`。
+- **解决方式：** 删除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向目录；通过 `check-service-layout.sh` 阻止旧目录回流，并在操作目录 README 中固定分层约定。
+- **验证：** 旧目录和旧包引用扫描为空，结构门禁与 Go 全量测试通过后合并。

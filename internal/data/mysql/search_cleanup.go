@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	searchcleanup "github.com/JekYUlll/Dipole/internal/cleanup/search"
+	searchcleanup "github.com/JekYUlll/Dipole/internal/operations/search/cleanup"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 

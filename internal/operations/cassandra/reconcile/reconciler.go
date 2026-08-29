@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 

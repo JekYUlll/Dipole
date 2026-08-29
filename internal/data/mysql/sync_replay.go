@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	syncbackfill "github.com/JekYUlll/Dipole/internal/backfill/sync"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
-	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/model"
+	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var (

@@ -27,6 +27,31 @@ if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/inte
   echo "one-shot operations must be documented under internal/operations" >&2
   exit 1
 fi
+for legacy_operations_dir in backfill baseline cleanup cutover reconcile evidence; do
+  if [[ -d "${root_dir}/internal/${legacy_operations_dir}" ]]; then
+    echo "legacy cross-service operations directory remains under internal/${legacy_operations_dir}; use internal/operations/<service>" >&2
+    exit 1
+  fi
+done
+for expected_operations_dir in \
+  internal/operations/agent/evidence \
+  internal/operations/agent/reconcile \
+  internal/operations/cassandra/backfill \
+  internal/operations/cassandra/evidence \
+  internal/operations/cassandra/reconcile \
+  internal/operations/search/backfill \
+  internal/operations/search/cleanup \
+  internal/operations/search/cutover \
+  internal/operations/search/reconcile \
+  internal/operations/sync/backfill \
+  internal/operations/sync/baseline \
+  internal/operations/sync/evidence \
+  internal/operations/sync/reconcile; do
+  if [[ ! -d "${root_dir}/${expected_operations_dir}" ]]; then
+    echo "service-scoped operations directory is missing: ${expected_operations_dir}" >&2
+    exit 1
+  fi
+done
 for legacy_search_runtime in search_alias_runtime.go search_archive_runtime.go search_backfill_runtime.go search_cleanup_runtime.go search_reconciliation_runtime.go search_snapshot_source.go; do
   if [[ -e "${root_dir}/internal/bootstrap/${legacy_search_runtime}" ]]; then
     echo "Search one-shot operation remains in service bootstrap: ${legacy_search_runtime}" >&2

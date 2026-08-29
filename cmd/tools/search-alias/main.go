@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	searchcutover "github.com/JekYUlll/Dipole/internal/cutover/search"
 	searchops "github.com/JekYUlll/Dipole/internal/operations/search"
+	searchcutover "github.com/JekYUlll/Dipole/internal/operations/search/cutover"
 )
 
 func main() {

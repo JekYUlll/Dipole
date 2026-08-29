@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	syncbaseline "github.com/JekYUlll/Dipole/internal/baseline/sync"
+	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
