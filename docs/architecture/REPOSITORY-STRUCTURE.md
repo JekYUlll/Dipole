@@ -54,6 +54,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `internal/data/mysql/repository/` 当前仅保留 Core、Agent、Message、Search Index、Sync 的兼容入口；新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`，禁止在共享目录增加实现。
 - `internal/compat/` 只允许存放迁移兼容入口；禁止在此目录新增领域逻辑。
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
+- `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
 
 ## Compose 配置层级
 

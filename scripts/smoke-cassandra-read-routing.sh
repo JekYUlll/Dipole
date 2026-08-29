@@ -49,7 +49,7 @@ docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
   cd "$root_dir"
   DIPOLE_TEST_MYSQL_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/dipole?parseTime=true&loc=UTC" \
     DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:"$cassandra_port" \
-    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestCassandraReadRouterMySQLFallbackContract ./internal/data/routing
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestCassandraReadRouterMySQLFallbackContract ./internal/platform/storage/routing
 )
 
 printf 'Cassandra read-routing smoke passed: verified pages used Cassandra, payload corruption and a missing row fell back to MySQL.\n'
