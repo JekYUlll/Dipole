@@ -8,18 +8,15 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
-	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
 	syncv1 "github.com/JekYUlll/Dipole/api/gen/go/sync/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
-	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
-	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
 	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
 	syncgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/sync"
 	"google.golang.org/grpc"
@@ -224,34 +221,6 @@ func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerSer
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, fmt.Errorf("create core capability client: %w", err)
-	}
-	return client, connection, nil
-}
-
-func NewMessageRPCServer(cfg config.InternalRPC, messages application.MessageApplication) (*InternalRPCServer, error) {
-	return messagebootstrap.NewMessageRPCServer(cfg, messages)
-}
-
-func DialMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {
-	return dialMessageApplicationAs(ctx, cfg, gatewayServiceName)
-}
-
-func DialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {
-	return dialMessageApplicationAs(ctx, cfg, coreServiceName)
-}
-
-func dialMessageApplicationAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*messagegrpc.Client, *grpc.ClientConn, error) {
-	connection, err := dialInternalRPC(ctx, cfg, cfg.MessageTarget, grpcauth.Credentials{
-		Service: callerService,
-		Secret:  cfg.SharedSecret,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("dial message rpc: %w", err)
-	}
-	client, err := messagegrpc.NewClientForService(messagev1.NewMessageServiceClient(connection), callerService)
-	if err != nil {
-		_ = connection.Close()
-		return nil, nil, fmt.Errorf("create message application client: %w", err)
 	}
 	return client, connection, nil
 }
