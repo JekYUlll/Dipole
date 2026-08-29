@@ -124,7 +124,7 @@ while IFS= read -r compatibility_file; do
       exit 1
       ;;
   esac
-done < <(git -C "${root_dir}" ls-files -- internal/app internal/store internal/data/mysql | sort -u)
+done < <(git -C "${root_dir}" ls-files --cached --others --exclude-standard -- internal/app internal/store internal/data/mysql | sort -u)
 if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1

@@ -109,6 +109,7 @@
 - **本轮进展：** Agent repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口改用 Agent-owned composition，结构门禁阻止 Agent composition 回流。
 - **本轮进展：** Sync repository composition 已迁入 `internal/services/sync/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，独立与聚合启动均使用 Sync-owned composition，结构门禁阻止 Sync composition 回流。
 - **本轮进展：** 2026-08-29 收紧服务布局门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；新增文件会在结构门禁中 fail closed，防止共享实现重新回流。兼容入口的最终退休仍待 embedded 使用者迁移完成。
+- **验证记录：** 2026-08-29 负向测试使用未跟踪的未登记文件验证门禁拒绝路径，随后删除夹具并重新通过正向门禁；检查范围覆盖已跟踪和未忽略未跟踪文件。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 
