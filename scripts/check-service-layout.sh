@@ -268,6 +268,11 @@ if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/ga
   echo "Gateway Kafka consumers must use application event contracts, not Core domain implementations" >&2
   exit 1
 fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/server/agent_mcp.go"; then
+  echo "Gateway Agent MCP proxy must use application authentication contracts" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
