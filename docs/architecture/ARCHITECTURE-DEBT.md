@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：`internal/compat/service` 已无生产依赖，仅剩跨版本 domain-event 契约测试；测试已迁入 `internal/platform/events/contract` 外部测试包，兼容 service 根目录删除，并由服务布局门禁阻止回流。
 - 2026-08-30：调用审计确认 `internal/app` 已无生产代码和测试调用者；11 个 Agent application 边界测试已迁入 `internal/services/agent/application` 外部测试包，删除聚合测试壳并由服务布局门禁阻止回流。
 - 2026-08-30：Gateway 旧 `NewServer` 兼容包装已完成调用审计并删除；测试和独立 bootstrap 均使用显式 `NewServerWithDependencies`，结构门禁同时阻止隐式构造和 Gateway Server 回流 Core Auth 实现。
 - 2026-08-30：Gateway 显式 Composition Root 构造已强制要求 `application.TokenResolver`，缺失 verifier 会在服务启动前 fail fast；旧构造仅保留兼容包装，回归测试和结构门禁通过。

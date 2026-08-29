@@ -34,7 +34,7 @@
 
 ### 需要收敛
 
-- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容回归测试统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，聚合 `internal/app` 已完成退休，生产服务入口不得直接依赖兼容目录。
+- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，跨版本事件契约测试统一收纳到 `internal/platform/events/contract/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，聚合 `internal/app` 已完成退休，生产服务入口不得直接依赖兼容目录。
 - embedded 聚合专属的 Kafka 注册、Conversation projection、群初始化、旧 Eino 触发和实时投递组合位于 `internal/bootstrap/embedded/`；独立 Gateway/Core/Message 服务仍由各自 service-owned Kafka infrastructure 持有。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
@@ -52,7 +52,7 @@
 - Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`，Agent 数据访问实现由 Agent process 独占。
 - Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app` 的 Agent application 兼容 facade 已在调用者迁移后移除，服务入口和契约测试直接依赖 Agent application 包。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
-- Sync domain 实现已迁入 `internal/services/sync/domain/`；Sync Timeline、设备 Cursor 和群组 checkpoint contract 由服务自有 domain 持有，兼容目录仅保留跨版本 domain-event decoder 辅助。
+- Sync domain 实现已迁入 `internal/services/sync/domain/`；Sync Timeline、设备 Cursor 和群组 checkpoint contract 由服务自有 domain 持有，跨版本 domain-event decoder 回归测试位于 `internal/platform/events/contract/`。
 - Sync MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 与 embedded 兼容入口均通过服务专属 composition，旧共享 repository 仅保留兼容入口。
 - Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/sync/` 路径由结构门禁阻止回流，Inbox 写责任仍遵循 atomic/projector 可回滚开关。
 - Sync 独立 runtime 已直接装配 Sync infrastructure composition，embedded 聚合兼容入口位于 `internal/bootstrap/embedded/`；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
