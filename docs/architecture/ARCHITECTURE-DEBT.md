@@ -66,6 +66,7 @@
 - **本轮进展：** Core remote 入口已切换到 `InitializeCoreService`，只装配 `CoreProcessRepositories`、Core projection Kafka consumer 和 Core Capability RPC；embedded 模式保留原聚合入口作为本地兼容路径。Core/Message/Agent 的数据库账号和全量运行时切换仍按后续门禁推进。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。
 - **本轮进展：** Compose 编排已从根目录收纳至 `deploy/compose/`，仅保留默认 `docker-compose.yml` 作为本地入口；所有编排引用和 Compose 静态门禁已同步，TS Agent Runtime 保留用于 Go 工具链扫描隔离的独立 module 边界。`internal/app`、`internal/application`、`internal/bootstrap` 和兼容层仍属于下一阶段的物理边界收敛范围。
+- **本轮进展：** 2026-08-29 修正 ownership smoke 的旧 repository 测试路径，并增加 selector 命中 fail-closed；真实 MySQL atomic/projector/rollback smoke 与三节点 Kafka Sync projector dual-run smoke 均通过。生产级候选镜像切换、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 

@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- 修正 Sync/Message ownership smoke 在 repository 迁移后仍指向旧测试包的问题；新增测试 selector 命中校验，避免 `go test` 无匹配时误报成功，并重新验证真实 MySQL atomic/projector/rollback 权限边界。
 - Compose 编排完成目录收敛：默认本地入口保留在根目录，其余微服务、分发、集群和存储实验拓扑统一迁入 `deploy/compose/`；脚本、文档和归档引用已同步，新增目录索引，Compose 配置门禁覆盖迁移后的全部拓扑。
 - 保留 TypeScript Agent Runtime 的独立 `go.mod` 扫描边界，并修正 repair worker Compose 契约测试，使其校验统一 `/app/service` 入口和 Dockerfile 制品路径。
 - 收紧 Inbox ownership 配置：`message.inbox_write_mode=projector` 现在必须同时启用 `sync.projector_enabled` 和 Kafka；配置不完整时 Message runtime fail closed，`atomic` 回滚路径保持不变。
@@ -133,6 +134,8 @@
 - 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
 
 ### 验证
+- 通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 最小权限、Message atomic/projector 写入边界和 rollback 测试均执行并通过。
+- 通过 `scripts/smoke-sync-projector.sh`：三节点 Kafka backlog/实时事件收敛、retry/DLQ 可观测性和热群 fanout 禁用契约均通过。
 - 2026-08-29 使用独立 Compose project 实测 `SMOKE_SEARCH_PROFILE=1`：Elasticsearch、Search Indexer、Search、Core、Message、Sync、Gateway 和 Agent 均通过 health/readiness，Gateway health 通过，临时资源自动清理。
 - 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 通过：真实 MySQL 验证 Message atomic/projector 权限和 Inbox ownership 迁移/回滚，三节点 Kafka 验证 backlog、实时事件、retry/DLQ 与 Sync Projector 收敛；证据仍不等同于候选镜像经 Gateway 的完整消息发送验收。
 - 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 通过候选镜像端到端消息验收：经 Gateway 注册/登录、好友关系和 WebSocket 发送后，Message、Outbox 与目标用户 Inbox 均正确落库；重复请求幂等、Kafka authority 和生产回滚仍保持后续门禁。
