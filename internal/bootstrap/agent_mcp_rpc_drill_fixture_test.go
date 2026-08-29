@@ -320,7 +320,7 @@ func generateAgentMCPRPCDrillCertificates(t *testing.T) agentMCPRPCDrillCertific
 	}
 }
 
-func startAgentMCPRPCDrillServer(t *testing.T, certs agentMCPRPCDrillCertificates, fixture *agentMCPRPCDrillFixture) *InternalRPCServer {
+func startAgentMCPRPCDrillServer(t *testing.T, certs agentMCPRPCDrillCertificates, fixture *agentMCPRPCDrillFixture) *platformrpc.Server {
 	t.Helper()
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: agentMCPRPCDrillSecret, CoreListenAddress: "127.0.0.1:0", TLSEnabled: true,
 		TLSCertFile: certs.coreCert, TLSKeyFile: certs.coreKey, TLSCAFile: certs.ca, TLSServerName: "core"}
