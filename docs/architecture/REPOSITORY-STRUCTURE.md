@@ -47,6 +47,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - 服务目录内允许保留语言生态所需的 `package.json`、`go.mod`、`CMakeLists.txt` 和本地测试配置；跨服务协议仍只能来自 `api/proto/` 或 `contracts/`。
 - 根目录禁止重新出现 `services/agent-runtime/`、`services/realtime-delivery/` 两个服务源码目录。
 - 结构门禁只检查 Git 跟踪内容；本地构建生成的同名忽略目录不会改变仓库结构判定。
+- Agent 兼容基线必须位于 `internal/services/agent/legacy/`；`internal/modules/ai/` 已禁用，避免旧模块重新成为服务入口。
 
 ## Compose 配置层级
 

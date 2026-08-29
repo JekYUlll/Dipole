@@ -1,6 +1,7 @@
 # 更新日志
 
 - Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
+- 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
 
 本文档记录 Dipole 的重要功能、行为变化、兼容性说明和修复。
 
