@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：清理开发路线图中对已退役 `internal/service` 的过时依赖描述，改为引用共享兼容适配器和服务边界目录；结构门禁与历史债务记录继续保留对旧路径的负向检查。
 - 2026-08-30：在 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke，逐服务 readiness/metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等均通过；该证据限于隔离拓扑，生产 Kafka ownership、候选发布和可执行回滚 receipt 仍待完成。
 - 2026-08-30：在 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke，schema init、Sync primary 配置、依赖 readiness 和 `readyz` 通过；该证据只覆盖隔离启动门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切仍待完成。
 - 2026-08-30：复核 Context Compiler fixture 校准命令，五类样本无低估并生成 report SHA-256 `d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562`；该结果只证明合成 tokenizer profile 的确定性和证据完整性，真实候选模型 route 校准仍未完成。
