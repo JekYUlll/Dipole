@@ -741,7 +741,7 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 - 在 [main.go](../../cmd/services/core/main.go) 里由服务入口配合 Runtime 监听 `SIGINT` 和 `SIGTERM`
 
 2. 先停止 HTTP 接入
-- 收到信号后调用 [Shutdown](../../internal/server/server.go)
+- 收到信号后调用 [Shutdown](../../internal/services/core/server/server.go)
 - 底层走 `http.Server.Shutdown(ctx)`
 - 这样新的 HTTP 请求和新的 WebSocket 握手不会再进入
 
