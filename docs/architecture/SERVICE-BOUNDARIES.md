@@ -36,7 +36,7 @@
 
 - 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
-- Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；`sync_runtime.go` 与 `cassandra_projector_runtime.go` 保留为长期服务运行时。
+- Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
 - Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；`internal/data/mysql/repository/search_index_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口。
@@ -58,7 +58,7 @@
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；`send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
 - Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/services/message/infrastructure/kafka` 负责 Outbox relay，`internal/platform/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
-- Message Cassandra Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，写入 Message-owned Timeline；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
+- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
 - Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
