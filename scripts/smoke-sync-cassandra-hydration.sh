@@ -39,7 +39,7 @@ docker run --rm --network "${project}_default" -v "$root_dir/deploy/cassandra/ba
     DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:"$cassandra_port" LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     go test -count=1 -run '^TestSyncCassandraHydrationShadowContract$' ./internal/platform/storage/shadow
   DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:"$cassandra_port" LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
-    go test -count=1 -run '^TestMessageDuplicateHydrationWithRealCassandra$' ./internal/service
+    go test -count=1 -run '^TestMessageDuplicateHydrationWithRealCassandra$' ./internal/services/message/domain
   DIPOLE_TEST_MYSQL_ADMIN_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/?parseTime=true&loc=UTC" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     go test -count=1 -run '^TestMessageMetadataMigrationBackfillsExistingMessages$' ./internal/platform/mysql/migration
