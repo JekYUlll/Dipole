@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Approval Service 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Task Workflow Projection 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Task Control 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Active Run Promotion Authorizer 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中无调用的类型与构造转发。
