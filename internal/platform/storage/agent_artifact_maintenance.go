@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	artifactcleanup "github.com/JekYUlll/Dipole/internal/cleanup/artifact"
+	artifactcleanup "github.com/JekYUlll/Dipole/internal/operations/agent/artifact"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )

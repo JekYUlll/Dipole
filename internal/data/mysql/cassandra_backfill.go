@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/mapper"
 )

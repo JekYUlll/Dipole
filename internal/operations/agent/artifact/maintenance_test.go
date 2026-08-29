@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
+	artifactreconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile/artifact"
 )
 
 func TestDryRunMaintenanceProducesWouldDeleteReceiptWithoutSideEffect(t *testing.T) {

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
-	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var (

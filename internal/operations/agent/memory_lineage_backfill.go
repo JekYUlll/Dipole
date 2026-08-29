@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	memorylineage "github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
+	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 	_ "github.com/go-sql-driver/mysql"
 )
 

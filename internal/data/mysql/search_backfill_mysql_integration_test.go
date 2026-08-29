@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/model"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
 

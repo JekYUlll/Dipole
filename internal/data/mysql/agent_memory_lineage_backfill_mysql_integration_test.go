@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	memorylineage "github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
+	memorylineage "github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 )
 
 func TestMemoryLineageBackfillSourceTargetAndCheckpointContract(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	syncbaseline "github.com/JekYUlll/Dipole/internal/baseline/sync"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
+	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
 )
 
 func TestSyncBaselineCaptureReconcileAndRestore(t *testing.T) {

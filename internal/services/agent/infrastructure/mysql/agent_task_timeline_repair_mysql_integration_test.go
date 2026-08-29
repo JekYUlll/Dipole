@@ -10,7 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/reconcile/agenttimeline"
+	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile"
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 

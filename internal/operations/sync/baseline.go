@@ -3,8 +3,8 @@ package syncops
 import (
 	"context"
 
-	syncbaseline "github.com/JekYUlll/Dipole/internal/baseline/sync"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
 )
 
 func RunSyncBaselineCapture(ctx context.Context, jobName string) (syncbaseline.Manifest, error) {

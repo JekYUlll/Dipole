@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
+	"github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 )
 
 func TestRunRequiresReviewInputs(t *testing.T) {

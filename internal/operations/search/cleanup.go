@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
-	searchcleanup "github.com/JekYUlll/Dipole/internal/cleanup/search"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	searchreconcile "github.com/JekYUlll/Dipole/internal/reconcile/search"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchcleanup "github.com/JekYUlll/Dipole/internal/operations/search/cleanup"
+	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
 )
 
 type SearchCleanupOptions struct {

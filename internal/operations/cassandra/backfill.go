@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
+	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	_ "github.com/go-sql-driver/mysql"
 )

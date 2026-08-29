@@ -9,7 +9,7 @@ import (
 )
 
 func TestArtifactMaintenanceSchemasRemainDryRunOnly(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "contracts", "agent-artifact-maintenance", "v1")
+	root := filepath.Join("..", "..", "..", "..", "contracts", "agent-artifact-maintenance", "v1")
 	for _, file := range []string{"authorization.schema.json", "receipt.schema.json", filepath.Join("examples", "dry-run-authorization.json"), filepath.Join("examples", "would-delete-receipt.json")} {
 		body, err := os.ReadFile(filepath.Join(root, file))
 		if err != nil {
@@ -42,7 +42,7 @@ func TestArtifactMaintenanceSchemasRemainDryRunOnly(t *testing.T) {
 }
 
 func TestArtifactMaintenanceExamplesMatchGoEvidenceContract(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "contracts", "agent-artifact-maintenance", "v1", "examples")
+	root := filepath.Join("..", "..", "..", "..", "contracts", "agent-artifact-maintenance", "v1", "examples")
 	var authorization AuthorizationV1
 	readStrictContract(t, filepath.Join(root, "dry-run-authorization.json"), &authorization)
 	if err := authorization.Verify(); err != nil {
@@ -59,7 +59,7 @@ func TestArtifactMaintenanceExamplesMatchGoEvidenceContract(t *testing.T) {
 }
 
 func TestProductionAPIRemainsWithoutArtifactDeleteMethod(t *testing.T) {
-	proto, err := os.ReadFile(filepath.Join("..", "..", "..", "api", "proto", "dipole", "agent", "v1", "agent.proto"))
+	proto, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "api", "proto", "dipole", "agent", "v1", "agent.proto"))
 	if err != nil {
 		t.Fatal(err)
 	}

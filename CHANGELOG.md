@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- 重新整理一次性运维代码：将 Agent、Cassandra、Search、Sync 的回填、基线、清理、切换、证据和对账实现统一收纳到 `internal/operations/<service>/`，移除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向遗留目录；补充目录索引与结构门禁，运行行为和工具入口保持兼容。
+
 - 将 Search 回填、归档、对账、Alias 切换和 Outbox 清理装配从 `internal/bootstrap/` 收纳到 `internal/operations/search/`，明确长期服务启动与一次性运维操作的目录边界；命令行入口、回滚语义和操作参数保持兼容。
 - 将 Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配从 `internal/bootstrap/` 分别收纳到 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时、命令参数和回滚语义保持兼容。
 - 将 Agent Memory lineage backfill 装配从 `internal/bootstrap/` 收纳到 `internal/operations/agent/`；dry-run、审批绑定、manifest 校验和回执语义保持兼容。

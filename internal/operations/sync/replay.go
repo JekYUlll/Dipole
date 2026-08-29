@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	syncbackfill "github.com/JekYUlll/Dipole/internal/backfill/sync"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
-	syncreconcile "github.com/JekYUlll/Dipole/internal/reconcile/sync"
+	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
+	syncreconcile "github.com/JekYUlll/Dipole/internal/operations/sync/reconcile"
 	_ "github.com/go-sql-driver/mysql"
 )
 

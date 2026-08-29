@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/model"
+	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 )
 
 func TestReconcilerReportsExactFixedSnapshot(t *testing.T) {
