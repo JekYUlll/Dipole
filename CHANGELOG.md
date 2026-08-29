@@ -134,6 +134,7 @@
 - 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
 
 ### 验证
+- 2026-08-29 使用随机 Compose project 和 `18180` 隔离端口完成候选微服务端到端 smoke：Core、Message、Sync、Gateway、Agent 均 healthy；注册/登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等以及 `before_seq`/`after_seq` Timeline 读取均通过，测试资源自动清理。
 - 通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 最小权限、Message atomic/projector 写入边界和 rollback 测试均执行并通过。
 - 通过 `scripts/smoke-sync-projector.sh`：三节点 Kafka backlog/实时事件收敛、retry/DLQ 可观测性和热群 fanout 禁用契约均通过。
 - 2026-08-29 使用独立 Compose project 实测 `SMOKE_SEARCH_PROFILE=1`：Elasticsearch、Search Indexer、Search、Core、Message、Sync、Gateway 和 Agent 均通过 health/readiness，Gateway health 通过，临时资源自动清理。
