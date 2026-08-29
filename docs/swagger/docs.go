@@ -1338,6 +1338,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/files/uploads/{session_id}/parts/presign": {
+            "post": {
+                "security": [{"BearerAuth": []}],
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["File"],
+                "summary": "签发分片直传 URL",
+                "parameters": [
+                    {"type": "string", "description": "上传会话 ID", "name": "session_id", "in": "path", "required": true},
+                    {"description": "分片编号列表", "name": "request", "in": "body", "required": true, "schema": {"$ref": "#/definitions/httpdto.FileMultipartPresignRequest"}}
+                ],
+                "responses": {
+                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/http.MultipartPresignResponseEnvelope"}},
+                    "400": {"description": "Bad Request", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "403": {"description": "Forbidden", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "404": {"description": "Not Found", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "500": {"description": "Internal Server Error", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "503": {"description": "Service Unavailable", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}}
+                }
+            }
+        },
         "/files/uploads/{session_id}/parts/{part_number}": {
             "put": {
                 "security": [
@@ -3535,6 +3557,13 @@ const docTemplate = `{
                 }
             }
         },
+        "http.MultipartPresignResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "integer"},
+                "data": {"$ref": "#/definitions/httpdto.FileMultipartPresignResponse"}
+            }
+        },
         "http.GroupMemberListResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -4177,6 +4206,29 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/httpdto.FileMultipartPartStatus"
                     }
+                }
+            }
+        },
+        "httpdto.FileMultipartPresignRequest": {
+            "type": "object",
+            "properties": {
+                "part_numbers": {"type": "array", "items": {"type": "integer"}}
+            }
+        },
+        "httpdto.FileMultipartPresignPart": {
+            "type": "object",
+            "properties": {
+                "expires_at": {"type": "string"},
+                "part_number": {"type": "integer"},
+                "url": {"type": "string"}
+            }
+        },
+        "httpdto.FileMultipartPresignResponse": {
+            "type": "object",
+            "properties": {
+                "parts": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/httpdto.FileMultipartPresignPart"}
                 }
             }
         },
