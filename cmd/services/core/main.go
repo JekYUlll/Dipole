@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/server"
+	corebootstrap "github.com/JekYUlll/Dipole/internal/services/core/bootstrap"
 	"go.uber.org/zap"
 )
 
@@ -45,9 +45,9 @@ func main() {
 	}
 	var err error
 	if config.GatewayConfig().Mode == "embedded" {
-		runtime, err = bootstrap.Initialize(rootCtx)
+		runtime, err = corebootstrap.InitializeEmbedded(rootCtx)
 	} else {
-		runtime, err = bootstrap.InitializeCoreService(rootCtx)
+		runtime, err = corebootstrap.InitializeService(rootCtx)
 	}
 	if err != nil {
 		logger.L().Fatal("bootstrap initialize failed", zap.Error(err))
@@ -70,7 +70,7 @@ func main() {
 
 	serverErrCh := make(chan error, 1)
 	go func() {
-		serverErrCh <- bootstrap.RunServer(srv, tlsCfg)
+		serverErrCh <- corebootstrap.RunServer(srv, tlsCfg)
 	}()
 
 	select {
