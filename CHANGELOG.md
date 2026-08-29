@@ -18,6 +18,7 @@
 ### 变更
 - 增加 Go 微服务单镜像候选路径：`core`、`gateway`、`message`、`sync`、`search` 和 `search-indexer` 可分别构建只包含自身二进制的镜像，并通过 Compose override 灰度；override 同步覆盖旧 entrypoint，默认仍使用共享 `DIPOLE_IMAGE`，移除 override 即可回滚。
 - 隔离镜像 smoke 已固化为 `scripts/smoke-microservice-isolated-images.sh`，覆盖迁移、服务 readiness、Gateway health 和独立 project 清理；可使用临时 Gateway 端口验证候选栈，不干扰已有 Dipole 实例。
+- 隔离镜像 smoke 增加 `SMOKE_SEARCH_PROFILE=1` 可选门禁，可在不改变默认核心 smoke 的情况下启动并检查 Search、Search Indexer 与 Elasticsearch 候选路径。
 - Agent Workflow Repair 增加跨 Go/TypeScript 对齐的 projection hash precondition guard，执行前校验 active executor grant、grant version、Task 绑定和当前/目标 projection 哈希；该 guard 无副作用。
 - 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
 - 将长期运行的 Go 服务入口统一归档到 `cmd/services/`，保留一次性迁移、回填和对账工具在 `cmd/` 顶层，降低微服务部署边界与运维工具的混淆。
@@ -77,6 +78,7 @@
 - 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
 
 ### 验证
+- 2026-08-29 使用独立 Compose project 实测 `SMOKE_SEARCH_PROFILE=1`：Elasticsearch、Search Indexer、Search、Core、Message、Sync、Gateway 和 Agent 均通过 health/readiness，Gateway health 通过，临时资源自动清理。
 - C++ Realtime Delivery 在当前 `master` 基线通过 Ubuntu 24.04 容器门禁：依赖安装、CMake Release 构建和 14/14 CTest 成功，镜像 provenance 标记 `dirty=false`；Go/C++ projection 性能对照仍为 `blocked`，因此继续保留 Go projection 和默认 Go authority。
 
 - Cassandra hydration 与 read-routing smoke 已支持动态宿主机端口并行执行；2026-08-29 两条真实隔离 MySQL 8.4/Cassandra 5.0.9 验证同时通过，覆盖 shadow hydration、重复响应恢复、Legacy ID 恢复、Metadata 回填、Cassandra 页面读取及损坏/缺失行 MySQL fallback。该证据仍不授权生产主读灰度。

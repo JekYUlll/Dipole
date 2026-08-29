@@ -17,6 +17,12 @@ scripts/docker-build-microservice-images.sh
 BUILD_IMAGE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
+需要验证 Search 与 Search Indexer 候选镜像时显式启用 profile：
+
+```bash
+SMOKE_SEARCH_PROFILE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
+```
+
 可以通过环境变量覆盖镜像标签：
 
 ```bash

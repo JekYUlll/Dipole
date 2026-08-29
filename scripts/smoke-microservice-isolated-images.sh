@@ -24,7 +24,12 @@ export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
 compose() {
+  local -a profile_args=()
+  if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
+    profile_args+=(--profile search)
+  fi
   docker compose -p "${project}" \
+    "${profile_args[@]}" \
     -f "${root_dir}/docker-compose.microservices.yml" \
     -f "${root_dir}/deploy/microservices/isolated-images.yml" \
     -f "${ports_file}" "$@"
@@ -71,4 +76,11 @@ for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
 done
 
-printf 'isolated microservices smoke passed: project=%s gateway_port=%s\n' "${project}" "${gateway_port}"
+if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
+  for service in search search-indexer; do
+    compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx alive
+    compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
+  done
+fi
+
+printf 'isolated microservices smoke passed: project=%s gateway_port=%s search_profile=%s\n' "${project}" "${gateway_port}" "${SMOKE_SEARCH_PROFILE:-0}"
