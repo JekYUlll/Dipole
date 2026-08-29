@@ -111,7 +111,7 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go|internal/compat/service/doc.go|internal/compat/service/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
@@ -313,6 +313,10 @@ if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstr
 fi
 if rg --quiet 'internal/compat/service' "${root_dir}/internal" --glob '*.go' --glob '!**/*_test.go'; then
   echo "production code must depend on service-owned contracts, not internal/compat/service" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/core/bootstrap" --glob '*.go' --glob '!embedded_compat.go'; then
+  echo "Core server/bootstrap must not depend on embedded composition; keep that dependency in embedded_compat.go only" >&2
   exit 1
 fi
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
