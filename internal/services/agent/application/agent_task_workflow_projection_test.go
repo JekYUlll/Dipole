@@ -1,4 +1,4 @@
-package app
+package agentapplication_test
 
 import (
 	"context"
