@@ -13,7 +13,7 @@ import (
 	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
-	searchprojector "github.com/JekYUlll/Dipole/internal/projector/search"
+	searchprojector "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/kafka"
 )
 
 const searchIndexerServiceName = "dipole-search-indexer"
