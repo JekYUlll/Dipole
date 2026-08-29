@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修正 C++ Realtime Delivery CMake 根目录探测并通过标准容器门禁；Ubuntu 24.04 容器构建、14/14 CTest 和镜像打包均通过，本机 host gate 因缺少 `grpc++` 依赖暂不能运行，C++ primary 仍保持关闭。
+- 2026-08-30：修正 C++ Realtime Delivery 的 CMake 根目录探测：同时支持源码仓库和独立容器构建上下文，按 canonical delivery proto 与 fence testdata 定位 `api/`、`contracts/`，避免本地配置误解析到 `services/api`。
 - 2026-08-30：Agent Runtime 对 `DIPOLE_AGENT_RUNTIME_MODE` 增加显式枚举校验，除 `shadow`/`remote` 外的值现在 fail closed，避免拼写错误静默回退到 Shadow。
 - 2026-08-30：增加 Agent 前端路由安全契约测试，锁定 5 条 Agent 页面均需认证、各自受独立 feature flag 保护且关闭时回到 Chat；未改变默认关闭配置。
 - 2026-08-30：同步前端设计计划与实际 Router：补充 5 条受 feature flag 保护的 Agent 页面路由，并明确 Search/Sync 属于 Chat 工作区能力；Contact、Group、File、Device 和 Settings 仍保持待完成状态。
