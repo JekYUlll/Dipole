@@ -133,6 +133,20 @@ if [[ ! -f "${root_dir}/internal/services/core/domain/conversation/conversation_
   echo "Core conversation domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/infrastructure/mysql/user.go" ]]; then
+  echo "Core MySQL repository implementation is outside the Core service boundary" >&2
+  exit 1
+fi
+for legacy_core_repository in admin.go contact.go conversation.go file.go group.go user.go; do
+  if [[ -e "${root_dir}/internal/data/mysql/repository/${legacy_core_repository}" ]]; then
+    echo "legacy Core MySQL implementation remains in shared repository package: ${legacy_core_repository}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+  echo "Core process composition must use Core-owned MySQL repositories" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1

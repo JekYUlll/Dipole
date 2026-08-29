@@ -1,4 +1,4 @@
-package repository_test
+package coremysql_test
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 )
 
 func TestGroupRepositoryContract(t *testing.T) {

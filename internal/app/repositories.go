@@ -10,6 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
+	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
@@ -156,27 +157,27 @@ func NewCoreProcessRepositories(db *sql.DB) (*CoreProcessRepositories, error) {
 
 func newCoreProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*CoreProcessRepositories, error) {
 	queries := generated.New(db)
-	admin, err := sqlcRepository.NewAdminRepository(queries)
+	admin, err := coremysql.NewAdminRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
 	}
-	files, err := sqlcRepository.NewFileRepository(queries)
+	files, err := coremysql.NewFileRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc file repository: %w", err)
 	}
-	users, err := sqlcRepository.NewUserRepository(queries)
+	users, err := coremysql.NewUserRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc user repository: %w", err)
 	}
-	contacts, err := sqlcRepository.NewContactRepository(queries)
+	contacts, err := coremysql.NewContactRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc contact repository: %w", err)
 	}
-	groups, err := sqlcRepository.NewGroupRepository(mysqlStore)
+	groups, err := coremysql.NewGroupRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc group repository: %w", err)
 	}
-	conversations, err := sqlcRepository.NewConversationRepository(queries)
+	conversations, err := coremysql.NewConversationRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
 	}
