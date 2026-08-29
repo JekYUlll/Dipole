@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 type repairExecutorPolicyStub struct {
@@ -90,7 +91,7 @@ func TestPersistentAgentWorkflowRepairExecutorCommitsAndRollsBackWithFreshGrant(
 	policy := &repairExecutorPolicyStub{task: &application.AgentTaskV1{TaskUUID: "TASK-1", Workflow: &current}}
 	audit := &repairExecutorAuditStub{grant: &application.AgentWorkflowRepairOperatorGrantV1{UserUUID: "EXEC-1", Version: 7, CanExecute: true, ValidFrom: now.Add(-time.Minute), ExpiresAt: timePtr(now.Add(time.Minute))}}
 	transaction := &repairExecutorTransactionStub{executions: executions}
-	executor, err := NewPersistentAgentWorkflowRepairExecutorV1WithClock(policy, audit, executions, transaction, func() time.Time { return now })
+	executor, err := agentapplication.NewPersistentAgentWorkflowRepairExecutorV1WithClock(policy, audit, executions, transaction, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,7 @@ func TestPersistentAgentWorkflowRepairExecutorRejectsGrantAndFailsPrecondition(t
 	policy := &repairExecutorPolicyStub{task: &application.AgentTaskV1{TaskUUID: "TASK-1", Workflow: &current}}
 	audit := &repairExecutorAuditStub{grant: &application.AgentWorkflowRepairOperatorGrantV1{UserUUID: "EXEC-1", Version: 7, CanExecute: false, ValidFrom: now.Add(-time.Minute), ExpiresAt: timePtr(now.Add(time.Minute))}}
 	transaction := &repairExecutorTransactionStub{executions: executions}
-	executor, err := NewPersistentAgentWorkflowRepairExecutorV1WithClock(policy, audit, executions, transaction, func() time.Time { return now })
+	executor, err := agentapplication.NewPersistentAgentWorkflowRepairExecutorV1WithClock(policy, audit, executions, transaction, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}

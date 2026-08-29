@@ -8,6 +8,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 type agentMessageCommandToolReaderStub struct {
@@ -50,7 +51,7 @@ func TestAgentMessageCommandExecutionBindsApprovedToolAndDerivesCommand(t *testi
 		ApprovalUUID: "APR-1", RequestID: "REQ-1", TraceID: "TRACE-1",
 	}
 	sender := &agentMessageCommandSenderStub{message: &model.Message{UUID: "MSG-1"}}
-	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender)
+	service, err := agentapplication.NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender)
 	if err != nil {
 		t.Fatalf("new Message Command execution: %v", err)
 	}
@@ -102,7 +103,7 @@ func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) 
 			tool := *base
 			test.edit(&tool)
 			sender := &agentMessageCommandSenderStub{}
-			service, _ := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: &tool}, agentToolAuditResolverStub{invocation: identity}, sender)
+			service, _ := agentapplication.NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: &tool}, agentToolAuditResolverStub{invocation: identity}, sender)
 			if _, err := service.Execute(context.Background(), request); !errors.Is(err, application.ErrAgentCommandDenied) {
 				t.Fatalf("execution error = %v", err)
 			}
@@ -114,7 +115,7 @@ func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) 
 }
 
 func TestAgentMessageCommandExecutionRejectsMissingDependencies(t *testing.T) {
-	if _, err := NewAgentMessageCommandExecutionV1(nil, agentToolAuditResolverStub{}, &agentMessageCommandSenderStub{}); err == nil {
+	if _, err := agentapplication.NewAgentMessageCommandExecutionV1(nil, agentToolAuditResolverStub{}, &agentMessageCommandSenderStub{}); err == nil {
 		t.Fatal("expected missing Tool reader to fail")
 	}
 }

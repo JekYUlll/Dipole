@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
+	artifactreconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile/artifact"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )

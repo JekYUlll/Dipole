@@ -62,3 +62,5 @@ DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS=true
 4. 回滚期间保留数据库数据与 migration，不执行逆向数据迁移。
 
 若问题仅发生在 Remote 查询，可先关闭 `message.shadow_queries`；若证书或网络配置失败，修复前保持 Local，不放宽明文非 loopback 限制。
+
+隔离候选拓扑可以使用 `SMOKE_INBOX_PROJECTOR=1 SMOKE_MESSAGE_FLOW=1 scripts/smoke-microservice-isolated-images.sh` 加载 `deploy/microservices/inbox-projector.yml`，验证 Gateway 发送后由 Sync projector 异步物化目标用户 Inbox。该参数只作用于独立 smoke project，退出时自动清理；默认 smoke 仍使用 atomic 路径。成功运行会生成权限为 `0600` 的 `/tmp/<compose-project>-receipt.json`，也可以通过 `SMOKE_REPORT_FILE` 指定归档位置；receipt 记录源码 revision、dirty 状态、模式和无数据迁移回滚动作。

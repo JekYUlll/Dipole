@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
+	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

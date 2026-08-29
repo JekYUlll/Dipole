@@ -10,8 +10,8 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/config"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	_ "github.com/go-sql-driver/mysql"
 )
 

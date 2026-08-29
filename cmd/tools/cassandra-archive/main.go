@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	cassandraops "github.com/JekYUlll/Dipole/internal/operations/cassandra"
 )
 
 func main() {
@@ -38,20 +38,20 @@ func main() {
 			err = fmt.Errorf("create requires -manifest and -snapshot-id")
 			break
 		}
-		result, err = bootstrap.RunCassandraArchive(ctx, bootstrap.CassandraArchiveOptions{ManifestPath: *manifestPath, SnapshotID: *snapshotID, BatchSize: *batchSize})
+		result, err = cassandraops.RunCassandraArchive(ctx, cassandraops.CassandraArchiveOptions{ManifestPath: *manifestPath, SnapshotID: *snapshotID, BatchSize: *batchSize})
 	case "publish":
 		if strings.TrimSpace(*manifestPath) == "" || strings.TrimSpace(*receiptPath) == "" {
 			err = fmt.Errorf("publish requires -manifest and -receipt")
 			break
 		}
-		result, err = bootstrap.PublishCassandraArchive(ctx, *manifestPath, *receiptPath, *objectPrefix, *retentionDays)
+		result, err = cassandraops.PublishCassandraArchive(ctx, *manifestPath, *receiptPath, *objectPrefix, *retentionDays)
 	case "restore":
 		if strings.TrimSpace(*receiptPath) == "" || strings.TrimSpace(*destination) == "" {
 			err = fmt.Errorf("restore requires -receipt and -destination")
 			break
 		}
 		var restored string
-		restored, err = bootstrap.RestoreCassandraArchive(ctx, *receiptPath, *destination)
+		restored, err = cassandraops.RestoreCassandraArchive(ctx, *receiptPath, *destination)
 		result = map[string]string{"manifest": restored}
 	default:
 		err = fmt.Errorf("unsupported archive action: %s", *action)

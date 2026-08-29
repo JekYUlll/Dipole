@@ -3,7 +3,7 @@ set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 compose_file="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
-project="dipole-storage-lab-${RANDOM}-$$"
+project="${COMPOSE_PROJECT_NAME:-dipole-storage-lab-${RANDOM}-$$}"
 
 cleanup() {
   local exit_code=$?
@@ -72,7 +72,17 @@ if ! grep -q 'confirmed' <<<"$cassandra_result"; then
 fi
 compose exec -T cassandra cqlsh -e 'DROP KEYSPACE dipole_lab_smoke;'
 
-elastic_version=$(compose exec -T elasticsearch curl -fsS http://127.0.0.1:9200 | jq -r '.version.number')
+elastic_version=""
+for _ in $(seq 1 "${ELASTIC_API_RETRY_ATTEMPTS:-30}"); do
+  if elastic_version=$(compose exec -T elasticsearch curl -fsS http://127.0.0.1:9200 | jq -r '.version.number' 2>/dev/null) && [[ -n "$elastic_version" && "$elastic_version" != "null" ]]; then
+    break
+  fi
+  sleep "${ELASTIC_API_RETRY_INTERVAL_SECONDS:-1}"
+done
+if [[ -z "$elastic_version" || "$elastic_version" == "null" ]]; then
+  printf 'Elasticsearch API did not become available after bounded retries\n' >&2
+  exit 1
+fi
 compose exec -T elasticsearch curl -fsS -X PUT http://127.0.0.1:9200/dipole-search-smoke \
   -H 'Content-Type: application/json' \
   -d '{"mappings":{"dynamic":"strict","properties":{"conversation_key":{"type":"keyword"},"message_seq":{"type":"long"},"content":{"type":"text"}}}}' >/dev/null

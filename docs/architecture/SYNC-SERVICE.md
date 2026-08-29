@@ -85,6 +85,8 @@ Cassandra-first primary hydration 使用 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATIO
 
 隔离联调可以显式加载 `deploy/microservices/cassandra-primary.yml` 与 `--profile cassandra-primary`。该 profile 只启动 Cassandra 和一次性 schema init，并让 Sync 等待 init 成功后以 Cassandra-first 模式就绪。候选 smoke 通过 Core 专用的 `DIPOLE_CORE_MESSAGE_TRANSPORT=local` 绕开 Core/Message 远程初始化环，默认微服务 Compose 也使用这一启动兼容配置；全局 `DIPOLE_MESSAGE_TRANSPORT=grpc` 仍供 Gateway 和其他远程调用方使用。移除 profile 或关闭 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION` 即可回到 MySQL 主读，数据和设备 Cursor 不需要逆向迁移。
 
+Inbox 写责任切换可以追加 `deploy/microservices/inbox-projector.yml`。该 override 将 Message 切换到 `projector` 模式并使用 `dipole_message_projector` 最小账号，同时显式保持 Sync projector 开启。切换前仍需完成 baseline、reconcile、lag/DLQ 和权限 smoke；移除 override 并恢复默认 `DIPOLE_MESSAGE_INBOX_WRITE_MODE=atomic` 即可回到 Message 事务原子写入路径。
+
 可重复执行以下 smoke 验证真实容器网络中的 profile、schema init 和 Sync readiness：
 
 ```bash

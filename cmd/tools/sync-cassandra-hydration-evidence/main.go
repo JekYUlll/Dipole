@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JekYUlll/Dipole/internal/evidence/synchhydration"
+	"github.com/JekYUlll/Dipole/internal/operations/sync/evidence"
 )
 
 func main() {
