@@ -1,5 +1,5 @@
-// Package app owns process-level dependency composition shared by transports.
-package app
+// Package embedded owns the local composition used by the compatibility server.
+package embedded
 
 import (
 	"database/sql"
@@ -47,6 +47,10 @@ type Repositories struct {
 	AgentToolRounds        application.AgentMCPToolRoundStoreV1
 	Outbox                 application.OutboxRelayStore
 }
+
+type CoreProcessRepositories = coremysql.ProcessRepositories
+type SyncProcessRepositories = syncmysql.ProcessRepositories
+type AgentProcessRepositories = agentmysql.ProcessRepositories
 
 type MessageProcessRepositories = messagemysql.ProcessRepositories
 

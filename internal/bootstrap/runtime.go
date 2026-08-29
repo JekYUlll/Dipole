@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	appCompat "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -153,7 +154,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
 		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
-		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+		if err := appCompat.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
 			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
 		}
 		agentCommands, composeErr := agentapplication.NewLocalAgentCommandV1(localMessaging.Messages)
@@ -164,11 +165,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
-		resolver, composeErr := appComposition.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		resolver, composeErr := appCompat.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}
-		admission, composeErr := appComposition.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		admission, composeErr := appCompat.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
