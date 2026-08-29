@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
@@ -61,7 +63,7 @@ func AgentMCPAuth(tokenService *coreauth.TokenService, userRepo authUserFinder) 
 			c.Abort()
 			return
 		}
-		session, err := tokenService.ResolveAgentMCPAccessToken(token, coreauth.AgentMCPResourceIdentifier(), coreauth.AgentMCPReadScope)
+		session, err := tokenService.ResolveAgentMCPAccessToken(token, application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource), application.AgentMCPReadScope)
 		if err != nil {
 			writeError(c, http.StatusUnauthorized, "Agent MCP access token is invalid")
 			c.Abort()
