@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/compat/service"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
 

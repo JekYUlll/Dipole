@@ -12,7 +12,7 @@ import (
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	realtimedelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
