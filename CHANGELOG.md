@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 管理 Message、Sync、Core、Search 客户端和 realtime delivery observation server；Kafka handler、TLS 与时间线校验兼容边界保持不变，支持后续独立迁移。
 - Sync 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Sync query adapter 和拨号 Core capability；旧 `internal/bootstrap` RPC wrapper 不再参与 Sync 生产装配，调用方白名单和回滚语义保持不变。
 - Message 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Message adapter，并由 Message runtime 自有入口启动；旧 `internal/bootstrap` RPC server wrapper 不再参与 Message 生产装配，其他兼容依赖继续保持可回滚。
 - Search 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Search adapter、执行服务认证拨号并管理 transport 生命周期；Core RPC legacy helper 限定在测试 fixture，Search 生产代码不再依赖 `internal/bootstrap`。
