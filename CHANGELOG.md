@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Search Indexer 的 runtime 实现已从共享 `internal/bootstrap` 迁入 `internal/services/search-indexer/bootstrap`，直接拥有 Kafka consumer、Elasticsearch index 和 metrics/readiness 启动编排；旧路径由结构门禁阻止回流，Kafka/Elasticsearch 回滚语义保持不变。
 - 运行时 readiness 编排已下沉到 `internal/platform/runtime`，统一提供依赖探针、gRPC health 检查、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定；服务特有启动条件继续留在各自 runtime，旧 `internal/bootstrap/dependency_readiness.go` 保留兼容出口。
 - 新增 `internal/platform/runtime` 共享运行时平台，Core、Gateway、Message、Sync、Search、Search Indexer 和 Cassandra projector 统一使用平台 metrics 生命周期；旧 `internal/bootstrap/metrics.go` 降级为兼容出口，运行行为和回滚路径保持不变。
 - Search Indexer 服务新增 `internal/services/search-indexer/bootstrap/` 入口边界，`cmd/services/search-indexer` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Elasticsearch、metrics 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
