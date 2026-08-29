@@ -12,6 +12,74 @@ import (
 	"time"
 )
 
+const applyAgentWorkflowRepairProjectionExpectedCurrent = `-- name: ApplyAgentWorkflowRepairProjectionExpectedCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type ApplyAgentWorkflowRepairProjectionExpectedCurrentParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowStatus_2   sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionExpectedCurrentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, applyAgentWorkflowRepairProjectionExpectedCurrent,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowStatus_2,
+		arg.WorkflowRevision_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const applyAgentWorkflowRepairProjectionMissingCurrent = `-- name: ApplyAgentWorkflowRepairProjectionMissingCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id IS NULL AND workflow_run_id IS NULL AND workflow_status IS NULL
+  AND workflow_revision IS NULL AND workflow_updated_at IS NULL
+`
+
+type ApplyAgentWorkflowRepairProjectionMissingCurrentParams struct {
+	WorkflowID       sql.NullString
+	WorkflowRunID    sql.NullString
+	WorkflowStatus   sql.NullString
+	WorkflowRevision sql.NullInt64
+	TaskUuid         string
+}
+
+func (q *Queries) ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionMissingCurrentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, applyAgentWorkflowRepairProjectionMissingCurrent,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const approveAgentApproval = `-- name: ApproveAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'approved', approved_by_uuid = ?, updated_at = NOW(3)

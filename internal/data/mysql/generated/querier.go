@@ -21,6 +21,8 @@ type Querier interface {
 	AdvanceSearchBackfillJob(ctx context.Context, arg AdvanceSearchBackfillJobParams) (sql.Result, error)
 	AdvanceSyncReplayJob(ctx context.Context, arg AdvanceSyncReplayJobParams) (sql.Result, error)
 	AgentArtifactExistsByObjectKey(ctx context.Context, arg AgentArtifactExistsByObjectKeyParams) (bool, error)
+	ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionExpectedCurrentParams) (int64, error)
+	ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionMissingCurrentParams) (int64, error)
 	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
 	ApproveAgentRuntimePromotionProposal(ctx context.Context, arg ApproveAgentRuntimePromotionProposalParams) (int64, error)

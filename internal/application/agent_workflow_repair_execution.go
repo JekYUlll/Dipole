@@ -62,6 +62,10 @@ type AgentWorkflowRepairExecutionStoreV1 interface {
 	FailWorkflowRepairExecution(context.Context, string, string, string, time.Time) (bool, error)
 }
 
+type AgentWorkflowRepairProjectionStoreV1 interface {
+	ApplyWorkflowRepairProjection(context.Context, *AgentTaskWorkflowProjectionV1, AgentTaskWorkflowProjectionV1) (bool, error)
+}
+
 type AgentWorkflowRepairPrepareRequestV1 struct {
 	Execution AgentWorkflowRepairExecutionV1
 }

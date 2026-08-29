@@ -88,3 +88,34 @@ func (r *AgentPolicyRepository) FailWorkflowRepairExecution(ctx context.Context,
 	}
 	return rows > 0, nil
 }
+
+func (r *AgentPolicyRepository) ApplyWorkflowRepairProjection(ctx context.Context, expected *application.AgentTaskWorkflowProjectionV1, target application.AgentTaskWorkflowProjectionV1) (bool, error) {
+	target.TaskUUID = strings.TrimSpace(target.TaskUUID)
+	if err := target.Validate(); err != nil || target.TaskUUID == "" {
+		return false, fmt.Errorf("validate Workflow repair target projection: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	workflowID := sql.NullString{String: target.WorkflowID, Valid: true}
+	workflowRunID := sql.NullString{String: target.RunID, Valid: true}
+	workflowStatus := sql.NullString{String: string(target.Status), Valid: true}
+	workflowRevision := sql.NullInt64{Int64: int64(target.Revision), Valid: true}
+	var rows int64
+	var err error
+	if expected == nil {
+		rows, err = r.queries.ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx, generated.ApplyAgentWorkflowRepairProjectionMissingCurrentParams{
+			WorkflowID: workflowID, WorkflowRunID: workflowRunID, WorkflowStatus: workflowStatus, WorkflowRevision: workflowRevision, TaskUuid: target.TaskUUID,
+		})
+	} else {
+		if err := expected.Validate(); err != nil || expected.TaskUUID != target.TaskUUID {
+			return false, fmt.Errorf("validate Workflow repair expected projection: %w", application.ErrAgentWorkflowRepairPrecondition)
+		}
+		rows, err = r.queries.ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx, generated.ApplyAgentWorkflowRepairProjectionExpectedCurrentParams{
+			WorkflowID: workflowID, WorkflowRunID: workflowRunID, WorkflowStatus: workflowStatus, WorkflowRevision: workflowRevision,
+			TaskUuid: target.TaskUUID, WorkflowID_2: sql.NullString{String: expected.WorkflowID, Valid: true}, WorkflowRunID_2: sql.NullString{String: expected.RunID, Valid: true},
+			WorkflowStatus_2: sql.NullString{String: string(expected.Status), Valid: true}, WorkflowRevision_2: sql.NullInt64{Int64: int64(expected.Revision), Valid: true},
+		})
+	}
+	if err != nil {
+		return false, fmt.Errorf("apply Workflow repair projection: %w", err)
+	}
+	return rows > 0, nil
+}
