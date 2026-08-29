@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
 func TestNewContactFriendDeletedHandlerDeliversUserScopedEvent(t *testing.T) {
 	sender := &directReadSender{}
 	occurredAt := time.Now().UTC().Truncate(time.Millisecond)
-	payload, err := json.Marshal(corecontact.ContactFriendDeletedPayload{
+	payload, err := json.Marshal(application.ContactFriendDeletedPayload{
 		UserUUID: "U1", FriendUUID: "U2", OccurredAt: occurredAt,
 	})
 	if err != nil {

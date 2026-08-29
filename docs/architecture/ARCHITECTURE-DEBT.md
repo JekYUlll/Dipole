@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Gateway Kafka consumer 所需的群组、会话、联系人和已读事件 decoder 已下沉到 `internal/application` 跨服务 contract；Gateway 生产代码不再依赖 Core domain，服务布局门禁已固定该边界，Core 仍保留事件生产与自身投影实现。
 - 2026-08-30：调用审计确认 embedded Message repository wrapper 无独立调用者，已删除 `NewMessageProcessRepositories` 及其 inbox 开关转发，聚合入口直接使用 Message-owned constructor；整体 `NewRepositories` 仍作为 embedded 回滚组合保留。
 - 2026-08-30：调用审计确认 embedded Search 字段没有生产或测试使用者，已删除聚合层 Search SQLC 构造；Search Service 继续由 Elasticsearch-owned runtime 独立装配，聚合层仅保留 embedded 回滚所需的四类 process composition。
 - 2026-08-30：embedded repository composition 已将 Core 的 User、Group、Contact、File、Conversation、Admin 仓储访问收敛到 `CoreProcessRepositories`，移除聚合根的 Core 扁平字段，并通过 embedded/Core contract 测试；聚合层当前仅保留 process composition 指针。
@@ -189,6 +190,7 @@
 - **本轮进展：** Core RPC 的测试 helper 已切换到 `internal/services/core/bootstrap`，共享 `internal/bootstrap.NewCoreRPCServer` facade 已删除；Core capability 的认证、mTLS 和协议 contract 继续由 Core-owned 实现覆盖。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
 - **验证记录：** 当前分支全量 `CGO_ENABLED=0 go test ./...` 通过，根级目录白名单、服务布局和架构文档门禁通过；仍有调用者的兼容 facade 保留为 embedded 测试与回滚边界，已完成审计的 Message/Sync facade 不再保留。
+- **本轮进展：** Gateway Kafka consumer 所需的群组、会话、联系人和已读事件 payload/decoder 已下沉到 `internal/application` 跨服务 contract；Gateway 生产代码不再依赖 Core domain，结构门禁已固定该回流路径，Core 仍负责事件生产与自身 projection。
 - **本轮进展：** Agent infrastructure contract tests 已切换到 Agent-owned application constructors，Agent 服务结构门禁现在阻止对聚合 `internal/app` 的直接依赖；Core 兼容层和其他共享基础设施仍按后续切片继续收敛。
 - **本轮进展：** 为 `internal/application` 增加 contract ownership README 与架构测试，禁止其生产契约文件依赖服务实现、旧数据层和运维目录；该边界为后续 SQLC 多语言协议迁移提供回流防护，不改变现有 Go contract。
 - **本轮进展：** Core Auth TokenService 已通过 `internal/platform/cache` 访问 Redis 撤销状态，移除 Core domain 对 `internal/store` 的直接依赖；Redis 缺失时仍保持 fail-closed，其他 Core Redis 使用点继续按后续切片收敛。
