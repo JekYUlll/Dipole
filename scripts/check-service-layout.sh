@@ -193,6 +193,12 @@ if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/sh
   echo "legacy storage decorator directories remain under internal/data" >&2
   exit 1
 fi
+for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/server internal/gateway internal/transport; do
+  if rg --quiet 'internal/data/mysql/repository' "${root_dir}/${runtime_consumer_dir}" --glob '*.go'; then
+    echo "new runtime code must use service-owned MySQL repositories; legacy repository aliases are compatibility-only" >&2
+    exit 1
+  fi
+done
 if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/kafka/projector.go" ]]; then
   echo "Sync Kafka projector must remain under the Sync service boundary" >&2
   exit 1

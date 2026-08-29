@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"testing"
 
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
+	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 )
 
 func TestNewRepositoriesRequiresDatabase(t *testing.T) {
@@ -33,7 +36,7 @@ func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
 	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
 	}
-	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
+	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {
 		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
 	}
 }
@@ -46,10 +49,10 @@ func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new agent process repositories: %v", err)
 	}
-	if _, ok := repos.Policy.(*sqlcRepository.AgentPolicyRepository); !ok {
+	if _, ok := repos.Policy.(*agentmysql.AgentPolicyRepository); !ok {
 		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.Policy)
 	}
-	if _, ok := repos.Artifacts.(*sqlcRepository.AgentArtifactRepository); !ok {
+	if _, ok := repos.Artifacts.(*agentmysql.AgentArtifactRepository); !ok {
 		t.Fatalf("expected sqlc Agent Artifact repository, got %T", repos.Artifacts)
 	}
 }
@@ -62,10 +65,10 @@ func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new sync process repositories: %v", err)
 	}
-	if _, ok := repos.Sync.(*sqlcRepository.SyncRepository); !ok {
+	if _, ok := repos.Sync.(*syncmysql.SyncRepository); !ok {
 		t.Fatalf("expected sqlc sync repository, got %T", repos.Sync)
 	}
-	if _, ok := repos.Projection.(*sqlcRepository.SyncProjectionRepository); !ok {
+	if _, ok := repos.Projection.(*syncmysql.SyncProjectionRepository); !ok {
 		t.Fatalf("expected sqlc Sync projection repository, got %T", repos.Projection)
 	}
 }
@@ -75,10 +78,10 @@ func TestNewMessageProcessRepositoriesBuildsOnlyOwnedAdapters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new message process repositories: %v", err)
 	}
-	if _, ok := repos.Messages.(*sqlcRepository.MessageRepository); !ok {
+	if _, ok := repos.Messages.(*messagemysql.MessageRepository); !ok {
 		t.Fatalf("expected sqlc message repository, got %T", repos.Messages)
 	}
-	if _, ok := repos.Outbox.(*sqlcRepository.OutboxRepository); !ok {
+	if _, ok := repos.Outbox.(*messagemysql.OutboxRepository); !ok {
 		t.Fatalf("expected sqlc outbox repository, got %T", repos.Outbox)
 	}
 }
@@ -107,16 +110,16 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 			t.Errorf("repository %s is nil", name)
 		}
 	}
-	if _, ok := repos.AICallLogs.(*sqlcRepository.AICallLogRepository); !ok {
+	if _, ok := repos.AICallLogs.(*agentmysql.AICallLogRepository); !ok {
 		t.Fatalf("expected sqlc AI call log repository, got %T", repos.AICallLogs)
 	}
-	if _, ok := repos.AgentPolicy.(*sqlcRepository.AgentPolicyRepository); !ok {
+	if _, ok := repos.AgentPolicy.(*agentmysql.AgentPolicyRepository); !ok {
 		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.AgentPolicy)
 	}
-	if _, ok := repos.Admin.(*sqlcRepository.AdminRepository); !ok {
+	if _, ok := repos.Admin.(*coremysql.AdminRepository); !ok {
 		t.Fatalf("expected sqlc admin repository, got %T", repos.Admin)
 	}
-	if _, ok := repos.Files.(*sqlcRepository.FileRepository); !ok {
+	if _, ok := repos.Files.(*coremysql.FileRepository); !ok {
 		t.Fatalf("expected sqlc file repository, got %T", repos.Files)
 	}
 	if _, ok := repos.Users.(*CachedUserStore); !ok {
@@ -128,16 +131,16 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
 	}
-	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
+	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {
 		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
 	}
-	if _, ok := repos.Messages.(*sqlcRepository.MessageRepository); !ok {
+	if _, ok := repos.Messages.(*messagemysql.MessageRepository); !ok {
 		t.Fatalf("expected sqlc message repository, got %T", repos.Messages)
 	}
-	if _, ok := repos.Sync.(*sqlcRepository.SyncRepository); !ok {
+	if _, ok := repos.Sync.(*syncmysql.SyncRepository); !ok {
 		t.Fatalf("expected sqlc sync repository, got %T", repos.Sync)
 	}
-	if _, ok := repos.Outbox.(*sqlcRepository.OutboxRepository); !ok {
+	if _, ok := repos.Outbox.(*messagemysql.OutboxRepository); !ok {
 		t.Fatalf("expected sqlc outbox repository, got %T", repos.Outbox)
 	}
 }
