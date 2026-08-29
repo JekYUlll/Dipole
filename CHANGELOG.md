@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
 - Sync domain 实现及测试已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留兼容错误和构造入口，User Inbox Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Core 新增独立 Composition Root `InitializeCoreService`；remote 模式只装配 Core-owned repository、Core HTTP、Core projection Kafka consumer 和 Capability RPC，embedded 模式保留聚合启动器作为本地兼容与回滚路径。
 - Core Conversation domain 实现及测试已迁入 `internal/services/core/domain/conversation/`；旧 `internal/service` 仅保留兼容别名和构造入口，会话列表、群组会话投影、已读回执和备注 contract 保持兼容。
