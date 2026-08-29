@@ -15,6 +15,8 @@
 - 2026-08-29：重新通过 `scripts/smoke-sync-write-ownership.sh`，真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；该证据支持候选部署，仍不替代共享环境的 Kafka ownership 与生产回切 receipt。
 - 2026-08-29：隔离微服务消息 smoke 已增加可选 `SMOKE_INBOX_PROJECTOR=1` overlay 路径，并对异步 Inbox 物化使用有界等待；运行时 projector 候选验证与共享环境 ownership receipt 仍待执行。
 - 2026-08-29：候选 projector 端到端 smoke 已通过，覆盖 Gateway WebSocket、Message/Outbox、Sync 异步 Inbox 和 Seq 查询；首次运行的宿主端口冲突通过更换隔离端口恢复，结果不改变共享环境 Kafka ownership 与生产回切 receipt 的待办状态。
+- 2026-08-29：隔离微服务 smoke 已生成 `dipole.microservices.smoke-receipt.v1` 成功 receipt，绑定 revision、Compose project、运行模式和回滚动作；该 receipt 提升候选证据可复核性，仍不替代共享环境 ownership 切换审批。
+- 2026-08-29：receipt contract 实际校验通过，确认候选 projector 拓扑的 schema、模式标志、无数据迁移回滚声明和文件权限均符合约束；共享环境 Kafka ownership 切换与回切 receipt 仍待完成。
 - 2026-08-29：MySQL 全局连接初始化已从 `internal/store` 收敛到 `internal/platform/mysql`，Core、Message、embedded runtime、Bloom 和维护工具已切换新入口；`internal/store/mysql_compat.go` 仅保留回滚兼容，Redis 全局状态仍待后续单独收敛。
 - 2026-08-29：Redis 客户端初始化和全局状态已从 `internal/store` 收敛到 `internal/platform/cache`，Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具已切换新入口；`internal/store/redis_compat.go` 仅保留回滚兼容。
 - 2026-08-29：Hot Group Detector 已支持显式 Redis 客户端并由生产 Composition Root 注入，结构门禁阻止生产装配回到无参数全局构造；兼容构造仍保留，Presence 和限流的显式客户端注入继续作为后续切片。
