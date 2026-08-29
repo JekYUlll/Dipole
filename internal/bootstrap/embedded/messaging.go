@@ -2,10 +2,10 @@ package embedded
 
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
@@ -16,7 +16,7 @@ type HotGroupObserver interface {
 }
 
 type ConversationNotifier interface {
-	NotifyDirectRead(receipt service.ConversationReadReceipt)
+	NotifyDirectRead(receipt coreconversation.ConversationReadReceipt)
 }
 
 type MessagingDependencies struct {

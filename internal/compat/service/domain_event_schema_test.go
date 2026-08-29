@@ -13,6 +13,7 @@ import (
 
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -40,7 +41,7 @@ func TestDomainEventSchemasMatchProducerContracts(t *testing.T) {
 		{
 			name: "conversation read", schemaFile: "conversation-direct-read.schema.json", eventType: "conversation.direct.read",
 			eventTypes: []string{"conversation.direct.read"}, definition: "read_payload",
-			payload: ConversationReadReceipt{
+			payload: coreconversation.ConversationReadReceipt{
 				ReaderUUID: "U1", TargetUUID: "U2", ConversationKey: "direct:U1:U2",
 				LastReadMessageUUID: "M1", LastReadSeq: 3, ReadAt: now,
 			},

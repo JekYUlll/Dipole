@@ -8,6 +8,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -29,16 +30,16 @@ func DecodeGroupEventPayload(eventType string, raw json.RawMessage) (GroupEventP
 	return payload, nil
 }
 
-func DecodeConversationReadReceipt(eventType string, raw json.RawMessage) (ConversationReadReceipt, error) {
+func DecodeConversationReadReceipt(eventType string, raw json.RawMessage) (coreconversation.ConversationReadReceipt, error) {
 	if err := requireDomainEventType(eventType, "conversation.direct.read"); err != nil {
-		return ConversationReadReceipt{}, err
+		return coreconversation.ConversationReadReceipt{}, err
 	}
-	var payload ConversationReadReceipt
+	var payload coreconversation.ConversationReadReceipt
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return ConversationReadReceipt{}, fmt.Errorf("decode Conversation read payload: %w", err)
+		return coreconversation.ConversationReadReceipt{}, fmt.Errorf("decode Conversation read payload: %w", err)
 	}
 	if payload.TargetType != model.MessageTargetDirect {
-		return ConversationReadReceipt{}, fmt.Errorf("%w: target_type=%d", ErrConversationReadTargetMismatch, payload.TargetType)
+		return coreconversation.ConversationReadReceipt{}, fmt.Errorf("%w: target_type=%d", ErrConversationReadTargetMismatch, payload.TargetType)
 	}
 	return payload, nil
 }

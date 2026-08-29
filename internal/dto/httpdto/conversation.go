@@ -3,7 +3,7 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 )
 
 type ConversationMessageSummaryResponse struct {
@@ -29,7 +29,7 @@ type UpdateConversationRemarkRequest struct {
 	Remark string `json:"remark" binding:"max=50"`
 }
 
-func ToConversationResponse(item *service.ConversationView) *ConversationResponse {
+func ToConversationResponse(item *coreconversation.ConversationView) *ConversationResponse {
 	if item == nil || item.Conversation == nil {
 		return nil
 	}
@@ -52,7 +52,7 @@ func ToConversationResponse(item *service.ConversationView) *ConversationRespons
 	}
 }
 
-func ToConversationResponses(items []*service.ConversationView) []*ConversationResponse {
+func ToConversationResponses(items []*coreconversation.ConversationView) []*ConversationResponse {
 	response := make([]*ConversationResponse, 0, len(items))
 	for _, item := range items {
 		response = append(response, ToConversationResponse(item))
