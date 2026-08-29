@@ -1064,7 +1064,7 @@
 - **解决方式：** Message RPC 增加 Core-only system direct/group command；Core standalone 使用懒连接 adapter，首次调用才执行带健康检查的 RPC 连接，避免 Core 与 Message 同时启动时形成阻塞环；embedded 继续使用本地 adapter。
 - **验证：** 协议生成检查、Compose 默认远程 transport 检查、Message RPC handler、Core/Message/Server 定向测试和全量 Go 测试通过；未认证 system command 被拒绝。
 
-### AD-054：大文件上传仍经 Core 业务服务串行中转
+### AD-055：大文件上传仍经 Core 业务服务串行中转
 
 - **优先级：** P1
 - **状态：** 暂缓
