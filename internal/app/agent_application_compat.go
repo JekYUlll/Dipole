@@ -12,8 +12,6 @@ import (
 // These aliases preserve the embedded composition root during migration.
 type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV1
 type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
-type PersistentAgentInvocationResolverV1 = agentapplication.PersistentAgentInvocationResolverV1
-type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissionV1
 type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
@@ -22,22 +20,6 @@ func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolI
 
 func NewPersistentAgentToolInvocationAuditServiceV1WithClock(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery, now func() time.Time) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, resolver, approvals, receipts, now)
-}
-
-func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
-	return agentapplication.NewPersistentAgentInvocationResolverV1(store, activeAuthorizers...)
-}
-
-func NewPersistentAgentInvocationResolverV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
-	return agentapplication.NewPersistentAgentInvocationResolverV1WithClock(store, now, activeAuthorizers...)
-}
-
-func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
-	return agentapplication.NewPersistentAgentRunAdmissionV1(store, activeAuthorizers...)
-}
-
-func NewPersistentAgentRunAdmissionV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
-	return agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, now, activeAuthorizers...)
 }
 
 func NewPersistentAgentExecutionPolicyV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentExecutionPolicyV1, error) {

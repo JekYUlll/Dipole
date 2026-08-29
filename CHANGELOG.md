@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Execution Policy 测试已直接使用 Agent application 的 Resolver/Run Admission 构造器；删除 `internal/app` 中对应兼容类型与转发。
 - Message Command Execution 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Workflow Repair Executor 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Workflow Repair Prepare 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
