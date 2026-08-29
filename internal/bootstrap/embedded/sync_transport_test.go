@@ -1,4 +1,4 @@
-package bootstrap
+package embedded
 
 import (
 	"context"
@@ -7,7 +7,31 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/model"
+	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
 )
+
+type rpcSyncStub struct{}
+
+func (rpcSyncStub) List(userUUID string, afterSeq uint64, limit int) (*application.SyncPage, error) {
+	return &application.SyncPage{Items: []*model.SyncMessage{{SyncSeq: afterSeq + 1, ConversationKey: "direct:" + userUUID + ":U2"}}, NextSeq: afterSeq + 1}, nil
+}
+
+func (rpcSyncStub) GetCheckpoint(userUUID, deviceID string) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: 9}, nil
+}
+
+func (rpcSyncStub) AdvanceCheckpoint(userUUID, deviceID string, syncSeq uint64) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{UserUUID: userUUID, DeviceID: deviceID, SyncSeq: syncSeq}, nil
+}
+
+func (rpcSyncStub) ListGroupCheckpoints(string, string, []string) ([]*model.GroupSyncCheckpoint, error) {
+	return []*model.GroupSyncCheckpoint{{GroupUUID: "G1", LatestMessageSeq: 12}}, nil
+}
+
+func (rpcSyncStub) AdvanceGroupCheckpoint(_, _, groupUUID string, messageSeq uint64) (*model.GroupSyncCheckpoint, error) {
+	return &model.GroupSyncCheckpoint{GroupUUID: groupUUID, PulledMessageSeq: messageSeq}, nil
+}
 
 func TestSyncTransportModesPassSharedApplicationContract(t *testing.T) {
 	for _, mode := range []string{"local", "grpc"} {
@@ -16,7 +40,7 @@ func TestSyncTransportModesPassSharedApplicationContract(t *testing.T) {
 			rpcCfg := config.InternalRPC{}
 			if mode == "grpc" {
 				rpcCfg = config.InternalRPC{Enabled: true, SharedSecret: "test-secret", SyncListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-				server, err := NewSyncRPCServer(rpcCfg, local)
+				server, err := syncbootstrap.NewSyncRPCServer(rpcCfg, local)
 				if err != nil {
 					t.Fatalf("start Sync rpc: %v", err)
 				}
@@ -27,7 +51,7 @@ func TestSyncTransportModesPassSharedApplicationContract(t *testing.T) {
 				})
 				rpcCfg.SyncTarget = server.Address()
 			}
-			transport, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: mode}, rpcCfg, local)
+			transport, err := NewSyncApplicationTransport(t.Context(), config.Sync{Transport: mode}, rpcCfg, local)
 			if err != nil {
 				t.Fatalf("new %s transport: %v", mode, err)
 			}
@@ -38,13 +62,13 @@ func TestSyncTransportModesPassSharedApplicationContract(t *testing.T) {
 }
 
 func TestSyncTransportRejectsUnknownMode(t *testing.T) {
-	if _, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: "shadow"}, config.InternalRPC{}, rpcSyncStub{}); err == nil {
+	if _, err := NewSyncApplicationTransport(t.Context(), config.Sync{Transport: "shadow"}, config.InternalRPC{}, rpcSyncStub{}); err == nil {
 		t.Fatal("expected unknown Sync transport to fail")
 	}
 }
 
 func TestSyncTransportShadowQueriesRequireRPC(t *testing.T) {
-	_, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: "local", ShadowQueries: true}, config.InternalRPC{}, rpcSyncStub{})
+	_, err := NewSyncApplicationTransport(t.Context(), config.Sync{Transport: "local", ShadowQueries: true}, config.InternalRPC{}, rpcSyncStub{})
 	if err == nil {
 		t.Fatal("expected Sync shadow queries without internal RPC to fail")
 	}
@@ -53,10 +77,10 @@ func TestSyncTransportShadowQueriesRequireRPC(t *testing.T) {
 func TestSyncTransportRemoteFailureKeepsLocalRollbackAvailable(t *testing.T) {
 	rpcCfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", SyncTarget: "127.0.0.1:1", DialTimeoutSeconds: 1}
 	local := rpcSyncStub{}
-	if _, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: "grpc"}, rpcCfg, local); err == nil {
+	if _, err := NewSyncApplicationTransport(t.Context(), config.Sync{Transport: "grpc"}, rpcCfg, local); err == nil {
 		t.Fatal("expected unavailable remote Sync transport to fail")
 	}
-	transport, err := newSyncApplicationTransport(t.Context(), config.Sync{Transport: "local"}, rpcCfg, local)
+	transport, err := NewSyncApplicationTransport(t.Context(), config.Sync{Transport: "local"}, rpcCfg, local)
 	if err != nil {
 		t.Fatalf("local rollback transport: %v", err)
 	}

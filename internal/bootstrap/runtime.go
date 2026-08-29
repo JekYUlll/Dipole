@@ -33,7 +33,7 @@ type Runtime struct {
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *messagekafka.Relay
 	messageFlow *appComposition.MessageApplicationTransport
-	syncFlow    *syncApplicationTransport
+	syncFlow    *appComposition.SyncApplicationTransport
 	coreRPC     *InternalRPCServer
 	metrics     *platformObservability.MetricsServer
 }
@@ -284,7 +284,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	syncFlow, err := appComposition.NewSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
 	if err != nil {
 		messageFlow.Close()
 		if coreRPC != nil {
