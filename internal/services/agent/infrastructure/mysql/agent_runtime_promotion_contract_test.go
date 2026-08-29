@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
@@ -70,7 +70,7 @@ func TestAgentRuntimePromotionGrantRepositoryContract(t *testing.T) {
 	if mismatched, lookupErr := store.GetActiveRuntimePromotionGrant(context.Background(), drifted); lookupErr != nil || mismatched != nil {
 		t.Fatalf("candidate drift matched grant: grant=%+v err=%v", mismatched, lookupErr)
 	}
-	authorizer, err := appComposition.NewPersistentAgentActiveRunPromotionAuthorizerV1(store)
+	authorizer, err := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(store)
 	if err != nil {
 		t.Fatalf("create persistent promotion authorizer: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestAgentRuntimePromotionGrantRepositoryContract(t *testing.T) {
 	if err := authorizer.AuthorizeActiveRun(context.Background(), request); err != nil {
 		t.Fatalf("authorize active Run from persisted grant: %v", err)
 	}
-	admission, err := appComposition.NewPersistentAgentRunAdmissionV1(store, authorizer)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1(store, authorizer)
 	if err != nil {
 		t.Fatalf("create active Run admission: %v", err)
 	}
@@ -101,14 +101,14 @@ func TestAgentRuntimePromotionGrantRepositoryContract(t *testing.T) {
 		len(admitted.Invocation.ApprovedCapabilities) != 1 || admitted.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend {
 		t.Fatalf("admit active Run from persisted grant: admission=%+v err=%v", admitted, err)
 	}
-	failClosedResolver, err := appComposition.NewPersistentAgentInvocationResolverV1(store)
+	failClosedResolver, err := agentapplication.NewPersistentAgentInvocationResolverV1(store)
 	if err != nil {
 		t.Fatalf("create fail-closed Invocation resolver: %v", err)
 	}
 	if _, err := failClosedResolver.Resolve(context.Background(), admitted.TaskUUID, admitted.RunUUID); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("active context without promotion authorizer error = %v, want policy denied", err)
 	}
-	resolver, err := appComposition.NewPersistentAgentInvocationResolverV1(store, authorizer)
+	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1(store, authorizer)
 	if err != nil {
 		t.Fatalf("create promoted Invocation resolver: %v", err)
 	}

@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
@@ -56,7 +56,7 @@ func TestAgentRuntimePromotionControlMySQLContract(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	service, err := appComposition.NewPersistentAgentRuntimePromotionControlServiceV1(policies, artifacts, control)
+	service, err := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(policies, artifacts, control)
 	if err != nil {
 		t.Fatal(err)
 	}
