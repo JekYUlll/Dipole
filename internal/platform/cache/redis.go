@@ -1,4 +1,4 @@
-package store
+package cache
 
 import (
 	"context"
@@ -14,7 +14,10 @@ import (
 var RDB *redis.Client
 
 func InitRedis() error {
-	cfg := config.RedisConfig()
+	return InitRedisWithConfig(config.RedisConfig())
+}
+
+func InitRedisWithConfig(cfg config.Redis) error {
 	client, err := NewRedisClient(cfg)
 	if err != nil {
 		return err

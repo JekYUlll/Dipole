@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestRedisDetectorDoesNotMarkSmallGroupAsHot(t *testing.T) {
@@ -83,14 +83,14 @@ func setupRedisDetectorTest(t *testing.T) func() {
 		t.Fatalf("run miniredis: %v", err)
 	}
 
-	originalRDB := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	originalRDB := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
 	return func() {
-		if store.RDB != nil {
-			_ = store.RDB.Close()
+		if cache.RDB != nil {
+			_ = cache.RDB.Close()
 		}
-		store.RDB = originalRDB
+		cache.RDB = originalRDB
 		mr.Close()
 	}
 }
