@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -42,13 +43,13 @@ func DecodeConversationReadReceipt(eventType string, raw json.RawMessage) (Conve
 	return payload, nil
 }
 
-func DecodeContactFriendDeletedPayload(eventType string, raw json.RawMessage) (ContactFriendDeletedPayload, error) {
+func DecodeContactFriendDeletedPayload(eventType string, raw json.RawMessage) (corecontact.ContactFriendDeletedPayload, error) {
 	if err := requireDomainEventType(eventType, "contact.friend.deleted"); err != nil {
-		return ContactFriendDeletedPayload{}, err
+		return corecontact.ContactFriendDeletedPayload{}, err
 	}
-	var payload ContactFriendDeletedPayload
+	var payload corecontact.ContactFriendDeletedPayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return ContactFriendDeletedPayload{}, fmt.Errorf("decode Contact event payload: %w", err)
+		return corecontact.ContactFriendDeletedPayload{}, fmt.Errorf("decode Contact event payload: %w", err)
 	}
 	return payload, nil
 }
