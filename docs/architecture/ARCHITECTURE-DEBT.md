@@ -56,7 +56,7 @@
 - **优先级：** P1
 - **状态：** 处理中
 - **发现日期：** 2026-08-29
-- **影响范围：** `internal/app`、`internal/service`、`internal/handler`、`internal/store`、服务级数据库所有权和后续多语言迁移
+- **影响范围：** `internal/app`、`internal/service`、`internal/store`、服务级数据库所有权和后续多语言迁移
 - **现状：** `cmd/services/` 已按部署单元提供 Core、Gateway、Message、Sync、Search 和 Search Indexer 入口，`docs/architecture/SERVICE-BOUNDARIES.md` 已固定职责与共享层规则；多个服务仍通过 `internal/` 共享业务实现，部分 Core 兼容链路仍保留跨域组合。
 - **风险：** 仅凭独立二进制和镜像无法证明服务实现自治；后续 sqlc 多语言统一、Cassandra/Elasticsearch 存储替换或 C++ 数据面切换时，跨服务隐式依赖可能造成重复写入和回滚范围不清。
 - **下一步：** 以 application port 和 contract test 为边界，按 Core、Message、Sync、Search、Agent 顺序拆分 Composition Root、业务实现和数据访问包；每次迁移保持旧入口可回切，并同步更新服务边界清单。
