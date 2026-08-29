@@ -20,6 +20,7 @@
 - 将长期运行的 Go 服务入口统一归档到 `cmd/services/`，保留一次性迁移、回填和对账工具在 `cmd/` 顶层，降低微服务部署边界与运维工具的混淆。
 - 将一次性迁移、回填、对账、证据采集和诊断工具统一归档到 `cmd/tools/`，并同步构建脚本、运行手册和测试引用。
 - Workflow Repair operator grant 增加可验证的 `grant_version` 和独立 `can_execute` 权限字段。历史授权默认不获得执行权限，后续 CAS executor 必须同时校验执行能力、版本和有效期。
+- Workflow Repair execution ledger 增加 `prepared -> executing -> failed` 的执行人、授权版本和状态 CAS 边界；当前仅提供持久状态认领与失败终止，projection 写入、commit 和 rollback 仍保持关闭。
 
 ### 新增
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
