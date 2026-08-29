@@ -23,6 +23,14 @@ if [[ ! -f "${root_dir}/internal/platform/cassandra/README.md" || ! -f "${root_d
   echo "shared Cassandra adapters must remain under internal/platform/cassandra" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/storage/README.md" || ! -f "${root_dir}/internal/platform/storage/routing/message_store.go" || ! -f "${root_dir}/internal/platform/storage/shadow/message_store.go" ]]; then
+  echo "storage migration decorators must remain under internal/platform/storage" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/shadow" ]]; then
+  echo "legacy storage decorator directories remain under internal/data" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
