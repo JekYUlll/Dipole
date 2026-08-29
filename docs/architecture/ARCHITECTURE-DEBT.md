@@ -840,6 +840,7 @@
 ### AD-020：Search 删除接口缺少 mutation revision
 
 - **本轮验证：** Elasticsearch Search Service 与三节点 Search Indexer 真实隔离 smoke 已通过授权范围、tombstone 和乱序事件收敛；长期生产流量切换仍遵循 Search/A5 的 Alias、归档和回滚门禁。
+- **本轮验证：** 2026-08-30 重新执行 `scripts/smoke-search-service.sh`，真实验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Internal RPC 契约；临时存储栈自动清理，生产 Search Alias、索引切换和长期流量窗口保持未改变。
 
 - **优先级：** P1
 - **状态：** 已解决
