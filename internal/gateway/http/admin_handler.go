@@ -7,14 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 )
 
 type adminOverviewService interface {
-	Overview(currentUser *model.User) (*service.AdminOverview, error)
+	Overview(currentUser *model.User) (*coreadmin.AdminOverview, error)
 }
 
 type AdminHandler struct {
@@ -45,7 +45,7 @@ func (h *AdminHandler) Overview(c *gin.Context) {
 	overview, err := h.service.Overview(currentUser)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrAdminRequired):
+		case errors.Is(err, coreadmin.ErrAdminRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.UserAdminRequired, "admin permission is required")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())

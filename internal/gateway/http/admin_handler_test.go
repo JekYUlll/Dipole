@@ -10,16 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 )
 
 type stubAdminService struct {
-	overviewFn func(currentUser *model.User) (*service.AdminOverview, error)
+	overviewFn func(currentUser *model.User) (*coreadmin.AdminOverview, error)
 }
 
-func (s *stubAdminService) Overview(currentUser *model.User) (*service.AdminOverview, error) {
+func (s *stubAdminService) Overview(currentUser *model.User) (*coreadmin.AdminOverview, error) {
 	if s.overviewFn == nil {
 		return nil, nil
 	}
@@ -30,11 +30,11 @@ func TestAdminHandlerOverviewSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAdminHandler(&stubAdminService{
-		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {
+		overviewFn: func(currentUser *model.User) (*coreadmin.AdminOverview, error) {
 			if currentUser.UUID != "U100" || !currentUser.IsAdmin {
 				t.Fatalf("unexpected current user: %+v", currentUser)
 			}
-			return &service.AdminOverview{
+			return &coreadmin.AdminOverview{
 				AppName:               "dipole",
 				Env:                   "local",
 				UserTotal:             10,
@@ -71,8 +71,8 @@ func TestAdminHandlerOverviewRequiresAdmin(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAdminHandler(&stubAdminService{
-		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {
-			return nil, service.ErrAdminRequired
+		overviewFn: func(currentUser *model.User) (*coreadmin.AdminOverview, error) {
+			return nil, coreadmin.ErrAdminRequired
 		},
 	})
 
@@ -92,7 +92,7 @@ func TestAdminHandlerOverviewHandlesInternalError(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAdminHandler(&stubAdminService{
-		overviewFn: func(currentUser *model.User) (*service.AdminOverview, error) {
+		overviewFn: func(currentUser *model.User) (*coreadmin.AdminOverview, error) {
 			return nil, errors.New("boom")
 		},
 	})

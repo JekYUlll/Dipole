@@ -15,6 +15,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 )
 
 type userService interface {
@@ -207,7 +208,7 @@ func (h *UserHandler) ListForAdmin(c *gin.Context) {
 	users, err := h.service.ListUsersForAdmin(currentUser, input)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrAdminRequired):
+		case errors.Is(err, coreadmin.ErrAdminRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.UserAdminRequired, "admin permission is required")
 		case errors.Is(err, service.ErrInvalidUserStatus):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidStatus, "status is invalid")
@@ -364,7 +365,7 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 	user, err := h.service.UpdateStatus(currentUser, c.Param("uuid"), request.Status)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrAdminRequired):
+		case errors.Is(err, coreadmin.ErrAdminRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.UserAdminRequired, "admin permission is required")
 		case errors.Is(err, service.ErrInvalidUserStatus):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidStatus, "status is invalid")
