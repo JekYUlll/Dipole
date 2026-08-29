@@ -310,8 +310,8 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		wsEventSender = srv.WSHub()
 	}
 	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && cache.RDB != nil {
-		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
-		redisPresence := platformPresence.NewRedisPresence()
+		// Presence 实例绑定同一平台 Redis 客户端，embedded 路由与 Server 内部实例共享状态。
+		redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, cache.RDB)
 		if router != nil {
 			router.Start()
