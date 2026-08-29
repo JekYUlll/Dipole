@@ -19,6 +19,7 @@ import (
 
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/internal/config"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	corepolicy "github.com/JekYUlll/Dipole/internal/services/core/rpcpolicy"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	"google.golang.org/grpc"
@@ -93,7 +94,7 @@ func TestAgentMCPRPCDrillFixtureProcess(t *testing.T) {
 		TLSKeyFile:  requiredAgentMCPRPCDrillEnv(t, "DIPOLE_AGENT_RPC_DRILL_SERVER_KEY"),
 		TLSCAFile:   requiredAgentMCPRPCDrillEnv(t, "DIPOLE_AGENT_RPC_DRILL_CA"), TLSServerName: "core",
 	}
-	server, err := newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
+	server, err := platformrpc.NewServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
 		agentv1.RegisterAgentCapabilityServiceServer(server, fixture)
 	}, corepolicy.RestrictAgentServiceMethods)
 	if err != nil {
@@ -323,7 +324,7 @@ func startAgentMCPRPCDrillServer(t *testing.T, certs agentMCPRPCDrillCertificate
 	t.Helper()
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: agentMCPRPCDrillSecret, CoreListenAddress: "127.0.0.1:0", TLSEnabled: true,
 		TLSCertFile: certs.coreCert, TLSKeyFile: certs.coreKey, TLSCAFile: certs.ca, TLSServerName: "core"}
-	server, err := newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
+	server, err := platformrpc.NewServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
 		agentv1.RegisterAgentCapabilityServiceServer(server, fixture)
 	}, corepolicy.RestrictAgentServiceMethods)
 	if err != nil {
