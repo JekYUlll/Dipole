@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
@@ -58,4 +59,32 @@ func (r *AgentPolicyRepository) GetWorkflowRepairExecution(ctx context.Context, 
 		execution.RollbackSHA256 = row.RollbackSha256.String
 	}
 	return execution, nil
+}
+
+func (r *AgentPolicyRepository) ClaimWorkflowRepairExecution(ctx context.Context, executionUUID, executorUUID string, grantVersion uint64, startedAt time.Time) (bool, error) {
+	executionUUID, executorUUID = strings.TrimSpace(executionUUID), strings.TrimSpace(executorUUID)
+	if executionUUID == "" || executorUUID == "" || grantVersion == 0 || startedAt.IsZero() {
+		return false, fmt.Errorf("validate Workflow repair execution claim: %w", application.ErrAgentWorkflowRepairConflict)
+	}
+	rows, err := r.queries.ClaimAgentWorkflowRepairExecution(ctx, generated.ClaimAgentWorkflowRepairExecutionParams{
+		StartedAt: sql.NullTime{Time: startedAt.UTC(), Valid: true}, ExecutionUuid: executionUUID, ExecutorUuid: executorUUID, ExecutorGrantVersion: grantVersion,
+	})
+	if err != nil {
+		return false, fmt.Errorf("claim Workflow repair execution: %w", err)
+	}
+	return rows > 0, nil
+}
+
+func (r *AgentPolicyRepository) FailWorkflowRepairExecution(ctx context.Context, executionUUID, executorUUID, failureCode string, finishedAt time.Time) (bool, error) {
+	executionUUID, executorUUID, failureCode = strings.TrimSpace(executionUUID), strings.TrimSpace(executorUUID), strings.TrimSpace(failureCode)
+	if executionUUID == "" || executorUUID == "" || failureCode == "" || len(failureCode) > 64 || finishedAt.IsZero() {
+		return false, fmt.Errorf("validate Workflow repair execution failure: %w", application.ErrAgentWorkflowRepairConflict)
+	}
+	rows, err := r.queries.FailAgentWorkflowRepairExecution(ctx, generated.FailAgentWorkflowRepairExecutionParams{
+		FailureCode: sql.NullString{String: failureCode, Valid: true}, FinishedAt: sql.NullTime{Time: finishedAt.UTC(), Valid: true}, ExecutionUuid: executionUUID, ExecutorUuid: executorUUID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("fail Workflow repair execution: %w", err)
+	}
+	return rows > 0, nil
 }

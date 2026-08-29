@@ -124,4 +124,25 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	if _, err := store.CreateWorkflowRepairExecution(context.Background(), conflict); err == nil {
 		t.Fatal("expected conflicting plan replay to fail")
 	}
+	startedAt := time.Now().UTC().Truncate(time.Millisecond)
+	claimed, err := store.ClaimWorkflowRepairExecution(context.Background(), execution.ExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, startedAt)
+	if err != nil || !claimed {
+		t.Fatalf("claim prepared repair execution: claimed=%v err=%v", claimed, err)
+	}
+	claimedAgain, err := store.ClaimWorkflowRepairExecution(context.Background(), execution.ExecutionUUID, execution.ExecutorUUID, execution.ExecutorGrantVersion, startedAt.Add(time.Second))
+	if err != nil || claimedAgain {
+		t.Fatalf("reclaim executing repair execution: claimed=%v err=%v", claimedAgain, err)
+	}
+	failed, err := store.FailWorkflowRepairExecution(context.Background(), execution.ExecutionUUID, execution.ExecutorUUID, "projection_cas_mismatch", startedAt.Add(2*time.Second))
+	if err != nil || !failed {
+		t.Fatalf("fail executing repair execution: failed=%v err=%v", failed, err)
+	}
+	failedAgain, err := store.FailWorkflowRepairExecution(context.Background(), execution.ExecutionUUID, execution.ExecutorUUID, "projection_cas_mismatch", startedAt.Add(3*time.Second))
+	if err != nil || failedAgain {
+		t.Fatalf("refail terminal repair execution: failed=%v err=%v", failedAgain, err)
+	}
+	loaded, err = store.GetWorkflowRepairExecution(context.Background(), execution.ExecutionUUID)
+	if err != nil || loaded == nil || loaded.Status != application.AgentWorkflowRepairExecutionStatusFailed {
+		t.Fatalf("load failed repair execution: execution=%+v err=%v", loaded, err)
+	}
 }

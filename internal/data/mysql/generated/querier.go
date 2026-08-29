@@ -27,6 +27,7 @@ type Querier interface {
 	ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	ClaimAgentMemoryLineageBackfillJob(ctx context.Context, arg ClaimAgentMemoryLineageBackfillJobParams) error
 	ClaimAgentShadowStep(ctx context.Context, arg ClaimAgentShadowStepParams) (int64, error)
+	ClaimAgentWorkflowRepairExecution(ctx context.Context, arg ClaimAgentWorkflowRepairExecutionParams) (int64, error)
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
@@ -73,6 +74,7 @@ type Querier interface {
 	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)
 	FailAgentModelRunByTask(ctx context.Context, arg FailAgentModelRunByTaskParams) (int64, error)
 	FailAgentShadowStep(ctx context.Context, arg FailAgentShadowStepParams) (int64, error)
+	FailAgentWorkflowRepairExecution(ctx context.Context, arg FailAgentWorkflowRepairExecutionParams) (int64, error)
 	FailCassandraBackfillJob(ctx context.Context, arg FailCassandraBackfillJobParams) (sql.Result, error)
 	FailSearchBackfillJob(ctx context.Context, arg FailSearchBackfillJobParams) (sql.Result, error)
 	FailSyncReplayJob(ctx context.Context, arg FailSyncReplayJobParams) (sql.Result, error)

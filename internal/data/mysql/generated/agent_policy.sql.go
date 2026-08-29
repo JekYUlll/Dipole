@@ -52,6 +52,33 @@ func (q *Queries) ApproveAgentWorkflowRepairProposal(ctx context.Context, propos
 	return result.RowsAffected()
 }
 
+const claimAgentWorkflowRepairExecution = `-- name: ClaimAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'executing', started_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'prepared' AND started_at IS NULL AND finished_at IS NULL
+`
+
+type ClaimAgentWorkflowRepairExecutionParams struct {
+	StartedAt            sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) ClaimAgentWorkflowRepairExecution(ctx context.Context, arg ClaimAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, claimAgentWorkflowRepairExecution,
+		arg.StartedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const consumeAgentApproval = `-- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)
@@ -142,6 +169,33 @@ WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP(
 
 func (q *Queries) ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, expireAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const failAgentWorkflowRepairExecution = `-- name: FailAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'failed', failure_code = ?, finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND status = 'executing'
+  AND started_at IS NOT NULL AND finished_at IS NULL
+`
+
+type FailAgentWorkflowRepairExecutionParams struct {
+	FailureCode   sql.NullString
+	FinishedAt    sql.NullTime
+	ExecutionUuid string
+	ExecutorUuid  string
+}
+
+func (q *Queries) FailAgentWorkflowRepairExecution(ctx context.Context, arg FailAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failAgentWorkflowRepairExecution,
+		arg.FailureCode,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+	)
 	if err != nil {
 		return 0, err
 	}

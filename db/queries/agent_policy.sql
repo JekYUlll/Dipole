@@ -257,3 +257,15 @@ INSERT IGNORE INTO agent_workflow_repair_executions (
 
 -- name: GetAgentWorkflowRepairExecution :one
 SELECT * FROM agent_workflow_repair_executions WHERE execution_uuid = ? LIMIT 1;
+
+-- name: ClaimAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'executing', started_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'prepared' AND started_at IS NULL AND finished_at IS NULL;
+
+-- name: FailAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'failed', failure_code = ?, finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND status = 'executing'
+  AND started_at IS NOT NULL AND finished_at IS NULL;
