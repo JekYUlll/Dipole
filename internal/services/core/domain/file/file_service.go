@@ -535,6 +535,14 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	if s.storage == nil {
 		return nil, ErrFileStorageUnavailable
 	}
+	completed, err := s.getCompletedMultipartUpload(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if completed != nil {
+		outcome = "success"
+		return completed, nil
+	}
 	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
 	if err != nil {
 		return nil, err
@@ -580,6 +588,9 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	if err := s.repo.Create(record); err != nil {
 		return nil, fmt.Errorf("persist uploaded file: %w", err)
 	}
+	if err := s.sessionStore.SaveCompleted(ctx, session.SessionID, session.UploaderUUID, record, s.effectiveMultipartSessionTTL()); err != nil {
+		return nil, fmt.Errorf("persist multipart completion: %w", err)
+	}
 	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
 		return nil, fmt.Errorf("delete multipart session: %w", err)
 	}
@@ -597,6 +608,17 @@ func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error
 	}
 	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
 	if err != nil {
+		if errors.Is(err, ErrMultipartSessionNotFound) {
+			completed, completionErr := s.getCompletedMultipartUpload(uploaderUUID, sessionID)
+			if completionErr != nil {
+				return completionErr
+			}
+			if completed != nil {
+				return ErrMultipartSessionInvalid
+			}
+			outcome = "success"
+			return nil
+		}
 		return err
 	}
 
@@ -611,6 +633,25 @@ func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error
 	}
 	outcome = "success"
 	return nil
+}
+
+func (s *FileService) getCompletedMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
+	if s.sessionStore == nil {
+		return nil, ErrMultipartSessionInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	file, owner, err := s.sessionStore.GetCompleted(ctx, strings.TrimSpace(sessionID))
+	if err != nil {
+		return nil, fmt.Errorf("get multipart completion: %w", err)
+	}
+	if file == nil {
+		return nil, nil
+	}
+	if owner != strings.TrimSpace(uploaderUUID) {
+		return nil, ErrFilePermissionDenied
+	}
+	return file, nil
 }
 
 func (s *FileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*FileDownloadResult, error) {
