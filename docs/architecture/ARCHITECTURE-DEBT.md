@@ -11,6 +11,7 @@
 ### 本轮进展
 
 - 2026-08-30：复核 Go/Eino 回滚基线，项目当前锁定 `github.com/cloudwego/eino v0.9.17`，`go list -m -u` 未发现更高稳定升级；预发布版本不进入生产依赖，Eino 继续仅承担 embedded legacy 回滚职责。
+- 2026-08-30：Agent Active Compose 增加缺失 release manifest/candidate 的负向门禁，部署插值不完整时 fail closed；默认 Shadow、显式 `user_gray` manifest 和回滚路径保持不变。
 - 2026-08-30：C++ Realtime Delivery 标准容器门禁通过，CMake 配置、构建和 14/14 CTest 在 Ubuntu 24.04 容器内成功；本机 host gate 因缺少 `grpc++` 仅记录为环境缺口，不影响默认 Go authority，也不授权 C++ primary 灰度。
 - 2026-08-30：C++ Realtime Delivery CMake 已支持本地源码布局与容器扁平布局的 canonical 根目录探测，并在缺少 delivery proto/fence testdata 时 fail fast；该修复只恢复一致构建路径，C++ primary 仍保持默认关闭。
 - 2026-08-30：Agent Runtime 配置解析新增 `shadow|remote` 严格枚举和非法值 fail-closed 回归测试；该修复防止配置拼写错误被静默降级，不改变默认 Shadow 或 active promotion 门禁。

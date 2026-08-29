@@ -92,6 +92,23 @@ jq -e '
     and .target == "/run/dipole/release/manifest.json" and .read_only == true)
 ' <<<"${active_agent_config}" >/dev/null
 
+if env -u DIPOLE_AGENT_RELEASE_MANIFEST_FILE -u DIPOLE_AGENT_CANDIDATE_VERSION \
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  docker compose -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
+  echo "active Agent overlay must reject missing manifest and candidate inputs" >&2
+  exit 1
+fi
+
+if env -u DIPOLE_AGENT_CANDIDATE_VERSION \
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
+  docker compose -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
+  echo "active Agent overlay must reject a missing candidate input" >&2
+  exit 1
+fi
+
 primary_hydration_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_CASSANDRA_ENABLED=true \
