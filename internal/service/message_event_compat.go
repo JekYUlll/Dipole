@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
@@ -11,6 +12,7 @@ import (
 // to the Message service domain package.
 type MessageEventPayload = messagedomain.MessageEventPayload
 type MessageMutationType = messagedomain.MessageMutationType
+type MessageService = messagedomain.MessageService
 
 const (
 	MessageMutationCreated  = messagedomain.MessageMutationCreated
@@ -20,6 +22,16 @@ const (
 )
 
 var (
+	ErrMessageTargetRequired           = applicationPort.ErrMessageTargetRequired
+	ErrMessageContentRequired          = applicationPort.ErrMessageContentRequired
+	ErrMessageContentTooLong           = applicationPort.ErrMessageContentTooLong
+	ErrMessageTargetUnavailable        = applicationPort.ErrMessageTargetUnavailable
+	ErrMessageTargetNotFound           = applicationPort.ErrMessageTargetNotFound
+	ErrMessageFriendRequired           = applicationPort.ErrMessageFriendRequired
+	ErrMessageGroupForbidden           = applicationPort.ErrMessageGroupForbidden
+	ErrMessageFileRequired             = applicationPort.ErrMessageFileRequired
+	ErrMessageFileUnavailable          = applicationPort.ErrMessageFileUnavailable
+	ErrMessageIdempotencyConflict      = applicationPort.ErrMessageIdempotencyConflict
 	ErrMessageMutationTypeMismatch     = messagedomain.ErrMessageMutationTypeMismatch
 	ErrMessageMutationRevisionRequired = messagedomain.ErrMessageMutationRevisionRequired
 	ErrMessageMutationRevisionInvalid  = messagedomain.ErrMessageMutationRevisionInvalid
@@ -54,4 +66,12 @@ func MessageSearchMutation(eventType string, payload MessageEventPayload) (*mode
 
 func MessageSyncProjection(eventID, eventType string, payload MessageEventPayload) (*model.SyncProjection, bool, error) {
 	return messagedomain.MessageSyncProjection(eventID, eventType, payload)
+}
+
+func NewMessageService(repo messagedomain.MessageRepository, userFinder messagedomain.MessageUserFinder, friendChecker messagedomain.FriendshipChecker, groupChecker messagedomain.GroupMessageChecker, fileFinder messagedomain.MessageFileFinder, events messagedomain.EventPublisher, hotGroups messagedomain.HotGroupObserver) *MessageService {
+	return messagedomain.NewMessageService(repo, userFinder, friendChecker, groupChecker, fileFinder, events, hotGroups)
+}
+
+func NewMessageServiceWithCore(repo messagedomain.MessageRepository, core applicationPort.CoreCapability, fileFinder messagedomain.MessageFileFinder, events messagedomain.EventPublisher, hotGroups messagedomain.HotGroupObserver) *MessageService {
+	return messagedomain.NewMessageServiceWithCore(repo, core, fileFinder, events, hotGroups)
 }

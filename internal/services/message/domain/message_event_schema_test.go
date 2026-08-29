@@ -1,4 +1,4 @@
-package service
+package messagedomain
 
 import (
 	"context"
@@ -123,7 +123,7 @@ func loadMessageEventSchema(t *testing.T, name string) messageEventSchema {
 	if !ok {
 		t.Fatal("locate schema test source")
 	}
-	path := filepath.Join(filepath.Dir(currentFile), "..", "..", "contracts", "events", "message", "v1", name)
+	path := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "..", "contracts", "events", "message", "v1", name)
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read Message event schema: %v", err)
