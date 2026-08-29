@@ -59,15 +59,6 @@ type SyncProcessRepositories struct {
 // CoreProcessRepositories contains only repositories owned by the Core service.
 // The aggregate Repositories type below remains as a compatibility composition
 // root for the embedded server during the migration.
-type CoreProcessRepositories struct {
-	Users         application.UserStore
-	Files         application.FileMetadataStore
-	Conversations application.ConversationStore
-	Contacts      application.ContactStore
-	Groups        application.GroupStore
-	Admin         application.AdminOverviewStore
-}
-
 // AgentProcessRepositories contains repositories owned by the Agent runtime.
 // The Go Core still consumes selected Agent ports for the compatibility RPC
 // surface, while the process boundary remains explicit for later extraction.
@@ -145,50 +136,6 @@ func newAgentProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*Agen
 	}, nil
 }
 
-func NewCoreProcessRepositories(db *sql.DB) (*CoreProcessRepositories, error) {
-	if db == nil {
-		return nil, fmt.Errorf("core repository composition requires database/sql connection")
-	}
-	mysqlStore, err := mysqlData.NewStore(db)
-	if err != nil {
-		return nil, fmt.Errorf("create core transaction store: %w", err)
-	}
-	return newCoreProcessRepositories(db, mysqlStore)
-}
-
-func newCoreProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*CoreProcessRepositories, error) {
-	queries := generated.New(db)
-	admin, err := coremysql.NewAdminRepository(queries)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
-	}
-	files, err := coremysql.NewFileRepository(queries)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc file repository: %w", err)
-	}
-	users, err := coremysql.NewUserRepository(queries)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc user repository: %w", err)
-	}
-	contacts, err := coremysql.NewContactRepository(queries)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc contact repository: %w", err)
-	}
-	groups, err := coremysql.NewGroupRepository(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc group repository: %w", err)
-	}
-	conversations, err := coremysql.NewConversationRepository(queries)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
-	}
-	return &CoreProcessRepositories{
-		Admin: admin, Files: files,
-		Users: NewCachedUserStore(users), Contacts: NewCachedContactStore(contacts),
-		Groups: NewCachedGroupStore(groups), Conversations: conversations,
-	}, nil
-}
-
 func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
 	return NewSyncProcessRepositoriesWithHydrator(db, nil)
 }
@@ -236,7 +183,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
 	}
 	repos := &Repositories{}
-	coreRepos, err := newCoreProcessRepositories(db, mysqlStore)
+	coreRepos, err := coremysql.NewProcessRepositories(db)
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}

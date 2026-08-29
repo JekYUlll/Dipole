@@ -39,6 +39,20 @@ if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/app
   echo "Search composition must use Search-owned index repository" >&2
   exit 1
 fi
+if rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go' --glob '!core_repository_compat.go'; then
+  echo "Core repository composition must live in the Core service infrastructure" >&2
+  exit 1
+fi
+for legacy_core_file in cached_user_store.go cached_group_store.go cached_contact_store.go; do
+  if [[ -e "${root_dir}/internal/app/${legacy_core_file}" ]]; then
+    echo "Core cache adapter remains in aggregate app package: ${legacy_core_file}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'coremysql.NewProcessRepositories' "${root_dir}/internal/bootstrap/core_runtime.go"; then
+  echo "standalone Core runtime must use Core-owned repository composition" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/sync/application/application.go" ]]; then
   echo "Sync application implementation is outside its service boundary" >&2
   exit 1
@@ -163,6 +177,10 @@ if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/app/r
   echo "Core process composition must use Core-owned MySQL repositories" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/infrastructure/mysql/composition.go" ]]; then
+  echo "Core process repository composition is outside the Core service boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
@@ -211,7 +229,7 @@ if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
   echo "legacy Core group implementation remains under internal/service" >&2
   exit 1
 fi
-if ! rg --quiet '^type CoreProcessRepositories struct' "${root_dir}/internal/app/repositories.go"; then
+if ! rg --quiet '^type ProcessRepositories struct' "${root_dir}/internal/services/core/infrastructure/mysql/composition.go"; then
   echo "Core process repository composition is missing" >&2
   exit 1
 fi

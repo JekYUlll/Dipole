@@ -119,20 +119,14 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.Files.(*sqlcRepository.FileRepository); !ok {
 		t.Fatalf("expected sqlc file repository, got %T", repos.Files)
 	}
-	if cached, ok := repos.Users.(*CachedUserStore); !ok {
+	if _, ok := repos.Users.(*CachedUserStore); !ok {
 		t.Fatalf("expected cached user store, got %T", repos.Users)
-	} else if _, ok := cached.backend.(*sqlcRepository.UserRepository); !ok {
-		t.Fatalf("expected sqlc user backend, got %T", cached.backend)
 	}
-	if cached, ok := repos.Contacts.(*CachedContactStore); !ok {
+	if _, ok := repos.Contacts.(*CachedContactStore); !ok {
 		t.Fatalf("expected cached contact store, got %T", repos.Contacts)
-	} else if _, ok := cached.backend.(*sqlcRepository.ContactRepository); !ok {
-		t.Fatalf("expected sqlc contact backend, got %T", cached.backend)
 	}
-	if cached, ok := repos.Groups.(*CachedGroupStore); !ok {
+	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
-	} else if _, ok := cached.backend.(*sqlcRepository.GroupRepository); !ok {
-		t.Fatalf("expected sqlc group backend, got %T", cached.backend)
 	}
 	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
 		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
