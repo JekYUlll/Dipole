@@ -5,9 +5,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +20,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	runtime, err := bootstrap.InitializeSearchService(ctx)
+	runtime, err := searchbootstrap.InitializeService(ctx)
 	if err != nil {
 		logger.L().Fatal("Search Service initialize failed", zap.Error(err))
 	}

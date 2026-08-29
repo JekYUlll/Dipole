@@ -38,6 +38,13 @@ type MessageApplication interface {
 	MessageQuery
 }
 
+// SystemMessageSender is the restricted application contract used by Core
+// domain events. Implementations must enforce the internal caller boundary.
+type SystemMessageSender interface {
+	SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error)
+	SendSystemGroupMessage(groupUUID, content string) error
+}
+
 type SyncPage struct {
 	Items   []*model.SyncMessage
 	NextSeq uint64

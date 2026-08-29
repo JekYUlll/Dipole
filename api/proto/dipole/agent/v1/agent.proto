@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.agent.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/agent/v1;agentv1";
 
 import "dipole/common/v1/context.proto";
 import "dipole/message/v1/message.proto";

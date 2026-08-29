@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/internal/config"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
-	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpcCredentials "google.golang.org/grpc/credentials"

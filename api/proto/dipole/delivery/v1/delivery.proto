@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.delivery.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1;deliveryv1";
 
 import "google/protobuf/timestamp.proto";
 

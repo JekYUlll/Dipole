@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	syncops "github.com/JekYUlll/Dipole/internal/operations/sync"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	encoder.SetIndent("", "  ")
 	switch strings.ToLower(strings.TrimSpace(*action)) {
 	case "capture":
-		manifest, err := bootstrap.RunSyncBaselineCapture(ctx, *jobName)
+		manifest, err := syncops.RunSyncBaselineCapture(ctx, *jobName)
 		if err != nil {
 			fail(err)
 		}
@@ -37,7 +37,7 @@ func main() {
 			fail(fmt.Errorf("encode Sync baseline manifest: %w", err))
 		}
 	case "reconcile":
-		report, err := bootstrap.RunSyncBaselineReconciliation(ctx, *jobName, *maxExamples)
+		report, err := syncops.RunSyncBaselineReconciliation(ctx, *jobName, *maxExamples)
 		if err != nil {
 			fail(err)
 		}
@@ -48,7 +48,7 @@ func main() {
 			os.Exit(2)
 		}
 	case "restore":
-		report, err := bootstrap.RunSyncBaselineRestore(ctx, *jobName, *maxExamples)
+		report, err := syncops.RunSyncBaselineRestore(ctx, *jobName, *maxExamples)
 		if encodeErr := encoder.Encode(report); encodeErr != nil {
 			fail(fmt.Errorf("encode Sync baseline restore report: %w", encodeErr))
 		}

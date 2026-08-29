@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.sync.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1;syncv1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/sync/v1;syncv1";
 
 import "dipole/common/v1/context.proto";
 import "dipole/message/v1/message.proto";

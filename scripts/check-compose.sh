@@ -29,6 +29,18 @@ for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
   check_bind_sources "$file"
 done
 
+cluster_config="$(docker compose --profile observability -f deploy/compose/docker-compose.cluster.yml config --format json)"
+jq -e '
+  any(.services.prometheus.volumes[];
+    (.source | endswith("/deploy/observability/duplicate-hydration-alerts.yml"))
+    and .target == "/etc/prometheus/duplicate-hydration-alerts.yml"
+  )
+  and any(.services.prometheus.volumes[];
+    (.source | endswith("/deploy/observability/agent-timeline-repair-alerts.yml"))
+    and .target == "/etc/prometheus/agent-timeline-repair-alerts.yml"
+  )
+' <<<"${cluster_config}" >/dev/null
+
 default_microservices_config="$(docker compose -f deploy/compose/docker-compose.microservices.yml config --format json)"
 jq -e '
   (.services["realtime-cpp"] == null)
@@ -38,7 +50,7 @@ jq -e '
   and .services.migrate.entrypoint == ["/app/service"]
   and .services.core.image == "dipole-core:latest"
   and .services.core.entrypoint == ["/app/service"]
-  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "local"
+  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "grpc"
   and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "grpc"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
@@ -46,6 +58,8 @@ jq -e '
   and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
   and .services.sync.entrypoint == ["/app/service"]
+  and ((.services.core.depends_on // {}) | has("message") | not)
+  and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"
 ' <<<"${default_microservices_config}" >/dev/null
 
@@ -81,6 +95,18 @@ jq -e '
   and .services.sync.environment.DIPOLE_CASSANDRA_HOSTS == "cassandra:9042"
   and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
 ' <<<"${primary_profile_config}" >/dev/null
+
+projector_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/inbox-projector.yml config --format json
+})"
+jq -e '
+  .services.message.environment.DIPOLE_MESSAGE_RUNTIME_MODE == "owner"
+  and .services.message.environment.DIPOLE_MESSAGE_INBOX_WRITE_MODE == "projector"
+  and .services.message.environment.DIPOLE_MESSAGE_MYSQL_USER == "dipole_message_projector"
+  and .services.sync.environment.DIPOLE_SYNC_PROJECTOR_ENABLED == "true"
+' <<<"${projector_config}" >/dev/null
 
 isolated_microservices_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \

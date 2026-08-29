@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,6 +28,14 @@ type stubMessageApplication struct {
 	listGroupBeforeSeq  func(currentUserUUID, groupUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	commandContext      correlation.IDs
 	receipt             func(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error)
+}
+
+func (s *stubMessageApplication) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	return &model.Message{UUID: "system-direct", SenderUUID: senderUUID, TargetUUID: targetUUID, Content: content}, nil
+}
+
+func (s *stubMessageApplication) SendSystemGroupMessage(groupUUID, content string) error {
+	return nil
 }
 
 func (s *stubMessageApplication) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
@@ -143,6 +151,22 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	}
 	if application.commandContext.RequestID != "grpc-request-1" || application.commandContext.TraceID != "grpc-trace-1" {
 		t.Fatalf("unexpected command context: %+v", application.commandContext)
+	}
+}
+
+func TestServerSystemMessageRequiresAuthenticatedCoreCaller(t *testing.T) {
+	serverAdapter, err := NewServer(&stubMessageApplication{sendDirect: func(string, string, string, string) (*model.Message, error) {
+		return nil, nil
+	}})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	_, err = serverAdapter.SendSystemDirectMessage(context.Background(), &messagev1.SendSystemDirectMessageRequest{
+		Context:      &commonv1.RequestContext{PrincipalUserId: "U100", CallerService: "dipole-core"},
+		SenderUserId: "UAI", TargetUserId: "U100", Content: "system notice",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("unauthenticated system message call code=%v err=%v", status.Code(err), err)
 	}
 }
 

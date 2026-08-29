@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	deliverycontract "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 )
 
 type scriptedPrimarySink struct {

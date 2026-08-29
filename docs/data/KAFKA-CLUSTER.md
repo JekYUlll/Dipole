@@ -55,7 +55,7 @@ docker compose -p dipole-kafka-cluster-smoke -f deploy/compose/docker-compose.cl
 
 ## Prometheus Gates
 
-Cluster Compose 的 `observability` profile 包含 `kafka-exporter:v1.9.0` 与 `prometheus:v3.5.0`；旧 durability/rebalance smoke 继续只启动 broker。规则位于 `deploy/observability/kafka-alerts.yml`，覆盖：
+Cluster Compose 的 `observability` profile 包含 `kafka-exporter:v1.9.0` 与 `prometheus:v3.5.0`；旧 durability/rebalance smoke 继续只启动 broker。规则位于 `deploy/observability/`，cluster profile 会挂载 `prometheus.yml` 引用的全部规则文件，覆盖：
 
 - Dipole consumer group lag 持续高于零。
 - Topic replica 数量与 ISR 数量之间存在缺口。
@@ -78,11 +78,12 @@ metrics:
 ./scripts/smoke-kafka-observability.sh
 ```
 
-脚本校验 Prometheus 配置与规则，制造 consumer lag 和 retry/DLQ 流量，停止一个 broker 验证 ISR 缺口可见，再恢复 broker 并等待缺口归零。所有资源使用隔离 Compose project，并在退出时清理。
+脚本校验 Prometheus 配置与全部规则文件，制造 consumer lag 和 retry/DLQ 流量，停止一个 broker 验证 ISR 缺口可见，再恢复 broker 并等待缺口归零。所有资源使用隔离 Compose project，并在退出时清理。`scripts/check-compose.sh` 同时校验关键规则文件的只读挂载，防止 rule_files 与容器文件系统发生漂移。
 
 ## Remaining Gates
 
 - 增加真实 Dipole Topic 的配置 drift/reconciliation 工具。
+- 在共享候选环境执行 Kafka ownership 切换，保存 consumer group、lag、ISR 和可执行回滚 receipt。
 
 ## Consumer Rebalance
 

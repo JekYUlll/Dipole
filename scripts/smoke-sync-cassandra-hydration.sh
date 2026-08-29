@@ -42,7 +42,7 @@ docker run --rm --network "${project}_default" -v "$root_dir/deploy/cassandra/ba
     go test -count=1 -run '^TestMessageDuplicateHydrationWithRealCassandra$' ./internal/service
   DIPOLE_TEST_MYSQL_ADMIN_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/?parseTime=true&loc=UTC" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
-    go test -count=1 -run '^TestMessageMetadataMigrationBackfillsExistingMessages$' ./internal/data/migration
+    go test -count=1 -run '^TestMessageMetadataMigrationBackfillsExistingMessages$' ./internal/platform/mysql/migration
 )
 
 printf 'Sync Cassandra hydration smoke passed: shadow comparison, duplicate response recovery, legacy ID restoration, and Metadata migration backfill verified.\n'
