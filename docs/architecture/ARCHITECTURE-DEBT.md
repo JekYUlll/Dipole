@@ -152,6 +152,7 @@
 - **本轮进展：** Compose 门禁已固定默认微服务拓扑中 Core 与 Message 不得互相 `depends_on`，且默认 Core Message transport 必须为 gRPC；`cassandra-primary` 的 embedded/local 回滚覆盖层仍单独保留并验证。
 - **本轮进展：** 运维代码、服务集成测试和平台测试已停止引用 `internal/data/mysql/repository` 历史兼容别名，统一使用各服务自有 SQLC repository；兼容别名仅保留回滚入口，结构门禁阻止新的运行时代码回流。
 - **本轮进展：** 为 `internal/app`、`internal/data/mysql`、`internal/data/mysql/repository` 和 `internal/store` 增加目录级 ownership/迁移说明，并由服务布局门禁检查；兼容目录仍保留，避免将回滚入口误认为新的共享业务实现。
+- **本轮进展：** 删除已无调用者的共享 repository contract helper；各服务的 MySQL contract database helper 已在自身 infrastructure 测试边界内维护，历史 repository 包进一步收敛为别名与构造转发。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 

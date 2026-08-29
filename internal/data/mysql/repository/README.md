@@ -1,6 +1,6 @@
 # Legacy Repository Aliases
 
-This package contains type aliases and constructor forwarding for callers that still use the historical `internal/data/mysql/repository` import path. The implementations are owned by the corresponding service packages:
+This package contains type aliases and constructor forwarding for callers that still use the historical `internal/data/mysql/repository` import path. Contract database helpers and repository tests belong to the owning service packages. The implementations are owned by the corresponding service packages:
 
 - Core: `internal/services/core/infrastructure/mysql/`
 - Message: `internal/services/message/infrastructure/mysql/`
