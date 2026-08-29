@@ -107,7 +107,7 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/data/mysql/README.md|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/app/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
