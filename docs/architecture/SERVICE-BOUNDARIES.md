@@ -35,6 +35,7 @@
 ### 需要收敛
 
 - 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
+- embedded 聚合专属的 Kafka 注册、Conversation projection、群初始化、旧 Eino 触发和实时投递组合位于 `internal/bootstrap/embedded/`；独立 Gateway/Core/Message 服务仍由各自 service-owned Kafka infrastructure 持有。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
