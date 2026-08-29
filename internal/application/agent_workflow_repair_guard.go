@@ -63,3 +63,9 @@ func workflowProjectionSHA256(projection *AgentTaskWorkflowProjectionV1) string 
 	digest := sha256.Sum256(payload)
 	return hex.EncodeToString(digest[:])
 }
+
+// WorkflowProjectionSHA256V1 exposes the canonical cross-language digest to
+// application adapters without duplicating the JSON contract.
+func WorkflowProjectionSHA256V1(projection *AgentTaskWorkflowProjectionV1) string {
+	return workflowProjectionSHA256(projection)
+}
