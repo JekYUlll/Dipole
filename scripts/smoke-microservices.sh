@@ -33,10 +33,17 @@ trap cleanup EXIT
 compose config --quiet
 compose up -d --wait
 
-health="$(curl -fsS "${GATEWAY_URL}/health")"
+health=""
+for _ in $(seq 1 30); do
+  health="$(curl --connect-timeout 2 --max-time 5 -fsS "${GATEWAY_URL}/health" 2>/dev/null || true)"
+  if [[ "${health}" == *'"component":"gateway"'* ]]; then
+    break
+  fi
+  sleep 1
+done
 [[ "${health}" == *'"component":"gateway"'* ]]
 
-proxy_status="$(curl -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts")"
+proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
 [[ "${proxy_status}" == "401" ]]
 
 core_ws_status="$(compose exec -T core sh -c \
