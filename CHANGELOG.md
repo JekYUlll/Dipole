@@ -26,6 +26,7 @@
 - Workflow Repair 增加事务化 rollback：支持恢复已提交 projection 或清空 projection，并将 execution 原子标记为 `rolled_back`。
 - Workflow Repair 增加默认未接线的应用层 Executor：执行前重新读取执行人 grant、Task projection 和 canonical hash，完成 claim、precondition、事务 commit；失败记录固定 failure code，rollback 要求原执行人携带 fresh grant 并校验 rollback hash。
 - Workflow Repair Executor 在执行入口校验计划声明的 rollback projection 与 `rollback_sha256`，缺失或漂移时在 claim 前 fail closed。
+- Agent Workflow repair 增加 Gateway-only 的 Execute/Rollback gRPC 契约与执行器注入点；接口默认保持关闭，未配置执行器时返回 `Unavailable`，继续禁止未经组合根接线的真实 projection mutation。
 
 ### 新增
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。

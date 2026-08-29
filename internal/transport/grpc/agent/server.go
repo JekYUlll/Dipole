@@ -31,6 +31,7 @@ type Server struct {
 	timeline             application.AgentTaskTimelineStoreV1
 	projections          application.AgentTaskWorkflowProjectionServiceV1
 	repairs              application.AgentWorkflowRepairAuditServiceV1
+	repairExecutor       application.AgentWorkflowRepairExecutorV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
 	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
 	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
@@ -680,6 +681,16 @@ func NewServerWithControlAndProjection(capability application.AgentCapabilityV1,
 	return server, nil
 }
 
+// WithWorkflowRepairExecutor enables the guarded execution control plane.
+// It remains opt-in so audit/proposal deployments cannot mutate projections.
+func (s *Server) WithWorkflowRepairExecutor(executor application.AgentWorkflowRepairExecutorV1) (*Server, error) {
+	if s == nil || executor == nil {
+		return nil, errors.New("Agent Workflow repair executor is required")
+	}
+	s.repairExecutor = executor
+	return s, nil
+}
+
 func (s *Server) ProposeWorkflowRepair(ctx context.Context, request *agentv1.ProposeWorkflowRepairRequest) (*agentv1.WorkflowRepairProposalResponse, error) {
 	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
 	if err != nil {
@@ -727,6 +738,43 @@ func (s *Server) GetWorkflowRepair(ctx context.Context, request *agentv1.GetWork
 		return nil, workflowRepairErrorV1(err)
 	}
 	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func (s *Server) ExecuteWorkflowRepair(ctx context.Context, request *agentv1.ExecuteWorkflowRepairRequest) (*agentv1.WorkflowRepairExecutionResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairExecutor == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair executor is unavailable")
+	}
+	target := workflowRepairProjectionFromRPCV1(request.GetTaskId(), request.GetTarget())
+	rollback := workflowRepairProjectionPointerFromRPCV1(request.GetTaskId(), request.GetRollback())
+	execution, err := s.repairExecutor.Execute(ctx, application.AgentWorkflowRepairExecuteRequestV1{
+		ExecutionUUID: request.GetExecutionId(), ExecutorUUID: principal, Target: target, Rollback: rollback,
+	})
+	if err != nil {
+		return nil, workflowRepairExecutionErrorV1(err)
+	}
+	return workflowRepairExecutionResponseV1(execution), nil
+}
+
+func (s *Server) RollbackWorkflowRepair(ctx context.Context, request *agentv1.RollbackWorkflowRepairRequest) (*agentv1.WorkflowRepairExecutionResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairExecutor == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair executor is unavailable")
+	}
+	rollback := workflowRepairProjectionPointerFromRPCV1(request.GetTaskId(), request.GetRollback())
+	execution, err := s.repairExecutor.Rollback(ctx, application.AgentWorkflowRepairRollbackRequestV1{
+		ExecutionUUID: request.GetExecutionId(), ExecutorUUID: principal, Rollback: rollback,
+	})
+	if err != nil {
+		return nil, workflowRepairExecutionErrorV1(err)
+	}
+	return workflowRepairExecutionResponseV1(execution), nil
 }
 
 func (s *Server) ProposeRuntimePromotion(ctx context.Context, request *agentv1.ProposeRuntimePromotionRequest) (*agentv1.RuntimePromotionProposalResponse, error) {
@@ -980,6 +1028,47 @@ func workflowRepairEvidenceToRPCV1(value *application.AgentWorkflowEvidenceV1) *
 	}
 	return &agentv1.WorkflowRepairEvidence{WorkflowId: value.WorkflowID, WorkflowRunId: value.WorkflowRunID, Status: value.Status, Revision: value.Revision}
 }
+
+func workflowRepairProjectionFromRPCV1(taskID string, value *agentv1.WorkflowRepairEvidence) application.AgentTaskWorkflowProjectionV1 {
+	if value == nil {
+		return application.AgentTaskWorkflowProjectionV1{TaskUUID: strings.TrimSpace(taskID)}
+	}
+	return application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: strings.TrimSpace(taskID), WorkflowID: value.GetWorkflowId(), RunID: value.GetWorkflowRunId(),
+		Status: application.AgentTaskWorkflowStatusV1(value.GetStatus()), Revision: value.GetRevision(),
+	}
+}
+
+func workflowRepairProjectionPointerFromRPCV1(taskID string, value *agentv1.WorkflowRepairEvidence) *application.AgentTaskWorkflowProjectionV1 {
+	if value == nil {
+		return nil
+	}
+	projection := workflowRepairProjectionFromRPCV1(taskID, value)
+	return &projection
+}
+
+func workflowRepairExecutionResponseV1(value *application.AgentWorkflowRepairExecutionV1) *agentv1.WorkflowRepairExecutionResponse {
+	if value == nil {
+		return nil
+	}
+	return &agentv1.WorkflowRepairExecutionResponse{
+		ExecutionId: value.ExecutionUUID, PlanId: value.PlanID, ProposalId: value.ProposalUUID, TaskId: value.TaskUUID,
+		ExecutorId: value.ExecutorUUID, ExecutorGrantVersion: value.ExecutorGrantVersion,
+		ExpectedCurrentSha256: value.ExpectedCurrentSHA256, TargetSha256: value.TargetSHA256,
+		RollbackSha256: value.RollbackSHA256, Status: string(value.Status),
+	}
+}
+
+func workflowRepairExecutionErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentWorkflowRepairDenied) {
+		return status.Error(codes.PermissionDenied, "Agent Workflow repair execution access denied")
+	}
+	if errors.Is(err, application.ErrAgentWorkflowRepairPrecondition) {
+		return status.Error(codes.FailedPrecondition, "Agent Workflow repair execution precondition failed")
+	}
+	return status.Error(codes.Internal, "Agent Workflow repair execution failed")
+}
+
 func workflowRepairProposalResponseV1(value *application.AgentWorkflowRepairProposalV1) *agentv1.WorkflowRepairProposalResponse {
 	if value == nil {
 		return nil

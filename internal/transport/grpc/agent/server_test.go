@@ -1199,6 +1199,22 @@ func TestWorkflowRepairRPCRejectsUnauthenticatedDirectAndAgentCalls(t *testing.T
 	}
 }
 
+func TestWorkflowRepairExecutionRPCIsOptInAndGatewayBound(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	request := &agentv1.ExecuteWorkflowRepairRequest{
+		Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), ExecutionId: "repair-execution:" + strings.Repeat("a", 64), TaskId: "TASK-1",
+	}
+	if _, err := server.ExecuteWorkflowRepair(context.Background(), request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("direct execution code = %s, want PermissionDenied", status.Code(err))
+	}
+	_, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ExecuteWorkflowRepair(ctx, request)
+	})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("unconfigured execution code = %s, want Unavailable", status.Code(err))
+	}
+}
+
 func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
 	controls := &runtimePromotionControlServiceStub{proposal: &application.AgentRuntimePromotionProposalV1{ProposalUUID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionUUID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactUUID: strings.Repeat("1", 64), EvidenceSHA256: strings.Repeat("2", 64), EvalSuiteSHA256: strings.Repeat("3", 64), ProposerUUID: "U-OPS", Status: application.AgentRuntimePromotionProposalProposed, ProposedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0), GrantValidFrom: time.Unix(1, 0), GrantExpiresAt: time.Unix(3, 0)}}
 	evidence := &runtimePromotionEvidenceServiceStub{review: &application.AgentRuntimePromotionEvidenceReviewV1{

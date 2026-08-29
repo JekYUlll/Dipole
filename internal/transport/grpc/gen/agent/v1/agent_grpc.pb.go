@@ -55,6 +55,8 @@ const (
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
 	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
 	AgentCapabilityService_GetWorkflowRepair_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
+	AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ExecuteWorkflowRepair"
+	AgentCapabilityService_RollbackWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/RollbackWorkflowRepair"
 	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
 	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
 	AgentCapabilityService_GetRuntimePromotion_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
@@ -106,6 +108,8 @@ type AgentCapabilityServiceClient interface {
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	ExecuteWorkflowRepair(ctx context.Context, in *ExecuteWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error)
+	RollbackWorkflowRepair(ctx context.Context, in *RollbackWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error)
 	ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(ctx context.Context, in *ReviewRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(ctx context.Context, in *GetRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
@@ -485,6 +489,26 @@ func (c *agentCapabilityServiceClient) GetWorkflowRepair(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ExecuteWorkflowRepair(ctx context.Context, in *ExecuteWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairExecutionResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RollbackWorkflowRepair(ctx context.Context, in *RollbackWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairExecutionResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RollbackWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimePromotionProposalResponse)
@@ -615,6 +639,8 @@ type AgentCapabilityServiceServer interface {
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	ExecuteWorkflowRepair(context.Context, *ExecuteWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error)
+	RollbackWorkflowRepair(context.Context, *RollbackWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error)
 	ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(context.Context, *ReviewRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
@@ -741,6 +767,12 @@ func (UnimplementedAgentCapabilityServiceServer) DecideWorkflowRepair(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ExecuteWorkflowRepair(context.Context, *ExecuteWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RollbackWorkflowRepair(context.Context, *RollbackWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RollbackWorkflowRepair not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProposeRuntimePromotion not implemented")
@@ -1439,6 +1471,42 @@ func _AgentCapabilityService_GetWorkflowRepair_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ExecuteWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ExecuteWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ExecuteWorkflowRepair(ctx, req.(*ExecuteWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RollbackWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RollbackWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RollbackWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RollbackWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RollbackWorkflowRepair(ctx, req.(*RollbackWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ProposeRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProposeRuntimePromotionRequest)
 	if err := dec(in); err != nil {
@@ -1751,6 +1819,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkflowRepair",
 			Handler:    _AgentCapabilityService_GetWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "ExecuteWorkflowRepair",
+			Handler:    _AgentCapabilityService_ExecuteWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "RollbackWorkflowRepair",
+			Handler:    _AgentCapabilityService_RollbackWorkflowRepair_Handler,
 		},
 		{
 			MethodName: "ProposeRuntimePromotion",

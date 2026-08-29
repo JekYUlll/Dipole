@@ -1416,6 +1416,97 @@ export interface WorkflowRepairProposalResponse {
     expiresAtUnixMs: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ExecuteWorkflowRepairRequest
+ */
+export interface ExecuteWorkflowRepairRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string execution_id = 2
+     */
+    executionId: string;
+    /**
+     * @generated from protobuf field: string task_id = 3
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence target = 4
+     */
+    target?: WorkflowRepairEvidence;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence rollback = 5
+     */
+    rollback?: WorkflowRepairEvidence;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.RollbackWorkflowRepairRequest
+ */
+export interface RollbackWorkflowRepairRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string execution_id = 2
+     */
+    executionId: string;
+    /**
+     * @generated from protobuf field: string task_id = 3
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.WorkflowRepairEvidence rollback = 4
+     */
+    rollback?: WorkflowRepairEvidence;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.WorkflowRepairExecutionResponse
+ */
+export interface WorkflowRepairExecutionResponse {
+    /**
+     * @generated from protobuf field: string execution_id = 1
+     */
+    executionId: string;
+    /**
+     * @generated from protobuf field: string plan_id = 2
+     */
+    planId: string;
+    /**
+     * @generated from protobuf field: string proposal_id = 3
+     */
+    proposalId: string;
+    /**
+     * @generated from protobuf field: string task_id = 4
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string executor_id = 5
+     */
+    executorId: string;
+    /**
+     * @generated from protobuf field: uint64 executor_grant_version = 6
+     */
+    executorGrantVersion: bigint;
+    /**
+     * @generated from protobuf field: string expected_current_sha256 = 7
+     */
+    expectedCurrentSha256: string;
+    /**
+     * @generated from protobuf field: string target_sha256 = 8
+     */
+    targetSha256: string;
+    /**
+     * @generated from protobuf field: string rollback_sha256 = 9
+     */
+    rollbackSha256: string;
+    /**
+     * @generated from protobuf field: string status = 10
+     */
+    status: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ProposeRuntimePromotionRequest
  */
 export interface ProposeRuntimePromotionRequest {
@@ -6918,6 +7009,270 @@ class WorkflowRepairProposalResponse$Type extends MessageType<WorkflowRepairProp
  */
 export const WorkflowRepairProposalResponse = new WorkflowRepairProposalResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class ExecuteWorkflowRepairRequest$Type extends MessageType<ExecuteWorkflowRepairRequest> {
+    constructor() {
+        super("dipole.agent.v1.ExecuteWorkflowRepairRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "execution_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "target", kind: "message", T: () => WorkflowRepairEvidence },
+            { no: 5, name: "rollback", kind: "message", T: () => WorkflowRepairEvidence }
+        ]);
+    }
+    create(value?: PartialMessage<ExecuteWorkflowRepairRequest>): ExecuteWorkflowRepairRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.executionId = "";
+        message.taskId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ExecuteWorkflowRepairRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ExecuteWorkflowRepairRequest): ExecuteWorkflowRepairRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string execution_id */ 2:
+                    message.executionId = reader.string();
+                    break;
+                case /* string task_id */ 3:
+                    message.taskId = reader.string();
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence target */ 4:
+                    message.target = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.target);
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence rollback */ 5:
+                    message.rollback = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.rollback);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ExecuteWorkflowRepairRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string execution_id = 2; */
+        if (message.executionId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.executionId);
+        /* string task_id = 3; */
+        if (message.taskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.taskId);
+        /* dipole.agent.v1.WorkflowRepairEvidence target = 4; */
+        if (message.target)
+            WorkflowRepairEvidence.internalBinaryWrite(message.target, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* dipole.agent.v1.WorkflowRepairEvidence rollback = 5; */
+        if (message.rollback)
+            WorkflowRepairEvidence.internalBinaryWrite(message.rollback, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ExecuteWorkflowRepairRequest
+ */
+export const ExecuteWorkflowRepairRequest = new ExecuteWorkflowRepairRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RollbackWorkflowRepairRequest$Type extends MessageType<RollbackWorkflowRepairRequest> {
+    constructor() {
+        super("dipole.agent.v1.RollbackWorkflowRepairRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "execution_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "rollback", kind: "message", T: () => WorkflowRepairEvidence }
+        ]);
+    }
+    create(value?: PartialMessage<RollbackWorkflowRepairRequest>): RollbackWorkflowRepairRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.executionId = "";
+        message.taskId = "";
+        if (value !== undefined)
+            reflectionMergePartial<RollbackWorkflowRepairRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RollbackWorkflowRepairRequest): RollbackWorkflowRepairRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string execution_id */ 2:
+                    message.executionId = reader.string();
+                    break;
+                case /* string task_id */ 3:
+                    message.taskId = reader.string();
+                    break;
+                case /* dipole.agent.v1.WorkflowRepairEvidence rollback */ 4:
+                    message.rollback = WorkflowRepairEvidence.internalBinaryRead(reader, reader.uint32(), options, message.rollback);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RollbackWorkflowRepairRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string execution_id = 2; */
+        if (message.executionId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.executionId);
+        /* string task_id = 3; */
+        if (message.taskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.taskId);
+        /* dipole.agent.v1.WorkflowRepairEvidence rollback = 4; */
+        if (message.rollback)
+            WorkflowRepairEvidence.internalBinaryWrite(message.rollback, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.RollbackWorkflowRepairRequest
+ */
+export const RollbackWorkflowRepairRequest = new RollbackWorkflowRepairRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class WorkflowRepairExecutionResponse$Type extends MessageType<WorkflowRepairExecutionResponse> {
+    constructor() {
+        super("dipole.agent.v1.WorkflowRepairExecutionResponse", [
+            { no: 1, name: "execution_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "plan_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "proposal_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "executor_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "executor_grant_version", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 7, name: "expected_current_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "target_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "rollback_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<WorkflowRepairExecutionResponse>): WorkflowRepairExecutionResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.executionId = "";
+        message.planId = "";
+        message.proposalId = "";
+        message.taskId = "";
+        message.executorId = "";
+        message.executorGrantVersion = 0n;
+        message.expectedCurrentSha256 = "";
+        message.targetSha256 = "";
+        message.rollbackSha256 = "";
+        message.status = "";
+        if (value !== undefined)
+            reflectionMergePartial<WorkflowRepairExecutionResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: WorkflowRepairExecutionResponse): WorkflowRepairExecutionResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string execution_id */ 1:
+                    message.executionId = reader.string();
+                    break;
+                case /* string plan_id */ 2:
+                    message.planId = reader.string();
+                    break;
+                case /* string proposal_id */ 3:
+                    message.proposalId = reader.string();
+                    break;
+                case /* string task_id */ 4:
+                    message.taskId = reader.string();
+                    break;
+                case /* string executor_id */ 5:
+                    message.executorId = reader.string();
+                    break;
+                case /* uint64 executor_grant_version */ 6:
+                    message.executorGrantVersion = reader.uint64().toBigInt();
+                    break;
+                case /* string expected_current_sha256 */ 7:
+                    message.expectedCurrentSha256 = reader.string();
+                    break;
+                case /* string target_sha256 */ 8:
+                    message.targetSha256 = reader.string();
+                    break;
+                case /* string rollback_sha256 */ 9:
+                    message.rollbackSha256 = reader.string();
+                    break;
+                case /* string status */ 10:
+                    message.status = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: WorkflowRepairExecutionResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string execution_id = 1; */
+        if (message.executionId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.executionId);
+        /* string plan_id = 2; */
+        if (message.planId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.planId);
+        /* string proposal_id = 3; */
+        if (message.proposalId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.proposalId);
+        /* string task_id = 4; */
+        if (message.taskId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.taskId);
+        /* string executor_id = 5; */
+        if (message.executorId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.executorId);
+        /* uint64 executor_grant_version = 6; */
+        if (message.executorGrantVersion !== 0n)
+            writer.tag(6, WireType.Varint).uint64(message.executorGrantVersion);
+        /* string expected_current_sha256 = 7; */
+        if (message.expectedCurrentSha256 !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.expectedCurrentSha256);
+        /* string target_sha256 = 8; */
+        if (message.targetSha256 !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.targetSha256);
+        /* string rollback_sha256 = 9; */
+        if (message.rollbackSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.rollbackSha256);
+        /* string status = 10; */
+        if (message.status !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.WorkflowRepairExecutionResponse
+ */
+export const WorkflowRepairExecutionResponse = new WorkflowRepairExecutionResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ProposeRuntimePromotionRequest$Type extends MessageType<ProposeRuntimePromotionRequest> {
     constructor() {
         super("dipole.agent.v1.ProposeRuntimePromotionRequest", [
@@ -10512,6 +10867,8 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ProposeWorkflowRepair", options: {}, I: ProposeWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
     { name: "DecideWorkflowRepair", options: {}, I: DecideWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
     { name: "GetWorkflowRepair", options: {}, I: GetWorkflowRepairRequest, O: WorkflowRepairProposalResponse },
+    { name: "ExecuteWorkflowRepair", options: {}, I: ExecuteWorkflowRepairRequest, O: WorkflowRepairExecutionResponse },
+    { name: "RollbackWorkflowRepair", options: {}, I: RollbackWorkflowRepairRequest, O: WorkflowRepairExecutionResponse },
     { name: "ProposeRuntimePromotion", options: {}, I: ProposeRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
     { name: "ReviewRuntimePromotion", options: {}, I: ReviewRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
     { name: "GetRuntimePromotion", options: {}, I: GetRuntimePromotionRequest, O: RuntimePromotionProposalResponse },
