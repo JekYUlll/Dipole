@@ -240,7 +240,7 @@ function routeManifest() {
 function runtimeConfig(database: string, topicPrefix: string, groupId: string): ShadowRuntimeConfig {
   const mysqlUrl = new URL(requiredEnv("DIPOLE_TEST_AGENT_MYSQL_URL"));
   return {
-    enabled: true, runtimeMode: "shadow", candidateVersion: "", brokers: requiredEnv("DIPOLE_TEST_AGENT_KAFKA_BROKERS").split(","), clientId: `dipole-agent-drill-${randomUUID()}`,
+    enabled: true, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", brokers: requiredEnv("DIPOLE_TEST_AGENT_KAFKA_BROKERS").split(","), clientId: `dipole-agent-drill-${randomUUID()}`,
     groupId, topic: "message.direct.created", topicPrefix, failureMaxAttempts: 2, topicPartitions: 1,
     topicReplicationFactor: 1, tenantId: "dipole", agentUuid: "UAI-DRILL", triggerMode: "subscription",
     subscriptionShadowEnabled: false,
