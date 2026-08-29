@@ -62,6 +62,8 @@
 
 ### 验证
 
+- 微服务部署 smoke 在独立 Compose project 和新构建镜像上通过：MySQL、Redis、Kafka、Core、Message、Sync、Gateway、Agent 均 healthy，且 readiness、Prometheus、Core 代理、TLS 1.3 mTLS 和 remote WS ownership 验收通过；脚本 HTTP 探针增加有界重试/超时，失败可回收。
+
 - 修复 Go 根模块递归扫描 `agent-runtime/node_modules` 内嵌 Go 源码的问题：新增 TS 服务目录的 Go module boundary 后，`CGO_ENABLED=0 go test ./...` 全仓通过；Agent Runtime 仍单独通过 Vitest、typecheck 和 production build。
 
 - Agent Runtime 独立服务完成全量回归：Vitest 124 个测试文件通过、650 个测试通过，TypeScript typecheck 与生产构建通过；同时 `CGO_ENABLED=0 go test ./internal/...` 全部通过，确认 TS Runtime 的 shadow/协议边界未破坏 Go Core、存储和微服务路径。
