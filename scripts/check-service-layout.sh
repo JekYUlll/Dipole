@@ -15,7 +15,7 @@ if [[ ! -f "${root_dir}/services/README.md" ]]; then
   echo "polyglot service directory index is missing: services/README.md" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" || ! -f "${root_dir}/internal/operations/sync/README.md" || ! -f "${root_dir}/internal/operations/cassandra/README.md" ]]; then
+if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" || ! -f "${root_dir}/internal/operations/sync/README.md" || ! -f "${root_dir}/internal/operations/cassandra/README.md" || ! -f "${root_dir}/internal/operations/agent/README.md" ]]; then
   echo "one-shot operations must be documented under internal/operations" >&2
   exit 1
 fi
@@ -25,6 +25,14 @@ for legacy_search_runtime in search_alias_runtime.go search_archive_runtime.go s
     exit 1
   fi
 done
+if [[ -e "${root_dir}/internal/bootstrap/memory_lineage_backfill_runtime.go" ]]; then
+  echo "Agent one-shot operation remains in service bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/agent-memory-lineage-backfill" --glob '*.go'; then
+  echo "Agent lineage operation tool must use internal/operations/agent" >&2
+  exit 1
+fi
 for legacy_sync_runtime in sync_baseline_runtime.go sync_replay_runtime.go; do
   if [[ -e "${root_dir}/internal/bootstrap/${legacy_sync_runtime}" ]]; then
     echo "Sync one-shot operation remains in service bootstrap: ${legacy_sync_runtime}" >&2
