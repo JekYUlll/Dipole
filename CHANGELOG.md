@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。
 - 2026-08-30：补充 Multipart P95 延迟告警的正向 promtool 触发测试，确保 30 秒阈值和 `operation` 标签在规则变更后仍可验证。
 - 2026-08-30：增加 Multipart Prometheus 告警规则与 promtool 测试，覆盖操作错误、整文件 checksum mismatch 和高延迟；修正 Core 指标将 checksum mismatch 以专用 outcome 暴露，规则挂载保持可回滚。
 - 2026-08-30：Multipart reconciliation 增加 `--reconcile-fail-on-drift` 告警门禁，显式开启时发现 MinIO/Redis 跨存储漂移返回退出码 `3`；默认仍只读且不修改数据。
