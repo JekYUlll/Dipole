@@ -31,14 +31,14 @@ type MessagingDependencies struct {
 
 type MessagingServices struct {
 	Core          applicationPort.CoreCapability
-	Files         *service.FileService
+	Files         *coreapplication.LocalFileApplication
 	Messages      *messageapplication.LocalApplication
 	Conversations *coreapplication.LocalConversationApplication
 	Sync          applicationPort.SyncApplication
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
-	files := service.NewFileService(repos.Files, repos.Messages, dependencies.Storage)
+	files := coreapplication.NewFileApplication(repos.Files, repos.Messages, dependencies.Storage)
 	core := dependencies.Core
 	if core == nil {
 		core = coreapplication.New(coreapplication.Dependencies{
