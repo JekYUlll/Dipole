@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -72,7 +72,7 @@ func NewGroupMessageHandler(
 	}
 }
 
-func messagePreview(payload service.MessageEventPayload) string {
+func messagePreview(payload messagedomain.MessageEventPayload) string {
 	if payload.MessageType == model.MessageTypeFile && payload.FileName != "" {
 		return "[文件] " + payload.FileName
 	}
