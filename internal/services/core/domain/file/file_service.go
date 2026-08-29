@@ -64,6 +64,23 @@ type FileContentResult struct {
 	Cleanup     func()
 }
 
+type countingHashReader struct {
+	reader io.Reader
+	hash   io.Writer
+	count  int64
+}
+
+func (r *countingHashReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if n > 0 {
+		if _, writeErr := r.hash.Write(p[:n]); writeErr != nil {
+			return n, writeErr
+		}
+		r.count += int64(n)
+	}
+	return n, err
+}
+
 type FileService struct {
 	repo                fileRepository
 	messageRepo         fileMessageRepository
@@ -252,9 +269,16 @@ func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNu
 	defer cancel()
 
 	hash := sha256.New()
-	part, err := s.storage.UploadMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber, io.TeeReader(body, hash), contentLength)
+	hashedBody := &countingHashReader{
+		reader: io.LimitReader(body, contentLength),
+		hash:   hash,
+	}
+	part, err := s.storage.UploadMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber, hashedBody, contentLength)
 	if err != nil {
 		return fmt.Errorf("upload multipart part: %w", err)
+	}
+	if hashedBody.count != contentLength {
+		return ErrMultipartPartInvalid
 	}
 	if err := validateMultipartPartSHA256(partSHA256, hash.Sum(nil)); err != nil {
 		return err

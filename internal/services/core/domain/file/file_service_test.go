@@ -360,6 +360,9 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 				}, nil
 			},
 			uploadPartFn: func(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+				if _, err := io.Copy(io.Discard, reader); err != nil {
+					return nil, err
+				}
 				return &platformStorage.UploadedPart{
 					PartNumber: partNumber,
 					ETag:       fmt.Sprintf("etag-%d", partNumber),
@@ -443,5 +446,30 @@ func TestFileServiceMultipartUploadRejectsChecksumMismatch(t *testing.T) {
 	}
 	if len(sessionStore.parts[initResult.SessionID]) != 0 {
 		t.Fatal("checksum mismatch must not persist the part")
+	}
+}
+
+func TestFileServiceMultipartUploadRejectsShortPartBody(t *testing.T) {
+	t.Parallel()
+
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "b", ObjectKey: "k", UploadID: "u", FileName: "f", ContentType: "application/octet-stream"}, nil
+		},
+		uploadPartFn: func(_ context.Context, _, _ string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+			if _, err := io.Copy(io.Discard, reader); err != nil {
+				return nil, err
+			}
+			return &platformStorage.UploadedPart{PartNumber: partNumber, ETag: "etag", Size: size}, nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = &stubMultipartSessionStore{}
+
+	initResult, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "f", FileSize: 4})
+	if err != nil {
+		t.Fatalf("initiate multipart upload: %v", err)
+	}
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, 4, "", bytes.NewReader([]byte("abc"))); !errors.Is(err, ErrMultipartPartInvalid) {
+		t.Fatalf("expected short body rejection, got %v", err)
 	}
 }
