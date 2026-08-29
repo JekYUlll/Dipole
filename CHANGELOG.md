@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Web Multipart 接入默认关闭的预签名直传试运行：批量获取绑定 `uploadId + partNumber` 的 MinIO URL，浏览器直接 PUT 后向 Core 登记 ETag/尺寸，失败沿用 Abort 回滚；新增 `VITE_MULTIPART_PRESIGNED_ENABLED=false` 配置，默认仍走 Core 中转路径，真实 MinIO/CORS 验收和默认切流继续由 A7/AD-055 跟踪。
 - 2026-08-30：新增 Multipart 预签名 part URL 契约：Core 按用户归属和合法 part 编号批量签发绑定 `uploadId + partNumber` 的短期 MinIO URL，并同步 HTTP/Swagger contract 与回归测试；当前仍保持 Core 中转上传为默认路径，客户端直传切流、ETag 登记和真实 MinIO 验收继续由 A7/AD-055 跟踪。
 - 2026-08-30：新增默认 dry-run 的 `dipole-multipart-cleanup` 运维工具，按 MinIO 发起时间筛选 `message-files/` 下的未完成 Multipart，输出可审计 JSON；只有显式 `--execute --confirm` 才执行 Abort，单个清理失败会保留结果并返回失败状态，Redis session 扫描、指标和真实 MinIO 集成仍由 A7/AD-055 跟踪。
 - 2026-08-30：Web Multipart 上传接入客户端断点恢复基础：按文件指纹持久化 session，恢复前通过 Core 状态接口校验文件元数据并跳过已确认 part，完成或失败取消后清理本地 session；新增 helper 恢复测试，暂停/继续 UI 和预签名直传继续由 A7/AD-055 跟踪。
