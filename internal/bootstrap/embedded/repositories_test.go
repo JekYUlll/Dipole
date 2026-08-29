@@ -1,4 +1,4 @@
-package app
+package embedded
 
 import (
 	"database/sql"
@@ -23,17 +23,17 @@ func TestNewMessageProcessRepositoriesRequiresDatabase(t *testing.T) {
 }
 
 func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
-	if _, err := NewCoreProcessRepositories(nil); err == nil {
+	if _, err := coremysql.NewProcessRepositories(nil); err == nil {
 		t.Fatal("expected nil database to fail")
 	}
-	repos, err := NewCoreProcessRepositories(&sql.DB{})
+	repos, err := coremysql.NewProcessRepositories(&sql.DB{})
 	if err != nil {
 		t.Fatalf("new core process repositories: %v", err)
 	}
-	if _, ok := repos.Users.(*CachedUserStore); !ok {
+	if _, ok := repos.Users.(*coremysql.CachedUserStore); !ok {
 		t.Fatalf("expected cached user store, got %T", repos.Users)
 	}
-	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
+	if _, ok := repos.Groups.(*coremysql.CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
 	}
 	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {
@@ -42,10 +42,10 @@ func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
 }
 
 func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
-	if _, err := NewAgentProcessRepositories(nil); err == nil {
+	if _, err := agentmysql.NewProcessRepositories(nil); err == nil {
 		t.Fatal("expected nil database to fail")
 	}
-	repos, err := NewAgentProcessRepositories(&sql.DB{})
+	repos, err := agentmysql.NewProcessRepositories(&sql.DB{})
 	if err != nil {
 		t.Fatalf("new agent process repositories: %v", err)
 	}
@@ -58,10 +58,10 @@ func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
 }
 
 func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
-	if _, err := NewSyncProcessRepositories(nil); err == nil {
+	if _, err := syncmysql.NewProcessRepositories(nil, nil); err == nil {
 		t.Fatal("expected nil database to fail")
 	}
-	repos, err := NewSyncProcessRepositories(&sql.DB{})
+	repos, err := syncmysql.NewProcessRepositories(&sql.DB{}, nil)
 	if err != nil {
 		t.Fatalf("new sync process repositories: %v", err)
 	}
@@ -122,13 +122,13 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.Files.(*coremysql.FileRepository); !ok {
 		t.Fatalf("expected sqlc file repository, got %T", repos.Files)
 	}
-	if _, ok := repos.Users.(*CachedUserStore); !ok {
+	if _, ok := repos.Users.(*coremysql.CachedUserStore); !ok {
 		t.Fatalf("expected cached user store, got %T", repos.Users)
 	}
-	if _, ok := repos.Contacts.(*CachedContactStore); !ok {
+	if _, ok := repos.Contacts.(*coremysql.CachedContactStore); !ok {
 		t.Fatalf("expected cached contact store, got %T", repos.Contacts)
 	}
-	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
+	if _, ok := repos.Groups.(*coremysql.CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
 	}
 	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {

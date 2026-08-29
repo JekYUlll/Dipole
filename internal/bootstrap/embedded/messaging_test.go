@@ -1,4 +1,4 @@
-package app
+package embedded
 
 import (
 	"path/filepath"
@@ -53,7 +53,7 @@ func TestNewMessagingServicesAcceptsRemoteCompatibleCoreCapability(t *testing.T)
 
 func setMessagingTestConfig(t *testing.T) {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repository root: %v", err)
 	}
