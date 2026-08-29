@@ -46,6 +46,7 @@
 - Core repository composition 已提供 `ProcessRepositories`，集中声明 Core 所有的用户、群组、联系人、文件、Conversation State 和 Admin store，并与 SQLC repository、缓存适配器共同位于 `internal/services/core/infrastructure/mysql/`；聚合 `Repositories` 和 `internal/app` 别名仅作为 embedded 兼容入口。
 - Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`，Core 数据访问实现由 Core process 独占。
 - Core 已提供独立 Composition Root `InitializeCoreService`：remote 模式只装配 Core-owned repository、Core projection、Core HTTP 和 Core Capability RPC；embedded 模式继续使用聚合入口作为本地兼容和回滚路径。
+- Core 的 HTTP/WS server、静态资源和通知适配器位于 `internal/services/core/server/`，由 Core bootstrap 与 embedded runtime 共用；横向 `internal/server/` 不再作为实现目录。
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `ProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store，并与 SQLC 实现共同位于 `internal/services/agent/infrastructure/mysql/`；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
 - Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`，Agent 数据访问实现由 Agent process 独占。
