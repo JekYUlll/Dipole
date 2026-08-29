@@ -1084,4 +1084,4 @@
 - **验证：** 当前 MinIO Multipart 单元/服务契约和 HTTP handler 测试已覆盖初始化、分片、完成、缺片、越权及 Abort 基本语义；服务端完成阶段已校验 part 实际大小、请求实际读取长度、part SHA-256 和可选整文件 SHA-256，状态查询已覆盖所有权边界，前端 Multipart helper 的并发、分片边界、重试、checksum 探测、跳过已确认 part 和永久失败停止调度测试通过；Redis 孤儿扫描、代理转发和可选真实 MinIO Multipart 流程已有隔离验证；隔离 MinIO 实测 Multipart CORS 配置返回 `501 NotImplemented`，生产默认继续使用可回滚的 Core 中转路径。
 - **本轮进展：** Web Multipart 增加可见的暂停/继续控制；暂停仅阻止新 part 调度，不 Abort 或清理 Redis/MinIO 会话，继续时复用原 `upload_id` 并继续跳过已确认 part。上传 helper 已覆盖暂停等待和恢复调度测试，前端专项测试、typecheck 与生产构建通过；预签名默认切流、完整生命周期告警和真实故障矩阵仍待完成。
 - **本轮进展：** 新增 `contracts/multipart-upload/v1` 版本化策略和 SHA-256 release manifest，统一记录直传阈值、文件上限、分片大小、并发、重试、退避和预签名 URL TTL；校验脚本强制默认 `relay` 与旧路径回切，当前只完成配置契约门禁，尚未切换生产流量。
-- **本轮进展：** Core 增加认证的 Multipart policy 查询，前端按服务端策略执行阈值、并发、重试和预签名模式，并对版本/字段异常 fail closed 后回退 `v1/relay`；源码 Swagger 注释已补充，生成器因当前 Go 1.27 标准库解析兼容问题暂未重生成静态文档，预签名默认切流仍待共享环境证据。
+- **本轮进展：** Core 增加认证的 Multipart policy 查询，前端按服务端策略执行阈值、并发、重试和预签名模式，并对版本/字段异常 fail closed 后回退 `v1/relay`；源码注释和三份静态 Swagger 文档均已同步，生成器在当前 Go 1.27 标准库解析下仍需后续工具链升级，预签名默认切流仍待共享环境证据。
