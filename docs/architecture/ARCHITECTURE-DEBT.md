@@ -227,6 +227,7 @@
 - **本轮进展：** Prometheus snapshot adapter 现拒绝重复 outcome/family、错误类型、额外标签、未知 outcome 和非单调 histogram，并要求起止快照差分；它仍只提供受校验的低敏输入，不替代共享环境身份、客户端窗口和人工批准。
 - **本轮进展：** 修复 `cassandra-primary` Compose override 对仓库根目录 schema/config 的相对挂载错误；隔离 primary smoke 已验证 Cassandra schema init、显式 primary 配置和 Sync readiness。该证据仍不替代共享环境长期窗口、客户端流量、责任人批准和可执行回切。
 - **验证记录：** 2026-08-29 `scripts/smoke-cassandra-read-routing.sh` 通过真实隔离 Cassandra、MySQL 和 migration v50，验证 Seq 页面 Cassandra 主读，以及 payload 损坏和缺行按同一 cursor 回退 MySQL；默认生产主读比例和开关保持不变。
+- **验证记录：** 2026-08-29 `scripts/smoke-sync-cassandra-primary-compose.sh` 通过隔离微服务 Compose：Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz` 均通过，临时拓扑自动清理；共享环境长期观测、责任人批准和生产回切演练仍待完成。
 - **建议方向：** 将 Prometheus snapshot 与脱敏客户端/服务 revision、配置比例、窗口和回切演练 ID 合成为 evidence，再交给既有 evaluator；缺少完整窗口或观测断层时保持 blocked，并持续保留 MySQL 完整消息。
 - **处理门槛：** 任何提高 `sync.cassandra_primary_hydration` 比例前，必须归档共享环境 evidence、复核人批准和自动回切记录；未满足前保持默认关闭或人工小比例运行。
 

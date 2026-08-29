@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Sync Cassandra primary Compose smoke 通过：隔离微服务拓扑完成 Cassandra schema init，Core、Message、Sync 与基础依赖达到 healthy，Sync primary hydration 配置和 readiness 验收通过并自动清理；生产主读灰度继续保持关闭。
 - Cassandra read-routing 隔离 smoke 通过：真实 Cassandra/MySQL 双存储验证 Seq 页面主读，payload 损坏和缺失行按同一 cursor 回退 MySQL；该验证不改变默认生产主读比例，生产观测和回切审批继续受 AD-043 约束。
 - 服务布局门禁现在同时检查已跟踪和未忽略的未跟踪兼容目录文件；负向测试确认未登记文件会 fail closed，避免本地新文件绕过 `internal/app`、`internal/store` 和 `internal/data/mysql` 的物理边界约束。
 - 收紧微服务仓库物理边界门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 现在仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；未知文件会 fail closed，避免服务抽取后重新形成共享实现区。现有兼容入口和回滚行为保持不变。
