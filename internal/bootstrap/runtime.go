@@ -42,16 +42,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	kafkaCfg := config.KafkaConfig()
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
-	if err := validateTimelineNotifyMode(config.MessageConfig()); err != nil {
+	messageCfg := config.CoreMessageConfig()
+	if err := validateTimelineNotifyMode(messageCfg); err != nil {
 		return nil, err
 	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
 		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
 	}
-	if gatewayCfg.Mode == "remote" && config.MessageConfig().Transport != "grpc" {
-		return nil, fmt.Errorf("gateway.mode=remote requires message.transport=grpc")
-	}
-
 	if err := store.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
 	}
@@ -276,7 +273,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
 	}
-	messageFlow, err := newMessageApplicationTransport(ctx, config.MessageConfig(), rpcCfg, localMessaging.Messages)
+	messageFlow, err := newMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
 	if err != nil {
 		if coreRPC != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -327,12 +324,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		wsEventSender,
 		repos,
 		localMessaging,
-		config.MessageConfig().Transport != "grpc",
+		messageCfg.Transport != "grpc",
 	)
 	if registerErr != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}
-	if kafkaCfg.Enabled && platformKafka.Client != nil && config.MessageConfig().Transport != "grpc" {
+	if kafkaCfg.Enabled && platformKafka.Client != nil && messageCfg.Transport != "grpc" {
 		if err := platformKafka.Client.EnsureTopics(kafkaManagedTopics()); err != nil {
 			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
 		}

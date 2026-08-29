@@ -108,6 +108,16 @@ func TestElasticsearchConfigLoadsEnvironmentOverrides(t *testing.T) {
 	}
 }
 
+func TestCoreMessageConfigUsesProcessSpecificTransportOverride(t *testing.T) {
+	t.Chdir(filepath.Join("..", ".."))
+	t.Setenv("DIPOLE_CONFIG_FILE", filepath.Join("configs", "config.dist.yaml"))
+	t.Setenv("DIPOLE_CORE_MESSAGE_TRANSPORT", "LOCAL")
+	message := CoreMessageConfig()
+	if message.Transport != "local" {
+		t.Fatalf("Core message transport = %q, want local", message.Transport)
+	}
+}
+
 func TestConfigDistDeclaresDisabledIsolatedAgentArtifactStorage(t *testing.T) {
 	v := viper.New()
 	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
