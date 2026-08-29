@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 将 embedded Kafka 组合及其兼容测试迁入 `internal/bootstrap/embedded/`，聚合 runtime 通过 `RegisterKafkaHandlers` 调用；Conversation projection、群初始化、旧 Eino 触发、日志 handler 和实时投递注册顺序保持兼容。
 - 迁移 `internal/bootstrap` RPC contract 测试至 `internal/services/core/rpc`，删除 Core RPC 组合的旧 bootstrap wrapper、类型别名和生产服务名常量；embedded runtime 直接持有 Core-owned RPC 类型，测试常量仅保留在测试辅助文件。
 - 将 Core RPC 组合逻辑迁入 `internal/services/core/rpc/`；embedded runtime 直接使用 Core-owned composition，旧 `internal/bootstrap/internal_rpc.go` 已完全移除，RPC 协议、mTLS、caller allowlist 和 Agent 方法权限保持兼容。
 - 修正文档中的 SQLC 仓储目录描述，使 `REPOSITORY-STRUCTURE.md` 与 `SERVICE-BOUNDARIES.md` 和结构门禁一致：`internal/data/mysql` 已退役，业务仓储由各服务 infrastructure 独占，`internal/platform/mysql` 仅保留共享数据库基础设施。

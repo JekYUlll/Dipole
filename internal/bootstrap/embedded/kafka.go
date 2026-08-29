@@ -1,4 +1,4 @@
-package bootstrap
+package embedded
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -28,7 +27,7 @@ type kafkaConversationUpdater interface {
 	UpdateGroupConversations(message *model.Message) error
 }
 
-type kafkaWSEventSender interface {
+type WSEventSender interface {
 	SendEventToUser(userUUID, eventType string, data any) int
 	DisconnectConnections(userUUID string, connectionIDs []string, reason string) int
 	DisconnectAllConnections(userUUID string, reason string) int
@@ -38,7 +37,7 @@ type kafkaWSContextEventSender interface {
 	SendEventToUserContext(ctx context.Context, userUUID, eventType string, data any) int
 }
 
-func sendEventToUser(ctx context.Context, hub kafkaWSEventSender, userUUID, eventType string, data any) int {
+func sendEventToUser(ctx context.Context, hub WSEventSender, userUUID, eventType string, data any) int {
 	if contextual, ok := hub.(kafkaWSContextEventSender); ok {
 		return contextual.SendEventToUserContext(ctx, userUUID, eventType, data)
 	}
@@ -49,7 +48,7 @@ type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
 }
 
-func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
+func RegisterKafkaHandlers(hub WSEventSender, repos *Repositories, messaging *MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
@@ -63,7 +62,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	}
 	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	if messaging == nil {
-		messaging = appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
+		messaging = NewMessagingServices(repos, MessagingDependencies{
 			Events:    events,
 			HotGroups: hotGroupDetector,
 		})
