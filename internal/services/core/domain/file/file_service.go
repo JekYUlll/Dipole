@@ -572,6 +572,9 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 		return nil, fmt.Errorf("complete multipart upload: %w", err)
 	}
 	if err := s.verifyMultipartFileSHA256(ctx, session, uploaded); err != nil {
+		if errors.Is(err, ErrMultipartChecksumMismatch) {
+			outcome = "checksum_mismatch"
+		}
 		return nil, err
 	}
 
