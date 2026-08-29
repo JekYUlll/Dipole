@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`；共享 repository 仅保留兼容别名和构造入口，服务布局门禁已阻止 Core 数据访问实现回流。
 - Agent 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/agent/infrastructure/mysql/`；共享 repository 仅保留兼容别名和构造入口，服务布局门禁已阻止 Agent 数据访问实现回流。
 - 修正 Sync/Message ownership smoke 在 repository 迁移后仍指向旧测试包的问题；新增测试 selector 命中校验，避免 `go test` 无匹配时误报成功，并重新验证真实 MySQL atomic/projector/rollback 权限边界。
 - Compose 编排完成目录收敛：默认本地入口保留在根目录，其余微服务、分发、集群和存储实验拓扑统一迁入 `deploy/compose/`；脚本、文档和归档引用已同步，新增目录索引，Compose 配置门禁覆盖迁移后的全部拓扑。
