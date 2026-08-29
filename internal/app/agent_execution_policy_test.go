@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 type agentPolicyStoreStub struct {
@@ -341,7 +342,7 @@ func TestPersistentAgentInvocationResolverUsesPinnedTaskIdentity(t *testing.T) {
 	store.runs = map[string]*application.AgentRunV1{
 		"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning},
 	}
-	resolver, err := NewPersistentAgentInvocationResolverV1WithClock(store, func() time.Time { return now })
+	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Invocation resolver: %v", err)
 	}
@@ -371,7 +372,7 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 		application.AgentPermissionConversationList, application.AgentPermissionConversationRead,
 	})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -447,7 +448,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	request := application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "runtime-v7",
 	}
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -459,7 +460,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	}
 
 	authorizer := &activeRunPromotionAuthorizerStub{}
-	admission, err = NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
+	admission, err = agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
 	if err != nil {
 		t.Fatalf("new authorized Run admission: %v", err)
 	}
@@ -504,7 +505,7 @@ func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing
 	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -540,7 +541,7 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 		t.Run(string(terminal), func(t *testing.T) {
 			definition := activeAgentDefinitionV1(1, time.Now().Add(-time.Hour), []string{application.AgentPermissionConversationList})
 			store := policyStoreWithDefinitionV1(definition)
-			admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, time.Now)
+			admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, time.Now)
 			if err != nil {
 				t.Fatalf("new Run admission: %v", err)
 			}
@@ -573,7 +574,7 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 func TestPersistentAgentRunAdmissionRejectsInvalidTerminalEvidence(t *testing.T) {
 	t.Parallel()
 
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(&agentPolicyStoreStub{}, time.Now)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(&agentPolicyStoreStub{}, time.Now)
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -598,7 +599,7 @@ func TestEmbeddedExecutionAdoptsTaskCreatedByShadowAdmission(t *testing.T) {
 	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
