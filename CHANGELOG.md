@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：执行 `scripts/smoke-kafka-rebalance.sh`，隔离验证双 consumer 加入、成员退出后的六分区接管和 lag 归零；临时 Kafka 集群自动清理，生产 consumer ownership、offset 和切换配置保持不变。
 - 2026-08-30：完成 TypeScript Agent Runtime 独立交付回归：Vitest 通过 125 个测试文件（662 个测试），`typecheck` 与生产构建均通过；真实共享 Kafka/Temporal/MCP 联调和 active authority 仍按发布门禁保持关闭。
 - 2026-08-30：执行 `scripts/smoke-search-service.sh`，隔离验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Search Service 内部 RPC contract；临时资源自动清理，生产 Search Alias 与索引切换保持关闭。
 - 2026-08-30：执行 `scripts/smoke-cassandra-read-routing.sh`，验证 Timeline 页面使用 Cassandra 读取，并在 payload 损坏或记录缺失时按同一 cursor 安全回退 MySQL；隔离资源自动清理，生产 Cassandra 主读开关保持关闭。
