@@ -39,6 +39,11 @@ type multipartUploadSessionStore interface {
 
 type redisMultipartUploadSessionStore struct{}
 
+type storedMultipartPart struct {
+	ETag string `json:"etag"`
+	Size int64  `json:"size"`
+}
+
 func newMultipartUploadSessionStore() multipartUploadSessionStore {
 	return &redisMultipartUploadSessionStore{}
 }
@@ -92,9 +97,19 @@ func (s *redisMultipartUploadSessionStore) SavePart(ctx context.Context, session
 	if part == nil {
 		return fmt.Errorf("multipart part is required")
 	}
+	if part.PartNumber <= 0 || strings.TrimSpace(part.ETag) == "" || part.Size <= 0 {
+		return fmt.Errorf("multipart part metadata is invalid")
+	}
+	partPayload, err := json.Marshal(storedMultipartPart{
+		ETag: strings.TrimSpace(part.ETag),
+		Size: part.Size,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal multipart part: %w", err)
+	}
 
 	if err := platformCache.RunTransaction(ctx, func(pipe redis.Pipeliner) {
-		pipe.HSet(ctx, multipartSessionPartsKey(sessionID), strconv.Itoa(part.PartNumber), strings.TrimSpace(part.ETag))
+		pipe.HSet(ctx, multipartSessionPartsKey(sessionID), strconv.Itoa(part.PartNumber), partPayload)
 		pipe.Expire(ctx, multipartSessionMetaKey(sessionID), ttl)
 		pipe.Expire(ctx, multipartSessionPartsKey(sessionID), ttl)
 	}); err != nil {
@@ -113,14 +128,20 @@ func (s *redisMultipartUploadSessionStore) ListParts(ctx context.Context, sessio
 		return nil, fmt.Errorf("list multipart parts: %w", err)
 	}
 	parts := make([]platformStorage.MultipartCompletePart, 0, len(values))
-	for key, etag := range values {
+	for key, rawPart := range values {
 		partNumber, err := strconv.Atoi(key)
 		if err != nil {
 			return nil, fmt.Errorf("parse multipart part number: %w", err)
 		}
+		var stored storedMultipartPart
+		if err := json.Unmarshal([]byte(rawPart), &stored); err != nil {
+			// Preserve read compatibility for sessions created before size metadata.
+			stored.ETag = strings.TrimSpace(rawPart)
+		}
 		parts = append(parts, platformStorage.MultipartCompletePart{
 			PartNumber: partNumber,
-			ETag:       strings.TrimSpace(etag),
+			ETag:       strings.TrimSpace(stored.ETag),
+			Size:       stored.Size,
 		})
 	}
 	sort.Slice(parts, func(i, j int) bool {
