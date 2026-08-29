@@ -2,6 +2,12 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+if find "${root_dir}/internal/bootstrap" -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print -quit | grep -q .; then
+	echo "shared bootstrap root must not contain production Go files; use an embedded or service-owned boundary" >&2
+	exit 1
+fi
+
 expected_services=(core gateway message sync search search-indexer)
 if [[ ! -f "${root_dir}/cmd/services/README.md" ]]; then
   echo "service entrypoint index is missing: cmd/services/README.md" >&2
