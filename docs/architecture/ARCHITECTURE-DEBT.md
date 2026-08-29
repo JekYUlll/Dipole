@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：shared `internal/bootstrap.RunServer` 已完成调用审计并退休；Core/Gateway 的 TLS 与服务启动入口由各自 bootstrap 持有，embedded 聚合不再暴露通用 server runner。
 - 2026-08-30：Gateway Agent 与 Message Core capability client 已迁入各自服务 bootstrap，shared `DialGatewayAgentCapability`、`DialCoreCapability` 和通用 caller dialer 已删除；Gateway/Message 服务身份、Core 权限范围和回滚行为保持兼容。
 - 2026-08-30：Gateway Core capability client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Gateway 自有 bootstrap 直接持有 client 身份和平台 transport，Core 权限校验与回滚行为保持兼容。
 - 2026-08-30：Search/Sync Core capability client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Search/Sync 自有 bootstrap 直接持有服务身份和平台 RPC transport，权限校验与回滚行为保持兼容。
