@@ -99,10 +99,11 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 			t.Errorf("repository %s composition is nil", name)
 		}
 	}
+	coreRepos := repos.CoreProcess
 	required := map[string]any{
-		"users": repos.Users, "messages": repos.MessageProcess.Messages, "files": repos.Files,
-		"conversations": repos.Conversations, "contacts": repos.Contacts,
-		"groups": repos.Groups, "admin": repos.Admin, "sync": repos.SyncProcess.Sync,
+		"users": coreRepos.Users, "messages": repos.MessageProcess.Messages, "files": coreRepos.Files,
+		"conversations": coreRepos.Conversations, "contacts": coreRepos.Contacts,
+		"groups": coreRepos.Groups, "admin": coreRepos.Admin, "sync": repos.SyncProcess.Sync,
 		"ai_call_logs": repos.AgentProcess.AICallLogs, "agent_policy": repos.AgentProcess.Policy, "outbox": repos.MessageProcess.Outbox,
 	}
 	for name, repository := range required {
@@ -116,23 +117,23 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.AgentProcess.Policy.(*agentmysql.AgentPolicyRepository); !ok {
 		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.AgentProcess.Policy)
 	}
-	if _, ok := repos.Admin.(*coremysql.AdminRepository); !ok {
-		t.Fatalf("expected sqlc admin repository, got %T", repos.Admin)
+	if _, ok := coreRepos.Admin.(*coremysql.AdminRepository); !ok {
+		t.Fatalf("expected sqlc admin repository, got %T", coreRepos.Admin)
 	}
-	if _, ok := repos.Files.(*coremysql.FileRepository); !ok {
-		t.Fatalf("expected sqlc file repository, got %T", repos.Files)
+	if _, ok := coreRepos.Files.(*coremysql.FileRepository); !ok {
+		t.Fatalf("expected sqlc file repository, got %T", coreRepos.Files)
 	}
-	if _, ok := repos.Users.(*coremysql.CachedUserStore); !ok {
-		t.Fatalf("expected cached user store, got %T", repos.Users)
+	if _, ok := coreRepos.Users.(*coremysql.CachedUserStore); !ok {
+		t.Fatalf("expected cached user store, got %T", coreRepos.Users)
 	}
-	if _, ok := repos.Contacts.(*coremysql.CachedContactStore); !ok {
-		t.Fatalf("expected cached contact store, got %T", repos.Contacts)
+	if _, ok := coreRepos.Contacts.(*coremysql.CachedContactStore); !ok {
+		t.Fatalf("expected cached contact store, got %T", coreRepos.Contacts)
 	}
-	if _, ok := repos.Groups.(*coremysql.CachedGroupStore); !ok {
-		t.Fatalf("expected cached group store, got %T", repos.Groups)
+	if _, ok := coreRepos.Groups.(*coremysql.CachedGroupStore); !ok {
+		t.Fatalf("expected cached group store, got %T", coreRepos.Groups)
 	}
-	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {
-		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
+	if _, ok := coreRepos.Conversations.(*coremysql.ConversationRepository); !ok {
+		t.Fatalf("expected sqlc conversation repository, got %T", coreRepos.Conversations)
 	}
 	if _, ok := repos.MessageProcess.Messages.(*messagemysql.MessageRepository); !ok {
 		t.Fatalf("expected sqlc message repository, got %T", repos.MessageProcess.Messages)
