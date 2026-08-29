@@ -51,6 +51,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Core Group 的 HTTP、DTO、Gateway Kafka 和 embedded 解码调用已统一迁移到 Core-owned Group domain contract，删除无调用者的 `internal/compat/service/group_compat.go`；群组 HTTP/Kafka contract 保持兼容。
 - 2026-08-30：Core File 的 HTTP、DTO 和测试调用已统一迁移到 Core-owned File domain contract，删除无调用者的 `internal/compat/service/file_compat.go`；文件上传、分片会话和下载内容 HTTP contract 保持兼容。
 - 2026-08-30：删除经全仓调用审计确认无调用者的 `internal/compat/service/sync_compat.go`，Sync domain 继续由 `internal/services/sync/domain` 唯一持有，其他兼容入口和回滚路径保持不变。
 - 2026-08-30：为 `internal/application` 增加 contract ownership 说明和架构测试，禁止跨服务契约层依赖服务实现、旧数据层及运维目录，为 SQLC 与多语言协议演进固定边界。

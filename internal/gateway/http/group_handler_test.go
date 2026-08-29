@@ -10,41 +10,41 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
 
 type stubGroupService struct {
-	createGroupFn   func(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error)
-	getGroupFn      func(currentUserUUID, groupUUID string) (*service.GroupView, error)
-	getAvatarFn     func(groupUUID string) (*service.GroupAvatarResponse, error)
-	listMembersFn   func(currentUserUUID, groupUUID string) ([]*service.GroupMemberView, error)
-	addMembersFn    func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error)
+	createGroupFn   func(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error)
+	getGroupFn      func(currentUserUUID, groupUUID string) (*coregroup.GroupView, error)
+	getAvatarFn     func(groupUUID string) (*coregroup.GroupAvatarResponse, error)
+	listMembersFn   func(currentUserUUID, groupUUID string) ([]*coregroup.GroupMemberView, error)
+	addMembersFn    func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error)
 	leaveGroupFn    func(currentUserUUID, groupUUID string) error
-	updateGroupFn   func(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error)
-	uploadAvatarFn  func(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*service.GroupView, error)
+	updateGroupFn   func(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error)
+	uploadAvatarFn  func(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*coregroup.GroupView, error)
 	removeMembersFn func(currentUserUUID, groupUUID string, memberUUIDs []string) error
 	dismissGroupFn  func(currentUserUUID, groupUUID string) error
 }
 
-func (s *stubGroupService) CreateGroup(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error) {
+func (s *stubGroupService) CreateGroup(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error) {
 	return s.createGroupFn(currentUserUUID, input)
 }
 
-func (s *stubGroupService) GetGroup(currentUserUUID, groupUUID string) (*service.GroupView, error) {
+func (s *stubGroupService) GetGroup(currentUserUUID, groupUUID string) (*coregroup.GroupView, error) {
 	return s.getGroupFn(currentUserUUID, groupUUID)
 }
 
-func (s *stubGroupService) GetAvatarResponse(groupUUID string) (*service.GroupAvatarResponse, error) {
+func (s *stubGroupService) GetAvatarResponse(groupUUID string) (*coregroup.GroupAvatarResponse, error) {
 	return s.getAvatarFn(groupUUID)
 }
 
-func (s *stubGroupService) ListMembers(currentUserUUID, groupUUID string) ([]*service.GroupMemberView, error) {
+func (s *stubGroupService) ListMembers(currentUserUUID, groupUUID string) ([]*coregroup.GroupMemberView, error) {
 	return s.listMembersFn(currentUserUUID, groupUUID)
 }
 
-func (s *stubGroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error) {
+func (s *stubGroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error) {
 	return s.addMembersFn(currentUserUUID, groupUUID, memberUUIDs)
 }
 
@@ -52,11 +52,11 @@ func (s *stubGroupService) LeaveGroup(currentUserUUID, groupUUID string) error {
 	return s.leaveGroupFn(currentUserUUID, groupUUID)
 }
 
-func (s *stubGroupService) UpdateGroup(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error) {
+func (s *stubGroupService) UpdateGroup(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error) {
 	return s.updateGroupFn(currentUserUUID, groupUUID, input)
 }
 
-func (s *stubGroupService) UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*service.GroupView, error) {
+func (s *stubGroupService) UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*coregroup.GroupView, error) {
 	return s.uploadAvatarFn(currentUserUUID, groupUUID, header)
 }
 
@@ -72,8 +72,8 @@ func TestGroupHandlerCreateSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewGroupHandler(&stubGroupService{
-		createGroupFn: func(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error) {
-			return &service.GroupView{
+		createGroupFn: func(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error) {
+			return &coregroup.GroupView{
 				Group: &model.Group{UUID: "G100", Name: input.Name, MemberCount: 1},
 				Owner: &model.User{UUID: currentUserUUID, Nickname: "owner"},
 			}, nil
@@ -97,8 +97,8 @@ func TestGroupHandlerGetForbidden(t *testing.T) {
 	t.Parallel()
 
 	handler := NewGroupHandler(&stubGroupService{
-		getGroupFn: func(currentUserUUID, groupUUID string) (*service.GroupView, error) {
-			return nil, service.ErrGroupPermissionDenied
+		getGroupFn: func(currentUserUUID, groupUUID string) (*coregroup.GroupView, error) {
+			return nil, coregroup.ErrGroupPermissionDenied
 		},
 	})
 
@@ -119,8 +119,8 @@ func TestGroupHandlerAddMembersSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewGroupHandler(&stubGroupService{
-		addMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error) {
-			return []*service.GroupMemberView{}, nil
+		addMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error) {
+			return []*coregroup.GroupMemberView{}, nil
 		},
 	})
 
@@ -143,7 +143,7 @@ func TestGroupHandlerLeaveConflict(t *testing.T) {
 
 	handler := NewGroupHandler(&stubGroupService{
 		leaveGroupFn: func(currentUserUUID, groupUUID string) error {
-			return service.ErrGroupOwnerCannotLeave
+			return coregroup.ErrGroupOwnerCannotLeave
 		},
 	})
 
@@ -164,8 +164,8 @@ func TestGroupHandlerUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewGroupHandler(&stubGroupService{
-		updateGroupFn: func(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error) {
-			return &service.GroupView{
+		updateGroupFn: func(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error) {
+			return &coregroup.GroupView{
 				Group: &model.Group{UUID: groupUUID, Name: input.Name},
 				Owner: &model.User{UUID: currentUserUUID},
 			}, nil
@@ -191,7 +191,7 @@ func TestGroupHandlerRemoveMembersConflict(t *testing.T) {
 
 	handler := NewGroupHandler(&stubGroupService{
 		removeMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) error {
-			return service.ErrGroupOwnerCannotBeRemoved
+			return coregroup.ErrGroupOwnerCannotBeRemoved
 		},
 	})
 
@@ -235,8 +235,8 @@ func TestGroupHandlerGetAvatarStreamsContent(t *testing.T) {
 	t.Parallel()
 
 	handler := NewGroupHandler(&stubGroupService{
-		getAvatarFn: func(groupUUID string) (*service.GroupAvatarResponse, error) {
-			return &service.GroupAvatarResponse{
+		getAvatarFn: func(groupUUID string) (*coregroup.GroupAvatarResponse, error) {
+			return &coregroup.GroupAvatarResponse{
 				ContentType: "image/png",
 				ContentSize: 4,
 				Content:     io.NopCloser(strings.NewReader("data")),
@@ -261,7 +261,7 @@ func TestGroupHandlerDismissConflictWhenAlreadyDismissed(t *testing.T) {
 
 	handler := NewGroupHandler(&stubGroupService{
 		dismissGroupFn: func(currentUserUUID, groupUUID string) error {
-			return service.ErrGroupDismissed
+			return coregroup.ErrGroupDismissed
 		},
 	})
 

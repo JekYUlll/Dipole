@@ -11,20 +11,20 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
 
 type groupService interface {
-	CreateGroup(currentUserUUID string, input service.CreateGroupInput) (*service.GroupView, error)
-	GetGroup(currentUserUUID, groupUUID string) (*service.GroupView, error)
-	GetAvatarResponse(groupUUID string) (*service.GroupAvatarResponse, error)
-	ListMembers(currentUserUUID, groupUUID string) ([]*service.GroupMemberView, error)
-	AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*service.GroupMemberView, error)
+	CreateGroup(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error)
+	GetGroup(currentUserUUID, groupUUID string) (*coregroup.GroupView, error)
+	GetAvatarResponse(groupUUID string) (*coregroup.GroupAvatarResponse, error)
+	ListMembers(currentUserUUID, groupUUID string) ([]*coregroup.GroupMemberView, error)
+	AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error)
 	LeaveGroup(currentUserUUID, groupUUID string) error
-	UpdateGroup(currentUserUUID, groupUUID string, input service.UpdateGroupInput) (*service.GroupView, error)
-	UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*service.GroupView, error)
+	UpdateGroup(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error)
+	UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*coregroup.GroupView, error)
 	RemoveMembers(currentUserUUID, groupUUID string, memberUUIDs []string) error
 	DismissGroup(currentUserUUID, groupUUID string) error
 }
@@ -122,11 +122,11 @@ func (h *GroupHandler) GetAvatar(c *gin.Context) {
 	avatar, err := h.service.GetAvatarResponse(c.Param("uuid"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrGroupNotFound):
+		case errors.Is(err, coregroup.ErrGroupNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group not found")
-		case errors.Is(err, service.ErrGroupAvatarMissing):
+		case errors.Is(err, coregroup.ErrGroupAvatarMissing):
 			ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group avatar not found")
-		case errors.Is(err, service.ErrGroupAvatarStorageUnavailable):
+		case errors.Is(err, coregroup.ErrGroupAvatarStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "group avatar storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -409,37 +409,37 @@ func (h *GroupHandler) Dismiss(c *gin.Context) {
 
 func (h *GroupHandler) handleGroupError(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, service.ErrGroupEmptyUpdate):
+	case errors.Is(err, coregroup.ErrGroupEmptyUpdate):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupEmptyUpdate, "group update is empty")
-	case errors.Is(err, service.ErrGroupNameRequired):
+	case errors.Is(err, coregroup.ErrGroupNameRequired):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupNameRequired, "group name is required")
-	case errors.Is(err, service.ErrGroupNameTooLong):
+	case errors.Is(err, coregroup.ErrGroupNameTooLong):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupNameTooLong, "group name is too long")
-	case errors.Is(err, service.ErrGroupNoticeTooLong):
+	case errors.Is(err, coregroup.ErrGroupNoticeTooLong):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupNoticeTooLong, "group notice is too long")
-	case errors.Is(err, service.ErrGroupAvatarTooLong):
+	case errors.Is(err, coregroup.ErrGroupAvatarTooLong):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupAvatarTooLong, "group avatar is too long")
-	case errors.Is(err, service.ErrGroupNotFound):
+	case errors.Is(err, coregroup.ErrGroupNotFound):
 		ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group not found")
-	case errors.Is(err, service.ErrGroupPermissionDenied):
+	case errors.Is(err, coregroup.ErrGroupPermissionDenied):
 		ErrorWithCode(c, http.StatusForbidden, code.GroupPermissionDenied, "group permission denied")
-	case errors.Is(err, service.ErrGroupMemberRequired):
+	case errors.Is(err, coregroup.ErrGroupMemberRequired):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupMemberRequired, "member_uuids is required")
-	case errors.Is(err, service.ErrGroupMemberUnavailable):
+	case errors.Is(err, coregroup.ErrGroupMemberUnavailable):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupMemberUnavailable, "group member is unavailable")
-	case errors.Is(err, service.ErrGroupMemberAlreadyIn):
+	case errors.Is(err, coregroup.ErrGroupMemberAlreadyIn):
 		ErrorWithCode(c, http.StatusConflict, code.GroupMemberAlreadyIn, "group member already exists")
-	case errors.Is(err, service.ErrGroupOwnerCannotLeave):
+	case errors.Is(err, coregroup.ErrGroupOwnerCannotLeave):
 		ErrorWithCode(c, http.StatusConflict, code.GroupOwnerCannotLeave, "group owner cannot leave")
-	case errors.Is(err, service.ErrGroupOwnerCannotBeRemoved):
+	case errors.Is(err, coregroup.ErrGroupOwnerCannotBeRemoved):
 		ErrorWithCode(c, http.StatusConflict, code.GroupOwnerCannotBeRemoved, "group owner cannot be removed")
-	case errors.Is(err, service.ErrGroupDismissed):
+	case errors.Is(err, coregroup.ErrGroupDismissed):
 		ErrorWithCode(c, http.StatusConflict, code.GroupDismissed, "group has been dismissed")
-	case errors.Is(err, service.ErrGroupAvatarMissing), errors.Is(err, service.ErrGroupAvatarInvalid):
+	case errors.Is(err, coregroup.ErrGroupAvatarMissing), errors.Is(err, coregroup.ErrGroupAvatarInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupAvatarInvalid, "group avatar is invalid")
-	case errors.Is(err, service.ErrGroupAvatarTooLarge):
+	case errors.Is(err, coregroup.ErrGroupAvatarTooLarge):
 		ErrorWithCode(c, http.StatusBadRequest, code.GroupAvatarTooLarge, "group avatar is too large")
-	case errors.Is(err, service.ErrGroupAvatarStorageUnavailable):
+	case errors.Is(err, coregroup.ErrGroupAvatarStorageUnavailable):
 		ErrorWithCode(c, http.StatusServiceUnavailable, code.GroupAvatarStorageUnavailable, "group avatar storage is unavailable")
 	default:
 		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
