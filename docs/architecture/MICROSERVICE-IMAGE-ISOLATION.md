@@ -4,11 +4,17 @@ Dipole 的 Go 服务入口已经按部署边界拆分到 `cmd/services/`。当�
 
 ## 候选镜像
 
-`deploy/images/go-service.Dockerfile` 是单服务镜像模板。每次构建只复制一个指定二进制到 `/app/service`，镜像不携带其他服务或一次性工具。
+`deploy/images/go-service.Dockerfile` 是单服务镜像模板。每次构建只复制一个指定二进制到 `/app/service`，镜像不携带其他服务或一次性工具。`migrate` 与六个长期服务都使用同一模板，保证 schema 迁移和服务代码来自同一构建基线。`isolated-images.yml` 同时覆盖旧 Compose entrypoint，避免共享镜像的二进制路径泄漏到候选部署。
 
 ```bash
 scripts/docker-build.sh backend
 scripts/docker-build-microservice-images.sh
+```
+
+共享环境候选验证使用独立 Compose project 和 Gateway 端口，默认自动清理自己的容器、卷和临时证书；默认 smoke 覆盖生产核心路径，Search profile 由静态 Compose 门禁和独立 Search 验证覆盖：
+
+```bash
+BUILD_IMAGE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
 可以通过环境变量覆盖镜像标签：
@@ -38,5 +44,5 @@ docker compose \
 
 - 每个候选镜像必须只包含 `/app/service` 及运行时证书/时区文件。
 - 构建前必须存在对应 `dist/dipole-*` 二进制。
-- 生产切换前仍需通过 `scripts/smoke-microservices.sh` 和依赖 readiness 检查。
+- 生产切换前仍需通过 `scripts/smoke-microservice-isolated-images.sh`、`scripts/smoke-microservices.sh` 和依赖 readiness 检查。
 - 本切片不改变默认 Go authority、Kafka topic、数据库权限或 Agent 开关。

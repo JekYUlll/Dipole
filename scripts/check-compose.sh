@@ -20,15 +20,23 @@ jq -e '
 
 isolated_microservices_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
-  docker compose -f docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json
+  docker compose --profile search -f docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json
 })"
 jq -e '
-  .services.core.image == "dipole-core:latest"
+  .services.migrate.image == "dipole-migrate:latest"
+  and .services.migrate.entrypoint == ["/app/service"]
+  and .services.core.image == "dipole-core:latest"
+  and .services.core.entrypoint == ["/app/service"]
   and .services.gateway.image == "dipole-gateway:latest"
+  and .services.gateway.entrypoint == ["/app/service"]
   and .services.message.image == "dipole-message:latest"
+  and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
+  and .services.sync.entrypoint == ["/app/service"]
   and .services.search.image == "dipole-search:latest"
+  and .services.search.entrypoint == ["/app/service"]
   and .services["search-indexer"].image == "dipole-search-indexer:latest"
+  and .services["search-indexer"].entrypoint == ["/app/service"]
 ' <<<"${isolated_microservices_config}" >/dev/null
 
 cpp_microservices_config="$(

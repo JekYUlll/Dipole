@@ -1,13 +1,22 @@
 services:
+  migrate:
+    image: ${DIPOLE_MIGRATE_IMAGE:-dipole-migrate:latest}
+    entrypoint: ["/app/service"]
   core:
     image: ${DIPOLE_CORE_IMAGE:-dipole-core:latest}
+    entrypoint: ["/app/service"]
   gateway:
     image: ${DIPOLE_GATEWAY_IMAGE:-dipole-gateway:latest}
+    entrypoint: ["/app/service"]
   message:
     image: ${DIPOLE_MESSAGE_IMAGE:-dipole-message:latest}
+    entrypoint: ["/app/service"]
   sync:
     image: ${DIPOLE_SYNC_IMAGE:-dipole-sync:latest}
+    entrypoint: ["/app/service"]
   search:
     image: ${DIPOLE_SEARCH_IMAGE:-dipole-search:latest}
+    entrypoint: ["/app/service"]
   search-indexer:
     image: ${DIPOLE_SEARCH_INDEXER_IMAGE:-dipole-search-indexer:latest}
+    entrypoint: ["/app/service"]

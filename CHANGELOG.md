@@ -16,7 +16,8 @@
 ## [Unreleased]
 
 ### 变更
-- 增加 Go 微服务单镜像候选路径：`core`、`gateway`、`message`、`sync`、`search` 和 `search-indexer` 可分别构建只包含自身二进制的镜像，并通过 Compose override 灰度；默认仍使用共享 `DIPOLE_IMAGE`，移除 override 即可回滚。
+- 增加 Go 微服务单镜像候选路径：`core`、`gateway`、`message`、`sync`、`search` 和 `search-indexer` 可分别构建只包含自身二进制的镜像，并通过 Compose override 灰度；override 同步覆盖旧 entrypoint，默认仍使用共享 `DIPOLE_IMAGE`，移除 override 即可回滚。
+- 隔离镜像 smoke 已固化为 `scripts/smoke-microservice-isolated-images.sh`，覆盖迁移、服务 readiness、Gateway health 和独立 project 清理；可使用临时 Gateway 端口验证候选栈，不干扰已有 Dipole 实例。
 - Agent Workflow Repair 增加跨 Go/TypeScript 对齐的 projection hash precondition guard，执行前校验 active executor grant、grant version、Task 绑定和当前/目标 projection 哈希；该 guard 无副作用。
 - 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
 - 将长期运行的 Go 服务入口统一归档到 `cmd/services/`，保留一次性迁移、回填和对账工具在 `cmd/` 顶层，降低微服务部署边界与运维工具的混淆。
