@@ -408,6 +408,13 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	if err := service.UploadMultipartPart("U100", initResult.SessionID, 2, 3, "", bytes.NewReader([]byte("678"))); err != nil {
 		t.Fatalf("upload part 2: %v", err)
 	}
+	status, err := service.GetMultipartUploadStatus("U100", initResult.SessionID)
+	if err != nil {
+		t.Fatalf("get multipart upload status: %v", err)
+	}
+	if len(status.UploadedParts) != 2 || status.UploadedParts[1].Size != 3 {
+		t.Fatalf("unexpected multipart status: %+v", status)
+	}
 
 	file, err := service.CompleteMultipartUpload("U100", initResult.SessionID)
 	if err != nil {

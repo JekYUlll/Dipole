@@ -1152,6 +1152,67 @@ const docTemplate = `{
             }
         },
         "/files/uploads/{session_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "查询分片上传状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "上传会话 ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.FileMultipartStatusResponseEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -3463,6 +3524,17 @@ const docTemplate = `{
                 }
             }
         },
+        "http.FileMultipartStatusResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.FileMultipartStatusResponse"
+                }
+            }
+        },
         "http.GroupMemberListResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -4065,6 +4137,46 @@ const docTemplate = `{
                 },
                 "total_parts": {
                     "type": "integer"
+                }
+            }
+        },
+        "httpdto.FileMultipartPartStatus": {
+            "type": "object",
+            "properties": {
+                "etag": {
+                    "type": "string"
+                },
+                "part_number": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpdto.FileMultipartStatusResponse": {
+            "type": "object",
+            "properties": {
+                "chunk_size": {
+                    "type": "integer"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "total_parts": {
+                    "type": "integer"
+                },
+                "uploaded_parts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.FileMultipartPartStatus"
+                    }
                 }
             }
         },

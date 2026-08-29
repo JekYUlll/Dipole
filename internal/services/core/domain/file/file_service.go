@@ -130,6 +130,21 @@ type InitiateMultipartUploadResult struct {
 	TotalParts int    `json:"total_parts"`
 }
 
+type MultipartUploadPartStatus struct {
+	PartNumber int    `json:"part_number"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}
+
+type MultipartUploadStatus struct {
+	SessionID     string                      `json:"session_id"`
+	FileName      string                      `json:"file_name"`
+	FileSize      int64                       `json:"file_size"`
+	ChunkSize     int64                       `json:"chunk_size"`
+	TotalParts    int                         `json:"total_parts"`
+	UploadedParts []MultipartUploadPartStatus `json:"uploaded_parts"`
+}
+
 func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
 	if header == nil {
 		return nil, ErrFileMissing
@@ -245,6 +260,36 @@ func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input Initiat
 		ChunkSize:  chunkSize,
 		TotalParts: totalParts,
 	}, nil
+}
+
+func (s *FileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (*MultipartUploadStatus, error) {
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	parts, err := s.sessionStore.ListParts(ctx, session.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list multipart parts: %w", err)
+	}
+	status := &MultipartUploadStatus{
+		SessionID:     session.SessionID,
+		FileName:      session.FileName,
+		FileSize:      session.FileSize,
+		ChunkSize:     session.ChunkSize,
+		TotalParts:    session.TotalParts,
+		UploadedParts: make([]MultipartUploadPartStatus, 0, len(parts)),
+	}
+	for _, part := range parts {
+		status.UploadedParts = append(status.UploadedParts, MultipartUploadPartStatus{
+			PartNumber: part.PartNumber,
+			ETag:       part.ETag,
+			Size:       part.Size,
+		})
+	}
+	return status, nil
 }
 
 func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {

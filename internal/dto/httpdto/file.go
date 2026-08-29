@@ -51,6 +51,21 @@ type FileMultipartInitiateResponse struct {
 	TotalParts int    `json:"total_parts"`
 }
 
+type FileMultipartPartStatus struct {
+	PartNumber int    `json:"part_number"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}
+
+type FileMultipartStatusResponse struct {
+	SessionID     string                    `json:"session_id"`
+	FileName      string                    `json:"file_name"`
+	FileSize      int64                     `json:"file_size"`
+	ChunkSize     int64                     `json:"chunk_size"`
+	TotalParts    int                       `json:"total_parts"`
+	UploadedParts []FileMultipartPartStatus `json:"uploaded_parts"`
+}
+
 func ToFileMultipartInitiateResponse(result *corefile.InitiateMultipartUploadResult) *FileMultipartInitiateResponse {
 	if result == nil {
 		return nil
@@ -60,6 +75,28 @@ func ToFileMultipartInitiateResponse(result *corefile.InitiateMultipartUploadRes
 		SessionID:  result.SessionID,
 		ChunkSize:  result.ChunkSize,
 		TotalParts: result.TotalParts,
+	}
+}
+
+func ToFileMultipartStatusResponse(result *corefile.MultipartUploadStatus) *FileMultipartStatusResponse {
+	if result == nil {
+		return nil
+	}
+	parts := make([]FileMultipartPartStatus, 0, len(result.UploadedParts))
+	for _, part := range result.UploadedParts {
+		parts = append(parts, FileMultipartPartStatus{
+			PartNumber: part.PartNumber,
+			ETag:       part.ETag,
+			Size:       part.Size,
+		})
+	}
+	return &FileMultipartStatusResponse{
+		SessionID:     result.SessionID,
+		FileName:      result.FileName,
+		FileSize:      result.FileSize,
+		ChunkSize:     result.ChunkSize,
+		TotalParts:    result.TotalParts,
+		UploadedParts: parts,
 	}
 }
 

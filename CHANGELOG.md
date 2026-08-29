@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：新增受所有权保护的 `GET /api/v1/files/uploads/{session_id}` Multipart 会话状态接口，返回已完成 part 的编号、ETag 和实际尺寸；该 contract 为后续暂停/断点恢复提供基础，当前仍保持现有 Core 中转上传路径。
 - 2026-08-30：Multipart part 增加 `X-Part-SHA256` 校验链路：现代 Web Crypto 可用时 Web 客户端发送摘要，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较，校验失败不会登记可完成 part；旧客户端缺少该头时保持兼容，并同步更新 Swagger contract 与回归测试。
 - 2026-08-30：Multipart 完成阶段新增 part 实际大小校验；新 Redis 会话保存 `ETag + Size`，前置分片和最后分片必须匹配初始化文件尺寸，旧 ETag-only 会话在无法证明完整性时安全拒绝完成，并通过 Core File/Storage 定向测试。
 - 2026-08-30：Web 大文件 Multipart 上传新增可测试的有界并发与分片重试：默认 3 路并发、每个 part 最多 2 次指数退避重试，永久失败停止继续调度并沿用现有会话 Abort 回滚；暂停/断点恢复、预签名直传和 checksum 继续由 A7/AD-055 跟踪。

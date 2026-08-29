@@ -23,6 +23,7 @@ import (
 type fileService interface {
 	UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 	InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
+	GetMultipartUploadStatus(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
 	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	AbortMultipartUpload(uploaderUUID, sessionID string) error
@@ -271,6 +272,34 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 	}
 
 	Success(c, httpdto.ToFileMultipartInitiateResponse(result))
+}
+
+// MultipartStatus godoc
+// @Summary 查询分片上传状态
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Success 200 {object} FileMultipartStatusResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id} [get]
+func (h *FileHandler) MultipartStatus(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	result, err := h.service.GetMultipartUploadStatus(currentUser.UUID, c.Param("session_id"))
+	if err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, httpdto.ToFileMultipartStatusResponse(result))
 }
 
 // UploadPart godoc
