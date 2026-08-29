@@ -96,13 +96,10 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   echo "legacy compatibility adapters must be isolated under internal/compat" >&2
   exit 1
 fi
-for compatibility_readme in \
-  internal/app/README.md; do
-  if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
-    echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
-    exit 1
-  fi
-done
+if [[ -d "${root_dir}/internal/app" ]]; then
+  echo "aggregate internal/app compatibility root must be retired; use embedded composition or service-owned packages" >&2
+  exit 1
+fi
 # Compatibility roots may retain adapters and tests, but must not become a
 # new shared implementation area as services are extracted.
 while IFS= read -r compatibility_file; do
@@ -111,7 +108,7 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go|internal/compat/service/doc.go|internal/compat/service/*_test.go) ;;
+    internal/compat/service/doc.go|internal/compat/service/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
