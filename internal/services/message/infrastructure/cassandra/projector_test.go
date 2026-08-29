@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
-type createdMessagePayload = service.MessageEventPayload
+type createdMessagePayload = messagedomain.MessageEventPayload
 
 type stubTimelineAppender struct {
 	projection cassandradata.TimelineProjection

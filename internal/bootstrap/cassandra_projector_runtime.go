@@ -12,7 +12,7 @@ import (
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
-	cassandraprojector "github.com/JekYUlll/Dipole/internal/projector/cassandra"
+	cassandraprojector "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/cassandra"
 )
 
 const cassandraProjectorServiceName = "dipole-cassandra-projector"
