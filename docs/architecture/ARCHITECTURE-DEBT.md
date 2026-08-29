@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：shared `newInternalRPCServer` 与 `dialInternalRPC` 已完成调用审计并退休；Core embedded 组合和 RPC fixture 直接使用 `internal/platform/rpc`，认证、TLS、caller allowlist 和回滚行为保持兼容。
 - 2026-08-30：Core Agent RPC caller-to-method 权限策略已迁入 `internal/services/core/rpcpolicy`，shared bootstrap 仅调用 Core-owned policy；Core/Agent mTLS、服务 caller allowlist 和 Agent/Search/Sync 权限 contract 通过回归测试，embedded 回滚入口保持可用。
 - 2026-08-30：在最新 `master` 上重跑微服务隔离 smoke，真实验证 readiness、metrics、Core proxy、mTLS 启动、远程 WS ownership 以及 Agent EventLedger/Task/Run 幂等；隔离拓扑自动清理，AD-049 的共享环境 ownership、候选发布与可执行回滚 receipt 仍待完成。
 - 2026-08-30：调用审计确认导出 `RestrictCoreServiceMethods` 无仓内调用者，已删除 shared policy 包装；Core RPC server 保留私有权限策略，已有 Agent/Search/Sync 权限 contract 不变。
