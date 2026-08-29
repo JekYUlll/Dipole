@@ -50,6 +50,10 @@ type multipartPartURLSigner interface {
 	PresignMultipartPartURL(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error)
 }
 
+type multipartPartInspector interface {
+	InspectMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int) (*platformStorage.UploadedPart, error)
+}
+
 type FileDownloadResult struct {
 	FileID      string     `json:"file_id"`
 	FileName    string     `json:"file_name"`
@@ -153,6 +157,11 @@ type MultipartPartUploadURL struct {
 	PartNumber int       `json:"part_number"`
 	URL        string    `json:"url"`
 	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type RegisterMultipartPartInput struct {
+	ETag string
+	Size int64
 }
 
 const multipartPartURLTTL = 15 * time.Minute
@@ -342,6 +351,30 @@ func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, part
 		result = append(result, MultipartPartUploadURL{PartNumber: partNumber, URL: presignedURL, ExpiresAt: expiresAt})
 	}
 	return result, nil
+}
+
+func (s *FileService) RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input RegisterMultipartPartInput) error {
+	inspector, ok := s.storage.(multipartPartInspector)
+	if !ok {
+		return ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return err
+	}
+	if partNumber <= 0 || partNumber > session.TotalParts || strings.TrimSpace(input.ETag) == "" || input.Size <= 0 || input.Size > session.ChunkSize {
+		return ErrMultipartPartInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	part, err := inspector.InspectMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber)
+	if err != nil {
+		return ErrMultipartPartInvalid
+	}
+	if part == nil || part.PartNumber != partNumber || part.Size != input.Size || !strings.EqualFold(strings.Trim(part.ETag, "\""), strings.TrimSpace(strings.Trim(input.ETag, "\""))) {
+		return ErrMultipartPartInvalid
+	}
+	return s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL())
 }
 
 func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {

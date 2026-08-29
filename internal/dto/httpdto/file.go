@@ -80,6 +80,11 @@ type FileMultipartPresignResponse struct {
 	Parts []FileMultipartPresignPart `json:"parts"`
 }
 
+type FileMultipartPartRegisterRequest struct {
+	ETag string `json:"etag" binding:"required"`
+	Size int64  `json:"size" binding:"required,min=1"`
+}
+
 func ToFileMultipartInitiateResponse(result *corefile.InitiateMultipartUploadResult) *FileMultipartInitiateResponse {
 	if result == nil {
 		return nil
