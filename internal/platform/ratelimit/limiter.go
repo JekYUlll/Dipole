@@ -104,9 +104,6 @@ func (l *Limiter) AllowAgentMCP(principalUUID string) (bool, time.Duration) {
 // Returns (true, 0) when allowed, or (false, retryAfter) when the limit is exceeded.
 func (l *Limiter) allow(key string, limit int, window time.Duration, failOpen bool) (bool, time.Duration) {
 	client := l.redis
-	if client == nil {
-		client = cache.RDB
-	}
 	if client == nil || limit <= 0 || window <= 0 || key == "" {
 		return rateLimitDependencyResult(failOpen, window)
 	}

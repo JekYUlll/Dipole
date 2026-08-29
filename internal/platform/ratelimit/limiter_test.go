@@ -21,6 +21,7 @@ func TestLimiterAllowLoginBlocksAfterLimit(t *testing.T) {
 			LoginLimit:         2,
 			LoginWindowSeconds: 60,
 		},
+		redis: cache.RDB,
 	}
 
 	for i := 0; i < 2; i++ {
@@ -49,6 +50,7 @@ func TestLimiterAllowMessageSendUsesUserScopedCounter(t *testing.T) {
 			MessageLimit:         1,
 			MessageWindowSeconds: 60,
 		},
+		redis: cache.RDB,
 	}
 
 	allowed, _ := limiter.AllowMessageSend("U100")
@@ -71,7 +73,7 @@ func TestLimiterAllowAgentMCPUsesPrincipalScopedFailClosedCounter(t *testing.T) 
 	cleanup := setupLimiterTest(t)
 	defer cleanup()
 
-	limiter := &Limiter{config: config.RateLimit{AgentMCPLimit: 2, AgentMCPWindowSeconds: 60}}
+	limiter := &Limiter{config: config.RateLimit{AgentMCPLimit: 2, AgentMCPWindowSeconds: 60}, redis: cache.RDB}
 	for i := 0; i < 2; i++ {
 		if allowed, retryAfter := limiter.AllowAgentMCP("U100"); !allowed || retryAfter != 0 {
 			t.Fatalf("MCP attempt %d: allowed=%v retryAfter=%s", i+1, allowed, retryAfter)
@@ -95,7 +97,7 @@ func TestLimiterAllowAgentMCPFailsClosedWithoutRedisAndPreservesMessageFailOpen(
 	limiter := &Limiter{config: config.RateLimit{
 		Enabled: true, MessageLimit: 1, MessageWindowSeconds: 60,
 		AgentMCPLimit: 2, AgentMCPWindowSeconds: 60,
-	}}
+	}, redis: nil}
 	if allowed, retryAfter := limiter.AllowAgentMCP("U100"); allowed || retryAfter != time.Minute {
 		t.Fatalf("MCP dependency failure: allowed=%v retryAfter=%s", allowed, retryAfter)
 	}
