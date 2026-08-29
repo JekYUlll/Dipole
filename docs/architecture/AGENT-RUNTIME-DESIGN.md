@@ -14,6 +14,8 @@ Dipole Agent Runtime 是建立在 IM Event Bus 与业务 Capability 之上的事
 
 Agent 只能通过版本化 Capability API 读取或修改 IM 数据，禁止直接访问 Message Store、Sync Store 和业务 Repository。
 
+Run admission、completion 和 failure 使用同一组 `runtime_id + mode` 绑定。TS RPC client 默认使用 `shadow`，显式 active client 必须携带 candidate version；Core 继续执行 promotion grant、Definition、Task/Run 和权限复核，旧省略字段的调用保留 shadow 兼容窗口。
+
 ## 2. 语言与技术栈
 
 | 层 | 选择 | 职责 |

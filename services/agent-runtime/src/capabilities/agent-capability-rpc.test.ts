@@ -13,6 +13,40 @@ const conversationReadContext = (overrides: Partial<ExecutionContext> = {}): Exe
 });
 
 describe("AgentCapabilityRPCClient", () => {
+  it("forwards the configured remote runtime binding for admission and terminal calls", async () => {
+    const admitRun = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ runtimeId: "dipole-agent", mode: "active", candidateVersion: "candidate-v1" });
+      callback(null, { taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
+      return {};
+    });
+    const completeRun = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", runtimeId: "dipole-agent", mode: "active" });
+      callback(null, { runStatus: "completed" });
+      return {};
+    });
+    const finishRun = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", runtimeId: "dipole-agent", mode: "active" });
+      callback(null, { runStatus: "failed" });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient(
+      { admitRun, completeRun, finishRun } as unknown as IAgentCapabilityServiceClient,
+      "secret", 2_000, "active", "candidate-v1"
+    );
+
+    await expect(client.admitRun({
+      tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: "message.direct.created",
+      triggerRef: "M100", eventId: "E1"
+    })).resolves.toEqual({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
+    await expect(client.complete("TASK-1", "RUN-1")).resolves.toBeUndefined();
+    await expect(client.finish("TASK-1", "RUN-1", "failed", "failure")).resolves.toBeUndefined();
+  });
+
+  it("requires a candidate version for active RPC clients", () => {
+    expect(() => new AgentCapabilityRPCClient({} as IAgentCapabilityServiceClient, "secret", 2_000, "active"))
+      .toThrow("candidate version");
+  });
+
   it("maps canonical group conversation ids to trusted RPC targets", async () => {
     const readConversation = vi.fn((input, metadata, _options, callback) => {
       expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", targetId: "G123", limit: 20 });

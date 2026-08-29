@@ -24,19 +24,20 @@ const (
 )
 
 type AdmitRunRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Context         *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	TenantId        string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	PrincipalUserId string                 `protobuf:"bytes,3,opt,name=principal_user_id,json=principalUserId,proto3" json:"principal_user_id,omitempty"`
-	AgentId         string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
-	TriggerType     string                 `protobuf:"bytes,5,opt,name=trigger_type,json=triggerType,proto3" json:"trigger_type,omitempty"`
-	TriggerRef      string                 `protobuf:"bytes,6,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
-	EventId         string                 `protobuf:"bytes,7,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	RuntimeId       string                 `protobuf:"bytes,8,opt,name=runtime_id,json=runtimeId,proto3" json:"runtime_id,omitempty"`
-	Mode            string                 `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
-	SubscriptionId  string                 `protobuf:"bytes,10,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Context          *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	TenantId         string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	PrincipalUserId  string                 `protobuf:"bytes,3,opt,name=principal_user_id,json=principalUserId,proto3" json:"principal_user_id,omitempty"`
+	AgentId          string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	TriggerType      string                 `protobuf:"bytes,5,opt,name=trigger_type,json=triggerType,proto3" json:"trigger_type,omitempty"`
+	TriggerRef       string                 `protobuf:"bytes,6,opt,name=trigger_ref,json=triggerRef,proto3" json:"trigger_ref,omitempty"`
+	EventId          string                 `protobuf:"bytes,7,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	RuntimeId        string                 `protobuf:"bytes,8,opt,name=runtime_id,json=runtimeId,proto3" json:"runtime_id,omitempty"`
+	Mode             string                 `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
+	SubscriptionId   string                 `protobuf:"bytes,10,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
+	CandidateVersion string                 `protobuf:"bytes,11,opt,name=candidate_version,json=candidateVersion,proto3" json:"candidate_version,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AdmitRunRequest) Reset() {
@@ -139,6 +140,13 @@ func (x *AdmitRunRequest) GetSubscriptionId() string {
 	return ""
 }
 
+func (x *AdmitRunRequest) GetCandidateVersion() string {
+	if x != nil {
+		return x.CandidateVersion
+	}
+	return ""
+}
+
 type AdmitRunResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
@@ -204,6 +212,8 @@ type CompleteRunRequest struct {
 	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
 	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	RuntimeId     string                 `protobuf:"bytes,4,opt,name=runtime_id,json=runtimeId,proto3" json:"runtime_id,omitempty"`
+	Mode          string                 `protobuf:"bytes,5,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -259,6 +269,20 @@ func (x *CompleteRunRequest) GetRunId() string {
 	return ""
 }
 
+func (x *CompleteRunRequest) GetRuntimeId() string {
+	if x != nil {
+		return x.RuntimeId
+	}
+	return ""
+}
+
+func (x *CompleteRunRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
 type CompleteRunResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RunStatus     string                 `protobuf:"bytes,1,opt,name=run_status,json=runStatus,proto3" json:"run_status,omitempty"`
@@ -310,6 +334,8 @@ type FinishRunRequest struct {
 	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
 	RunStatus     string                 `protobuf:"bytes,4,opt,name=run_status,json=runStatus,proto3" json:"run_status,omitempty"`
 	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	RuntimeId     string                 `protobuf:"bytes,6,opt,name=runtime_id,json=runtimeId,proto3" json:"runtime_id,omitempty"`
+	Mode          string                 `protobuf:"bytes,7,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -375,6 +401,20 @@ func (x *FinishRunRequest) GetRunStatus() string {
 func (x *FinishRunRequest) GetLastError() string {
 	if x != nil {
 		return x.LastError
+	}
+	return ""
+}
+
+func (x *FinishRunRequest) GetRuntimeId() string {
+	if x != nil {
+		return x.RuntimeId
+	}
+	return ""
+}
+
+func (x *FinishRunRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
 	}
 	return ""
 }
@@ -7927,7 +7967,7 @@ var File_dipole_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x1bdipole/agent/v1/agent.proto\x12\x0fdipole.agent.v1\x1a\x1edipole/common/v1/context.proto\x1a\x1fdipole/message/v1/message.proto\"\xec\x02\n" +
+	"\x1bdipole/agent/v1/agent.proto\x12\x0fdipole.agent.v1\x1a\x1edipole/common/v1/context.proto\x1a\x1fdipole/message/v1/message.proto\"\x99\x03\n" +
 	"\x0fAdmitRunRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12*\n" +
@@ -7941,19 +7981,23 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"runtime_id\x18\b \x01(\tR\truntimeId\x12\x12\n" +
 	"\x04mode\x18\t \x01(\tR\x04mode\x12'\n" +
 	"\x0fsubscription_id\x18\n" +
-	" \x01(\tR\x0esubscriptionId\"a\n" +
+	" \x01(\tR\x0esubscriptionId\x12+\n" +
+	"\x11candidate_version\x18\v \x01(\tR\x10candidateVersion\"a\n" +
 	"\x10AdmitRunResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1d\n" +
 	"\n" +
-	"run_status\x18\x03 \x01(\tR\trunStatus\"\x80\x01\n" +
+	"run_status\x18\x03 \x01(\tR\trunStatus\"\xb3\x01\n" +
 	"\x12CompleteRunRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
-	"\x06run_id\x18\x03 \x01(\tR\x05runId\"4\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12\x1d\n" +
+	"\n" +
+	"runtime_id\x18\x04 \x01(\tR\truntimeId\x12\x12\n" +
+	"\x04mode\x18\x05 \x01(\tR\x04mode\"4\n" +
 	"\x13CompleteRunResponse\x12\x1d\n" +
 	"\n" +
-	"run_status\x18\x01 \x01(\tR\trunStatus\"\xbc\x01\n" +
+	"run_status\x18\x01 \x01(\tR\trunStatus\"\xef\x01\n" +
 	"\x10FinishRunRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
@@ -7961,7 +8005,10 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"run_status\x18\x04 \x01(\tR\trunStatus\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\x05 \x01(\tR\tlastError\"2\n" +
+	"last_error\x18\x05 \x01(\tR\tlastError\x12\x1d\n" +
+	"\n" +
+	"runtime_id\x18\x06 \x01(\tR\truntimeId\x12\x12\n" +
+	"\x04mode\x18\a \x01(\tR\x04mode\"2\n" +
 	"\x11FinishRunResponse\x12\x1d\n" +
 	"\n" +
 	"run_status\x18\x01 \x01(\tR\trunStatus\"t\n" +

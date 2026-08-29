@@ -787,6 +787,22 @@ func TestAdmitRunReturnsServerDerivedIdentity(t *testing.T) {
 	}
 }
 
+func TestAdmitRunForwardsActiveRuntimeBinding(t *testing.T) {
+	admission := &admissionStub{result: application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, admission)
+	_, err := server.AdmitRun(context.Background(), &agentv1.AdmitRunRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole", PrincipalUserId: "U100",
+		AgentId: "UAI", TriggerType: "message.direct.created", TriggerRef: "M100", EventId: "E1",
+		RuntimeId: "dipole-agent", Mode: "active", CandidateVersion: "candidate-v1",
+	})
+	if err != nil {
+		t.Fatalf("active admission: %v", err)
+	}
+	if admission.admitted.RuntimeID != "dipole-agent" || admission.admitted.Mode != "active" || admission.admitted.CandidateVersion != "candidate-v1" {
+		t.Fatalf("active runtime binding was not forwarded: %+v", admission.admitted)
+	}
+}
+
 func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
 	resolver := &eventSubscriptionResolverStub{items: []application.AgentEventSubscriptionV1{{
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 2,

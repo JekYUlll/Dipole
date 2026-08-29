@@ -58,6 +58,10 @@ export interface AdmitRunRequest {
      * @generated from protobuf field: string subscription_id = 10
      */
     subscriptionId: string;
+    /**
+     * @generated from protobuf field: string candidate_version = 11
+     */
+    candidateVersion: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.AdmitRunResponse
@@ -92,6 +96,14 @@ export interface CompleteRunRequest {
      * @generated from protobuf field: string run_id = 3
      */
     runId: string;
+    /**
+     * @generated from protobuf field: string runtime_id = 4
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string mode = 5
+     */
+    mode: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.CompleteRunResponse
@@ -126,6 +138,14 @@ export interface FinishRunRequest {
      * @generated from protobuf field: string last_error = 5
      */
     lastError: string;
+    /**
+     * @generated from protobuf field: string runtime_id = 6
+     */
+    runtimeId: string;
+    /**
+     * @generated from protobuf field: string mode = 7
+     */
+    mode: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.FinishRunResponse
@@ -2716,7 +2736,8 @@ class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
             { no: 7, name: "event_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 10, name: "subscription_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 10, name: "subscription_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "candidate_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AdmitRunRequest>): AdmitRunRequest {
@@ -2730,6 +2751,7 @@ class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
         message.runtimeId = "";
         message.mode = "";
         message.subscriptionId = "";
+        message.candidateVersion = "";
         if (value !== undefined)
             reflectionMergePartial<AdmitRunRequest>(this, message, value);
         return message;
@@ -2768,6 +2790,9 @@ class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
                     break;
                 case /* string subscription_id */ 10:
                     message.subscriptionId = reader.string();
+                    break;
+                case /* string candidate_version */ 11:
+                    message.candidateVersion = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -2811,6 +2836,9 @@ class AdmitRunRequest$Type extends MessageType<AdmitRunRequest> {
         /* string subscription_id = 10; */
         if (message.subscriptionId !== "")
             writer.tag(10, WireType.LengthDelimited).string(message.subscriptionId);
+        /* string candidate_version = 11; */
+        if (message.candidateVersion !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.candidateVersion);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -2890,13 +2918,17 @@ class CompleteRunRequest$Type extends MessageType<CompleteRunRequest> {
         super("dipole.agent.v1.CompleteRunRequest", [
             { no: 1, name: "context", kind: "message", T: () => RequestContext },
             { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<CompleteRunRequest>): CompleteRunRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.taskId = "";
         message.runId = "";
+        message.runtimeId = "";
+        message.mode = "";
         if (value !== undefined)
             reflectionMergePartial<CompleteRunRequest>(this, message, value);
         return message;
@@ -2914,6 +2946,12 @@ class CompleteRunRequest$Type extends MessageType<CompleteRunRequest> {
                     break;
                 case /* string run_id */ 3:
                     message.runId = reader.string();
+                    break;
+                case /* string runtime_id */ 4:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string mode */ 5:
+                    message.mode = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -2936,6 +2974,12 @@ class CompleteRunRequest$Type extends MessageType<CompleteRunRequest> {
         /* string run_id = 3; */
         if (message.runId !== "")
             writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        /* string runtime_id = 4; */
+        if (message.runtimeId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.runtimeId);
+        /* string mode = 5; */
+        if (message.mode !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.mode);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -3001,7 +3045,9 @@ class FinishRunRequest$Type extends MessageType<FinishRunRequest> {
             { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 4, name: "run_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 5, name: "last_error", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 5, name: "last_error", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "runtime_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<FinishRunRequest>): FinishRunRequest {
@@ -3010,6 +3056,8 @@ class FinishRunRequest$Type extends MessageType<FinishRunRequest> {
         message.runId = "";
         message.runStatus = "";
         message.lastError = "";
+        message.runtimeId = "";
+        message.mode = "";
         if (value !== undefined)
             reflectionMergePartial<FinishRunRequest>(this, message, value);
         return message;
@@ -3033,6 +3081,12 @@ class FinishRunRequest$Type extends MessageType<FinishRunRequest> {
                     break;
                 case /* string last_error */ 5:
                     message.lastError = reader.string();
+                    break;
+                case /* string runtime_id */ 6:
+                    message.runtimeId = reader.string();
+                    break;
+                case /* string mode */ 7:
+                    message.mode = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -3061,6 +3115,12 @@ class FinishRunRequest$Type extends MessageType<FinishRunRequest> {
         /* string last_error = 5; */
         if (message.lastError !== "")
             writer.tag(5, WireType.LengthDelimited).string(message.lastError);
+        /* string runtime_id = 6; */
+        if (message.runtimeId !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.runtimeId);
+        /* string mode = 7; */
+        if (message.mode !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.mode);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

@@ -22,6 +22,7 @@ export interface AgentRunIdentity {
 }
 
 export type AgentRunTerminalStatus = "completed" | "failed" | "cancelled";
+export type AgentRuntimeMode = "shadow" | "active";
 
 export interface AgentMcpToolCommand {
   readonly invocationId: string;
@@ -84,6 +85,7 @@ export interface AgentRunAdmissionRequest {
   readonly requestId?: string;
   readonly traceId?: string;
   readonly subscriptionId?: string;
+  readonly candidateVersion?: string;
 }
 
 export interface AgentApprovalBinding {
@@ -252,10 +254,15 @@ export class AgentCapabilityRPCClient {
   constructor(
     private readonly rpc: IAgentCapabilityServiceClient,
     private readonly secret: string,
-    private readonly timeoutMs = 2_000
+    private readonly timeoutMs = 2_000,
+    private readonly mode: AgentRuntimeMode = "shadow",
+    private readonly candidateVersion = ""
   ) {
     if (!secret.trim()) {
       throw new Error("Agent Capability RPC secret is required");
+    }
+    if (mode === "active" && !candidateVersion.trim()) {
+      throw new Error("Active Agent Capability RPC requires a candidate version");
     }
   }
 
@@ -285,8 +292,9 @@ export class AgentCapabilityRPCClient {
         triggerRef: input.triggerRef,
         eventId: input.eventId,
         runtimeId: callerService,
-        mode: "shadow",
-        subscriptionId: input.subscriptionId ?? ""
+        mode: this.mode,
+        subscriptionId: input.subscriptionId ?? "",
+        candidateVersion: input.candidateVersion ?? this.candidateVersion
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent Run admission returned no response"));
@@ -371,7 +379,8 @@ export class AgentCapabilityRPCClient {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.completeRun({
-        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId,
+        runtimeId: callerService, mode: this.mode
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent Run completion returned no response"));
@@ -400,7 +409,9 @@ export class AgentCapabilityRPCClient {
         taskId,
         runId,
         runStatus,
-        lastError
+        lastError,
+        runtimeId: callerService,
+        mode: this.mode
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent Run terminal transition returned no response"));
