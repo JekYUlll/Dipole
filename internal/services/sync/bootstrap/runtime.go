@@ -28,6 +28,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const syncServiceName = "dipole-sync"
+
 type SyncRuntime struct {
 	rpc              *InternalRPCServer
 	coreConn         *grpc.ClientConn
@@ -40,11 +42,11 @@ type SyncRuntime struct {
 	shutdownSec      int
 }
 
-func InitializeSyncService(ctx context.Context) (*SyncRuntime, error) {
-	return initializeSyncService(ctx, config.InternalRPCConfig(), config.SyncMySQLConfig(), config.MetricsConfig(), config.SyncConfig(), config.KafkaConfig(), config.CassandraConfig())
+func Initialize(ctx context.Context) (*SyncRuntime, error) {
+	return InitializeWithConfig(ctx, config.InternalRPCConfig(), config.SyncMySQLConfig(), config.MetricsConfig(), config.SyncConfig(), config.KafkaConfig(), config.CassandraConfig())
 }
 
-func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysqlCfg config.MySQL, metricsCfg config.Metrics, syncCfg config.Sync, kafkaCfg config.Kafka, cassandraCfg config.Cassandra) (*SyncRuntime, error) {
+func InitializeWithConfig(ctx context.Context, rpcCfg config.InternalRPC, mysqlCfg config.MySQL, metricsCfg config.Metrics, syncCfg config.Sync, kafkaCfg config.Kafka, cassandraCfg config.Cassandra) (*SyncRuntime, error) {
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("Sync Service requires internal_rpc.enabled")
 	}

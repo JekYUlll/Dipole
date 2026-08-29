@@ -2,11 +2,16 @@ package bootstrap
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
+
+type databasePermissionProbe interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
 
 type syncPermissionProbe struct {
 	table string

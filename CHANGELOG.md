@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Sync Service runtime、数据库权限边界校验及相关测试已从共享 `internal/bootstrap` 迁入 `internal/services/sync/bootstrap`，保留 Cassandra hydration、Kafka projector 和 Local 回滚语义；Internal RPC 暂由窄 compatibility adapter 承接。
 - Search Service runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/search/bootstrap`，Search 测试与 Elasticsearch/Core capability 装配同步归属服务边界；Internal RPC 暂由窄 compatibility adapter 承接，旧 runtime 路径由结构门禁阻止回流。
 - Search Indexer 的 runtime 实现已从共享 `internal/bootstrap` 迁入 `internal/services/search-indexer/bootstrap`，直接拥有 Kafka consumer、Elasticsearch index 和 metrics/readiness 启动编排；旧路径由结构门禁阻止回流，Kafka/Elasticsearch 回滚语义保持不变。
 - 运行时 readiness 编排已下沉到 `internal/platform/runtime`，统一提供依赖探针、gRPC health 检查、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定；服务特有启动条件继续留在各自 runtime，旧 `internal/bootstrap/dependency_readiness.go` 保留兼容出口。

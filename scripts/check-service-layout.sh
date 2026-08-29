@@ -326,11 +326,11 @@ if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/composition.
   echo "Sync process repository composition is outside the Sync service boundary" >&2
   exit 1
 fi
-if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/bootstrap/sync_runtime.go"; then
+if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/services/sync/bootstrap/runtime.go"; then
   echo "standalone Sync runtime must not depend on aggregate internal/app composition" >&2
   exit 1
 fi
-if ! rg --quiet 'services/sync/infrastructure/mysql' "${root_dir}/internal/bootstrap/sync_runtime.go"; then
+if ! rg --quiet 'services/sync/infrastructure/mysql' "${root_dir}/internal/services/sync/bootstrap/runtime.go"; then
   echo "standalone Sync runtime must use Sync-owned repository composition" >&2
   exit 1
 fi
@@ -679,14 +679,14 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go gateway_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go message_runtime.go gateway_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
   fi
 done
 
-for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go message_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'ConfigureDependencyReadiness|BindRPCReadiness' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use platform readiness orchestration: ${runtime_file}" >&2
     exit 1
@@ -706,6 +706,14 @@ if [[ -e "${root_dir}/internal/bootstrap/search_runtime.go" ]]; then
 fi
 if [[ ! -f "${root_dir}/internal/services/search/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/search/application' "${root_dir}/internal/services/search/bootstrap/runtime.go"; then
   echo "Search runtime must remain under its service bootstrap boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/bootstrap/sync_runtime.go" || -e "${root_dir}/internal/bootstrap/sync_database_boundary.go" ]]; then
+  echo "Sync runtime or database boundary remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/sync/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/sync/infrastructure' "${root_dir}/internal/services/sync/bootstrap/runtime.go"; then
+  echo "Sync runtime must remain under its service bootstrap boundary" >&2
   exit 1
 fi
 
