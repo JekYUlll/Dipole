@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：复核主线前端与 Web Sync 契约：Pencil 设计门禁通过（54 个 Frame、2036 个节点、36 个变量、23 个可复用组件），前端 Vitest 通过 27 个文件/102 个测试，Web Sync 观测契约通过 9 个测试；真实客户端 24 小时观测仍保持未启动。
 - 2026-08-30：将微服务 Compose 的 Agent Runtime 默认模式显式固定为 `shadow`，并由 Compose 门禁阻止默认配置漂移到 `active`；运行行为保持原有安全默认值。
 - 2026-08-30：明确 Agent Runtime 默认部署语义：微服务 Compose 默认启动独立容器并消费 Kafka Shadow 流，但 `active` authority、模型调用和写能力保持关闭；同步更新服务目录说明，避免“默认启用”被误解为已完成生产接管。
 - 2026-08-30：诊断 Pencil Gemini 增量路径：CLI 因 selected model 缺少 API key 在执行前退出，safe-edit wrapper 清理临时输出并保持 canonical `.pen` 不变；Claude 路径的执行超时仍单独记录于 `AD-044`。
