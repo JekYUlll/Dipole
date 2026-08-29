@@ -138,6 +138,13 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.FileMultipartInitiateResponse'
     type: object
+  http.FileMultipartStatusResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.FileMultipartStatusResponse'
+    type: object
   http.GroupMemberListResponseEnvelope:
     properties:
       code:
@@ -530,6 +537,32 @@ definitions:
         type: string
       total_parts:
         type: integer
+    type: object
+  httpdto.FileMultipartPartStatus:
+    properties:
+      etag:
+        type: string
+      part_number:
+        type: integer
+      size:
+        type: integer
+    type: object
+  httpdto.FileMultipartStatusResponse:
+    properties:
+      chunk_size:
+        type: integer
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      session_id:
+        type: string
+      total_parts:
+        type: integer
+      uploaded_parts:
+        items:
+          $ref: '#/definitions/httpdto.FileMultipartPartStatus'
+        type: array
     type: object
   httpdto.GroupMemberResponse:
     properties:
@@ -1576,6 +1609,45 @@ paths:
       tags:
       - File
   /files/uploads/{session_id}:
+    get:
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.FileMultipartStatusResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询分片上传状态
+      tags:
+      - File
     delete:
       parameters:
       - description: 上传会话 ID

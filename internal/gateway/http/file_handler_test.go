@@ -22,6 +22,7 @@ import (
 type stubFileService struct {
 	uploadFn            func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
+	statusMultipartFn   func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
 	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
@@ -59,6 +60,13 @@ func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input cor
 		return nil, nil
 	}
 	return s.initiateMultipartFn(uploaderUUID, input)
+}
+
+func (s *stubFileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error) {
+	if s.statusMultipartFn == nil {
+		return nil, nil
+	}
+	return s.statusMultipartFn(uploaderUUID, sessionID)
 }
 
 func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
@@ -301,6 +309,38 @@ func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
 
 	handler.UploadPart(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestFileHandlerMultipartStatusSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		statusMultipartFn: func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error) {
+			if uploaderUUID != "U100" || sessionID != "MU100" {
+				t.Fatalf("unexpected status args: %s %s", uploaderUUID, sessionID)
+			}
+			return &corefile.MultipartUploadStatus{
+				SessionID:     "MU100",
+				FileName:      "big.bin",
+				FileSize:      10,
+				ChunkSize:     5,
+				TotalParts:    2,
+				UploadedParts: []corefile.MultipartUploadPartStatus{{PartNumber: 1, ETag: "etag-1", Size: 5}},
+			}, nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files/uploads/MU100", nil)
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.MultipartStatus(context)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
