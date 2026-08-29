@@ -1,8 +1,15 @@
 package bootstrap
 
 import (
+	"github.com/JekYUlll/Dipole/internal/application"
+	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
+	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
+
+func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*InternalRPCServer, error) {
+	return legacybootstrap.NewCoreRPCServer(cfg, capability)
+}
 
 type rpcCoreStub struct{}
 
