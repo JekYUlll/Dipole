@@ -42,6 +42,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `design/` 保存 Pencil 源文件、设计变更记录和导出图；前端实现位于 `frontend/`。
 - `scripts/` 保存测试、Smoke、迁移和运维门禁脚本，不承载长期服务入口；微服务镜像脚本为每个部署单元生成独立制品。
 - `tmp/` 只用于本地临时数据，不应提交业务源文件。
+- 根级源码目录由架构文档门禁固定为 `api/`、`benchmarks/`、`cmd/`、`configs/`、`contracts/`、`db/`、`deploy/`、`design/`、`docs/`、`frontend/`、`internal/`、`scripts/` 和 `services/`；本地 `logs/`、`tmp/`、`dist/`、`certs/` 等生成或运行目录由 `.gitignore` 管理，不属于仓库源码布局。
 
 ## 多语言服务目录
 

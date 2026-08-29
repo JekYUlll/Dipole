@@ -101,7 +101,7 @@
 - **本轮进展：** Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`；共享 `internal/data/mysql/repository/core_compat.go` 仅保留兼容别名和构造入口，服务布局门禁已阻止实现文件回流。
 - **本轮进展：** Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；共享 `internal/data/mysql/repository/search_index_compat.go` 仅保留兼容别名和构造入口，服务布局门禁已阻止实现文件回流。
 - **本轮进展：** 清理共享 repository 中已无调用者的事务别名和 UUID 辅助文件，并将共享目录约束收紧为兼容入口集合；Core、Agent、Search、Message 和 Sync 的仓储实现均由各自服务 infrastructure 持有。
-- **本轮进展：** Compose 编排已从根目录收纳至 `deploy/compose/`，仅保留默认 `docker-compose.yml` 作为本地入口；所有编排引用和 Compose 静态门禁已同步，TS Agent Runtime 保留用于 Go 工具链扫描隔离的独立 module 边界。`internal/app`、`internal/application`、`internal/bootstrap` 和兼容层仍属于下一阶段的物理边界收敛范围。
+- **本轮进展：** Compose 编排已从根目录收纳至 `deploy/compose/`，仅保留默认 `docker-compose.yml` 作为本地入口；所有编排引用和 Compose 静态门禁已同步，TS Agent Runtime 保留用于 Go 工具链扫描隔离的独立 module 边界。`internal/app` 已退出外部生产依赖，后续重点转为 embedded/兼容测试退休，以及 `internal/application`、`internal/bootstrap` 和其他兼容层的最终物理边界收敛。
 - **本轮进展：** 2026-08-29 修正 ownership smoke 的旧 repository 测试路径，并增加 selector 命中 fail-closed；真实 MySQL atomic/projector/rollback smoke 与三节点 Kafka Sync projector dual-run smoke 均通过。生产级候选镜像切换、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 使用隔离候选微服务 Compose 完成 Gateway 端到端消息验证，覆盖服务健康、注册/登录、好友关系、WebSocket、Message/Outbox/Inbox 幂等和 Seq Timeline 读取；生产 Kafka ownership 切换与可执行回滚 receipt 仍待完成。
 - **本轮进展：** Core repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 直接依赖 Core-owned composition，`internal/app` 仅保留 embedded 兼容别名，结构门禁阻止实现回流。
