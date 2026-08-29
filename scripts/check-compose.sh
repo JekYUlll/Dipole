@@ -46,6 +46,8 @@ jq -e '
   and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
   and .services.sync.entrypoint == ["/app/service"]
+  and ((.services.core.depends_on // {}) | has("message") | not)
+  and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"
 ' <<<"${default_microservices_config}" >/dev/null
 

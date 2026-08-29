@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Compose 结构门禁新增 Core/Message 默认拓扑循环依赖检查：默认微服务配置禁止双方互相 `depends_on`，并继续要求 Core 使用远程 gRPC transport；Cassandra primary 的 embedded/local 回滚覆盖层保持兼容。
 - Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
 - 更新平台演进计划的当前基线，使部署入口、Gateway/Message/Sync ownership、MySQL/Kafka/Cassandra/Redis 分层和 Go/Eino 到 TS Runtime 的过渡状态与仓库现状一致；保留 embedded 与 shadow/primary 回滚边界。
 - 删除已无调用者的 `internal/service/event_publisher.go` 旧接口，并由服务布局门禁阻止 `internal/service/` 重新承载实现；跨服务事件契约继续使用 `internal/application` 和版本化事件包。
