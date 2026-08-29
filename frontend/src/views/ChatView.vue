@@ -1753,7 +1753,13 @@ const ws = useWebSocket({
 onMounted(async () => {
   window.addEventListener('keydown', handleGlobalSearchShortcut)
   if (!auth.token) return
-  await auth.fetchMe()
+  // The API interceptor owns 401 cleanup and navigation; keep the rejected
+  // request from escaping the async lifecycle hook during session restore.
+  try {
+    await auth.fetchMe()
+  } catch {
+    return
+  }
   await Promise.allSettled([chat.fetchConversations(), chat.fetchContacts()])
 	await chat.syncMessages().catch(() => {})
 	await chat.recoverGroupMessages().catch(() => {})
