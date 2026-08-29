@@ -166,8 +166,8 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	if err != nil {
 		return err
 	}
-	directHandler = fenceMessageDeliveryHandler(authority, fence, directHandler)
-	groupHandler = fenceMessageDeliveryHandler(authority, fence, groupHandler)
+	directHandler = gatewaykafka.FenceMessageDeliveryHandler(authority, fence, directHandler)
+	groupHandler = gatewaykafka.FenceMessageDeliveryHandler(authority, fence, groupHandler)
 	platformKafka.Subscriber.Register("message.direct.created", directHandler)
 	platformKafka.Subscriber.Register("message.group.created", groupHandler)
 	platformKafka.Subscriber.Register("conversation.direct.read", deliverDirectReadHandler(hub))
@@ -195,28 +195,6 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
 	return nil
-}
-
-func fenceMessageDeliveryHandler(authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence, next platformKafka.Handler) platformKafka.Handler {
-	if fence == nil {
-		return next
-	}
-	return func(ctx context.Context, event platformKafka.Event) error {
-		for {
-			if err := fence.Assert(ctx, authority); err == nil {
-				return next(ctx, event)
-			}
-			timer := time.NewTimer(250 * time.Millisecond)
-			select {
-			case <-ctx.Done():
-				if !timer.Stop() {
-					<-timer.C
-				}
-				return fmt.Errorf("wait for realtime delivery authority fence: %w", ctx.Err())
-			case <-timer.C:
-			}
-		}
-	}
 }
 
 func gatewayMessageDeliveryHandlers(
