@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Core Auth TokenService 的 Redis 撤销状态访问已收敛到 `internal/platform/cache`，移除对 `internal/store` 全局客户端的直接依赖；写入和校验在 Redis 不可用时保持 fail-closed。
 - Agent infrastructure contract tests 已改用 `internal/services/agent/application/` 的 Agent-owned application constructors，结构门禁新增 Agent 服务禁止依赖聚合 `internal/app` 的检查；embedded 兼容入口保持不变。
 - 修复 Cassandra primary Compose override 的仓库文件挂载路径：schema 与 Sync primary 配置改用相对于 `deploy/compose/` 首个 Compose 文件的根目录路径，避免容器内将目标文件解析为目录；隔离 primary smoke 已重新通过。
 - Agent Timeline repair 隔离 Compose smoke 通过：验证 v50 migration、UTC 时间基准、专用最小权限、worker readiness、启动前 pending intent 恢复和 event UUID 幂等；临时栈自动清理，默认 production profile 仍关闭。

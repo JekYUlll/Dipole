@@ -14,7 +14,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/store"
+	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 var (
@@ -196,7 +196,7 @@ func (s *TokenService) RevokeTokenID(tokenID string, expiresAt time.Time) error 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := store.RDB.Set(ctx, revokedTokenKey(tokenID), "1", ttl).Err(); err != nil {
+	if err := platformCache.SetString(ctx, revokedTokenKey(tokenID), "1", ttl); err != nil {
 		return fmt.Errorf("revoke token: %w", err)
 	}
 
@@ -247,8 +247,8 @@ func validateTokenState(claims *tokenClaims) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	revoked, err := store.RDB.Exists(ctx, revokedTokenKey(claims.ID)).Result()
-	if err != nil || revoked > 0 {
+	revoked, err := platformCache.Exists(ctx, revokedTokenKey(claims.ID))
+	if err != nil || revoked {
 		return ErrInvalidToken
 	}
 	return nil
