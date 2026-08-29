@@ -33,6 +33,7 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("status)", script)
         self.assertIn("down)", script)
         self.assertIn("docker image inspect", script)
+        self.assertIn("status --porcelain --untracked-files=no", script)
         self.assertIn("org.opencontainers.image.revision", script)
         self.assertIn("io.dipole.source.dirty", script)
         self.assertIn('DIPOLE_IMAGE="${image_id}"', script)

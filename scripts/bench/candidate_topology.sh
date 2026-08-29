@@ -54,7 +54,7 @@ verify_candidate_image() {
     echo "candidate image is required" >&2
     exit 1
   fi
-  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain)" ]]; then
+  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=no)" ]]; then
     echo "candidate source tree has changes; commit them before deployment" >&2
     exit 1
   fi
