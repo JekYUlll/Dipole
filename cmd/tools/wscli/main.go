@@ -25,10 +25,11 @@ import (
 const defaultBaseURL = "http://127.0.0.1:8080"
 
 type config struct {
-	baseURL   string
-	telephone string
-	password  string
-	target    string
+	baseURL         string
+	telephone       string
+	password        string
+	target          string
+	clientMessageID string
 }
 
 type loginRequest struct {
@@ -96,6 +97,7 @@ func parseFlags() config {
 	flag.StringVar(&cfg.telephone, "telephone", "", "login telephone")
 	flag.StringVar(&cfg.password, "password", "", "login password")
 	flag.StringVar(&cfg.target, "target", "", "default target user UUID")
+	flag.StringVar(&cfg.clientMessageID, "client-message-id", "", "client message ID for idempotent sends")
 	flag.Parse()
 	return cfg
 }
@@ -295,8 +297,9 @@ func (a *app) sendText(content string) error {
 	}
 
 	payload, err := ws.EncodeCommand(ws.TypeChatSend, ws.SendTextMessageInput{
-		TargetUUID: target,
-		Content:    content,
+		TargetUUID:      target,
+		Content:         content,
+		ClientMessageID: a.cfg.clientMessageID,
 	})
 	if err != nil {
 		return err

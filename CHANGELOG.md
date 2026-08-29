@@ -82,6 +82,7 @@
 - 2026-08-29 使用独立 Compose project 实测 `SMOKE_SEARCH_PROFILE=1`：Elasticsearch、Search Indexer、Search、Core、Message、Sync、Gateway 和 Agent 均通过 health/readiness，Gateway health 通过，临时资源自动清理。
 - 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 通过：真实 MySQL 验证 Message atomic/projector 权限和 Inbox ownership 迁移/回滚，三节点 Kafka 验证 backlog、实时事件、retry/DLQ 与 Sync Projector 收敛；证据仍不等同于候选镜像经 Gateway 的完整消息发送验收。
 - 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 通过候选镜像端到端消息验收：经 Gateway 注册/登录、好友关系和 WebSocket 发送后，Message、Outbox 与目标用户 Inbox 均正确落库；重复请求幂等、Kafka authority 和生产回滚仍保持后续门禁。
+- 2026-08-29 端到端消息 smoke 增加同一 `client_message_id` 重发，确认候选 Message Service 对 Message、Outbox 和目标 Inbox 保持幂等单条结果；Kafka authority 深度核对和生产回滚继续保持后续门禁。
 - C++ Realtime Delivery 在当前 `master` 基线通过 Ubuntu 24.04 容器门禁：依赖安装、CMake Release 构建和 14/14 CTest 成功，镜像 provenance 标记 `dirty=false`；Go/C++ projection 性能对照仍为 `blocked`，因此继续保留 Go projection 和默认 Go authority。
 
 - Cassandra hydration 与 read-routing smoke 已支持动态宿主机端口并行执行；2026-08-29 两条真实隔离 MySQL 8.4/Cassandra 5.0.9 验证同时通过，覆盖 shadow hydration、重复响应恢复、Legacy ID 恢复、Metadata 回填、Cassandra 页面读取及损坏/缺失行 MySQL fallback。该证据仍不授权生产主读灰度。
