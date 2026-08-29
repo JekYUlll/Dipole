@@ -9,6 +9,7 @@ import (
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
 // Repositories contains one repository instance for each application process.
@@ -231,7 +232,7 @@ func NewMessageProcessRepositoriesWithInboxWrites(db *sql.DB, enabled bool) (*Me
 	if err != nil {
 		return nil, fmt.Errorf("create message transaction store: %w", err)
 	}
-	messages, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(mysqlStore, enabled)
+	messages, err := messagemysql.NewMessageRepositoryWithInboxWrites(mysqlStore, enabled)
 	if err != nil {
 		return nil, fmt.Errorf("create message repository: %w", err)
 	}

@@ -15,6 +15,13 @@ type Store struct {
 	queries *generated.Queries
 }
 
+// TransactionStore is the minimal sqlc transaction boundary shared by
+// service-owned repository adapters.
+type TransactionStore interface {
+	Queries() *generated.Queries
+	WithinTx(context.Context, *sql.TxOptions, func(*generated.Queries) error) error
+}
+
 func NewStore(db *sql.DB) (*Store, error) {
 	if db == nil {
 		return nil, errors.New("mysql database is required")

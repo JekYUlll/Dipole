@@ -39,6 +39,10 @@ if [[ ! -f "${root_dir}/internal/services/message/domain/message_event.go" ]]; t
   echo "Message event domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/message/infrastructure/mysql/message_repository.go" ]]; then
+  echo "Message MySQL repository is outside its service boundary" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/message/domain/sync_projection.go" ]]; then
   echo "Message Sync projection implementation is outside its service boundary" >&2
   exit 1
@@ -143,6 +147,10 @@ if [[ -e "${root_dir}/internal/service/sync_service.go" ]]; then
 fi
 if [[ -e "${root_dir}/internal/service/message_event.go" || -e "${root_dir}/internal/service/message_sync_projection.go" ]]; then
   echo "legacy Message event implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/data/mysql/repository/message.go" ]]; then
+  echo "legacy Message MySQL repository remains in shared repository package" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
