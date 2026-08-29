@@ -303,6 +303,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-08-30 验证：** `check-agent-timeline-repair-alerts.sh` 通过 2 条 Prometheus 规则及 promtool 测试；Compose 隔离 smoke 通过 migration v50、最小权限、worker readiness、pending intent 恢复和 event UUID 幂等重放，临时资源已清理。该证据仍不覆盖共享环境 operator 灰度、告警抓取、回切演练和默认生产开关。
 - **发现日期：** 2026-08-29
 - **影响范围：** Timeline repair、MySQL 权限、Compose 发布与运行时告警
 - **现状：** 已提供独立 `dipole-agent-task-timeline-repair` 镜像二进制、专用最小权限账号和默认关闭的 `agent-timeline-repair` Compose profile；隔离 MySQL 进程级 smoke 已验证 claim/replay、completed 收敛和事件幂等，并新增短窗口失败/持续 retry 的 Prometheus 告警规则与 promtool 测试，worker 仍需 operator 显式启用。
