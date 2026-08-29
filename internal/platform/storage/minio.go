@@ -64,6 +64,7 @@ type UploadedPart struct {
 type MultipartCompletePart struct {
 	PartNumber int
 	ETag       string
+	Size       int64
 }
 
 type MinIOUploader struct {
