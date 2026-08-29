@@ -274,7 +274,7 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	if err != nil {
 		return nil, fmt.Errorf("list multipart parts: %w", err)
 	}
-	if err := validateMultipartParts(parts, session.TotalParts); err != nil {
+	if err := validateMultipartParts(parts, session.TotalParts, session.FileSize, session.ChunkSize); err != nil {
 		return nil, err
 	}
 
@@ -467,8 +467,11 @@ func (s *FileService) effectiveMultipartSessionTTL() time.Duration {
 	return time.Hour
 }
 
-func validateMultipartParts(parts []platformStorage.MultipartCompletePart, totalParts int) error {
+func validateMultipartParts(parts []platformStorage.MultipartCompletePart, totalParts int, fileSize, chunkSize int64) error {
 	if totalParts <= 0 || len(parts) != totalParts {
+		return ErrMultipartSessionInvalid
+	}
+	if fileSize <= 0 || chunkSize <= 0 {
 		return ErrMultipartSessionInvalid
 	}
 	sort.Slice(parts, func(i, j int) bool {
@@ -476,7 +479,11 @@ func validateMultipartParts(parts []platformStorage.MultipartCompletePart, total
 	})
 	for idx, part := range parts {
 		expected := idx + 1
-		if part.PartNumber != expected || strings.TrimSpace(part.ETag) == "" {
+		expectedSize := chunkSize
+		if expected == totalParts {
+			expectedSize = fileSize - chunkSize*int64(totalParts-1)
+		}
+		if part.PartNumber != expected || strings.TrimSpace(part.ETag) == "" || part.Size != expectedSize {
 			return ErrMultipartSessionInvalid
 		}
 	}

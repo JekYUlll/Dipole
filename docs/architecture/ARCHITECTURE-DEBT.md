@@ -1073,4 +1073,4 @@
 - **现状：** 项目已经使用 MinIO 原生 S3 Multipart Upload；超过 Web 端 `4 MiB` 阈值后由 Core 逐片接收并调用 `PutObjectPart`，默认单文件上限为 `50 MiB`、分片大小为 `5 MiB`，会话与 part ETag 保存在 Redis。当前前端使用 3 路有界并发和最多 2 次指数退避重试，分片请求仍经过业务服务，暂未提供预签名直传、暂停/断点恢复和 checksum 校验。
 - **风险：** 文件越大，Core 的请求连接、带宽和超时压力越高；客户端中断后需要重新上传已完成分片，Redis/MinIO 的过期 upload 清理依赖后续运维闭环，内容完整性主要依赖 MinIO part 完成结果。
 - **计划：** 在 A7 中增加受限预签名 part URL、有界并发与重试、暂停/恢复、文件与 part checksum、Complete/Abort 幂等、未完成 Multipart 生命周期清理和真实 MinIO 集成验收；旧单请求与当前服务端 Multipart 路径保留为 feature flag 回滚路径。
-- **验证：** 当前 MinIO Multipart 单元/服务契约和 HTTP handler 测试已覆盖初始化、分片、完成、缺片、越权及 Abort 基本语义；前端 Multipart helper 的并发、分片边界、重试和永久失败停止调度测试通过，A7 完成前不宣称已具备生产级断点续传和高吞吐直传能力。
+- **验证：** 当前 MinIO Multipart 单元/服务契约和 HTTP handler 测试已覆盖初始化、分片、完成、缺片、越权及 Abort 基本语义；服务端完成阶段已校验 part 实际大小，前端 Multipart helper 的并发、分片边界、重试和永久失败停止调度测试通过，A7 完成前不宣称已具备生产级断点续传和高吞吐直传能力。
