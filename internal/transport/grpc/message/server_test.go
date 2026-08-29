@@ -30,6 +30,14 @@ type stubMessageApplication struct {
 	receipt             func(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error)
 }
 
+func (s *stubMessageApplication) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	return &model.Message{UUID: "system-direct", SenderUUID: senderUUID, TargetUUID: targetUUID, Content: content}, nil
+}
+
+func (s *stubMessageApplication) SendSystemGroupMessage(groupUUID, content string) error {
+	return nil
+}
+
 func (s *stubMessageApplication) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*applicationPort.MessageCommandReceipt, error) {
 	if s.receipt == nil {
 		return &applicationPort.MessageCommandReceipt{Status: applicationPort.MessageCommandReceiptStatusAbsent}, nil
@@ -143,6 +151,22 @@ func TestServerSendDirectTextOverBufconn(t *testing.T) {
 	}
 	if application.commandContext.RequestID != "grpc-request-1" || application.commandContext.TraceID != "grpc-trace-1" {
 		t.Fatalf("unexpected command context: %+v", application.commandContext)
+	}
+}
+
+func TestServerSystemMessageRequiresAuthenticatedCoreCaller(t *testing.T) {
+	serverAdapter, err := NewServer(&stubMessageApplication{sendDirect: func(string, string, string, string) (*model.Message, error) {
+		return nil, nil
+	}})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	_, err = serverAdapter.SendSystemDirectMessage(context.Background(), &messagev1.SendSystemDirectMessageRequest{
+		Context:      &commonv1.RequestContext{PrincipalUserId: "U100", CallerService: "dipole-core"},
+		SenderUserId: "UAI", TargetUserId: "U100", Content: "system notice",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("unauthenticated system message call code=%v err=%v", status.Code(err), err)
 	}
 }
 

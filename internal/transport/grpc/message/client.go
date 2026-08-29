@@ -150,6 +150,27 @@ func (c *Client) SendGroupFileMessageContext(parent context.Context, senderUUID,
 	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
 }
 
+func (c *Client) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendSystemDirectMessage(ctx, &messagev1.SendSystemDirectMessageRequest{
+		Context: c.invocation(ctx, senderUUID), SenderUserId: senderUUID, TargetUserId: targetUUID, Content: content,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
+}
+
+func (c *Client) SendSystemGroupMessage(groupUUID, content string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	_, err := c.rpc.SendSystemGroupMessage(ctx, &messagev1.SendSystemGroupMessageRequest{
+		Context: c.invocation(ctx, "dipole-core"), GroupId: groupUUID, Content: content,
+	})
+	return domainError(err)
+}
+
 func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()

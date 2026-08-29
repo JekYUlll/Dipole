@@ -27,9 +27,10 @@ import (
 // capability RPC. The embedded aggregate runtime remains available for local
 // compatibility mode and rollback.
 type CoreRuntime struct {
-	server  *server.Server
-	coreRPC *InternalRPCServer
-	metrics *platformObservability.MetricsServer
+	server        *server.Server
+	coreRPC       *InternalRPCServer
+	metrics       *platformObservability.MetricsServer
+	messageSender *lazyCoreMessageSender
 }
 
 func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
@@ -97,8 +98,13 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	)
 
 	runtime := &CoreRuntime{}
+	var systemMessages applicationPort.SystemMessageSender
+	if config.CoreMessageConfig().Transport == "grpc" {
+		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
+		systemMessages = runtime.messageSender
+	}
 	cleanup := func() { runtime.Close() }
-	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging})
+	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
 	if err := RegisterCoreProjectionKafkaHandlers(messaging); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)
@@ -159,6 +165,12 @@ func (r *CoreRuntime) Server() *server.Server {
 func (r *CoreRuntime) Close() {
 	if r == nil {
 		return
+	}
+	if r.messageSender != nil {
+		if err := r.messageSender.Close(); err != nil {
+			logger.Warn("Core Message sender close failed", zap.Error(err))
+		}
+		r.messageSender = nil
 	}
 	if err := closeRuntimeMetrics(r.metrics); err != nil {
 		logger.Warn("Core metrics close failed", zap.Error(err))

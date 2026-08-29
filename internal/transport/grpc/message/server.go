@@ -9,6 +9,7 @@ import (
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
@@ -99,6 +100,45 @@ func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroup
 		return nil, rpcError(err)
 	}
 	return sendResponse(message, recipients), nil
+}
+
+func (s *Server) SendSystemDirectMessage(ctx context.Context, request *messagev1.SendSystemDirectMessageRequest) (*messagev1.SendMessageResponse, error) {
+	if err := requireCoreCaller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	sender, ok := s.application.(application.SystemMessageSender)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "system message sender is unavailable")
+	}
+	message, err := sender.SendSystemDirectMessage(request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent())
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	return sendResponse(message, nil), nil
+}
+
+func (s *Server) SendSystemGroupMessage(ctx context.Context, request *messagev1.SendSystemGroupMessageRequest) (*messagev1.SendMessageResponse, error) {
+	if err := requireCoreCaller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	sender, ok := s.application.(application.SystemMessageSender)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "system message sender is unavailable")
+	}
+	if err := sender.SendSystemGroupMessage(request.GetGroupId(), request.GetContent()); err != nil {
+		return nil, rpcError(err)
+	}
+	return &messagev1.SendMessageResponse{}, nil
+}
+
+func requireCoreCaller(ctx context.Context, requestContext *commonv1.RequestContext) error {
+	if _, err := principalFrom(ctx, requestContext); err != nil {
+		return err
+	}
+	if caller, ok := grpcauth.CallerService(ctx); !ok || caller != "dipole-core" {
+		return status.Error(codes.PermissionDenied, "only Core service may send system messages")
+	}
+	return nil
 }
 
 func (s *Server) GetMessageCommandReceipt(ctx context.Context, request *messagev1.GetMessageCommandReceiptRequest) (*messagev1.GetMessageCommandReceiptResponse, error) {
