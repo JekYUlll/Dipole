@@ -267,7 +267,7 @@ for legacy_message_transport in message_transport.go message_shadow.go message_t
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Message transport" >&2
   exit 1
 fi
@@ -285,7 +285,7 @@ for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_tes
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Sync transport" >&2
   exit 1
 fi
