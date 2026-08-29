@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：重新执行 Cassandra read-routing 隔离 smoke，真实验证 migration v50、Cassandra Seq 页面主读，以及 payload 损坏/缺行按同一 cursor 回退 MySQL；临时 Compose 资源自动清理，生产主读开关保持关闭。
 - Agent Runtime active 启动增加 release manifest 绑定：必须提供 manifest 文件、candidate 必须一致且阶段必须为 `user_gray`；默认 shadow 路径不变，缺失/读取失败/阶段或版本漂移均 fail closed。
 - Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
 - 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
