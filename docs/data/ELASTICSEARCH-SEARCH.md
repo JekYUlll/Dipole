@@ -12,7 +12,7 @@ dipole-messages-v1
   └─ dipole-messages-write  (is_write_index=true)
 ```
 
-v1 mapping 位于 `internal/data/elasticsearch/schema/message_search_v1.json`，启用 `dynamic: strict` 并固定以下字段：
+v1 mapping 位于 `internal/platform/elasticsearch/schema/message_search_v1.json`，启用 `dynamic: strict` 并固定以下字段：
 
 | 字段 | 类型 | 用途 |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Reconcile 只接受已完成任务的原始高水位，刷新目标索引后逐�
 
 ```bash
 DIPOLE_TEST_ELASTICSEARCH_URL=http://127.0.0.1:9200 \
-  go test -count=1 -run TestIndexContract -v ./internal/data/elasticsearch
+  go test -count=1 -run TestIndexContract -v ./internal/platform/elasticsearch
 
 scripts/smoke-search-indexer.sh
 scripts/smoke-search-backfill.sh
