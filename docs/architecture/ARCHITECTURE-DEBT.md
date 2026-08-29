@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Agent application 兼容 facade 的剩余测试调用已迁移至服务边界，删除空的 `internal/app/agent_application_compat.go`，并同步更新服务布局门禁与仓库边界文档；`internal/app` 继续仅保留实际仍被使用的兼容测试/聚合入口。
 - 2026-08-29：Agent Execution Policy 测试已改用 Agent application 的持久策略构造器，删除 `internal/app` 中无调用的策略 alias 与构造转发；剩余兼容入口继续按真实调用者收敛。
 - 2026-08-29：Memory Resolver 测试已迁入 `internal/services/agent/application`，其 memory、invocation 和 task reader stub 随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Runtime Promotion Evidence Review 测试已迁入 `internal/services/agent/application`，其 operator control 与 artifact reader stub 随测试归属迁移，并删除 `internal/app` 对应 facade。

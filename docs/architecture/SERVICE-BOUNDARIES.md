@@ -34,7 +34,7 @@
 
 ### 需要收敛
 
-- `internal/store` 仍包含少量兼容入口；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容别名、转发和兼容测试，生产服务入口不得直接依赖该 facade。
+- `internal/store` 仍包含少量兼容入口；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；`sync_runtime.go` 与 `cassandra_projector_runtime.go` 保留为长期服务运行时。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
@@ -48,7 +48,7 @@
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `ProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store，并与 SQLC 实现共同位于 `internal/services/agent/infrastructure/mysql/`；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
 - Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/data/mysql/repository/agent_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Agent 数据访问实现由 Agent process 独占。
-- Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app/agent_application_compat.go` 仅保留 embedded 兼容别名与构造转发，服务入口和契约测试优先直接依赖 Agent application 包。
+- Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app` 的 Agent application 兼容 facade 已在调用者迁移后移除，服务入口和契约测试直接依赖 Agent application 包。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Sync MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 与 embedded 兼容入口均通过服务专属 composition，旧共享 repository 仅保留兼容入口。

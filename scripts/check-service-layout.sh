@@ -103,7 +103,6 @@ done
  # Compatibility roots may retain adapters and tests, but must not become a
  # new shared implementation area as services are extracted.
 for compatibility_file in \
-  internal/app/agent_application_compat.go \
   internal/store/mysql_compat.go \
   internal/store/redis_compat.go; do
   if [[ ! -f "${root_dir}/${compatibility_file}" ]]; then
@@ -551,10 +550,6 @@ for agent_application in agent_approval_grant.go agent_approval_service.go agent
     exit 1
   fi
 done
-if [[ ! -f "${root_dir}/internal/app/agent_application_compat.go" ]]; then
-  echo "embedded Agent application compatibility boundary is missing" >&2
-  exit 1
-fi
 # The aggregate app facade is a compatibility boundary. Keep production code
 # from depending on it so new standalone services cannot bypass service roots.
 while IFS= read -r app_importer; do

@@ -242,7 +242,7 @@ func TestPersistentAgentExecutionPolicyPinsDefinitionAndTransitionsTask(t *testi
 func TestAgentTaskUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	t.Parallel()
 
-	got := agentTaskUUIDV1(agentPolicyStartRequestV1())
+	got := agentapplication.AgentTaskUUIDV1(agentPolicyStartRequestV1())
 	const want = "task:e47647aaf491da8a27072ed94d6b69b87a025a1e211000cbef6a9aeb458"
 	if got != want {
 		t.Fatalf("Agent Task UUID = %q, want %q", got, want)
@@ -310,7 +310,7 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 
 	scopes := []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}}}
 	store := &agentPolicyStoreStub{}
-	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
+	if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
 		t.Fatalf("ensure baseline: %v", err)
 	}
 	if store.latest == nil || store.latest.DefinitionUUID != "embedded:UAI" || store.latest.Version != 1 {
@@ -318,7 +318,7 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 	}
 	custom := activeAgentDefinitionV1(7, time.Unix(0, 0).UTC(), []string{application.AgentPermissionMessageWrite})
 	store.latest = &custom
-	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
+	if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
 		t.Fatalf("preserve custom Definition: %v", err)
 	}
 	if store.latest.Version != 7 {
@@ -656,6 +656,6 @@ func cloneDefinitionV1(definition *application.AgentDefinitionVersionV1) *applic
 	}
 	copy := *definition
 	copy.Permissions = append([]string(nil), definition.Permissions...)
-	copy.Scopes = clonePolicyScopesV1(definition.Scopes)
+	copy.Scopes = agentapplication.ClonePolicyScopesV1(definition.Scopes)
 	return &copy
 }
