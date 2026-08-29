@@ -286,6 +286,7 @@
 - **本轮进展：** 2026-08-29 扩展候选消息 smoke，按 `before_seq=0` 和 `after_seq=0` 通过 Gateway 读取同一消息，并校验返回持久化 `message_seq`；历史读取证据已覆盖，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在已提交 revision `fe84b7b` 上重建七个候选镜像，逐项核对同一 revision、`io.dipole.source.dirty=false` 和服务二进制标签；独立消息流程再次通过，候选供应链与 Timeline 读取证据已闭合，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
+- **本轮进展：** 2026-08-30 在逐服务候选镜像拓扑中完成真实消息流程 smoke：注册/登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等，以及 `before_seq` 历史和 `after_seq` 增量读取均通过；receipt 归档于 `benchmarks/ad048-message-flow-2026-08-30/receipt.json`。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-30 基于干净 revision `81730409` 重建逐服务 Go 镜像，在 `SMOKE_SEARCH_PROFILE=1` 隔离拓扑中验证 Core、Message、Sync、Gateway、Search 和 Search Indexer 均 healthy/ready；receipt 归档于 `benchmarks/ad048-independent-images-2026-08-30/receipt.json`。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 收紧 Compose 静态门禁，默认拓扑现在同时锁定 Agent 独立镜像及 `services/agent-runtime` 构建上下文，Timeline repair profile 锁定独立镜像和 `/app/service` 入口；共享环境候选切换与回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
