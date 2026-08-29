@@ -178,7 +178,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		runtime.Close()
 		return nil, fmt.Errorf("configure Message dependency readiness: %w", err)
 	}
-	runtime.rpc, err = legacybootstrap.NewMessageRPCServer(rpcCfg, servedMessages)
+	runtime.rpc, err = NewMessageRPCServer(rpcCfg, servedMessages)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)
