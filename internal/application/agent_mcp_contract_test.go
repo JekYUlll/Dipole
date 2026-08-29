@@ -22,6 +22,13 @@ func TestAgentMCPResourceIdentifierUsesConfiguredValue(t *testing.T) {
 	}
 }
 
+func TestAgentTokenSessionCarriesVerifierResult(t *testing.T) {
+	session := AgentTokenSession{UserUUID: "U1", TokenID: "T1"}
+	if session.UserUUID != "U1" || session.TokenID != "T1" {
+		t.Fatalf("unexpected token session: %+v", session)
+	}
+}
+
 func TestAgentMCPContractRejectsUnsafeResource(t *testing.T) {
 	for _, resource := range []string{"", "ftp://agent.local/mcp", "https://agent.local/mcp?token=secret", "https://user:pass@agent.local/mcp", "https://agent.local/mcp#fragment"} {
 		if err := ValidateAgentMCPResource(resource); !errors.Is(err, ErrInvalidAgentMCPResource) {

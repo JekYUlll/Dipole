@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：共享 authentication middleware 已改用 `internal/application` 的 token resolver/session contract，移除对 Core Auth 具体 TokenService 的编译依赖；Core 继续拥有 JWT issuer/verifier，后续可独立替换 Gateway verifier。
 - 2026-08-30：Agent MCP resource 默认值和配置解析已归属 `internal/application` contract；Gateway bootstrap、proxy 和 middleware 不再调用 Core 的资源解析实现，Core 仅保留 token issuer/verifier 与兼容包装，结构门禁和定向测试通过。
 - 2026-08-30：Gateway Agent MCP 代理的 resource、scope 和安全 URL 校验已下沉到 `internal/application`；Core 继续拥有 token issuer/verifier，Gateway 只依赖认证 contract，结构门禁和安全校验测试已通过。
 - 2026-08-30：Gateway Kafka consumer 所需的群组、会话、联系人和已读事件 decoder 已下沉到 `internal/application` 跨服务 contract；Gateway 生产代码不再依赖 Core domain，服务布局门禁已固定该边界，Core 仍保留事件生产与自身投影实现。
