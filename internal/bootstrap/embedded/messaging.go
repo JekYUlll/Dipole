@@ -6,6 +6,7 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
+	coreserver "github.com/JekYUlll/Dipole/internal/services/core/server"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
@@ -29,13 +30,7 @@ type MessagingDependencies struct {
 	DuplicateHydrationObserver func(string)
 }
 
-type MessagingServices struct {
-	Core          applicationPort.CoreCapability
-	Files         *coreapplication.LocalFileApplication
-	Messages      *messageapplication.LocalApplication
-	Conversations *coreapplication.LocalConversationApplication
-	Sync          applicationPort.SyncApplication
-}
+type MessagingServices = coreserver.MessagingServices
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
 	if repos == nil {
