@@ -209,6 +209,10 @@ if [[ ! -f "${root_dir}/internal/services/message/infrastructure/cassandra/proje
   echo "Message Cassandra projector must remain under the Message service boundary" >&2
   exit 1
 fi
+if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/message" --glob '*.go'; then
+  echo "Message service must not import Core domain implementations" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1

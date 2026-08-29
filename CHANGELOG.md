@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 将 Message 与 Core 共享的文件错误提升到 `internal/application` 契约，解除 Message domain 对 Core domain 实现的直接依赖；保留 Core/兼容入口的错误身份和 HTTP 错误映射。
 - 重新整理一次性运维代码：将 Agent、Cassandra、Search、Sync 的回填、基线、清理、切换、证据和对账实现统一收纳到 `internal/operations/<service>/`，移除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向遗留目录；补充目录索引与结构门禁，运行行为和工具入口保持兼容。
 - 将 MySQL migration runner、DSN 配置迁入 `internal/platform/mysql/`，将 Agent/Cassandra/Search/Sync 的 MySQL 运维 adapter 与 contract test 迁入对应 `internal/operations/<service>/<operation>/mysql/`；`internal/data/mysql` 仅保留兼容入口，服务调用路径和回滚语义保持兼容。
 
