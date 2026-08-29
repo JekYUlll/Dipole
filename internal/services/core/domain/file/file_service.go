@@ -104,6 +104,7 @@ type FileService struct {
 	maxFileSizeBytes         int64
 	multipartChunkSize       int64
 	multipartSessionTTL      time.Duration
+	multipartPresignURLTTL   time.Duration
 	downloadURLTTL           time.Duration
 	multipartMetrics         *MultipartMetrics
 	multipartRequireChecksum bool
@@ -121,19 +122,23 @@ func NewFileService(repo fileRepository, messageRepo fileMessageRepository, stor
 		time.Duration(storageCfg.DownloadURLTTLMinutes)*time.Minute,
 	)
 	service.multipartRequireChecksum = storageCfg.MultipartRequireChecksum
+	if storageCfg.MultipartPresignURLTTLSeconds >= 60 && storageCfg.MultipartPresignURLTTLSeconds <= 3600 {
+		service.multipartPresignURLTTL = time.Duration(storageCfg.MultipartPresignURLTTLSeconds) * time.Second
+	}
 	return service
 }
 
 func newFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage, maxFileSizeBytes int64, multipartChunkSize int64, multipartSessionTTL time.Duration, downloadURLTTL time.Duration) *FileService {
 	return &FileService{
-		repo:                repo,
-		messageRepo:         messageRepo,
-		storage:             storage,
-		sessionStore:        newMultipartUploadSessionStore(),
-		maxFileSizeBytes:    maxFileSizeBytes,
-		multipartChunkSize:  multipartChunkSize,
-		multipartSessionTTL: multipartSessionTTL,
-		downloadURLTTL:      downloadURLTTL,
+		repo:                   repo,
+		messageRepo:            messageRepo,
+		storage:                storage,
+		sessionStore:           newMultipartUploadSessionStore(),
+		maxFileSizeBytes:       maxFileSizeBytes,
+		multipartChunkSize:     multipartChunkSize,
+		multipartSessionTTL:    multipartSessionTTL,
+		multipartPresignURLTTL: multipartPartURLTTL,
+		downloadURLTTL:         downloadURLTTL,
 	}
 }
 
@@ -191,6 +196,66 @@ type RegisterMultipartPartInput struct {
 }
 
 const multipartPartURLTTL = 15 * time.Minute
+
+// MultipartUploadPolicy is safe to expose to authenticated clients. It contains
+// routing and sizing controls only, never storage credentials or signed URLs.
+type MultipartUploadPolicy struct {
+	SchemaVersion              string `json:"schema_version"`
+	PolicyVersion              string `json:"policy_version"`
+	Mode                       string `json:"mode"`
+	FallbackMode               string `json:"fallback_mode"`
+	DirectUploadThresholdBytes int64  `json:"direct_upload_threshold_bytes"`
+	MaxFileSizeBytes           int64  `json:"max_file_size_bytes"`
+	ChunkSizeBytes             int64  `json:"chunk_size_bytes"`
+	MaxConcurrency             int    `json:"max_concurrency"`
+	MaxRetries                 int    `json:"max_retries"`
+	RetryDelayMS               int    `json:"retry_delay_ms"`
+	PresignURLTTLSeconds       int    `json:"presign_url_ttl_seconds"`
+}
+
+func (s *FileService) MultipartUploadPolicy() MultipartUploadPolicy {
+	storageCfg := config.StorageConfig()
+	policyVersion := strings.TrimSpace(storageCfg.MultipartPolicyVersion)
+	if policyVersion == "" {
+		policyVersion = "v1"
+	}
+	mode := strings.TrimSpace(storageCfg.MultipartMode)
+	if mode != "presigned" {
+		mode = "relay"
+	}
+	maxFileSizeMB := maxInt64(storageCfg.FileMaxSizeMB, 50)
+	chunkSizeMB := maxInt64(storageCfg.MultipartChunkSizeMB, 5)
+	directThresholdMB := maxInt64(storageCfg.MultipartDirectThresholdMB, 4)
+	maxConcurrency := storageCfg.MultipartMaxConcurrency
+	if maxConcurrency < 1 || maxConcurrency > 32 {
+		maxConcurrency = 3
+	}
+	maxRetries := storageCfg.MultipartMaxRetries
+	if maxRetries < 0 || maxRetries > 10 {
+		maxRetries = 2
+	}
+	retryDelayMS := storageCfg.MultipartRetryDelayMS
+	if retryDelayMS < 0 || retryDelayMS > 60000 {
+		retryDelayMS = 250
+	}
+	presignTTLSeconds := storageCfg.MultipartPresignURLTTLSeconds
+	if presignTTLSeconds < 60 || presignTTLSeconds > 3600 {
+		presignTTLSeconds = 900
+	}
+	return MultipartUploadPolicy{
+		SchemaVersion:              "dipole.multipart-upload.policy.v1",
+		PolicyVersion:              policyVersion,
+		Mode:                       mode,
+		FallbackMode:               "relay",
+		DirectUploadThresholdBytes: directThresholdMB * 1024 * 1024,
+		MaxFileSizeBytes:           maxFileSizeMB * 1024 * 1024,
+		ChunkSizeBytes:             chunkSizeMB * 1024 * 1024,
+		MaxConcurrency:             maxConcurrency,
+		MaxRetries:                 maxRetries,
+		RetryDelayMS:               retryDelayMS,
+		PresignURLTTLSeconds:       presignTTLSeconds,
+	}
+}
 
 func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
 	if header == nil {
@@ -385,7 +450,7 @@ func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, part
 	expiresAt := time.Now().UTC().Add(multipartPartURLTTL)
 	result := make([]MultipartPartUploadURL, 0, len(ordered))
 	for _, partNumber := range ordered {
-		presignedURL, signErr := signer.PresignMultipartPartURL(ctx, session.ObjectKey, session.UploadID, partNumber, multipartPartURLTTL)
+		presignedURL, signErr := signer.PresignMultipartPartURL(ctx, session.ObjectKey, session.UploadID, partNumber, s.multipartPresignURLTTL)
 		if signErr != nil {
 			return nil, fmt.Errorf("presign multipart part %d: %w", partNumber, signErr)
 		}

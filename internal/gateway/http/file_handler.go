@@ -39,6 +39,10 @@ type multipartPartRegisterService interface {
 	RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error
 }
 
+type multipartPolicyService interface {
+	MultipartUploadPolicy() corefile.MultipartUploadPolicy
+}
+
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
@@ -281,6 +285,28 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 	}
 
 	Success(c, httpdto.ToFileMultipartInitiateResponse(result))
+}
+
+// MultipartPolicy godoc
+// @Summary 获取分片上传策略
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} SuccessEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Router /files/uploads/policy [get]
+func (h *FileHandler) MultipartPolicy(c *gin.Context) {
+	if _, ok := middleware.CurrentUser(c); !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	provider, ok := h.service.(multipartPolicyService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart policy is unavailable")
+		return
+	}
+	Success(c, provider.MultipartUploadPolicy())
 }
 
 // MultipartStatus godoc

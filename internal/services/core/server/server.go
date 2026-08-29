@@ -216,6 +216,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 				protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
 			}
 			protected.POST("/files", fileHandler.Upload)
+			protected.GET("/files/uploads/policy", fileHandler.MultipartPolicy)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.GET("/files/uploads/:session_id", fileHandler.MultipartStatus)
 			protected.POST("/files/uploads/:session_id/parts/presign", fileHandler.PresignMultipartParts)
