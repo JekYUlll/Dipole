@@ -19,6 +19,7 @@ func TestGatewayRuntimeHasNoDatabaseOwnership(t *testing.T) {
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
 	paths := []string{
 		filepath.Join(repositoryRoot, "cmd", "services", "gateway", "main.go"),
+		filepath.Join(repositoryRoot, "internal", "services", "gateway", "bootstrap", "entrypoint.go"),
 		filepath.Join(repositoryRoot, "internal", "services", "gateway", "bootstrap", "runtime.go"),
 		filepath.Join(repositoryRoot, "internal", "gateway", "server.go"),
 	}
@@ -44,6 +45,10 @@ func TestGatewayRuntimeHasNoDatabaseOwnership(t *testing.T) {
 			if strings.Contains(string(source), forbidden) {
 				t.Errorf("%s contains forbidden database composition %s", path, forbidden)
 			}
+		}
+		if strings.HasSuffix(path, filepath.Join("bootstrap", "entrypoint.go")) &&
+			!strings.Contains(string(source), "return RunGatewayServer(server, tlsCfg)") {
+			t.Errorf("%s must delegate RunServer to the Gateway-owned runtime", path)
 		}
 	}
 }

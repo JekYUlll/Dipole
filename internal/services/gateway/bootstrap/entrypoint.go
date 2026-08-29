@@ -17,7 +17,7 @@ func InitializeService(ctx context.Context) (*Runtime, error) {
 }
 
 func RunServer(server *gateway.Server, tlsCfg config.TLS) error {
-	return RunServer(server, tlsCfg)
+	return RunGatewayServer(server, tlsCfg)
 }
 
 func ShutdownTimeout() time.Duration {
