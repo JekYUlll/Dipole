@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -27,6 +28,10 @@ type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
 type LocalAgentCapabilityV1 = agentapplication.LocalAgentCapabilityV1
 type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
 type PersistentAgentWorkflowRepairExecutorV1 = agentapplication.PersistentAgentWorkflowRepairExecutorV1
+type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV1
+type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
+type PersistentAgentInvocationResolverV1 = agentapplication.PersistentAgentInvocationResolverV1
+type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissionV1
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
 	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
@@ -122,6 +127,46 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentap
 
 func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
 	return agentapplication.AgentCommandCapabilityIDV1(kind)
+}
+
+func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
+	return agentapplication.NewPersistentAgentInvocationResolverV1(store, activeAuthorizers...)
+}
+
+func NewPersistentAgentInvocationResolverV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
+	return agentapplication.NewPersistentAgentInvocationResolverV1WithClock(store, now, activeAuthorizers...)
+}
+
+func NewPersistentAgentRunAdmissionV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
+	return agentapplication.NewPersistentAgentRunAdmissionV1(store, activeAuthorizers...)
+}
+
+func NewPersistentAgentRunAdmissionV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentRunAdmissionV1, error) {
+	return agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, now, activeAuthorizers...)
+}
+
+func NewPersistentAgentExecutionPolicyV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentExecutionPolicyV1, error) {
+	return agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, now)
+}
+
+func NewStaticAgentExecutionPolicyV1(permissions []string, scopes []application.AgentResourceScopeV1) (*StaticAgentExecutionPolicyV1, error) {
+	return agentapplication.NewStaticAgentExecutionPolicyV1(permissions, scopes)
+}
+
+func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
+	return agentapplication.NewPersistentAgentExecutionPolicyV1(store)
+}
+
+func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, permissions []string, scopes []application.AgentResourceScopeV1) error {
+	return agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, store, tenantID, agentUUID, permissions, scopes)
+}
+
+func agentTaskUUIDV1(request application.AgentExecutionPolicyStartV1) string {
+	return agentapplication.AgentTaskUUIDV1(request)
+}
+
+func clonePolicyScopesV1(scopes []application.AgentResourceScopeV1) []application.AgentResourceScopeV1 {
+	return agentapplication.ClonePolicyScopesV1(scopes)
 }
 
 func NewPersistentAgentWorkflowRepairPrepareServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {

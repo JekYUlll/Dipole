@@ -251,7 +251,7 @@ if [[ ! -f "${root_dir}/internal/services/agent/infrastructure/mysql/agent_polic
   echo "Agent MySQL repository implementation is outside the Agent service boundary" >&2
   exit 1
 fi
-for agent_application in agent_approval_grant.go agent_approval_service.go agent_task_control.go agent_definition_catalog.go agent_memory_candidate_promotion.go agent_task_workflow_projection.go agent_mcp_readiness_evidence.go agent_mcp_tool_round.go agent_tool_invocation_audit.go agent_runtime_promotion_evidence.go agent_workflow_repair_audit.go agent_artifact.go agent_memory_owner.go agent_subscription.go agent_command.go agent_capability.go agent_workflow_repair_execution.go agent_workflow_repair_executor.go; do
+for agent_application in agent_approval_grant.go agent_approval_service.go agent_task_control.go agent_definition_catalog.go agent_memory_candidate_promotion.go agent_task_workflow_projection.go agent_mcp_readiness_evidence.go agent_mcp_tool_round.go agent_tool_invocation_audit.go agent_runtime_promotion_evidence.go agent_workflow_repair_audit.go agent_artifact.go agent_memory_owner.go agent_subscription.go agent_command.go agent_capability.go agent_workflow_repair_execution.go agent_workflow_repair_executor.go agent_execution_policy.go; do
   if [[ ! -f "${root_dir}/internal/services/agent/application/${agent_application}" ]]; then
     echo "Agent application implementation is outside the Agent service boundary: ${agent_application}" >&2
     exit 1

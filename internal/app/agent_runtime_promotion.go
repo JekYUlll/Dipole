@@ -11,7 +11,7 @@ import (
 
 type PersistentAgentActiveRunPromotionAuthorizerV1 struct {
 	store application.AgentRuntimePromotionGrantStoreV1
-	now   agentPolicyClockV1
+	now   func() time.Time
 }
 
 var _ application.AgentActiveRunPromotionAuthorizerV1 = (*PersistentAgentActiveRunPromotionAuthorizerV1)(nil)
