@@ -30,13 +30,14 @@
 - **发现日期：** 2026-08-29
 - **影响范围：** Go 服务镜像、Compose 发布、回滚和供应链 provenance
 - **现状：** 服务入口已拆分，Compose 仍默认引用包含多个二进制的 `DIPOLE_IMAGE`。本轮新增只复制单一 `/app/service` 的镜像模板、构建脚本和 `isolated-images.yml` override，并覆盖旧 entrypoint；Core 候选镜像已实际构建验证。
-- **风险：** 共享镜像扩大每个服务的攻击面和发布耦合；候选镜像尚未完成 Kafka authority 深度核对和回滚切换演练，因此暂不替换默认镜像。
-- **下一步：** 在独立 Compose project 中继续核对 Kafka consumer ownership 与历史读取，再执行可回滚切换演练；证据完整后再评估默认 Compose 切换。
+- **风险：** 共享镜像扩大每个服务的攻击面和发布耦合；候选镜像尚未完成生产级回滚切换演练，因此暂不替换默认镜像。
+- **下一步：** 在维护窗口执行候选镜像切换，记录 Kafka consumer ownership、历史读取、故障停止和恢复后的可执行回切 receipt；证据完整后再评估默认 Compose 切换。
 - **验证门槛：** `scripts/check-compose.sh`、`scripts/check-service-layout.sh`、Go backend 构建、Core 镜像内容隔离检查和 `scripts/smoke-microservice-isolated-images.sh` 的独立核心栈 health/readiness 演练已通过；Search profile 的独立运行时 smoke 也已通过；默认共享镜像与 authority 行为保持不变。
 - **本轮进展：** 2026-08-29 通过 `SMOKE_SEARCH_PROFILE=1` 完成独立 Search 运行时 smoke，Elasticsearch、Search Indexer、Search 及核心依赖链均通过 health/readiness；消息写入、Kafka ownership 和生产回滚切换仍未完成。
 - **本轮进展：** 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 已通过，补齐真实 MySQL atomic/projector ownership、三节点 Kafka backlog/实时事件、retry/DLQ 和 projector 收敛证据；候选镜像经 Gateway 的端到端消息发送及生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 完成候选镜像端到端消息 smoke：注册/登录、好友关系、WebSocket 发送，以及 Message/Outbox/目标用户 Inbox 持久化均通过；重复请求、Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
+- **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 

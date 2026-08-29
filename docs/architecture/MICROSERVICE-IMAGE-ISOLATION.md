@@ -29,6 +29,12 @@ SMOKE_SEARCH_PROFILE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-im
 SMOKE_MESSAGE_FLOW=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
+需要验证候选镜像的 Kafka assignment 和 Search 依赖故障恢复时：
+
+```bash
+ISOLATED_IMAGES=1 scripts/smoke-runtime-dependency-readiness.sh
+```
+
 可以通过环境变量覆盖镜像标签：
 
 ```bash

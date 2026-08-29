@@ -4,6 +4,7 @@ set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 compose_file="${root_dir}/docker-compose.microservices.yml"
+isolated_images_file="${root_dir}/deploy/microservices/isolated-images.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-readiness-${RANDOM}-$$}"
 cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-readiness-certs.XXXXXX)}"
 remove_cert_dir=0
@@ -18,6 +19,18 @@ if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   export DIPOLE_IMAGE="${image_name}:${image_tag}"
 fi
 
+if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
+  : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"
+  : "${DIPOLE_CORE_IMAGE:=dipole-core:latest}"
+  : "${DIPOLE_GATEWAY_IMAGE:=dipole-gateway:latest}"
+  : "${DIPOLE_MESSAGE_IMAGE:=dipole-message:latest}"
+  : "${DIPOLE_SYNC_IMAGE:=dipole-sync:latest}"
+  : "${DIPOLE_SEARCH_IMAGE:=dipole-search:latest}"
+  : "${DIPOLE_SEARCH_INDEXER_IMAGE:=dipole-search-indexer:latest}"
+  export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE
+  export DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE
+fi
+
 : "${DIPOLE_IMAGE:=dipole-server:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
@@ -25,7 +38,11 @@ export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_SEARCH_ENABLED=true
 
 compose() {
-  docker compose -p "${project_name}" -f "${compose_file}" --profile search "$@"
+  local -a compose_files=(-f "${compose_file}")
+  if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
+    compose_files+=(-f "${isolated_images_file}")
+  fi
+  docker compose -p "${project_name}" "${compose_files[@]}" --profile search "$@"
 }
 
 cleanup() {
