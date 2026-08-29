@@ -43,6 +43,13 @@ describe("Temporal runtime configuration", () => {
     })).toMatchObject({ enabled: true, activityMode: "read_shadow" });
   });
 
+  it("loads the explicit active read Activity profile", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "read_active"
+    })).toMatchObject({ enabled: true, activityMode: "read_active" });
+  });
+
   it("rejects empty required values when enabled", () => {
     expect(() => loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
