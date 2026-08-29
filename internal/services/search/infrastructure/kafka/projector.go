@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 var topics = []string{
@@ -47,9 +47,9 @@ func mutationFromEvent(event platformKafka.Event) (*model.MessageSearchMutation,
 	if event.Envelope == nil {
 		return nil, errors.New("Kafka envelope is required")
 	}
-	payload, err := service.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
+	payload, err := messagedomain.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("decode Search projection payload: %w", err)
 	}
-	return service.MessageSearchMutation(event.Envelope.EventType, payload)
+	return messagedomain.MessageSearchMutation(event.Envelope.EventType, payload)
 }
