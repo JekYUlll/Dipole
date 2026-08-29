@@ -283,3 +283,9 @@ SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision
 WHERE task_uuid = ?
   AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
   AND workflow_updated_at IS NOT NULL;
+
+-- name: CommitAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'executing' AND started_at IS NOT NULL AND finished_at IS NULL;
