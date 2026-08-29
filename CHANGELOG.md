@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：复核 SQLC-only 数据访问边界：`scripts/check-sqlc.sh`、服务布局门禁和 Go 全仓回归均通过；生产 Go 源码与 `go.mod`/`go.sum` 未发现 GORM/`AutoMigrate` 回流，`AD-010` 继续保持已解决。
 - 2026-08-30：复跑 `scripts/smoke-runtime-dependency-readiness.sh`，确认 readiness 探针超时修复在完整微服务拓扑中生效；Core/Message/Sync/Gateway 冷启动、Gateway assignment、Elasticsearch 故障降级/恢复和核心服务不重启均通过，临时资源自动清理。
 - 2026-08-30：为 `scripts/smoke-runtime-dependency-readiness.sh` 增加 `docker compose exec` 10 秒硬超时，避免 readiness 探针在 CLI/容器异常时无限等待；修复后完整 smoke 通过 Elasticsearch 停止/恢复、Search readiness 降级恢复、Gateway assignment 和核心服务容器不重启校验。
 - 2026-08-30：运行 `services/agent-runtime` 的 `context:calibrate` fixture，报告 `eligible=true`，覆盖中文、代码、Emoji、英文和 Tool schema 5 类样本，生成稳定的 evidence/report SHA-256；该结果仅验证校准器链路，fixture tokenizer 和合成语料不能替代真实候选模型切流证据。
