@@ -15,6 +15,7 @@ scripts/check-architecture-docs.sh
 - [Cassandra Timeline](architecture/CASSANDRA-TIMELINE.md)
 - [Realtime Delivery](architecture/REALTIME-DELIVERY.md)
 - [Agent Runtime 设计](architecture/AGENT-RUNTIME-DESIGN.md)
+- [仓库结构](architecture/REPOSITORY-STRUCTURE.md)
 
 ## 数据与存储
 

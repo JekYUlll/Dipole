@@ -61,7 +61,7 @@ Elasticsearch 不承担成员关系事实；空 scope 必须 fail closed，索�
 
 ## Search Indexer Runtime
 
-`cmd/search-indexer` 是独立部署单元，启动顺序固定为 Elasticsearch 配置校验、v1 mapping/Alias readiness、Kafka 初始化、八类 Topic 注册、consumer assignment 和 metrics listener。默认 `elasticsearch.enabled=false`，不会进入 Core、Message 或 Gateway Composition Root。
+`cmd/services/search-indexer` 是独立部署单元，启动顺序固定为 Elasticsearch 配置校验、v1 mapping/Alias readiness、Kafka 初始化、八类 Topic 注册、consumer assignment 和 metrics listener。默认 `elasticsearch.enabled=false`，不会进入 Core、Message 或 Gateway Composition Root。
 
 订阅 Topic：
 
@@ -73,7 +73,7 @@ created/edited 映射为 searchable mutation，recalled/deleted 映射为 tombst
 
 ## Search Query Runtime
 
-`cmd/search-service` 是独立只读查询进程。内部 `dipole.search.v1.SearchService` 请求只包含认证上下文、查询文本和页大小；Search Application 每次向 Core 获取 principal scope，空 scope 不访问 Elasticsearch。启动通过 `ValidateReadiness` 动态发现当前双 Alias 的唯一物理 owner 并校验 strict mapping，不创建索引或修改 Alias。
+`cmd/services/search` 是独立只读查询进程。内部 `dipole.search.v1.SearchService` 请求只包含认证上下文、查询文本和页大小；Search Application 每次向 Core 获取 principal scope，空 scope 不访问 Elasticsearch。启动通过 `ValidateReadiness` 动态发现当前双 Alias 的唯一物理 owner 并校验 strict mapping，不创建索引或修改 Alias。
 
 Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也不直接构造 Elasticsearch adapter。内部 RPC 只允许 Gateway 调用。Gateway 在 `search.enabled=true` 时注册认证 `GET /api/v1/messages/search`，从 JWT 会话取得 principal 并转发 1..256 字符的查询文本与 1..100 的 limit；依赖故障返回有界 502。
 

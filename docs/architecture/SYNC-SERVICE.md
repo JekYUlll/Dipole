@@ -43,7 +43,7 @@
 先启动 Core Capability listener，再运行：
 
 ```bash
-go run ./cmd/sync-service
+go run ./cmd/services/sync
 ```
 
 配置至少需要启用 `internal_rpc.enabled`，提供共享凭据、Core target、Sync listen address 和可用的 MySQL schema。生产构建产物为 `dist/dipole-sync`。

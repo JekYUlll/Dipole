@@ -154,7 +154,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M4：抽离 Message Service
 
-- [x] 新增 `cmd/message-service`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
+- [x] 新增 `cmd/services/message`，承接发送、幂等、消息历史、Outbox 和 Message Store 接口。
 - [x] 当前单体先作为 Gateway/Core，通过受认证 gRPC 调用 Message Service，并保留 `local` 回切。
 - [x] Message Service 通过 Core Capability API 校验用户、好友、群成员和收件人快照，不跨库读取这些 Core 表。
 - [x] 使用异步影子请求比对 Local 与 Remote 查询响应；四类发送命令只执行 primary，影子链路禁止业务写入。
@@ -167,7 +167,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 ### M5：抽离 IM Gateway
 
-- [x] 新增 `cmd/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
+- [x] 新增 `cmd/services/gateway`，只保留 HTTP/WS、认证上下文、限流、连接管理和协议适配。
 - [x] Gateway 通过 gRPC 调用 Message Service 与 Core，不持有数据库 repository。
 - [x] Kafka Realtime Delivery 将用户事件路由到 Gateway 节点，沿用 Redis Presence。
 - [x] 将静态 Web、Swagger 和管理入口的归属显式化；M5 期间由 Gateway 代理到私网 Core。
