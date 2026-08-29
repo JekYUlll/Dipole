@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：增加 Agent 前端路由安全契约测试，锁定 5 条 Agent 页面均需认证、各自受独立 feature flag 保护且关闭时回到 Chat；未改变默认关闭配置。
 - 2026-08-30：同步前端设计计划与实际 Router：补充 5 条受 feature flag 保护的 Agent 页面路由，并明确 Search/Sync 属于 Chat 工作区能力；Contact、Group、File、Device 和 Settings 仍保持待完成状态。
 - 2026-08-30：收紧 Web Sync Observation Session 的状态时间边界：`status` 对早于 `started_at` 的采样时间 fail closed，并增加回归测试，避免观测证据出现倒序时间。
 - 2026-08-30：复核主线前端与 Web Sync 契约：Pencil 设计门禁通过（54 个 Frame、2036 个节点、36 个变量、23 个可复用组件），前端 Vitest 通过 27 个文件/102 个测试，Web Sync 观测契约通过 9 个测试；真实客户端 24 小时观测仍保持未启动。
