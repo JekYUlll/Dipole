@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql
+cpu: AMD Ryzen 7 8845H w/ Radeon 780M Graphics
+BenchmarkConversationGroupProjection1000
+BenchmarkConversationGroupProjection1000/serial
+BenchmarkConversationGroupProjection1000/serial-16         	       1	16765256722 ns/op	         0 lock_time_ms	         0 lock_waits
+BenchmarkConversationGroupProjection1000/batch
+BenchmarkConversationGroupProjection1000/batch-16          	       1	 362630879 ns/op	         0 lock_time_ms	         0 lock_waits
+BenchmarkConversationGroupProjection1000/parallel-serial
+BenchmarkConversationGroupProjection1000/parallel-serial-16         	       1	20172274070 ns/op	         0 lock_time_ms	         0 lock_waits
+BenchmarkConversationGroupProjection1000/parallel-batch
+BenchmarkConversationGroupProjection1000/parallel-batch-16          	       1	  70327321 ns/op	         0 lock_time_ms	         0 lock_waits
+PASS
+ok  	github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql	118.566s
