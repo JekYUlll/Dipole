@@ -10,4 +10,4 @@
 - `rollbackProjection` 固定为修改前状态；原投影缺失时使用 `null`，未来 rollback 需使用另一个显式授权命令和当前状态 CAS。
 - Plan 最长存活 15 分钟；超时、Proposal/审批变化、Temporal evidence 漂移或当前 projection 漂移都会要求重新生成。
 
-后续如需引入实际修改，应发布新的契约版本，并分别完成最小权限 executor 身份、持久 execution ledger、dry-run 与 apply 的二次确认、rollback 演练、Pencil 审批界面和生产注册评审。v1 文件不得通过放宽 `mode` 直接加入写操作。
+后续如需引入实际修改，应发布新的契约版本，并分别完成最小权限 executor 身份、版本化 grant、持久 execution ledger、dry-run 与 apply 的二次确认、rollback 演练、Pencil 审批界面和生产注册评审。v1 文件不得通过放宽 `mode` 直接加入写操作。

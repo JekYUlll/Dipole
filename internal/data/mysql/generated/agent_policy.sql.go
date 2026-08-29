@@ -425,7 +425,7 @@ func (q *Queries) GetAgentWorkflowRepairExecution(ctx context.Context, execution
 }
 
 const getAgentWorkflowRepairOperatorGrant = `-- name: GetAgentWorkflowRepairOperatorGrant :one
-SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
+SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at, grant_version, can_execute FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userUuid string) (AgentWorkflowRepairOperatorGrant, error) {
@@ -441,6 +441,8 @@ func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userU
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GrantVersion,
+		&i.CanExecute,
 	)
 	return i, err
 }

@@ -541,6 +541,8 @@ type AgentWorkflowRepairOperatorGrant struct {
 	RevokedAt     sql.NullTime
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	GrantVersion  uint64
+	CanExecute    bool
 }
 
 type AgentWorkflowRepairProposal struct {

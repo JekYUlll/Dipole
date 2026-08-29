@@ -42,12 +42,16 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, grant := range []struct {
-		id               string
-		propose, approve bool
-	}{{"PROPOSER", true, false}, {"APPROVER-1", false, true}, {"APPROVER-2", false, true}} {
-		if _, err := db.Exec(`INSERT INTO agent_workflow_repair_operator_grants (user_uuid, can_propose, can_approve, granted_by_uuid, valid_from) VALUES (?, ?, ?, 'DBA', ?)`, grant.id, grant.propose, grant.approve, now.Add(-time.Hour)); err != nil {
+		id                        string
+		propose, approve, execute bool
+	}{{"PROPOSER", true, false, false}, {"APPROVER-1", false, true, false}, {"APPROVER-2", false, true, false}, {"EXECUTOR-1", false, false, true}} {
+		if _, err := db.Exec(`INSERT INTO agent_workflow_repair_operator_grants (user_uuid, can_propose, can_approve, can_execute, granted_by_uuid, valid_from) VALUES (?, ?, ?, ?, 'DBA', ?)`, grant.id, grant.propose, grant.approve, grant.execute, now.Add(-time.Hour)); err != nil {
 			t.Fatalf("grant %s: %v", grant.id, err)
 		}
+	}
+	executorGrant, err := store.GetWorkflowRepairOperatorGrant(context.Background(), "EXECUTOR-1")
+	if err != nil || executorGrant == nil || executorGrant.Version != 1 || !executorGrant.CanExecute {
+		t.Fatalf("executor grant=%+v err=%v", executorGrant, err)
 	}
 	service, err := appComposition.NewPersistentAgentWorkflowRepairAuditServiceV1(store, store)
 	if err != nil {
