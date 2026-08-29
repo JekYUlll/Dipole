@@ -20,6 +20,7 @@ import (
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
+	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -74,21 +75,10 @@ func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *ap
 // standalone Core process. Message persistence and Agent handlers belong to
 // their own service runtimes and must not be recreated here.
 func RegisterCoreProjectionKafkaHandlers(messaging *appComposition.MessagingServices) error {
-	if platformKafka.Subscriber == nil {
-		return nil
+	if messaging == nil {
+		return corekafka.RegisterConversationProjections(nil)
 	}
-	if messaging == nil || messaging.Conversations == nil {
-		return fmt.Errorf("core projection messaging is required")
-	}
-
-	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
-	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
-	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
-	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout", "contact.friend.deleted"} {
-		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
-	}
-
-	return nil
+	return corekafka.RegisterConversationProjections(messaging.Conversations)
 }
 
 func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {

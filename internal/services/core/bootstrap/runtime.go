@@ -21,6 +21,7 @@ import (
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
+	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"go.uber.org/zap"
 )
@@ -107,7 +108,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
-	if err := legacybootstrap.RegisterCoreProjectionKafkaHandlers(messaging); err != nil {
+	if err := corekafka.RegisterConversationProjections(messaging.Conversations); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)
 	}
