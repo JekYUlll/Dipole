@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
@@ -19,7 +20,6 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
-	"github.com/JekYUlll/Dipole/internal/store"
 	"go.uber.org/zap"
 )
 
@@ -41,7 +41,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if err := platformmysql.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("Core MySQL init failed: %w", err)
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return nil, fmt.Errorf("Core Redis init failed: %w", err)
 	}
 	if err := platformStorage.Init(); err != nil {
@@ -126,7 +126,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if runtime.metrics != nil {
 		probes := []platformObservability.DependencyProbe{
 			mysqlReadinessProbe("mysql", platformmysql.SQLDB),
-			redisReadinessProbe("redis", store.RDB),
+			redisReadinessProbe("redis", cache.RDB),
 		}
 		if platformKafka.Client != nil {
 			probes = append(probes, kafkaReadinessProbe("kafka", platformKafka.Client))

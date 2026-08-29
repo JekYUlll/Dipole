@@ -1,4 +1,4 @@
-package store_test
+package cache_test
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/platform/presence"
 	"github.com/JekYUlll/Dipole/internal/platform/ratelimit"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func TestRedisSentinelFailoverPreservesRealtimeSemantics(t *testing.T) {
@@ -24,7 +24,7 @@ func TestRedisSentinelFailoverPreservesRealtimeSemantics(t *testing.T) {
 	}
 
 	const masterName = "dipole-master"
-	client, err := store.NewRedisClient(config.Redis{
+	client, err := cache.NewRedisClient(config.Redis{
 		Mode:               "sentinel",
 		SentinelMasterName: masterName,
 		SentinelAddresses:  sentinelAddresses,
@@ -34,9 +34,9 @@ func TestRedisSentinelFailoverPreservesRealtimeSemantics(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 
-	originalRDB := store.RDB
-	store.RDB = client
-	t.Cleanup(func() { store.RDB = originalRDB })
+	originalRDB := cache.RDB
+	cache.RDB = client
+	t.Cleanup(func() { cache.RDB = originalRDB })
 
 	sentinel := redis.NewSentinelClient(&redis.Options{Addr: sentinelAddresses[0]})
 	t.Cleanup(func() { _ = sentinel.Close() })

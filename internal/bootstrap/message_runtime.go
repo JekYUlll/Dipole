@@ -9,6 +9,7 @@ import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
@@ -18,7 +19,6 @@ import (
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
-	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	"google.golang.org/grpc"
 )
@@ -49,7 +49,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := platformmysql.InitMySQLWithConfig(config.MessageMySQLConfig()); err != nil {
 		return nil, fmt.Errorf("message mysql init failed: %w", err)
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return nil, fmt.Errorf("message redis init failed: %w", err)
 	}
 	if messageCfg.RuntimeMode != "owner" && messageCfg.RuntimeMode != "shadow" {
@@ -272,9 +272,9 @@ func (r *MessageRuntime) Close() {
 	if r.coreConn != nil {
 		_ = r.coreConn.Close()
 	}
-	if store.RDB != nil {
-		_ = store.RDB.Close()
-		store.RDB = nil
+	if cache.RDB != nil {
+		_ = cache.RDB.Close()
+		cache.RDB = nil
 	}
 	if platformmysql.SQLDB != nil {
 		_ = platformmysql.SQLDB.Close()
