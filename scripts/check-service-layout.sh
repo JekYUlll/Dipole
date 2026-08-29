@@ -89,6 +89,10 @@ if [[ ! -f "${root_dir}/internal/services/core/domain/contact/contact_service.go
   echo "Core contact domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/domain/conversation/conversation_service.go" ]]; then
+  echo "Core conversation domain implementation is outside its service boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
@@ -111,6 +115,10 @@ if [[ -e "${root_dir}/internal/service/user_service.go" ]]; then
 fi
 if [[ -e "${root_dir}/internal/service/contact_service.go" ]]; then
   echo "legacy Core contact implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/conversation_service.go" ]]; then
+  echo "legacy Core conversation implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then

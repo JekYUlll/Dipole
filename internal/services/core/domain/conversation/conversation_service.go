@@ -1,4 +1,4 @@
-package service
+package coreconversation
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
@@ -46,7 +47,7 @@ type ConversationService struct {
 	userFinder   conversationUserFinder
 	groupRepo    conversationGroupRepository
 	notifier     conversationNotifier
-	events       eventPublisher
+	events       application.EventPublisher
 	observeWrite func(string, time.Duration, error)
 }
 
@@ -70,7 +71,7 @@ type ConversationReadReceipt struct {
 	ReadAt              time.Time `json:"read_at"`
 }
 
-func NewConversationService(repo conversationRepository, userFinder conversationUserFinder, groupRepo conversationGroupRepository, notifier conversationNotifier, events eventPublisher) *ConversationService {
+func NewConversationService(repo conversationRepository, userFinder conversationUserFinder, groupRepo conversationGroupRepository, notifier conversationNotifier, events application.EventPublisher) *ConversationService {
 	return &ConversationService{
 		repo:       repo,
 		userFinder: userFinder,
