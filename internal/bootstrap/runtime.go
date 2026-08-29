@@ -144,7 +144,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 	localMessaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
 		Events:    messageEvents,
-		HotGroups: platformHotGroup.NewRedisDetector(),
+		HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
 		Storage:   platformStorage.Client,
 	})
 	conversationProjectionMetrics := platformObservability.NewConversationProjectionCollector()
