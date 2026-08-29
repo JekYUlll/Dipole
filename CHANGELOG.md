@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：为 `scripts/smoke-runtime-dependency-readiness.sh` 增加 `docker compose exec` 10 秒硬超时，避免 readiness 探针在 CLI/容器异常时无限等待；修复后完整 smoke 通过 Elasticsearch 停止/恢复、Search readiness 降级恢复、Gateway assignment 和核心服务容器不重启校验。
 - 2026-08-30：运行 `services/agent-runtime` 的 `context:calibrate` fixture，报告 `eligible=true`，覆盖中文、代码、Emoji、英文和 Tool schema 5 类样本，生成稳定的 evidence/report SHA-256；该结果仅验证校准器链路，fixture tokenizer 和合成语料不能替代真实候选模型切流证据。
 - 2026-08-30：执行 `scripts/check-agent-timeline-repair-alerts.sh` 与 `scripts/smoke-agent-timeline-repair-compose.sh`，验证 2 条 Prometheus 告警规则、migration v50、最小权限、worker readiness、启动前 pending intent 恢复和 event UUID 幂等重放；临时 Compose 资源自动清理，operator 灰度和默认生产开关保持关闭。
 - 2026-08-30：在 `master` 当前基线复跑 Agent Runtime 与服务级回归门禁：Vitest 通过 125 个测试文件（662 个测试，7 个文件/27 个测试按契约跳过），`typecheck`、生产构建、Go 全仓、服务布局和 Compose 契约均通过；本次验证仍只覆盖 shadow/协议边界，不改变 active authority、Temporal 共享联调或生产灰度开关。
