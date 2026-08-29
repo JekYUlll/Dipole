@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 将 Cassandra Projector runtime 从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`；独立工具改用 Message-owned bootstrap，Cassandra Timeline projection、Kafka consumer group 和回滚语义保持不变。
 - 删除经全仓调用审计确认无调用者的 Core、Agent、Search repository alias 及 `internal/data/mysql` 历史兼容目录；各服务 SQLC repository 现在完全由服务 infrastructure 持有。
 - 删除经全仓调用审计确认无调用者的 `internal/data/mysql/store_compat.go`；MySQL 事务边界统一由 `internal/platform/mysql` 持有，剩余历史 repository alias 继续按实际调用者治理。
 - 删除经全仓调用审计确认无调用者的 `internal/store` MySQL/Redis 兼容入口；所有生产服务和运维工具统一使用 `internal/platform/mysql` 与 `internal/platform/cache`，旧共享 store 目录不再作为回滚入口。
