@@ -1,6 +1,7 @@
-package service
+package coregroup
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -12,6 +13,26 @@ import (
 type stubGroupRepository struct {
 	groups  map[string]*model.Group
 	members map[string]map[string]*model.GroupMember
+}
+
+type stubEventPublisher struct {
+	topics   []string
+	keys     []string
+	payloads []any
+}
+
+func (p *stubEventPublisher) PublishJSON(_ context.Context, topic, key string, payload any, _ map[string]string) error {
+	p.topics = append(p.topics, topic)
+	p.keys = append(p.keys, key)
+	p.payloads = append(p.payloads, payload)
+	return nil
+}
+
+func (p *stubEventPublisher) PublishEvent(_ context.Context, topic, key, _ string, payload any, _ map[string]string) error {
+	p.topics = append(p.topics, topic)
+	p.keys = append(p.keys, key)
+	p.payloads = append(p.payloads, payload)
+	return nil
 }
 
 func newStubGroupRepository() *stubGroupRepository {
