@@ -1,6 +1,6 @@
 package httpdto
 
-import "github.com/JekYUlll/Dipole/internal/compat/service"
+import coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 
 type AdminOverviewResponse struct {
 	AppName                        string `json:"app_name"`
@@ -20,7 +20,7 @@ type AdminOverviewResponse struct {
 	TLSEnabled                     bool   `json:"tls_enabled"`
 }
 
-func ToAdminOverviewResponse(overview *service.AdminOverview) *AdminOverviewResponse {
+func ToAdminOverviewResponse(overview *coreadmin.AdminOverview) *AdminOverviewResponse {
 	if overview == nil {
 		return nil
 	}
