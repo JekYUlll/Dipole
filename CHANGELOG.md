@@ -18,7 +18,8 @@
 
 ## [Unreleased]
 
-- 删除经全仓调用审计确认无生产或测试调用者的 Message/Sync 历史 repository facade；Message 与 Sync SQLC repository 现在仅由各自服务 infrastructure 持有，Core、Agent、Search 兼容入口及 embedded/store 回滚边界保持不变。
+- 删除经全仓调用审计确认无调用者的 `internal/store` MySQL/Redis 兼容入口；所有生产服务和运维工具统一使用 `internal/platform/mysql` 与 `internal/platform/cache`，旧共享 store 目录不再作为回滚入口。
+- 删除经全仓调用审计确认无生产或测试调用者的 Message/Sync 历史 repository facade；Message 与 Sync SQLC repository 现在仅由各自服务 infrastructure 持有，Core、Agent、Search 兼容入口及 embedded 回滚边界保持不变。
 - 删除无调用者的 `internal/bootstrap.RegisterGatewayKafkaHandlers` 兼容 facade，embedded Kafka 装配直接使用 Gateway infrastructure 注册器；Gateway Kafka 注册所有权完成收口。
 - Gateway runtime 已直接使用 `internal/services/gateway/infrastructure/kafka.RegisterHandlers`，移除对共享 `internal/bootstrap` Kafka 注册兼容入口的生产依赖，并新增架构回流测试。
 - Gateway Kafka 注册器与 realtime authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka`，共享 bootstrap 降为兼容转发；Gateway 的订阅注册、热群 detector、Notifier 和 fence 组合由服务边界统一持有。

@@ -26,15 +26,15 @@
 - `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `internal/platform/storage`：对象存储、Search Archive 以及 MySQL/Cassandra 灰度 routing、shadow 和 hydration fallback 适配器；通过配置关闭即可回到主存储路径。
 - `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
-- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 与 `internal/store` MySQL 入口仅保留兼容入口。
-- `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store/redis_compat.go` 仅保留兼容入口。
+- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 仅保留兼容入口。
+- `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store` Redis 入口已退役。
 - `internal/platform/runtime`：跨服务 metrics 生命周期、依赖 readiness 探针和 RPC serving 绑定；不承载业务编排、数据访问或具体服务 RPC 语义。
 - Search Indexer bootstrap 直接拥有其长期运行时装配；Kafka consumer、Elasticsearch index 和服务 metrics/readiness 的启动顺序由 `internal/services/search-indexer/bootstrap/` 负责，平台包仅提供基础设施能力。
 - `api/proto`、`api/gen/go`、`contracts`：跨服务 RPC 源契约、生成类型、事件和 Agent 契约；生成代码由协议目录统一维护。
 
 ### 需要收敛
 
-- `internal/store` 仍包含少量兼容入口；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
+- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；`sync_runtime.go` 与 `cassandra_projector_runtime.go` 保留为长期服务运行时。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
@@ -71,7 +71,7 @@
 
 1. 先为每个服务保留独立 application port 和 contract test。
 2. 将 `internal/app` 中的 Composition Root 按 Core、Message、Sync、Search 和 Agent 责任拆分。
-3. 将 `internal/service` 和 `internal/store` 中仍跨服务的文件迁入对应服务包；共享部分下沉到 `internal/platform` 或明确命名的 shared package。
+3. 将 `internal/service` 中仍跨服务的文件迁入对应服务包；共享部分下沉到 `internal/platform` 或明确命名的 shared package。
 4. 服务完成独立数据库账号、独立迁移 owner 和 RPC/事件调用后，再删除兼容实现。
 
 每次搬迁必须同时更新本清单、`ARCHITECTURE-DEBT.md`、测试门禁和回滚说明。
