@@ -7,7 +7,7 @@
 在 Message mutation 生产者维护窗口内执行：
 
 ```bash
-go run ./cmd/search-archive \
+go run ./cmd/tools/search-archive \
   --action create \
   --manifest /var/lib/dipole/search/search-v1.json \
   --snapshot-id search-v1-20260827 \
@@ -19,7 +19,7 @@ go run ./cmd/search-archive \
 ## 2. 发布到对象存储
 
 ```bash
-go run ./cmd/search-archive \
+go run ./cmd/tools/search-archive \
   --action publish \
   --manifest /var/lib/dipole/search/search-v1.json \
   --receipt /var/lib/dipole/search/search-v1-receipt.json \
@@ -31,7 +31,7 @@ go run ./cmd/search-archive \
 ## 3. 按版本恢复
 
 ```bash
-go run ./cmd/search-archive \
+go run ./cmd/tools/search-archive \
   --action restore \
   --receipt /var/lib/dipole/search/search-v1-receipt.json \
   --destination /var/lib/dipole/search/restored
@@ -42,13 +42,13 @@ go run ./cmd/search-archive \
 ## 4. 重建和切换
 
 ```bash
-go run ./cmd/search-backfill \
+go run ./cmd/tools/search-backfill \
   --job search-v1-20260827 \
   --target-index dipole-messages-v1-build-20260827 \
   --source archive \
   --archive-manifest /var/lib/dipole/search/restored/search-v1.json
 
-go run ./cmd/search-reconcile \
+go run ./cmd/tools/search-reconcile \
   --job search-v1-20260827 \
   --target-index dipole-messages-v1-build-20260827 \
   --source archive \
@@ -62,7 +62,7 @@ Reconcile 必须返回一致报告后才能执行 `search-alias`。Backfill Job 
 先使用与目标 Backfill Job 对应的 receipt 和一致 Reconcile 报告执行 dry-run：
 
 ```bash
-go run ./cmd/search-outbox-cleanup \
+go run ./cmd/tools/search-outbox-cleanup \
   --receipt /var/lib/dipole/search/search-v1-receipt.json \
   --reconcile-report /var/lib/dipole/search/search-v1-reconcile.json \
   --target-index dipole-messages-v1-build-20260827 \
@@ -72,7 +72,7 @@ go run ./cmd/search-outbox-cleanup \
 确认 Message mutation 生产者已进入维护窗口，并核对 `eligible_count` 后执行清理。执行结果应重定向到只追加的审计存储：
 
 ```bash
-go run ./cmd/search-outbox-cleanup \
+go run ./cmd/tools/search-outbox-cleanup \
   --receipt /var/lib/dipole/search/search-v1-receipt.json \
   --reconcile-report /var/lib/dipole/search/search-v1-reconcile.json \
   --target-index dipole-messages-v1-build-20260827 \

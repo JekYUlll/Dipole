@@ -31,7 +31,7 @@ done
 test "$(docker inspect -f '{{.State.Health.Status}}' "$mysql_container")" = "healthy"
 mysql_port=$(docker port "$mysql_container" 3306/tcp | awk -F: 'NR==1 {print $NF}')
 
-(cd "$root_dir" && CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate)
+(cd "$root_dir" && CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate)
 docker run --rm --network "${project}_default" -v "$root_dir/deploy/cassandra/backfill-smoke.yaml:/app/configs/config.yaml:ro" -v "$migrate_binary:/app/dipole-migrate:ro" -w /app alpine:3.22 /app/dipole-migrate -direction up >/dev/null
 (
   cd "$root_dir"

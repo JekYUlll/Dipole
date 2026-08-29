@@ -31,7 +31,7 @@ The production executor validates all four manifest hashes and the initial lease
 Create an inputs document matching `attempt-inputs.schema.json`, then create a new workspace while the initial source lease is still live:
 
 ```bash
-go run ./cmd/realtime-cutover \
+go run ./cmd/tools/realtime-cutover \
   -operation create \
   -attempt-dir /secure/cutovers/cutover-20260828-a \
   -inputs /secure/preflight/inputs.json \
@@ -45,7 +45,7 @@ go run ./cmd/realtime-cutover \
 Inspect without Redis or Kafka access:
 
 ```bash
-go run ./cmd/realtime-cutover \
+go run ./cmd/tools/realtime-cutover \
   -operation status \
   -attempt-dir /secure/cutovers/cutover-20260828-a
 ```
@@ -53,7 +53,7 @@ go run ./cmd/realtime-cutover \
 Advance exactly one external action and fsynced journal event:
 
 ```bash
-DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/tools/realtime-cutover \
   -operation advance \
   -attempt-dir /secure/cutovers/cutover-20260828-a \
   -operator operator-a \
@@ -64,7 +64,7 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
 Run `status` after every one-shot step. Repeating `advance` after an ambiguous failure recovers the same action artifact or Redis receipt. `rollback` records one rollback decision from a valid cutover state; subsequent `advance` invocations perform source-node frozen confirmation on the current freeze, or a required second freeze followed by that confirmation, before source activation and rollback checkpoint. `renew` performs one durable CAS renewal using the latest journaled transition artifact. Evidence bound to the previous lease is invalidated: source checkpoint, frozen confirmation, target checkpoint and rollback frozen confirmation states move back to their preceding collection state and require a fresh `advance`. Renewal never resets the original freeze interruption deadline. During `rollback_requested`, renewal preserves the rollback intent and any second-freeze requirement so a slow source proof cannot exhaust the authority lease; terminal states still reject renewal. Each mutation requires `-confirm`. The `advance`, `renew`, and `rollback` operations retain a 30-second single-action boundary.
 
 ```bash
-DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/tools/realtime-cutover \
   -operation renew \
   -attempt-dir /secure/cutovers/cutover-20260828-a \
   -operator operator-a \
@@ -75,7 +75,7 @@ DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
 For continuous execution, `run` uses one synchronous control loop for state advance, conditional authority renewal and retry. A Redis ownership key scoped to the fencing key and attempt ID admits one `controller-id`; compare-and-renew and compare-and-release scripts prevent a stale process from extending or deleting a replacement owner's lease. `control-lease` must cover at least twice `action-timeout`, so ownership cannot expire during one bounded external action. After a blocked action, the loop renews authority only inside `renew-before`; it always attempts `advance` first, allowing the journaled freeze deadline to select rollback before any renewal. The current authority deadline comes only from the initial input or the latest journal-bound transition artifact.
 
 ```bash
-DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover \
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/tools/realtime-cutover \
   -operation run \
   -attempt-dir /secure/cutovers/cutover-20260828-a \
   -operator operator-a \
@@ -106,7 +106,7 @@ The Lua operation writes the lease with `PEXPIREAT` and an idempotent receipt ke
 The CLI requires `-confirm`, a fixed absolute `lease_until_unix_ms` that is 5 seconds to 1 hour in the future on first apply, bounded transition/operator IDs and a reason. The absolute deadline is part of the request hash, so a command retry can reproduce the exact request. `freeze`, `activate`, and `renew` require `-expected-sha256`; `bootstrap` only accepts Go; `activate` is the only action that can change authority. Example:
 
 ```bash
-DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-authority \
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/tools/realtime-authority \
   -action freeze \
   -transition-id cutover-20260828-freeze \
   -operator operator-a \
@@ -153,7 +153,7 @@ Prepare the two group identities and fully qualified message topics:
 Run the collector while the named topics are quiescent and every expected node is refreshing its observation:
 
 ```bash
-DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/realtime-cutover-checkpoint \
+DIPOLE_CONFIG_FILE=/path/to/config.yaml go run ./cmd/tools/realtime-cutover-checkpoint \
   -transition-receipt /path/to/transition-receipt.json \
   -expected-nodes /path/to/expected-nodes.json \
   -checkpoint-manifest /path/to/checkpoint-manifest.json \

@@ -3,13 +3,13 @@
 该合同归档 Sync Service 的 Cassandra hydration 命中、MySQL fallback、缺失/冲突/错误与 p95 延迟。Evaluator 只处理低敏聚合 JSON，不访问运行中的数据库或 Prometheus。
 
 ```bash
-go run ./cmd/sync-cassandra-hydration-evidence -evidence=/path/evidence.json -policy=/path/policy.json
+go run ./cmd/tools/sync-cassandra-hydration-evidence -evidence=/path/evidence.json -policy=/path/policy.json
 ```
 
 运行时快照可先转换为同一 evidence 输入：
 
 ```bash
-go run ./cmd/sync-cassandra-hydration-snapshot \
+go run ./cmd/tools/sync-cassandra-hydration-snapshot \
   -metrics-start=/path/sync-start.metrics \
   -metrics-end=/path/sync-end.metrics \
   -service=sync-service -revision=sync@REVISION -mode=primary \

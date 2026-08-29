@@ -15,7 +15,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 | `cmd/services/search` | Elasticsearch 只读查询 | `dipole-search` |
 | `cmd/services/search-indexer` | Kafka 消费和 Elasticsearch 写入 | `dipole-search-indexer` |
 
-一次性迁移、回填、对账、证据采集和本地诊断工具暂留在 `cmd/` 顶层。它们不属于长期服务部署单元，后续可在工具生命周期稳定后单独归档到 `cmd/tools/`。
+一次性迁移、回填、对账、证据采集和本地诊断工具统一放在 `cmd/tools/`。它们不属于长期服务部署单元，构建时仍生成原有二进制名称。
 
 ## 共享代码与契约
 

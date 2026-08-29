@@ -29,7 +29,7 @@ admin_dsn="root:dipole-root@tcp(127.0.0.1:${port})/?parseTime=true&multiStatemen
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
+  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate
 )
 docker run --rm --network "$network" \
   -v "$root_dir/deploy/mysql/sync-recovery-smoke.yaml:/app/configs/config.yaml:ro" \

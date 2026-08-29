@@ -50,7 +50,7 @@ curl -fsS http://127.0.0.1:9090/api/v1/query \
 可在人工评审前使用只读 rollout gate 汇总窗口证据：
 
 ```bash
-go run ./cmd/agent-timeline-repair-rollout-evidence \
+go run ./cmd/tools/agent-timeline-repair-rollout-evidence \
   -evidence=/path/to/repair-rollout-evidence.json \
   -policy=/path/to/repair-rollout-policy.json
 ```

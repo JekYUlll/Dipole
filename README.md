@@ -36,7 +36,7 @@ Client -- WS/HTTP --> IM Gateway --> Message Service --> MySQL / Kafka
 
 ```bash
 docker compose up -d mysql redis kafka
-go run ./cmd/migrate -direction up
+go run ./cmd/tools/migrate -direction up
 go run ./cmd/services/core
 ```
 
