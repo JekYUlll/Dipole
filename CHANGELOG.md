@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：重新执行 `scripts/smoke-cassandra-read-routing.sh`，隔离验证 migration v50、Cassandra Seq 页面读取，以及 payload 损坏和缺失行按同一 cursor 回退 MySQL；临时资源自动清理，生产 Cassandra 主读保持关闭。
 - 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。
 - 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。
 - 2026-08-30：补充 Multipart P95 延迟告警的正向 promtool 触发测试，确保 30 秒阈值和 `operation` 标签在规则变更后仍可验证。
