@@ -62,7 +62,7 @@ func TestPersistentAgentWorkflowRepairPrepareRequiresApprovedQuorumAndIsIdempote
 	repairs.decisions[proposal.ProposalUUID+"\x00APPROVER-1"] = application.AgentWorkflowRepairDecisionRecordV1{ProposalUUID: proposal.ProposalUUID, ApproverUUID: "APPROVER-1", Decision: application.AgentWorkflowRepairDecisionApproved}
 	repairs.decisions[proposal.ProposalUUID+"\x00APPROVER-2"] = application.AgentWorkflowRepairDecisionRecordV1{ProposalUUID: proposal.ProposalUUID, ApproverUUID: "APPROVER-2", Decision: application.AgentWorkflowRepairDecisionApproved}
 	executions := &repairExecutionStoreStubV1{}
-	service, err := newPersistentAgentWorkflowRepairPrepareServiceV1(policies, repairs, executions, func() time.Time { return now })
+	service, err := NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies, repairs, executions, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestPersistentAgentWorkflowRepairPrepareRejectsUnapprovedOrMismatchedExecut
 	repairs := newRepairAuditStoreStubV1(now)
 	proposal, _ := application.NewAgentWorkflowRepairProposalV1("PROPOSER", repairProposalRequestV1(now))
 	repairs.proposals[proposal.ProposalUUID] = proposal
-	service, _ := newPersistentAgentWorkflowRepairPrepareServiceV1(policies, repairs, &repairExecutionStoreStubV1{}, func() time.Time { return now })
+	service, _ := NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies, repairs, &repairExecutionStoreStubV1{}, func() time.Time { return now })
 	execution := application.AgentWorkflowRepairExecutionV1{ExecutionUUID: "repair-execution:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", PlanID: "repair-plan:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ProposalUUID: proposal.ProposalUUID, TaskUUID: "TASK-1", ExecutorUUID: "EXECUTOR", ExecutorGrantVersion: 1, TargetSHA256: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", Status: application.AgentWorkflowRepairExecutionStatusPrepared}
 	if _, err := service.Prepare(context.Background(), application.AgentWorkflowRepairPrepareRequestV1{Execution: execution}); !errors.Is(err, application.ErrAgentWorkflowRepairDenied) {
 		t.Fatalf("unapproved proposal error = %v", err)
