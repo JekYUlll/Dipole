@@ -34,8 +34,27 @@ describe('uploadMultipartParts', () => {
       { partNumber: 4, size: 2 },
       { partNumber: 5, size: 2 },
     ])
-    expect(progress).toHaveLength(5)
+    expect(progress).toHaveLength(6)
+    expect(progress[0]).toEqual([0, 5])
     expect(progress.every(([, total]) => total === 5)).toBe(true)
+  })
+
+  it('skips parts already confirmed by the server when resuming', async () => {
+    const file = new Blob(['0123456789'])
+    const uploaded: number[] = []
+    const progress: Array<[number, number]> = []
+
+    await uploadMultipartParts(file, 2, 5, async partNumber => {
+      uploaded.push(partNumber)
+    }, {
+      concurrency: 2,
+      skipParts: new Set([1, 3]),
+      onPartComplete: (completed, total) => progress.push([completed, total]),
+    })
+
+    expect(uploaded.sort((a, b) => a - b)).toEqual([2, 4, 5])
+    expect(progress[0]).toEqual([2, 5])
+    expect(progress.at(-1)).toEqual([5, 5])
   })
 
   it('retries a failed part with exponential backoff', async () => {
