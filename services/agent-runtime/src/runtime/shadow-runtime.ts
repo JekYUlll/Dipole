@@ -177,9 +177,13 @@ const shadowRuntimeConfigSchema = z.object({
 export type ShadowRuntimeConfig = z.infer<typeof shadowRuntimeConfigSchema>;
 
 export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeConfig {
+  const configuredRuntimeMode = env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase();
+  if (configuredRuntimeMode !== undefined && configuredRuntimeMode !== "" && configuredRuntimeMode !== "shadow" && configuredRuntimeMode !== "remote") {
+    throw new Error("DIPOLE_AGENT_RUNTIME_MODE must be shadow or remote");
+  }
   return shadowRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
-    runtimeMode: env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() === "remote" ? "active" : "shadow",
+    runtimeMode: configuredRuntimeMode === "remote" ? "active" : "shadow",
     candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
     releaseManifestPath: env.DIPOLE_AGENT_RELEASE_MANIFEST ?? "",
     brokers: (env.DIPOLE_AGENT_KAFKA_BROKERS ?? "").split(",").map((broker) => broker.trim()).filter(Boolean),
