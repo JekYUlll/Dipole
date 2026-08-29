@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 微服务 smoke 新增真实 `message.direct.created` 事件注入：通过 Kafka 连续发布同一事件两次，并在 MySQL 核对 EventLedger、Shadow Plan、Task 和 Shadow Run 的完成/幂等结果；当前仍保持 Agent shadow 与 Task `running` 生命周期。
 - 微服务隔离 smoke 新增 Agent Runtime `/livez` 和 `/readyz` 检查；真实 Kafka/MySQL/Redis/MinIO 栈验证 Agent 加入 `dipole-agent-shadow-v1` consumer group 并获得主/retry topic 分区，事件触发仍保持 shadow 默认路径。
 - Agent Runtime 独立进程 smoke 已验证默认安全配置下的 `/livez`、`/readyz` 和 SIGINT 优雅退出；Kafka、Temporal、MCP 与 Task Control 保持关闭，避免将本地启动验证误作外部依赖联调。
 - Agent Runtime TypeScript protobuf generated files 已按当前 `api/proto` 重新生成，补齐 Message system-message RPC 并通过 proto drift 检查；Agent Runtime `661 passed / 27 skipped`，typecheck 和 build 均通过。
