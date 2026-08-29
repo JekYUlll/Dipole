@@ -8,8 +8,8 @@ import (
 	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/config"
 	searchcutover "github.com/JekYUlll/Dipole/internal/cutover/search"
-	"github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	searchreconcile "github.com/JekYUlll/Dipole/internal/reconcile/search"
 )
 

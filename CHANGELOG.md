@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- 将 Search/Indexer 共用的 Elasticsearch client、版本化 schema、Alias 和 projection adapter 从 `internal/data/elasticsearch` 收纳到 `internal/platform/elasticsearch`，新增目录职责说明和结构门禁；Search 权限边界、Indexer 写入职责及 Alias 回滚语义保持兼容。
 - 将 Cassandra 灰度读取、消息对照和 Sync hydration fallback 从 `internal/data/{routing,shadow}` 收纳到 `internal/platform/storage/{routing,shadow}`，新增存储平台目录说明和结构门禁；MySQL 主路径、shadow 指标和回退开关保持兼容。
 - 将跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器从 `internal/data/cassandra` 收纳到 `internal/platform/cassandra`，新增目录职责说明和结构门禁；服务业务 projection 与编排保持原有边界。
 - 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；共享事件发布契约继续留在 `internal/service`，业务行为和回滚入口保持兼容。
