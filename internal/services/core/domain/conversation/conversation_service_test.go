@@ -1,4 +1,4 @@
-package service
+package coreconversation
 
 import (
 	"context"

@@ -5,11 +5,11 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 )
 
 type ConversationNotifier interface {
-	NotifyDirectRead(receipt service.ConversationReadReceipt)
+	NotifyDirectRead(receipt coreconversation.ConversationReadReceipt)
 }
 
 type ConversationDependencies struct {
@@ -21,7 +21,7 @@ type ConversationDependencies struct {
 // LocalConversationApplication keeps the embedded implementation behind the
 // Core service boundary while remote transports continue to use application ports.
 type LocalConversationApplication struct {
-	*service.ConversationService
+	*coreconversation.ConversationService
 }
 
 func NewConversationApplication(
@@ -30,7 +30,7 @@ func NewConversationApplication(
 	groups applicationPort.GroupStore,
 	dependencies ConversationDependencies,
 ) *LocalConversationApplication {
-	conversationService := service.NewConversationService(
+	conversationService := coreconversation.NewConversationService(
 		repository,
 		users,
 		groups,
