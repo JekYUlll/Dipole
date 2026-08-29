@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：修正 Agent Memory Chromium E2E 的非精确标题断言，避免 `长期记忆` 与 `正在读取长期记忆` 触发 Playwright strict mode；目标场景 `3/3`、完整 Chromium E2E `28` 项通过（`2` 项按条件跳过）。
 - 2026-08-30：修正 Vite 生产构建输出边界，前端产物统一写入 Core-owned `internal/services/core/server/webapp/`，避免构建重新生成已退役的 `internal/server/webapp/`；工具链 `3/3`、Vitest `28` 个文件/`104` 个测试、`vue-tsc` 和生产构建均通过。
 - 2026-08-30：补充 Agent Active Compose 负向门禁，缺失 release manifest 或 candidate version 时在插值阶段直接失败；默认 Shadow 配置和 Active 回滚路径保持不变。
 - 2026-08-30：核验 CloudWeGo Eino 依赖升级状态：`go list -m -u` 未发现高于当前 `v0.9.17` 的可用升级；公开 `v0.10.0-alpha` 仍属于预发布路线，暂不引入 Go/Eino 回滚基线，避免与 TS Agent Runtime 接管和微服务切换同时改变。
