@@ -8,17 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 )
 
 type contactService interface {
-	Apply(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error)
-	ListFriends(currentUserUUID string) ([]*service.ContactListItem, error)
-	ListIncomingApplications(currentUserUUID string) ([]*service.ContactApplicationView, error)
-	ListOutgoingApplications(currentUserUUID string) ([]*service.ContactApplicationView, error)
+	Apply(currentUserUUID string, input corecontact.ApplyContactInput) (*model.ContactApplication, error)
+	ListFriends(currentUserUUID string) ([]*corecontact.ContactListItem, error)
+	ListIncomingApplications(currentUserUUID string) ([]*corecontact.ContactApplicationView, error)
+	ListOutgoingApplications(currentUserUUID string) ([]*corecontact.ContactApplicationView, error)
 	HandleApplication(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error)
 	DeleteFriend(currentUserUUID, friendUUID string) error
 	UpdateRemark(currentUserUUID, friendUUID, remark string) (*model.Contact, error)
@@ -88,17 +88,17 @@ func (h *ContactHandler) Apply(c *gin.Context) {
 	application, err := h.service.Apply(currentUser.UUID, request.ToInput())
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrContactTargetRequired):
+		case errors.Is(err, corecontact.ErrContactTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "target_uuid is required")
-		case errors.Is(err, service.ErrContactCannotAddSelf):
+		case errors.Is(err, corecontact.ErrContactCannotAddSelf):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactCannotAddSelf, "cannot add self as friend")
-		case errors.Is(err, service.ErrContactTargetNotFound):
+		case errors.Is(err, corecontact.ErrContactTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "target user not found")
-		case errors.Is(err, service.ErrContactTargetUnavailable):
+		case errors.Is(err, corecontact.ErrContactTargetUnavailable):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetUnavailable, "target user is unavailable")
-		case errors.Is(err, service.ErrContactAlreadyFriends):
+		case errors.Is(err, corecontact.ErrContactAlreadyFriends):
 			ErrorWithCode(c, http.StatusConflict, code.ContactAlreadyFriends, "users are already friends")
-		case errors.Is(err, service.ErrContactApplicationExists):
+		case errors.Is(err, corecontact.ErrContactApplicationExists):
 			ErrorWithCode(c, http.StatusConflict, code.ContactApplicationExists, "contact application already exists")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -133,7 +133,7 @@ func (h *ContactHandler) ListApplications(c *gin.Context) {
 
 	box := c.DefaultQuery("box", "incoming")
 	var (
-		items []*service.ContactApplicationView
+		items []*corecontact.ContactApplicationView
 		err   error
 	)
 	switch box {
@@ -190,15 +190,15 @@ func (h *ContactHandler) HandleApplication(c *gin.Context) {
 	application, err := h.service.HandleApplication(currentUser.UUID, uint(applicationID), request.Action)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrContactApplicationNotFound):
+		case errors.Is(err, corecontact.ErrContactApplicationNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ContactApplicationNotFound, "contact application not found")
-		case errors.Is(err, service.ErrContactPermissionDenied):
+		case errors.Is(err, corecontact.ErrContactPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.ContactPermissionDenied, "contact application cannot be handled by current user")
-		case errors.Is(err, service.ErrContactApplicationExpired):
+		case errors.Is(err, corecontact.ErrContactApplicationExpired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactApplicationExpired, "contact application has expired")
-		case errors.Is(err, service.ErrContactApplicationHandled):
+		case errors.Is(err, corecontact.ErrContactApplicationHandled):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactApplicationHandled, "contact application has been handled")
-		case errors.Is(err, service.ErrContactActionInvalid):
+		case errors.Is(err, corecontact.ErrContactActionInvalid):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactActionInvalid, "action is invalid")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -234,9 +234,9 @@ func (h *ContactHandler) DeleteFriend(c *gin.Context) {
 
 	if err := h.service.DeleteFriend(currentUser.UUID, c.Param("friend_uuid")); err != nil {
 		switch {
-		case errors.Is(err, service.ErrContactTargetRequired):
+		case errors.Is(err, corecontact.ErrContactTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "friend_uuid is required")
-		case errors.Is(err, service.ErrContactTargetNotFound):
+		case errors.Is(err, corecontact.ErrContactTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "friend relationship not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -279,11 +279,11 @@ func (h *ContactHandler) UpdateRemark(c *gin.Context) {
 	contact, err := h.service.UpdateRemark(currentUser.UUID, c.Param("friend_uuid"), request.Remark)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrContactTargetRequired):
+		case errors.Is(err, corecontact.ErrContactTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "friend_uuid is required")
-		case errors.Is(err, service.ErrContactTargetNotFound):
+		case errors.Is(err, corecontact.ErrContactTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "friend relationship not found")
-		case errors.Is(err, service.ErrContactRemarkTooLong):
+		case errors.Is(err, corecontact.ErrContactRemarkTooLong):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactRemarkTooLong, "remark is too long")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -328,9 +328,9 @@ func (h *ContactHandler) UpdateBlockStatus(c *gin.Context) {
 	contact, err := h.service.UpdateBlockStatus(currentUser.UUID, c.Param("friend_uuid"), request.Blocked)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrContactTargetRequired):
+		case errors.Is(err, corecontact.ErrContactTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ContactTargetRequired, "friend_uuid is required")
-		case errors.Is(err, service.ErrContactTargetNotFound):
+		case errors.Is(err, corecontact.ErrContactTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ContactTargetNotFound, "friend relationship not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
