@@ -23,7 +23,6 @@ type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissio
 type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
 type PersistentAgentRuntimePromotionControlServiceV1 = agentapplication.PersistentAgentRuntimePromotionControlServiceV1
-type PersistentAgentActiveRunPromotionAuthorizerV1 = agentapplication.PersistentAgentActiveRunPromotionAuthorizerV1
 
 func NewPersistentAgentApprovalServiceV1(store application.AgentPolicyStoreV1) (*PersistentAgentApprovalServiceV1, error) {
 	return agentapplication.NewPersistentAgentApprovalServiceV1(store)
@@ -95,10 +94,6 @@ func NewPersistentAgentRuntimePromotionControlServiceV1(policies application.Age
 
 func newPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1, now func() time.Time) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
 	return agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1WithClock(policies, artifacts, control, now)
-}
-
-func NewPersistentAgentActiveRunPromotionAuthorizerV1(store application.AgentRuntimePromotionGrantStoreV1) (*PersistentAgentActiveRunPromotionAuthorizerV1, error) {
-	return agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(store)
 }
 
 func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, permissions []string, scopes []application.AgentResourceScopeV1) error {

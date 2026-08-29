@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 type runtimePromotionStoreStub struct {
@@ -41,7 +40,7 @@ func TestPersistentAgentActiveRunPromotionAuthorizer(t *testing.T) {
 		GrantedByUUID: "OPERATOR-1", ReviewedByUUID: "OPERATOR-2", ValidFrom: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
 	}
 	store := &runtimePromotionStoreStub{grant: &grant}
-	authorizer, err := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1WithClock(store, func() time.Time { return now })
+	authorizer, err := NewPersistentAgentActiveRunPromotionAuthorizerV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new promotion authorizer: %v", err)
 	}
