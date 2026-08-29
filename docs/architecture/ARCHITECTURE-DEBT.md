@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：在 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke，schema init、Sync primary 配置、依赖 readiness 和 `readyz` 通过；该证据只覆盖隔离启动门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切仍待完成。
 - 2026-08-30：复核 Context Compiler fixture 校准命令，五类样本无低估并生成 report SHA-256 `d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562`；该结果只证明合成 tokenizer profile 的确定性和证据完整性，真实候选模型 route 校准仍未完成。
 - 2026-08-30：补齐前端类型检查脚本并加入工具链契约测试，`npm run typecheck` 与 `vue-tsc --noEmit` 现在具有统一、可发现的验证入口；不改变前端默认构建和发布边界。
 - 2026-08-30：修复 Chat 初始化认证恢复的未处理 Promise rejection；共享设备 HTTP 401 E2E 已覆盖会话清理、登录页跳转和三浏览器无 `pageerror`，避免认证失败污染前端错误信号。
