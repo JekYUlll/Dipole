@@ -11,6 +11,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/JekYUlll/Dipole/internal/model"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
@@ -33,6 +34,8 @@ type multipartUploadSession struct {
 type multipartUploadSessionStore interface {
 	Create(ctx context.Context, session *multipartUploadSession, ttl time.Duration) error
 	Get(ctx context.Context, sessionID string) (*multipartUploadSession, error)
+	SaveCompleted(ctx context.Context, sessionID, uploaderUUID string, file *model.UploadedFile, ttl time.Duration) error
+	GetCompleted(ctx context.Context, sessionID string) (*model.UploadedFile, string, error)
 	SavePart(ctx context.Context, sessionID string, part *platformStorage.UploadedPart, ttl time.Duration) error
 	ListParts(ctx context.Context, sessionID string) ([]platformStorage.MultipartCompletePart, error)
 	Delete(ctx context.Context, sessionID string) error
@@ -43,6 +46,11 @@ type redisMultipartUploadSessionStore struct{}
 type storedMultipartPart struct {
 	ETag string `json:"etag"`
 	Size int64  `json:"size"`
+}
+
+type storedMultipartCompletion struct {
+	UploaderUUID string              `json:"uploader_uuid"`
+	File         *model.UploadedFile `json:"file"`
 }
 
 func newMultipartUploadSessionStore() multipartUploadSessionStore {
@@ -89,6 +97,37 @@ func (s *redisMultipartUploadSessionStore) Get(ctx context.Context, sessionID st
 		return nil, fmt.Errorf("unmarshal multipart session: %w", err)
 	}
 	return &session, nil
+}
+
+func (s *redisMultipartUploadSessionStore) SaveCompleted(ctx context.Context, sessionID, uploaderUUID string, file *model.UploadedFile, ttl time.Duration) error {
+	if !platformCache.Available() {
+		return fmt.Errorf("redis is not initialized")
+	}
+	if strings.TrimSpace(sessionID) == "" || strings.TrimSpace(uploaderUUID) == "" || file == nil {
+		return fmt.Errorf("multipart completion is invalid")
+	}
+	if err := platformCache.SetJSON(ctx, multipartSessionCompletedKey(sessionID), storedMultipartCompletion{UploaderUUID: strings.TrimSpace(uploaderUUID), File: file}, ttl); err != nil {
+		return fmt.Errorf("store multipart completion: %w", err)
+	}
+	return nil
+}
+
+func (s *redisMultipartUploadSessionStore) GetCompleted(ctx context.Context, sessionID string) (*model.UploadedFile, string, error) {
+	if !platformCache.Available() {
+		return nil, "", fmt.Errorf("redis is not initialized")
+	}
+	raw, err := platformCache.GetBytes(ctx, multipartSessionCompletedKey(sessionID))
+	if err != nil {
+		if err == redis.Nil {
+			return nil, "", nil
+		}
+		return nil, "", fmt.Errorf("get multipart completion: %w", err)
+	}
+	var stored storedMultipartCompletion
+	if err := json.Unmarshal(raw, &stored); err != nil || stored.File == nil || strings.TrimSpace(stored.UploaderUUID) == "" {
+		return nil, "", fmt.Errorf("unmarshal multipart completion: %w", err)
+	}
+	return stored.File, stored.UploaderUUID, nil
 }
 
 func (s *redisMultipartUploadSessionStore) SavePart(ctx context.Context, sessionID string, part *platformStorage.UploadedPart, ttl time.Duration) error {
@@ -167,4 +206,8 @@ func multipartSessionMetaKey(sessionID string) string {
 
 func multipartSessionPartsKey(sessionID string) string {
 	return "file:multipart:" + strings.TrimSpace(sessionID) + ":parts"
+}
+
+func multipartSessionCompletedKey(sessionID string) string {
+	return "file:multipart:" + strings.TrimSpace(sessionID) + ":completed"
 }
