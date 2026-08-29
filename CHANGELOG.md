@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 删除无调用者的 `internal/bootstrap.RegisterGatewayKafkaHandlers` 兼容 facade，embedded Kafka 装配直接使用 Gateway infrastructure 注册器；Gateway Kafka 注册所有权完成收口。
 - Gateway runtime 已直接使用 `internal/services/gateway/infrastructure/kafka.RegisterHandlers`，移除对共享 `internal/bootstrap` Kafka 注册兼容入口的生产依赖，并新增架构回流测试。
 - Gateway Kafka 注册器与 realtime authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka`，共享 bootstrap 降为兼容转发；Gateway 的订阅注册、热群 detector、Notifier 和 fence 组合由服务边界统一持有。
 - Gateway group message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka`，普通群逐用户 fan-out、hot-group notify 聚合、文件映射和 Timeline notify 均由服务自有实现持有；Gateway Kafka 共享 handler 实现已清理完毕。

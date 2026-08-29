@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：调用审计确认 `internal/bootstrap.RegisterGatewayKafkaHandlers` 已无调用者，embedded 装配已直接使用 Gateway infrastructure 注册器并删除 facade；Gateway Kafka 兼容入口完成退休。
 - 2026-08-29：Gateway runtime 已直接调用 Gateway Kafka infrastructure 注册器，移除生产路径对 `internal/bootstrap` Kafka 兼容入口的依赖；架构测试锁定 runtime 不得回流共享 bootstrap。
 - 2026-08-29：Gateway Kafka 注册器与 authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka/`，`internal/bootstrap` 仅保留兼容转发及 Core/Message projection；Gateway Kafka 装配边界已完成收敛。
 - 2026-08-29：Gateway group message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，覆盖普通群 fan-out、hot-group notify、文件消息和 Timeline notify；Gateway Kafka handler 的共享实现迁移已完成，后续转入兼容入口审计与删除。
@@ -69,7 +70,7 @@
 - 2026-08-29：Internal RPC 通用 transport 已迁入 `internal/platform/rpc/`，并由旧 `internal/bootstrap` helper 转发；平台层覆盖认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭，服务协议 adapter 与方法权限仍按服务边界继续收敛。
 - 2026-08-29：修复 Agent MCP RPC drill fixture 对旧 `internal/transport/grpc/gen` 生成路径的引用，统一切换到 `api/gen/go`；`master` 全量 Go 测试、服务布局、架构文档和 Compose 门禁均已恢复通过。
 - 2026-08-29：修复 Gateway runtime 迁移后服务入口 `RunServer` 自递归导致的启动回归；架构测试现在锁定入口必须委托 `RunGatewayServer`，并通过 Gateway 与全量 Go 测试验证。
-- 2026-08-29：Gateway runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/gateway/bootstrap/`，直接组合 Gateway HTTP/WS、Redis Presence/限流、Kafka 和 realtime authority；共享 RPC、TLS 和 Kafka handler 暂保留兼容入口，后续继续抽取平台 transport。
+- 2026-08-29：Gateway runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/gateway/bootstrap/`，直接组合 Gateway HTTP/WS、Redis Presence/限流、Kafka 和 realtime authority；共享 RPC、TLS 仍按平台兼容边界管理，Gateway Kafka handler 与注册兼容入口已完成迁移和退休。
 - 2026-08-29：Message runtime 与配置校验测试已从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap/`，直接组合 Message SQLC repository、Kafka/Cassandra、Outbox 和平台 runtime；Lazy Core、少量共享基础设施和 Internal RPC 仍按回滚边界治理。
 - 2026-08-29：Sync runtime、数据库权限边界校验及相关测试已从共享 `internal/bootstrap` 迁入 `internal/services/sync/bootstrap/`，直接组合 Sync infrastructure、Kafka/Cassandra 与平台 runtime；共享 Internal RPC 暂保留窄 compatibility adapter，后续继续抽取平台 RPC transport。
 - 2026-08-29：Search runtime、单测和 Elasticsearch 集成测试已从共享 `internal/bootstrap` 迁入 `internal/services/search/bootstrap/`，Search application 与平台 runtime 直接由服务边界组合；共享 Internal RPC 暂保留窄 compatibility adapter，后续继续抽取平台 RPC transport。
@@ -146,7 +147,7 @@
 - **本轮进展：** Search 入口装配已收敛到 `internal/services/search/bootstrap/`，`cmd/services/search` 不再直接依赖共享 `internal/bootstrap`；当前底层 Search runtime 仍通过兼容 facade 调用共享 gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Message 入口装配已收敛到 `internal/services/message/bootstrap/`，`cmd/services/message` 不再直接依赖共享 `internal/bootstrap`；数据库权限探针已迁入 `internal/services/message/infrastructure/mysql/` 并由独立 runtime 直接调用，embedded 仅保留兼容转发，其他共享基础设施继续按回滚切片收敛。
 - **本轮进展：** Sync 入口装配已收敛到 `internal/services/sync/bootstrap/`，`cmd/services/sync` 不再直接依赖共享 `internal/bootstrap`；当前底层 Sync runtime 仍通过兼容 facade 调用共享 Kafka projector、Cassandra hydration、数据库、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
-- **本轮进展：** Gateway 入口装配已收敛到 `internal/services/gateway/bootstrap/`，`cmd/services/gateway` 不再直接依赖共享 `internal/bootstrap`；当前底层 Gateway runtime 仍通过兼容 facade 调用共享实时投递 authority、Kafka、Redis、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
+- **本轮进展：** Gateway 入口装配已收敛到 `internal/services/gateway/bootstrap/`，`cmd/services/gateway` 不再直接依赖共享 `internal/bootstrap`；Gateway Kafka handler、注册器和 authority factory 已归属服务 infrastructure，runtime 直接使用服务实现，剩余共享兼容边界集中在平台生命周期能力。
 - **本轮进展：** Core 入口装配已收敛到 `internal/services/core/bootstrap/`，`cmd/services/core` 不再直接依赖共享 `internal/bootstrap`；入口显式区分独立 Core 与 embedded 回滚路径，底层 Core runtime 仍通过兼容 facade 调用共享 RPC、Kafka、storage、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Search Indexer 入口装配已收敛到 `internal/services/search-indexer/bootstrap/`，`cmd/services/search-indexer` 不再直接依赖共享 `internal/bootstrap`；底层 Search Indexer runtime 仍通过兼容 facade 调用共享 Kafka、Elasticsearch、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** 跨服务 metrics 生命周期已下沉到 `internal/platform/runtime/`，所有长期 runtime 已切换新平台 API，`internal/bootstrap/metrics.go` 仅保留兼容 helper；依赖 readiness 探针和内部 RPC server 仍待按服务边界继续拆分。

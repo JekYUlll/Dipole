@@ -123,7 +123,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return err
 		}
-		if err := RegisterGatewayKafkaHandlers(hub, authority, nil); err != nil {
+		if err := gatewaykafka.RegisterHandlers(hub, authority, nil); err != nil {
 			return err
 		}
 	}
@@ -133,10 +133,6 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 	platformKafka.Subscriber.Register("contact.friend.deleted", logKafkaEventHandler("contact.friend.deleted"))
 
 	return nil
-}
-
-func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
-	return gatewaykafka.RegisterHandlers(hub, authority, fence)
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {
