@@ -426,6 +426,7 @@
 - **本轮进展：** Agent Command 测试已迁入 Agent application 边界并直接验证可信身份、关联 ID、幂等收据、异常恢复、绑定漂移和 fail-closed 行为；聚合 `internal/app` 仅供该测试使用的兼容入口已删除。
 - **本轮进展：** Agent Capability 测试已迁入 Agent application 边界并直接验证主体限制、会话读取、权限与资源范围校验、关联上下文传递和依赖 fail-closed；聚合 `internal/app` 仅供该测试使用的兼容入口已删除。
 - **本轮进展：** Active Run Promotion Authorizer 测试已迁入 Agent application 边界并直接验证租户、Runtime、候选版本、Definition 版本和时间窗口绑定，以及缺失授权和存储故障语义；聚合 `internal/app` 中无调用的兼容入口已删除。
+- **本轮进展：** Task Control 测试已直接切换 Agent application 构造器，验证仍复用 `internal/app` 的共享 policy fixture，同时移除该测试专属兼容入口，减少聚合层依赖。
 - **本轮进展：** Shadow 指标已修正为记录原始候选集合大小，避免以匹配数替代候选数造成成本证据偏差；后续灰度仍需共享环境抓取和完整窗口。
 - **本轮进展：** Shadow metrics observer 已在运行时拒绝闭集之外的 outcome，保持 Prometheus label vocabulary 与 evidence schema 一致；共享环境窗口仍待完成。
 - **本轮进展：** 只读 Prometheus Collector 已对响应体实施 256 KiB 流式上限，并在超限、读取失败或 JSON 异常时统一 fail-closed；共享环境窗口与发布 artifact 交叉核对仍待完成。
