@@ -239,8 +239,15 @@ storage:
   artifact_maintenance_secret_key: ""
   public_base_url: http://192.168.1.8:9000/dipole-files
   file_max_size_mb: 50
+  multipart_policy_version: v1
+  multipart_mode: relay
   multipart_chunk_size_mb: 5
   multipart_session_ttl_minutes: 60
+  multipart_direct_threshold_mb: 4
+  multipart_max_concurrency: 3
+  multipart_max_retries: 2
+  multipart_retry_delay_ms: 250
+  multipart_presign_url_ttl_seconds: 900
 
 rate_limit:
   enabled: false

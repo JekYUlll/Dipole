@@ -36,6 +36,15 @@ type stubFileLimiter struct {
 	allowFileUploadFn func(userUUID string) (bool, time.Duration)
 }
 
+type policyFileService struct {
+	*stubFileService
+	policy corefile.MultipartUploadPolicy
+}
+
+func (s *policyFileService) MultipartUploadPolicy() corefile.MultipartUploadPolicy {
+	return s.policy
+}
+
 func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
 	if s.uploadFn == nil {
 		return nil, nil
@@ -112,6 +121,48 @@ func (s *stubFileLimiter) AllowFileUpload(userUUID string) (bool, time.Duration)
 	}
 
 	return s.allowFileUploadFn(userUUID)
+}
+
+func TestFileHandlerMultipartPolicy(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&policyFileService{
+		stubFileService: &stubFileService{},
+		policy: corefile.MultipartUploadPolicy{
+			SchemaVersion:              "dipole.multipart-upload.policy.v1",
+			PolicyVersion:              "v1",
+			Mode:                       "relay",
+			FallbackMode:               "relay",
+			DirectUploadThresholdBytes: 4 * 1024 * 1024,
+			MaxFileSizeBytes:           50 * 1024 * 1024,
+			ChunkSizeBytes:             5 * 1024 * 1024,
+			MaxConcurrency:             3,
+			MaxRetries:                 2,
+			RetryDelayMS:               250,
+			PresignURLTTLSeconds:       900,
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files/uploads/policy", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.MultipartPolicy(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	var response struct {
+		Code int                            `json:"code"`
+		Data corefile.MultipartUploadPolicy `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != code.Success || response.Data.Mode != "relay" || response.Data.MaxConcurrency != 3 {
+		t.Fatalf("unexpected Multipart policy response: %+v", response)
+	}
 }
 
 func TestFileHandlerUploadSuccess(t *testing.T) {
