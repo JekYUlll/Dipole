@@ -13,6 +13,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	storageops "github.com/JekYUlll/Dipole/internal/operations/storage"
@@ -21,7 +22,8 @@ import (
 
 type cleanupOutput struct {
 	storageops.MultipartCleanupReport
-	Redis *storageops.RedisMultipartCleanupReport `json:"redis,omitempty"`
+	Redis          *storageops.RedisMultipartCleanupReport   `json:"redis,omitempty"`
+	Reconciliation *storageops.MultipartReconciliationReport `json:"reconciliation,omitempty"`
 }
 
 type minioMultipartClient struct {
@@ -43,6 +45,7 @@ func main() {
 	execute := flag.Bool("execute", false, "abort eligible uploads; omitted means dry-run")
 	confirm := flag.Bool("confirm", false, "confirm that aborting eligible uploads is intentional")
 	redisOrphans := flag.Bool("redis-orphans", false, "scan and report Redis multipart session anomalies")
+	reconcile := flag.Bool("reconcile", false, "read-only compare MinIO incomplete uploads with Redis sessions")
 	redisScanCount := flag.Int64("redis-scan-count", 100, "Redis SCAN batch size")
 	redisMaxKeys := flag.Int64("redis-max-keys", 10000, "maximum Redis keys to inspect per key family")
 	flag.Parse()
@@ -68,17 +71,28 @@ func main() {
 	defer stop()
 	report := storageops.RunMultipartCleanup(ctx, minioMultipartClient{client: client, core: minio.Core{Client: client}}, cfg.Bucket, storageops.NormalizePrefix(*prefix), time.Now().UTC().Add(-*olderThan), *execute)
 	output := cleanupOutput{MultipartCleanupReport: report}
-	if *redisOrphans {
-		redisClient, redisErr := platformCache.NewRedisClient(config.RedisConfig())
+	var redisClient *redis.Client
+	if *redisOrphans || *reconcile {
+		var redisErr error
+		redisClient, redisErr = platformCache.NewRedisClient(config.RedisConfig())
 		if redisErr != nil {
 			fmt.Fprintln(os.Stderr, redisErr)
 			os.Exit(1)
 		}
 		defer redisClient.Close()
-		redisReport := storageops.RunRedisMultipartCleanup(ctx, redisClient, *redisScanCount, *redisMaxKeys, *execute && *confirm)
-		output.Redis = &redisReport
-		if !redisReport.Complete || redisReport.Failed > 0 {
-			report.Failed++
+		if *redisOrphans {
+			redisReport := storageops.RunRedisMultipartCleanup(ctx, redisClient, *redisScanCount, *redisMaxKeys, *execute && *confirm)
+			output.Redis = &redisReport
+			if !redisReport.Complete || redisReport.Failed > 0 {
+				report.Failed++
+			}
+		}
+		if *reconcile {
+			reconciliation := storageops.RunMultipartReconciliation(ctx, minioMultipartClient{client: client, core: minio.Core{Client: client}}, redisClient, cfg.Bucket, storageops.NormalizePrefix(*prefix), *redisMaxKeys)
+			output.Reconciliation = &reconciliation
+			if !reconciliation.Complete {
+				report.Failed++
+			}
 		}
 	}
 	output.MultipartCleanupReport = report
