@@ -15,6 +15,20 @@ if [[ ! -f "${root_dir}/services/README.md" ]]; then
   echo "polyglot service directory index is missing: services/README.md" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" ]]; then
+  echo "one-shot operations must be documented under internal/operations" >&2
+  exit 1
+fi
+for legacy_search_runtime in search_alias_runtime.go search_archive_runtime.go search_backfill_runtime.go search_cleanup_runtime.go search_reconciliation_runtime.go search_snapshot_source.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_search_runtime}" ]]; then
+    echo "Search one-shot operation remains in service bootstrap: ${legacy_search_runtime}" >&2
+    exit 1
+  fi
+done
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/search-alias" "${root_dir}/cmd/tools/search-archive" "${root_dir}/cmd/tools/search-backfill" "${root_dir}/cmd/tools/search-outbox-cleanup" "${root_dir}/cmd/tools/search-reconcile" --glob '*.go'; then
+  echo "Search operation tools must use internal/operations/search" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal/compat/service" ]]; then
   echo "legacy compatibility adapters must be isolated under internal/compat" >&2
   exit 1

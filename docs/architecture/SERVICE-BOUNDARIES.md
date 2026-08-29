@@ -33,6 +33,7 @@
 ### 需要收敛
 
 - `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含迁移中的共享组合；Agent application 实现统一位于 `internal/services/agent/application/`，旧目录仅保留兼容装配入口。
+- `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
 - Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；`internal/data/mysql/repository/search_index_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口。
 - Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/search/` 路径由结构门禁阻止回流，索引失败仍遵循 Kafka retry/DLQ 和 Alias 回滚策略。
