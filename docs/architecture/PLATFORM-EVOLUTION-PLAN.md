@@ -33,7 +33,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 
 开发期远程部署必须满足以下门禁：
 
-- [ ] 远程主机建立独立工作目录和 Compose project，禁止复用未知业务容器、卷、端口和数据库。
+- [x] 增加 `scripts/check-dev-host.sh` 开发主机 preflight：按 Remote GPU、TencentCloud 和本机 profile 检查资源、Docker 与 Compose 配置；实际远程工作目录、Compose project 和部署证据仍待执行。
 - [ ] 使用提交绑定的不可变镜像或源码版本，记录 revision、镜像摘要、配置摘要和主机资源快照。
 - [ ] 先执行 readiness、migration、服务布局、mTLS、Kafka lag 和健康检查，再开始负载测试。
 - [ ] 负载矩阵至少区分轻量 TencentCloud smoke、Remote GPU 单节点基线、Remote GPU 故障演练；报告记录 CPU、内存、磁盘、网络、P50/P95/P99、Kafka lag 和错误率。
