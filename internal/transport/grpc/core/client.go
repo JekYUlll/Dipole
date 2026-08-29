@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
+	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	corev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1"
 )
 
 const queryTimeout = 2 * time.Second

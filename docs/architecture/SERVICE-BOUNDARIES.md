@@ -7,8 +7,8 @@
 | 服务 | 入口 | 对外职责 | 主要调用方 | 数据所有权 | 当前过渡例外 |
 | --- | --- | --- | --- | --- | --- |
 | Gateway | `cmd/services/gateway` | HTTP、WebSocket、认证上下文、限流、实时连接和消息/同步查询入口 | Client | 无业务表；Redis 实时连接状态 | 其他 Core 业务 HTTP 暂通过 Core 反代 |
-| Core | `cmd/services/core` | Auth、User、Group、Contact、File、Conversation | Gateway、Message、Sync、Agent Capability | 用户、群组、联系人、文件元数据、Conversation State | 仅 embedded 模式保留消息/同步 HTTP 与 WS；remote 模式由 Gateway 直接承接 |
-| Message | `cmd/services/message` | Send、History、Idempotency、Seq、Outbox、Message Store | Gateway、Core、Sync | `messages`、消息幂等、Outbox、消息 Timeline | 与 Core 暂共享 MySQL 集群，账号和表权限按迁移计划逐步收紧 |
+| Core | `cmd/services/core` | Auth、User、Group、Contact、File、Conversation | Gateway、Message、Sync、Agent Capability | 用户、群组、联系人、文件元数据、Conversation State | 仅 embedded 模式保留消息/同步 HTTP 与 WS；remote 模式由 Gateway 直接承接，系统消息通过受限 Message RPC |
+| Message | `cmd/services/message` | Send、History、Idempotency、Seq、Outbox、Message Store | Gateway、Core、Sync | `messages`、消息幂等、Outbox、消息 Timeline | Core Capability 采用惰性 RPC 连接并由就绪探针验证；与 Core 暂共享 MySQL 集群，账号和表权限按迁移计划逐步收紧 |
 | Sync | `cmd/services/sync` | User Inbox、Device Cursor、Group Checkpoint | Gateway、Message、Core | `user_sync_inbox`、设备/群同步状态 | Cassandra hydration 仍为可选 primary，MySQL 保留回退 |
 | Search | `cmd/services/search` | 受权限约束的消息搜索 | Gateway | 无事实消息表；只读 Elasticsearch | Core-derived scope 通过 Capability RPC 获取 |
 | Search Indexer | `cmd/services/search-indexer` | 消费事件并写入搜索索引 | Kafka | Elasticsearch 索引和 tombstone | 与 Search 共享 Elasticsearch 集群但使用不同 Alias/写入职责 |
@@ -26,12 +26,18 @@
 - `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `internal/platform/storage`：对象存储、Search Archive 以及 MySQL/Cassandra 灰度 routing、shadow 和 hydration fallback 适配器；通过配置关闭即可回到主存储路径。
 - `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
-- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 事务边界；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 仅保留兼容入口。
-- `api/proto`、`contracts`：跨服务 RPC、事件和 Agent 契约。
+- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` 兼容目录已退役。
+- `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store` Redis 入口已退役。
+- `internal/platform/runtime`：跨服务 metrics 生命周期、依赖 readiness 探针和 RPC serving 绑定；不承载业务编排、数据访问或具体服务 RPC 语义。
+- Search Indexer bootstrap 直接拥有其长期运行时装配；Kafka consumer、Elasticsearch index 和服务 metrics/readiness 的启动顺序由 `internal/services/search-indexer/bootstrap/` 负责，平台包仅提供基础设施能力。
+- `api/proto`、`api/gen/go`、`contracts`：跨服务 RPC 源契约、生成类型、事件和 Agent 契约；生成代码由协议目录统一维护。
 
 ### 需要收敛
 
-- `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含迁移中的共享组合；Agent application 实现统一位于 `internal/services/agent/application/`，旧目录仅保留兼容装配入口。
+- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口，生产服务入口不得直接依赖该 facade。
+- `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
+- Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
+- Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
 - Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；`internal/data/mysql/repository/search_index_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口。
 - Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/search/` 路径由结构门禁阻止回流，索引失败仍遵循 Kafka retry/DLQ 和 Alias 回滚策略。
@@ -42,7 +48,7 @@
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `ProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store，并与 SQLC 实现共同位于 `internal/services/agent/infrastructure/mysql/`；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
 - Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/data/mysql/repository/agent_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Agent 数据访问实现由 Agent process 独占。
-- Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app/agent_application_compat.go` 仅保留 embedded 兼容别名与构造转发，服务入口和契约测试优先直接依赖 Agent application 包。
+- Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app` 的 Agent application 兼容 facade 已在调用者迁移后移除，服务入口和契约测试直接依赖 Agent application 包。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Sync MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 与 embedded 兼容入口均通过服务专属 composition，旧共享 repository 仅保留兼容入口。
@@ -50,13 +56,14 @@
 - Sync 独立 runtime 已直接装配 Sync infrastructure composition，`internal/app` 仅保留 embedded 聚合兼容入口；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
 - Inbox ownership 配置要求：Message `projector` 模式必须与启用的 Sync projector 和 Kafka 一起发布；`atomic` 模式保留为立即回滚路径，配置校验在连接副作用前 fail closed。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
-- Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
-- Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
-- Message Cassandra Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，写入 Message-owned Timeline；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
-- Message 独立 runtime 已直接使用 Message infrastructure composition 和 Message application factory；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
+- Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；`send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
+- Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/services/message/infrastructure/kafka` 负责 Outbox relay，`internal/platform/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
+- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
+- Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
-- `internal/data/mysql/repository/` 仅允许保留兼容别名、构造转发和迁移期间的兼容测试辅助代码；具体 SQLC repository 必须位于其服务的 infrastructure 边界。
+- 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
+- `internal/data/mysql` 及其历史 repository facade 已完成调用审计并退役；具体 SQLC repository 必须位于其服务的 infrastructure 边界。
 - 业务服务不得跨边界写入其他服务拥有的表。查询应通过 application port、RPC 或版本化事件完成。
 - `cmd/tools` 的回填、对账和证据程序可以复用只读 application port，但不能成为长期服务的隐式写入口。
 
@@ -64,7 +71,7 @@
 
 1. 先为每个服务保留独立 application port 和 contract test。
 2. 将 `internal/app` 中的 Composition Root 按 Core、Message、Sync、Search 和 Agent 责任拆分。
-3. 将 `internal/service`、`internal/handler` 和 `internal/store` 中仍跨服务的文件迁入对应服务包；共享部分下沉到 `internal/platform` 或明确命名的 shared package。
+3. 将 `internal/service` 中仍跨服务的文件迁入对应服务包；共享部分下沉到 `internal/platform` 或明确命名的 shared package。
 4. 服务完成独立数据库账号、独立迁移 owner 和 RPC/事件调用后，再删除兼容实现。
 
 每次搬迁必须同时更新本清单、`ARCHITECTURE-DEBT.md`、测试门禁和回滚说明。

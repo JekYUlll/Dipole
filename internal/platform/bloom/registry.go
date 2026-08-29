@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/JekYUlll/Dipole/internal/store"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 )
 
 const (
@@ -37,7 +37,7 @@ func SetDistributed(enabled bool) {
 }
 
 func Init() error {
-	return InitWithDB(store.SQLDB)
+	return InitWithDB(platformmysql.SQLDB)
 }
 
 func InitWithDB(db *sql.DB) error {

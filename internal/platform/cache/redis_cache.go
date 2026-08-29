@@ -1,6 +1,6 @@
-// Package cache provides thin Redis helpers for JSON serialisation/deserialisation
-// and hash-field operations. Best-effort cache helpers are no-ops when
-// store.RDB is nil; required service-state helpers return an error instead so
+// Package cache provides the shared Redis client and thin helpers for JSON
+// serialisation/deserialisation and hash-field operations. Best-effort cache
+// helpers are no-ops when RDB is nil; required service-state helpers return an error instead so
 // callers can fail closed when Redis is unavailable.
 package cache
 
@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 // TTLs for cached objects. Short enough to keep data fresh, long enough to
@@ -36,29 +34,29 @@ func NewContext() (context.Context, context.CancelFunc) {
 
 // Available reports whether the shared Redis client has been initialized.
 func Available() bool {
-	return store.RDB != nil
+	return RDB != nil
 }
 
 // GetBytes reads a raw value for service-owned state that is not JSON.
 func GetBytes(ctx context.Context, key string) ([]byte, error) {
-	if store.RDB == nil {
+	if RDB == nil {
 		return nil, fmt.Errorf("redis is not initialized")
 	}
 
-	return store.RDB.Get(ctx, key).Bytes()
+	return RDB.Get(ctx, key).Bytes()
 }
 
 // RunTransaction executes a Redis transaction without exposing the shared
 // client to a domain package.
 func RunTransaction(ctx context.Context, fn func(redis.Pipeliner)) error {
-	if store.RDB == nil {
+	if RDB == nil {
 		return fmt.Errorf("redis is not initialized")
 	}
 	if fn == nil {
 		return fmt.Errorf("redis transaction callback is required")
 	}
 
-	pipe := store.RDB.TxPipeline()
+	pipe := RDB.TxPipeline()
 	fn(pipe)
 	_, err := pipe.Exec(ctx)
 	return err
@@ -89,11 +87,11 @@ func HotGroupMessagesSeqKey(groupUUID string, afterSeq uint64, limit int) string
 }
 
 func GetJSON(ctx context.Context, key string, target any) (bool, error) {
-	if store.RDB == nil {
+	if RDB == nil {
 		return false, nil
 	}
 
-	value, err := store.RDB.Get(ctx, key).Bytes()
+	value, err := RDB.Get(ctx, key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return false, nil
@@ -108,7 +106,7 @@ func GetJSON(ctx context.Context, key string, target any) (bool, error) {
 }
 
 func SetJSON(ctx context.Context, key string, value any, ttl time.Duration) error {
-	if store.RDB == nil {
+	if RDB == nil {
 		return nil
 	}
 
@@ -117,40 +115,40 @@ func SetJSON(ctx context.Context, key string, value any, ttl time.Duration) erro
 		return err
 	}
 
-	return store.RDB.Set(ctx, key, payload, ttl).Err()
+	return RDB.Set(ctx, key, payload, ttl).Err()
 }
 
 // SetString writes a short-lived scalar used by service state such as token
 // revocations. Unlike cache writes, missing Redis is an error for this path.
 func SetString(ctx context.Context, key, value string, ttl time.Duration) error {
-	if store.RDB == nil {
+	if RDB == nil {
 		return fmt.Errorf("redis is not initialized")
 	}
 
-	return store.RDB.Set(ctx, key, value, ttl).Err()
+	return RDB.Set(ctx, key, value, ttl).Err()
 }
 
 // Exists reports whether a service-state key is present. Missing Redis is an
 // error so callers can fail closed when state cannot be validated.
 func Exists(ctx context.Context, key string) (bool, error) {
-	if store.RDB == nil {
+	if RDB == nil {
 		return false, fmt.Errorf("redis is not initialized")
 	}
 
-	count, err := store.RDB.Exists(ctx, key).Result()
+	count, err := RDB.Exists(ctx, key).Result()
 	return count > 0, err
 }
 
 func Delete(ctx context.Context, keys ...string) error {
-	if store.RDB == nil || len(keys) == 0 {
+	if RDB == nil || len(keys) == 0 {
 		return nil
 	}
 
-	return store.RDB.Del(ctx, keys...).Err()
+	return RDB.Del(ctx, keys...).Err()
 }
 
 func HashSetJSON(ctx context.Context, key, field string, value any) error {
-	if store.RDB == nil {
+	if RDB == nil {
 		return nil
 	}
 
@@ -159,15 +157,15 @@ func HashSetJSON(ctx context.Context, key, field string, value any) error {
 		return err
 	}
 
-	return store.RDB.HSet(ctx, key, field, payload).Err()
+	return RDB.HSet(ctx, key, field, payload).Err()
 }
 
 func HashGetJSON(ctx context.Context, key, field string, target any) (bool, error) {
-	if store.RDB == nil {
+	if RDB == nil {
 		return false, nil
 	}
 
-	value, err := store.RDB.HGet(ctx, key, field).Bytes()
+	value, err := RDB.HGet(ctx, key, field).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return false, nil
@@ -182,11 +180,11 @@ func HashGetJSON(ctx context.Context, key, field string, target any) (bool, erro
 }
 
 func HashGetAll(ctx context.Context, key string) (map[string]string, error) {
-	if store.RDB == nil {
+	if RDB == nil {
 		return nil, nil
 	}
 
-	values, err := store.RDB.HGetAll(ctx, key).Result()
+	values, err := RDB.HGetAll(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -198,11 +196,11 @@ func HashGetAll(ctx context.Context, key string) (map[string]string, error) {
 }
 
 func Expire(ctx context.Context, key string, ttl time.Duration) error {
-	if store.RDB == nil {
+	if RDB == nil {
 		return nil
 	}
 
-	return store.RDB.Expire(ctx, key, ttl).Err()
+	return RDB.Expire(ctx, key, ttl).Err()
 }
 
 func fmtUint(value uint) string {

@@ -12,14 +12,15 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
@@ -41,6 +42,7 @@ type Dependencies struct {
 	Sync           applicationPort.SyncApplication
 	SyncComparison applicationPort.ClientSyncComparisonObserver
 	Messaging      *appComposition.MessagingServices
+	SystemMessages applicationPort.SystemMessageSender
 }
 
 func NewWithRepositories(repos *appComposition.Repositories) *Server {
@@ -69,10 +71,10 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	})
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	hotGroupDetector := platformHotGroup.NewRedisDetector()
-	redisPresence := platformPresence.NewRedisPresence()
+	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
+	redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
-	requestLimiter := platformRateLimit.NewLimiter()
+	requestLimiter := platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 	tokenService := service.NewTokenService()
 	authService := coreapplication.NewAuthApplication(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
@@ -98,13 +100,17 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if dependencies.Messages != nil {
 		messageApplication = dependencies.Messages
 	}
+	systemMessages := dependencies.SystemMessages
+	if systemMessages == nil {
+		systemMessages = messaging.Messages
+	}
 	contactService := coreapplication.NewContactApplication(repos.Contacts, repos.Users, coreapplication.ContactDependencies{
-		Notifier: newContactNotifier(wsHub), Events: kafkaEvents, SystemMessenger: messaging.Messages,
+		Notifier: newContactNotifier(wsHub), Events: kafkaEvents, SystemMessenger: systemMessages,
 	})
 	groupService := coreapplication.NewGroupApplication(repos.Groups, repos.Users, coreapplication.GroupDependencies{
 		Events: kafkaEvents, HotGroups: hotGroupDetector, Files: repos.Files,
 		Storage: platformStorage.Client, AvatarMaxBytes: 5 * 1024 * 1024,
-		AvatarURLTTL: 10 * time.Minute, SystemMessenger: messaging.Messages,
+		AvatarURLTTL: 10 * time.Minute, SystemMessenger: systemMessages,
 	})
 	sessionService := coreapplication.NewSessionApplication(coreapplication.SessionDependencies{
 		Presence: redisPresence, Tokens: tokenService,

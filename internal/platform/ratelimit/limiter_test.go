@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestLimiterAllowLoginBlocksAfterLimit(t *testing.T) {
@@ -21,6 +21,7 @@ func TestLimiterAllowLoginBlocksAfterLimit(t *testing.T) {
 			LoginLimit:         2,
 			LoginWindowSeconds: 60,
 		},
+		redis: cache.RDB,
 	}
 
 	for i := 0; i < 2; i++ {
@@ -49,6 +50,7 @@ func TestLimiterAllowMessageSendUsesUserScopedCounter(t *testing.T) {
 			MessageLimit:         1,
 			MessageWindowSeconds: 60,
 		},
+		redis: cache.RDB,
 	}
 
 	allowed, _ := limiter.AllowMessageSend("U100")
@@ -71,7 +73,7 @@ func TestLimiterAllowAgentMCPUsesPrincipalScopedFailClosedCounter(t *testing.T) 
 	cleanup := setupLimiterTest(t)
 	defer cleanup()
 
-	limiter := &Limiter{config: config.RateLimit{AgentMCPLimit: 2, AgentMCPWindowSeconds: 60}}
+	limiter := &Limiter{config: config.RateLimit{AgentMCPLimit: 2, AgentMCPWindowSeconds: 60}, redis: cache.RDB}
 	for i := 0; i < 2; i++ {
 		if allowed, retryAfter := limiter.AllowAgentMCP("U100"); !allowed || retryAfter != 0 {
 			t.Fatalf("MCP attempt %d: allowed=%v retryAfter=%s", i+1, allowed, retryAfter)
@@ -89,18 +91,43 @@ func TestLimiterAllowAgentMCPUsesPrincipalScopedFailClosedCounter(t *testing.T) 
 }
 
 func TestLimiterAllowAgentMCPFailsClosedWithoutRedisAndPreservesMessageFailOpen(t *testing.T) {
-	oldRDB := store.RDB
-	store.RDB = nil
-	t.Cleanup(func() { store.RDB = oldRDB })
+	oldRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = oldRDB })
 	limiter := &Limiter{config: config.RateLimit{
 		Enabled: true, MessageLimit: 1, MessageWindowSeconds: 60,
 		AgentMCPLimit: 2, AgentMCPWindowSeconds: 60,
-	}}
+	}, redis: nil}
 	if allowed, retryAfter := limiter.AllowAgentMCP("U100"); allowed || retryAfter != time.Minute {
 		t.Fatalf("MCP dependency failure: allowed=%v retryAfter=%s", allowed, retryAfter)
 	}
 	if allowed, retryAfter := limiter.AllowMessageSend("U100"); !allowed || retryAfter != 0 {
 		t.Fatalf("message compatibility changed: allowed=%v retryAfter=%s", allowed, retryAfter)
+	}
+}
+
+func TestLimiterUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	limiter := NewLimiterWithClient(config.RateLimit{
+		Enabled: true, AgentMCPLimit: 1, AgentMCPWindowSeconds: 60,
+	}, client)
+
+	if allowed, _ := limiter.AllowAgentMCP("U-explicit"); !allowed {
+		t.Fatal("first explicit-client request should be allowed")
+	}
+	if allowed, _ := limiter.AllowAgentMCP("U-explicit"); allowed {
+		t.Fatal("second explicit-client request should be limited")
 	}
 }
 
@@ -113,11 +140,11 @@ func setupLimiterTest(t *testing.T) func() {
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	oldRDB := store.RDB
-	store.RDB = rdb
+	oldRDB := cache.RDB
+	cache.RDB = rdb
 
 	return func() {
-		store.RDB = oldRDB
+		cache.RDB = oldRDB
 		_ = rdb.Close()
 		mr.Close()
 	}

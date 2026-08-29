@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,14 +22,12 @@ func TestAgentMCPRateLimitRealRedisContract(t *testing.T) {
 	if err := client.Ping(ctx).Err(); err != nil {
 		t.Fatalf("ping Redis: %v", err)
 	}
-	oldRDB := store.RDB
-	store.RDB = client
-	t.Cleanup(func() { store.RDB = oldRDB; _ = client.Close() })
+	t.Cleanup(func() { _ = client.Close() })
 	principal := fmt.Sprintf("contract-%d", time.Now().UnixNano())
 	key := agentMCPRateKey(principal)
 	t.Cleanup(func() { _ = client.Del(context.Background(), key).Err() })
 	configuration := config.RateLimit{AgentMCPLimit: 1, AgentMCPWindowSeconds: 1}
-	first, second := &Limiter{config: configuration}, &Limiter{config: configuration}
+	first, second := &Limiter{config: configuration, redis: client}, &Limiter{config: configuration, redis: client}
 	if allowed, _ := first.AllowAgentMCP(principal); !allowed {
 		t.Fatal("first Gateway instance rejected the principal")
 	}

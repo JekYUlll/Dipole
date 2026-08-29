@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 type AgentRuntimePromotionControlRepository struct{ store *mysqlData.Store }

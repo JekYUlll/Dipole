@@ -18,17 +18,159 @@
 
 ## [Unreleased]
 
+- 将 Cassandra Projector runtime 从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`；独立工具改用 Message-owned bootstrap，Cassandra Timeline projection、Kafka consumer group 和回滚语义保持不变。
+- 删除经全仓调用审计确认无调用者的 Core、Agent、Search repository alias 及 `internal/data/mysql` 历史兼容目录；各服务 SQLC repository 现在完全由服务 infrastructure 持有。
+- 删除经全仓调用审计确认无调用者的 `internal/data/mysql/store_compat.go`；MySQL 事务边界统一由 `internal/platform/mysql` 持有，剩余历史 repository alias 继续按实际调用者治理。
+- 删除经全仓调用审计确认无调用者的 `internal/store` MySQL/Redis 兼容入口；所有生产服务和运维工具统一使用 `internal/platform/mysql` 与 `internal/platform/cache`，旧共享 store 目录不再作为回滚入口。
+- 删除经全仓调用审计确认无生产或测试调用者的 Message/Sync 历史 repository facade；Message 与 Sync SQLC repository 现在仅由各自服务 infrastructure 持有，Core、Agent、Search 兼容入口及 embedded 回滚边界保持不变。
+- 删除无调用者的 `internal/bootstrap.RegisterGatewayKafkaHandlers` 兼容 facade，embedded Kafka 装配直接使用 Gateway infrastructure 注册器；Gateway Kafka 注册所有权完成收口。
+- Gateway runtime 已直接使用 `internal/services/gateway/infrastructure/kafka.RegisterHandlers`，移除对共享 `internal/bootstrap` Kafka 注册兼容入口的生产依赖，并新增架构回流测试。
+- Gateway Kafka 注册器与 realtime authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka`，共享 bootstrap 降为兼容转发；Gateway 的订阅注册、热群 detector、Notifier 和 fence 组合由服务边界统一持有。
+- Gateway group message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka`，普通群逐用户 fan-out、hot-group notify 聚合、文件映射和 Timeline notify 均由服务自有实现持有；Gateway Kafka 共享 handler 实现已清理完毕。
+- Gateway direct message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka`，保留文件消息映射、Timeline notify 三种模式和 WS 上下文传播；group message delivery 继续独立迁移。
+- Gateway 群事件 Kafka handler（`group.created`、`group.updated`、成员变更和解散）已迁入 `internal/services/gateway/infrastructure/kafka`，新增泛型 fan-out 契约测试；Core 的会话初始化解码保持原有归属。
+- Gateway `session.force_logout` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，通过服务自有 `ConnectionController` 保持指定连接和全量连接断开语义，并补充契约测试。
+- Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增用户范围 WS 契约测试并保持 malformed event 重试语义。
+- Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增契约测试并保持 WS read receipt 与 malformed event 重试语义。
+- Gateway realtime delivery authority fence 已迁入 `internal/services/gateway/infrastructure/kafka`，embedded 装配改用服务自有实现；消息 delivery handler 仍按依赖闭包继续迁移。
+- Gateway 热群通知聚合器及其测试已迁入 `internal/services/gateway/infrastructure/kafka`，共享 Kafka handler 改用服务自有 `Notifier` 与默认窗口；完整消息投递 handler 继续按依赖闭包分阶段迁移。
+- 删除已无生产调用者的共享 readiness 实现与重复测试，Kafka assignment、authority fence 和依赖监控统一由 `internal/platform/runtime` 持有并验证。
+- 时间线通知模式校验已下沉到 `internal/platform/runtime.ValidateTimelineNotifyMode`，Gateway、Core 和 embedded runtime 统一使用平台启动校验；删除共享 bootstrap 的重复实现与无调用者兼容入口。
+- TLS 证书与私钥路径校验已下沉至 `internal/platform/runtime.ValidateTLSFiles`，Core、Gateway 和 embedded runtime 统一使用平台实现；删除共享 bootstrap 的重复 helper，TLS 启动失败语义保持一致。
+- 删除已无调用者的 `internal/bootstrap.VerifyMessageDatabaseBoundary` 兼容转发；Message 数据库权限探针继续由 `internal/services/message/infrastructure/mysql` 唯一持有，embedded 与独立 runtime 均不改变权限语义。
+- Embedded runtime 已直接持有并创建 `messagekafka.Relay`，删除仅供旧 bootstrap 内部使用的 Outbox 类型 alias/构造包装；Outbox relay 实现、启动条件和回滚行为保持兼容。
+- Embedded Kafka 装配已直接注册 Message-owned persistence handlers，删除仅供共享 bootstrap 内部使用的 `RegisterMessageKafkaHandlers` 包装，避免继续扩散 Message Kafka 实现入口。
+- Message bootstrap 的惰性 Core 重试测试已改用本地最小 gRPC adapter，不再反向导入共享 `internal/bootstrap` 测试夹具，解除 Message 服务测试包循环依赖。
+- Embedded 兼容入口 `internal/bootstrap.NewMessageRPCServer` 已改为转发 Message bootstrap 的服务自有实现，删除共享 RPC 文件中的重复注册逻辑；旧调用方的协议、认证和回滚行为保持兼容。
+- Message 独立 runtime 的 RPC server 字段已切换为 `internal/platform/rpc.Server`，移除对共享 `internal/bootstrap` RPC 类型别名的生产依赖；embedded 兼容入口继续保留，协议、认证和回滚行为不变。
+- Message MySQL least-privilege database permission probe 已迁入 `internal/services/message/infrastructure/mysql`；独立 Message runtime 直接校验服务自有边界，embedded 入口保留兼容转发，权限探针单元测试与真实账号集成测试随服务 infrastructure 归属。
+- Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接注册服务 handler，embedded 保留兼容注册包装。
+- Message Outbox relay 已下沉至 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接使用服务实现，embedded 回滚路径保留薄兼容包装。
+- Message shadow runtime 的 Query-only adapter 及契约测试已迁入 `internal/services/message/bootstrap/`，删除共享 bootstrap 中对应兼容 alias/构造转发；shadow 写拒绝和查询透传语义保持不变。
+- Message bootstrap 已接管惰性 Core Capability adapter 及其重试测试，runtime 不再通过共享 `internal/bootstrap` facade 获取 Core capability；旧共享拨号能力仍为其他兼容调用者保留。
+- 五条主要 Epic 分支已同步到当前 `master` 基线并推送：`epic/01-microservices`、`epic/02-storage-architecture`、`epic/03-agent-runtime`、`epic/04-cpp-realtime`、`epic/05-frontend-experience`；后续里程碑开发可继续保持阶段隔离。
+- 删除已无实现的 `internal/app/agent_application_compat.go`，同步收紧服务布局门禁和仓库边界文档，避免通过空兼容文件维持过时结构。
+- Agent Execution Policy 测试已直接使用 Agent application 的持久策略构造器；删除 `internal/app` 中无调用的策略 alias 与构造转发，进一步收敛 embedded compatibility facade。
+- 清理 `internal/app` 中无调用的 `StaticAgentExecutionPolicyV1` 和 `AgentMemoryTaskReaderV1` 兼容符号；生产装配继续直接使用 Agent application 边界。
+- Agent Execution Policy 测试已直接使用 Agent application 的 Resolver/Run Admission 构造器；删除 `internal/app` 中对应兼容类型与转发。
+- Message Command Execution 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Workflow Repair Executor 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Workflow Repair Prepare 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Workflow Repair Audit 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Runtime Promotion Control 测试已直接使用 Agent application 的时钟注入构造器；删除 `internal/app` 中无调用的类型与构造转发。
+- Agent Approval Service 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Task Workflow Projection 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Task Control 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
+- Active Run Promotion Authorizer 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中无调用的类型与构造转发。
+- Agent Capability 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
+- Agent Command 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
+- Agent Event Subscription 控制面测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
+- Agent Memory Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Runtime Promotion Evidence Review 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Memory Owner Control 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Artifact Service 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Memory Candidate Promotion 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent MCP Tool Round 与 Terminal 测试已整体迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的 Round/Terminal 构造转发。
+- Agent MCP Tool Round 测试已补齐本地最小 invocation reader stub，解除对 `internal/app` 共享测试辅助的隐式依赖。
+- Agent MCP Readiness Evidence 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Definition Catalog 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
+- Agent Approval Grant Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发；审批主服务测试因共享 policy stub 继续保留兼容边界。
+- Agent application compatibility facade 已删除两个无调用者的未导出转发函数；仍被兼容测试使用的执行策略和任务辅助入口继续保留，服务 application 实现保持唯一来源。
+- Core、Sync 和 Agent repository compatibility facade 已完成调用者清理并退休；生产与 embedded composition 直接使用各服务 infrastructure，服务布局门禁同步移除三项历史登记及过时的存在性断言。
+- 聚合 `internal/app/composition_compat.go` 已退休；composition 测试已归属 `internal/bootstrap/embedded` 并直接验证 embedded repository/service 装配，`internal/app` 当前仅保留仍在迁移期的 Agent application 兼容边界。
+- Core embedded compatibility facade 已移除无调用者的 Inbox 写入开关转发和旧 Message application 构造入口；Inbox projector 与 Message application 继续由服务专属/embedded composition 直接装配，保留仍有调用者的兼容 API。
+- 服务布局门禁已同步移除已退休的 `internal/app/core_capability.go` 必需登记项，避免已删除的孤立 facade 阻断后续结构检查。
+- Core 已删除无调用者的 `internal/app/core_capability.go` 兼容构造入口；Core 能力继续由服务自身 application 与 embedded composition 装配。
+- Core 已移除无调用者的旧 `validateStandaloneCoreMode` compatibility facade，并将模式校验测试归属 `internal/services/core/bootstrap`；embedded 组合逻辑与回滚入口保持不变。
+- Core bootstrap 已将 embedded 初始化兼容入口隔离到独立 `embedded_compat.go`；独立 Core entrypoint 文件不再直接依赖旧 bootstrap，embedded 回滚 API 保持兼容。
+- Core 独立服务入口已自有 HTTP/TLS 启动与证书文件校验，embedded 模式仍通过兼容入口保留原有回滚路径；新增架构测试锁定服务入口不再转发旧 bootstrap 的 `RunServer`。
+- 微服务 smoke 新增真实 `message.direct.created` 事件注入：通过 Kafka 连续发布同一事件两次，并在 MySQL 核对 EventLedger、Shadow Plan、Task 和 Shadow Run 的完成/幂等结果；当前仍保持 Agent shadow 与 Task `running` 生命周期。
+- 微服务隔离 smoke 新增 Agent Runtime `/livez` 和 `/readyz` 检查；真实 Kafka/MySQL/Redis/MinIO 栈验证 Agent 加入 `dipole-agent-shadow-v1` consumer group 并获得主/retry topic 分区，事件触发仍保持 shadow 默认路径。
+- Agent Runtime 独立进程 smoke 已验证默认安全配置下的 `/livez`、`/readyz` 和 SIGINT 优雅退出；Kafka、Temporal、MCP 与 Task Control 保持关闭，避免将本地启动验证误作外部依赖联调。
+- Agent Runtime TypeScript protobuf generated files 已按当前 `api/proto` 重新生成，补齐 Message system-message RPC 并通过 proto drift 检查；Agent Runtime `661 passed / 27 skipped`，typecheck 和 build 均通过。
+- AI assistant 用户 seed 已下沉到 `internal/services/core/application`，独立 Core 与 embedded 回滚路径共享 Core-owned 初始化能力；Core bootstrap 不再依赖旧 bootstrap 的 assistant seed facade，并新增缺失 Store 的测试覆盖。
+- Core Conversation Kafka projection 已迁入 `internal/services/core/infrastructure/kafka`，独立 Core 直接注册 group/message projection；旧 `internal/bootstrap` 入口降为兼容转发，事件版本解码、Conversation Seq 映射和错误传播保持不变。
+- SQLC/GORM 迁移复核已加入服务布局门禁：生产 Go 代码和 Go module 禁止重新引入 GORM；当前生产路径统一使用 `database/sql + sqlc`，兼容测试仍可保留历史命名语义。
+- Core 独立服务的 runtime、system-message sender 和 RPC adapter 已迁移到 `internal/services/core/bootstrap`；embedded 启动仍保留为回滚路径，Kafka projection 与 assistant seed 通过显式兼容 facade 复用。
+- Gateway 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 管理 Message、Sync、Core、Search 客户端和 realtime delivery observation server；Kafka handler、TLS 与时间线校验兼容边界保持不变，支持后续独立迁移。
+- Sync 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Sync query adapter 和拨号 Core capability；旧 `internal/bootstrap` RPC wrapper 不再参与 Sync 生产装配，调用方白名单和回滚语义保持不变。
+- Message 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Message adapter，并由 Message runtime 自有入口启动；旧 `internal/bootstrap` RPC server wrapper 不再参与 Message 生产装配，其他兼容依赖继续保持可回滚。
+- Search 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Search adapter、执行服务认证拨号并管理 transport 生命周期；Core RPC legacy helper 限定在测试 fixture，Search 生产代码不再依赖 `internal/bootstrap`。
+- Internal RPC 通用 transport 已下沉到 `internal/platform/rpc`，统一承载 gRPC listener、服务认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭；`internal/bootstrap` 保留薄兼容转发，协议 adapter 与方法权限继续按服务边界逐步迁移。
+- 修复 Agent MCP RPC drill fixture 对已迁移 protobuf 生成目录的旧引用，统一使用 `api/gen/go/agent/v1`；master 全量 Go 测试恢复可执行。
+- 修复 Gateway 服务入口 `RunServer` 递归调用自身的迁移回归，改为委托服务自有 `RunGatewayServer`；新增架构测试锁定入口委托关系，HTTP/WS 与 TLS 启动路径已通过验证。
+- Gateway runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/gateway/bootstrap`，服务入口直接拥有 HTTP/WS、Redis Presence/限流、Kafka 和实时投递 authority 装配；RPC、TLS 与 Kafka handler 兼容入口保留，旧 runtime 路径由结构门禁阻止回流。
+- Message Service runtime 与配置校验测试已从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`，服务入口直接组合 Message-owned SQLC repository 和现有 Kafka/Cassandra/Outbox 能力；旧共享 runtime 路径由结构门禁阻止回流。
+- Sync Service runtime、数据库权限边界校验及相关测试已从共享 `internal/bootstrap` 迁入 `internal/services/sync/bootstrap`，保留 Cassandra hydration、Kafka projector 和 Local 回滚语义；Internal RPC 暂由窄 compatibility adapter 承接。
+- Search Service runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/search/bootstrap`，Search 测试与 Elasticsearch/Core capability 装配同步归属服务边界；Internal RPC 暂由窄 compatibility adapter 承接，旧 runtime 路径由结构门禁阻止回流。
+- Search Indexer 的 runtime 实现已从共享 `internal/bootstrap` 迁入 `internal/services/search-indexer/bootstrap`，直接拥有 Kafka consumer、Elasticsearch index 和 metrics/readiness 启动编排；旧路径由结构门禁阻止回流，Kafka/Elasticsearch 回滚语义保持不变。
+- 运行时 readiness 编排已下沉到 `internal/platform/runtime`，统一提供依赖探针、gRPC health 检查、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定；服务特有启动条件继续留在各自 runtime，旧 `internal/bootstrap/dependency_readiness.go` 保留兼容出口。
+- 新增 `internal/platform/runtime` 共享运行时平台，Core、Gateway、Message、Sync、Search、Search Indexer 和 Cassandra projector 统一使用平台 metrics 生命周期；旧 `internal/bootstrap/metrics.go` 降级为兼容出口，运行行为和回滚路径保持不变。
+- Search Indexer 服务新增 `internal/services/search-indexer/bootstrap/` 入口边界，`cmd/services/search-indexer` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Elasticsearch、metrics 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
+- Core 服务新增 `internal/services/core/bootstrap/` 入口边界，`cmd/services/core` 已停止直接依赖共享 `internal/bootstrap`，并显式区分独立 Core 与 embedded 回滚模式；RPC、Kafka、storage 和 readiness 运行时暂保留兼容 facade。
+- Gateway 服务新增 `internal/services/gateway/bootstrap/` 入口边界，`cmd/services/gateway` 已停止直接依赖共享 `internal/bootstrap`；实时投递 authority、Kafka、Redis、RPC 和 WS/TLS 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
+- Sync 服务新增 `internal/services/sync/bootstrap/` 入口边界，`cmd/services/sync` 已停止直接依赖共享 `internal/bootstrap`；Kafka projector、Cassandra hydration、数据库和 gRPC 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
+- Message 服务新增 `internal/services/message/bootstrap/` 入口边界，`cmd/services/message` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Outbox、Cassandra routing、gRPC 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
+- Search 服务新增 `internal/services/search/bootstrap/` 入口边界，`cmd/services/search` 已停止直接依赖共享 `internal/bootstrap`；底层运行时保留兼容 facade，便于后续独立抽离 gRPC、metrics 和 readiness 基础设施并支持快速回滚。
+- 新增 `deploy/microservices/inbox-projector.yml` 可移除的 Inbox ownership 切换 overlay：绑定 Message projector 模式、`dipole_message_projector` 最小账号和 Sync projector 开关，并由 `scripts/check-compose.sh` 校验配置一致性；默认 atomic 回滚路径保持不变。
+- 重新通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；共享候选环境切换仍需维护窗口 receipt。
+- 扩展隔离微服务消息 smoke，支持显式加载 Inbox projector overlay 并等待 Kafka/Sync 异步物化目标用户 Inbox；默认 atomic smoke 和自动清理行为保持不变，候选 projector 拓扑可独立验收。
+- 通过 `SMOKE_INBOX_PROJECTOR=1 SMOKE_MESSAGE_FLOW=1 scripts/smoke-microservice-isolated-images.sh` 完成候选 projector 端到端验收：Gateway WebSocket 发送、Message/Outbox 持久化、Sync 异步 Inbox 物化、重复消息语义和 Seq 查询均通过；共享环境切换仍需维护窗口 receipt。
+- 候选微服务 smoke 成功后新增 `dipole.microservices.smoke-receipt.v1` JSON receipt，绑定源码 revision、Compose project、projector 模式、dirty 状态和无数据迁移回滚动作；默认输出到 `/tmp` 并限制为 `0600`，可通过 `SMOKE_REPORT_FILE` 归档。
+- receipt contract 实际通过：候选 projector 拓扑再次完成端到端消息验收，JSON schema、projector/message-flow 标志、无数据迁移回滚字段和 `0600` 权限均校验通过；共享环境 Kafka ownership 仍需维护窗口确认。
+- Kafka 三节点故障与消费 ownership 演练通过：RF=3/min ISR=2 下验证单 broker 存活、低于 quorum 拒绝确认写入、consumer member 丢失后的 6 分区接管和 lag 归零；Prometheus 观测演练覆盖 lag、retry、DLQ、ISR 缺口及 broker 恢复。
+- 修复 Kafka cluster observability profile 的 Prometheus rule-file 挂载漂移，补齐 duplicate hydration 和 Agent Timeline repair 规则，并在 `scripts/check-compose.sh` 增加挂载门禁；生产 Kafka ownership 切换和可执行回滚 receipt 仍按 AD-048 跟踪。
+- Redis Sentinel 三节点故障演练通过：真实客户端完成 master 切换、Pub/Sub 重连、Presence、Hot Group 和限流恢复，旧 master 重新加入为 replica；可靠消息仍由 Kafka/Sync Timeline 提供补偿。
+- 修复 Redis Sentinel 故障 smoke 使用旧 `internal/store` 测试包的问题，改为构建 `internal/platform/cache` 的真实故障测试，保持兼容目录仅作回滚出口。
+- 修复 storage-lab 在受限宿主机上的 Elasticsearch 启动与磁盘水位问题：支持 `COMPOSE_PROJECT_NAME` 隔离调试，实验栈使用仅限 lab 的 `90%/99%/99.5%` 磁盘阈值，并为 API 版本探针增加有界重试；storage-lab Cassandra 5.0.9、Elasticsearch 9.5.2、MinIO CRUD smoke 已通过，生产水位配置未改变。
+- Sync Cassandra primary Compose smoke 通过：隔离微服务拓扑完成 Cassandra schema init，Core、Message、Sync 与基础依赖达到 healthy，Sync primary hydration 配置和 readiness 验收通过并自动清理；生产主读灰度继续保持关闭。
+- Cassandra read-routing 隔离 smoke 通过：真实 Cassandra/MySQL 双存储验证 Seq 页面主读，payload 损坏和缺失行按同一 cursor 回退 MySQL；该验证不改变默认生产主读比例，生产观测和回切审批继续受 AD-043 约束。
+- 服务布局门禁现在同时检查已跟踪和未忽略的未跟踪兼容目录文件；负向测试确认未登记文件会 fail closed，避免本地新文件绕过 `internal/app`、`internal/store` 和 `internal/data/mysql` 的物理边界约束。
+- 收紧微服务仓库物理边界门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 现在仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；未知文件会 fail closed，避免服务抽取后重新形成共享实现区。现有兼容入口和回滚行为保持不变。
+- 微服务隔离部署 smoke 通过：在独立 Compose project 和候选服务镜像上验证 Core、Message、Sync、Gateway、Agent 及基础设施的冷启动、readiness、metrics、TLS 1.3 mTLS、Core 代理和 remote WS ownership，并自动清理临时拓扑；共享环境发布切换与回滚 receipt 仍按架构债务台账跟踪。
+- Agent Runtime 新增容器交付门禁 `scripts/check-agent-runtime-container.sh`：镜像绑定 OCI revision/created/dirty provenance，自动验证非 root `node` 用户与 foundation `/readyz`，为独立制品和回滚路径提供可重复检查。
+- Agent Runtime 完成独立制品验证：`services/agent-runtime/Dockerfile` 构建成功，生产镜像仅包含编译后的 `dist` 与裁剪后依赖；容器以 `node` 用户运行，关闭 Kafka/RPC 的 foundation 配置下 `/readyz` 返回 200。
+- TS Agent Runtime 独立 module 完成当前基线验证：`npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；Compose 仍保持 shadow、metadata、foundation 默认回滚模式。
+- 完成当前仓库结构基线验证：全量 `CGO_ENABLED=0 go test ./...` 通过，覆盖服务入口、运维工具、兼容包、平台层和 RPC/WS transport；根级目录白名单与服务边界门禁继续通过。
+- 新增根级源码目录白名单门禁，明确 `api/`、`benchmarks/`、`cmd/`、`configs/`、`contracts/`、`db/`、`deploy/`、`design/`、`docs/`、`frontend/`、`internal/`、`scripts/` 和 `services/` 的归属；本地 `logs/`、`tmp/`、`dist/`、`certs/` 继续由忽略规则隔离。
+- Agent bootstrap 已改用 Agent-owned application constructors，移除 runtime/kafka 对 `internal/app` 聚合 facade 的最后两处生产引用；服务布局门禁现禁止外部生产代码依赖该兼容入口。
+- 校正平台演进计划的 Message transport 基线，区分 M3 历史 `local` 默认值与当前微服务 Compose 的远程 `grpc` 默认路径，避免把回滚配置误读为生产默认配置。
+- 清理 MySQL 共享 repository 目录中的无调用者 contract test helper；各服务继续在自身 infrastructure 测试边界维护 contract database helper，历史兼容包仅保留别名和构造转发。
+- 修正文档中的目录基线：明确共享 `internal/handler` 已清空，当前仅保留 `internal/store`、`internal/app` 和历史 SQLC 兼容入口，避免服务边界清单继续引用已删除的共享 Handler 目录。
+- 补齐兼容目录的结构说明：`internal/app`、`internal/data/mysql`、历史 repository aliases 和 `internal/store` 均增加 ownership/迁移出口 README，服务布局门禁将其作为仓库导航约束；未改变兼容入口和运行时行为。
+- 收敛 MySQL repository 调用边界：Sync 运维、Message/Sync/Cassandra 集成测试和 embedded composition 测试改用对应服务自有 SQLC repository；历史 `internal/data/mysql/repository` 兼容别名继续保留，但结构门禁禁止新的运行时代码依赖该路径。
+- Compose 结构门禁新增 Core/Message 默认拓扑循环依赖检查：默认微服务配置禁止双方互相 `depends_on`，并继续要求 Core 使用远程 gRPC transport；Cassandra primary 的 embedded/local 回滚覆盖层保持兼容。
+- Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
+- 更新平台演进计划的当前基线，使部署入口、Gateway/Message/Sync ownership、MySQL/Kafka/Cassandra/Redis 分层和 Go/Eino 到 TS Runtime 的过渡状态与仓库现状一致；保留 embedded 与 shadow/primary 回滚边界。
+- 删除已无调用者的 `internal/service/event_publisher.go` 旧接口，并由服务布局门禁阻止 `internal/service/` 重新承载实现；跨服务事件契约继续使用 `internal/application` 和版本化事件包。
+- Message RPC 新增 Core-only system message command，Core standalone 通过懒连接 adapter 将联系人/群组系统消息交给 Message Service 持久化；默认微服务配置启用远程路径，embedded 模式保持本地回滚。
+- 将 Message 与 Core 共享的文件错误提升到 `internal/application` 契约，解除 Message domain 对 Core domain 实现的直接依赖；保留 Core/兼容入口的错误身份和 HTTP 错误映射。
+- 重新整理一次性运维代码：将 Agent、Cassandra、Search、Sync 的回填、基线、清理、切换、证据和对账实现统一收纳到 `internal/operations/<service>/`，移除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向遗留目录；补充目录索引与结构门禁，运行行为和工具入口保持兼容。
+- 将 MySQL migration runner、DSN 配置迁入 `internal/platform/mysql/`，将 Agent/Cassandra/Search/Sync 的 MySQL 运维 adapter 与 contract test 迁入对应 `internal/operations/<service>/<operation>/mysql/`；`internal/data/mysql` 仅保留兼容入口，服务调用路径和回滚语义保持兼容。
+
+- 将 Search 回填、归档、对账、Alias 切换和 Outbox 清理装配从 `internal/bootstrap/` 收纳到 `internal/operations/search/`，明确长期服务启动与一次性运维操作的目录边界；命令行入口、回滚语义和操作参数保持兼容。
+- 将 Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配从 `internal/bootstrap/` 分别收纳到 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时、命令参数和回滚语义保持兼容。
+- 将 Agent Memory lineage backfill 装配从 `internal/bootstrap/` 收纳到 `internal/operations/agent/`；dry-run、审批绑定、manifest 校验和回执语义保持兼容。
+- 将 embedded 聚合 `Repositories`、`MessagingServices` 及其构造实现从 `internal/app/` 收纳到 `internal/bootstrap/embedded/`，`internal/app` 保留兼容 facade；服务启动行为和 Agent 兼容构造语义保持兼容。
+- 将 protobuf Go 生成物从 `internal/transport/grpc/gen/` 收纳到 `api/gen/go/`，同步更新 `go_package`、生成脚本和全部 RPC 适配引用；RPC 方法、版本和 wire 兼容性保持不变。
+- 将 MySQL 全局连接初始化从 `internal/store` 收敛到 `internal/platform/mysql`，生产启动入口、Bloom 初始化和 Agent 维护工具统一使用新平台边界；旧 MySQL 入口保留为兼容转发，Redis 迁移保持独立节奏。
+- 将 Redis 客户端初始化和全局状态从 `internal/store` 收敛到 `internal/platform/cache`，同步迁移 Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具；旧 Redis 入口保留为兼容转发，单节点/Sentinel 配置和实时状态语义保持兼容。
+- Hot Group Detector 新增显式 Redis 客户端注入，Core、Message、embedded 和 Kafka 投影装配统一传入平台客户端；无参数构造函数继续保留为兼容入口，检测阈值和热群策略保持不变。
+- Presence 新增显式 Redis 客户端注入，Gateway、embedded Server 和 WebSocket 路由统一使用平台客户端；无参数构造函数继续保留为兼容入口，连接 TTL、节点状态和故障语义保持兼容。
+- Rate Limiter 新增显式 Redis 客户端注入，Gateway、embedded Server 和 Agent MCP 入口统一使用平台客户端；普通业务限流的 fail-open 与 Agent MCP 的 fail-closed 语义保持兼容。
+- Rate Limiter 执行路径改为只使用实例绑定的 Redis 客户端，全局 Redis 仅保留在兼容构造函数；多实例限流共享同一注入客户端的行为由集成契约覆盖。
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 - 将 Sync Kafka Projector 从 `internal/projector/sync` 收敛到 `internal/services/sync/infrastructure/kafka`，直接复用 Message domain 事件解码与 Inbox projection contract；新增目录说明和结构门禁，运行时注册、Kafka topic 和 atomic/projector 回滚语义保持兼容。
 - 将 Search Indexer Kafka Projector 从 `internal/projector/search` 收敛到 `internal/services/search/infrastructure/kafka`，直接复用 Message domain 事件解码与 Search mutation contract；新增目录说明和结构门禁，Kafka retry/DLQ 与 Alias 回滚语义保持兼容。
 - 将 Cassandra Message Projector 从 `internal/projector/cassandra` 收敛到 `internal/services/message/infrastructure/cassandra`，直接复用 Message domain 事件解码；保留 `cmd/tools/cassandra-projector` 可选入口，Cassandra shadow/primary 和 MySQL 回退语义保持兼容。
 - 将 SQLC MySQL 事务 Store 和测试迁入 `internal/platform/mysql`，旧 `internal/data/mysql/store_compat.go` 仅保留类型别名与构造转发；事务语义、SQLC 生成输出和现有调用方保持兼容。
+- 将 SQLC generated 输出和 MySQL mapper 从 `internal/data/mysql` 收敛到 `internal/platform/mysql`，同步更新 `sqlc.yaml`、漂移检查和全仓引用；旧 `internal/data/mysql` 不再承载 generated/mapper 目录，查询行为与兼容入口保持稳定。
 
 ### 变更
 - 将 Search/Indexer 共用的 Elasticsearch client、版本化 schema、Alias 和 projection adapter 从 `internal/data/elasticsearch` 收纳到 `internal/platform/elasticsearch`，新增目录职责说明和结构门禁；Search 权限边界、Indexer 写入职责及 Alias 回滚语义保持兼容。
 - 将 Cassandra 灰度读取、消息对照和 Sync hydration fallback 从 `internal/data/{routing,shadow}` 收纳到 `internal/platform/storage/{routing,shadow}`，新增存储平台目录说明和结构门禁；MySQL 主路径、shadow 指标和回退开关保持兼容。
 - 将跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器从 `internal/data/cassandra` 收纳到 `internal/platform/cassandra`，新增目录职责说明和结构门禁；服务业务 projection 与编排保持原有边界。
-- 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；共享事件发布契约继续留在 `internal/service`，业务行为和回滚入口保持兼容。
+- 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；旧 `internal/service` 实现已清空，业务行为和回滚入口保持兼容。
 - Core 文件分片会话的 Redis 访问已收敛到 `internal/platform/cache`，domain 保留会话协议并移除对聚合 `internal/store` 的直接依赖；事务写入、缺失 Redis 和上传回滚语义保持兼容。
 - Core Auth TokenService 的 Redis 撤销状态访问已收敛到 `internal/platform/cache`，移除对 `internal/store` 全局客户端的直接依赖；写入和校验在 Redis 不可用时保持 fail-closed。
 - Agent infrastructure contract tests 已改用 `internal/services/agent/application/` 的 Agent-owned application constructors，结构门禁新增 Agent 服务禁止依赖聚合 `internal/app` 的检查；embedded 兼容入口保持不变。
@@ -680,11 +822,11 @@
 - Kafka Topic 创建后使用有界 metadata 收敛重试，避免冷启动期间短暂的 `Unknown Topic Or Partition` 造成服务退出。
 - Conversation 投影按 Seq 拒绝重复和过期消息回退；`unread_count` 继续作为兼容投影，由 `last_message_seq - read_seq` 语义维护。
 - Composition Root 统一使用 sqlc，已移除 `data.mysql_adapter` 兼容开关和 legacy GORM adapters。
-- User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，由 GORM 与 sqlc 后端共享同一缓存装饰器。
-- Conversation 的消息预览规则收敛到 domain model，GORM 与 sqlc 投影复用同一文本、文件、AI 和系统消息摘要语义。
-- Eino 从 `v0.8.8` 升级至 `v0.9.15`，`eino-ext/components/model/openai` 从 `v0.1.12` 升级至 `v0.1.13`。
+- User Repository 的 Redis/Bloom 策略从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Contact Repository 的 Redis 关系缓存从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Group Repository 的 Redis/Bloom 与成员排序策略从数据库适配器中抽离，SQLC 后端复用统一缓存装饰器。
+- Conversation 的消息预览规则收敛到 domain model，SQLC 投影复用统一的文本、文件、AI 和系统消息摘要语义。
+- Eino 从 `v0.8.8` 升级至 `v0.9.17`，`eino-ext/components/model/openai` 保持 `v0.1.13`。
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复

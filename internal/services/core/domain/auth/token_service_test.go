@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestAgentMCPAccessTokenIsAudienceAndScopeBound(t *testing.T) {
@@ -19,9 +19,9 @@ func TestAgentMCPAccessTokenIsAudienceAndScopeBound(t *testing.T) {
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 
 	tokens := NewTokenService()
 	accessToken, err := tokens.IssueAgentMCPAccessToken("U100", AgentMCPResource, []string{AgentMCPReadScope}, true)
@@ -77,9 +77,9 @@ func TestResolveSessionFailsClosedWhenRedisUnavailable(t *testing.T) {
 	t.Chdir("../../../../..")
 	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
 
-	previousRedis := store.RDB
-	store.RDB = nil
-	t.Cleanup(func() { store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRedis })
 
 	token, err := NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {

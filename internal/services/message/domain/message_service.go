@@ -16,15 +16,14 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/platform/idgen"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/singleflight"
 )
 
 var (
-	ErrFileStorageUnavailable = corefile.ErrFileStorageUnavailable
-	ErrFileNotFound           = corefile.ErrFileNotFound
-	ErrFilePermissionDenied   = corefile.ErrFilePermissionDenied
+	ErrFileStorageUnavailable = applicationPort.ErrFileStorageUnavailable
+	ErrFileNotFound           = applicationPort.ErrFileNotFound
+	ErrFilePermissionDenied   = applicationPort.ErrFilePermissionDenied
 )
 
 var (

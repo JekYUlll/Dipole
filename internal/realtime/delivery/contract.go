@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
-	deliveryv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

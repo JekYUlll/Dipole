@@ -5,6 +5,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 project=${COMPOSE_PROJECT_NAME:-dipole-isolated-image-smoke}
 gateway_port=${GATEWAY_PORT:-18080}
+report_file=${SMOKE_REPORT_FILE:-/tmp/${project}-receipt.json}
 wscli_log=$(mktemp -t dipole-isolated-wscli.XXXXXX.log)
 wscli_binary=$(mktemp -t dipole-isolated-wscli.XXXXXX)
 cert_dir=${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-isolated-certs.XXXXXX)}
@@ -27,13 +28,18 @@ export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
 compose() {
   local -a profile_args=()
+  local -a overlay_args=()
   if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
     profile_args+=(--profile search)
+  fi
+  if [[ "${SMOKE_INBOX_PROJECTOR:-0}" == "1" ]]; then
+    overlay_args+=( -f "${root_dir}/deploy/microservices/inbox-projector.yml" )
   fi
   docker compose -p "${project}" \
     "${profile_args[@]}" \
     -f "${root_dir}/deploy/compose/docker-compose.microservices.yml" \
     -f "${root_dir}/deploy/microservices/isolated-images.yml" \
+    "${overlay_args[@]}" \
     -f "${ports_file}" "$@"
 }
 
@@ -173,8 +179,12 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   test "${message_count}" = "1"
   outbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
     -e "SELECT COUNT(*) FROM outbox_events WHERE value LIKE '%${message_content}%';")
-  inbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
-    -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
+  for _ in $(seq 1 30); do
+    inbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+      -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
+    [[ "${inbox_count}" == "1" ]] && break
+    sleep 1
+  done
   test "${outbox_count}" = "1"
   test "${inbox_count}" = "1"
   history_response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
@@ -192,4 +202,24 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   printf 'isolated candidate message flow passed: sender=%s target=%s\n' "${sender_uuid}" "${target_uuid}"
 fi
 
-printf 'isolated microservices smoke passed: project=%s gateway_port=%s search_profile=%s\n' "${project}" "${gateway_port}" "${SMOKE_SEARCH_PROFILE:-0}"
+source_dirty=false
+if [[ -n "$(git -C "${root_dir}" status --porcelain --untracked-files=no)" ]]; then
+  source_dirty=true
+fi
+mkdir -p "$(dirname "${report_file}")"
+jq -n \
+  --arg schema "dipole.microservices.smoke-receipt.v1" \
+  --arg project "${project}" \
+  --arg revision "$(git -C "${root_dir}" rev-parse HEAD)" \
+  --arg gateway_port "${gateway_port}" \
+  --arg mode "${SMOKE_INBOX_PROJECTOR:-0}" \
+  --arg message_flow "${SMOKE_MESSAGE_FLOW:-0}" \
+  --argjson source_dirty "${source_dirty}" \
+  --arg rollback "remove deploy/microservices/inbox-projector.yml and restore DIPOLE_MESSAGE_INBOX_WRITE_MODE=atomic" \
+  '{schema_version:$schema, compose_project:$project, source:{revision:$revision, dirty:$source_dirty}, validation:{gateway_port:($gateway_port|tonumber), inbox_projector:($mode == "1"), message_flow:($message_flow == "1")}, rollback:{action:$rollback, destructive_data_migration:false}}' \
+  >"${report_file}"
+chmod 600 "${report_file}"
+
+printf 'isolated microservices smoke passed: project=%s gateway_port=%s search_profile=%s inbox_projector=%s\n' \
+  "${project}" "${gateway_port}" "${SMOKE_SEARCH_PROFILE:-0}" "${SMOKE_INBOX_PROJECTOR:-0}"
+printf 'isolated microservices receipt: %s\n' "${report_file}"

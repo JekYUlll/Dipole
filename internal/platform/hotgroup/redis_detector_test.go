@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestRedisDetectorDoesNotMarkSmallGroupAsHot(t *testing.T) {
@@ -75,6 +75,36 @@ func TestRedisDetectorMarksHotGroupAfterThreshold(t *testing.T) {
 	}
 }
 
+func TestRedisDetectorUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	detector := NewDetectorWithClient(config.HotGroup{
+		Enabled:              true,
+		MemberCountThreshold: 1,
+		MessageThreshold:     1,
+		WindowSeconds:        60,
+		CoolingSeconds:       180,
+	}, client)
+
+	status, err := detector.ObserveMessage("G-explicit", 1)
+	if err != nil {
+		t.Fatalf("observe message with explicit client: %v", err)
+	}
+	if !status.IsHot {
+		t.Fatalf("expected explicit client to make group hot, got %+v", status)
+	}
+}
+
 func setupRedisDetectorTest(t *testing.T) func() {
 	t.Helper()
 
@@ -83,14 +113,14 @@ func setupRedisDetectorTest(t *testing.T) func() {
 		t.Fatalf("run miniredis: %v", err)
 	}
 
-	originalRDB := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	originalRDB := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
 	return func() {
-		if store.RDB != nil {
-			_ = store.RDB.Close()
+		if cache.RDB != nil {
+			_ = cache.RDB.Close()
 		}
-		store.RDB = originalRDB
+		cache.RDB = originalRDB
 		mr.Close()
 	}
 }

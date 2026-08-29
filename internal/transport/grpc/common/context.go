@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
+	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
-	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

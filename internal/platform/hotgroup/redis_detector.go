@@ -3,8 +3,9 @@
 // lightweight notify-and-pull model, reducing fan-out pressure on busy groups.
 //
 // Detection uses two Redis keys per group:
-//   group:hot:counter:<uuid>  — INCR counter with a sliding window TTL (default 60s)
-//   group:hot:active:<uuid>   — presence flag set when thresholds are crossed (default 180s cooling)
+//
+//	group:hot:counter:<uuid>  — INCR counter with a sliding window TTL (default 60s)
+//	group:hot:active:<uuid>   — presence flag set when thresholds are crossed (default 180s cooling)
 //
 // A group is considered hot when both member count and recent message count
 // exceed the configured thresholds, OR while the active flag is still alive
@@ -23,7 +24,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 const requestTimeout = time.Second
@@ -42,13 +43,20 @@ type Status struct {
 type RedisDetector struct {
 	config config.HotGroup
 	log    *zap.Logger
+	redis  *redis.Client
 }
 
 func NewRedisDetector() *RedisDetector {
-	return NewDetector(config.HotGroupConfig())
+	return NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 }
 
 func NewDetector(cfg config.HotGroup) *RedisDetector {
+	return NewDetectorWithClient(cfg, cache.RDB)
+}
+
+// NewDetectorWithClient binds the detector to one Redis client, which keeps
+// service composition explicit while NewDetector remains a compatibility path.
+func NewDetectorWithClient(cfg config.HotGroup, client *redis.Client) *RedisDetector {
 	if !cfg.Enabled {
 		return nil
 	}
@@ -56,6 +64,7 @@ func NewDetector(cfg config.HotGroup) *RedisDetector {
 	return &RedisDetector{
 		config: cfg,
 		log:    logger.Named("hot-group"),
+		redis:  client,
 	}
 }
 
@@ -72,12 +81,12 @@ func (d *RedisDetector) ObserveMessage(groupUUID string, memberCount int) (Statu
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	count, err := store.RDB.Incr(ctx, counterKey(groupUUID)).Result()
+	count, err := d.redis.Incr(ctx, counterKey(groupUUID)).Result()
 	if err != nil {
 		return status, fmt.Errorf("increase hot group counter: %w", err)
 	}
 	if count == 1 {
-		if err := store.RDB.Expire(ctx, counterKey(groupUUID), d.window()).Err(); err != nil {
+		if err := d.redis.Expire(ctx, counterKey(groupUUID), d.window()).Err(); err != nil {
 			return status, fmt.Errorf("expire hot group counter: %w", err)
 		}
 	}
@@ -85,13 +94,13 @@ func (d *RedisDetector) ObserveMessage(groupUUID string, memberCount int) (Statu
 	status.RecentMessageCount = int(count)
 	if status.MemberCount >= d.config.MemberCountThreshold && status.RecentMessageCount >= d.config.MessageThreshold {
 		status.IsHot = true
-		if err := store.RDB.Set(ctx, activeKey(groupUUID), 1, d.cooling()).Err(); err != nil {
+		if err := d.redis.Set(ctx, activeKey(groupUUID), 1, d.cooling()).Err(); err != nil {
 			return status, fmt.Errorf("set hot group active flag: %w", err)
 		}
 		return status, nil
 	}
 
-	exists, err := store.RDB.Exists(ctx, activeKey(groupUUID)).Result()
+	exists, err := d.redis.Exists(ctx, activeKey(groupUUID)).Result()
 	if err != nil {
 		return status, fmt.Errorf("check hot group active flag: %w", err)
 	}
@@ -111,7 +120,7 @@ func (d *RedisDetector) Status(groupUUID string, memberCount int) (Status, error
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	count, err := store.RDB.Get(ctx, counterKey(groupUUID)).Int()
+	count, err := d.redis.Get(ctx, counterKey(groupUUID)).Int()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return status, fmt.Errorf("get hot group counter: %w", err)
 	}
@@ -124,7 +133,7 @@ func (d *RedisDetector) Status(groupUUID string, memberCount int) (Status, error
 		return status, nil
 	}
 
-	exists, err := store.RDB.Exists(ctx, activeKey(groupUUID)).Result()
+	exists, err := d.redis.Exists(ctx, activeKey(groupUUID)).Result()
 	if err != nil {
 		return status, fmt.Errorf("check hot group active flag: %w", err)
 	}
@@ -133,7 +142,7 @@ func (d *RedisDetector) Status(groupUUID string, memberCount int) (Status, error
 }
 
 func (d *RedisDetector) shouldRun(groupUUID string) bool {
-	return d != nil && d.config.Enabled && groupUUID != "" && store.RDB != nil
+	return d != nil && d.config.Enabled && groupUUID != "" && d.redis != nil
 }
 
 func (d *RedisDetector) baseStatus(memberCount int) Status {

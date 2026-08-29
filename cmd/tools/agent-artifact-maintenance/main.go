@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	artifactcleanup "github.com/JekYUlll/Dipole/internal/cleanup/artifact"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	artifactcleanup "github.com/JekYUlll/Dipole/internal/operations/agent/artifact"
+	artifactreconcile "github.com/JekYUlll/Dipole/internal/operations/agent/reconcile/artifact"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func main() {
@@ -60,10 +60,10 @@ func main() {
 		if err := config.Load(); err != nil {
 			fatal(fmt.Errorf("load config: %w", err))
 		}
-		if err := store.InitMySQL(); err != nil {
+		if err := platformmysql.InitMySQL(); err != nil {
 			fatal(fmt.Errorf("initialize MySQL: %w", err))
 		}
-		defer store.SQLDB.Close()
+		defer platformmysql.SQLDB.Close()
 		cfg := config.StorageConfig()
 		inspector, err := platformstorage.NewAgentArtifactMaintenanceInspectorV1(platformstorage.AgentArtifactMaintenanceConfigV1{
 			Endpoint: cfg.ArtifactEndpoint, AccessKey: cfg.ArtifactMaintenanceAccessKey, SecretKey: cfg.ArtifactMaintenanceSecretKey,
@@ -72,7 +72,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		metadata, err := agentmysql.NewAgentArtifactRepository(generated.New(store.SQLDB))
+		metadata, err := agentmysql.NewAgentArtifactRepository(generated.New(platformmysql.SQLDB))
 		if err != nil {
 			fatal(err)
 		}

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
+	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
-	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/status"
 )
@@ -148,6 +148,27 @@ func (c *Client) SendGroupFileMessageContext(parent context.Context, senderUUID,
 		return nil, nil, domainError(err)
 	}
 	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
+}
+
+func (c *Client) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendSystemDirectMessage(ctx, &messagev1.SendSystemDirectMessageRequest{
+		Context: c.invocation(ctx, senderUUID), SenderUserId: senderUUID, TargetUserId: targetUUID, Content: content,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
+}
+
+func (c *Client) SendSystemGroupMessage(groupUUID, content string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	_, err := c.rpc.SendSystemGroupMessage(ctx, &messagev1.SendSystemGroupMessageRequest{
+		Context: c.invocation(ctx, "dipole-core"), GroupId: groupUUID, Content: content,
+	})
+	return domainError(err)
 }
 
 func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {

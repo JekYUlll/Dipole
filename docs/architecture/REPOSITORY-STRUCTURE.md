@@ -21,11 +21,21 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 
 ## 共享代码与契约
 
-- `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。Core 独立 Composition Root 位于 `internal/bootstrap/core_runtime.go`，embedded 聚合入口仅作为本地兼容和回滚路径。
-- `internal/application`、`internal/model`、`internal/platform` 是优先允许共享的基础层；`internal/app`、`internal/handler`、`internal/store` 的服务归属以[服务边界清单](SERVICE-BOUNDARIES.md)为准，迁移完成的实现不得回流。`internal/compat/service` 只保留旧 `internal/service` 包的兼容别名和构造转发，事件发布契约仍位于 `internal/service` 共享边界。跨 Message/Sync 复用的 Cassandra Timeline 适配器位于 `internal/platform/cassandra/`；服务业务 projection 不得回流。Core repository composition、缓存适配器和 Sync repository composition 已归档到各自服务的 `infrastructure/mysql/`，`internal/app` 仅保留 embedded 兼容别名。
-- 已完成物理收敛的服务实现应放在 `internal/services/<service>/`；当前 Core capability/Auth domain/Admin domain/Session domain/User domain/Contact domain/Conversation domain/Group domain/File domain、Core repository composition/cache、Search application/infrastructure/Kafka projector、Message application/domain/infrastructure/Cassandra projector、Sync domain/application/infrastructure/Kafka projector、Agent application（审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control、Runtime promotion）及 Agent MySQL infrastructure/composition 分别位于对应服务目录，独立 Core/Message/Sync runtime 直接使用服务专属 composition，通用 `internal/app` 只保留 embedded 兼容装配入口。
+- `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。Core 独立 Composition Root 位于 `internal/services/core/bootstrap/runtime.go`，embedded 聚合入口仅作为本地兼容和回滚路径。
+- `internal/bootstrap/` 只负责长期运行服务的启动与生命周期管理；回填、对账、归档和受控切换等一次性操作统一放在 `internal/operations/<domain>/`，由 `cmd/tools/` 调用。
+- 当前 `internal/operations/` 已包含 `agent/`、`cassandra/`、`search/` 和 `sync/` 四类运维操作包；各领域继续按 `backfill/`、`baseline/`、`cleanup/`、`cutover/`、`evidence/` 和 `reconcile/` 分层。新增操作应按领域归档，避免重新进入服务 bootstrap，也禁止恢复旧的 `internal/backfill`、`internal/reconcile` 等横向目录。
+- `internal/application`、`internal/model`、`internal/platform` 是优先允许共享的基础层；`internal/app` 的服务归属以[服务边界清单](SERVICE-BOUNDARIES.md)为准，迁移完成的实现不得回流。共享 `internal/handler`、`internal/service`、`internal/store` 和 `internal/data/mysql` 实现已清空，兼容入口位于 `internal/compat/service/`。跨 Message/Sync 复用的 Cassandra Timeline 适配器位于 `internal/platform/cassandra/`；服务业务 projection 不得回流。Redis 客户端和缓存适配器位于 `internal/platform/cache/`。Core repository composition、缓存适配器、Sync repository composition 和 embedded 聚合装配已分别归档到服务 infrastructure 与 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容测试与仍有调用者的聚合入口。
+- 已完成物理收敛的服务实现应放在 `internal/services/<service>/`；当前 Core capability/Auth domain/Admin domain/Session domain/User domain/Contact domain/Conversation domain/Group domain/File domain、Core repository composition/cache、Search application/infrastructure/Kafka projector、Message application/domain/infrastructure/Cassandra projector、Sync domain/application/infrastructure/Kafka projector、Agent application（审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control、Runtime promotion）及 Agent MySQL infrastructure/composition 分别位于对应服务目录，独立 Core/Message/Sync runtime 直接使用服务专属 composition，通用 `internal/app` 仅保留 embedded 聚合测试与仍有调用者的兼容入口。
+- Search 服务的入口装配边界位于 `internal/services/search/bootstrap/`；Search runtime 和 RPC bootstrap 已在该目录直接组合 Search application、Elasticsearch 与 `internal/platform/rpc`，Core RPC fixture 仅在测试文件中保留 legacy helper，旧共享 runtime 路径由结构门禁阻止回流。
+- Message 服务的入口装配边界位于 `internal/services/message/bootstrap/`；runtime 与配置校验测试已在该目录直接组合 Message infrastructure 和平台能力，Message RPC adapter、惰性 Core Capability、数据库权限探针、shadow Query-only adapter、Outbox relay 与 `send_requested` 持久化 handler 已直接使用服务边界；embedded runtime 也直接持有 Message-owned Outbox relay，Message 专属兼容入口已按调用者清理，旧共享 runtime 路径由结构门禁阻止回流。
+- Sync 服务的入口装配边界位于 `internal/services/sync/bootstrap/`；runtime、数据库权限校验和测试已在该目录直接组合 Sync infrastructure 与平台能力，Sync RPC adapter 已直接使用 `internal/platform/rpc`，旧共享 runtime 路径由结构门禁阻止回流。
+- Gateway 服务的入口装配边界位于 `internal/services/gateway/bootstrap/`；runtime 与 RPC bootstrap 已在该目录直接组合 Gateway 边缘适配、Redis、Kafka、实时投递 authority 和 `internal/platform/rpc`，Gateway runtime 直接使用 `internal/services/gateway/infrastructure/kafka/` 的 handler、authority factory 与注册器，`internal/bootstrap` 仅保留 embedded 兼容转发和跨领域 projection，旧共享 runtime 路径由结构门禁阻止回流。
+- Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`，Conversation Kafka projection 位于 `internal/services/core/infrastructure/kafka/`；`entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，独立 runtime、RPC adapter、projection 和 assistant seed 已归属 Core 服务，embedded composition 及少量平台生命周期兼容调用仍按切片逐步收敛。
+- Search Indexer 服务的入口装配边界位于 `internal/services/search-indexer/bootstrap/`；runtime 已在该目录直接组合 Search Indexer projector 与平台 Kafka、Elasticsearch、metrics、readiness 能力，旧共享 runtime 路径由结构门禁阻止回流。
+- 跨服务 metrics 生命周期、readiness 编排、TLS 文件校验、时间线通知模式校验和 Internal RPC transport 位于 `internal/platform/runtime/`、`internal/platform/rpc/`；平台包统一提供依赖探针、RPC serving 绑定、gRPC listener、服务认证、TLS 1.3 mTLS、health check 和优雅关闭，服务特有启动条件与协议方法仍由各自 runtime 负责。`internal/bootstrap/metrics.go` 和 `internal/bootstrap/internal_rpc.go` 仅保留仍有调用者的兼容 helper，服务 runtime 后续继续直接依赖平台包。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
+- `api/proto/` 存放 protobuf 源契约，`api/gen/go/` 存放由固定工具链生成的 Go 类型；服务 transport 只负责适配，不拥有协议生成物。
 - `contracts/` 存放事件、Agent 和运行时边界契约。
 - `db/` 存放迁移、sqlc 查询和数据库结构。
 - `frontend/` 存放客户端；`services/agent-runtime/` 和 `services/realtime-delivery/` 存放非 Go 服务源码及其独立构建入口；Go/Eino 兼容基线位于 `internal/services/agent/legacy/`，等待 TS Runtime 完整接管后删除。
@@ -39,6 +49,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `design/` 保存 Pencil 源文件、设计变更记录和导出图；前端实现位于 `frontend/`。
 - `scripts/` 保存测试、Smoke、迁移和运维门禁脚本，不承载长期服务入口；微服务镜像脚本为每个部署单元生成独立制品。
 - `tmp/` 只用于本地临时数据，不应提交业务源文件。
+- 根级源码目录由架构文档门禁固定为 `api/`、`benchmarks/`、`cmd/`、`configs/`、`contracts/`、`db/`、`deploy/`、`design/`、`docs/`、`frontend/`、`internal/`、`scripts/` 和 `services/`；本地 `logs/`、`tmp/`、`dist/`、`certs/` 等生成或运行目录由 `.gitignore` 管理，不属于仓库源码布局。
 
 ## 多语言服务目录
 
@@ -51,12 +62,13 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Agent 的 SQLC repository 实现必须位于 `internal/services/agent/infrastructure/mysql/`；共享 `internal/data/mysql/repository/agent_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
 - Core 的 SQLC repository 实现必须位于 `internal/services/core/infrastructure/mysql/`；共享 `internal/data/mysql/repository/core_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
 - Search Index 的 SQLC repository 实现必须位于 `internal/services/search/infrastructure/mysql/`；共享 `internal/data/mysql/repository/search_index_compat.go` 只能保留兼容别名和构造入口，禁止恢复实现文件。
-- `internal/data/mysql/repository/` 当前仅保留 Core、Agent、Message、Search Index、Sync 的兼容入口；新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`，禁止在共享目录增加实现。
+- `internal/data/mysql/repository/` 当前仅保留仍有回滚调用者的 Core、Agent、Search Index 兼容入口；Message 与 Sync facade 已完成调用审计并退役。新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`，禁止在共享目录增加实现。
 - `internal/compat/` 只允许存放迁移兼容入口；禁止在此目录新增领域逻辑。
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
 - `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
 - `internal/platform/elasticsearch/` 只允许存放 Search/Indexer 共用的 Elasticsearch 客户端、Alias、mapping 和 projection adapter；搜索权限和事件编排必须位于对应服务边界。
-- `internal/platform/mysql/` 只允许存放基于 database/sql + SQLC 的共享连接、Queries 和事务边界；业务仓储进入对应服务，旧 `internal/data/mysql/store_compat.go` 只保留兼容转发。
+- `internal/platform/mysql/` 只允许存放基于 database/sql + SQLC 的共享连接、全局初始化、Queries、generated 输出、mapper、migration runner、DSN 组装和事务边界；运维操作的 MySQL adapter 进入对应 `internal/operations/<service>/<operation>/mysql/`，业务仓储进入对应服务，旧 `internal/data/mysql` 已退役。
+- `internal/platform/cache/` 只允许存放 Redis 客户端初始化、拓扑适配和跨服务缓存/状态原语；业务缓存策略进入对应服务，旧 `internal/store` Redis 入口已退役，禁止回流。
 - `internal/services/sync/infrastructure/kafka/` 只允许存放 Sync owned 的 Kafka consumer/projector；跨服务消息事件解码复用 Message domain contract，禁止恢复 `internal/projector/sync/`。
 - `internal/services/search/infrastructure/kafka/` 只允许存放 Search Indexer owned 的 Kafka consumer/projector；跨服务消息事件解码复用 Message domain contract，禁止恢复 `internal/projector/search/`。
 - `internal/services/message/infrastructure/cassandra/` 只允许存放 Message owned 的 Cassandra Timeline projector；连接和通用 Timeline adapter 仍位于 `internal/platform/cassandra/`，禁止恢复 `internal/projector/cassandra/`。

@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 func TestRedisPresenceRegisterTouchAndUnregister(t *testing.T) {
@@ -22,6 +22,7 @@ func TestRedisPresenceRegisterTouchAndUnregister(t *testing.T) {
 			TTLSeconds: 120,
 		},
 		nodeID: "node-a",
+		redis:  cache.RDB,
 	}
 
 	state := ConnectionState{
@@ -90,6 +91,7 @@ func TestRedisPresenceCountsMultipleConnections(t *testing.T) {
 			TTLSeconds: 120,
 		},
 		nodeID: "node-a",
+		redis:  cache.RDB,
 	}
 
 	tracker.Register(ConnectionState{ConnectionID: "C100", UserUUID: "U100", ConnectedAt: time.Now().UTC()})
@@ -107,6 +109,29 @@ func TestRedisPresenceCountsMultipleConnections(t *testing.T) {
 	}
 }
 
+func TestRedisPresenceUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	presence := NewRedisPresenceWithClient(config.Presence{
+		Enabled: true, NodeID: "explicit-node", TTLSeconds: 120,
+	}, client)
+
+	presence.Register(ConnectionState{ConnectionID: "C-explicit", UserUUID: "U-explicit"})
+	if got := presence.UserConnectionCount("U-explicit"); got != 1 {
+		t.Fatalf("expected explicit client connection count 1, got %d", got)
+	}
+}
+
 func setupPresenceTest(t *testing.T) func() {
 	t.Helper()
 
@@ -116,11 +141,11 @@ func setupPresenceTest(t *testing.T) func() {
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	oldRDB := store.RDB
-	store.RDB = rdb
+	oldRDB := cache.RDB
+	cache.RDB = rdb
 
 	return func() {
-		store.RDB = oldRDB
+		cache.RDB = oldRDB
 		_ = rdb.Close()
 		mr.Close()
 	}

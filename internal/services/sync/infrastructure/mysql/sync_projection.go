@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/model"
+	mysqldata "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 type SyncProjectionRepository struct{ store *mysqldata.Store }

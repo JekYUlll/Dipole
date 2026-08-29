@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var _ application.AgentMemoryCandidatePromotionStoreV1 = (*AgentMemoryRepository)(nil)

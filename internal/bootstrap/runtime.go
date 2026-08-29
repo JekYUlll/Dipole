@@ -3,34 +3,35 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
-	"github.com/JekYUlll/Dipole/internal/store"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Runtime struct {
 	server      *server.Server
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
-	outboxFlow  *outboxRelay
+	outboxFlow  *messagekafka.Relay
 	messageFlow *messageApplicationTransport
 	syncFlow    *syncApplicationTransport
 	coreRPC     *InternalRPCServer
@@ -44,13 +45,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
 	messageCfg := config.CoreMessageConfig()
-	if err := validateTimelineNotifyMode(messageCfg); err != nil {
+	if err := platformRuntime.ValidateTimelineNotifyMode(messageCfg.TimelineNotifyMode); err != nil {
 		return nil, err
 	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
 		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
 	}
-	if err := store.InitMySQL(); err != nil {
+	if err := platformmysql.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
 	}
 	logger.Info("mysql init succeeded",
@@ -60,7 +61,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		zap.String("user", mysqlCfg.User),
 	)
 
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return nil, fmt.Errorf("redis init failed: %w", err)
 	}
 	logger.Info("redis init succeeded",
@@ -108,18 +109,18 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("storage is disabled")
 	}
 
-	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
+	runner, err := migration.NewRunner(platformmysql.SQLDB, migrations.Files)
 	if err != nil {
 		return nil, fmt.Errorf("initialize migration validation: %w", err)
 	}
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("database schema is not ready: %w", err)
 	}
-	repos, err := appComposition.NewRepositories(store.SQLDB)
+	repos, err := appComposition.NewRepositories(platformmysql.SQLDB)
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
 	}
-	if err := ensureAIAssistantUser(repos.Users); err != nil {
+	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -143,7 +144,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 	localMessaging := appComposition.NewMessagingServices(repos, appComposition.MessagingDependencies{
 		Events:    messageEvents,
-		HotGroups: platformHotGroup.NewRedisDetector(),
+		HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
 		Storage:   platformStorage.Client,
 	})
 	conversationProjectionMetrics := platformObservability.NewConversationProjectionCollector()
@@ -152,7 +153,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
 		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
-		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
 			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
 		}
 		agentCommands, composeErr := agentapplication.NewLocalAgentCommandV1(localMessaging.Messages)
@@ -163,11 +164,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
-		resolver, composeErr := appComposition.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}
-		admission, composeErr := appComposition.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
@@ -308,10 +309,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if gatewayCfg.Mode == "embedded" {
 		wsEventSender = srv.WSHub()
 	}
-	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
-		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
-		redisPresence := platformPresence.NewRedisPresence()
-		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, store.RDB)
+	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && cache.RDB != nil {
+		// Presence 实例绑定同一平台 Redis 客户端，embedded 路由与 Server 内部实例共享状态。
+		redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
+		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, cache.RDB)
 		if router != nil {
 			router.Start()
 			rt.router = router
@@ -346,13 +347,13 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = newOutboxRelay(repos.Outbox)
+		rt.outboxFlow = messagekafka.NewRelay(repos.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(
+	rt.metrics, err = platformRuntime.StartMetrics(
 		config.MetricsConfig(),
 		coreServiceName,
 		platformKafka.Subscriber,
@@ -364,12 +365,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("start runtime metrics: %w", err)
 	}
 	if rt.metrics != nil {
-		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", store.SQLDB)); err != nil {
+		if err := platformRuntime.ConfigureDependencyReadiness(rt.metrics, config.MetricsConfig(), platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
 			rt.Close()
 			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
 		}
-		bindRPCReadiness(rt.metrics, rt.coreRPC)
-		markRuntimeReady(rt.metrics)
+		platformRuntime.BindRPCReadiness(rt.metrics, rt.coreRPC)
+		platformRuntime.MarkReady(rt.metrics)
 	}
 
 	return rt, nil
@@ -377,13 +378,6 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 
 func coreOwnsMessagePersistence(gatewayMode, messageTransport string) bool {
 	return gatewayMode == "embedded" && messageTransport != "grpc"
-}
-
-func validateTimelineNotifyMode(messageCfg config.Message) error {
-	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyPrimary {
-		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
-	}
-	return nil
 }
 
 func (r *Runtime) Server() *server.Server {
@@ -399,7 +393,7 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 		return srv.Run(config.Addr())
 	}
 
-	if err := ensureTLSFiles(tlsCfg); err != nil {
+	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
 		return err
 	}
 
@@ -412,7 +406,7 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("metrics server close failed", zap.Error(err))
 	}
 	if r.coreRPC != nil {
@@ -445,57 +439,4 @@ func (r *Runtime) Close() {
 	if r.router != nil {
 		r.router.Stop()
 	}
-}
-
-func ensureTLSFiles(tlsCfg config.TLS) error {
-	if _, err := os.Stat(tlsCfg.CertFile); err != nil {
-		return err
-	}
-	if _, err := os.Stat(tlsCfg.KeyFile); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type aiAssistantUserRepository interface {
-	UpsertAssistant(user *model.User) error
-}
-
-func ensureAIAssistantUser(users aiAssistantUserRepository) error {
-	cfg := config.AIConfig()
-	if !cfg.Enabled {
-		return nil
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("dipole-ai-assistant"), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("generate ai assistant password hash: %w", err)
-	}
-
-	assistant := &model.User{
-		UUID:         cfg.AssistantUUID,
-		Nickname:     cfg.AssistantNickname,
-		Telephone:    cfg.AssistantTelephone,
-		Email:        cfg.AssistantEmail,
-		Avatar:       cfg.AssistantAvatar,
-		PasswordHash: string(passwordHash),
-		IsAdmin:      false,
-		UserType:     model.UserTypeAssistant,
-		Status:       model.UserStatusNormal,
-	}
-	if assistant.Avatar == "" {
-		assistant.Avatar = model.DefaultAvatarURL
-	}
-
-	if err := users.UpsertAssistant(assistant); err != nil {
-		return err
-	}
-
-	logger.Info("ai assistant user ensured",
-		zap.String("assistant_uuid", assistant.UUID),
-		zap.String("provider", cfg.Provider),
-		zap.String("model", cfg.Model),
-	)
-	return nil
 }

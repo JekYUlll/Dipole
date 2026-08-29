@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 type executorFactory func(
@@ -198,20 +198,20 @@ func realExecutorFactory(
 	if err := config.Load(); err != nil {
 		return cutoverRuntime{}, fmt.Errorf("load config: %w", err)
 	}
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return cutoverRuntime{}, fmt.Errorf("initialize Redis: %w", err)
 	}
-	cleanup := func() { _ = store.RDB.Close() }
+	cleanup := func() { _ = cache.RDB.Close() }
 	realtimeConfig := config.RealtimeConfig()
 	writer, err := realtimeDelivery.NewRedisAuthorityFenceWriter(
-		store.RDB, realtimeConfig.FencingKey, realtimeConfig.FencingKey+":receipt:", 7*24*time.Hour, time.Now,
+		cache.RDB, realtimeConfig.FencingKey, realtimeConfig.FencingKey+":receipt:", 7*24*time.Hour, time.Now,
 	)
 	if err != nil {
 		cleanup()
 		return cutoverRuntime{}, err
 	}
 	aggregator, err := realtimeDelivery.NewRedisFenceObservationAggregator(
-		store.RDB, realtimeConfig.FencingKey+":observation:", time.Now,
+		cache.RDB, realtimeConfig.FencingKey+":observation:", time.Now,
 	)
 	if err != nil {
 		cleanup()
@@ -255,7 +255,7 @@ func realExecutorFactory(
 		return cutoverRuntime{}, err
 	}
 	ownership, err := realtimeDelivery.NewRedisCutoverControllerOwnership(
-		store.RDB, realtimeConfig.FencingKey+":controller:"+workspace.Journal.Manifest.AttemptID,
+		cache.RDB, realtimeConfig.FencingKey+":controller:"+workspace.Journal.Manifest.AttemptID,
 	)
 	if err != nil {
 		cleanup()
