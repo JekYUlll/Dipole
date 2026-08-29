@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：完成主线综合门禁复核：架构文档、服务布局、SQLC 和脚本包白名单下的 Go 全量 test/vet 均通过；同时确认根目录 Markdown 与 `docs/` 分类保持收敛，未新增散落文档。
 - 2026-08-30：修正 `docs/architecture/DEVELOPMENT-ROADMAP.md` 中对已退役 `internal/service` 的过时表述，改为描述共享兼容适配器与 `internal/services/<service>/` 的持续收敛，避免路线图误导新服务开发。
 - 2026-08-30：修复 `smoke-sync-cassandra-hydration.sh` 对已退役 `internal/service` 的路径引用，改用 `internal/services/message/domain`；修复后真实隔离 hydration smoke 通过 shadow comparison、重复响应恢复、Legacy ID 恢复和 Metadata backfill。
 - 2026-08-30：在当前 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke；逐服务 health/readiness、metrics、Core 代理 401、Core WS 边界、mTLS 启动、远程 WS ownership 及 Agent EventLedger/Task/Run 幂等均通过，隔离拓扑自动清理，生产 Kafka ownership 与回滚切换继续关闭。
