@@ -32,7 +32,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Gateway 服务的入口装配边界位于 `internal/services/gateway/bootstrap/`；runtime 与 RPC bootstrap 已在该目录直接组合 Gateway 边缘适配、Redis、Kafka、实时投递 authority 和 `internal/platform/rpc`，Kafka handler、TLS 与时间线校验仍保留兼容入口，旧共享 runtime 路径由结构门禁阻止回流。
 - Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`，Conversation Kafka projection 位于 `internal/services/core/infrastructure/kafka/`；`entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，独立 runtime、RPC adapter、projection 和 assistant seed 已归属 Core 服务，embedded composition 及少量平台生命周期兼容调用仍按切片逐步收敛。
 - Search Indexer 服务的入口装配边界位于 `internal/services/search-indexer/bootstrap/`；runtime 已在该目录直接组合 Search Indexer projector 与平台 Kafka、Elasticsearch、metrics、readiness 能力，旧共享 runtime 路径由结构门禁阻止回流。
-- 跨服务 metrics 生命周期、readiness 编排、TLS 文件校验和 Internal RPC transport 位于 `internal/platform/runtime/`、`internal/platform/rpc/`；平台包统一提供依赖探针、RPC serving 绑定、gRPC listener、服务认证、TLS 1.3 mTLS、health check 和优雅关闭，服务特有启动条件与协议方法仍由各自 runtime 负责。`internal/bootstrap/metrics.go`、`dependency_readiness.go` 和 `internal_rpc.go` 仅保留兼容 helper，服务 runtime 后续继续直接依赖平台包。
+- 跨服务 metrics 生命周期、readiness 编排、TLS 文件校验、时间线通知模式校验和 Internal RPC transport 位于 `internal/platform/runtime/`、`internal/platform/rpc/`；平台包统一提供依赖探针、RPC serving 绑定、gRPC listener、服务认证、TLS 1.3 mTLS、health check 和优雅关闭，服务特有启动条件与协议方法仍由各自 runtime 负责。`internal/bootstrap/metrics.go`、`dependency_readiness.go` 和 `internal_rpc.go` 仅保留兼容 helper，服务 runtime 后续继续直接依赖平台包。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
 - `api/proto/` 存放 protobuf 源契约，`api/gen/go/` 存放由固定工具链生成的 Go 类型；服务 transport 只负责适配，不拥有协议生成物。

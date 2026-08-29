@@ -45,7 +45,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
 	messageCfg := config.CoreMessageConfig()
-	if err := validateTimelineNotifyMode(messageCfg); err != nil {
+	if err := platformRuntime.ValidateTimelineNotifyMode(messageCfg.TimelineNotifyMode); err != nil {
 		return nil, err
 	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
@@ -378,13 +378,6 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 
 func coreOwnsMessagePersistence(gatewayMode, messageTransport string) bool {
 	return gatewayMode == "embedded" && messageTransport != "grpc"
-}
-
-func validateTimelineNotifyMode(messageCfg config.Message) error {
-	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyPrimary {
-		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
-	}
-	return nil
 }
 
 func (r *Runtime) Server() *server.Server {
