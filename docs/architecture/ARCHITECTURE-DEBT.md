@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Message runtime 与配置校验测试已从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap/`，直接组合 Message SQLC repository、Kafka/Cassandra、Outbox 和平台 runtime；Lazy Core、少量 handler、Outbox 实现与 Internal RPC 暂保留兼容入口，后续继续收敛。
 - 2026-08-29：Sync runtime、数据库权限边界校验及相关测试已从共享 `internal/bootstrap` 迁入 `internal/services/sync/bootstrap/`，直接组合 Sync infrastructure、Kafka/Cassandra 与平台 runtime；共享 Internal RPC 暂保留窄 compatibility adapter，后续继续抽取平台 RPC transport。
 - 2026-08-29：Search runtime、单测和 Elasticsearch 集成测试已从共享 `internal/bootstrap` 迁入 `internal/services/search/bootstrap/`，Search application 与平台 runtime 直接由服务边界组合；共享 Internal RPC 暂保留窄 compatibility adapter，后续继续抽取平台 RPC transport。
 - 2026-08-29：Search Indexer runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/search-indexer/bootstrap/`，直接组合服务自有 projector 与 Kafka、Elasticsearch、metrics/readiness 平台能力；旧实现路径由结构门禁阻止回流，后续继续处理 Search、Sync、Message 和 Gateway 的实际启动实现迁移。

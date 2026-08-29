@@ -7,6 +7,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
@@ -23,10 +24,12 @@ import (
 	"github.com/apache/cassandra-gocql-driver/v2"
 )
 
+const messageServiceName = "dipole-message"
+
 type MessageRuntime struct {
-	rpc                *InternalRPCServer
-	coreCapability     *lazyCoreCapability
-	outboxFlow         *outboxRelay
+	rpc                *legacybootstrap.InternalRPCServer
+	coreCapability     *legacybootstrap.LazyCoreCapability
+	outboxFlow         *legacybootstrap.OutboxRelay
 	shutdownSec        int
 	metrics            *platformObservability.MetricsServer
 	shadowStore        *shadowData.MessageStore
@@ -35,7 +38,7 @@ type MessageRuntime struct {
 	cassandra          *gocql.Session
 }
 
-func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
+func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	messageCfg := config.MessageConfig()
 	kafkaCfg := config.KafkaConfig()
@@ -74,7 +77,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
 	if messageCfg.EnforceDBPermissions {
-		if err := verifyMessageDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
+		if err := legacybootstrap.VerifyMessageDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
@@ -83,7 +86,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
 	runtime := &MessageRuntime{
-		coreCapability: newLazyCoreCapability(rpcCfg),
+		coreCapability: legacybootstrap.NewLazyCoreCapability(rpcCfg),
 		shutdownSec:    rpcCfg.ShutdownTimeoutSeconds,
 	}
 	var duplicateHydrator applicationPort.SyncMessageHydrator
@@ -136,10 +139,10 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	})
 	servedMessages := applicationPort.MessageApplication(messages)
 	if messageCfg.RuntimeMode == "shadow" {
-		servedMessages = newQueryOnlyMessageApplication(messages)
+		servedMessages = legacybootstrap.NewQueryOnlyMessageApplication(messages)
 	}
 	if messageCfg.RuntimeMode == "owner" {
-		RegisterMessageKafkaHandlers(messages)
+		legacybootstrap.RegisterMessageKafkaHandlers(messages)
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
 		if err := platformKafka.Client.EnsureTopics(messageOwnedKafkaTopics()); err != nil {
@@ -154,7 +157,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		}
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
-		runtime.outboxFlow = newOutboxRelay(repos.Outbox)
+		runtime.outboxFlow = legacybootstrap.NewOutboxRelay(repos.Outbox)
 		if runtime.outboxFlow != nil {
 			runtime.outboxFlow.Start()
 		}
@@ -166,7 +169,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
 		platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB),
-		lazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
+		legacybootstrap.LazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		readinessProbes = append(readinessProbes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
@@ -175,7 +178,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		runtime.Close()
 		return nil, fmt.Errorf("configure Message dependency readiness: %w", err)
 	}
-	runtime.rpc, err = NewMessageRPCServer(rpcCfg, servedMessages)
+	runtime.rpc, err = legacybootstrap.NewMessageRPCServer(rpcCfg, servedMessages)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message rpc server: %w", err)
