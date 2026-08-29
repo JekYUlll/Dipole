@@ -30,6 +30,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Message 服务的入口装配边界位于 `internal/services/message/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层 Kafka 生命周期、数据库边界、RPC、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
 - Sync 服务的入口装配边界位于 `internal/services/sync/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层 Kafka projector、Cassandra hydration、数据库、RPC、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
 - Gateway 服务的入口装配边界位于 `internal/services/gateway/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层实时投递 authority、RPC、Kafka、Redis、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
+- Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`；当前 `entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，底层 RPC、Kafka、storage、metrics 和 readiness 设施完成拆分后再移除兼容调用。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
 - `api/proto/` 存放 protobuf 源契约，`api/gen/go/` 存放由固定工具链生成的 Go 类型；服务 transport 只负责适配，不拥有协议生成物。
