@@ -155,11 +155,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
 			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
 		}
-		agentCommands, composeErr := appComposition.NewLocalAgentCommandV1(localMessaging.Messages)
+		agentCommands, composeErr := agentapplication.NewLocalAgentCommandV1(localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Command: %w", composeErr)
 		}
-		agentCapability, composeErr := appComposition.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands)
+		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
