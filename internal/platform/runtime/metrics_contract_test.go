@@ -1,4 +1,4 @@
-package bootstrap
+package runtime
 
 import (
 	"context"
@@ -26,20 +26,20 @@ func (c *typedNilCollector) Collect(chan<- prometheus.Metric) {
 }
 
 func TestRuntimeMetricsDisabledDoesNotListen(t *testing.T) {
-	server, err := startRuntimeMetrics(config.Metrics{Enabled: false}, "dipole-test", nil)
+	server, err := StartMetrics(config.Metrics{Enabled: false}, "dipole-test", nil)
 	if err != nil || server != nil {
 		t.Fatalf("disabled metrics server = %v, err = %v", server, err)
 	}
 }
 
 func TestRuntimeMetricsRequiresAddress(t *testing.T) {
-	if _, err := startRuntimeMetrics(config.Metrics{Enabled: true}, "dipole-test", nil); err == nil {
+	if _, err := StartMetrics(config.Metrics{Enabled: true}, "dipole-test", nil); err == nil {
 		t.Fatal("enabled metrics must require an address")
 	}
 }
 
 func TestRuntimeMetricsStartsOnConfiguredAddress(t *testing.T) {
-	server, err := startRuntimeMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "dipole-test", nil)
+	server, err := StartMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "dipole-test", nil)
 	if err != nil {
 		t.Fatalf("start runtime metrics: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestRuntimeMetricsStartsOnConfiguredAddress(t *testing.T) {
 }
 
 func TestRuntimeMetricsRequiresServiceName(t *testing.T) {
-	if _, err := startRuntimeMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "", nil); err == nil {
+	if _, err := StartMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "", nil); err == nil {
 		t.Fatal("enabled metrics must require a service name")
 	}
 }
@@ -60,7 +60,7 @@ func TestRuntimeMetricsRequiresServiceName(t *testing.T) {
 func TestRuntimeMetricsSkipsTypedNilOptionalCollector(t *testing.T) {
 	typedNilCollectorCalls.Store(0)
 	var collector *typedNilCollector
-	server, err := startRuntimeMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "dipole-test", nil, collector)
+	server, err := StartMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "dipole-test", nil, collector)
 	if err != nil {
 		t.Fatalf("start runtime metrics: %v", err)
 	}
