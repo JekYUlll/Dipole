@@ -12,6 +12,7 @@ import (
 	"time"
 
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -47,7 +48,7 @@ func TestDomainEventSchemasMatchProducerContracts(t *testing.T) {
 		{
 			name: "contact deleted", schemaFile: "contact-friend-deleted.schema.json", eventType: "contact.friend.deleted",
 			eventTypes: []string{"contact.friend.deleted"}, definition: "contact_payload",
-			payload: ContactFriendDeletedPayload{UserUUID: "U1", FriendUUID: "U2", OccurredAt: now},
+			payload: corecontact.ContactFriendDeletedPayload{UserUUID: "U1", FriendUUID: "U2", OccurredAt: now},
 		},
 		{
 			name: "session logout", schemaFile: "session-force-logout.schema.json", eventType: "session.force_logout",

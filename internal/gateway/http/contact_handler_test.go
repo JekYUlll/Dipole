@@ -11,32 +11,32 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 )
 
 type stubContactService struct {
-	applyFn             func(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error)
-	listFriendsFn       func(currentUserUUID string) ([]*service.ContactListItem, error)
-	listIncomingFn      func(currentUserUUID string) ([]*service.ContactApplicationView, error)
-	listOutgoingFn      func(currentUserUUID string) ([]*service.ContactApplicationView, error)
+	applyFn             func(currentUserUUID string, input corecontact.ApplyContactInput) (*model.ContactApplication, error)
+	listFriendsFn       func(currentUserUUID string) ([]*corecontact.ContactListItem, error)
+	listIncomingFn      func(currentUserUUID string) ([]*corecontact.ContactApplicationView, error)
+	listOutgoingFn      func(currentUserUUID string) ([]*corecontact.ContactApplicationView, error)
 	handleApplicationFn func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error)
 	deleteFriendFn      func(currentUserUUID, friendUUID string) error
 	updateRemarkFn      func(currentUserUUID, friendUUID, remark string) (*model.Contact, error)
 	updateBlockStatusFn func(currentUserUUID, friendUUID string, blocked bool) (*model.Contact, error)
 }
 
-func (s *stubContactService) Apply(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
+func (s *stubContactService) Apply(currentUserUUID string, input corecontact.ApplyContactInput) (*model.ContactApplication, error) {
 	return s.applyFn(currentUserUUID, input)
 }
-func (s *stubContactService) ListFriends(currentUserUUID string) ([]*service.ContactListItem, error) {
+func (s *stubContactService) ListFriends(currentUserUUID string) ([]*corecontact.ContactListItem, error) {
 	return s.listFriendsFn(currentUserUUID)
 }
-func (s *stubContactService) ListIncomingApplications(currentUserUUID string) ([]*service.ContactApplicationView, error) {
+func (s *stubContactService) ListIncomingApplications(currentUserUUID string) ([]*corecontact.ContactApplicationView, error) {
 	return s.listIncomingFn(currentUserUUID)
 }
-func (s *stubContactService) ListOutgoingApplications(currentUserUUID string) ([]*service.ContactApplicationView, error) {
+func (s *stubContactService) ListOutgoingApplications(currentUserUUID string) ([]*corecontact.ContactApplicationView, error) {
 	return s.listOutgoingFn(currentUserUUID)
 }
 func (s *stubContactService) HandleApplication(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
@@ -56,7 +56,7 @@ func TestContactHandlerApplySuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewContactHandler(&stubContactService{
-		applyFn: func(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
+		applyFn: func(currentUserUUID string, input corecontact.ApplyContactInput) (*model.ContactApplication, error) {
 			if currentUserUUID != "U100" || input.TargetUUID != "U200" {
 				t.Fatalf("unexpected apply input: %s %+v", currentUserUUID, input)
 			}
@@ -81,8 +81,8 @@ func TestContactHandlerApplyConflict(t *testing.T) {
 	t.Parallel()
 
 	handler := NewContactHandler(&stubContactService{
-		applyFn: func(currentUserUUID string, input service.ApplyContactInput) (*model.ContactApplication, error) {
-			return nil, service.ErrContactApplicationExists
+		applyFn: func(currentUserUUID string, input corecontact.ApplyContactInput) (*model.ContactApplication, error) {
+			return nil, corecontact.ErrContactApplicationExists
 		},
 	})
 
@@ -111,10 +111,10 @@ func TestContactHandlerListApplicationsIncomingSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewContactHandler(&stubContactService{
-		listIncomingFn: func(currentUserUUID string) ([]*service.ContactApplicationView, error) {
-			return []*service.ContactApplicationView{}, nil
+		listIncomingFn: func(currentUserUUID string) ([]*corecontact.ContactApplicationView, error) {
+			return []*corecontact.ContactApplicationView{}, nil
 		},
-		listOutgoingFn: func(currentUserUUID string) ([]*service.ContactApplicationView, error) {
+		listOutgoingFn: func(currentUserUUID string) ([]*corecontact.ContactApplicationView, error) {
 			return nil, errors.New("should not be called")
 		},
 	})
@@ -136,7 +136,7 @@ func TestContactHandlerHandleApplicationForbidden(t *testing.T) {
 
 	handler := NewContactHandler(&stubContactService{
 		handleApplicationFn: func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
-			return nil, service.ErrContactPermissionDenied
+			return nil, corecontact.ErrContactPermissionDenied
 		},
 	})
 
@@ -159,7 +159,7 @@ func TestContactHandlerHandleApplicationExpired(t *testing.T) {
 
 	handler := NewContactHandler(&stubContactService{
 		handleApplicationFn: func(currentUserUUID string, applicationID uint, action string) (*model.ContactApplication, error) {
-			return nil, service.ErrContactApplicationExpired
+			return nil, corecontact.ErrContactApplicationExpired
 		},
 	})
 
@@ -190,7 +190,7 @@ func TestContactHandlerDeleteFriendNotFound(t *testing.T) {
 
 	handler := NewContactHandler(&stubContactService{
 		deleteFriendFn: func(currentUserUUID, friendUUID string) error {
-			return service.ErrContactTargetNotFound
+			return corecontact.ErrContactTargetNotFound
 		},
 	})
 
