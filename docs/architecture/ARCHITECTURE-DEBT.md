@@ -167,7 +167,7 @@
 - **状态：** 接受风险
 - **发现日期：** 2026-08-29
 - **影响范围：** `deploy/compose/docker-compose.storage-lab.yml`、Elasticsearch storage-lab 健康检查
-- **现状：** 受限实验主机磁盘使用率可能超过 Elasticsearch 默认 high watermark，导致单节点集群保持 red 并拒绝索引写入。storage-lab 已使用显式 lab-only 磁盘水位参数，健康检查要求 yellow/green；该参数未进入生产 Compose 或应用配置。
+- **现状：** 受限实验主机磁盘使用率可能超过 Elasticsearch 默认 high watermark，导致单节点集群保持 red 并拒绝索引写入。storage-lab 使用显式 lab-only 磁盘水位参数（low/high/flood-stage 为 `90%/99%/99.5%`），健康检查要求 yellow/green；该参数未进入生产 Compose 或应用配置。
 - **风险：** 若实验主机继续逼近 flood-stage，隔离 smoke 仍会失败；放宽实验水位不能替代生产磁盘容量、监控和清理策略。
 - **下一步：** 保持实验栈与生产配置分离，定期清理 Docker volume 并在共享环境补充磁盘告警；生产部署遵循 Elasticsearch 官方水位和容量门禁。
 - **验证：** 2026-08-29 storage-lab smoke 通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO CRUD，且未产生生产流量。
