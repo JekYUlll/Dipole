@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
@@ -21,6 +22,16 @@ import (
 )
 
 type InternalRPCServer = platformrpc.Server
+
+// DialGatewayAgentCapability opens the Core Agent capability channel with the
+// Gateway service identity.
+func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (agentv1.AgentCapabilityServiceClient, *grpc.ClientConn, error) {
+	connection, err := platformrpc.Dial(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: "dipole-gateway", Secret: cfg.SharedSecret})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Gateway Agent capability: %w", err)
+	}
+	return agentv1.NewAgentCapabilityServiceClient(connection), connection, nil
+}
 
 func NewDeliveryObservationRPCServer(cfg config.InternalRPC, adapter *deliverygrpc.ShadowServer) (*InternalRPCServer, error) {
 	if adapter == nil {

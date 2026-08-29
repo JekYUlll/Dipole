@@ -39,7 +39,7 @@ bucket = (message_seq - 1) / 10000
 ## Current Boundary
 
 - 已引入 Apache Cassandra GoCQL Driver v2，并通过 Cassandra 5.0.9 真实 contract。
-- 独立 `cmd/tools/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
+- Message bootstrap 中的独立 `cmd/tools/cassandra-projector` 使用专属 Kafka consumer group 消费 direct/group created event；默认配置关闭。
 - Projector 启动只校验既有 schema，不执行自动建表，也不进入 Core 或 Gateway Composition Root。
 - 独立 `cmd/tools/cassandra-backfill` 按固定 MySQL 高水位补齐历史数据，并使用持久 checkpoint 和 owner lease 支持失败恢复。
 - 独立 `cmd/tools/cassandra-reconcile` 对已完成 Backfill 的固定快照执行数量、全量 hash、确定性内容样本和会话 Seq 连续性校验。

@@ -91,39 +91,36 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   exit 1
 fi
 for compatibility_readme in \
-  internal/app/README.md \
-  internal/data/mysql/README.md \
-  internal/data/mysql/repository/README.md \
-  internal/store/README.md; do
+  internal/app/README.md; do
   if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
     echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
     exit 1
   fi
 done
- # Compatibility roots may retain adapters and tests, but must not become a
- # new shared implementation area as services are extracted.
-for compatibility_file in \
-  internal/store/mysql_compat.go \
-  internal/store/redis_compat.go; do
-  if [[ ! -f "${root_dir}/${compatibility_file}" ]]; then
-    echo "required compatibility adapter is missing: ${compatibility_file}" >&2
-    exit 1
-  fi
-done
+# Compatibility roots may retain adapters and tests, but must not become a
+# new shared implementation area as services are extracted.
 while IFS= read -r compatibility_file; do
+  # Deleted tracked files remain visible through git ls-files --cached until commit.
+  if [[ ! -e "${root_dir}/${compatibility_file}" ]]; then
+    continue
+  fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/store/README.md|internal/store/mysql_compat.go|internal/store/redis_compat.go|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/message_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/data/mysql/repository/sync_compat.go|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
       ;;
   esac
 done < <(git -C "${root_dir}" ls-files --cached --others --exclude-standard -- internal/app internal/store internal/data/mysql | sort -u)
+if [[ -d "${root_dir}/internal/data/mysql" ]]; then
+  echo "legacy internal/data/mysql compatibility directory remains; use service infrastructure or internal/platform/mysql" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1
 fi
-if [[ -e "${root_dir}/internal/store/redis.go" ]]; then
+if [[ -e "${root_dir}/internal/store/redis.go" || -e "${root_dir}/internal/store/redis_compat.go" ]]; then
 	echo "legacy Redis client implementation remains under internal/store" >&2
 	exit 1
 fi
@@ -159,7 +156,7 @@ if [[ ! -f "${root_dir}/internal/platform/mysql/store.go" || ! -f "${root_dir}/i
   echo "shared SQLC MySQL transaction boundary must remain under internal/platform/mysql" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/store/mysql.go" ]]; then
+if [[ -e "${root_dir}/internal/store/mysql.go" || -e "${root_dir}/internal/store/mysql_compat.go" ]]; then
 	echo "legacy MySQL global connection remains under internal/store" >&2
 	exit 1
 fi
@@ -262,6 +259,74 @@ if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/me
 fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
+  exit 1
+fi
+for legacy_message_transport in message_transport.go message_shadow.go message_transport_test.go message_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_message_transport}" ]]; then
+    echo "embedded Message transport implementation remains in shared bootstrap: ${legacy_message_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Message transport" >&2
+  exit 1
+fi
+if rg --quiet 'newMessageApplicationTransport|messageApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Message transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/message_shadow.go" ]]; then
+  echo "embedded Message transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
+for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_test.go sync_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_sync_transport}" ]]; then
+    echo "embedded Sync transport implementation remains in shared bootstrap: ${legacy_sync_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Sync transport" >&2
+  exit 1
+fi
+if rg --quiet 'newSyncApplicationTransport|syncApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Sync transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/sync_shadow.go" ]]; then
+  echo "embedded Sync transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
+if rg --quiet 'NewMessageRPCServer|DialCoreMessageApplication|DialMessageApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Message RPC compatibility facade remains in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'NewSearchRPCServer|NewSyncRPCServer' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync RPC server facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialSearchApplication|DialSyncApplication|DialCoreSyncApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync RPC client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialSearchCoreCapability|DialSyncCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync Core client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialGatewayCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Gateway Core client facade remains in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialGatewayAgentCapability|DialCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Gateway/Message client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet '^func RunServer\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "shared bootstrap RunServer facade remains; use service-owned entrypoints" >&2
+  exit 1
+fi
+if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "shared Core policy facade remains; keep policy implementation private to its server" >&2
   exit 1
 fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
@@ -673,19 +738,27 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
   fi
 done
 
-for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'ConfigureDependencyReadiness|BindRPCReadiness' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use platform readiness orchestration: ${runtime_file}" >&2
     exit 1
   fi
 done
+if [[ -e "${root_dir}/internal/bootstrap/cassandra_projector_runtime.go" ]]; then
+  echo "Cassandra Projector runtime remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/message/bootstrap/cassandra_projector_runtime.go" ]] || ! rg --quiet 'internal/services/message/bootstrap' "${root_dir}/cmd/tools/cassandra-projector/main.go"; then
+  echo "Cassandra Projector runtime must remain under the Message bootstrap boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/bootstrap/search_indexer_runtime.go" ]]; then
   echo "Search Indexer runtime remains in shared bootstrap" >&2
   exit 1

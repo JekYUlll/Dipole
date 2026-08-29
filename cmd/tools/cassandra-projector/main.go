@@ -7,9 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	runtime, err := bootstrap.InitializeCassandraProjector(ctx)
+	runtime, err := messagebootstrap.InitializeCassandraProjector(ctx)
 	if err != nil {
 		logger.L().Fatal("Cassandra projector initialize failed", zap.Error(err))
 	}

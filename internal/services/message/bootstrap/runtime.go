@@ -7,7 +7,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
@@ -16,10 +15,12 @@ import (
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	"github.com/apache/cassandra-gocql-driver/v2"
 )
@@ -27,9 +28,9 @@ import (
 const messageServiceName = "dipole-message"
 
 type MessageRuntime struct {
-	rpc                *legacybootstrap.InternalRPCServer
-	coreCapability     *legacybootstrap.LazyCoreCapability
-	outboxFlow         *legacybootstrap.OutboxRelay
+	rpc                *platformrpc.Server
+	coreCapability     *lazyCoreCapability
+	outboxFlow         *messagekafka.Relay
 	shutdownSec        int
 	metrics            *platformObservability.MetricsServer
 	shadowStore        *shadowData.MessageStore
@@ -77,7 +78,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
 	if messageCfg.EnforceDBPermissions {
-		if err := legacybootstrap.VerifyMessageDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
+		if err := messagemysql.VerifyDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
@@ -86,7 +87,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
 	runtime := &MessageRuntime{
-		coreCapability: legacybootstrap.NewLazyCoreCapability(rpcCfg),
+		coreCapability: newLazyCoreCapability(rpcCfg),
 		shutdownSec:    rpcCfg.ShutdownTimeoutSeconds,
 	}
 	var duplicateHydrator applicationPort.SyncMessageHydrator
@@ -139,10 +140,10 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	})
 	servedMessages := applicationPort.MessageApplication(messages)
 	if messageCfg.RuntimeMode == "shadow" {
-		servedMessages = legacybootstrap.NewQueryOnlyMessageApplication(messages)
+		servedMessages = newQueryOnlyMessageApplication(messages)
 	}
 	if messageCfg.RuntimeMode == "owner" {
-		legacybootstrap.RegisterMessageKafkaHandlers(messages)
+		messagekafka.RegisterPersistenceHandlers(platformKafka.Subscriber, messages)
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
 		if err := platformKafka.Client.EnsureTopics(messageOwnedKafkaTopics()); err != nil {
@@ -157,7 +158,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		}
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
-		runtime.outboxFlow = legacybootstrap.NewOutboxRelay(repos.Outbox)
+		runtime.outboxFlow = messagekafka.NewRelay(repos.Outbox)
 		if runtime.outboxFlow != nil {
 			runtime.outboxFlow.Start()
 		}
@@ -169,7 +170,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
 		platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB),
-		legacybootstrap.LazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
+		lazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		readinessProbes = append(readinessProbes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
