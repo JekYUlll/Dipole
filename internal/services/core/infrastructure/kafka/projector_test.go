@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type projectionStub struct {
@@ -39,7 +39,7 @@ func (s *projectionStub) UpdateGroupConversations(message *model.Message) error 
 
 func TestConversationProjectionPreservesMessageContract(t *testing.T) {
 	projector := &projectionStub{}
-	payload := service.MessageEventPayload{
+	payload := messagedomain.MessageEventPayload{
 		MessageID: "M1", ConversationKey: "group:G1", MessageSeq: 9,
 		SenderUUID: "U1", TargetUUID: "G1", TargetType: model.MessageTargetGroup,
 		MessageType: model.MessageTypeText, Content: "hello", SentAt: time.Now().UTC(),
@@ -58,10 +58,10 @@ func TestConversationProjectionPropagatesDecodeAndStoreErrors(t *testing.T) {
 	if err := updateConversation(projector, false)(context.Background(), platformKafka.Event{}); err == nil {
 		t.Fatal("expected missing envelope error")
 	}
-	if err := updateConversation(projector, false)(context.Background(), projectionEvent(t, "message.direct.created", service.MessageEventPayload{MessageID: "M1"})); err == nil {
+	if err := updateConversation(projector, false)(context.Background(), projectionEvent(t, "message.direct.created", messagedomain.MessageEventPayload{MessageID: "M1"})); err == nil {
 		t.Fatal("expected invalid message contract error")
 	}
-	valid := service.MessageEventPayload{
+	valid := messagedomain.MessageEventPayload{
 		MessageID: "M1", ConversationKey: "direct:U1:U2", MessageSeq: 1,
 		SenderUUID: "U1", TargetUUID: "U2", TargetType: model.MessageTargetDirect,
 		MessageType: model.MessageTypeText, Content: "hello", SentAt: time.Now().UTC(),

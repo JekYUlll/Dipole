@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
@@ -17,6 +16,7 @@ import (
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
@@ -28,9 +28,9 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("migrate temporary database: %v", err)
 	}
-	insertSearchOutboxEvent(t, db, "M1", "message.direct.created", searchPayload("M1", service.MessageMutationCreated, 1, "first"))
-	insertSearchOutboxEvent(t, db, "M2", "message.direct.created", searchPayload("M2", service.MessageMutationCreated, 1, "second"))
-	insertSearchOutboxEvent(t, db, "M1@r2", "message.direct.edited", searchPayload("M1", service.MessageMutationEdited, 2, "edited"))
+	insertSearchOutboxEvent(t, db, "M1", "message.direct.created", searchPayload("M1", messagedomain.MessageMutationCreated, 1, "first"))
+	insertSearchOutboxEvent(t, db, "M2", "message.direct.created", searchPayload("M2", messagedomain.MessageMutationCreated, 1, "second"))
+	insertSearchOutboxEvent(t, db, "M1@r2", "message.direct.edited", searchPayload("M1", messagedomain.MessageMutationEdited, 2, "edited"))
 	if _, err := db.Exec(`INSERT INTO outbox_events (
 		aggregate_type, aggregate_id, event_type, topic, message_key, value, status, retry_count, created_at, updated_at
 	) VALUES ('user', 'U1', 'user.updated', 'user.updated', 'U1', '{}', 'published', 0, NOW(3), NOW(3))`); err != nil {
@@ -107,15 +107,15 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	}
 }
 
-func searchPayload(messageID string, mutation service.MessageMutationType, revision uint64, content string) service.MessageEventPayload {
-	return service.MessageEventPayload{
+func searchPayload(messageID string, mutation messagedomain.MessageMutationType, revision uint64, content string) messagedomain.MessageEventPayload {
+	return messagedomain.MessageEventPayload{
 		MessageID: messageID, MutationType: mutation, Revision: revision, ActorUUID: "U1",
 		ConversationKey: "direct:U1:U2", MessageSeq: 1, SenderUUID: "U1", TargetUUID: "U2",
 		TargetType: model.MessageTargetDirect, Content: content, SentAt: time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC),
 	}
 }
 
-func insertSearchOutboxEvent(t *testing.T, db *sql.DB, aggregateID, eventType string, payload service.MessageEventPayload) {
+func insertSearchOutboxEvent(t *testing.T, db *sql.DB, aggregateID, eventType string, payload messagedomain.MessageEventPayload) {
 	t.Helper()
 	envelope, err := platformKafka.NewEnvelope(eventType, payload)
 	if err != nil {
