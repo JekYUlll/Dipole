@@ -4,6 +4,6 @@
 
 当前目录：
 
-- `service/`：旧 `internal/service` 包的 Core 和 Message 兼容入口；Sync、Core Auth Token、Core Admin 与 Core Session 兼容入口已在调用者迁移完成后移除。
+- `service/`：旧 `internal/service` 包的 Core 和 Message 兼容入口；Sync、Core Auth Token、Core Admin、Core Session 与 Core User 兼容入口已在调用者迁移完成后移除。
 
 兼容层的删除或缩减必须先完成调用方迁移，并保留可验证的回滚路径。
