@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已从横向 `internal/gateway/` 迁入 `internal/services/gateway/server/`；Gateway bootstrap 直接引用服务自有实现，HTTP contract 与远程回滚行为保持兼容。
 - 2026-08-30：Core HTTP/WS server、静态资源和通知适配器已从横向 `internal/server/` 迁入 `internal/services/core/server/`，Core 独立与 embedded 入口共用服务自有边界；旧目录扫描契约同步更新，HTTP、WS 和回滚行为保持兼容。
 - 2026-08-30：服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，当前 embedded runtime 物理路径和各独立服务 bootstrap 边界由自动化契约持续保护。
 - 2026-08-30：embedded 聚合 runtime 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/runtime/` 子包，Core embedded 兼容入口直接引用 embedded-owned runtime；共享 bootstrap 根目录不再持有生产级聚合实现，生命周期、Kafka、transport 和回滚语义保持兼容。

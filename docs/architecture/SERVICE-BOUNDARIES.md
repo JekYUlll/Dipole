@@ -64,6 +64,7 @@
 - Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。Message RPC server/client 由 Message、Gateway 和 embedded 自有 bootstrap 持有，embedded-only Message transport/shadow 位于 `internal/bootstrap/embedded/`。
 - Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
+- Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已归属 `internal/services/gateway/server/`；`internal/gateway/http/` 仅保留可复用的 Gin response/handler adapter，Core embedded server 继续通过显式依赖复用。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
 - `internal/data/mysql` 及其历史 repository facade 已完成调用审计并退役；具体 SQLC repository 必须位于其服务的 infrastructure 边界，跨服务共享能力仅通过 `internal/platform/mysql/` 提供。
