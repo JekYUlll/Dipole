@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 var (
@@ -16,20 +16,16 @@ var (
 	ErrUserSessionInvalid = errors.New("user session is invalid")
 )
 
-type tokenResolver interface {
-	ResolveSession(token string) (*coreauth.TokenSession, error)
-}
-
 type userFinder interface {
 	GetByUUID(uuid string) (*model.User, error)
 }
 
 type Authenticator struct {
-	tokenResolver tokenResolver
+	tokenResolver application.TokenSessionResolver
 	userFinder    userFinder
 }
 
-func NewAuthenticator(tokenResolver tokenResolver, userFinder userFinder) *Authenticator {
+func NewAuthenticator(tokenResolver application.TokenSessionResolver, userFinder userFinder) *Authenticator {
 	return &Authenticator{
 		tokenResolver: tokenResolver,
 		userFinder:    userFinder,

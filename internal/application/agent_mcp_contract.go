@@ -21,6 +21,10 @@ type AgentTokenSession struct {
 	ExpiresAt time.Time
 }
 
+type TokenSessionResolver interface {
+	ResolveSession(string) (*AgentTokenSession, error)
+}
+
 func AgentMCPResourceIdentifier(configured string) string {
 	if resource := strings.TrimSpace(configured); resource != "" {
 		return resource
