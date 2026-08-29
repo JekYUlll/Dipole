@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent application compatibility facade 已删除两个无调用者的未导出转发函数；仍被兼容测试使用的执行策略和任务辅助入口继续保留，服务 application 实现保持唯一来源。
 - Core、Sync 和 Agent repository compatibility facade 已完成调用者清理并退休；生产与 embedded composition 直接使用各服务 infrastructure，服务布局门禁同步移除三项历史登记及过时的存在性断言。
 - 聚合 `internal/app/composition_compat.go` 已退休；composition 测试已归属 `internal/bootstrap/embedded` 并直接验证 embedded repository/service 装配，`internal/app` 当前仅保留仍在迁移期的 Agent application 兼容边界。
 - Core embedded compatibility facade 已移除无调用者的 Inbox 写入开关转发和旧 Message application 构造入口；Inbox projector 与 Message application 继续由服务专属/embedded composition 直接装配，保留仍有调用者的兼容 API。

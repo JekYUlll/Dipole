@@ -118,20 +118,12 @@ func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSu
 	return agentapplication.NewPersistentAgentEventSubscriptionControlV1(store, definitions, conversations, now)
 }
 
-func validSubscriptionDefinitionV1(definition *application.AgentDefinitionVersionV1, item application.AgentEventSubscriptionV1, request application.AgentEventSubscriptionMatchRequestV1, activeAt time.Time) bool {
-	return agentapplication.ValidSubscriptionDefinitionV1(definition, item, request, activeAt)
-}
-
 func NewLocalAgentCommandV1(messages agentapplication.AgentCommandMessages) (*LocalAgentCommandV1, error) {
 	return agentapplication.NewLocalAgentCommandV1(messages)
 }
 
 func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentapplication.AgentCapabilityMessages, conversations agentapplication.AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
 	return agentapplication.NewLocalAgentCapabilityV1(core, messages, conversations, commands)
-}
-
-func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
-	return agentapplication.AgentCommandCapabilityIDV1(kind)
 }
 
 func NewPersistentAgentInvocationResolverV1(store application.AgentPolicyStoreV1, activeAuthorizers ...application.AgentActiveRunPromotionAuthorizerV1) (*PersistentAgentInvocationResolverV1, error) {
