@@ -215,7 +215,7 @@ docs/
 当前已有目录可以作为过渡：
 
 - `internal/config` -> 未来并入 `platform/config`
-- `internal/store` -> 未来拆到 `platform/database` 和 `platform/cache`
+- `internal/store` -> 已完成拆分并退役；数据库与缓存基础设施分别位于 `internal/platform/mysql` 和 `internal/platform/cache`
 - `internal/gateway/http` -> 未来按远程服务 contract 继续拆分为 Gateway delivery adapters
 - `internal/repository` -> 未来进入各模块 `infrastructure`
 - `internal/service` -> 未来进入各模块 `application`

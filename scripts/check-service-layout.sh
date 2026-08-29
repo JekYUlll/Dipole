@@ -93,30 +93,21 @@ fi
 for compatibility_readme in \
   internal/app/README.md \
   internal/data/mysql/README.md \
-  internal/data/mysql/repository/README.md \
-  internal/store/README.md; do
+  internal/data/mysql/repository/README.md; do
   if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
     echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
     exit 1
   fi
 done
- # Compatibility roots may retain adapters and tests, but must not become a
- # new shared implementation area as services are extracted.
-for compatibility_file in \
-  internal/store/mysql_compat.go \
-  internal/store/redis_compat.go; do
-  if [[ ! -f "${root_dir}/${compatibility_file}" ]]; then
-    echo "required compatibility adapter is missing: ${compatibility_file}" >&2
-    exit 1
-  fi
-done
+# Compatibility roots may retain adapters and tests, but must not become a
+# new shared implementation area as services are extracted.
 while IFS= read -r compatibility_file; do
   # Deleted tracked files remain visible through git ls-files --cached until commit.
   if [[ ! -e "${root_dir}/${compatibility_file}" ]]; then
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/store/README.md|internal/store/mysql_compat.go|internal/store/redis_compat.go|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/app/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
@@ -127,7 +118,7 @@ if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/i
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1
 fi
-if [[ -e "${root_dir}/internal/store/redis.go" ]]; then
+if [[ -e "${root_dir}/internal/store/redis.go" || -e "${root_dir}/internal/store/redis_compat.go" ]]; then
 	echo "legacy Redis client implementation remains under internal/store" >&2
 	exit 1
 fi
@@ -163,7 +154,7 @@ if [[ ! -f "${root_dir}/internal/platform/mysql/store.go" || ! -f "${root_dir}/i
   echo "shared SQLC MySQL transaction boundary must remain under internal/platform/mysql" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/store/mysql.go" ]]; then
+if [[ -e "${root_dir}/internal/store/mysql.go" || -e "${root_dir}/internal/store/mysql_compat.go" ]]; then
 	echo "legacy MySQL global connection remains under internal/store" >&2
 	exit 1
 fi
