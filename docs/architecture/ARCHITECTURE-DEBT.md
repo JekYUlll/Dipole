@@ -423,6 +423,7 @@
 - **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。TS Runtime 可在 EventLedger、Temporal 和模型前确定性过滤。canonical Pencil 和默认关闭的 Gateway/Vue 页面已交付 owner list/create/revoke：创建候选由 Core 对 authenticated readable conversation 与 Definition scope 求交集，Gateway 从会话派生 principal/tenant 并从 conversation key 派生 event/resource，Core 在写入前再次复核；前端严格解析候选和权威结果，拒绝静默截断关键词。默认关闭的在线 Shadow 对照可在 direct-target 主路径进入 EventLedger 前调用同一 matcher，仅记录六种低基数结果和候选总数；matcher error 不阻断主路径，Prometheus 已提供 error/drift 告警。语言中立 prefilter Eval 已支持有界标签 corpus、三类 candidate evidence、分类/延迟/成本指标和生产规则基线；corpus review v1 要求双 reviewer 完整标签与第三方分歧裁决。Compose 与默认配置继续使用 `direct_target` 且 Shadow 关闭。
 - **本轮进展：** Runtime matcher 在解析前限制最多 256 条 Core 候选，超限集合 fail-closed；既有本地过滤、Shadow 观测和生产开关语义保持不变。
 - **本轮进展：** Event Subscription 控制面测试已迁入 Agent application 边界并直接验证创建、幂等回放、scope/owner 授权、可读会话交集、分页和撤销审计；聚合 `internal/app` 仅供该测试使用的兼容转发已删除，服务实现成为测试与生产装配的共同入口。
+- **本轮进展：** Agent Command 测试已迁入 Agent application 边界并直接验证可信身份、关联 ID、幂等收据、异常恢复、绑定漂移和 fail-closed 行为；聚合 `internal/app` 仅供该测试使用的兼容入口已删除。
 - **本轮进展：** Shadow 指标已修正为记录原始候选集合大小，避免以匹配数替代候选数造成成本证据偏差；后续灰度仍需共享环境抓取和完整窗口。
 - **本轮进展：** Shadow metrics observer 已在运行时拒绝闭集之外的 outcome，保持 Prometheus label vocabulary 与 evidence schema 一致；共享环境窗口仍待完成。
 - **本轮进展：** 只读 Prometheus Collector 已对响应体实施 256 KiB 流式上限，并在超限、读取失败或 JSON 异常时统一 fail-closed；共享环境窗口与发布 artifact 交叉核对仍待完成。
