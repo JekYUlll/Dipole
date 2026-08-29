@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：复核 Agent Runtime Context Compiler 校准命令：fixture evidence 覆盖中文、英文、代码、Emoji 和 Tool Schema 五类样本，`eligible=true`、无低估，report SHA-256 为 `d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562`；同时全量回归 `665` 项通过、`27` 项按条件跳过，真实候选模型校准仍保持生产前置门禁。
 - 2026-08-30：在当前 `master` revision `d2507377` 上重建微服务候选镜像并复跑 Agent Timeline repair Compose smoke；migration `v50`、UTC、专用最小权限、worker readiness、pending intent 恢复和 event UUID 幂等均通过，隔离栈已清理，共享环境 operator 灰度与默认生产开关继续关闭。
 - 2026-08-30：补齐前端 `npm run typecheck` 标准脚本，并由 Vite 工具链契约测试锁定 `vue-tsc --noEmit` 命令；后续类型检查可使用统一入口执行。
 - 2026-08-30：收敛 Chat 初始化阶段的认证恢复异常：HTTP 401 仍由统一拦截器执行会话清理和跳转，Vue 生命周期不再产生未处理 Promise rejection；共享设备认证 E2E 在 Chromium、Firefox、WebKit 共 `6/6` 通过。
