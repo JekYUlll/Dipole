@@ -10,7 +10,6 @@ import (
 
 // Agent application implementations live under the Agent service boundary.
 // These aliases preserve the embedded composition root during migration.
-type PersistentAgentApprovalGrantResolverV1 = agentapplication.PersistentAgentApprovalGrantResolverV1
 type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApprovalServiceV1
 type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTaskControlAuthorizerV1
 type PersistentAgentDefinitionCatalogV1 = agentapplication.PersistentAgentDefinitionCatalogV1
@@ -37,14 +36,6 @@ type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
 type PersistentAgentRuntimePromotionControlServiceV1 = agentapplication.PersistentAgentRuntimePromotionControlServiceV1
 type PersistentAgentActiveRunPromotionAuthorizerV1 = agentapplication.PersistentAgentActiveRunPromotionAuthorizerV1
-
-func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
-	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
-}
-
-func NewPersistentAgentApprovalGrantResolverV1WithClock(store application.AgentApprovalGrantStoreV1, now func() time.Time) (*PersistentAgentApprovalGrantResolverV1, error) {
-	return agentapplication.NewPersistentAgentApprovalGrantResolverV1WithClock(store, now)
-}
 
 func NewPersistentAgentApprovalServiceV1(store application.AgentPolicyStoreV1) (*PersistentAgentApprovalServiceV1, error) {
 	return agentapplication.NewPersistentAgentApprovalServiceV1(store)

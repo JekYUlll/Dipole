@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Approval Grant Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发；审批主服务测试因共享 policy stub 继续保留兼容边界。
 - Agent application compatibility facade 已删除两个无调用者的未导出转发函数；仍被兼容测试使用的执行策略和任务辅助入口继续保留，服务 application 实现保持唯一来源。
 - Core、Sync 和 Agent repository compatibility facade 已完成调用者清理并退休；生产与 embedded composition 直接使用各服务 infrastructure，服务布局门禁同步移除三项历史登记及过时的存在性断言。
 - 聚合 `internal/app/composition_compat.go` 已退休；composition 测试已归属 `internal/bootstrap/embedded` 并直接验证 embedded repository/service 装配，`internal/app` 当前仅保留仍在迁移期的 Agent application 兼容边界。
