@@ -104,6 +104,31 @@ func TestLimiterAllowAgentMCPFailsClosedWithoutRedisAndPreservesMessageFailOpen(
 	}
 }
 
+func TestLimiterUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	limiter := NewLimiterWithClient(config.RateLimit{
+		Enabled: true, AgentMCPLimit: 1, AgentMCPWindowSeconds: 60,
+	}, client)
+
+	if allowed, _ := limiter.AllowAgentMCP("U-explicit"); !allowed {
+		t.Fatal("first explicit-client request should be allowed")
+	}
+	if allowed, _ := limiter.AllowAgentMCP("U-explicit"); allowed {
+		t.Fatal("second explicit-client request should be limited")
+	}
+}
+
 func setupLimiterTest(t *testing.T) func() {
 	t.Helper()
 
