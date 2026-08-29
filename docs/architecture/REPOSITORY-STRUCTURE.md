@@ -24,6 +24,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `contracts/` 存放事件、Agent 和运行时边界契约。
 - `db/` 存放迁移、sqlc 查询和数据库结构。
 - `frontend/` 存放客户端；`agent-runtime/` 存放 TypeScript Agent 服务。
+- `deploy/images/` 存放按服务边界构建的镜像模板；`deploy/microservices/` 存放可组合的微服务部署 override。
 - `docs/` 存放架构、数据、运行、前端和性能文档；根目录只保留项目入口和滚动更新日志。
 
 ## 结构门禁
@@ -33,3 +34,5 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 ```bash
 scripts/check-service-layout.sh
 ```
+
+候选 Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建，默认共享镜像仍可通过移除 `deploy/microservices/isolated-images.yml` 回滚。
