@@ -38,6 +38,7 @@ func (r *stubFileRepository) GetByUUID(uuid string) (*model.UploadedFile, error)
 type stubUploader struct {
 	uploadFn            func(ctx context.Context, file multipart.File, header *multipart.FileHeader) (*platformStorage.UploadedObject, error)
 	presignFn           func(ctx context.Context, bucket, objectKey string, expiry time.Duration) (string, error)
+	presignPartFn       func(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error)
 	initiateMultipartFn func(ctx context.Context, fileName, contentType string) (*platformStorage.MultipartUpload, error)
 	uploadPartFn        func(ctx context.Context, objectKey, uploadID string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error)
 	completeMultipartFn func(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error)
@@ -72,6 +73,13 @@ func (u *stubUploader) PresignDownloadURL(ctx context.Context, bucket, objectKey
 		return "", errors.New("unexpected presign call")
 	}
 	return u.presignFn(ctx, bucket, objectKey, expiry)
+}
+
+func (u *stubUploader) PresignMultipartPartURL(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error) {
+	if u.presignPartFn == nil {
+		return "", errors.New("unexpected multipart presign call")
+	}
+	return u.presignPartFn(ctx, objectKey, uploadID, partNumber, expiry)
 }
 
 func (u *stubUploader) OpenObject(ctx context.Context, bucket, objectKey string) (io.ReadCloser, error) {
@@ -422,6 +430,36 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	}
 	if file == nil || file.UUID == "" {
 		t.Fatalf("expected uploaded file record, got %+v", file)
+	}
+}
+
+func TestFileServicePresignMultipartPartsValidatesOwnerAndOrdersParts(t *testing.T) {
+	t.Parallel()
+
+	requested := make([]int, 0)
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		presignPartFn: func(_ context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error) {
+			if objectKey != "message-files/f.bin" || uploadID != "upload-1" || expiry != multipartPartURLTTL {
+				t.Fatalf("unexpected signing input: %s %s %d %s", objectKey, uploadID, partNumber, expiry)
+			}
+			requested = append(requested, partNumber)
+			return fmt.Sprintf("https://minio.test/part/%d", partNumber), nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = &stubMultipartSessionStore{}
+	service.sessionStore.Create(context.Background(), &multipartUploadSession{
+		SessionID: "session-1", UploaderUUID: "U100", ObjectKey: "message-files/f.bin", UploadID: "upload-1", TotalParts: 3,
+	}, time.Hour)
+
+	parts, err := service.PresignMultipartParts("U100", "session-1", []int{3, 1})
+	if err != nil {
+		t.Fatalf("presign parts: %v", err)
+	}
+	if fmt.Sprint(requested) != "[1 3]" || len(parts) != 2 || parts[0].PartNumber != 1 || parts[1].PartNumber != 3 {
+		t.Fatalf("unexpected presigned parts: requested=%v parts=%+v", requested, parts)
+	}
+	if _, err := service.PresignMultipartParts("U200", "session-1", []int{1}); !errors.Is(err, ErrFilePermissionDenied) {
+		t.Fatalf("expected owner rejection, got %v", err)
 	}
 }
 

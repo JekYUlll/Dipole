@@ -31,6 +31,10 @@ type fileService interface {
 	OpenContent(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error)
 }
 
+type multipartPresignService interface {
+	PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
+}
+
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
@@ -300,6 +304,46 @@ func (h *FileHandler) MultipartStatus(c *gin.Context) {
 		return
 	}
 	Success(c, httpdto.ToFileMultipartStatusResponse(result))
+}
+
+// PresignMultipartParts godoc
+// @Summary 签发分片直传 URL
+// @Tags File
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Param request body httpdto.FileMultipartPresignRequest true "分片编号"
+// @Success 200 {object} MultipartPresignResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/parts/presign [post]
+func (h *FileHandler) PresignMultipartParts(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	presigner, ok := h.service.(multipartPresignService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart presigning is unavailable")
+		return
+	}
+	var req httpdto.FileMultipartPresignRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart presign request")
+		return
+	}
+	result, err := presigner.PresignMultipartParts(currentUser.UUID, c.Param("session_id"), req.PartNumbers)
+	if err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, httpdto.ToFileMultipartPresignResponse(result))
 }
 
 // UploadPart godoc

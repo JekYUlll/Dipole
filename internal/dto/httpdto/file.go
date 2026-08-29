@@ -66,6 +66,20 @@ type FileMultipartStatusResponse struct {
 	UploadedParts []FileMultipartPartStatus `json:"uploaded_parts"`
 }
 
+type FileMultipartPresignRequest struct {
+	PartNumbers []int `json:"part_numbers" binding:"required,min=1"`
+}
+
+type FileMultipartPresignPart struct {
+	PartNumber int       `json:"part_number"`
+	URL        string    `json:"url"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type FileMultipartPresignResponse struct {
+	Parts []FileMultipartPresignPart `json:"parts"`
+}
+
 func ToFileMultipartInitiateResponse(result *corefile.InitiateMultipartUploadResult) *FileMultipartInitiateResponse {
 	if result == nil {
 		return nil
@@ -98,6 +112,14 @@ func ToFileMultipartStatusResponse(result *corefile.MultipartUploadStatus) *File
 		TotalParts:    result.TotalParts,
 		UploadedParts: parts,
 	}
+}
+
+func ToFileMultipartPresignResponse(result []corefile.MultipartPartUploadURL) *FileMultipartPresignResponse {
+	parts := make([]FileMultipartPresignPart, 0, len(result))
+	for _, part := range result {
+		parts = append(parts, FileMultipartPresignPart{PartNumber: part.PartNumber, URL: part.URL, ExpiresAt: part.ExpiresAt})
+	}
+	return &FileMultipartPresignResponse{Parts: parts}
 }
 
 func ToFileDownloadResponse(result *corefile.FileDownloadResult) *FileDownloadResponse {

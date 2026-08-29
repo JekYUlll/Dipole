@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -202,6 +204,33 @@ func (u *MinIOUploader) UploadMultipartPart(ctx context.Context, objectKey, uplo
 		ETag:       strings.Trim(part.ETag, "\""),
 		Size:       part.Size,
 	}, nil
+}
+
+// PresignMultipartPartURL signs one bounded S3 UploadPart request. The upload
+// ID and part number stay in the signed query, so callers cannot retarget the
+// URL to another multipart session or part.
+func (u *MinIOUploader) PresignMultipartPartURL(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error) {
+	if u == nil || u.client == nil {
+		return "", fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(objectKey) == "" || strings.TrimSpace(uploadID) == "" || partNumber <= 0 {
+		return "", fmt.Errorf("object key, upload id and part number are required")
+	}
+	if expiry <= 0 {
+		return "", fmt.Errorf("presigned URL expiry must be positive")
+	}
+	client := u.client
+	if u.presignClient != nil {
+		client = u.presignClient
+	}
+	presignedURL, err := client.Presign(ctx, http.MethodPut, u.bucket, objectKey, expiry, url.Values{
+		"partNumber": []string{strconv.Itoa(partNumber)},
+		"uploadId":   []string{uploadID},
+	})
+	if err != nil {
+		return "", fmt.Errorf("presign multipart part url: %w", err)
+	}
+	return presignedURL.String(), nil
 }
 
 func (u *MinIOUploader) CompleteMessageMultipartUpload(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []MultipartCompletePart) (*UploadedObject, error) {
