@@ -1,5 +1,5 @@
-# Embedded Compatibility Facade
+# Compatibility Facades
 
-`internal/app/` only contains the embedded Composition Root facade and its compatibility tests. Long-lived service composition belongs to `internal/bootstrap/` and `internal/services/<service>/`.
+`internal/app/` only contains narrow compatibility facades and their tests. Embedded composition belongs to `internal/bootstrap/embedded/`; long-lived service composition belongs to `internal/services/<service>/`.
 
 New service code must not be added here. When an embedded caller needs a migrated type, keep a narrow forwarding alias and document the removal condition in `docs/architecture/ARCHITECTURE-DEBT.md`.
