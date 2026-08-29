@@ -1,4 +1,4 @@
-package bootstrap
+package embedded
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
 	"google.golang.org/grpc"
 )
@@ -68,7 +69,7 @@ func (stubMessageApplication) ListOfflineMessages(userUUID string, afterID uint,
 
 func TestMessageTransportDefaultsToLocal(t *testing.T) {
 	local := stubMessageApplication{}
-	transport, err := newMessageApplicationTransport(context.Background(), config.Message{}, config.InternalRPC{}, local)
+	transport, err := NewMessageApplicationTransport(context.Background(), config.Message{}, config.InternalRPC{}, local)
 	if err != nil {
 		t.Fatalf("new local transport: %v", err)
 	}
@@ -84,7 +85,7 @@ func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 			rpcCfg := config.InternalRPC{}
 			if mode == "grpc" {
 				rpcCfg = config.InternalRPC{Enabled: true, SharedSecret: "test-secret", MessageListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-				server, err := NewMessageRPCServer(rpcCfg, stubMessageApplication{})
+				server, err := messagebootstrap.NewMessageRPCServer(rpcCfg, stubMessageApplication{})
 				if err != nil {
 					t.Fatalf("start message rpc server: %v", err)
 				}
@@ -95,7 +96,7 @@ func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 				})
 				rpcCfg.MessageTarget = server.Address()
 			}
-			transport, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
+			transport, err := NewMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
 			if err != nil {
 				t.Fatalf("new %s transport: %v", mode, err)
 			}
@@ -107,7 +108,7 @@ func TestMessageTransportModesPassSharedApplicationContract(t *testing.T) {
 
 func TestGatewayAndCoreHaveDistinctMessageRPCIdentities(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", MessageListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewMessageRPCServer(cfg, stubMessageApplication{})
+	server, err := messagebootstrap.NewMessageRPCServer(cfg, stubMessageApplication{})
 	if err != nil {
 		t.Fatalf("start message rpc server: %v", err)
 	}
@@ -135,14 +136,14 @@ func TestGatewayAndCoreHaveDistinctMessageRPCIdentities(t *testing.T) {
 }
 
 func TestMessageTransportRejectsUnknownMode(t *testing.T) {
-	_, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "shadow"}, config.InternalRPC{}, stubMessageApplication{})
+	_, err := NewMessageApplicationTransport(context.Background(), config.Message{Transport: "shadow"}, config.InternalRPC{}, stubMessageApplication{})
 	if err == nil {
 		t.Fatal("expected unknown message transport to fail")
 	}
 }
 
 func TestMessageTransportRejectsShadowWithoutRPC(t *testing.T) {
-	_, err := newMessageApplicationTransport(
+	_, err := NewMessageApplicationTransport(
 		context.Background(),
 		config.Message{Transport: "local", ShadowQueries: true},
 		config.InternalRPC{},
@@ -161,13 +162,13 @@ func TestMessageTransportRemoteFailureKeepsLocalRollbackAvailable(t *testing.T) 
 		DialTimeoutSeconds: 1,
 	}
 	startedAt := time.Now()
-	if _, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "grpc"}, rpcCfg, stubMessageApplication{}); err == nil {
+	if _, err := NewMessageApplicationTransport(context.Background(), config.Message{Transport: "grpc"}, rpcCfg, stubMessageApplication{}); err == nil {
 		t.Fatal("expected unavailable remote transport to fail")
 	}
 	if elapsed := time.Since(startedAt); elapsed > 2*time.Second {
 		t.Fatalf("remote transport exceeded bounded startup failure: %v", elapsed)
 	}
-	local, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: "local"}, rpcCfg, stubMessageApplication{})
+	local, err := NewMessageApplicationTransport(context.Background(), config.Message{Transport: "local"}, rpcCfg, stubMessageApplication{})
 	if err != nil {
 		t.Fatalf("local rollback transport failed: %v", err)
 	}
@@ -230,19 +231,13 @@ func runMessageApplicationContract(t *testing.T, messages application.MessageApp
 }
 
 func BenchmarkMessageTransportDirectHistory(b *testing.B) {
-	certFile, keyFile, caFile := writeRPCIdentity(b, coreServiceName)
 	rpcCfg := config.InternalRPC{
 		Enabled:              true,
 		SharedSecret:         "benchmark-secret",
 		MessageListenAddress: "127.0.0.1:0",
 		DialTimeoutSeconds:   2,
-		TLSEnabled:           true,
-		TLSCertFile:          certFile,
-		TLSKeyFile:           keyFile,
-		TLSCAFile:            caFile,
-		TLSServerName:        "localhost",
 	}
-	server, err := NewMessageRPCServer(rpcCfg, stubMessageApplication{})
+	server, err := messagebootstrap.NewMessageRPCServer(rpcCfg, stubMessageApplication{})
 	if err != nil {
 		b.Fatalf("start benchmark message rpc: %v", err)
 	}
@@ -255,7 +250,7 @@ func BenchmarkMessageTransportDirectHistory(b *testing.B) {
 
 	for _, mode := range []string{"local", "grpc"} {
 		b.Run(mode, func(b *testing.B) {
-			transport, err := newMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
+			transport, err := NewMessageApplicationTransport(context.Background(), config.Message{Transport: mode}, rpcCfg, stubMessageApplication{})
 			if err != nil {
 				b.Fatalf("create %s benchmark transport: %v", mode, err)
 			}

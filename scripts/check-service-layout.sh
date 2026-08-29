@@ -261,6 +261,24 @@ if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
 fi
+for legacy_message_transport in message_transport.go message_shadow.go message_transport_test.go message_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_message_transport}" ]]; then
+    echo "embedded Message transport implementation remains in shared bootstrap: ${legacy_message_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Message transport" >&2
+  exit 1
+fi
+if rg --quiet 'newMessageApplicationTransport|messageApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Message transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/message_shadow.go" ]]; then
+  echo "embedded Message transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
