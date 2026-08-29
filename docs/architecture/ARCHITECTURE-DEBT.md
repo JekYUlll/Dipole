@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：embedded 聚合的 Message persistence ownership 策略及测试已迁入 `internal/bootstrap/embedded/`，共享 bootstrap 仅保留 runtime 生命周期编排；local/gRPC/remote 判断和回滚语义保持兼容。
 - 2026-08-30：embedded Kafka managed topic 清单及契约测试已迁入 `internal/bootstrap/embedded/`，runtime 直接使用 embedded-owned API；topic 列表和版本化契约回归通过，独立服务 consumer ownership 保持不变。
 - 2026-08-30：清理服务布局门禁中针对已删除 `internal/bootstrap/internal_rpc.go` 的六段过时检查，并修正仓库结构文档中的已删除 helper 描述；门禁现可无 IO 警告地验证当前 Core RPC/Kafka 物理边界。
 - 2026-08-30：embedded Kafka 组合及其消息事件契约测试已迁入 `internal/bootstrap/embedded/`，legacy `internal/bootstrap` 不再持有 Kafka 注册实现；聚合 runtime、旧 Eino 回滚路径和实时投递注册顺序回归通过，后续继续评估 embedded composition 的剩余共享生命周期边界。
