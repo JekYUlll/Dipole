@@ -25,14 +25,6 @@ type AgentProcessRepositories = agentmysql.ProcessRepositories
 
 type MessageProcessRepositories = messagemysql.ProcessRepositories
 
-func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
-	return NewMessageProcessRepositoriesWithInboxWrites(db, true)
-}
-
-func NewMessageProcessRepositoriesWithInboxWrites(db *sql.DB, enabled bool) (*MessageProcessRepositories, error) {
-	return messagemysql.NewProcessRepositories(db, enabled)
-}
-
 func NewRepositories(db *sql.DB) (*Repositories, error) {
 	if db == nil {
 		return nil, fmt.Errorf("repository composition requires database/sql connection")
@@ -48,7 +40,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("compose Agent repositories: %w", err)
 	}
 	repos.AgentProcess = agentRepos
-	messageRepos, err := NewMessageProcessRepositoriesWithInboxWrites(db, true)
+	messageRepos, err := messagemysql.NewProcessRepositories(db, true)
 	if err != nil {
 		return nil, fmt.Errorf("compose Message repositories: %w", err)
 	}
