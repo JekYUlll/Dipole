@@ -1360,6 +1360,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/files/uploads/{session_id}/parts/{part_number}/register": {
+            "post": {
+                "security": [{"BearerAuth": []}],
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["File"],
+                "summary": "登记已直传分片",
+                "parameters": [
+                    {"type": "string", "description": "上传会话 ID", "name": "session_id", "in": "path", "required": true},
+                    {"type": "integer", "description": "分片编号", "name": "part_number", "in": "path", "required": true},
+                    {"description": "分片 ETag 和尺寸", "name": "request", "in": "body", "required": true, "schema": {"$ref": "#/definitions/httpdto.FileMultipartPartRegisterRequest"}}
+                ],
+                "responses": {
+                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/http.MultipartPartResponseEnvelope"}},
+                    "400": {"description": "Bad Request", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "403": {"description": "Forbidden", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "404": {"description": "Not Found", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "500": {"description": "Internal Server Error", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
+                    "503": {"description": "Service Unavailable", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}}
+                }
+            }
+        },
         "/files/uploads/{session_id}/parts/{part_number}": {
             "put": {
                 "security": [
@@ -4230,6 +4253,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {"$ref": "#/definitions/httpdto.FileMultipartPresignPart"}
                 }
+            }
+        },
+        "httpdto.FileMultipartPartRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "etag": {"type": "string"},
+                "size": {"type": "integer"}
             }
         },
         "httpdto.GroupMemberResponse": {
