@@ -10,9 +10,9 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
+	syncdomain "github.com/JekYUlll/Dipole/internal/services/sync/domain"
 )
 
 type SyncHandler struct {
@@ -77,9 +77,9 @@ func (h *SyncHandler) AdvanceCheckpoint(c *gin.Context) {
 
 func handleSyncCheckpointError(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, service.ErrSyncGroupForbidden):
+	case errors.Is(err, syncdomain.ErrSyncGroupForbidden):
 		ErrorWithCode(c, http.StatusForbidden, code.Forbidden, err.Error())
-	case errors.Is(err, service.ErrSyncDeviceIDRequired), errors.Is(err, service.ErrSyncDeviceIDInvalid), errors.Is(err, service.ErrSyncCheckpointAhead):
+	case errors.Is(err, syncdomain.ErrSyncDeviceIDRequired), errors.Is(err, syncdomain.ErrSyncDeviceIDInvalid), errors.Is(err, syncdomain.ErrSyncCheckpointAhead):
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 	default:
 		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
