@@ -18,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"

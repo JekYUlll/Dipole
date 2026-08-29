@@ -35,7 +35,7 @@
 - Agent repository composition 已提供 `AgentProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
-- Search HTTP handler 已迁入 `internal/gateway/`，只负责 Gateway 认证上下文、参数校验和 Search application 响应映射。
+- Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 业务服务不得跨边界写入其他服务拥有的表。查询应通过 application port、RPC 或版本化事件完成。
 - `cmd/tools` 的回填、对账和证据程序可以复用只读 application port，但不能成为长期服务的隐式写入口。

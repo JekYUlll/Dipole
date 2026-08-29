@@ -15,7 +15,7 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
-	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"

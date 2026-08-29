@@ -216,7 +216,7 @@ docs/
 
 - `internal/config` -> 未来并入 `platform/config`
 - `internal/store` -> 未来拆到 `platform/database` 和 `platform/cache`
-- `internal/handler/http` -> 未来进入 `modules/*/delivery/http`
+- `internal/gateway/http` -> 未来按远程服务 contract 继续拆分为 Gateway delivery adapters
 - `internal/repository` -> 未来进入各模块 `infrastructure`
 - `internal/service` -> 未来进入各模块 `application`
 

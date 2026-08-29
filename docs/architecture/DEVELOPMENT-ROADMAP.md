@@ -73,7 +73,7 @@
 - 把 `server.New()` 里的对象装配逐步收口到 `bootstrap`
 - 把 `store.DB`、`store.RDB` 这类全局变量逐步包进更清晰的初始化边界
 - 为 repository 抽出更稳定的接口，方便 service 测试替身接入
-- 把 `internal/handler/http` 中的公共响应逻辑抽得更明确
+- 继续将 `internal/gateway/http` 中的边缘适配器按远程服务 contract 拆分，逐步减少对 legacy `internal/service` 的直接依赖
 
 完成标志：
 
