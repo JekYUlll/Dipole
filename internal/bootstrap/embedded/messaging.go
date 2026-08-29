@@ -45,11 +45,11 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 	}
 	messageRepos := repos.MessageProcess
 	if messageRepos == nil {
-		messageRepos = &MessageProcessRepositories{Messages: repos.Messages, Outbox: repos.Outbox}
+		messageRepos = &MessageProcessRepositories{}
 	}
 	syncRepos := repos.SyncProcess
 	if syncRepos == nil {
-		syncRepos = &SyncProcessRepositories{Sync: repos.Sync}
+		syncRepos = &SyncProcessRepositories{}
 	}
 	return NewMessagingServicesFromProcesses(coreRepos, messageRepos, syncRepos, dependencies)
 }

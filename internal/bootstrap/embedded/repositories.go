@@ -21,15 +21,12 @@ type Repositories struct {
 	SyncProcess    *SyncProcessRepositories
 	AgentProcess   *AgentProcessRepositories
 	Users          application.UserStore
-	Messages       application.MessageStore
 	Files          application.FileMetadataStore
 	Conversations  application.ConversationStore
 	Contacts       application.ContactStore
 	Groups         application.GroupStore
 	Admin          application.AdminOverviewStore
-	Sync           application.SyncStore
 	Search         application.SearchIndex
-	Outbox         application.OutboxRelayStore
 }
 
 type CoreProcessRepositories = coremysql.ProcessRepositories
@@ -72,14 +69,11 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("compose Message repositories: %w", err)
 	}
 	repos.MessageProcess = messageRepos
-	repos.Messages = messageRepos.Messages
-	repos.Outbox = messageRepos.Outbox
 	syncRepos, err := syncmysql.NewProcessRepositories(db, nil)
 	if err != nil {
 		return nil, fmt.Errorf("compose Sync repositories: %w", err)
 	}
 	repos.SyncProcess = syncRepos
-	repos.Sync = syncRepos.Sync
 	searchAdapter, err := searchmysql.NewSearchIndexRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
