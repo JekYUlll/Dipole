@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：在最新 `master` 上再次执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 的 readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等；临时拓扑自动清理，生产流量与 ownership 配置保持不变。
 - 2026-08-30：修正架构债务台账重复编号：将“服务入口已拆分但共享实现区仍缺少服务级物理边界”统一编号为 `AD-054`，保留已完成的运维目录整理为 `AD-050`，不改变债务状态或运行行为。
 - 2026-08-30：删除经全仓调用审计确认仅被测试使用的 shared `NewCoreRPCServerWithAgent` facade；Agent RPC contract 测试直接构造 adapter 并验证 Core server 组合，运行时使用的 control/projection/artifact 构造路径保持不变。
 - 2026-08-30：删除经全仓调用审计确认无调用者的 shared `RegisterCoreProjectionKafkaHandlers` facade；Core standalone runtime 继续直接使用 Core-owned projection 注册器，Conversation projection、Kafka ownership 和回滚路径不变。
