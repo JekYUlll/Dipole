@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：为开源 MinIO Bucket CORS 不可用场景增加默认关闭的 Gateway 同源 S3 PUT 代理：仅转发带完整签名的 Multipart 分片，固定上传 bucket、限制 PUT 方法和分片体积，并保留 Core 中转路径作为回切方案；真实代理启用和预签名端到端切流继续由 A7/AD-055 跟踪。
 - 2026-08-30：真实 MinIO 验收确认开源 MinIO `RELEASE.2025-04-22T22-12-26Z` 不支持 Bucket CORS API，`mc cors set` 返回 `501 NotImplemented`；移除三套 Compose 中会导致初始化失败的 CORS 命令，预签名 Multipart 默认切流继续暂停，待补 Gateway 同源代理 CORS 或切换支持 Bucket CORS 的对象存储实现。
 - 2026-08-30：补充平台存储 CORS 策略 XML 作为支持 Bucket CORS 的对象存储部署参考；当前开源 MinIO 不支持该 API，生产域名与浏览器直传仍需通过 Gateway 同源代理或兼容实现落地。
 - 2026-08-30：Web Multipart 接入默认关闭的预签名直传试运行：批量获取绑定 `uploadId + partNumber` 的 MinIO URL，浏览器直接 PUT 后向 Core 登记 ETag/尺寸，失败沿用 Abort 回滚；新增 `VITE_MULTIPART_PRESIGNED_ENABLED=false` 配置，默认仍走 Core 中转路径，真实 MinIO/CORS 验收和默认切流继续由 A7/AD-055 跟踪。

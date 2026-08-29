@@ -590,13 +590,14 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
-import { sha256Hex, uploadMultipartParts, uploadPresignedPart } from '@/upload/multipartUpload'
+import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart } from '@/upload/multipartUpload'
 
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
+const presignedMultipartProxyEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_PROXY_ENABLED === 'true'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -1420,7 +1421,7 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
       if (presignedParts.has(partNumber)) {
         const presignedURL = presignedParts.get(partNumber)!
-        const etag = await uploadPresignedPart(presignedURL, chunk)
+        const etag = await uploadPresignedPart(toSameOriginPresignedURL(presignedURL, presignedMultipartProxyEnabled), chunk)
         await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}/register`, {
           etag,
           size: chunk.size,

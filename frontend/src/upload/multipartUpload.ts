@@ -14,6 +14,24 @@ export type PresignedPartFetch = (
   init?: RequestInit,
 ) => Promise<Response>
 
+export const toSameOriginPresignedURL = (
+  value: string,
+  enabled: boolean,
+  origin = globalThis.location?.origin,
+): string => {
+  if (!enabled || !origin) return value
+  try {
+    const target = new URL(value)
+    const sameOrigin = new URL(origin)
+    target.protocol = sameOrigin.protocol
+    target.hostname = sameOrigin.hostname
+    target.port = sameOrigin.port
+    return target.toString()
+  } catch {
+    return value
+  }
+}
+
 const defaultSleep = (delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs))
 
 export const uploadPresignedPart = async (
