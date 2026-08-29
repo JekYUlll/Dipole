@@ -38,6 +38,7 @@
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
 - **本轮进展：** Agent infrastructure contract tests 已切换到 Agent-owned application constructors，Agent 服务结构门禁现在阻止对聚合 `internal/app` 的直接依赖；Core 兼容层和其他共享基础设施仍按后续切片继续收敛。
+- **本轮进展：** Core Auth TokenService 已通过 `internal/platform/cache` 访问 Redis 撤销状态，移除 Core domain 对 `internal/store` 的直接依赖；Redis 缺失时仍保持 fail-closed，其他 Core Redis 使用点继续按后续切片收敛。
 - **本轮进展：** Search application 及其测试已从 `internal/app` 迁入 `internal/services/search/application/`，Search runtime 改用服务专属包；结构门禁已防止旧路径回流，其他服务仍待按同一方式迁移。
 - **本轮进展：** Gateway 全部 HTTP handler 及测试已从通用 `internal/handler/http` 迁入 `internal/gateway/http/`，保留认证、错误映射和各 application contract；结构门禁已增加旧目录回流检查。
 - **验证备注：** Gateway HTTP 普通测试、完整 Go 门禁、架构文档门禁、Compose 门禁和差异检查通过；本机 `go test -race ./internal/gateway/http` 因 Homebrew Go 运行环境缺少 `libresolv.so.2` 无法启动，未发现代码级 race 结果。
