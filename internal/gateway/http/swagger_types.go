@@ -113,6 +113,11 @@ type FileMultipartStatusResponseEnvelope struct {
 	Data *httpdto.FileMultipartStatusResponse `json:"data"`
 }
 
+type MultipartPresignResponseEnvelope struct {
+	Code int                                   `json:"code"`
+	Data *httpdto.FileMultipartPresignResponse `json:"data"`
+}
+
 type DeviceSessionListResponseEnvelope struct {
 	Code int                              `json:"code"`
 	Data []*httpdto.DeviceSessionResponse `json:"data"`
