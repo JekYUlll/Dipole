@@ -668,6 +668,7 @@
 - **本轮进展：** 修正 migration integration test 从 v47 漂移到实际 v49 的基线与逐步回滚断言；重新执行隔离 Cassandra/MySQL hydration smoke，Metadata backfill、重复响应恢复、Legacy ID 恢复和 shadow comparison 均通过。该证据仍不替代共享环境主读窗口、责任人批准和可执行回切。
 - **本轮进展：** 在同一 v49 隔离迁移环境重新执行 Cassandra read-routing smoke，Cassandra 页面读取、payload 损坏和缺失行回退 MySQL 均通过；生产主读比例、共享环境窗口和责任人批准保持未启用。
 - **本轮进展：** storage-lab Compose 改用动态 Cassandra 宿主机端口，hydration 与 read-routing smoke 已并行通过，分别验证 hydration/Metadata 回填和 Cassandra 主读及损坏/缺失回退；临时资源自动清理，生产主读和共享环境证据门槛保持不变。
+- **本轮进展：** 修复 `smoke-sync-cassandra-hydration.sh` 对已退役 `internal/service` 的路径漂移，改用 Message domain 服务目录；修复后真实隔离 hydration smoke 的 shadow comparison、重复响应恢复、Legacy ID 恢复和 Metadata backfill 均通过，生产主读和共享环境长期观测门禁保持不变。
 - **本轮进展：** 2026-08-29 为 Sync 微服务 Compose 补齐 primary hydration、Cassandra enabled/hosts 的显式环境契约，并以 Compose gate 固定默认关闭与显式启用值；实际 Cassandra 主读、共享环境观测、责任人批准和可执行回切仍待完成。
 - **本轮进展：** 增加显式 `cassandra-primary` Compose profile、Cassandra schema init 和 Sync `service_completed_successfully` 依赖，结构门禁验证 profile 只在显式启用时接线；真实消息 hydration、共享环境观测、责任人批准和可执行回切仍待完成。
 - **本轮进展：** 增加可重复 `smoke-sync-cassandra-primary-compose.sh`，在临时容器网络中验证 Cassandra schema init、Sync primary 配置与 readiness，完成后自动清理 volume；真实 Inbox 消息 hydration、共享环境观测、责任人批准和可执行回切仍待完成。
