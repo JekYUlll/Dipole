@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -28,7 +28,7 @@ func newSessionKicker(hub *wsTransport.Hub, events sessionKickPublisher, async b
 }
 
 func (k *sessionKicker) KickConnections(userUUID string, connectionIDs []string) error {
-	payload := service.SessionKickEventPayload{
+	payload := coresession.SessionKickEventPayload{
 		UserUUID:      userUUID,
 		ConnectionIDs: connectionIDs,
 		All:           false,
@@ -40,7 +40,7 @@ func (k *sessionKicker) KickConnections(userUUID string, connectionIDs []string)
 }
 
 func (k *sessionKicker) KickAllConnections(userUUID string) error {
-	payload := service.SessionKickEventPayload{
+	payload := coresession.SessionKickEventPayload{
 		UserUUID:   userUUID,
 		All:        true,
 		Reason:     "forced_logout_all",
@@ -50,7 +50,7 @@ func (k *sessionKicker) KickAllConnections(userUUID string) error {
 	return k.dispatch(payload)
 }
 
-func (k *sessionKicker) dispatch(payload service.SessionKickEventPayload) error {
+func (k *sessionKicker) dispatch(payload coresession.SessionKickEventPayload) error {
 	if k == nil {
 		return nil
 	}
