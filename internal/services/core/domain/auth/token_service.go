@@ -37,12 +37,7 @@ type tokenClaims struct {
 	TokenUse string `json:"token_use,omitempty"`
 }
 
-type TokenSession struct {
-	UserUUID  string
-	TokenID   string
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-}
+type TokenSession = application.AgentTokenSession
 
 type TokenService struct{}
 
