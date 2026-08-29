@@ -151,6 +151,7 @@
 - **风险：** 仅凭独立二进制和镜像无法证明服务实现自治；后续 sqlc 多语言统一、Cassandra/Elasticsearch 存储替换或 C++ 数据面切换时，跨服务隐式依赖可能造成重复写入和回滚范围不清。
 - **下一步：** 以 application port 和 contract test 为边界，按 Core、Message、Sync、Search、Agent 顺序拆分 Composition Root、业务实现和数据访问包；每次迁移保持旧入口可回切，并同步更新服务边界清单。
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
+- **本轮进展：** embedded runtime 已直接调用 `internal/platform/runtime` 的 metrics API，删除无生产调用者的 `internal/bootstrap` metrics facade，并将行为 contract test 归档到平台 runtime；指标启停和服务 readiness 语义保持兼容。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
 - **验证记录：** 当前分支全量 `CGO_ENABLED=0 go test ./...` 通过，根级目录白名单、服务布局和架构文档门禁通过；仍有调用者的兼容 facade 保留为 embedded 测试与回滚边界，已完成审计的 Message/Sync facade 不再保留。
 - **本轮进展：** Agent infrastructure contract tests 已切换到 Agent-owned application constructors，Agent 服务结构门禁现在阻止对聚合 `internal/app` 的直接依赖；Core 兼容层和其他共享基础设施仍按后续切片继续收敛。
