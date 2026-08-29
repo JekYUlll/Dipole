@@ -11,9 +11,10 @@ const exportPath = option(args, '--export')
 const timeoutMs = Number.parseInt(option(args, '--timeout-ms') ?? '120000', 10)
 const separator = args.indexOf('--')
 const penArgs = separator < 0 ? [] : args.slice(separator + 1)
+const prompt = option(penArgs, '--prompt') ?? option(penArgs, '-p')
 
-if (!input || !output || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1_000 || penArgs.length === 0) {
-  fail('usage: pencil-safe-edit.mjs --input <file> --output <file> [--export <image>] [--timeout-ms <ms>] -- <pen arguments>')
+if (!input || !output || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1_000 || penArgs.length === 0 || !prompt?.trim()) {
+  fail('usage: pencil-safe-edit.mjs --input <file> --output <file> [--export <image>] [--timeout-ms <ms>] -- --prompt <text> [pen arguments]')
 }
 
 const inputPath = resolve(input)
