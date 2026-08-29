@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"bytes"
@@ -16,18 +16,18 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 )
 
-type agentArtifactPolicyStoreV1 interface {
+type AgentArtifactPolicyStoreV1 interface {
 	GetTask(context.Context, string) (*application.AgentTaskV1, error)
 	GetRun(context.Context, string) (*application.AgentRunV1, error)
 }
 
 type PersistentAgentArtifactServiceV1 struct {
-	policies  agentArtifactPolicyStoreV1
+	policies  AgentArtifactPolicyStoreV1
 	artifacts application.AgentArtifactStoreV1
 	blobs     application.AgentArtifactBlobStoreV1
 }
 
-func NewPersistentAgentArtifactServiceV1(policies agentArtifactPolicyStoreV1, artifacts application.AgentArtifactStoreV1, blobs application.AgentArtifactBlobStoreV1) (*PersistentAgentArtifactServiceV1, error) {
+func NewPersistentAgentArtifactServiceV1(policies AgentArtifactPolicyStoreV1, artifacts application.AgentArtifactStoreV1, blobs application.AgentArtifactBlobStoreV1) (*PersistentAgentArtifactServiceV1, error) {
 	if policies == nil || artifacts == nil || blobs == nil {
 		return nil, errors.New("Agent Artifact policy, metadata, and blob stores are required")
 	}

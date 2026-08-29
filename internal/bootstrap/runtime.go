@@ -219,7 +219,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
 		}
-		memoryControls, composeErr := appComposition.NewPersistentAgentMemoryOwnerControlV1(repos.AgentMemoryOwners, time.Now)
+		memoryControls, composeErr := agentapplication.NewPersistentAgentMemoryOwnerControlV1(repos.AgentMemoryOwners, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory owner control: %w", composeErr)
 		}
@@ -255,7 +255,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
 			}
-			persistentArtifacts, serviceErr := appComposition.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			persistentArtifacts, serviceErr := agentapplication.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
 			artifactErr = serviceErr
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
