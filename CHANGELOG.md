@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：执行 `scripts/smoke-sync-cassandra-primary-compose.sh`，在隔离 Compose 中验证 Cassandra schema init、MySQL migration、Sync Cassandra primary 配置和 `/readyz`；临时资源自动清理，生产 Cassandra 主读、共享环境观测与回切开关保持关闭。
 - 2026-08-30：删除仅被 legacy 测试使用的 shared `newInternalRPCServer` 与 `dialInternalRPC` 转发层，测试和 Core embedded 组合直接使用 `internal/platform/rpc`；RPC transport、认证、TLS 和回滚语义保持兼容。
 - 2026-08-30：将 Core Agent RPC caller-to-method 权限策略从 shared `internal/bootstrap` 下沉到 `internal/services/core/rpcpolicy`；embedded Core server 与 MCP drill fixture 复用 Core-owned policy，保留 Agent/Search/Sync 的方法白名单、mTLS caller 校验和拒绝语义。
 - 2026-08-30：在最新 `master` 上再次执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 的 readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等；临时拓扑自动清理，生产流量与 ownership 配置保持不变。
