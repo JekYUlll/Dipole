@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Message Outbox relay 已迁入 `internal/services/message/infrastructure/kafka/`，独立 runtime 直接使用服务自有 relay；embedded 仅保留薄兼容包装，Outbox ownership 和回滚边界保持可验证。
 - 2026-08-29：Message shadow 的 Query-only adapter 及测试已迁入 `internal/services/message/bootstrap/`，独立 runtime 直接使用服务自有实现并移除对应共享 facade；其余 Outbox、Kafka handler 和数据库权限兼容入口继续按回滚边界收敛。
 - 2026-08-29：惰性 Core Capability adapter 及其重试测试已迁入 `internal/services/message/bootstrap/`，Message runtime 直接使用服务自有实现并移除对应共享 facade；AD-049 的共享环境冷启动、ownership 和回切证据仍待完成。
 - 2026-08-29：五条主要 Epic 分支已合并当前 `master` 并推送，均恢复为以最新主线为祖先的阶段开发基线；后续短分支继续按单一里程碑隔离并回合并。

@@ -20,6 +20,7 @@ import (
 	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	"github.com/apache/cassandra-gocql-driver/v2"
 )
@@ -29,7 +30,7 @@ const messageServiceName = "dipole-message"
 type MessageRuntime struct {
 	rpc                *legacybootstrap.InternalRPCServer
 	coreCapability     *lazyCoreCapability
-	outboxFlow         *legacybootstrap.OutboxRelay
+	outboxFlow         *messagekafka.Relay
 	shutdownSec        int
 	metrics            *platformObservability.MetricsServer
 	shadowStore        *shadowData.MessageStore
@@ -157,7 +158,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		}
 	}
 	if messageCfg.RuntimeMode == "owner" && platformKafka.Client != nil {
-		runtime.outboxFlow = legacybootstrap.NewOutboxRelay(repos.Outbox)
+		runtime.outboxFlow = messagekafka.NewRelay(repos.Outbox)
 		if runtime.outboxFlow != nil {
 			runtime.outboxFlow.Start()
 		}
