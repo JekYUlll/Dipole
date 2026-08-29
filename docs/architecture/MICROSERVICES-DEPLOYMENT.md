@@ -25,11 +25,12 @@ Kafka   -> Search Indexer -> Elasticsearch write Alias
 
 ## 启动
 
-先生成开发证书并构建统一镜像：
+先生成开发证书并构建各服务镜像：
 
 ```bash
 scripts/generate-internal-certs.sh
-IMAGE_TAG=latest scripts/docker-build.sh build
+scripts/docker-build.sh backend
+scripts/docker-build-microservice-images.sh
 ```
 
 设置强随机 RPC secret，再启动：
@@ -41,7 +42,7 @@ docker compose -f docker-compose.microservices.yml up -d --wait
 
 公开入口为 `http://127.0.0.1:8080`。Core、Message、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。
 
-三个应用进程共用一个镜像，通过 entrypoint 选择二进制。migration 作为一次性服务先执行；Core 与 Message 就绪后，Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
+每个 Go 应用进程使用只包含自身 `/app/service` 的镜像；migration 作为一次性服务先执行，Core 与 Message 就绪后 Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
 
 启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。内部链路就绪后以 `DIPOLE_SEARCH_ENABLED=true` 重建 Gateway，才会注册认证搜索路由；默认 false 保持原有反代行为。
 
@@ -50,7 +51,7 @@ docker compose -f docker-compose.microservices.yml up -d --wait
 已有镜像时执行：
 
 ```bash
-DIPOLE_IMAGE=dipole-server:latest scripts/smoke-microservices.sh
+scripts/smoke-microservices.sh
 ```
 
 需要先构建镜像时执行：

@@ -37,6 +37,7 @@
 - Agent Workflow repair 增加 Gateway-only 的 Execute/Rollback gRPC 契约与执行器注入点；接口默认保持关闭，未配置执行器时返回 `Unavailable`，继续禁止未经组合根接线的真实 projection mutation。
 
 ### 新增
+- 微服务 Compose 默认切换为 `migrate/core/gateway/message/sync/search/search-indexer` 各自的单服务镜像，并补充可选 Timeline repair worker 镜像；legacy Compose 和逐服务镜像变量保留回滚路径。
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
 - Agent promotion publication 增加受保护的 release manifest 入口：CLI 检测 manifest 后强制校验 `shadow` 阶段、candidate、offline Eval Suite SHA-256 和四类组件哈希，并将 manifest 哈希写入发布 Artifact 与低敏 receipt；旧证据回放入口保持兼容。
 

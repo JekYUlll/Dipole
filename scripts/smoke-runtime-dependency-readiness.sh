@@ -13,10 +13,8 @@ if [[ -z "${DIPOLE_INTERNAL_CERT_DIR:-}" ]]; then
 fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  image_name="${IMAGE_NAME:-dipole-server}"
-  image_tag="${IMAGE_TAG:-runtime-readiness-smoke}"
-  IMAGE_NAME="${image_name}" IMAGE_TAG="${image_tag}" "${script_dir}/docker-build.sh" build
-  export DIPOLE_IMAGE="${image_name}:${image_tag}"
+  "${script_dir}/docker-build.sh" backend
+  "${script_dir}/docker-build-microservice-images.sh"
 fi
 
 if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
@@ -31,9 +29,8 @@ if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
   export DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE
 fi
 
-: "${DIPOLE_IMAGE:=dipole-server:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
-export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
+export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_SEARCH_ENABLED=true
 

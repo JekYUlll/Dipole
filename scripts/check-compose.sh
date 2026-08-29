@@ -16,6 +16,16 @@ jq -e '
   (.services["realtime-cpp"] == null)
   and .services.gateway.environment.DIPOLE_REALTIME_DELIVERY == "go"
   and .services.gateway.environment.DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED == "false"
+  and .services.migrate.image == "dipole-migrate:latest"
+  and .services.migrate.entrypoint == ["/app/service"]
+  and .services.core.image == "dipole-core:latest"
+  and .services.core.entrypoint == ["/app/service"]
+  and .services.gateway.image == "dipole-gateway:latest"
+  and .services.gateway.entrypoint == ["/app/service"]
+  and .services.message.image == "dipole-message:latest"
+  and .services.message.entrypoint == ["/app/service"]
+  and .services.sync.image == "dipole-sync:latest"
+  and .services.sync.entrypoint == ["/app/service"]
 ' <<<"${default_microservices_config}" >/dev/null
 
 isolated_microservices_config="$({

@@ -67,8 +67,10 @@ fi
 : "${DIPOLE_SYNC_IMAGE:=dipole-sync:latest}"
 : "${DIPOLE_SEARCH_IMAGE:=dipole-search:latest}"
 : "${DIPOLE_SEARCH_INDEXER_IMAGE:=dipole-search-indexer:latest}"
+: "${DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE:=dipole-agent-timeline-repair:latest}"
 export DIPOLE_IMAGE DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE
 export DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE
+export DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE
 
 INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh" >/dev/null
 compose config --quiet

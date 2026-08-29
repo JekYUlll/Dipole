@@ -32,7 +32,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `acc/` 是本地参考项目区，不属于 Dipole 的编译图和部署拓扑。
 - `benchmarks/` 只保存可复核的性能、故障和迁移证据，每个证据目录应包含 README、报告和校验清单。
 - `design/` 保存 Pencil 源文件、设计变更记录和导出图；前端实现位于 `frontend/`。
-- `scripts/` 保存测试、Smoke、迁移和运维门禁脚本，不承载长期服务入口。
+- `scripts/` 保存测试、Smoke、迁移和运维门禁脚本，不承载长期服务入口；微服务镜像脚本为每个部署单元生成独立制品。
 - `tmp/` 只用于本地临时数据，不应提交业务源文件。
 
 ## Compose 配置层级
@@ -53,4 +53,4 @@ Compose 文件暂时保留在根目录，以保持 Docker Compose 的直接调�
 scripts/check-service-layout.sh
 ```
 
-候选 Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建，默认共享镜像仍可通过移除 `deploy/microservices/isolated-images.yml` 回滚。
+Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建；`docker-compose.dist.yml` 和 `DIPOLE_*_IMAGE` 可作为 legacy 回滚路径。
