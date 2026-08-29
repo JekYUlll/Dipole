@@ -23,6 +23,8 @@ type PersistentAgentArtifactServiceV1 = agentapplication.PersistentAgentArtifact
 type PersistentAgentMemoryOwnerControlV1 = agentapplication.PersistentAgentMemoryOwnerControlV1
 type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAgentEventSubscriptionResolverV1
 type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
+type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
+type LocalAgentCapabilityV1 = agentapplication.LocalAgentCapabilityV1
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
 	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
@@ -106,4 +108,16 @@ func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSu
 
 func validSubscriptionDefinitionV1(definition *application.AgentDefinitionVersionV1, item application.AgentEventSubscriptionV1, request application.AgentEventSubscriptionMatchRequestV1, activeAt time.Time) bool {
 	return agentapplication.ValidSubscriptionDefinitionV1(definition, item, request, activeAt)
+}
+
+func NewLocalAgentCommandV1(messages agentapplication.AgentCommandMessages) (*LocalAgentCommandV1, error) {
+	return agentapplication.NewLocalAgentCommandV1(messages)
+}
+
+func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentapplication.AgentCapabilityMessages, conversations agentapplication.AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
+	return agentapplication.NewLocalAgentCapabilityV1(core, messages, conversations, commands)
+}
+
+func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
+	return agentapplication.AgentCommandCapabilityIDV1(kind)
 }

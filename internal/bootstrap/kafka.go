@@ -17,6 +17,7 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	"github.com/JekYUlll/Dipole/internal/service"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -115,11 +116,11 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		return fmt.Errorf("resolve AI runtime mode: %w", err)
 	}
 	if runsEmbeddedAgent {
-		agentCommands, err := appComposition.NewLocalAgentCommandV1(messaging.Messages)
+		agentCommands, err := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
 		if err != nil {
 			return fmt.Errorf("compose Agent Command v1: %w", err)
 		}
-		agentCapability, err := appComposition.NewLocalAgentCapabilityV1(
+		agentCapability, err := agentapplication.NewLocalAgentCapabilityV1(
 			messaging.Core,
 			messaging.Messages,
 			messaging.Conversations,

@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -15,19 +15,19 @@ import (
 const maxAgentCommandIDLengthV1 = 128
 const agentCommandReceiptRecoveryTimeoutV1 = 2 * time.Second
 
-type agentCommandMessages interface {
+type AgentCommandMessages interface {
 	SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	GetMessageCommandReceiptContext(ctx context.Context, senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error)
 }
 
 type LocalAgentCommandV1 struct {
-	messages agentCommandMessages
+	messages AgentCommandMessages
 }
 
 var _ application.AgentCommandV1 = (*LocalAgentCommandV1)(nil)
 
-func NewLocalAgentCommandV1(messages agentCommandMessages) (*LocalAgentCommandV1, error) {
+func NewLocalAgentCommandV1(messages AgentCommandMessages) (*LocalAgentCommandV1, error) {
 	if messages == nil {
 		return nil, errors.New("Agent Command Message dependency is required")
 	}
@@ -41,7 +41,7 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 		return nil, application.ErrAgentCommandDenied
 	}
 
-	capabilityID, err := agentCommandCapabilityIDV1(command.Kind)
+	capabilityID, err := AgentCommandCapabilityIDV1(command.Kind)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func agentCommandMessageMatchesV1(message *model.Message, kind application.Agent
 	}
 }
 
-func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
+func AgentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {
 	switch kind {
 	case application.AgentMessageCommandAssistantReplyV1:
 		return application.AgentCapabilityAssistantReplySend, nil

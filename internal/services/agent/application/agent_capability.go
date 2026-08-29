@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -12,26 +12,26 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
-type agentCapabilityMessages interface {
+type AgentCapabilityMessages interface {
 	ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error)
 	ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error)
 }
 
-type agentCapabilityConversations interface {
+type AgentCapabilityConversations interface {
 	ListForAgent(userUUID string, limit int) ([]*model.Conversation, error)
 	FindForUser(userUUID, targetUUID string) (*model.Conversation, error)
 }
 
 type LocalAgentCapabilityV1 struct {
 	core          application.CoreCapability
-	messages      agentCapabilityMessages
-	conversations agentCapabilityConversations
+	messages      AgentCapabilityMessages
+	conversations AgentCapabilityConversations
 	commands      application.AgentCommandV1
 }
 
 var _ application.AgentCapabilityV1 = (*LocalAgentCapabilityV1)(nil)
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentCapabilityMessages, conversations agentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
+func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
 	if core == nil {
 		return nil, errors.New("Agent Capability Core dependency is required")
 	}
