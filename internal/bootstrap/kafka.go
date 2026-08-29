@@ -18,7 +18,6 @@ import (
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
-	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	"go.uber.org/zap"
@@ -48,16 +47,6 @@ func sendEventToUser(ctx context.Context, hub kafkaWSEventSender, userUUID, even
 
 type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
-}
-
-// RegisterCoreProjectionKafkaHandlers registers only projections owned by the
-// standalone Core process. Message persistence and Agent handlers belong to
-// their own service runtimes and must not be recreated here.
-func RegisterCoreProjectionKafkaHandlers(messaging *appComposition.MessagingServices) error {
-	if messaging == nil {
-		return corekafka.RegisterConversationProjections(nil)
-	}
-	return corekafka.RegisterConversationProjections(messaging.Conversations)
 }
 
 func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
