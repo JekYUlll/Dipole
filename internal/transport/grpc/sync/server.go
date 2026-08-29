@@ -8,8 +8,8 @@ import (
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	syncv1 "github.com/JekYUlll/Dipole/api/gen/go/sync/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	syncdomain "github.com/JekYUlll/Dipole/internal/services/sync/domain"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
@@ -103,13 +103,13 @@ func groupCheckpointResponse(checkpoint *model.GroupSyncCheckpoint) *syncv1.Grou
 }
 
 func syncCheckpointStatus(err error) error {
-	if errors.Is(err, service.ErrSyncGroupForbidden) {
+	if errors.Is(err, syncdomain.ErrSyncGroupForbidden) {
 		return status.Error(codes.PermissionDenied, err.Error())
 	}
-	if errors.Is(err, service.ErrSyncDeviceIDRequired) || errors.Is(err, service.ErrSyncDeviceIDInvalid) || errors.Is(err, service.ErrSyncCheckpointAhead) {
+	if errors.Is(err, syncdomain.ErrSyncDeviceIDRequired) || errors.Is(err, syncdomain.ErrSyncDeviceIDInvalid) || errors.Is(err, syncdomain.ErrSyncCheckpointAhead) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
-	if errors.Is(err, service.ErrSyncGroupRequired) || errors.Is(err, service.ErrSyncGroupLimit) {
+	if errors.Is(err, syncdomain.ErrSyncGroupRequired) || errors.Is(err, syncdomain.ErrSyncGroupLimit) {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return status.Error(codes.Internal, "sync checkpoint operation failed")
