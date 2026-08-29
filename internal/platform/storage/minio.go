@@ -233,6 +233,25 @@ func (u *MinIOUploader) PresignMultipartPartURL(ctx context.Context, objectKey, 
 	return presignedURL.String(), nil
 }
 
+func (u *MinIOUploader) InspectMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int) (*UploadedPart, error) {
+	if u == nil || u.client == nil {
+		return nil, fmt.Errorf("storage uploader is not initialized")
+	}
+	if strings.TrimSpace(objectKey) == "" || strings.TrimSpace(uploadID) == "" || partNumber <= 0 {
+		return nil, fmt.Errorf("object key, upload id and part number are required")
+	}
+	result, err := u.core.ListObjectParts(ctx, u.bucket, objectKey, uploadID, partNumber-1, 1)
+	if err != nil {
+		return nil, fmt.Errorf("inspect multipart part: %w", err)
+	}
+	for _, part := range result.ObjectParts {
+		if part.PartNumber == partNumber {
+			return &UploadedPart{PartNumber: part.PartNumber, ETag: strings.Trim(part.ETag, "\""), Size: part.Size}, nil
+		}
+	}
+	return nil, fmt.Errorf("multipart part %d was not found", partNumber)
+}
+
 func (u *MinIOUploader) CompleteMessageMultipartUpload(ctx context.Context, uploadID, objectKey, fileName, contentType string, fileSize int64, parts []MultipartCompletePart) (*UploadedObject, error) {
 	if u == nil || u.client == nil {
 		return nil, fmt.Errorf("storage uploader is not initialized")
