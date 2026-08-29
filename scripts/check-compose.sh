@@ -60,6 +60,8 @@ jq -e '
   and .services.sync.entrypoint == ["/app/service"]
   and .services.agent.image == "dipole-agent:latest"
   and (.services.agent.build.context | endswith("/services/agent-runtime"))
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
   and ((.services.core.depends_on // {}) | has("message") | not)
   and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"
