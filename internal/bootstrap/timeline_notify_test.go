@@ -62,7 +62,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 			sender := &recordingWSEventSender{}
 			event := directCreatedEvent(t, 42)
 			ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R42", TraceID: "T42", EventID: "E42"})
-			if err := deliverDirectMessageHandler(sender, test.mode)(ctx, event); err != nil {
+			if err := gatewaykafka.NewDirectMessageHandler(sender, test.mode)(ctx, event); err != nil {
 				t.Fatalf("deliver direct event: %v", err)
 			}
 			if len(sender.events) != len(test.wantTypes) {
@@ -140,7 +140,7 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 
 func TestDeliverDirectMessageSkipsTimelineNotificationWithoutSequence(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	if err := deliverDirectMessageHandler(sender, wsTransport.TimelineNotifyShadow)(context.Background(), directCreatedEvent(t, 0)); err != nil {
+	if err := gatewaykafka.NewDirectMessageHandler(sender, wsTransport.TimelineNotifyShadow)(context.Background(), directCreatedEvent(t, 0)); err != nil {
 		t.Fatalf("deliver legacy direct event: %v", err)
 	}
 	if len(sender.events) != 1 || sender.events[0].eventType != wsTransport.TypeChatMessage {
