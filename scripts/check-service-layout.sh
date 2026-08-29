@@ -91,9 +91,7 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   exit 1
 fi
 for compatibility_readme in \
-  internal/app/README.md \
-  internal/data/mysql/README.md \
-  internal/data/mysql/repository/README.md; do
+  internal/app/README.md; do
   if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
     echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
     exit 1
@@ -107,13 +105,17 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/data/mysql/README.md|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/app/*_test.go) ;;
+    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
       ;;
   esac
 done < <(git -C "${root_dir}" ls-files --cached --others --exclude-standard -- internal/app internal/store internal/data/mysql | sort -u)
+if [[ -d "${root_dir}/internal/data/mysql" ]]; then
+  echo "legacy internal/data/mysql compatibility directory remains; use service infrastructure or internal/platform/mysql" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1

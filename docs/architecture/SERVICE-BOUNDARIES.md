@@ -26,7 +26,7 @@
 - `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `internal/platform/storage`：对象存储、Search Archive 以及 MySQL/Cassandra 灰度 routing、shadow 和 hydration fallback 适配器；通过配置关闭即可回到主存储路径。
 - `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
-- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store facade 已退役。
+- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` 兼容目录已退役。
 - `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store` Redis 入口已退役。
 - `internal/platform/runtime`：跨服务 metrics 生命周期、依赖 readiness 探针和 RPC serving 绑定；不承载业务编排、数据访问或具体服务 RPC 语义。
 - Search Indexer bootstrap 直接拥有其长期运行时装配；Kafka consumer、Elasticsearch index 和服务 metrics/readiness 的启动顺序由 `internal/services/search-indexer/bootstrap/` 负责，平台包仅提供基础设施能力。
@@ -63,7 +63,7 @@
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
-- `internal/data/mysql/repository/` 仅允许保留仍有回滚调用者的 Core、Agent、Search 兼容别名、构造转发和迁移期间的兼容测试辅助代码；Message、Sync 与 Store facade 已完成调用审计并退役，具体 SQLC repository 必须位于其服务的 infrastructure 边界。
+- `internal/data/mysql` 及其历史 repository facade 已完成调用审计并退役；具体 SQLC repository 必须位于其服务的 infrastructure 边界。
 - 业务服务不得跨边界写入其他服务拥有的表。查询应通过 application port、RPC 或版本化事件完成。
 - `cmd/tools` 的回填、对账和证据程序可以复用只读 application port，但不能成为长期服务的隐式写入口。
 

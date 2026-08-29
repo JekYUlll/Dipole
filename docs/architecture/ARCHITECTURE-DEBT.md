@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：全仓调用审计确认 Core、Agent、Search repository alias 无仓内调用者，已删除三组 alias、目录说明及 `internal/data/mysql` 历史兼容目录；服务 SQLC repository 由各自 infrastructure 唯一持有，门禁已阻止旧目录回流。
 - 2026-08-30：全仓调用审计确认 `internal/data/mysql/store_compat.go` 无仓内调用者，已删除该 Store facade；MySQL 事务边界继续由 `internal/platform/mysql` 唯一持有，Core/Agent/Search repository alias 仍按调用者保留。
 - 2026-08-30：全仓调用审计确认 `internal/store` MySQL/Redis 入口无仓内调用者，已删除两个兼容实现和目录说明，生产与运维代码继续统一使用 `internal/platform/mysql`、`internal/platform/cache`；服务布局门禁已阻止旧 store 回流。
 - 2026-08-30：全仓调用审计确认 Message/Sync repository facade 无生产或测试调用者，已删除 `internal/data/mysql/repository/message_compat.go` 与 `sync_compat.go`，并收紧服务布局门禁；Core、Agent、Search 兼容入口及 `internal/store` 回滚入口继续保留。
@@ -95,7 +96,7 @@
 - 2026-08-29：Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/sync/` 已由结构门禁阻止回流，后续仍需继续收敛跨服务运维工具和共享 SQLC 基础设施。
 - 2026-08-29：Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/search/` 已由结构门禁阻止回流，Cassandra Projector 仍保留为独立实验性运行时，后续继续评估其入口归属。
 - 2026-08-29：Cassandra Message Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，复用 Message domain event contract；旧 `internal/projector/cassandra/` 已由结构门禁阻止回流，独立 `cmd/tools/cassandra-projector` 入口暂保留用于可选存储实验和回滚。
-- 2026-08-29：SQLC MySQL 事务 Store 已迁入 `internal/platform/mysql/`，旧 `internal/data/mysql/store_compat.go` 仅保留兼容入口；SQLC generated、mapper 和回填工具仍待按服务/平台职责继续拆分。
+- 2026-08-29：SQLC MySQL 事务 Store 已迁入 `internal/platform/mysql/`，旧 `internal/data/mysql/store_compat.go` 已在后续调用审计后退役；SQLC generated、mapper 和回填工具仍待按服务/平台职责继续拆分。
 - 2026-08-29：SQLC generated 输出和 mapper 已迁入 `internal/platform/mysql/`，`sqlc.yaml` 与漂移检查已同步；回填/清理工具仍保留在 `internal/data/mysql`，后续需按服务职责继续拆分。
 - 2026-08-29：Elasticsearch client、版本化 schema、Alias 和 projection adapter 已迁入 `internal/platform/elasticsearch/`；Search/Indexer 业务边界保持独立，后续需继续评估 Elasticsearch 连接 owner 与 Search Service 独立 module 的最终收敛。
 - 2026-08-29：Search 回填、归档、对账、Alias 切换和 Outbox 清理的装配代码已从 `internal/bootstrap/` 收纳到 `internal/operations/search/`；长期服务启动包与一次性运维操作边界已通过结构门禁固定，Sync/Cassandra 运维运行时仍待按同一模式收敛。
@@ -191,7 +192,7 @@
 - **本轮进展：** Core repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 直接依赖 Core-owned composition，`internal/app` 仅保留 embedded 兼容别名，结构门禁阻止实现回流。
 - **本轮进展：** Agent repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口改用 Agent-owned composition，结构门禁阻止 Agent composition 回流。
 - **本轮进展：** Sync repository composition 已迁入 `internal/services/sync/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，独立与聚合启动均使用 Sync-owned composition，结构门禁阻止 Sync composition 回流。
-- **本轮进展：** 2026-08-29 收紧服务布局门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；新增文件会在结构门禁中 fail closed，防止共享实现重新回流。兼容入口的最终退休仍待 embedded 使用者迁移完成。
+- **本轮进展：** 2026-08-29 收紧服务布局门禁：`internal/app`、`internal/store` 和 `internal/data/mysql` 仅允许登记的兼容 adapter、SQLC 别名、README 与兼容测试；后续调用审计已完成 `internal/store` 与 `internal/data/mysql` 目录退役，门禁继续阻止旧目录回流。
 - **验证记录：** 2026-08-29 负向测试使用未跟踪的未登记文件验证门禁拒绝路径，随后删除夹具并重新通过正向门禁；检查范围覆盖已跟踪和未忽略未跟踪文件。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
@@ -240,7 +241,7 @@
 - **本轮进展：** Compose 门禁已固定默认微服务拓扑中 Core 与 Message 不得互相 `depends_on`，且默认 Core Message transport 必须为 gRPC；`cassandra-primary` 的 embedded/local 回滚覆盖层仍单独保留并验证。
 - **本轮进展：** 2026-08-29 隔离微服务 Compose 已验证 Core/Message/Sync/Gateway 冷启动、依赖 readiness、RPC mTLS、Core 代理和远程 WS ownership；当前证据覆盖开发候选拓扑，Local 回切与共享环境发布窗口演练仍待完成。
 - **本轮进展：** 运维代码、服务集成测试和平台测试已停止引用 `internal/data/mysql/repository` 历史兼容别名，统一使用各服务自有 SQLC repository；兼容别名仅保留回滚入口，结构门禁阻止新的运行时代码回流。
-- **本轮进展：** 为 `internal/app`、`internal/data/mysql`、`internal/data/mysql/repository` 和 `internal/store` 增加目录级 ownership/迁移说明，并由服务布局门禁检查；兼容目录仍保留，避免将回滚入口误认为新的共享业务实现。
+- **本轮进展：** 为 `internal/app`、`internal/data/mysql`、`internal/data/mysql/repository` 和 `internal/store` 增加目录级 ownership/迁移说明，并由服务布局门禁检查；后续调用审计已完成 `internal/store` 与 `internal/data/mysql` 目录退役。
 - **本轮进展：** 删除已无调用者的共享 repository contract helper；各服务的 MySQL contract database helper 已在自身 infrastructure 测试边界内维护，历史 repository 包进一步收敛为别名与构造转发。
 - **本轮进展：** 校正平台演进计划中的 Message transport 叙述，明确 `local` 是 M3 历史兼容默认值，当前微服务 Compose 默认使用受认证 `grpc`，embedded/local 仅承担回切职责。
 
@@ -923,7 +924,7 @@
 - **发现日期：** 2026-08-29
 - **影响范围：** `internal/data/mysql`、migration runner、DSN 配置、运维 contract test
 - **现状：** MySQL 事务 Store 已位于 `internal/platform/mysql`；迁移 runner、DSN 组装和运维 adapter 曾继续分散在旧数据目录。
-- **解决方式：** migration runner 和 DSN 配置迁入 MySQL 平台目录，Agent/Cassandra/Search/Sync adapter 按操作域迁入 `internal/operations/<service>/<operation>/mysql/`，`internal/data/mysql` 保留兼容别名与构造转发。
+- **解决方式：** migration runner 和 DSN 配置迁入 MySQL 平台目录，Agent/Cassandra/Search/Sync adapter 按操作域迁入 `internal/operations/<service>/<operation>/mysql/`；`internal/data/mysql` 历史兼容目录已退役。
 - **验证：** 操作域、MySQL 平台和工具包定向测试通过；结构门禁阻止旧 adapter、migration 和 DSN 目录回流。
 
 ### AD-052：Message domain 直接依赖 Core 文件 domain
