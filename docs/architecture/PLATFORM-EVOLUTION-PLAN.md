@@ -126,7 +126,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 建立架构约束测试，阻止 Server、Handler 和 Transport 直接导入数据库实现。
 - [x] 保留 `LocalMessageApplication` 和 `LocalSyncApplication`，确保单体模式继续运行。
 
-**验收：** HTTP/WS 契约不变；`go test ./...`、race 定向测试和现有端到端测试通过；单体镜像仍可独立部署。
+**验收：** HTTP/WS 契约不变；`scripts/check-go.sh`、race 定向测试和现有端到端测试通过；单体镜像仍可独立部署。
 
 ### M2：从 GORM 渐进迁移到 sqlc
 
