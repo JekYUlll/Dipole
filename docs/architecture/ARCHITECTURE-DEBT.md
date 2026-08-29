@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：调用审计确认 `internal/bootstrap.NewCoreRPCServerWithAgentControl` 无生产或测试调用者，已删除该 shared RPC 包装；`NewCoreRPCServerWithAgent` 与 `WithAgentControlAndProjection` 因仍有 contract/embedded 调用继续保留。
 - 2026-08-30：Cassandra Projector runtime 已从共享 `internal/bootstrap` 迁入 Message bootstrap，`cmd/tools/cassandra-projector` 直接使用服务自有入口；共享 bootstrap 不再持有 Cassandra Projector 生命周期，projection 与回滚语义保持稳定。
 - 2026-08-30：全仓调用审计确认 Core、Agent、Search repository alias 无仓内调用者，已删除三组 alias、目录说明及 `internal/data/mysql` 历史兼容目录；服务 SQLC repository 由各自 infrastructure 唯一持有，门禁已阻止旧目录回流。
 - 2026-08-30：全仓调用审计确认 `internal/data/mysql/store_compat.go` 无仓内调用者，已删除该 Store facade；MySQL 事务边界继续由 `internal/platform/mysql` 唯一持有，Core/Agent/Search repository alias 仍按调用者保留。
