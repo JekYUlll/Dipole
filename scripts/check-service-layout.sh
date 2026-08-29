@@ -289,6 +289,16 @@ if ! rg --quiet 'dependencies\.TokenResolver == nil' "${root_dir}/internal/servi
   exit 1
 fi
 
+if rg --quiet '^func NewServer\(' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway server must expose only the explicit dependency-injection constructor" >&2
+  exit 1
+fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway server composition must not depend on Core Auth implementation" >&2
+  exit 1
+fi
+
 if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/middleware/auth.go"; then
   echo "shared authentication middleware must depend on application token contracts" >&2
   exit 1
