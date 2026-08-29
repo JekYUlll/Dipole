@@ -15,7 +15,7 @@ if [[ ! -f "${root_dir}/services/README.md" ]]; then
   echo "polyglot service directory index is missing: services/README.md" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" ]]; then
+if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" || ! -f "${root_dir}/internal/operations/sync/README.md" || ! -f "${root_dir}/internal/operations/cassandra/README.md" ]]; then
   echo "one-shot operations must be documented under internal/operations" >&2
   exit 1
 fi
@@ -25,6 +25,22 @@ for legacy_search_runtime in search_alias_runtime.go search_archive_runtime.go s
     exit 1
   fi
 done
+for legacy_sync_runtime in sync_baseline_runtime.go sync_replay_runtime.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_sync_runtime}" ]]; then
+    echo "Sync one-shot operation remains in service bootstrap: ${legacy_sync_runtime}" >&2
+    exit 1
+  fi
+done
+for legacy_cassandra_runtime in cassandra_backfill_runtime.go cassandra_archive_runtime.go cassandra_reconciliation_runtime.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_cassandra_runtime}" ]]; then
+    echo "Cassandra one-shot operation remains in service bootstrap: ${legacy_cassandra_runtime}" >&2
+    exit 1
+  fi
+done
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/sync-baseline" "${root_dir}/cmd/tools/sync-replay" "${root_dir}/cmd/tools/sync-reconcile" "${root_dir}/cmd/tools/cassandra-backfill" "${root_dir}/cmd/tools/cassandra-archive" "${root_dir}/cmd/tools/cassandra-reconcile" --glob '*.go'; then
+  echo "Sync/Cassandra operation tools must use internal/operations" >&2
+  exit 1
+fi
 if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/search-alias" "${root_dir}/cmd/tools/search-archive" "${root_dir}/cmd/tools/search-backfill" "${root_dir}/cmd/tools/search-outbox-cleanup" "${root_dir}/cmd/tools/search-reconcile" --glob '*.go'; then
   echo "Search operation tools must use internal/operations/search" >&2
   exit 1
