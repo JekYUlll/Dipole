@@ -32,7 +32,7 @@ type Runtime struct {
 	server      *server.Server
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *messagekafka.Relay
-	messageFlow *messageApplicationTransport
+	messageFlow *appComposition.MessageApplicationTransport
 	syncFlow    *syncApplicationTransport
 	coreRPC     *InternalRPCServer
 	metrics     *platformObservability.MetricsServer
@@ -275,7 +275,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
 	}
-	messageFlow, err := newMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
+	messageFlow, err := appComposition.NewMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
 	if err != nil {
 		if coreRPC != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

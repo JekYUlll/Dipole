@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 将仅供 embedded 聚合运行时使用的 Message transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；transport 行为、local/grpc/shadow 回退和测试语义保持不变。
 - 删除经调用审计确认无生产或测试调用者的 shared Core Agent RPC control 包装 `NewCoreRPCServerWithAgentControl`；仍在 embedded contract 和运行时使用的 Agent RPC 装配保持不变。
 - 将 Cassandra Projector runtime 从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`；独立工具改用 Message-owned bootstrap，Cassandra Timeline projection、Kafka consumer group 和回滚语义保持不变。
 - 删除经全仓调用审计确认无调用者的 Core、Agent、Search repository alias 及 `internal/data/mysql` 历史兼容目录；各服务 SQLC repository 现在完全由服务 infrastructure 持有。
