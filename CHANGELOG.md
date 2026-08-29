@@ -18,7 +18,7 @@
 
 ## [Unreleased]
 
-- 新增 `internal/app` 生产引用白名单门禁：仅保留 embedded runtime 与旧 Kafka 装配的兼容调用，独立服务不得重新依赖聚合 facade；同步补充服务边界和架构债务记录。
+- Agent bootstrap 已改用 Agent-owned application constructors，移除 runtime/kafka 对 `internal/app` 聚合 facade 的最后两处生产引用；服务布局门禁现禁止外部生产代码依赖该兼容入口。
 - 校正平台演进计划的 Message transport 基线，区分 M3 历史 `local` 默认值与当前微服务 Compose 的远程 `grpc` 默认路径，避免把回滚配置误读为生产默认配置。
 - 清理 MySQL 共享 repository 目录中的无调用者 contract test helper；各服务继续在自身 infrastructure 测试边界维护 contract database helper，历史兼容包仅保留别名和构造转发。
 - 修正文档中的目录基线：明确共享 `internal/handler` 已清空，当前仅保留 `internal/store`、`internal/app` 和历史 SQLC 兼容入口，避免服务边界清单继续引用已删除的共享 Handler 目录。

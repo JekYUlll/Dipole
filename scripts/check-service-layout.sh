@@ -531,12 +531,12 @@ if [[ ! -f "${root_dir}/internal/app/agent_repository_compat.go" ]]; then
   echo "embedded Agent repository compatibility boundary is missing" >&2
   exit 1
 fi
-# The aggregate app facade is an embedded rollback boundary. Keep its
-# production callers explicit so new standalone services cannot depend on it.
+# The aggregate app facade is a compatibility boundary. Keep production code
+# from depending on it so new standalone services cannot bypass service roots.
 while IFS= read -r app_importer; do
   relative_importer="${app_importer#"${root_dir}/"}"
   case "${relative_importer}" in
-    internal/bootstrap/runtime.go|internal/bootstrap/kafka.go|internal/app/*)
+    internal/app/*)
       ;;
     *)
       echo "production code must not depend on aggregate internal/app: ${relative_importer}" >&2

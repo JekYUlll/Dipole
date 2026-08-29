@@ -32,7 +32,7 @@
 
 ### 需要收敛
 
-- `internal/store` 仍包含少量兼容入口；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容别名、转发和兼容测试。生产代码对 `internal/app` 的允许引用仅限 `internal/bootstrap/runtime.go` 与 `internal/bootstrap/kafka.go`，用于 embedded/旧 Kafka 装配回滚。
+- `internal/store` 仍包含少量兼容入口；旧 `internal/service` 和共享 `internal/handler` 实现已清空，兼容入口统一收纳到 `internal/compat/service/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，`internal/app` 仅保留兼容别名、转发和兼容测试，生产服务入口不得直接依赖该 facade。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；`sync_runtime.go` 与 `cassandra_projector_runtime.go` 保留为长期服务运行时。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
