@@ -1392,10 +1392,12 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
 
   if (!init) {
     clearStoredMultipartUpload(file)
+    const fileSHA256 = await sha256Hex(file)
     init = await api.post('/api/v1/files/uploads/initiate', {
       file_name: file.name,
       file_size: file.size,
       content_type: contentType,
+      ...(fileSHA256 ? { file_sha256: fileSHA256 } : {}),
     }) as MultipartUploadInit
     storeMultipartUpload(file, init)
   }
