@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：将 WebSocket Authenticator 的 `ResolveSession` 和 TokenSession 依赖提取为 `internal/application.TokenSessionResolver`；WS transport 不再绑定 Core Auth 具体类型，新增结构门禁与跨包回归测试。
 - 2026-08-30：将 Agent token session contract 提取到 `internal/application`，middleware 改为依赖最小 token resolver 接口；Core Auth 保留具体 JWT 实现，Gateway 后续可注入独立 verifier，相关测试和结构门禁通过。
 - 2026-08-30：将 Agent MCP 默认 resource 与配置 resource 解析下沉到 `internal/application`；Core Auth 保留兼容入口并继续负责 token issuer/verifier，Gateway bootstrap、proxy 和 middleware 统一使用跨服务 contract，相关回流门禁与测试通过。
 - 2026-08-30：将 Gateway Agent MCP 代理使用的 resource identifier、只读 scope 和安全 URL 校验下沉到 `internal/application`；Core 继续持有 token 签发/解析实现，Gateway 代理仅依赖跨服务认证 contract，并新增回流门禁与安全校验测试。

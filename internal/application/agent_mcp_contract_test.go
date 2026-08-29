@@ -29,6 +29,19 @@ func TestAgentTokenSessionCarriesVerifierResult(t *testing.T) {
 	}
 }
 
+func TestTokenSessionResolverContractIsMinimal(t *testing.T) {
+	var resolver TokenSessionResolver = tokenSessionResolverStub{}
+	if session, err := resolver.ResolveSession("token"); err != nil || session.UserUUID != "U1" {
+		t.Fatalf("unexpected resolver result: session=%+v err=%v", session, err)
+	}
+}
+
+type tokenSessionResolverStub struct{}
+
+func (tokenSessionResolverStub) ResolveSession(string) (*AgentTokenSession, error) {
+	return &AgentTokenSession{UserUUID: "U1"}, nil
+}
+
 func TestAgentMCPContractRejectsUnsafeResource(t *testing.T) {
 	for _, resource := range []string{"", "ftp://agent.local/mcp", "https://agent.local/mcp?token=secret", "https://user:pass@agent.local/mcp", "https://agent.local/mcp#fragment"} {
 		if err := ValidateAgentMCPResource(resource); !errors.Is(err, ErrInvalidAgentMCPResource) {
