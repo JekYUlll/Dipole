@@ -40,6 +40,7 @@
 - **本轮进展：** Message application 装配已从 `internal/app` 迁入 `internal/services/message/application/`，保留包含 Agent command、Outbox 和持久化扩展方法的 local adapter；`internal/app` 仅负责 Composition Root 参数转换，结构门禁已增加 Message application 路径检查。
 - **本轮进展：** Core capability 实现已从 `internal/app` 迁入 `internal/services/core/application/`，factory 只接收实际使用的最小 store 接口；`internal/app` 保留兼容构造入口，结构门禁已阻止旧具体实现回流。
 - **本轮进展：** Core Conversation application 的装配已迁入 `internal/services/core/application/`，`MessagingServices` 改持有服务专属 local adapter；底层 `internal/service` 实现暂保留，后续继续按 application port 拆分。
+- **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 
