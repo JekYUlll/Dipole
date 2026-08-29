@@ -16,6 +16,7 @@
 ## [Unreleased]
 
 ### 变更
+- 修正候选拓扑发布前的源码脏状态判定，仅阻断已跟踪文件变更，允许仓库中的本地 `.planning/` 和 `.codex/` 记录存在而不污染候选镜像发布门禁。
 - 增加 Go 微服务单镜像候选路径：`core`、`gateway`、`message`、`sync`、`search` 和 `search-indexer` 可分别构建只包含自身二进制的镜像，并通过 Compose override 灰度；override 同步覆盖旧 entrypoint，默认仍使用共享 `DIPOLE_IMAGE`，移除 override 即可回滚。
 - 隔离镜像 smoke 已固化为 `scripts/smoke-microservice-isolated-images.sh`，覆盖迁移、服务 readiness、Gateway health 和独立 project 清理；可使用临时 Gateway 端口验证候选栈，不干扰已有 Dipole 实例。
 - 隔离镜像 smoke 增加 `SMOKE_SEARCH_PROFILE=1` 可选门禁，可在不改变默认核心 smoke 的情况下启动并检查 Search、Search Indexer 与 Elasticsearch 候选路径。
