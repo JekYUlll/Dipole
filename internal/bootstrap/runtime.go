@@ -11,7 +11,6 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
@@ -24,9 +23,9 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Runtime struct {
@@ -121,7 +120,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
 	}
-	if err := ensureAIAssistantUser(repos.Users); err != nil {
+	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -458,52 +457,4 @@ func ensureTLSFiles(tlsCfg config.TLS) error {
 	}
 
 	return nil
-}
-
-type aiAssistantUserRepository interface {
-	UpsertAssistant(user *model.User) error
-}
-
-func ensureAIAssistantUser(users aiAssistantUserRepository) error {
-	cfg := config.AIConfig()
-	if !cfg.Enabled {
-		return nil
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("dipole-ai-assistant"), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("generate ai assistant password hash: %w", err)
-	}
-
-	assistant := &model.User{
-		UUID:         cfg.AssistantUUID,
-		Nickname:     cfg.AssistantNickname,
-		Telephone:    cfg.AssistantTelephone,
-		Email:        cfg.AssistantEmail,
-		Avatar:       cfg.AssistantAvatar,
-		PasswordHash: string(passwordHash),
-		IsAdmin:      false,
-		UserType:     model.UserTypeAssistant,
-		Status:       model.UserStatusNormal,
-	}
-	if assistant.Avatar == "" {
-		assistant.Avatar = model.DefaultAvatarURL
-	}
-
-	if err := users.UpsertAssistant(assistant); err != nil {
-		return err
-	}
-
-	logger.Info("ai assistant user ensured",
-		zap.String("assistant_uuid", assistant.UUID),
-		zap.String("provider", cfg.Provider),
-		zap.String("model", cfg.Model),
-	)
-	return nil
-}
-
-// EnsureAIAssistantUser exposes the compatibility bootstrap's shared seed
-// operation to the standalone Core service bootstrap.
-func EnsureAIAssistantUser(users interface{ UpsertAssistant(*model.User) error }) error {
-	return ensureAIAssistantUser(users)
 }

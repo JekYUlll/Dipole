@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- AI assistant 用户 seed 已下沉到 `internal/services/core/application`，独立 Core 与 embedded 回滚路径共享 Core-owned 初始化能力；Core bootstrap 不再依赖旧 bootstrap 的 assistant seed facade，并新增缺失 Store 的测试覆盖。
 - Core Conversation Kafka projection 已迁入 `internal/services/core/infrastructure/kafka`，独立 Core 直接注册 group/message projection；旧 `internal/bootstrap` 入口降为兼容转发，事件版本解码、Conversation Seq 映射和错误传播保持不变。
 - SQLC/GORM 迁移复核已加入服务布局门禁：生产 Go 代码和 Go module 禁止重新引入 GORM；当前生产路径统一使用 `database/sql + sqlc`，兼容测试仍可保留历史命名语义。
 - Core 独立服务的 runtime、system-message sender 和 RPC adapter 已迁移到 `internal/services/core/bootstrap`；embedded 启动仍保留为回滚路径，Kafka projection 与 assistant seed 通过显式兼容 facade 复用。

@@ -7,7 +7,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -21,6 +20,7 @@ import (
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"go.uber.org/zap"
@@ -62,7 +62,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}
-	if err := legacybootstrap.EnsureAIAssistantUser(coreRepos.Users); err != nil {
+	if err := coreapplication.EnsureAIAssistantUser(coreRepos.Users); err != nil {
 		return nil, fmt.Errorf("ensure AI assistant user: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
