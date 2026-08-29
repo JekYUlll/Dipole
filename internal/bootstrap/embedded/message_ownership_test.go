@@ -1,4 +1,4 @@
-package bootstrap
+package embedded
 
 import "testing"
 
@@ -16,8 +16,8 @@ func TestCoreOwnsMessagePersistenceOnlyInEmbeddedMode(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := coreOwnsMessagePersistence(test.gateway, test.transport); got != test.want {
-				t.Fatalf("coreOwnsMessagePersistence(%q, %q) = %v, want %v", test.gateway, test.transport, got, test.want)
+			if got := CoreOwnsMessagePersistence(test.gateway, test.transport); got != test.want {
+				t.Fatalf("CoreOwnsMessagePersistence(%q, %q) = %v, want %v", test.gateway, test.transport, got, test.want)
 			}
 		})
 	}

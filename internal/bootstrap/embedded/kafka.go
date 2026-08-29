@@ -33,6 +33,12 @@ type WSEventSender interface {
 	DisconnectAllConnections(userUUID string, reason string) int
 }
 
+// CoreOwnsMessagePersistence reports whether the embedded composition owns
+// message persistence instead of delegating it to the remote message service.
+func CoreOwnsMessagePersistence(gatewayMode, messageTransport string) bool {
+	return gatewayMode == "embedded" && messageTransport != "grpc"
+}
+
 type kafkaWSContextEventSender interface {
 	SendEventToUserContext(ctx context.Context, userUUID, eventType string, data any) int
 }
