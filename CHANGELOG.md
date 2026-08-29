@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增用户范围 WS 契约测试并保持 malformed event 重试语义。
 - Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增契约测试并保持 WS read receipt 与 malformed event 重试语义。
 - Gateway realtime delivery authority fence 已迁入 `internal/services/gateway/infrastructure/kafka`，embedded 装配改用服务自有实现；消息 delivery handler 仍按依赖闭包继续迁移。
 - Gateway 热群通知聚合器及其测试已迁入 `internal/services/gateway/infrastructure/kafka`，共享 Kafka handler 改用服务自有 `Notifier` 与默认窗口；完整消息投递 handler 继续按依赖闭包分阶段迁移。
