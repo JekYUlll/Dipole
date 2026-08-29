@@ -75,7 +75,7 @@ func (s agentToolAuditResolverStub) Resolve(context.Context, string, string) (ap
 
 func TestPersistentAgentToolInvocationAuditBindsAuthoritativeInvocation(t *testing.T) {
 	store := &agentToolAuditStoreStub{}
-	service, err := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+	service, err := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
 		Permissions:    []string{application.AgentPermissionConversationList},
 		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
@@ -100,7 +100,7 @@ func TestPersistentAgentToolInvocationAuditPersistsAndResolvesExternalCommand(t 
 	arguments := `{"calendarId":"CAL-1"}`
 	argumentsSHA := fmt.Sprintf("%x", sha256.Sum256([]byte(arguments)))
 	store := &agentToolAuditStoreStub{}
-	service, err := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+	service, err := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
 		Permissions:    []string{application.AgentPermissionConversationList},
 		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
@@ -141,7 +141,7 @@ func TestPersistentAgentToolInvocationAuditReplaysExactBegin(t *testing.T) {
 		Status: application.AgentToolInvocationStatusRunning, RequestID: "REQ-1", TraceID: "TRACE-1", StartedAt: startedAt,
 	}
 	store := &agentToolAuditStoreStub{invocation: existing, beginChanged: &changed}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
 		Permissions:    []string{application.AgentPermissionConversationList},
 		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
@@ -164,7 +164,7 @@ func TestPersistentAgentToolInvocationAuditReplaysExactBegin(t *testing.T) {
 
 func TestPersistentAgentToolInvocationAuditRejectsUnsafeExternalCommand(t *testing.T) {
 	store := &agentToolAuditStoreStub{}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{
 		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
 		Permissions:    []string{application.AgentPermissionConversationList},
 		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"list"}}},
@@ -192,7 +192,7 @@ func TestPersistentAgentToolInvocationAuditRejectsWriteCapabilityAndResolverFail
 		Permissions:    []string{application.AgentPermissionMessageWrite},
 		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"write"}}},
 	}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: invocation}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: invocation}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
 	_, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
 		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
 		ToolName: "send", CapabilityID: application.AgentCapabilitySystemMessageSend, ArgumentsSHA256: testAuditSHA,
@@ -200,7 +200,7 @@ func TestPersistentAgentToolInvocationAuditRejectsWriteCapabilityAndResolverFail
 	if !errors.Is(err, application.ErrAgentToolInvocationDenied) || store.begun.InvocationUUID != "" {
 		t.Fatalf("write capability should be denied before persistence: err=%v stored=%+v", err, store.begun)
 	}
-	service, _ = newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{err: application.ErrAgentExecutionPolicyDenied}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	service, _ = NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{err: application.ErrAgentExecutionPolicyDenied}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
 	_, err = service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
 		InvocationUUID: "INV-2", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
 		ToolName: "list", CapabilityID: application.AgentCapabilityConversationsList, ArgumentsSHA256: testAuditSHA,
@@ -213,7 +213,7 @@ func TestPersistentAgentToolInvocationAuditRejectsWriteCapabilityAndResolverFail
 func TestPersistentAgentToolInvocationAuditFinishesWithBoundedEvidence(t *testing.T) {
 	store := &agentToolAuditStoreStub{}
 	store.invocation = &application.AgentToolInvocationV1{InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", CapabilityID: application.AgentCapabilityConversationsList, Status: application.AgentToolInvocationStatusRunning}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
 	finish := application.AgentToolInvocationFinishV1{
 		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1",
 		Status: application.AgentToolInvocationStatusCompleted, ResultSHA256: testAuditSHA, ResultBytes: 128, LatencyMS: 12,
@@ -239,7 +239,7 @@ func TestPersistentAgentToolInvocationAuditReplaysExactFinish(t *testing.T) {
 		InvocationUUID: "INV-1", TaskUUID: "TASK-1", RunUUID: "RUN-1", CapabilityID: application.AgentCapabilityConversationsList,
 		Status: application.AgentToolInvocationStatusCompleted, ResultSHA256: testAuditSHA, ResultBytes: 128, LatencyMS: 12,
 	}}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
 	if err := service.Finish(context.Background(), finish); err != nil {
 		t.Fatalf("exact finish replay: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestPersistentAgentToolInvocationAuditBindsConsumedWriteApproval(t *testing
 	reader := agentToolApprovalReaderStub{approval: approval, run: &application.AgentRunV1{
 		RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning,
 	}}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: invocation}, reader, agentToolReceiptQueryStub{}, time.Now)
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: invocation}, reader, agentToolReceiptQueryStub{}, time.Now)
 	record, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
 		InvocationUUID: "INV-W", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
 		ToolName: "dipole_message_send", CapabilityID: application.AgentCapabilitySystemMessageSend,
@@ -296,7 +296,7 @@ func TestPersistentAgentToolInvocationAuditBindsConsumedWriteApproval(t *testing
 	approval.Status = application.AgentApprovalStatusConsumed
 	approval.ConsumedAt = &consumedAt
 	reader.run.Mode = "shadow"
-	service, _ = newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{invocation: invocation}, reader, agentToolReceiptQueryStub{}, time.Now)
+	service, _ = NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{invocation: invocation}, reader, agentToolReceiptQueryStub{}, time.Now)
 	_, err = service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
 		InvocationUUID: "INV-W3", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
 		ToolName: "dipole_message_send", CapabilityID: application.AgentCapabilitySystemMessageSend,
@@ -320,7 +320,7 @@ func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *tes
 		UUID: "MSG-1", ClientMessageID: clientMessageID, ConversationKey: model.DirectConversationKey("UAI", "U100"),
 		SenderUUID: "UAI", TargetUUID: "U100", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeSystem,
 	}}
-	service, _ := newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{receipt: receipt}, time.Now)
+	service, _ := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{receipt: receipt}, time.Now)
 	finish := application.AgentToolInvocationFinishV1{
 		InvocationUUID: "INV-W", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
 		ResultSHA256: testAuditSHA, ResultBytes: 64, LatencyMS: 9,
@@ -337,7 +337,7 @@ func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *tes
 	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
 		t.Fatalf("conflicting Message reference error = %v", err)
 	}
-	service, _ = newPersistentAgentToolInvocationAuditServiceV1(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
+	service, _ = NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now)
 	finish.ActionReference.ResourceUUID = "MSG-1"
 	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
 		t.Fatalf("missing Message receipt error = %v", err)

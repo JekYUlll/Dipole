@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -29,7 +29,12 @@ func newPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolI
 }
 
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
-	return newPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts, time.Now)
+	return NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, resolver, approvals, receipts, time.Now)
+}
+
+// NewPersistentAgentToolInvocationAuditServiceV1WithClock keeps audit tests deterministic.
+func NewPersistentAgentToolInvocationAuditServiceV1WithClock(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery, now func() time.Time) (application.AgentToolInvocationAuditServiceV1, error) {
+	return newPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts, now)
 }
 
 func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context, begin application.AgentToolInvocationBeginV1) (*application.AgentToolInvocationV1, error) {

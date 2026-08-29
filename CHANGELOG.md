@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Agent application 的 MCP readiness、MCP tool round、tool invocation audit、Runtime promotion evidence 和 Workflow repair audit 实现已迁入 `internal/services/agent/application/`；Bootstrap 与 SQLC 契约测试直接使用服务包，结构门禁覆盖全部已迁移文件。
 - Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion 和 Task Workflow Projection 实现已迁入 `internal/services/agent/application/`；embedded 入口保留兼容转发，结构门禁阻止已迁移实现回流。
 - Agent application 的审批、审批授权和任务控制实现已迁入 `internal/services/agent/application/`；embedded 入口通过兼容别名保持回滚能力，Bootstrap 与 Agent SQLC 契约测试已改用服务专属包。
 - 清理共享 MySQL repository 中已无调用者的事务别名和 UUID 辅助文件，并将共享目录约束收紧为兼容入口集合。

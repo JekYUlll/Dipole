@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
@@ -62,7 +62,7 @@ func TestAgentWorkflowRepairAuditMySQLConcurrencyContract(t *testing.T) {
 	if err != nil || executorGrant == nil || executorGrant.Version != 1 || !executorGrant.CanExecute {
 		t.Fatalf("executor grant=%+v err=%v", executorGrant, err)
 	}
-	service, err := appComposition.NewPersistentAgentWorkflowRepairAuditServiceV1(store, store)
+	service, err := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(store, store)
 	if err != nil {
 		t.Fatal(err)
 	}
