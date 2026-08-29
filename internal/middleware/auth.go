@@ -9,7 +9,6 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
-	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 const (
@@ -21,7 +20,12 @@ type authUserFinder interface {
 	GetByUUID(uuid string) (*model.User, error)
 }
 
-func Auth(tokenService *coreauth.TokenService, userRepo authUserFinder) gin.HandlerFunc {
+type tokenResolver interface {
+	Resolve(string) (string, error)
+	ResolveAgentMCPAccessToken(string, string, string) (*application.AgentTokenSession, error)
+}
+
+func Auth(tokenService tokenResolver, userRepo authUserFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := parseBearerToken(c.GetHeader("Authorization"))
 		if !ok {
@@ -55,7 +59,7 @@ func Auth(tokenService *coreauth.TokenService, userRepo authUserFinder) gin.Hand
 	}
 }
 
-func AgentMCPAuth(tokenService *coreauth.TokenService, userRepo authUserFinder) gin.HandlerFunc {
+func AgentMCPAuth(tokenService tokenResolver, userRepo authUserFinder) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := parseBearerToken(c.GetHeader("Authorization"))
 		if !ok {
