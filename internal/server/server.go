@@ -98,7 +98,9 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if dependencies.Messages != nil {
 		messageApplication = dependencies.Messages
 	}
-	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messaging.Messages)
+	contactService := coreapplication.NewContactApplication(repos.Contacts, repos.Users, coreapplication.ContactDependencies{
+		Notifier: newContactNotifier(wsHub), Events: kafkaEvents, SystemMessenger: messaging.Messages,
+	})
 	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
 		repos.Files,
 		platformStorage.Client,

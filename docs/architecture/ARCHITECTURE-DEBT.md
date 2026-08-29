@@ -41,6 +41,7 @@
 - **本轮进展：** Core capability 实现已从 `internal/app` 迁入 `internal/services/core/application/`，factory 只接收实际使用的最小 store 接口；`internal/app` 保留兼容构造入口，结构门禁已阻止旧具体实现回流。
 - **本轮进展：** Core Conversation application 的装配已迁入 `internal/services/core/application/`，`MessagingServices` 改持有服务专属 local adapter；底层 `internal/service` 实现暂保留，后续继续按 application port 拆分。
 - **本轮进展：** Core User application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 User/File store 与对象存储；底层 `internal/service` 实现暂保留，HTTP contract 和回滚入口未改变。
+- **本轮进展：** Core Contact application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 Contact/User store、事件、通知和系统消息；底层 `internal/service` 实现暂保留，联系人 HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。
 
