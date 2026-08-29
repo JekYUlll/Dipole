@@ -20,6 +20,7 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
@@ -41,7 +42,7 @@ type GatewayRuntime struct {
 	searchConn             *grpc.ClientConn
 	redis                  *redis.Client
 	metrics                *platformObservability.MetricsServer
-	deliveryObservationRPC *legacybootstrap.InternalRPCServer
+	deliveryObservationRPC *platformrpc.Server
 	deliveryObserver       *deliverygrpc.ShadowServer
 	fenceHeartbeatCancel   context.CancelFunc
 	fenceHeartbeatDone     chan struct{}
@@ -180,19 +181,19 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		cleanup()
 		return nil, fmt.Errorf("gateway kafka consumer init failed: %w", err)
 	}
-	messages, messageConn, err := legacybootstrap.DialMessageApplication(ctx, rpcCfg)
+	messages, messageConn, err := DialMessageApplication(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
 	}
 	runtime.messageConn = messageConn
-	syncApplication, syncConn, err := legacybootstrap.DialSyncApplication(ctx, rpcCfg)
+	syncApplication, syncConn, err := DialSyncApplication(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
 	}
 	runtime.syncConn = syncConn
-	core, coreConn, err := legacybootstrap.DialGatewayCoreCapability(ctx, rpcCfg)
+	core, coreConn, err := DialGatewayCoreCapability(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
 		return nil, err
@@ -200,7 +201,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	runtime.coreConn = coreConn
 	var search application.SearchApplication
 	if config.SearchConfig().Enabled {
-		searchClient, searchConnection, err := legacybootstrap.DialSearchApplication(ctx, rpcCfg)
+		searchClient, searchConnection, err := DialSearchApplication(ctx, rpcCfg)
 		if err != nil {
 			cleanup()
 			return nil, err
@@ -295,7 +296,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 				return nil, fmt.Errorf("enable primary delivery dispatcher: %w", primaryErr)
 			}
 		}
-		runtime.deliveryObservationRPC, err = legacybootstrap.NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
+		runtime.deliveryObservationRPC, err = NewDeliveryObservationRPCServer(rpcCfg, runtime.deliveryObserver)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("start delivery observation rpc: %w", err)
