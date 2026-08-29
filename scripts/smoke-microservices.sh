@@ -75,4 +75,92 @@ Promise.all(paths.map(path => new Promise((resolve, reject) => {
 }))).catch(error => { console.error(error.message); process.exit(1); });
 '
 
-echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership"
+agent_event_id="SMOKE-AGENT-EVENT-$(openssl rand -hex 8)"
+agent_message_id="SMOKE-AGENT-MESSAGE-$(openssl rand -hex 8)"
+compose exec -T agent node --input-type=module - "${agent_event_id}" "${agent_message_id}" <<'NODE'
+import { Kafka } from "kafkajs";
+
+const [eventId, messageId] = process.argv.slice(2);
+const kafka = new Kafka({ clientId: "dipole-agent-smoke-producer", brokers: ["kafka:9092"] });
+const producer = kafka.producer();
+const occurredAt = new Date().toISOString();
+await producer.connect();
+try {
+  await producer.send({
+    topic: "dipole.message.direct.created",
+    messages: [{
+      key: messageId,
+      value: JSON.stringify({
+        event_id: eventId,
+        request_id: `REQ-${eventId}`,
+        trace_id: `TRACE-${eventId}`,
+        event_type: "message.direct.created",
+        version: "v1",
+        source: "dipole",
+        occurred_at: occurredAt,
+        payload: {
+          mutation_type: "created",
+          revision: 1,
+          actor_uuid: "U100",
+          message_id: messageId,
+          conversation_key: "direct:U100:UAI000000000000000001",
+          message_seq: 1,
+          sender_uuid: "U100",
+          target_uuid: "UAI000000000000000001",
+          target_type: 0,
+          message_type: 0,
+          content: "smoke event",
+          sent_at: occurredAt
+        }
+      })
+    }, {
+      key: messageId,
+      value: JSON.stringify({
+        event_id: eventId,
+        request_id: `REQ-${eventId}`,
+        trace_id: `TRACE-${eventId}`,
+        event_type: "message.direct.created",
+        version: "v1",
+        source: "dipole",
+        occurred_at: occurredAt,
+        payload: {
+          mutation_type: "created",
+          revision: 1,
+          actor_uuid: "U100",
+          message_id: messageId,
+          conversation_key: "direct:U100:UAI000000000000000001",
+          message_seq: 1,
+          sender_uuid: "U100",
+          target_uuid: "UAI000000000000000001",
+          target_type: 0,
+          message_type: 0,
+          content: "smoke event",
+          sent_at: occurredAt
+        }
+      })
+    }]
+  });
+} finally {
+  await producer.disconnect();
+}
+NODE
+
+agent_event_ready=""
+for _ in $(seq 1 30); do
+  agent_event_ready="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
+    "SELECT IF(
+      (SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}' AND status='completed') = 1
+      AND (SELECT COUNT(*) FROM agent_shadow_plans WHERE event_id='${agent_event_id}') = 1
+      AND (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='running') = 1
+      AND (SELECT COUNT(*) FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' AND status='completed') = 1,
+      1, 0
+    );" \
+    2>/dev/null || true)"
+  if [[ "${agent_event_ready}" == "1" ]]; then
+    break
+  fi
+  sleep 1
+done
+[[ "${agent_event_ready}" == "1" ]]
+
+echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency"
