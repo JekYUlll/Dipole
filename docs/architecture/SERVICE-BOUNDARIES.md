@@ -29,6 +29,7 @@
 - `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 与 `internal/store` MySQL 入口仅保留兼容入口。
 - `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store/redis_compat.go` 仅保留兼容入口。
 - `internal/platform/runtime`：跨服务 metrics 生命周期、依赖 readiness 探针和 RPC serving 绑定；不承载业务编排、数据访问或具体服务 RPC 语义。
+- Search Indexer bootstrap 直接拥有其长期运行时装配；Kafka consumer、Elasticsearch index 和服务 metrics/readiness 的启动顺序由 `internal/services/search-indexer/bootstrap/` 负责，平台包仅提供基础设施能力。
 - `api/proto`、`api/gen/go`、`contracts`：跨服务 RPC 源契约、生成类型、事件和 Agent 契约；生成代码由协议目录统一维护。
 
 ### 需要收敛

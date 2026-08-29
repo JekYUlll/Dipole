@@ -679,19 +679,27 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go gateway_runtime.go search_runtime.go search_indexer_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go gateway_runtime.go search_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
   fi
 done
 
-for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go gateway_runtime.go search_runtime.go search_indexer_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go search_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'ConfigureDependencyReadiness|BindRPCReadiness' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use platform readiness orchestration: ${runtime_file}" >&2
     exit 1
   fi
 done
+if [[ -e "${root_dir}/internal/bootstrap/search_indexer_runtime.go" ]]; then
+  echo "Search Indexer runtime remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/search-indexer/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/search-indexer/infrastructure|internal/services/search/infrastructure/kafka' "${root_dir}/internal/services/search-indexer/bootstrap/runtime.go"; then
+  echo "Search Indexer runtime must remain under its service bootstrap boundary" >&2
+  exit 1
+fi
 
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then

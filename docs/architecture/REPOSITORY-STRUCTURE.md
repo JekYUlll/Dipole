@@ -31,7 +31,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Sync 服务的入口装配边界位于 `internal/services/sync/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层 Kafka projector、Cassandra hydration、数据库、RPC、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
 - Gateway 服务的入口装配边界位于 `internal/services/gateway/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层实时投递 authority、RPC、Kafka、Redis、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
 - Core 服务的入口装配边界位于 `internal/services/core/bootstrap/`；当前 `entrypoint.go` 显式区分独立 Core 与 embedded 兼容模式，底层 RPC、Kafka、storage、metrics 和 readiness 设施完成拆分后再移除兼容调用。
-- Search Indexer 服务的入口装配边界位于 `internal/services/search-indexer/bootstrap/`；当前 `entrypoint.go` 仍通过兼容 facade 调用共享 bootstrap，底层 Kafka、Elasticsearch、metrics 和 readiness 设施完成拆分后再移除该兼容调用。
+- Search Indexer 服务的入口装配边界位于 `internal/services/search-indexer/bootstrap/`；runtime 已在该目录直接组合 Search Indexer projector 与平台 Kafka、Elasticsearch、metrics、readiness 能力，旧共享 runtime 路径由结构门禁阻止回流。
 - 跨服务 metrics 生命周期和 readiness 编排位于 `internal/platform/runtime/`；平台包统一提供依赖探针、RPC serving 绑定和基础运行时检查，服务特有启动条件仍由各自 runtime 负责。`internal/bootstrap/metrics.go` 与 `dependency_readiness.go` 仅保留兼容 helper，服务 runtime 直接依赖平台包。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。

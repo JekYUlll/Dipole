@@ -24,7 +24,7 @@ type SearchIndexerRuntime struct {
 	metrics *platformObservability.MetricsServer
 }
 
-func InitializeSearchIndexer(ctx context.Context) (*SearchIndexerRuntime, error) {
+func Initialize(ctx context.Context) (*SearchIndexerRuntime, error) {
 	elasticsearchCfg := config.ElasticsearchConfig()
 	if !elasticsearchCfg.Enabled {
 		return nil, fmt.Errorf("Search Indexer requires elasticsearch.enabled")
