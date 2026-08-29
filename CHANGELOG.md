@@ -16,6 +16,9 @@
 ## [Unreleased]
 
 ### 变更
+- 微服务远程模式下 Gateway 直接拥有消息历史与 Sync HTTP 路由，新增 Sync gRPC 连接和 readiness 依赖；Core 仅在 embedded 模式注册消息/同步数据路由，减少 Core HTTP 反代对服务 ownership 的绕行。
+- Gateway 现在直接拥有消息历史和 Sync HTTP 路由，并通过 Message/Sync gRPC 客户端访问；Core 在 `gateway.mode=remote` 下不再注册消息/同步 HTTP 与 WebSocket 数据路由，embedded 模式继续保留兼容入口。
+- 增加 Gateway/Core 路由 ownership 测试和 Sync RPC readiness/连接清理，避免远程部署通过 Core HTTP 反代绕过 Message/Sync 服务。
 - 新增 `docs/architecture/SERVICE-BOUNDARIES.md` 和 `cmd/services/README.md`，明确服务入口、数据所有权、允许共享层与渐进迁移例外；结构门禁现在校验服务边界清单存在且已纳入版本控制。
 - 明确 `internal/` 当前是迁移中的共享实现区，后续按 Core、Message、Sync、Search 和 Agent 责任逐步收敛，避免把入口拆分误判为业务实现已经完全自治。
 - 微服务 Compose 为 Core 增加独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 启动配置，默认使用本地消息实现完成 Core readiness；全局 `DIPOLE_MESSAGE_TRANSPORT=grpc` 继续保留给 Gateway/远程调用方，解除 Core/Message 冷启动环。

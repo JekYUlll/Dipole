@@ -137,7 +137,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 
 	v1 := engine.Group("/api/v1")
 	{
-		if config.GatewayConfig().Mode == "embedded" {
+		if coreOwnsHTTPDataRoutes(config.GatewayConfig().Mode) {
 			v1.GET("/ws", wsHandler.Handle)
 		}
 
@@ -175,15 +175,17 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
-			protected.GET("/messages/offline", messageHandler.ListOffline)
-			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
-			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
-			protected.GET("/sync", syncHandler.List)
-			protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
-			protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
-			protected.POST("/sync/comparison", syncHandler.ReportComparison)
-			protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
-			protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+			if coreOwnsHTTPDataRoutes(config.GatewayConfig().Mode) {
+				protected.GET("/messages/offline", messageHandler.ListOffline)
+				protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+				protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+				protected.GET("/sync", syncHandler.List)
+				protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+				protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+				protected.POST("/sync/comparison", syncHandler.ReportComparison)
+				protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
+				protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+			}
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)
@@ -206,6 +208,10 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	}
 
 	return &Server{engine: engine, wsHub: wsHub}
+}
+
+func coreOwnsHTTPDataRoutes(gatewayMode string) bool {
+	return gatewayMode == "embedded"
 }
 
 type wsTransportConversationUpdater interface {

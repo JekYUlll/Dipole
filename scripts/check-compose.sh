@@ -28,6 +28,7 @@ jq -e '
   and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
   and .services.sync.entrypoint == ["/app/service"]
+  and .services.gateway.depends_on.sync.condition == "service_healthy"
 ' <<<"${default_microservices_config}" >/dev/null
 
 primary_hydration_config="$({
