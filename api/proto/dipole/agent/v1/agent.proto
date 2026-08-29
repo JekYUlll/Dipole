@@ -450,6 +450,34 @@ message WorkflowRepairProposalResponse {
   int64 expires_at_unix_ms = 14;
 }
 
+message ExecuteWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string execution_id = 2;
+  string task_id = 3;
+  WorkflowRepairEvidence target = 4;
+  WorkflowRepairEvidence rollback = 5;
+}
+
+message RollbackWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string execution_id = 2;
+  string task_id = 3;
+  WorkflowRepairEvidence rollback = 4;
+}
+
+message WorkflowRepairExecutionResponse {
+  string execution_id = 1;
+  string plan_id = 2;
+  string proposal_id = 3;
+  string task_id = 4;
+  string executor_id = 5;
+  uint64 executor_grant_version = 6;
+  string expected_current_sha256 = 7;
+  string target_sha256 = 8;
+  string rollback_sha256 = 9;
+  string status = 10;
+}
+
 message ProposeRuntimePromotionRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -858,6 +886,8 @@ service AgentCapabilityService {
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc ExecuteWorkflowRepair(ExecuteWorkflowRepairRequest) returns (WorkflowRepairExecutionResponse);
+  rpc RollbackWorkflowRepair(RollbackWorkflowRepairRequest) returns (WorkflowRepairExecutionResponse);
   rpc ProposeRuntimePromotion(ProposeRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc ReviewRuntimePromotion(ReviewRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc GetRuntimePromotion(GetRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);

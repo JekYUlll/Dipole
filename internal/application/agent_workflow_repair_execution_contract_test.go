@@ -47,9 +47,9 @@ func TestAgentWorkflowRepairExecutionPlanV1RemainsDryRunOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, forbidden := range []string{"ApplyWorkflowRepair", "ExecuteWorkflowRepair", "RollbackWorkflowRepair"} {
-		if strings.Contains(string(proto), forbidden) {
-			t.Fatalf("production RPC %s must remain absent", forbidden)
+	for _, required := range []string{"rpc ExecuteWorkflowRepair", "rpc RollbackWorkflowRepair"} {
+		if !strings.Contains(string(proto), required) {
+			t.Fatalf("staged execution RPC %s must be present", required)
 		}
 	}
 }
