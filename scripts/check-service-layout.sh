@@ -675,6 +675,16 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/search-indexer/main
   echo "Search Indexer entrypoint must not depend directly on shared bootstrap" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_dir}/internal/platform/runtime/README.md" ]]; then
+  echo "shared runtime platform metrics boundary is missing" >&2
+  exit 1
+fi
+for runtime_file in runtime.go core_runtime.go message_runtime.go sync_runtime.go gateway_runtime.go search_runtime.go search_indexer_runtime.go cassandra_projector_runtime.go; do
+  if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
+    echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
+    exit 1
+  fi
+done
 
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then

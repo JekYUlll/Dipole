@@ -16,6 +16,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformruntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	shadowdata "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 	syncprojector "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/kafka"
@@ -166,7 +167,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 	if runtime.hydrationMetrics != nil {
 		hydrationCollectors = append(hydrationCollectors, runtime.hydrationMetrics)
 	}
-	runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, hydrationCollectors...)
+	runtime.metrics, err = platformruntime.StartMetrics(metricsCfg, syncServiceName, subscriber, hydrationCollectors...)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
@@ -184,7 +185,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 	}
 	if runtime.metrics != nil {
 		bindRPCReadiness(runtime.metrics, runtime.rpc)
-		markRuntimeReady(runtime.metrics)
+		platformruntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration), zap.Bool("cassandra_primary_hydration", syncCfg.CassandraPrimaryHydration))
 	return runtime, nil
@@ -231,7 +232,7 @@ func (r *SyncRuntime) Close() {
 	if r == nil {
 		return
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformruntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Sync Service metrics close failed", zap.Error(err))
 	}
 	r.metrics = nil

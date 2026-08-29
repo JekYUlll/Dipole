@@ -15,6 +15,7 @@ import (
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
@@ -158,7 +159,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			runtime.outboxFlow.Start()
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), messageServiceName, platformKafka.Subscriber, runtime.readRouter, runtime.duplicateHydration)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), messageServiceName, platformKafka.Subscriber, runtime.readRouter, runtime.duplicateHydration)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start message metrics: %w", err)
@@ -181,7 +182,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	}
 	if runtime.metrics != nil {
 		bindRPCReadiness(runtime.metrics, runtime.rpc)
-		markRuntimeReady(runtime.metrics)
+		platformRuntime.MarkReady(runtime.metrics)
 	}
 	return runtime, nil
 }
@@ -241,7 +242,7 @@ func (r *MessageRuntime) Close() {
 	if r == nil {
 		return
 	}
-	_ = closeRuntimeMetrics(r.metrics)
+	_ = platformRuntime.CloseMetrics(r.metrics)
 	shutdownSec := r.shutdownSec
 	if shutdownSec <= 0 {
 		shutdownSec = 15

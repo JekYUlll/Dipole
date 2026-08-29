@@ -17,6 +17,7 @@ import (
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
@@ -124,7 +125,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)
 		}
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Core metrics: %w", err)
@@ -142,7 +143,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			return nil, fmt.Errorf("configure Core readiness: %w", err)
 		}
 		bindRPCReadiness(runtime.metrics, runtime.coreRPC)
-		markRuntimeReady(runtime.metrics)
+		platformRuntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("standalone Core runtime initialized", zap.String("mode", gatewayMode), zap.String("rpc_addr", rpcAddress(runtime.coreRPC)))
 	return runtime, nil
@@ -172,7 +173,7 @@ func (r *CoreRuntime) Close() {
 		}
 		r.messageSender = nil
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Core metrics close failed", zap.Error(err))
 	}
 	if r.coreRPC != nil {

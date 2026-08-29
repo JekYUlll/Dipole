@@ -20,6 +20,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
@@ -353,7 +354,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(
+	rt.metrics, err = platformRuntime.StartMetrics(
 		config.MetricsConfig(),
 		coreServiceName,
 		platformKafka.Subscriber,
@@ -370,7 +371,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
 		}
 		bindRPCReadiness(rt.metrics, rt.coreRPC)
-		markRuntimeReady(rt.metrics)
+		platformRuntime.MarkReady(rt.metrics)
 	}
 
 	return rt, nil
@@ -413,7 +414,7 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("metrics server close failed", zap.Error(err))
 	}
 	if r.coreRPC != nil {

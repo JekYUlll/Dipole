@@ -10,6 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformruntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	searchapplication "github.com/JekYUlll/Dipole/internal/services/search/application"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -64,7 +65,7 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		runtime.Close()
 		return nil, err
 	}
-	runtime.metrics, err = startRuntimeMetrics(metricsCfg, searchServiceName, nil)
+	runtime.metrics, err = platformruntime.StartMetrics(metricsCfg, searchServiceName, nil)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Search Service metrics: %w", err)
@@ -82,7 +83,7 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 	}
 	if runtime.metrics != nil {
 		bindRPCReadiness(runtime.metrics, runtime.rpc)
-		markRuntimeReady(runtime.metrics)
+		platformruntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Search Service runtime initialized", zap.String("read_alias", index.ReadAlias()))
 	return runtime, nil
@@ -99,7 +100,7 @@ func (r *SearchRuntime) Close() {
 	if r == nil {
 		return
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformruntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Search Service metrics close failed", zap.Error(err))
 	}
 	r.metrics = nil

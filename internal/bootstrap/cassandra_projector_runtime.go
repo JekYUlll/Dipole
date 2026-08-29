@@ -12,6 +12,7 @@ import (
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	cassandraprojector "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/cassandra"
 )
 
@@ -73,7 +74,7 @@ func InitializeCassandraProjector(ctx context.Context) (*CassandraProjectorRunti
 		cleanup()
 		return nil, fmt.Errorf("start Cassandra projector consumer: %w", err)
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), cassandraProjectorServiceName, platformKafka.Subscriber)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), cassandraProjectorServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Cassandra projector metrics: %w", err)
@@ -86,7 +87,7 @@ func InitializeCassandraProjector(ctx context.Context) (*CassandraProjectorRunti
 		return nil, fmt.Errorf("configure Cassandra projector dependency readiness: %w", err)
 	}
 	if runtime.metrics != nil {
-		markRuntimeReady(runtime.metrics)
+		platformRuntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Cassandra projector runtime initialized",
 		zap.String("consumer", cassandraProjectorServiceName),
@@ -100,7 +101,7 @@ func (r *CassandraProjectorRuntime) Close() {
 	if r == nil {
 		return
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Cassandra projector metrics close failed", zap.Error(err))
 	}
 	if err := platformKafka.CloseConsumer(); err != nil {
