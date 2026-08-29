@@ -54,10 +54,6 @@ func NewPersistentAgentTaskWorkflowProjectionServiceV1(store application.AgentPo
 	return agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
 }
 
-func NewPersistentAgentMCPToolRoundServiceV1(store application.AgentMCPToolRoundStoreV1, invocations application.AgentToolInvocationReaderV1) (application.AgentMCPToolRoundServiceV1, error) {
-	return agentapplication.NewPersistentAgentMCPToolRoundServiceV1(store, invocations)
-}
-
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts)
 }
@@ -148,14 +144,6 @@ func newPersistentAgentRuntimePromotionControlServiceV1(policies application.Age
 
 func NewPersistentAgentActiveRunPromotionAuthorizerV1(store application.AgentRuntimePromotionGrantStoreV1) (*PersistentAgentActiveRunPromotionAuthorizerV1, error) {
 	return agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(store)
-}
-
-func NewPersistentAgentMCPToolInvocationTerminalServiceV1(rounds application.AgentMCPToolRoundStoreV1, invocations application.AgentToolInvocationReaderV1, audits application.AgentToolInvocationAuditServiceV1) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
-	return agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1(rounds, invocations, audits)
-}
-
-func newPersistentAgentMCPToolInvocationTerminalServiceV1(rounds application.AgentMCPToolRoundStoreV1, invocations application.AgentToolInvocationReaderV1, audits application.AgentToolInvocationAuditServiceV1, now func() time.Time) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
-	return agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1WithClock(rounds, invocations, audits, now)
 }
 
 func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, permissions []string, scopes []application.AgentResourceScopeV1) error {

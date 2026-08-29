@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -16,6 +16,14 @@ type agentMCPToolRoundStoreStub struct {
 	existing *application.AgentMCPToolRoundV1
 	finished bool
 	claims   int
+}
+
+type agentToolAuditStoreStub struct {
+	invocation *application.AgentToolInvocationV1
+}
+
+func (s *agentToolAuditStoreStub) GetToolInvocation(context.Context, string) (*application.AgentToolInvocationV1, error) {
+	return s.invocation, nil
 }
 
 func (s *agentMCPToolRoundStoreStub) ClaimMCPToolRound(context.Context, application.AgentMCPToolRoundClaimV1) (bool, error) {
