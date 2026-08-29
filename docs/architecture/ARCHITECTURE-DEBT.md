@@ -206,7 +206,7 @@
 - **本轮进展：** Core Auth/Admin/Session application 装配已迁入 `internal/services/core/application/`，Server 继续使用原 HTTP contract，同时将认证、后台统计和设备会话的 legacy Service 构造收敛到 Core adapter；底层实现暂保留，回滚入口未改变。
 - **本轮进展：** Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；`internal/compat/service/group_compat.go` 仅保留类型和错误别名，HTTP/DTO/Kafka contract 暂不改变，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；`internal/compat/service/file_compat.go` 仅保留类型和错误别名，文件 HTTP/DTO contract 暂不改变，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；`internal/compat/service/auth_compat.go` 与 `token_compat.go` 仅保留兼容别名，Middleware、Gateway、WS 和 HTTP contract 暂不改变，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；`internal/compat/service/auth_compat.go` 继续保留 Auth contract 兼容入口，Token 类型、构造器和 MCP 资源校验的调用者已迁移到 Core-owned Auth，`token_compat.go` 已删除，Middleware、Gateway、WS 和 HTTP contract 保持兼容。
 - **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；`internal/compat/service/admin_compat.go` 仅保留类型、错误和构造入口兼容层，User 权限错误继续共享同一错误值，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；`internal/compat/service/session_compat.go` 仅保留类型、错误和构造入口兼容层，设备会话 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；`internal/compat/service/user_compat.go` 仅保留类型、错误和构造入口兼容层，头像对象存储与用户管理 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。

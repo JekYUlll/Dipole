@@ -15,6 +15,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 type stubAuthService struct {
@@ -239,12 +240,12 @@ func TestAuthHandlerLogoutFailure(t *testing.T) {
 func TestAuthHandlerIssuesAgentMCPGrantFromAuthenticatedPrincipal(t *testing.T) {
 	t.Parallel()
 	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
-		if input.UserUUID != "U100" || input.Resource != service.AgentMCPResource || len(input.Scopes) != 1 || input.Scopes[0] != service.AgentMCPReadScope || !input.Consent {
+		if input.UserUUID != "U100" || input.Resource != coreauth.AgentMCPResource || len(input.Scopes) != 1 || input.Scopes[0] != coreauth.AgentMCPReadScope || !input.Consent {
 			t.Fatalf("unexpected grant input: %+v", input)
 		}
 		return &service.AgentMCPGrantResult{
 			AccessToken: "MCP_TOKEN", TokenType: "Bearer", ExpiresIn: 900,
-			Resource: service.AgentMCPResource, Scope: service.AgentMCPReadScope,
+			Resource: coreauth.AgentMCPResource, Scope: coreauth.AgentMCPReadScope,
 		}, nil
 	}})
 	recorder := httptest.NewRecorder()
