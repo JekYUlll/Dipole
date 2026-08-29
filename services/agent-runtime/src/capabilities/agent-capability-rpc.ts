@@ -632,6 +632,14 @@ export class AgentCapabilityRPCClient {
           reject(new Error("Agent Task Timeline returned a conflicting binding"));
           return;
         }
+        let previousEventSeq = afterSeq;
+        for (const event of response.events) {
+          if (event.taskId !== taskId || event.eventId.trim().length === 0 || event.eventSeq <= previousEventSeq) {
+            reject(new Error("Agent Task Timeline returned invalid event ordering or task binding"));
+            return;
+          }
+          previousEventSeq = event.eventSeq;
+        }
         resolve({
           schemaVersion: response.schemaVersion, taskId: response.taskId, revision: response.revision,
           events: response.events.map(event => ({
