@@ -161,6 +161,7 @@
 - 新增 MySQL repair recovery contract：在真实 MySQL 上创建 Task/Run，注入 Timeline 投影失败，验证 repair intent 进入 retry，随后真实重放收敛为 `completed` 且 Timeline 事件保持单份；测试独立于客户端时区。
 
 ### 验证
+- Agent Runtime 完成 `125` 个测试文件、`657` 个测试和 TypeScript 构建；Frontend 完成工具链契约、`27` 个测试文件、`102` 个测试及 `vue-tsc`/Vite 生产构建，并同步刷新嵌入式 `internal/server/webapp` 资源。
 
 - Agent Runtime G2 foundation 验收状态与实现对齐：`agent-runtime` 已提供 Node 22、Fastify、Zod、KafkaJS、AI SDK adapter 和独立 shadow consumer；Runtime 核心通过 `ModelRouter` 与具体模型 SDK 解耦。现有测试、类型检查和构建门禁保持通过，真实模型、真实语料和生产写入仍按 G3/G4 独立控制。
 - C++ projection microbenchmark 使用同一 `message.direct.created` v1 事件和 100,000 次 JSON 解码/投影迭代，Go/C++ 结果计数一致；C++ 吞吐约为 Go 的 `0.10x`，低于默认晋级门槛，报告为 `blocked`。当前保留 Go projection 作为默认实现并停止 C++ projection 替换，证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29/`。
