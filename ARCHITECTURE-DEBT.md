@@ -447,6 +447,7 @@
 - **追加验证：** 2026-08-29 使用当前分支重新运行 C3 真实故障演练，C++ build/CTest 14/14、对比测试 5/5、Controller/C++ 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 primary 停止恢复全部通过；生产部署仍保持默认 Go authority。
 - **性能门禁：** 2026-08-29 对同一 direct created v1 事件执行 100,000 次 Go/C++ JSON 解码与投影，结果计数一致但 C++/Go ops ratio 约为 `0.10`，低于 `1.0` 晋级门槛；当前保留 Go projection，C++ 仅保留故障隔离、authority 和后续连接/批处理数据面评估边界。
 - **追加验证：** 当前候选 revision `c063594` 重新执行 100,000 次固定 workload，C++/Go ops ratio 为 `0.0976283897`，结果计数一致且仍为 `blocked`；证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29-rerun/`，继续保留 Go projection。
+- **构建验证：** 2026-08-29 使用 `realtime-delivery/Dockerfile` 在 Ubuntu 24.04 隔离环境完成 C++ 依赖安装、镜像构建和 14/14 CTest；宿主机缺少 `grpc++ >= 1.51` 仅影响本地直接运行，不改变源码门禁结论。
 - **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 
 ### AD-039：Gateway Kafka assignment 未纳入 readiness

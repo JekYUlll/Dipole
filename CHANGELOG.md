@@ -62,6 +62,8 @@
 
 ### 验证
 
+- 2026-08-29 复核平台静态与协议门禁：Go 全量测试、sqlc、Go/TS Proto、Compose、架构文档、Web Sync 观察和 Agent OTel 检查均通过；C++ Realtime Delivery 通过仓库自带 Ubuntu 24.04 构建镜像完成编译与 14/14 CTest。宿主机缺少 `grpc++ >= 1.51` 时应使用 `realtime-delivery/Dockerfile` 或显式依赖根目录，不能将宿主机失败误判为源码失败。
+
 - 平台级门禁与 Agent 观测链路复核通过：`scripts/check-go.sh`、`check-sqlc.sh`、`check-compose.sh`、`check-architecture-docs.sh` 和 `check-agent-otel-observability.sh` 全部通过；独立 OTel smoke 验证 trace 经 Collector 写入并可由 Tempo 查询。
 
 - 微服务部署 smoke 在独立 Compose project 和新构建镜像上通过：MySQL、Redis、Kafka、Core、Message、Sync、Gateway、Agent 均 healthy，且 readiness、Prometheus、Core 代理、TLS 1.3 mTLS 和 remote WS ownership 验收通过；脚本 HTTP 探针增加有界重试/超时，失败可回收。
