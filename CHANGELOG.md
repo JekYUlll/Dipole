@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Web Multipart 上传接入客户端断点恢复基础：按文件指纹持久化 session，恢复前通过 Core 状态接口校验文件元数据并跳过已确认 part，完成或失败取消后清理本地 session；新增 helper 恢复测试，暂停/继续 UI 和预签名直传继续由 A7/AD-055 跟踪。
 - 2026-08-30：新增受所有权保护的 `GET /api/v1/files/uploads/{session_id}` Multipart 会话状态接口，返回已完成 part 的编号、ETag 和实际尺寸；该 contract 为后续暂停/断点恢复提供基础，当前仍保持现有 Core 中转上传路径。
 - 2026-08-30：Multipart part 增加 `X-Part-SHA256` 校验链路：现代 Web Crypto 可用时 Web 客户端发送摘要，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较，校验失败不会登记可完成 part；旧客户端缺少该头时保持兼容，并同步更新 Swagger contract 与回归测试。
 - 2026-08-30：Multipart 完成阶段新增 part 实际大小校验；新 Redis 会话保存 `ETag + Size`，前置分片和最后分片必须匹配初始化文件尺寸，旧 ETag-only 会话在无法证明完整性时安全拒绝完成，并通过 Core File/Storage 定向测试。
