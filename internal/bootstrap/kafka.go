@@ -68,6 +68,27 @@ func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *ap
 	return registerCoreKafkaHandlers(hub, repos, nil, false)
 }
 
+// RegisterCoreProjectionKafkaHandlers registers only projections owned by the
+// standalone Core process. Message persistence and Agent handlers belong to
+// their own service runtimes and must not be recreated here.
+func RegisterCoreProjectionKafkaHandlers(messaging *appComposition.MessagingServices) error {
+	if platformKafka.Subscriber == nil {
+		return nil
+	}
+	if messaging == nil || messaging.Conversations == nil {
+		return fmt.Errorf("core projection messaging is required")
+	}
+
+	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
+	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
+	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
+	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout", "contact.friend.deleted"} {
+		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
+	}
+
+	return nil
+}
+
 func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil

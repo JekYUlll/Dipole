@@ -11,6 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	"github.com/JekYUlll/Dipole/internal/server"
 	"go.uber.org/zap"
 )
 
@@ -38,7 +39,16 @@ func main() {
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	runtime, err := bootstrap.Initialize(rootCtx)
+	var runtime interface {
+		Server() *server.Server
+		Close()
+	}
+	var err error
+	if config.GatewayConfig().Mode == "embedded" {
+		runtime, err = bootstrap.Initialize(rootCtx)
+	} else {
+		runtime, err = bootstrap.InitializeCoreService(rootCtx)
+	}
 	if err != nil {
 		logger.L().Fatal("bootstrap initialize failed", zap.Error(err))
 	}
