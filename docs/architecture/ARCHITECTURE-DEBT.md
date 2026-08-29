@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：全仓调用审计确认 `internal/data/mysql/store_compat.go` 无仓内调用者，已删除该 Store facade；MySQL 事务边界继续由 `internal/platform/mysql` 唯一持有，Core/Agent/Search repository alias 仍按调用者保留。
 - 2026-08-30：全仓调用审计确认 `internal/store` MySQL/Redis 入口无仓内调用者，已删除两个兼容实现和目录说明，生产与运维代码继续统一使用 `internal/platform/mysql`、`internal/platform/cache`；服务布局门禁已阻止旧 store 回流。
 - 2026-08-30：全仓调用审计确认 Message/Sync repository facade 无生产或测试调用者，已删除 `internal/data/mysql/repository/message_compat.go` 与 `sync_compat.go`，并收紧服务布局门禁；Core、Agent、Search 兼容入口及 `internal/store` 回滚入口继续保留。
 - 2026-08-29：调用审计确认 `internal/bootstrap.RegisterGatewayKafkaHandlers` 已无调用者，embedded 装配已直接使用 Gateway infrastructure 注册器并删除 facade；Gateway Kafka 兼容入口完成退休。
