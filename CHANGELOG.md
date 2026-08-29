@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Agent Capability RPC 增加 remote authority 传输契约：Admission 支持 `candidate_version`，Run Complete/Finish 绑定显式 `runtime_id + mode`；TS client 默认保持 shadow，active client 必须提供 candidate version，Go Core 继续通过 promotion authorizer 决定是否允许 active。旧省略字段按 shadow 兼容处理，尚未改变生产 Agent 默认开关。
 - Agent Execution Policy、Invocation Resolver 和 Run Admission 实现已迁入 `internal/services/agent/application/`；兼容入口保留 deterministic clock 构造，结构门禁阻止旧策略实现回流。
 - Agent application 剩余的 MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；Bootstrap 已直接使用服务包，兼容入口与 deterministic clock 测试构造保持可回切。
 - Workflow Repair Prepare 和 Executor application 实现已迁入 `internal/services/agent/application/`；测试通过兼容入口保持 embedded 回滚能力，结构门禁阻止旧实现回流。

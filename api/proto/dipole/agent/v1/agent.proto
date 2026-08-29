@@ -18,6 +18,7 @@ message AdmitRunRequest {
   string runtime_id = 8;
   string mode = 9;
   string subscription_id = 10;
+  string candidate_version = 11;
 }
 
 message AdmitRunResponse {
@@ -30,6 +31,8 @@ message CompleteRunRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
   string run_id = 3;
+  string runtime_id = 4;
+  string mode = 5;
 }
 
 message CompleteRunResponse {
@@ -42,6 +45,8 @@ message FinishRunRequest {
   string run_id = 3;
   string run_status = 4;
   string last_error = 5;
+  string runtime_id = 6;
+  string mode = 7;
 }
 
 message FinishRunResponse {

@@ -1620,7 +1620,15 @@ func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest)
 	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.InvalidArgument, "admission principal belongs to the trusted event payload")
 	}
-	if strings.TrimSpace(request.GetRuntimeId()) != "dipole-agent" || strings.TrimSpace(request.GetMode()) != "shadow" {
+	runtimeID := strings.TrimSpace(request.GetRuntimeId())
+	mode := strings.TrimSpace(request.GetMode())
+	if runtimeID == "" {
+		runtimeID = "dipole-agent"
+	}
+	if mode == "" {
+		mode = "shadow"
+	}
+	if runtimeID != "dipole-agent" || (mode != "shadow" && mode != "active") {
 		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is fixed by the authenticated endpoint")
 	}
 	execution, err := s.admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
@@ -1629,7 +1637,7 @@ func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest)
 			DelegatedByUUID: request.GetPrincipalUserId(), TriggerType: request.GetTriggerType(), TriggerRef: request.GetTriggerRef(),
 			SubscriptionUUID: request.GetSubscriptionId(),
 			RequestID:        request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), EventID: request.GetEventId(),
-		}, RuntimeID: "dipole-agent", Mode: "shadow",
+		}, RuntimeID: runtimeID, Mode: mode, CandidateVersion: strings.TrimSpace(request.GetCandidateVersion()),
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
@@ -1647,7 +1655,17 @@ func (s *Server) CompleteRun(ctx context.Context, request *agentv1.CompleteRunRe
 	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
 	}
-	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); err != nil {
+	runtimeID, mode := request.GetRuntimeId(), request.GetMode()
+	if strings.TrimSpace(runtimeID) == "" {
+		runtimeID = "dipole-agent"
+	}
+	if strings.TrimSpace(mode) == "" {
+		mode = "shadow"
+	}
+	if strings.TrimSpace(runtimeID) != "dipole-agent" || (strings.TrimSpace(mode) != "shadow" && strings.TrimSpace(mode) != "active") {
+		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is invalid")
+	}
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), runtimeID, mode, application.AgentRunStatusCompleted, ""); err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 			return nil, status.Error(codes.PermissionDenied, "Agent Run completion denied")
 		}
@@ -1668,7 +1686,17 @@ func (s *Server) FinishRun(ctx context.Context, request *agentv1.FinishRunReques
 	if err := application.ValidateAgentRunTerminalV1(runStatus, lastError); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Agent Run terminal evidence is invalid")
 	}
-	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", runStatus, lastError); err != nil {
+	runtimeID, mode := request.GetRuntimeId(), request.GetMode()
+	if strings.TrimSpace(runtimeID) == "" {
+		runtimeID = "dipole-agent"
+	}
+	if strings.TrimSpace(mode) == "" {
+		mode = "shadow"
+	}
+	if strings.TrimSpace(runtimeID) != "dipole-agent" || (strings.TrimSpace(mode) != "shadow" && strings.TrimSpace(mode) != "active") {
+		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is invalid")
+	}
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), runtimeID, mode, runStatus, lastError); err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 			return nil, status.Error(codes.PermissionDenied, "Agent Run terminal transition denied")
 		}
