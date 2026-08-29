@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -247,21 +250,44 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent Memory control client: %w", err)
 		}
 	}
+	var presignedUploadProxy http.Handler
+	var presignedUploadBucket string
+	storageCfg := config.StorageConfig()
+	if storageCfg.PresignedUploadProxyEnabled {
+		scheme := "http"
+		if storageCfg.UseSSL {
+			scheme = "https"
+		}
+		proxyTarget := scheme + "://" + strings.TrimSpace(storageCfg.Endpoint)
+		signedEndpoint := strings.TrimSpace(storageCfg.PresignEndpoint)
+		if parsed, parseErr := url.Parse("//" + signedEndpoint); parseErr == nil && parsed.Host != "" {
+			signedEndpoint = parsed.Host
+		}
+		chunkBytes := storageCfg.MultipartChunkSizeMB * 1024 * 1024
+		presignedUploadProxy, err = gateway.NewPresignedUploadProxy(proxyTarget, signedEndpoint, chunkBytes)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize presigned upload proxy: %w", err)
+		}
+		presignedUploadBucket = storageCfg.Bucket
+	}
 
 	srv, err := gateway.NewServerWithDependencies(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages:           messages,
-		Sync:               syncApplication,
-		Core:               core,
-		Search:             search,
-		AgentTasks:         agentTasks,
-		AgentSubscriptions: agentSubscriptions,
-		AgentDefinitions:   agentSubscriptions,
-		AgentMemories:      agentMemories,
-		AgentMCP:           agentMCP,
-		TokenResolver:      coreauth.NewTokenService(),
-		Presence:           wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:            platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
-		AgentMCPLimiter:    platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		Messages:              messages,
+		Sync:                  syncApplication,
+		Core:                  core,
+		Search:                search,
+		AgentTasks:            agentTasks,
+		AgentSubscriptions:    agentSubscriptions,
+		AgentDefinitions:      agentSubscriptions,
+		AgentMemories:         agentMemories,
+		AgentMCP:              agentMCP,
+		TokenResolver:         coreauth.NewTokenService(),
+		Presence:              wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:               platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		AgentMCPLimiter:       platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		PresignedUploadProxy:  presignedUploadProxy,
+		PresignedUploadBucket: presignedUploadBucket,
 	})
 	if err != nil {
 		cleanup()

@@ -1,5 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
-import { sha256Hex, uploadMultipartParts, uploadPresignedPart } from './multipartUpload'
+import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart } from './multipartUpload'
+
+describe('same-origin presigned upload URL', () => {
+  it('rewrites only the origin when the Gateway proxy is enabled', () => {
+    expect(toSameOriginPresignedURL(
+      'http://minio:9000/dipole-files/object?partNumber=1&X-Amz-Signature=sig',
+      true,
+      'https://chat.example.test',
+    )).toBe('https://chat.example.test/dipole-files/object?partNumber=1&X-Amz-Signature=sig')
+  })
+
+  it('keeps the storage URL when the proxy is disabled', () => {
+    const value = 'http://minio:9000/dipole-files/object?partNumber=1'
+    expect(toSameOriginPresignedURL(value, false, 'https://chat.example.test')).toBe(value)
+  })
+})
 
 describe('uploadMultipartParts', () => {
   it('uploads a presigned part without sending it through the application API', async () => {
