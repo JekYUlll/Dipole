@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.search.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1;searchv1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/search/v1;searchv1";
 
 import "google/protobuf/timestamp.proto";
 import "dipole/common/v1/context.proto";

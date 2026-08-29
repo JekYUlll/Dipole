@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	cassandraops "github.com/JekYUlll/Dipole/internal/operations/cassandra"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	result, err := bootstrap.RunCassandraBackfill(ctx, bootstrap.CassandraBackfillOptions{
+	result, err := cassandraops.RunCassandraBackfill(ctx, cassandraops.CassandraBackfillOptions{
 		JobName: *jobName, OwnerID: *ownerID, BatchSize: *batchSize,
 		LeaseDuration: time.Duration(*leaseSeconds) * time.Second,
 		Source:        *source, ArchiveManifest: *archiveManifest,

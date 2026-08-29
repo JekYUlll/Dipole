@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.core.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/core/v1;corev1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/core/v1;corev1";
 
 import "dipole/common/v1/context.proto";
 

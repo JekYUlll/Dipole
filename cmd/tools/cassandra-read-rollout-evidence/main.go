@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JekYUlll/Dipole/internal/evidence/cassandrareadrollout"
+	"github.com/JekYUlll/Dipole/internal/operations/cassandra/evidence"
 )
 
 func main() {

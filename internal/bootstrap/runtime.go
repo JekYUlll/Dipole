@@ -7,25 +7,25 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Runtime struct {
@@ -120,7 +120,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
 	}
-	if err := ensureAIAssistantUser(repos.Users); err != nil {
+	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
@@ -153,7 +153,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	var coreRPC *InternalRPCServer
 	if rpcCfg.Enabled {
 		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
-		if err := appComposition.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
 			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
 		}
 		agentCommands, composeErr := agentapplication.NewLocalAgentCommandV1(localMessaging.Messages)
@@ -164,11 +164,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
-		resolver, composeErr := appComposition.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}
-		admission, composeErr := appComposition.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
@@ -353,7 +353,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			logger.Info("outbox relay started")
 		}
 	}
-	rt.metrics, err = startRuntimeMetrics(
+	rt.metrics, err = platformRuntime.StartMetrics(
 		config.MetricsConfig(),
 		coreServiceName,
 		platformKafka.Subscriber,
@@ -365,12 +365,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("start runtime metrics: %w", err)
 	}
 	if rt.metrics != nil {
-		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
+		if err := platformRuntime.ConfigureDependencyReadiness(rt.metrics, config.MetricsConfig(), platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
 			rt.Close()
 			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
 		}
-		bindRPCReadiness(rt.metrics, rt.coreRPC)
-		markRuntimeReady(rt.metrics)
+		platformRuntime.BindRPCReadiness(rt.metrics, rt.coreRPC)
+		platformRuntime.MarkReady(rt.metrics)
 	}
 
 	return rt, nil
@@ -413,7 +413,7 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 }
 
 func (r *Runtime) Close() {
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("metrics server close failed", zap.Error(err))
 	}
 	if r.coreRPC != nil {
@@ -456,47 +456,5 @@ func ensureTLSFiles(tlsCfg config.TLS) error {
 		return err
 	}
 
-	return nil
-}
-
-type aiAssistantUserRepository interface {
-	UpsertAssistant(user *model.User) error
-}
-
-func ensureAIAssistantUser(users aiAssistantUserRepository) error {
-	cfg := config.AIConfig()
-	if !cfg.Enabled {
-		return nil
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("dipole-ai-assistant"), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("generate ai assistant password hash: %w", err)
-	}
-
-	assistant := &model.User{
-		UUID:         cfg.AssistantUUID,
-		Nickname:     cfg.AssistantNickname,
-		Telephone:    cfg.AssistantTelephone,
-		Email:        cfg.AssistantEmail,
-		Avatar:       cfg.AssistantAvatar,
-		PasswordHash: string(passwordHash),
-		IsAdmin:      false,
-		UserType:     model.UserTypeAssistant,
-		Status:       model.UserStatusNormal,
-	}
-	if assistant.Avatar == "" {
-		assistant.Avatar = model.DefaultAvatarURL
-	}
-
-	if err := users.UpsertAssistant(assistant); err != nil {
-		return err
-	}
-
-	logger.Info("ai assistant user ensured",
-		zap.String("assistant_uuid", assistant.UUID),
-		zap.String("provider", cfg.Provider),
-		zap.String("model", cfg.Model),
-	)
 	return nil
 }

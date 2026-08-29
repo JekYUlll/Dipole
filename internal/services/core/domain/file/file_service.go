@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
@@ -19,9 +20,9 @@ import (
 var (
 	ErrFileMissing              = errors.New("file is missing")
 	ErrFileTooLarge             = errors.New("file is too large")
-	ErrFileStorageUnavailable   = errors.New("file storage is unavailable")
-	ErrFileNotFound             = errors.New("file not found")
-	ErrFilePermissionDenied     = errors.New("file permission denied")
+	ErrFileStorageUnavailable   = application.ErrFileStorageUnavailable
+	ErrFileNotFound             = application.ErrFileNotFound
+	ErrFilePermissionDenied     = application.ErrFilePermissionDenied
 	ErrFileExpired              = errors.New("file is expired")
 	ErrMultipartSessionNotFound = errors.New("multipart upload session not found")
 	ErrMultipartSessionInvalid  = errors.New("multipart upload session is invalid")

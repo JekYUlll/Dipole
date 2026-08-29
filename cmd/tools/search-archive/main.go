@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	searchops "github.com/JekYUlll/Dipole/internal/operations/search"
 )
 
 func main() {
@@ -38,20 +38,20 @@ func main() {
 			err = fmt.Errorf("create requires -manifest and -snapshot-id")
 			break
 		}
-		result, err = bootstrap.RunSearchArchive(ctx, bootstrap.SearchArchiveOptions{ManifestPath: *manifestPath, SnapshotID: *snapshotID, BatchSize: *batchSize})
+		result, err = searchops.RunSearchArchive(ctx, searchops.SearchArchiveOptions{ManifestPath: *manifestPath, SnapshotID: *snapshotID, BatchSize: *batchSize})
 	case "publish":
 		if strings.TrimSpace(*manifestPath) == "" || strings.TrimSpace(*receiptPath) == "" {
 			err = fmt.Errorf("publish requires -manifest and -receipt")
 			break
 		}
-		result, err = bootstrap.PublishSearchArchive(ctx, *manifestPath, *receiptPath, *objectPrefix, *retentionDays)
+		result, err = searchops.PublishSearchArchive(ctx, *manifestPath, *receiptPath, *objectPrefix, *retentionDays)
 	case "restore":
 		if strings.TrimSpace(*receiptPath) == "" || strings.TrimSpace(*destination) == "" {
 			err = fmt.Errorf("restore requires -receipt and -destination")
 			break
 		}
 		var restored string
-		restored, err = bootstrap.RestoreSearchArchive(ctx, *receiptPath, *destination)
+		restored, err = searchops.RestoreSearchArchive(ctx, *receiptPath, *destination)
 		result = map[string]string{"manifest": restored}
 	default:
 		err = fmt.Errorf("unsupported archive action: %s", *action)

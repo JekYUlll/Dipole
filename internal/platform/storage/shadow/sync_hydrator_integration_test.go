@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
-	mysqlrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -28,7 +28,7 @@ func TestSyncCassandraHydrationShadowContract(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	queries := generated.New(db)
-	mysqlHydrator, err := mysqlrepository.NewMySQLSyncMessageHydrator(queries)
+	mysqlHydrator, err := syncmysql.NewMySQLSyncMessageHydrator(queries)
 	if err != nil {
 		t.Fatalf("create MySQL hydrator: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestSyncCassandraHydrationShadowContract(t *testing.T) {
 
 	comparisons := make(chan SyncHydrationComparison, 3)
 	shadowHydrator := NewSyncMessageHydrator(mysqlHydrator, cassandraHydrator, func(value SyncHydrationComparison) { comparisons <- value })
-	syncStore, err := mysqlrepository.NewSyncRepositoryWithHydrator(queries, shadowHydrator)
+	syncStore, err := syncmysql.NewSyncRepositoryWithHydrator(queries, shadowHydrator)
 	if err != nil {
 		t.Fatalf("create Sync repository: %v", err)
 	}

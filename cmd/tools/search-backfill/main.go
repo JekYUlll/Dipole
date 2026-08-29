@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	searchops "github.com/JekYUlll/Dipole/internal/operations/search"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	ownerID := flag.String("owner", defaultOwnerID(), "lease owner identity")
 	batchSize := flag.Int("batch-size", 500, "final message states applied before checkpoint advance")
 	leaseSeconds := flag.Int("lease-seconds", 60, "owner lease duration renewed after each batch")
-	source := flag.String("source", bootstrap.SearchSourceMySQL, "snapshot source: mysql or archive")
+	source := flag.String("source", searchops.SearchSourceMySQL, "snapshot source: mysql or archive")
 	archiveManifest := flag.String("archive-manifest", "", "verified archive manifest when source=archive")
 	flag.Parse()
 	if strings.TrimSpace(*targetIndex) == "" {
@@ -33,7 +33,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	result, err := bootstrap.RunSearchBackfill(ctx, bootstrap.SearchBackfillOptions{
+	result, err := searchops.RunSearchBackfill(ctx, searchops.SearchBackfillOptions{
 		JobName: *jobName, OwnerID: *ownerID, TargetIndex: *targetIndex,
 		BatchSize: *batchSize, LeaseDuration: time.Duration(*leaseSeconds) * time.Second,
 		Source: *source, ArchiveManifest: *archiveManifest,

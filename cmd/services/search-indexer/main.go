@@ -7,9 +7,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	indexerbootstrap "github.com/JekYUlll/Dipole/internal/services/search-indexer/bootstrap"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	runtime, err := bootstrap.InitializeSearchIndexer(ctx)
+	runtime, err := indexerbootstrap.InitializeService(ctx)
 	if err != nil {
 		logger.L().Fatal("Search Indexer initialize failed", zap.Error(err))
 	}

@@ -13,13 +13,25 @@ import (
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 )
 
+type readinessRPCStub struct {
+	health *health.Server
+}
+
+func (s *readinessRPCStub) SetServing(serving bool) {
+	status := healthv1.HealthCheckResponse_NOT_SERVING
+	if serving {
+		status = healthv1.HealthCheckResponse_SERVING
+	}
+	s.health.SetServingStatus("", status)
+}
+
 func TestBindRPCReadinessMirrorsRuntimeReadiness(t *testing.T) {
 	metrics, err := startRuntimeMetrics(config.Metrics{Enabled: true, Address: "127.0.0.1:0"}, "dipole-test", nil)
 	if err != nil {
 		t.Fatalf("start runtime metrics: %v", err)
 	}
 	t.Cleanup(func() { _ = closeRuntimeMetrics(metrics) })
-	rpc := &InternalRPCServer{health: health.NewServer()}
+	rpc := &readinessRPCStub{health: health.NewServer()}
 
 	bindRPCReadiness(metrics, rpc)
 	assertRPCHealthStatus(t, rpc, healthv1.HealthCheckResponse_NOT_SERVING)
@@ -68,7 +80,7 @@ func TestAuthorityFenceReadinessProbeFailsClosed(t *testing.T) {
 	}
 }
 
-func assertRPCHealthStatus(t *testing.T, rpc *InternalRPCServer, expected healthv1.HealthCheckResponse_ServingStatus) {
+func assertRPCHealthStatus(t *testing.T, rpc *readinessRPCStub, expected healthv1.HealthCheckResponse_ServingStatus) {
 	t.Helper()
 	response, err := rpc.health.Check(t.Context(), &healthv1.HealthCheckRequest{})
 	if err != nil {

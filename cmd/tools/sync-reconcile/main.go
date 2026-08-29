@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	syncops "github.com/JekYUlll/Dipole/internal/operations/sync"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	report, err := bootstrap.RunSyncReconciliation(ctx, bootstrap.SyncReconciliationOptions{
+	report, err := syncops.RunSyncReconciliation(ctx, syncops.SyncReconciliationOptions{
 		JobName: *jobName, BatchSize: *batchSize, MaxExamples: *maxExamples,
 	})
 	if err != nil {

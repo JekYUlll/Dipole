@@ -3,8 +3,8 @@ package grpcmapping
 import (
 	"testing"
 
+	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/model"
-	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
 )
 
 func TestMessageConversationSequenceRoundTrip(t *testing.T) {

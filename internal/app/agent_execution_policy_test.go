@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 type agentPolicyStoreStub struct {
@@ -214,7 +215,7 @@ func TestPersistentAgentExecutionPolicyPinsDefinitionAndTransitionsTask(t *testi
 		store.latest = &v2
 		store.definitions[definitionKeyV1(v2.DefinitionUUID, v2.Version)] = &v2
 	}
-	policy, err := NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+	policy, err := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new persistent policy: %v", err)
 	}
@@ -241,7 +242,7 @@ func TestPersistentAgentExecutionPolicyPinsDefinitionAndTransitionsTask(t *testi
 func TestAgentTaskUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	t.Parallel()
 
-	got := agentTaskUUIDV1(agentPolicyStartRequestV1())
+	got := agentapplication.AgentTaskUUIDV1(agentPolicyStartRequestV1())
 	const want = "task:e47647aaf491da8a27072ed94d6b69b87a025a1e211000cbef6a9aeb458"
 	if got != want {
 		t.Fatalf("Agent Task UUID = %q, want %q", got, want)
@@ -286,7 +287,7 @@ func TestPersistentAgentExecutionPolicyRejectsRevokedExpiredAndDuplicateRuns(t *
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			store := policyStoreWithDefinitionV1(test.definition)
-			policy, _ := NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+			policy, _ := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
 			if _, err := policy.Start(context.Background(), agentPolicyStartRequestV1()); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 				t.Fatalf("expected policy denial, got %v", err)
 			}
@@ -295,7 +296,7 @@ func TestPersistentAgentExecutionPolicyRejectsRevokedExpiredAndDuplicateRuns(t *
 
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
 	store := policyStoreWithDefinitionV1(definition)
-	policy, _ := NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+	policy, _ := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
 	if _, err := policy.Start(context.Background(), agentPolicyStartRequestV1()); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
@@ -309,7 +310,7 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 
 	scopes := []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}}}
 	store := &agentPolicyStoreStub{}
-	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
+	if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
 		t.Fatalf("ensure baseline: %v", err)
 	}
 	if store.latest == nil || store.latest.DefinitionUUID != "embedded:UAI" || store.latest.Version != 1 {
@@ -317,7 +318,7 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 	}
 	custom := activeAgentDefinitionV1(7, time.Unix(0, 0).UTC(), []string{application.AgentPermissionMessageWrite})
 	store.latest = &custom
-	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
+	if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
 		t.Fatalf("preserve custom Definition: %v", err)
 	}
 	if store.latest.Version != 7 {
@@ -341,7 +342,7 @@ func TestPersistentAgentInvocationResolverUsesPinnedTaskIdentity(t *testing.T) {
 	store.runs = map[string]*application.AgentRunV1{
 		"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning},
 	}
-	resolver, err := NewPersistentAgentInvocationResolverV1WithClock(store, func() time.Time { return now })
+	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Invocation resolver: %v", err)
 	}
@@ -371,7 +372,7 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 		application.AgentPermissionConversationList, application.AgentPermissionConversationRead,
 	})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -447,7 +448,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	request := application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "runtime-v7",
 	}
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -459,7 +460,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	}
 
 	authorizer := &activeRunPromotionAuthorizerStub{}
-	admission, err = NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
+	admission, err = agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
 	if err != nil {
 		t.Fatalf("new authorized Run admission: %v", err)
 	}
@@ -504,7 +505,7 @@ func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing
 	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -519,7 +520,7 @@ func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing
 	if len(store.tasks) != 0 {
 		t.Fatalf("denied Subscription created a Task: %+v", store.tasks)
 	}
-	policy, err := NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+	policy, err := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new persistent policy: %v", err)
 	}
@@ -540,7 +541,7 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 		t.Run(string(terminal), func(t *testing.T) {
 			definition := activeAgentDefinitionV1(1, time.Now().Add(-time.Hour), []string{application.AgentPermissionConversationList})
 			store := policyStoreWithDefinitionV1(definition)
-			admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, time.Now)
+			admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, time.Now)
 			if err != nil {
 				t.Fatalf("new Run admission: %v", err)
 			}
@@ -573,7 +574,7 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 func TestPersistentAgentRunAdmissionRejectsInvalidTerminalEvidence(t *testing.T) {
 	t.Parallel()
 
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(&agentPolicyStoreStub{}, time.Now)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(&agentPolicyStoreStub{}, time.Now)
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -598,7 +599,7 @@ func TestEmbeddedExecutionAdoptsTaskCreatedByShadowAdmission(t *testing.T) {
 	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
 	store := policyStoreWithDefinitionV1(definition)
-	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
@@ -609,7 +610,7 @@ func TestEmbeddedExecutionAdoptsTaskCreatedByShadowAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatalf("admit shadow Run: %v", err)
 	}
-	policy, _ := NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+	policy, _ := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
 	embedded, err := policy.Start(context.Background(), request)
 	if err != nil {
 		t.Fatalf("start Embedded Run from shared Task: %v", err)
@@ -655,6 +656,6 @@ func cloneDefinitionV1(definition *application.AgentDefinitionVersionV1) *applic
 	}
 	copy := *definition
 	copy.Permissions = append([]string(nil), definition.Permissions...)
-	copy.Scopes = clonePolicyScopesV1(definition.Scopes)
+	copy.Scopes = agentapplication.ClonePolicyScopesV1(definition.Scopes)
 	return &copy
 }

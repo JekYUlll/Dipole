@@ -27,6 +27,8 @@ DIPOLE_AGENT_MYSQL_DATABASE=dipole \
 npm start
 ```
 
+默认关闭 Kafka、Temporal、MCP 和 Task Control 时，Runtime 仍可作为独立 HTTP 进程启动：`GET /livez` 检查进程存活，`GET /readyz` 检查生命周期初始化是否完成。安全的本地 smoke 可使用 `DIPOLE_AGENT_HOST=127.0.0.1` 和独立端口执行，随后以 SIGINT 验证优雅退出。
+
 Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
 ## Subscription prefilter rollout gate
