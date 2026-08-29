@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	elasticsearchdata "github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	searchapplication "github.com/JekYUlll/Dipole/internal/services/search/application"
 	"go.uber.org/zap"

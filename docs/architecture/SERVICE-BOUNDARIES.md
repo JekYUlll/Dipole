@@ -25,6 +25,7 @@
 - `internal/platform`：数据库连接、Kafka、Redis、对象存储和 RPC/TLS 等基础设施适配。
 - `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `internal/platform/storage`：对象存储、Search Archive 以及 MySQL/Cassandra 灰度 routing、shadow 和 hydration fallback 适配器；通过配置关闭即可回到主存储路径。
+- `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
 - `api/proto`、`contracts`：跨服务 RPC、事件和 Agent 契约。
 
 ### 需要收敛
