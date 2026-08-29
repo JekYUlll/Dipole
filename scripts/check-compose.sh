@@ -58,10 +58,22 @@ jq -e '
   and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
   and .services.sync.entrypoint == ["/app/service"]
+  and .services.agent.image == "dipole-agent:latest"
+  and (.services.agent.build.context | endswith("/services/agent-runtime"))
   and ((.services.core.depends_on // {}) | has("message") | not)
   and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"
 ' <<<"${default_microservices_config}" >/dev/null
+
+repair_profile_config="$(
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose --profile agent-timeline-repair \
+      -f deploy/compose/docker-compose.microservices.yml config --format json
+)"
+jq -e '
+  .services["agent-timeline-repair"].image == "dipole-agent-timeline-repair:latest"
+  and .services["agent-timeline-repair"].entrypoint == ["/app/service"]
+' <<<"${repair_profile_config}" >/dev/null
 
 active_agent_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
