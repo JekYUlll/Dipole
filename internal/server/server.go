@@ -101,12 +101,11 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	contactService := coreapplication.NewContactApplication(repos.Contacts, repos.Users, coreapplication.ContactDependencies{
 		Notifier: newContactNotifier(wsHub), Events: kafkaEvents, SystemMessenger: messaging.Messages,
 	})
-	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
-		repos.Files,
-		platformStorage.Client,
-		5*1024*1024,
-		10*time.Minute,
-	).WithSystemMessenger(messaging.Messages)
+	groupService := coreapplication.NewGroupApplication(repos.Groups, repos.Users, coreapplication.GroupDependencies{
+		Events: kafkaEvents, HotGroups: hotGroupDetector, Files: repos.Files,
+		Storage: platformStorage.Client, AvatarMaxBytes: 5 * 1024 * 1024,
+		AvatarURLTTL: 10 * time.Minute, SystemMessenger: messaging.Messages,
+	})
 	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
