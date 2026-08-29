@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
+- 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
 
 ### 变更
 
