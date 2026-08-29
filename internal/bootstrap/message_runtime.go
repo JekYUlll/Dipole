@@ -54,7 +54,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if messageCfg.RuntimeMode != "owner" && messageCfg.RuntimeMode != "shadow" {
 		return nil, fmt.Errorf("unsupported message.runtime_mode %q", messageCfg.RuntimeMode)
 	}
-	if err := validateMessageInboxWriteMode(messageCfg, kafkaCfg); err != nil {
+	if err := validateMessageInboxWriteMode(messageCfg, kafkaCfg, config.SyncConfig()); err != nil {
 		return nil, err
 	}
 	if messageCfg.RuntimeMode == "owner" {
@@ -187,7 +187,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	return runtime, nil
 }
 
-func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Kafka) error {
+func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Kafka, syncCfg config.Sync) error {
 	if messageCfg.InboxWriteMode != "atomic" && messageCfg.InboxWriteMode != "projector" {
 		return fmt.Errorf("unsupported message.inbox_write_mode %q", messageCfg.InboxWriteMode)
 	}
@@ -196,6 +196,9 @@ func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Ka
 	}
 	if messageCfg.InboxWriteMode == "projector" && !kafkaCfg.Enabled {
 		return fmt.Errorf("message.inbox_write_mode projector requires kafka.enabled")
+	}
+	if messageCfg.InboxWriteMode == "projector" && !syncCfg.ProjectorEnabled {
+		return fmt.Errorf("message.inbox_write_mode projector requires sync.projector_enabled")
 	}
 	return nil
 }
