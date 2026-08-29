@@ -3,12 +3,12 @@ package coreapplication
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 )
 
 // LocalFileApplication keeps file use cases behind the Core service boundary.
 type LocalFileApplication struct {
-	*service.FileService
+	*corefile.FileService
 }
 
 func NewFileApplication(
@@ -17,6 +17,6 @@ func NewFileApplication(
 	storage platformStorage.ObjectStorage,
 ) *LocalFileApplication {
 	return &LocalFileApplication{
-		FileService: service.NewFileService(repository, messages, storage),
+		FileService: corefile.NewFileService(repository, messages, storage),
 	}
 }

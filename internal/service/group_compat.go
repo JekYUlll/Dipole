@@ -1,6 +1,6 @@
 package service
 
-import coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain"
+import coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 
 type GroupAvatarResponse = coregroup.GroupAvatarResponse
 type CreateGroupInput = coregroup.CreateGroupInput

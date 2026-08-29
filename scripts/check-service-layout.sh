@@ -61,8 +61,16 @@ for core_app in auth admin session; do
     exit 1
   fi
 done
-if [[ ! -f "${root_dir}/internal/services/core/domain/group_service.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/domain/group/group_service.go" ]]; then
   echo "Core group domain implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/core/domain/file/file_service.go" ]]; then
+  echo "Core file domain implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
+  echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
