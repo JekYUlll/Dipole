@@ -65,6 +65,7 @@
 - Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - embedded Message runtime 直接调用 Message-owned SQLC repository constructor；`NewRepositories` 仅负责 embedded 回滚组合，Message repository wrapper 已退休。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
+- Gateway Kafka consumer 使用 `internal/application` 中的版本化群组、会话、联系人和已读事件 contract；Gateway 不直接依赖 Core domain decoder，Core 负责事件生产与自身 projection，结构门禁阻止跨服务 domain 实现回流。
 - Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已归属 `internal/services/gateway/server/`；`internal/gateway/http/` 仅保留可复用的 Gin response/handler adapter，Core embedded server 继续通过显式依赖复用。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
