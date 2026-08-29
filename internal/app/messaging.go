@@ -5,6 +5,7 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/service"
+	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
 
 type HotGroupObserver interface {
@@ -31,15 +32,11 @@ type MessagingServices struct {
 	Files         *service.FileService
 	Messages      *LocalMessageApplication
 	Conversations *service.ConversationService
-	Sync          *LocalSyncApplication
+	Sync          applicationPort.SyncApplication
 }
 
 type LocalMessageApplication struct {
 	*service.MessageService
-}
-
-type LocalSyncApplication struct {
-	*service.SyncService
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
@@ -64,7 +61,7 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 			dependencies.ConversationNotifier,
 			dependencies.Events,
 		),
-		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync, core)},
+		Sync: syncapplication.New(repos.Sync, core),
 	}
 }
 
@@ -78,8 +75,4 @@ func NewMessageApplication(messages applicationPort.MessageStore, core applicati
 	)
 	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
 	return &LocalMessageApplication{MessageService: messageService}
-}
-
-func NewSyncApplication(syncStore applicationPort.SyncStore, core applicationPort.CoreCapability) *LocalSyncApplication {
-	return &LocalSyncApplication{SyncService: service.NewSyncService(syncStore, core)}
 }
