@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -22,7 +22,7 @@ func NewDirectReadHandler(hub EventSender) platformKafka.Handler {
 			return fmt.Errorf("decode direct read envelope: %w", err)
 		}
 
-		payload, err := service.DecodeConversationReadReceipt(envelope.EventType, envelope.Payload)
+		payload, err := coreconversation.DecodeReadReceipt(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode direct read payload: %w", err)
 		}

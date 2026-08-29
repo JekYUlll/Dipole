@@ -51,6 +51,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：将 Group、Conversation、Contact、Session domain-event decoder 下沉到对应 Core domain，删除生产代码对 `internal/compat/service` 的依赖，并新增门禁阻止兼容目录回流；事件校验和 Kafka 投递 contract 保持兼容。
 - 2026-08-30：同步修正服务边界文档中已过期的 Message/Sync 兼容入口描述，明确剩余兼容目录仅承担跨版本 domain-event decoder 辅助；不改变运行时 contract。
 - 2026-08-30：Message HTTP/WS 错误和 service 构造调用已统一迁移到 Message-owned contract，删除无调用者的 `internal/compat/service/message_compat.go`；兼容目录仅保留跨版本 domain-event decoder 辅助。
 - 2026-08-30：Message event payload、mutation 和 Search/Sync projection 调用已统一迁移到 Message domain，兼容文件重命名并缩减为仍有调用者的 Message service/错误 contract；Kafka、Search、Sync 和 Gateway 事件行为保持兼容。

@@ -63,7 +63,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - Agent 兼容基线必须位于 `internal/services/agent/legacy/`；`internal/modules/ai/` 已禁用，避免旧模块重新成为服务入口。
 - Agent、Core 和 Search Index 的 SQLC repository 实现分别位于各自服务的 `internal/services/<service>/infrastructure/mysql/`；Message、Sync 的仓储实现也由对应服务独占，禁止恢复已退役的共享 repository 目录。
 - 新增服务仓储必须直接进入对应的 `internal/services/<service>/infrastructure/`；`internal/platform/mysql/` 仅提供跨服务共享的 SQLC 连接、生成代码、mapper、migration runner 和事务基础设施，不承载领域仓储。
-- `internal/compat/` 只允许存放迁移兼容入口；禁止在此目录新增领域逻辑。
+- `internal/compat/` 只允许存放迁移期回归测试和历史包路径验证辅助；生产代码禁止依赖该目录，禁止新增领域逻辑。
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
 - `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
 - `internal/platform/elasticsearch/` 只允许存放 Search/Indexer 共用的 Elasticsearch 客户端、Alias、mapping 和 projection adapter；搜索权限和事件编排必须位于对应服务边界。
