@@ -191,7 +191,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
-		promotionControls, composeErr := appComposition.NewPersistentAgentRuntimePromotionControlServiceV1(repos.AgentPolicy, repos.AgentArtifacts, repos.AgentPromotionControls)
+		promotionControls, composeErr := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(repos.AgentPolicy, repos.AgentArtifacts, repos.AgentPromotionControls)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
 		}
@@ -215,7 +215,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Definition catalog: %w", composeErr)
 		}
-		memoryResolver, composeErr := appComposition.NewPersistentAgentMemoryResolverV1(repos.AgentMemories, resolver, repos.AgentPolicy, time.Now)
+		memoryResolver, composeErr := agentapplication.NewPersistentAgentMemoryResolverV1(repos.AgentMemories, resolver, repos.AgentPolicy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
 		}
@@ -235,11 +235,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool round receipts: %w", composeErr)
 		}
-		toolTerminals, composeErr := appComposition.NewPersistentAgentMCPToolInvocationTerminalServiceV1(repos.AgentToolRounds, repos.AgentToolAudits, toolAudits)
+		toolTerminals, composeErr := agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1(repos.AgentToolRounds, repos.AgentToolAudits, toolAudits)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool invocation terminal: %w", composeErr)
 		}
-		messageCommands, composeErr := appComposition.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}

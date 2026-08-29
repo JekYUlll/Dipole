@@ -22,6 +22,7 @@
 
 ### 变更
 - Agent Execution Policy、Invocation Resolver 和 Run Admission 实现已迁入 `internal/services/agent/application/`；兼容入口保留 deterministic clock 构造，结构门禁阻止旧策略实现回流。
+- Agent application 剩余的 MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；Bootstrap 已直接使用服务包，兼容入口与 deterministic clock 测试构造保持可回切。
 - Workflow Repair Prepare 和 Executor application 实现已迁入 `internal/services/agent/application/`；测试通过兼容入口保持 embedded 回滚能力，结构门禁阻止旧实现回流。
 - Agent Capability 与 Command application 实现已迁入 `internal/services/agent/application/`；消息、会话依赖改为服务接口，Bootstrap 直接使用服务包，结构门禁阻止旧实现回流。
 - Agent Event Subscription application 实现已迁入 `internal/services/agent/application/`；定义读取和会话可见性依赖改为显式服务接口，Bootstrap 直接使用服务包，结构门禁阻止旧实现回流。
