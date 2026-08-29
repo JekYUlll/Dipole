@@ -11,19 +11,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
+	coreuser "github.com/JekYUlll/Dipole/internal/services/core/domain/user"
 )
 
 type userService interface {
 	GetByUUID(uuid string) (*model.User, error)
-	GetAvatarResponse(targetUUID string) (*service.AvatarResponse, error)
-	ListUsersForAdmin(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error)
-	SearchUsers(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error)
-	UpdateProfile(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error)
+	GetAvatarResponse(targetUUID string) (*coreuser.AvatarResponse, error)
+	ListUsersForAdmin(currentUser *model.User, input coreuser.AdminListUsersInput) ([]*model.User, error)
+	SearchUsers(currentUser *model.User, input coreuser.SearchUsersInput) ([]*model.User, error)
+	UpdateProfile(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error)
 	UploadAvatar(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error)
 	UpdateStatus(currentUser *model.User, targetUUID string, status int8) (*model.User, error)
 }
@@ -80,7 +80,7 @@ func (h *UserHandler) Search(c *gin.Context) {
 		return
 	}
 
-	input := service.SearchUsersInput{
+	input := coreuser.SearchUsersInput{
 		Keyword: c.Query("keyword"),
 		Limit:   queryInt(c, "limit"),
 	}
@@ -110,7 +110,7 @@ func (h *UserHandler) GetByUUID(c *gin.Context) {
 	user, err := h.service.GetByUUID(c.Param("uuid"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrUserNotFound):
+		case errors.Is(err, coreuser.ErrUserNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -135,9 +135,9 @@ func (h *UserHandler) GetAvatar(c *gin.Context) {
 	avatar, err := h.service.GetAvatarResponse(c.Param("uuid"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrUserNotFound):
+		case errors.Is(err, coreuser.ErrUserNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
-		case errors.Is(err, service.ErrAvatarStorageUnavailable):
+		case errors.Is(err, coreuser.ErrAvatarStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "avatar storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -199,7 +199,7 @@ func (h *UserHandler) ListForAdmin(c *gin.Context) {
 		return
 	}
 
-	input := service.AdminListUsersInput{
+	input := coreuser.AdminListUsersInput{
 		Keyword: c.Query("keyword"),
 		Status:  status,
 		Limit:   queryInt(c, "limit"),
@@ -210,7 +210,7 @@ func (h *UserHandler) ListForAdmin(c *gin.Context) {
 		switch {
 		case errors.Is(err, coreadmin.ErrAdminRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.UserAdminRequired, "admin permission is required")
-		case errors.Is(err, service.ErrInvalidUserStatus):
+		case errors.Is(err, coreuser.ErrInvalidUserStatus):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidStatus, "status is invalid")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -252,19 +252,19 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	user, err := h.service.UpdateProfile(currentUser, c.Param("uuid"), request.ToInput())
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrUserPermissionDenied):
+		case errors.Is(err, coreuser.ErrUserPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.UserPermissionDenied, "cannot update another user's profile")
-		case errors.Is(err, service.ErrUserNotFound):
+		case errors.Is(err, coreuser.ErrUserNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
-		case errors.Is(err, service.ErrEmptyProfileUpdate):
+		case errors.Is(err, coreuser.ErrEmptyProfileUpdate):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserEmptyProfile, "at least one profile field is required")
-		case errors.Is(err, service.ErrInvalidNickname):
+		case errors.Is(err, coreuser.ErrInvalidNickname):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidNickname, "nickname must be between 2 and 20 characters")
-		case errors.Is(err, service.ErrInvalidEmail):
+		case errors.Is(err, coreuser.ErrInvalidEmail):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidEmail, "email format is invalid")
-		case errors.Is(err, service.ErrInvalidAvatar):
+		case errors.Is(err, coreuser.ErrInvalidAvatar):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar is invalid")
-		case errors.Is(err, service.ErrInvalidSignature):
+		case errors.Is(err, coreuser.ErrInvalidSignature):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidSignature, "signature is invalid")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -315,15 +315,15 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	user, err := h.service.UploadAvatar(currentUser, c.Param("uuid"), fileHeader)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrUserPermissionDenied):
+		case errors.Is(err, coreuser.ErrUserPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.UserPermissionDenied, "cannot update another user's avatar")
-		case errors.Is(err, service.ErrUserNotFound):
+		case errors.Is(err, coreuser.ErrUserNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
-		case errors.Is(err, service.ErrAvatarMissing), errors.Is(err, service.ErrInvalidAvatar):
+		case errors.Is(err, coreuser.ErrAvatarMissing), errors.Is(err, coreuser.ErrInvalidAvatar):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidAvatar, "avatar is invalid")
-		case errors.Is(err, service.ErrAvatarTooLarge):
+		case errors.Is(err, coreuser.ErrAvatarTooLarge):
 			ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "avatar is too large")
-		case errors.Is(err, service.ErrAvatarStorageUnavailable):
+		case errors.Is(err, coreuser.ErrAvatarStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "avatar storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -367,11 +367,11 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 		switch {
 		case errors.Is(err, coreadmin.ErrAdminRequired):
 			ErrorWithCode(c, http.StatusForbidden, code.UserAdminRequired, "admin permission is required")
-		case errors.Is(err, service.ErrInvalidUserStatus):
+		case errors.Is(err, coreuser.ErrInvalidUserStatus):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserInvalidStatus, "status is invalid")
-		case errors.Is(err, service.ErrCannotDisableSelf):
+		case errors.Is(err, coreuser.ErrCannotDisableSelf):
 			ErrorWithCode(c, http.StatusBadRequest, code.UserSelfStatusChange, "cannot disable current admin user")
-		case errors.Is(err, service.ErrUserNotFound):
+		case errors.Is(err, coreuser.ErrUserNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.UserNotFound, "user not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())

@@ -14,19 +14,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
+	coreuser "github.com/JekYUlll/Dipole/internal/services/core/domain/user"
 )
 
 type stubUserService struct {
-	updateProfileFn func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error)
-	getAvatarFn     func(targetUUID string) (*service.AvatarResponse, error)
+	updateProfileFn func(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error)
+	getAvatarFn     func(targetUUID string) (*coreuser.AvatarResponse, error)
 	uploadAvatarFn  func(currentUser *model.User, targetUUID string, header *multipart.FileHeader) (*model.User, error)
 	getByUUIDFn     func(uuid string) (*model.User, error)
-	searchUsersFn   func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error)
-	listUsersFn     func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error)
+	searchUsersFn   func(currentUser *model.User, input coreuser.SearchUsersInput) ([]*model.User, error)
+	listUsersFn     func(currentUser *model.User, input coreuser.AdminListUsersInput) ([]*model.User, error)
 	updateStatusFn  func(currentUser *model.User, targetUUID string, status int8) (*model.User, error)
 }
 
@@ -38,7 +38,7 @@ func (s *stubUserService) GetByUUID(uuid string) (*model.User, error) {
 	return s.getByUUIDFn(uuid)
 }
 
-func (s *stubUserService) UpdateProfile(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
+func (s *stubUserService) UpdateProfile(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error) {
 	if s.updateProfileFn == nil {
 		return nil, nil
 	}
@@ -46,7 +46,7 @@ func (s *stubUserService) UpdateProfile(currentUser *model.User, targetUUID stri
 	return s.updateProfileFn(currentUser, targetUUID, input)
 }
 
-func (s *stubUserService) GetAvatarResponse(targetUUID string) (*service.AvatarResponse, error) {
+func (s *stubUserService) GetAvatarResponse(targetUUID string) (*coreuser.AvatarResponse, error) {
 	if s.getAvatarFn == nil {
 		return nil, nil
 	}
@@ -62,7 +62,7 @@ func (s *stubUserService) UploadAvatar(currentUser *model.User, targetUUID strin
 	return s.uploadAvatarFn(currentUser, targetUUID, header)
 }
 
-func (s *stubUserService) SearchUsers(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
+func (s *stubUserService) SearchUsers(currentUser *model.User, input coreuser.SearchUsersInput) ([]*model.User, error) {
 	if s.searchUsersFn == nil {
 		return nil, nil
 	}
@@ -70,7 +70,7 @@ func (s *stubUserService) SearchUsers(currentUser *model.User, input service.Sea
 	return s.searchUsersFn(currentUser, input)
 }
 
-func (s *stubUserService) ListUsersForAdmin(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
+func (s *stubUserService) ListUsersForAdmin(currentUser *model.User, input coreuser.AdminListUsersInput) ([]*model.User, error) {
 	if s.listUsersFn == nil {
 		return nil, nil
 	}
@@ -90,7 +90,7 @@ func TestUserHandlerUpdateProfileSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
+		updateProfileFn: func(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error) {
 			if currentUser.UUID != "U100" {
 				t.Fatalf("unexpected current user: %s", currentUser.UUID)
 			}
@@ -134,8 +134,8 @@ func TestUserHandlerUpdateProfileForbidden(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
-			return nil, service.ErrUserPermissionDenied
+		updateProfileFn: func(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error) {
+			return nil, coreuser.ErrUserPermissionDenied
 		},
 	})
 
@@ -166,7 +166,7 @@ func TestUserHandlerGetByUUIDNotFound(t *testing.T) {
 
 	handler := NewUserHandler(&stubUserService{
 		getByUUIDFn: func(uuid string) (*model.User, error) {
-			return nil, service.ErrUserNotFound
+			return nil, coreuser.ErrUserNotFound
 		},
 	})
 
@@ -194,7 +194,7 @@ func TestUserHandlerUpdateProfileBadRequest(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		updateProfileFn: func(currentUser *model.User, targetUUID string, input service.UpdateProfileInput) (*model.User, error) {
+		updateProfileFn: func(currentUser *model.User, targetUUID string, input coreuser.UpdateProfileInput) (*model.User, error) {
 			return nil, errors.New("should not be called")
 		},
 	})
@@ -267,11 +267,11 @@ func TestUserHandlerGetAvatarRedirects(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
+		getAvatarFn: func(targetUUID string) (*coreuser.AvatarResponse, error) {
 			if targetUUID != "U100" {
 				t.Fatalf("unexpected target uuid: %s", targetUUID)
 			}
-			return &service.AvatarResponse{RedirectURL: "https://example.com/avatar.png"}, nil
+			return &coreuser.AvatarResponse{RedirectURL: "https://example.com/avatar.png"}, nil
 		},
 	})
 
@@ -294,11 +294,11 @@ func TestUserHandlerGetAvatarStreamsContent(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		getAvatarFn: func(targetUUID string) (*service.AvatarResponse, error) {
+		getAvatarFn: func(targetUUID string) (*coreuser.AvatarResponse, error) {
 			if targetUUID != "U100" {
 				t.Fatalf("unexpected target uuid: %s", targetUUID)
 			}
-			return &service.AvatarResponse{
+			return &coreuser.AvatarResponse{
 				ContentType: "image/png",
 				ContentSize: 6,
 				Content:     io.NopCloser(strings.NewReader("avatar")),
@@ -328,7 +328,7 @@ func TestUserHandlerSearchSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		searchUsersFn: func(currentUser *model.User, input service.SearchUsersInput) ([]*model.User, error) {
+		searchUsersFn: func(currentUser *model.User, input coreuser.SearchUsersInput) ([]*model.User, error) {
 			if currentUser.UUID != "U100" {
 				t.Fatalf("unexpected current user: %s", currentUser.UUID)
 			}
@@ -357,7 +357,7 @@ func TestUserHandlerListForAdminForbidden(t *testing.T) {
 	t.Parallel()
 
 	handler := NewUserHandler(&stubUserService{
-		listUsersFn: func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
+		listUsersFn: func(currentUser *model.User, input coreuser.AdminListUsersInput) ([]*model.User, error) {
 			return nil, coreadmin.ErrAdminRequired
 		},
 	})
@@ -379,7 +379,7 @@ func TestUserHandlerUpdateStatusRejectsSelfDisable(t *testing.T) {
 
 	handler := NewUserHandler(&stubUserService{
 		updateStatusFn: func(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {
-			return nil, service.ErrCannotDisableSelf
+			return nil, coreuser.ErrCannotDisableSelf
 		},
 	})
 
