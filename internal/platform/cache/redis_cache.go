@@ -33,6 +33,36 @@ func NewContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), requestTimeout)
 }
 
+// Available reports whether the shared Redis client has been initialized.
+func Available() bool {
+	return store.RDB != nil
+}
+
+// GetBytes reads a raw value for service-owned state that is not JSON.
+func GetBytes(ctx context.Context, key string) ([]byte, error) {
+	if store.RDB == nil {
+		return nil, fmt.Errorf("redis is not initialized")
+	}
+
+	return store.RDB.Get(ctx, key).Bytes()
+}
+
+// RunTransaction executes a Redis transaction without exposing the shared
+// client to a domain package.
+func RunTransaction(ctx context.Context, fn func(redis.Pipeliner)) error {
+	if store.RDB == nil {
+		return fmt.Errorf("redis is not initialized")
+	}
+	if fn == nil {
+		return fmt.Errorf("redis transaction callback is required")
+	}
+
+	pipe := store.RDB.TxPipeline()
+	fn(pipe)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 func UserProfileKey(uuid string) string {
 	return "user:profile:" + strings.TrimSpace(uuid)
 }
