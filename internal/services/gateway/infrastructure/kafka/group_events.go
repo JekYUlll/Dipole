@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
@@ -20,7 +19,7 @@ func NewGroupEventHandler[T any](
 		if err != nil {
 			return fmt.Errorf("decode %s envelope: %w", eventType, err)
 		}
-		payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := coregroup.DecodeEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode %s payload: %w", eventType, err)
 		}
