@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway 群事件 Kafka handler（`group.created`、`group.updated`、成员变更和解散）已迁入 `internal/services/gateway/infrastructure/kafka`，新增泛型 fan-out 契约测试；Core 的会话初始化解码保持原有归属。
 - Gateway `session.force_logout` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，通过服务自有 `ConnectionController` 保持指定连接和全量连接断开语义，并补充契约测试。
 - Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增用户范围 WS 契约测试并保持 malformed event 重试语义。
 - Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka`，新增契约测试并保持 WS read receipt 与 malformed event 重试语义。

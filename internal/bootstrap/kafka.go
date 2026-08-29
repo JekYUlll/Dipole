@@ -155,7 +155,7 @@ func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	hotGroups := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	notifier := gatewaykafka.NewNotifier(hub, gatewaykafka.DefaultNotifyWindow)
-	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
+	platformKafka.Subscriber.Register("group.created", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
 		return wsTransport.GroupCreatedEventData{
 			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
 			MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
@@ -171,23 +171,23 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 	platformKafka.Subscriber.Register("message.direct.created", directHandler)
 	platformKafka.Subscriber.Register("message.group.created", groupHandler)
 	platformKafka.Subscriber.Register("conversation.direct.read", gatewaykafka.NewDirectReadHandler(hub))
-	platformKafka.Subscriber.Register("group.updated", deliverGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
+	platformKafka.Subscriber.Register("group.updated", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{
 			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
 			OperatorUUID: p.OperatorUUID, UpdatedAt: p.OccurredAt,
 		}
 	}))
-	platformKafka.Subscriber.Register("group.members.added", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+	platformKafka.Subscriber.Register("group.members.added", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
 		return wsTransport.GroupMembersChangedEventData{
 			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
 		}
 	}))
-	platformKafka.Subscriber.Register("group.members.removed", deliverGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
+	platformKafka.Subscriber.Register("group.members.removed", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
 		return wsTransport.GroupMembersChangedEventData{
 			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
 		}
 	}))
-	platformKafka.Subscriber.Register("group.dismissed", deliverGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
+	platformKafka.Subscriber.Register("group.dismissed", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
 		return wsTransport.GroupDismissedEventData{
 			GroupUUID: p.GroupUUID, GroupName: p.GroupName, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
 		}
@@ -488,32 +488,6 @@ func handleAIDirectReply(aiService *aiModule.Service) platformKafka.Handler {
 				zap.String("target_uuid", payload.TargetUUID),
 				zap.Error(err),
 			)
-		}
-
-		return nil
-	}
-}
-
-// deliverGroupEventHandler is a generic factory for group event delivery handlers.
-// It decodes the group event payload, builds the WS event data via buildData,
-// and fans out to all recipients.
-func deliverGroupEventHandler[T any](
-	hub kafkaWSEventSender,
-	eventType string,
-	buildData func(service.GroupEventPayload) T,
-) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeGroupEventPayload(event)
-		if err != nil {
-			logger.Warn("decode "+eventType+" payload failed", zap.Error(err))
-			return err
-		}
-
-		data := buildData(payload)
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			sendEventToUser(ctx, hub, recipientUUID, eventType, data)
 		}
 
 		return nil
