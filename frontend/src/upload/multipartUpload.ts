@@ -5,6 +5,8 @@ export type MultipartUploadOptions = {
   sleep?: (delayMs: number) => Promise<void>
   skipParts?: ReadonlySet<number>
   onPartComplete?: (completedParts: number, totalParts: number) => void
+  isPaused?: () => boolean
+  waitUntilResumed?: () => Promise<void>
 }
 
 type UploadPart = (partNumber: number, chunk: Blob) => Promise<void>
@@ -104,6 +106,11 @@ export const uploadMultipartParts = async (
 
   const worker = async () => {
     while (!stopped) {
+      if (options.isPaused?.()) {
+        if (options.waitUntilResumed === undefined) throw new Error('paused multipart upload requires a resume handler')
+        await options.waitUntilResumed()
+        continue
+      }
       const partNumber = nextPart++
       if (partNumber > totalParts) return
 

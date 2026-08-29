@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Multipart Web 上传增加可见的暂停/继续控制；暂停只停止新分片调度并保留 Redis/MinIO 会话，继续时复用原 `upload_id` 和已确认分片，前端上传专项测试、类型检查和生产构建通过。
+
 - 2026-08-30：重新执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Gateway、Message、Sync、Agent 及 MySQL/Redis/Kafka/MinIO readiness、metrics、mTLS、远程 WS ownership 和 Agent 幂等；临时拓扑自动清理，KafkaJS 分区器 warning 未影响验收。
 - 2026-08-30：重新执行 `scripts/smoke-cassandra-read-routing.sh`，隔离验证 migration v50、Cassandra Seq 页面读取，以及 payload 损坏和缺失行按同一 cursor 回退 MySQL；临时资源自动清理，生产 Cassandra 主读保持关闭。
 - 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。

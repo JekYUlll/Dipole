@@ -284,6 +284,14 @@
               <input type="file" style="display:none" :disabled="isInputDisabled" @change="uploadFile" />
             </label>
             <span v-if="uploadingFileLabel" class="upload-status">{{ uploadingFileLabel }}</span>
+            <button
+              v-if="multipartUploadActive"
+              class="upload-control-btn"
+              type="button"
+              @click="toggleMultipartUploadPause"
+            >
+              {{ multipartUploadPaused ? '继续上传' : '暂停上传' }}
+            </button>
           </div>
           <textarea
             v-model="inputText"
@@ -645,6 +653,9 @@ const selectedGroupAvatarFile = ref<File | null>(null)
 const selectedGroupAvatarName = ref('')
 const uploadingGroupAvatar = ref(false)
 const uploadingFileLabel = ref('')
+const multipartUploadActive = ref(false)
+const multipartUploadPaused = ref(false)
+let multipartResumeWaiters: Array<() => void> = []
 const sendErrorMessage = ref('')
 const mediaPreviewMap = ref<Record<string, string>>({})
 const mediaPreviewInflight = new Map<string, Promise<void>>()
@@ -1205,9 +1216,29 @@ const uploadFile = async (e: Event) => {
   } catch (err: any) {
     toast.error(err?.message || '文件上传失败')
   } finally {
+    finishMultipartUploadControls()
     uploadingFileLabel.value = ''
     ;(e.target as HTMLInputElement).value = ''
   }
+}
+
+const toggleMultipartUploadPause = () => {
+  if (!multipartUploadActive.value) return
+  multipartUploadPaused.value = !multipartUploadPaused.value
+  uploadingFileLabel.value = multipartUploadPaused.value ? '已暂停，可继续上传' : '上传继续中...'
+  if (!multipartUploadPaused.value) {
+    const waiters = multipartResumeWaiters
+    multipartResumeWaiters = []
+    waiters.forEach(resolve => resolve())
+  }
+}
+
+const finishMultipartUploadControls = () => {
+  multipartUploadActive.value = false
+  multipartUploadPaused.value = false
+  const waiters = multipartResumeWaiters
+  multipartResumeWaiters = []
+  waiters.forEach(resolve => resolve())
 }
 
 const downloadFile = async (msg: Message) => {
@@ -1366,6 +1397,9 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     return await api.post('/api/v1/files', formData) as { file_id: string }
   }
 
+  multipartUploadActive.value = true
+  multipartUploadPaused.value = false
+
   const contentType = file.type || 'application/octet-stream'
   const stored = readStoredMultipartUpload(file)
   let init: MultipartUploadInit | null = null
@@ -1444,6 +1478,8 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
       onPartComplete: (completedParts, totalParts) => {
         uploadingFileLabel.value = `上传中 ${completedParts}/${totalParts}...`
       },
+      isPaused: () => multipartUploadPaused.value,
+      waitUntilResumed: () => new Promise<void>(resolve => multipartResumeWaiters.push(resolve)),
     })
     uploadingFileLabel.value = '合并文件中...'
     const result = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
@@ -2744,6 +2780,21 @@ onBeforeUnmount(() => {
 .upload-status {
   font-size: 12px;
   color: #666;
+}
+
+.upload-control-btn {
+  border: 1px solid #c8c8c8;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #fff;
+  color: #444;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.upload-control-btn:hover {
+  border-color: #888;
+  background: #f7f7f7;
 }
 
 .chat-notice-banner {
